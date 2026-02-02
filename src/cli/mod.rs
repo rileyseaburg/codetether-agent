@@ -175,8 +175,12 @@ pub struct SwarmArgs {
     /// Task to execute with swarm
     pub task: String,
 
+    /// Model to use (provider/model format, e.g. openrouter/stepfun/step-3.5-flash:free)
+    #[arg(short, long)]
+    pub model: Option<String>,
+
     /// Decomposition strategy: auto, domain, data, stage, none
-    #[arg(short, long, default_value = "auto")]
+    #[arg(short = 's', long, default_value = "auto")]
     pub strategy: String,
 
     /// Maximum number of concurrent sub-agents

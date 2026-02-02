@@ -66,6 +66,7 @@ async fn main() -> anyhow::Result<()> {
                 max_subagents: args.max_subagents,
                 max_steps_per_subagent: args.max_steps,
                 subagent_timeout_secs: args.timeout,
+                model: args.model.clone(),
                 ..Default::default()
             });
 
