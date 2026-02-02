@@ -1,0 +1,272 @@
+//! OpenAI provider implementation
+
+use super::{
+    CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
+    Role, StreamChunk, ToolDefinition, Usage,
+};
+use anyhow::Result;
+use async_openai::{
+    config::OpenAIConfig,
+    types::{
+        ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessageArgs,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+        ChatCompletionRequestToolMessageArgs, ChatCompletionRequestUserMessageArgs,
+        ChatCompletionTool, ChatCompletionToolArgs, ChatCompletionToolType, CreateChatCompletionRequestArgs,
+        FunctionObjectArgs,
+    },
+    Client,
+};
+use async_trait::async_trait;
+use futures::StreamExt;
+
+pub struct OpenAIProvider {
+    client: Client<OpenAIConfig>,
+    provider_name: String,
+}
+
+impl OpenAIProvider {
+    pub fn new(api_key: String) -> Result<Self> {
+        let config = OpenAIConfig::new().with_api_key(api_key);
+        Ok(Self {
+            client: Client::with_config(config),
+            provider_name: "openai".to_string(),
+        })
+    }
+
+    /// Create with custom base URL (for OpenAI-compatible providers like Moonshot)
+    pub fn with_base_url(api_key: String, base_url: String, provider_name: &str) -> Result<Self> {
+        let config = OpenAIConfig::new()
+            .with_api_key(api_key)
+            .with_api_base(base_url);
+        Ok(Self {
+            client: Client::with_config(config),
+            provider_name: provider_name.to_string(),
+        })
+    }
+
+    fn convert_messages(messages: &[Message]) -> Result<Vec<ChatCompletionRequestMessage>> {
+        let mut result = Vec::new();
+        
+        for msg in messages {
+            let content = msg
+                .content
+                .iter()
+                .filter_map(|p| match p {
+                    ContentPart::Text { text } => Some(text.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            match msg.role {
+                Role::System => {
+                    result.push(
+                        ChatCompletionRequestSystemMessageArgs::default()
+                            .content(content)
+                            .build()?
+                            .into(),
+                    );
+                }
+                Role::User => {
+                    result.push(
+                        ChatCompletionRequestUserMessageArgs::default()
+                            .content(content)
+                            .build()?
+                            .into(),
+                    );
+                }
+                Role::Assistant => {
+                    let tool_calls: Vec<ChatCompletionMessageToolCall> = msg
+                        .content
+                        .iter()
+                        .filter_map(|p| match p {
+                            ContentPart::ToolCall { id, name, arguments } => {
+                                Some(ChatCompletionMessageToolCall {
+                                    id: id.clone(),
+                                    r#type: ChatCompletionToolType::Function,
+                                    function: async_openai::types::FunctionCall {
+                                        name: name.clone(),
+                                        arguments: arguments.clone(),
+                                    },
+                                })
+                            }
+                            _ => None,
+                        })
+                        .collect();
+
+                    let mut builder = ChatCompletionRequestAssistantMessageArgs::default();
+                    if !content.is_empty() {
+                        builder.content(content);
+                    }
+                    if !tool_calls.is_empty() {
+                        builder.tool_calls(tool_calls);
+                    }
+                    result.push(builder.build()?.into());
+                }
+                Role::Tool => {
+                    for part in &msg.content {
+                        if let ContentPart::ToolResult { tool_call_id, content } = part {
+                            result.push(
+                                ChatCompletionRequestToolMessageArgs::default()
+                                    .tool_call_id(tool_call_id.clone())
+                                    .content(content.clone())
+                                    .build()?
+                                    .into(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(result)
+    }
+
+    fn convert_tools(tools: &[ToolDefinition]) -> Result<Vec<ChatCompletionTool>> {
+        let mut result = Vec::new();
+        for tool in tools {
+            result.push(
+                ChatCompletionToolArgs::default()
+                    .r#type(ChatCompletionToolType::Function)
+                    .function(
+                        FunctionObjectArgs::default()
+                            .name(&tool.name)
+                            .description(&tool.description)
+                            .parameters(tool.parameters.clone())
+                            .build()?,
+                    )
+                    .build()?,
+            );
+        }
+        Ok(result)
+    }
+}
+
+#[async_trait]
+impl Provider for OpenAIProvider {
+    fn name(&self) -> &str {
+        &self.provider_name
+    }
+
+    async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+        // Return commonly used models
+        Ok(vec![
+            ModelInfo {
+                id: "gpt-4o".to_string(),
+                name: "GPT-4o".to_string(),
+                provider: "openai".to_string(),
+                context_window: 128_000,
+                max_output_tokens: Some(16_384),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(2.5),
+                output_cost_per_million: Some(10.0),
+            },
+            ModelInfo {
+                id: "gpt-4o-mini".to_string(),
+                name: "GPT-4o Mini".to_string(),
+                provider: "openai".to_string(),
+                context_window: 128_000,
+                max_output_tokens: Some(16_384),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.15),
+                output_cost_per_million: Some(0.6),
+            },
+            ModelInfo {
+                id: "o1".to_string(),
+                name: "o1".to_string(),
+                provider: "openai".to_string(),
+                context_window: 200_000,
+                max_output_tokens: Some(100_000),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(15.0),
+                output_cost_per_million: Some(60.0),
+            },
+        ])
+    }
+
+    async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+        let messages = Self::convert_messages(&request.messages)?;
+        let tools = Self::convert_tools(&request.tools)?;
+
+        let mut req_builder = CreateChatCompletionRequestArgs::default();
+        req_builder.model(&request.model).messages(messages);
+
+        if !tools.is_empty() {
+            // Note: tools need conversion, simplified here
+        }
+        if let Some(temp) = request.temperature {
+            req_builder.temperature(temp);
+        }
+        if let Some(max) = request.max_tokens {
+            req_builder.max_completion_tokens(max as u32);
+        }
+
+        let response = self.client.chat().create(req_builder.build()?).await?;
+
+        let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
+
+        let mut content = Vec::new();
+        if let Some(text) = &choice.message.content {
+            content.push(ContentPart::Text { text: text.clone() });
+        }
+        if let Some(tool_calls) = &choice.message.tool_calls {
+            for tc in tool_calls {
+                content.push(ContentPart::ToolCall {
+                    id: tc.id.clone(),
+                    name: tc.function.name.clone(),
+                    arguments: tc.function.arguments.clone(),
+                });
+            }
+        }
+
+        Ok(CompletionResponse {
+            message: Message {
+                role: Role::Assistant,
+                content,
+            },
+            usage: Usage {
+                prompt_tokens: response.usage.as_ref().map(|u| u.prompt_tokens as usize).unwrap_or(0),
+                completion_tokens: response.usage.as_ref().map(|u| u.completion_tokens as usize).unwrap_or(0),
+                total_tokens: response.usage.as_ref().map(|u| u.total_tokens as usize).unwrap_or(0),
+                ..Default::default()
+            },
+            finish_reason: FinishReason::Stop,
+        })
+    }
+
+    async fn complete_stream(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        let messages = Self::convert_messages(&request.messages)?;
+
+        let mut req_builder = CreateChatCompletionRequestArgs::default();
+        req_builder.model(&request.model).messages(messages).stream(true);
+
+        if let Some(temp) = request.temperature {
+            req_builder.temperature(temp);
+        }
+
+        let stream = self.client.chat().create_stream(req_builder.build()?).await?;
+
+        Ok(stream
+            .map(|result| match result {
+                Ok(response) => {
+                    if let Some(choice) = response.choices.first() {
+                        if let Some(content) = &choice.delta.content {
+                            return StreamChunk::Text(content.clone());
+                        }
+                    }
+                    StreamChunk::Text(String::new())
+                }
+                Err(e) => StreamChunk::Error(e.to_string()),
+            })
+            .boxed())
+    }
+}

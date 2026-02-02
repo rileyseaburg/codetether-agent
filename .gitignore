@@ -1,0 +1,27 @@
+# Generated files
+/target/
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+
+# Debug
+*.log
+*.pdb
+
+# Environment (secrets should ONLY be in Vault)
+.env
+.env.*
