@@ -59,6 +59,9 @@ pub enum Command {
 
     /// A2A worker mode (explicit - also the default)
     Worker(A2aArgs),
+
+    /// Execute task with parallel sub-agents (swarm mode)
+    Swarm(SwarmArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -156,4 +159,30 @@ pub struct ConfigArgs {
     /// Set a configuration value
     #[arg(long)]
     pub set: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct SwarmArgs {
+    /// Task to execute with swarm
+    pub task: String,
+
+    /// Decomposition strategy: auto, domain, data, stage, none
+    #[arg(short, long, default_value = "auto")]
+    pub strategy: String,
+
+    /// Maximum number of concurrent sub-agents
+    #[arg(long, default_value = "100")]
+    pub max_subagents: usize,
+
+    /// Maximum steps per sub-agent
+    #[arg(long, default_value = "100")]
+    pub max_steps: usize,
+
+    /// Timeout per sub-agent (seconds)
+    #[arg(long, default_value = "300")]
+    pub timeout: u64,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
 }
