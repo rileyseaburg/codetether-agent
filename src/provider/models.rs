@@ -290,6 +290,8 @@ impl ModelCatalog {
             "gpt-4o",
             "gemini-2.5-pro",
             "deepseek-v3.2",
+            "step-3.5-flash",
+            "stepfun/step-3.5-flash:free",
         ];
 
         let mut result = Vec::new();
