@@ -17,11 +17,13 @@ mod provider;
 pub mod secrets;
 mod server;
 mod session;
+pub mod swarm;
 mod tool;
 mod tui;
 
 use clap::Parser;
 use cli::{A2aArgs, Cli, Command};
+use swarm::{DecompositionStrategy, SwarmExecutor};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
@@ -55,6 +57,37 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Run(args)) => cli::run::execute(args).await,
         Some(Command::Worker(args)) => a2a::worker::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
+        Some(Command::Swarm(args)) => {
+            let executor = SwarmExecutor::new(swarm::SwarmConfig {
+                max_subagents: args.max_subagents,
+                max_steps_per_subagent: args.max_steps,
+                subagent_timeout_secs: args.timeout,
+                ..Default::default()
+            });
+
+            let strategy = match args.strategy.as_str() {
+                "auto" => DecompositionStrategy::Automatic,
+                "domain" => DecompositionStrategy::ByDomain,
+                "data" => DecompositionStrategy::ByData,
+                "stage" => DecompositionStrategy::ByStage,
+                "none" => DecompositionStrategy::None,
+                _ => DecompositionStrategy::Automatic,
+            };
+
+            let result = executor.execute(&args.task, strategy).await?;
+
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                println!("=== Swarm Execution Results ===");
+                println!("Status: {}", if result.success { "SUCCESS" } else { "FAILED" });
+                println!("Subtasks: {}", result.subtask_results.len());
+                println!("Speedup: {:.1}x", result.stats.speedup_factor);
+                println!("Critical Path: {} steps", result.stats.critical_path_length);
+                println!("\n{}", result.result);
+            }
+            Ok(())
+        }
         None => {
             // Default: A2A worker mode
             // Check if we have a server URL from args or environment

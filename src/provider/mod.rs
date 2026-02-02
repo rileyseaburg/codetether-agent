@@ -11,6 +11,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// A message in a conversation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,7 +134,7 @@ pub struct ModelInfo {
 
 /// Registry of available providers
 pub struct ProviderRegistry {
-    providers: HashMap<String, Box<dyn Provider>>,
+    providers: HashMap<String, Arc<dyn Provider>>,
 }
 
 impl ProviderRegistry {
@@ -144,13 +145,13 @@ impl ProviderRegistry {
     }
 
     /// Register a provider
-    pub fn register(&mut self, provider: Box<dyn Provider>) {
+    pub fn register(&mut self, provider: Arc<dyn Provider>) {
         self.providers.insert(provider.name().to_string(), provider);
     }
 
     /// Get a provider by name
-    pub fn get(&self, name: &str) -> Option<&dyn Provider> {
-        self.providers.get(name).map(|p| p.as_ref())
+    pub fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
+        self.providers.get(name).cloned()
     }
 
     /// List all registered providers
@@ -165,28 +166,28 @@ impl ProviderRegistry {
         // Always try to initialize OpenAI if key is available
         if let Some(provider_config) = config.providers.get("openai") {
             if let Some(api_key) = &provider_config.api_key {
-                registry.register(Box::new(openai::OpenAIProvider::new(api_key.clone())?));
+                registry.register(Arc::new(openai::OpenAIProvider::new(api_key.clone())?));
             }
         } else if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
-            registry.register(Box::new(openai::OpenAIProvider::new(api_key)?));
+            registry.register(Arc::new(openai::OpenAIProvider::new(api_key)?));
         }
 
         // Initialize Anthropic
         if let Some(provider_config) = config.providers.get("anthropic") {
             if let Some(api_key) = &provider_config.api_key {
-                registry.register(Box::new(anthropic::AnthropicProvider::new(api_key.clone())?));
+                registry.register(Arc::new(anthropic::AnthropicProvider::new(api_key.clone())?));
             }
         } else if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
-            registry.register(Box::new(anthropic::AnthropicProvider::new(api_key)?));
+            registry.register(Arc::new(anthropic::AnthropicProvider::new(api_key)?));
         }
 
         // Initialize Google
         if let Some(provider_config) = config.providers.get("google") {
             if let Some(api_key) = &provider_config.api_key {
-                registry.register(Box::new(google::GoogleProvider::new(api_key.clone())?));
+                registry.register(Arc::new(google::GoogleProvider::new(api_key.clone())?));
             }
         } else if let Ok(api_key) = std::env::var("GOOGLE_API_KEY") {
-            registry.register(Box::new(google::GoogleProvider::new(api_key)?));
+            registry.register(Arc::new(google::GoogleProvider::new(api_key)?));
         }
 
         Ok(registry)
@@ -227,13 +228,13 @@ impl ProviderRegistry {
                 // Native providers
                 "anthropic" | "anthropic-eu" | "anthropic-asia" => {
                     match anthropic::AnthropicProvider::new(api_key) {
-                        Ok(p) => registry.register(Box::new(p)),
+                        Ok(p) => registry.register(Arc::new(p)),
                         Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                     }
                 }
                 "google" | "google-vertex" => {
                     match google::GoogleProvider::new(api_key) {
-                        Ok(p) => registry.register(Box::new(p)),
+                        Ok(p) => registry.register(Arc::new(p)),
                         Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                     }
                 }
@@ -243,13 +244,13 @@ impl ProviderRegistry {
                 | "openai" | "azure" => {
                     if let Some(base_url) = secrets.base_url {
                         match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id) {
-                            Ok(p) => registry.register(Box::new(p)),
+                            Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                         }
                     } else if provider_id == "openai" {
                         // OpenAI doesn't need a custom base_url
                         match openai::OpenAIProvider::new(api_key) {
-                            Ok(p) => registry.register(Box::new(p)),
+                            Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init openai: {}", e),
                         }
                     } else {
@@ -258,7 +259,7 @@ impl ProviderRegistry {
                             if let Some(provider_info) = catalog.get_provider(&provider_id) {
                                 if let Some(api_url) = &provider_info.api {
                                     match openai::OpenAIProvider::with_base_url(api_key, api_url.clone(), &provider_id) {
-                                        Ok(p) => registry.register(Box::new(p)),
+                                        Ok(p) => registry.register(Arc::new(p)),
                                         Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                                     }
                                 }
@@ -270,7 +271,7 @@ impl ProviderRegistry {
                 other => {
                     if let Some(base_url) = secrets.base_url {
                         match openai::OpenAIProvider::with_base_url(api_key, base_url, other) {
-                            Ok(p) => registry.register(Box::new(p)),
+                            Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init {}: {}", other, e),
                         }
                     } else {
