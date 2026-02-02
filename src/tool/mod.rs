@@ -5,7 +5,9 @@
 pub mod bash;
 pub mod edit;
 pub mod file;
+pub mod multiedit;
 pub mod search;
+pub mod webfetch;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -115,6 +117,8 @@ impl ToolRegistry {
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
+        registry.register(Arc::new(webfetch::WebFetchTool::new()));
+        registry.register(Arc::new(multiedit::MultiEditTool::new()));
         
         registry
     }

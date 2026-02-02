@@ -42,6 +42,8 @@ pub struct Orchestrator {
 impl Orchestrator {
     /// Create a new orchestrator
     pub async fn new(config: SwarmConfig) -> Result<Self> {
+        use crate::provider::parse_model_string;
+        
         let providers = ProviderRegistry::from_vault().await?;
         let provider_list = providers.list();
         
@@ -49,8 +51,22 @@ impl Orchestrator {
             anyhow::bail!("No providers available for orchestration");
         }
         
-        let provider = provider_list[0].to_string();
-        let model = Self::default_model_for_provider(&provider);
+        // Parse model from config or use default
+        let (provider, model) = if let Some(ref model_str) = config.model {
+            let (prov, mod_id) = parse_model_string(model_str);
+            let provider = prov
+                .filter(|p| provider_list.contains(p))
+                .unwrap_or(provider_list[0])
+                .to_string();
+            let model = mod_id.to_string();
+            (provider, model)
+        } else {
+            let provider = provider_list[0].to_string();
+            let model = Self::default_model_for_provider(&provider);
+            (provider, model)
+        };
+        
+        tracing::info!("Orchestrator using model {} via {}", model, provider);
         
         Ok(Self {
             config,
@@ -71,6 +87,7 @@ impl Orchestrator {
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
+            "openrouter" => "stepfun/step-3.5-flash:free".to_string(),
             _ => "kimi-k2.5".to_string(),
         }
     }

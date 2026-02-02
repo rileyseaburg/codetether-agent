@@ -46,6 +46,9 @@ pub struct SwarmConfig {
     
     /// Critical path optimization threshold
     pub critical_path_threshold: usize,
+    
+    /// Model to use for sub-agents (provider/model format)
+    pub model: Option<String>,
 }
 
 impl Default for SwarmConfig {
@@ -57,6 +60,7 @@ impl Default for SwarmConfig {
             subagent_timeout_secs: 300,
             parallel_enabled: true,
             critical_path_threshold: 10,
+            model: None,
         }
     }
 }
