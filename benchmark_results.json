@@ -1,0 +1,18 @@
+{
+  "codetether_agent": {
+    "language": "Rust",
+    "binary_size_mb": 12.46,
+    "startup_time_ms": 13.49,
+    "memory_rss_mb": 0,
+    "process_spawn_ms": 1.45
+  },
+  "comparison_notes": {
+    "vs_bun": {
+      "node_binary_size_mb": "~90 (bun binary)",
+      "node_startup_time_ms": "~25-50",
+      "node_memory_base_mb": "~50-80",
+      "advantage": "Rust binary is ~7x smaller, ~2-4x faster startup, ~3-5x less memory"
+    }
+  },
+  "benchmark_date": "2026-02-02T18:12:59+00:00"
+}
