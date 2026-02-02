@@ -241,7 +241,7 @@ impl ProviderRegistry {
                 // OpenAI-compatible providers (with custom base_url)
                 "moonshotai" | "moonshotai-cn" | "deepseek" | "groq" | "togetherai" 
                 | "fireworks-ai" | "openrouter" | "mistral" | "nvidia" | "alibaba"
-                | "openai" | "azure" => {
+                | "openai" | "azure" | "stepfun" => {
                     if let Some(base_url) = secrets.base_url {
                         match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id) {
                             Ok(p) => registry.register(Arc::new(p)),
