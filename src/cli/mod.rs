@@ -65,6 +65,9 @@ pub enum Command {
 
     /// Analyze large content with RLM (Recursive Language Model)
     Rlm(RlmArgs),
+
+    /// Autonomous PRD-driven agent loop (Ralph)
+    Ralph(RalphArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -210,6 +213,37 @@ pub struct RlmArgs {
     /// Maximum tokens for output
     #[arg(long, default_value = "4000")]
     pub max_tokens: usize,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct RalphArgs {
+    /// Action to perform
+    #[arg(value_parser = ["run", "status", "create-prd"])]
+    pub action: String,
+
+    /// Path to prd.json file
+    #[arg(short, long, default_value = "prd.json")]
+    pub prd: PathBuf,
+
+    /// Feature name (for create-prd)
+    #[arg(short, long)]
+    pub feature: Option<String>,
+
+    /// Project name (for create-prd)
+    #[arg(long = "project-name")]
+    pub project_name: Option<String>,
+
+    /// Maximum iterations
+    #[arg(long, default_value = "10")]
+    pub max_iterations: usize,
+
+    /// Model to use
+    #[arg(short, long)]
+    pub model: Option<String>,
 
     /// Output as JSON
     #[arg(long)]

@@ -14,6 +14,7 @@ mod agent;
 mod cli;
 mod config;
 mod provider;
+pub mod ralph;
 pub mod rlm;
 pub mod secrets;
 mod server;
@@ -26,6 +27,7 @@ use clap::Parser;
 use cli::{A2aArgs, Cli, Command};
 use swarm::{DecompositionStrategy, SwarmExecutor};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -274,6 +276,76 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             Ok(())
+        }
+        Some(Command::Ralph(args)) => {
+            use provider::ProviderRegistry;
+            
+            match args.action.as_str() {
+                "create-prd" => {
+                    let project = args.project_name.as_deref().unwrap_or("my-project");
+                    let feature = args.feature.as_deref().unwrap_or("new-feature");
+                    let prd = ralph::create_prd_template(project, feature);
+                    
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&prd)?);
+                    } else {
+                        println!("{}", serde_json::to_string_pretty(&prd)?);
+                        eprintln!("\nSave this to prd.json and run: codetether ralph run");
+                    }
+                    Ok(())
+                }
+                "status" => {
+                    let prd = ralph::Prd::load(&args.prd).await?;
+                    let stories: Vec<String> = prd.user_stories.iter()
+                        .map(|s| {
+                            let check = if s.passes { "[x]" } else { "[ ]" };
+                            format!("- {} {}: {}", check, s.id, s.title)
+                        })
+                        .collect();
+                    
+                    println!("# Ralph Status\n");
+                    println!("**Project:** {}", prd.project);
+                    println!("**Feature:** {}", prd.feature);
+                    println!("**Branch:** {}", prd.branch_name);
+                    println!("**Progress:** {}/{} stories\n", prd.passed_count(), prd.user_stories.len());
+                    println!("## Stories\n{}", stories.join("\n"));
+                    Ok(())
+                }
+                "run" => {
+                    tracing::info!("Starting Ralph loop with PRD: {}", args.prd.display());
+                    
+                    let registry = ProviderRegistry::from_vault().await?;
+                    let provider = registry.get("moonshotai")
+                        .or_else(|| registry.get("openai"))
+                        .ok_or_else(|| anyhow::anyhow!("No provider available in Vault"))?;
+                    
+                    let model = args.model.unwrap_or_else(|| "kimi-k2-0711-preview".to_string());
+                    let config = ralph::RalphConfig {
+                        prd_path: args.prd.to_string_lossy().to_string(),
+                        max_iterations: args.max_iterations,
+                        ..Default::default()
+                    };
+                    
+                    let mut loop_runner = ralph::RalphLoop::new(
+                        args.prd.clone(),
+                        provider,
+                        model,
+                        config,
+                    ).await?;
+                    
+                    let result = loop_runner.run().await?;
+                    
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&result)?);
+                    } else {
+                        println!("{}", loop_runner.status_markdown());
+                    }
+                    Ok(())
+                }
+                _ => {
+                    anyhow::bail!("Unknown action: {}. Use run, status, or create-prd", args.action);
+                }
+            }
         }
         None => {
             // Default: A2A worker mode
