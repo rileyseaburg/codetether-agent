@@ -14,6 +14,7 @@ mod agent;
 mod cli;
 mod config;
 mod provider;
+pub mod rlm;
 pub mod secrets;
 mod server;
 mod session;
@@ -85,6 +86,192 @@ async fn main() -> anyhow::Result<()> {
                 println!("Speedup: {:.1}x", result.stats.speedup_factor);
                 println!("Critical Path: {} steps", result.stats.critical_path_length);
                 println!("\n{}", result.result);
+            }
+            Ok(())
+        }
+        Some(Command::Rlm(args)) => {
+            use std::io::Read;
+            use provider::ProviderRegistry;
+            
+            // Gather content
+            let content = if !args.file.is_empty() {
+                let mut parts = Vec::new();
+                for path in &args.file {
+                    match std::fs::read_to_string(path) {
+                        Ok(content) => parts.push(format!("=== FILE: {} ===\n{}\n=== END FILE ===\n", path.display(), content)),
+                        Err(e) => parts.push(format!("=== FILE: {} ===\nError: {}\n=== END FILE ===\n", path.display(), e)),
+                    }
+                }
+                parts.join("\n")
+            } else if let Some(ref c) = args.content {
+                if c == "-" {
+                    let mut stdin_content = String::new();
+                    std::io::stdin().read_to_string(&mut stdin_content)?;
+                    stdin_content
+                } else {
+                    c.clone()
+                }
+            } else {
+                anyhow::bail!("Either --file or --content must be provided");
+            };
+
+            let input_tokens = rlm::RlmChunker::estimate_tokens(&content);
+            tracing::info!(input_tokens, "RLM: Analyzing content");
+
+            // Detect content type
+            let content_type = if args.content_type == "auto" {
+                rlm::RlmChunker::detect_content_type(&content)
+            } else {
+                match args.content_type.as_str() {
+                    "code" => rlm::ContentType::Code,
+                    "logs" => rlm::ContentType::Logs,
+                    "conversation" => rlm::ContentType::Conversation,
+                    "documents" => rlm::ContentType::Documents,
+                    _ => rlm::ContentType::Mixed,
+                }
+            };
+
+            // Try to use LLM-powered RLM if provider is available
+            let registry = ProviderRegistry::from_vault().await.ok();
+            let provider_opt = registry.as_ref()
+                .and_then(|r| r.get("moonshotai").or_else(|| r.get("openai")));
+
+            if let Some(provider) = provider_opt {
+                // Use LLM-powered RLM with llm_query() support
+                tracing::info!("Using LLM-powered RLM analysis");
+                
+                let mut executor = rlm::RlmExecutor::new(
+                    content.clone(),
+                    provider,
+                    "kimi-k2-0711-preview".to_string(), // Use Kimi K2.5
+                );
+                
+                let result = executor.analyze(&args.query).await?;
+
+                if args.json {
+                    let output = serde_json::json!({
+                        "query": args.query,
+                        "content_type": format!("{:?}", content_type),
+                        "input_tokens": input_tokens,
+                        "answer": result.answer,
+                        "iterations": result.iterations,
+                        "sub_queries": result.sub_queries.len(),
+                        "stats": result.stats,
+                    });
+                    println!("{}", serde_json::to_string_pretty(&output)?);
+                } else {
+                    println!("## RLM Analysis Result\n");
+                    println!("**Query:** {}\n", args.query);
+                    println!("**Answer:**\n{}\n", result.answer);
+                    println!("---");
+                    println!("*Iterations: {} | Sub-queries: {} | Time: {}ms*",
+                        result.iterations,
+                        result.sub_queries.len(),
+                        result.stats.elapsed_ms
+                    );
+                    
+                    if !result.sub_queries.is_empty() {
+                        println!("\n### Sub-queries made:");
+                        for (i, sq) in result.sub_queries.iter().enumerate() {
+                            println!("{}. {} -> {} tokens", i+1, sq.query, sq.tokens_used);
+                        }
+                    }
+                }
+            } else {
+                // Fallback to static REPL-based analysis
+                tracing::info!("Using static RLM analysis (no provider available)");
+                
+                // For small content, just use chunking
+                if input_tokens < 10000 {
+                    let hints = rlm::RlmChunker::get_processing_hints(content_type);
+                    let output = format!(
+                        "## Content Analysis\n\n\
+                         *Input: {} tokens, Type: {:?}*\n\n\
+                         {}\n\n\
+                         ---\n\n\
+                         {}", 
+                        input_tokens, content_type, hints, 
+                        rlm::RlmChunker::compress(&content, args.max_tokens, None)
+                    );
+
+                    if args.json {
+                        let result = serde_json::json!({
+                            "query": args.query,
+                            "content_type": format!("{:?}", content_type),
+                            "input_tokens": input_tokens,
+                            "output_tokens": rlm::RlmChunker::estimate_tokens(&output),
+                            "output": output,
+                        });
+                        println!("{}", serde_json::to_string_pretty(&result)?);
+                    } else {
+                        println!("{}", output);
+                    }
+                } else {
+                    // For large content, use REPL-based exploration
+                    let repl = rlm::RlmRepl::new(content.clone(), rlm::ReplRuntime::Rust);
+                    
+                    // Run exploration
+                    let exploration = format!(
+                        "=== CONTEXT EXPLORATION ===\n\
+                         Total: {} chars, {} lines, ~{} tokens\n\
+                         Type: {:?}\n\n\
+                         === FIRST 30 LINES ===\n{}\n\n\
+                         === LAST 50 LINES ===\n{}\n\
+                         === END EXPLORATION ===",
+                        content.len(),
+                        repl.lines().len(),
+                        input_tokens,
+                        content_type,
+                        repl.head(30).join("\n"),
+                        repl.tail(50).join("\n")
+                    );
+
+                    // Search for relevant patterns
+                    let errors = repl.grep("error|Error|ERROR|failed|Failed");
+                    let error_summary = if errors.is_empty() {
+                        "No errors found".to_string()
+                    } else {
+                        format!("Found {} error lines:\n{}", 
+                            errors.len(),
+                            errors.iter().take(5).map(|(i, l)| format!("  {}:{}", i, l)).collect::<Vec<_>>().join("\n")
+                        )
+                    };
+
+                    let hints = rlm::RlmChunker::get_processing_hints(content_type);
+                    let output = format!(
+                        "## RLM Analysis (Static Mode)\n\n\
+                         **Query:** {}\n\n\
+                         *Input: {} tokens, Type: {:?}*\n\n\
+                         *Note: No LLM provider available. Connect Vault for full RLM analysis.*\n\n\
+                         ---\n\n\
+                         ### Exploration\n\n\
+                         {}\n\n\
+                         ### Error Summary\n\n\
+                         {}\n\n\
+                         ### Content Hints\n\n\
+                         {}\n\n\
+                         ### Compressed Content\n\n\
+                         {}",
+                        args.query, input_tokens, content_type, 
+                        exploration,
+                        error_summary,
+                        hints,
+                        rlm::RlmChunker::compress(&content, args.max_tokens / 2, None)
+                    );
+
+                    if args.json {
+                        let result = serde_json::json!({
+                            "query": args.query,
+                            "content_type": format!("{:?}", content_type),
+                            "input_tokens": input_tokens,
+                            "llm_mode": false,
+                            "output": output,
+                        });
+                        println!("{}", serde_json::to_string_pretty(&result)?);
+                    } else {
+                        println!("{}", output);
+                    }
+                }
             }
             Ok(())
         }

@@ -291,6 +291,71 @@ codetether swarm "Refactor the API layer" --strategy domain --max-subagents 8
 | `stage` | Split by pipeline stages (analyze → implement → test) |
 | `none` | Execute as single task |
 
+## RLM: Recursive Language Model Processing
+
+The `rlm` command handles large contexts that exceed model context windows using the Recursive Language Model approach:
+
+```bash
+# Analyze a large source file
+codetether rlm "What are the main functions?" -f src/large_file.rs
+
+# Analyze multiple files
+codetether rlm "Find all error handling patterns" -f src/*.rs
+
+# Analyze stdin content
+cat logs/*.log | codetether rlm "Summarize the errors" --content -
+
+# JSON output for programmatic use
+codetether rlm "List all TODO comments" -f src/**/*.rs --json
+```
+
+### How RLM Works
+
+Based on the "Recursive Language Model" paper approach:
+
+1. **Context Loading**: Large content is loaded into a REPL-like environment
+2. **LLM Analysis**: The LLM writes code to explore the context (head, tail, grep, etc.)
+3. **Sub-LM Calls**: The LLM can call `llm_query()` for semantic sub-questions
+4. **FINAL Answer**: After 1-5 iterations, the LLM returns a synthesized answer
+
+### RLM Commands (Internal REPL)
+
+| Command | Description |
+|---------|-------------|
+| `head(n)` | First n lines of context |
+| `tail(n)` | Last n lines of context |
+| `grep("pattern")` | Search for regex pattern |
+| `count("pattern")` | Count pattern occurrences |
+| `llm_query("question")` | Ask semantic sub-question |
+| `FINAL("answer")` | Return final answer |
+
+### Content Types
+
+RLM auto-detects content type for optimized processing:
+
+| Type | Detection | Optimization |
+|------|-----------|--------------|
+| `code` | Function definitions, imports | Semantic chunking by symbols |
+| `logs` | Timestamps, log levels | Time-based chunking |
+| `conversation` | Chat markers, turns | Turn-based chunking |
+| `documents` | Markdown headers, paragraphs | Section-based chunking |
+
+### Example Output
+
+```bash
+$ codetether rlm "What are the 3 main functions?" -f src/chunker.rs --json
+{
+  "answer": "The 3 main functions are: 1) chunk_content() - splits content...",
+  "iterations": 1,
+  "sub_queries": 0,
+  "stats": {
+    "input_tokens": 322,
+    "output_tokens": 235,
+    "elapsed_ms": 10982
+  }
+}
+```
+
 ## Performance: Why Rust Over Bun/TypeScript
 
 CodeTether Agent is written in Rust for measurable performance advantages over JavaScript/TypeScript runtimes like Bun:
