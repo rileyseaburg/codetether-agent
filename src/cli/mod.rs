@@ -62,6 +62,9 @@ pub enum Command {
 
     /// Execute task with parallel sub-agents (swarm mode)
     Swarm(SwarmArgs),
+
+    /// Analyze large content with RLM (Recursive Language Model)
+    Rlm(RlmArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -181,6 +184,32 @@ pub struct SwarmArgs {
     /// Timeout per sub-agent (seconds)
     #[arg(long, default_value = "300")]
     pub timeout: u64,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct RlmArgs {
+    /// Query to answer about the content
+    pub query: String,
+
+    /// File paths to analyze
+    #[arg(short, long)]
+    pub file: Vec<PathBuf>,
+
+    /// Direct content to analyze (use - for stdin)
+    #[arg(long)]
+    pub content: Option<String>,
+
+    /// Content type hint: code, logs, conversation, documents, auto
+    #[arg(long, default_value = "auto")]
+    pub content_type: String,
+
+    /// Maximum tokens for output
+    #[arg(long, default_value = "4000")]
+    pub max_tokens: usize,
 
     /// Output as JSON
     #[arg(long)]
