@@ -13,6 +13,7 @@ mod a2a;
 mod agent;
 mod cli;
 mod config;
+pub mod mcp;
 mod provider;
 pub mod ralph;
 pub mod rlm;
@@ -344,6 +345,79 @@ async fn main() -> anyhow::Result<()> {
                 }
                 _ => {
                     anyhow::bail!("Unknown action: {}. Use run, status, or create-prd", args.action);
+                }
+            }
+        }
+        Some(Command::Mcp(args)) => {
+            match args.action.as_str() {
+                "serve" => {
+                    tracing::info!("Starting MCP server over stdio...");
+                    let server = mcp::McpServer::new_stdio();
+                    server.run().await?;
+                    Ok(())
+                }
+                "connect" => {
+                    let command = args.command.as_ref()
+                        .ok_or_else(|| anyhow::anyhow!("--command required for connect action"))?;
+                    
+                    // Parse command into parts
+                    let parts: Vec<&str> = command.split_whitespace().collect();
+                    if parts.is_empty() {
+                        anyhow::bail!("Empty command");
+                    }
+                    
+                    let cmd = parts[0];
+                    let cmd_args: Vec<&str> = parts[1..].to_vec();
+                    
+                    tracing::info!("Connecting to MCP server: {}", command);
+                    let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                    
+                    // List available tools
+                    let tools = client.tools().await;
+                    
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&tools)?);
+                    } else {
+                        println!("# Connected to MCP Server\n");
+                        println!("## Available Tools ({})\n", tools.len());
+                        for tool in &tools {
+                            println!("- **{}**: {}", tool.name, tool.description.as_deref().unwrap_or(""));
+                        }
+                    }
+                    
+                    // Keep connection alive briefly to show it works
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    client.close().await?;
+                    
+                    Ok(())
+                }
+                "list-tools" => {
+                    // Run as MCP server but just list tools
+                    let server = mcp::McpServer::new_stdio();
+                    // In a real implementation, we'd query a connected server
+                    println!("# Available MCP Tools\n");
+                    println!("- **run_command**: Execute shell commands");
+                    println!("- **read_file**: Read file contents");
+                    println!("- **write_file**: Write to files");
+                    println!("- **list_directory**: List directory contents");
+                    println!("- **search_files**: Search for files");
+                    println!("- **grep_search**: Search file contents");
+                    Ok(())
+                }
+                "call" => {
+                    let tool = args.tool.as_ref()
+                        .ok_or_else(|| anyhow::anyhow!("--tool required for call action"))?;
+                    let arguments = args.arguments.as_ref()
+                        .map(|s| serde_json::from_str(s))
+                        .transpose()?
+                        .unwrap_or(serde_json::json!({}));
+                    
+                    // For now, just show what would be called
+                    println!("Would call tool: {} with arguments: {}", tool, arguments);
+                    Ok(())
+                }
+                _ => {
+                    anyhow::bail!("Unknown action: {}. Use serve, connect, list-tools, or call", args.action);
                 }
             }
         }
