@@ -14,13 +14,19 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     tracing::info!("Running with message: {}", message);
 
     // Create or continue session
-    let session = if let Some(session_id) = args.session {
+    let mut session = if let Some(session_id) = args.session {
         Session::load(&session_id).await?
     } else if args.continue_session {
         Session::last().await?
     } else {
         Session::new().await?
     };
+
+    // Set model if specified
+    if let Some(model) = args.model {
+        tracing::info!("Using specified model: {}", model);
+        session.metadata.model = Some(model);
+    }
 
     // Execute the prompt
     let result = session.prompt(message).await?;
