@@ -1,0 +1,30 @@
+{
+  "project": "codetether",
+  "feature": "haiku test",
+  "branch_name": "",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Write a haiku about Rust",
+      "description": "Generate a haiku poem about the Rust programming language",
+      "acceptance_criteria": [
+        "Output contains 3 lines",
+        "Follows 5-7-5 syllable pattern"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 1
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "echo 'typecheck passed'",
+    "test": "echo 'tests passed'",
+    "lint": "echo 'lint passed'",
+    "build": "echo 'build passed'"
+  },
+  "created_at": "2026-02-02T19:45:00+00:00",
+  "updated_at": "2026-02-02T19:45:00+00:00"
+}
