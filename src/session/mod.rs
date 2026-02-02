@@ -123,7 +123,7 @@ impl Session {
 
     /// Execute a prompt and get the result
     pub async fn prompt(&self, message: &str) -> Result<SessionResult> {
-        use crate::provider::{ContentPart, Role, ProviderRegistry, CompletionRequest};
+        use crate::provider::{ContentPart, Role, ProviderRegistry, CompletionRequest, parse_model_string};
         
         // Load providers from Vault
         let registry = ProviderRegistry::from_vault().await?;
@@ -135,9 +135,21 @@ impl Session {
 
         tracing::info!("Available providers: {:?}", providers);
 
-        // Use first available provider (we'll make this configurable)
-        let provider = registry.get(providers[0])
-            .ok_or_else(|| anyhow::anyhow!("Provider {} not found", providers[0]))?;
+        // Parse model string (format: "provider/model" or just "model")
+        let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
+            let (prov, model) = parse_model_string(model_str);
+            (prov.map(|s| s.to_string()), model.to_string())
+        } else {
+            (None, String::new())
+        };
+
+        // Determine which provider to use
+        let selected_provider = provider_name.as_deref()
+            .filter(|p| providers.contains(p))
+            .unwrap_or(providers[0]);
+
+        let provider = registry.get(selected_provider)
+            .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
 
         // Build messages
         let mut messages = self.messages.clone();
@@ -147,16 +159,19 @@ impl Session {
         });
 
         // Determine model to use
-        let model = self.metadata.model.clone().unwrap_or_else(|| {
+        let model = if !model_id.is_empty() {
+            model_id
+        } else {
             // Default models per provider
-            match providers[0] {
+            match selected_provider {
                 "moonshotai" => "kimi-k2.5".to_string(),
                 "anthropic" => "claude-sonnet-4-20250514".to_string(),
                 "openai" => "gpt-4o".to_string(),
                 "google" => "gemini-2.5-pro".to_string(),
+                "openrouter" => "stepfun/step-3.5-flash:free".to_string(),
                 _ => "kimi-k2.5".to_string(),
             }
-        });
+        };
 
         // Kimi K2.5 requires temperature=1.0
         let temperature = if model.starts_with("kimi-k2") {
@@ -165,7 +180,7 @@ impl Session {
             Some(0.7)
         };
 
-        tracing::info!("Using model: {} via provider: {}", model, providers[0]);
+        tracing::info!("Using model: {} via provider: {}", model, selected_provider);
 
         // Create completion request
         let request = CompletionRequest {
