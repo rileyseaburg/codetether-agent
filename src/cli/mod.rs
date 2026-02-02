@@ -68,6 +68,9 @@ pub enum Command {
 
     /// Autonomous PRD-driven agent loop (Ralph)
     Ralph(RalphArgs),
+
+    /// Model Context Protocol (MCP) server/client
+    Mcp(McpArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -244,6 +247,33 @@ pub struct RalphArgs {
     /// Model to use
     #[arg(short, long)]
     pub model: Option<String>,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct McpArgs {
+    /// Action to perform
+    #[arg(value_parser = ["serve", "connect", "list-tools", "call"])]
+    pub action: String,
+
+    /// Command to spawn for connecting to MCP server
+    #[arg(short, long)]
+    pub command: Option<String>,
+
+    /// Server name for registry
+    #[arg(long)]
+    pub server_name: Option<String>,
+
+    /// Tool name for call action
+    #[arg(long)]
+    pub tool: Option<String>,
+
+    /// JSON arguments for tool call
+    #[arg(long)]
+    pub arguments: Option<String>,
 
     /// Output as JSON
     #[arg(long)]
