@@ -17820,3 +17820,620 @@ impl HistogramSnapshot {
     pub fn summary(&self) -> String {
         format!(
             "{}: {} samples, p50={:.1
+
+---
+
+## Iteration 4 - US-002 (2026-02-03T19:03:10.688483188+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-002 - Implement unified request/response types for the LLM client with token management. This creates provider-agnostic types for LLM requests and responses.
+
+```rust
+// src/llm/types.rs - Unified LLM request/response types
+
+//! Unified LLM Request/Response Types
+//! 
+//! This module provides provider-agnostic types for LLM requests and responses
+//! including ChatMessage, ChatRequest, ChatResponse, StreamingChunk, TokenUsage,
+//! and ModelCapabilities.
+
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt;
+use thiserror::Error;
+
+/// Errors that can occur in LLM operations
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum LlmError {
+    /// Invalid message format
+    #[error("Invalid message: {0}")]
+    InvalidMessage(String),
+    
+    /// Invalid request parameters
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+    
+    /// Token limit exceeded
+    #[error("Token limit exceeded: {used} > {limit}")]
+    TokenLimitExceeded { used: usize, limit: usize },
+    
+    /// Provider not available
+    #[error("Provider not available: {0}")]
+    ProviderNotAvailable(String),
+    
+    /// Streaming error
+    #[error("Streaming error: {0}")]
+    StreamingError(String),
+    
+    /// Serialization error
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+}
+
+/// Result type for LLM operations
+pub type LlmResult<T> = Result<T, LlmError>;
+
+/// Role in a chat conversation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    /// System message for setting behavior/context
+    System,
+    /// User message
+    User,
+    /// Assistant message
+    Assistant,
+    /// Tool/function result message
+    Tool,
+}
+
+impl Role {
+    /// Get role as string
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::User => "user",
+            Self::Assistant => "assistant",
+            Self::Tool => "tool",
+        }
+    }
+}
+
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Content type for message content
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Content {
+    /// Simple text content
+    Text(String),
+    /// Structured content parts (for multimodal)
+    Parts(Vec<ContentPart>),
+}
+
+impl Content {
+    /// Create text content
+    pub fn text(text: impl Into<String>) -> Self {
+        Self::Text(text.into())
+    }
+
+    /// Create from content parts
+    pub fn parts(parts: Vec<ContentPart>) -> Self {
+        Self::Parts(parts)
+    }
+
+    /// Get as text (flattened if parts)
+    pub fn as_text(&self) -> String {
+        match self {
+            Self::Text(t) => t.clone(),
+            Self::Parts(parts) => parts.iter()
+                .filter_map(|p| match p {
+                    ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join(""),
+        }
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.as_text().is_empty()
+    }
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Self::Text(String::new())
+    }
+}
+
+/// Individual content part for multimodal messages
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum ContentPart {
+    /// Text content
+    Text { text: String },
+    /// Image content (base64 or URL)
+    Image { source: ImageSource },
+    /// Audio content
+    Audio { source: AudioSource },
+}
+
+/// Image source specification
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ImageSource {
+    /// URL to image
+    Url { url: String },
+    /// Base64 encoded image with mime type
+    Base64 { media_type: String, data: String },
+}
+
+/// Audio source specification
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum AudioSource {
+    /// URL to audio
+    Url { url: String },
+    /// Base64 encoded audio
+    Base64 { format: String, data: String },
+}
+
+/// A single message in a chat conversation
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    /// Role of the message sender
+    pub role: Role,
+    /// Message content
+    pub content: Content,
+    /// Optional name (for distinguishing multiple users/tools)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Tool calls made by the assistant
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
+    /// Tool call ID (for tool responses)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+    /// Additional metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<HashMap<String, serde_json::Value>>,
+}
+
+impl ChatMessage {
+    /// Create a new message
+    pub fn new(role: Role, content: impl Into<String>) -> Self {
+        Self {
+            role,
+            content: Content::text(content),
+            name: None,
+            tool_calls: None,
+            tool_call_id: None,
+            metadata: None,
+        }
+    }
+
+    /// Create a system message
+    pub fn system(content: impl Into<String>) -> Self {
+        Self::new(Role::System, content)
+    }
+
+    /// Create a user message
+    pub fn user(content: impl Into<String>) -> Self {
+        Self::new(Role::User, content)
+    }
+
+    /// Create an assistant message
+    pub fn assistant(content: impl Into<String>) -> Self {
+        Self::new(Role::Assistant, content)
+    }
+
+    /// Create a tool response message
+    pub fn tool(tool_call_id: impl Into<String>, content: impl Into<String>) -> Self {
+        let mut msg = Self::new(Role::Tool, content);
+        msg.tool_call_id = Some(tool_call_id.into());
+        msg
+    }
+
+    /// Set name
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Set content from parts
+    pub fn with_parts(mut self, parts: Vec<ContentPart>) -> Self {
+        self.content = Content::Parts(parts);
+        self
+    }
+
+    /// Add tool calls
+    pub fn with_tool_calls(mut self, calls: Vec<ToolCall>) -> Self {
+        self.tool_calls = Some(calls);
+        self
+    }
+
+    /// Estimate token count (rough approximation)
+    pub fn estimate_tokens(&self) -> usize {
+        let content_tokens = match &self.content {
+            Content::Text(t) => t.len() / 4, // ~4 chars per token
+            Content::Parts(parts) => parts.iter().map(|p| match p {
+                ContentPart::Text { text } => text.len() / 4,
+                ContentPart::Image { .. } => 256, // Image tokens estimate
+                ContentPart::Audio { .. } => 128, // Audio tokens estimate
+            }).sum(),
+        };
+        
+        // Add overhead for role and formatting
+        let overhead = match self.role {
+            Role::System => 4,
+            Role::User => 3,
+            Role::Assistant => 3,
+            Role::Tool => 5,
+        };
+        
+        content_tokens + overhead
+    }
+
+    /// Get content as text
+    pub fn content_text(&self) -> String {
+        self.content.as_text()
+    }
+}
+
+/// Tool/function call from assistant
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ToolCall {
+    /// Unique ID for this tool call
+    pub id: String,
+    /// Type of tool call
+    #[serde(rename = "type")]
+    pub call_type: String,
+    /// Function call details
+    pub function: FunctionCall,
+}
+
+/// Function call details
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionCall {
+    /// Function name
+    pub name: String,
+    /// Arguments as JSON string
+    pub arguments: String,
+}
+
+/// Tool definition for available functions
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tool {
+    /// Tool type (usually "function")
+    pub r#type: String,
+    /// Function definition
+    pub function: FunctionDefinition,
+}
+
+/// Function definition for tools
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionDefinition {
+    /// Function name
+    pub name: String,
+    /// Function description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// JSON schema for parameters
+    pub parameters: serde_json::Value,
+    /// Whether to allow strict parameter validation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
+}
+
+/// Tool choice setting
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ToolChoice {
+    /// Let the model decide ("auto")
+    Auto,
+    /// Force a tool call ("required")
+    Required,
+    /// Force a specific tool
+    Specific { r#type: String, function: FunctionChoice },
+    /// Don't use tools ("none")
+    None,
+}
+
+impl ToolChoice {
+    /// Auto tool choice
+    pub fn auto() -> Self {
+        Self::Auto
+    }
+
+    /// Require tool use
+    pub fn required() -> Self {
+        Self::Required
+    }
+
+    /// Don't use tools
+    pub fn none() -> Self {
+        Self::None
+    }
+
+    /// Use specific function
+    pub fn function(name: impl Into<String>) -> Self {
+        Self::Specific {
+            r#type: "function".to_string(),
+            function: FunctionChoice { name: name.into() },
+        }
+    }
+}
+
+/// Function choice for specific tool selection
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionChoice {
+    pub name: String,
+}
+
+/// Response format specification
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ResponseFormat {
+    /// Standard text response
+    Text,
+    /// JSON object response
+    JsonObject,
+    /// JSON with schema
+    JsonSchema { schema: JsonSchema },
+}
+
+/// JSON schema for structured output
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JsonSchema {
+    /// Schema name/description
+    pub name: String,
+    /// Whether to enable strict validation
+    pub strict: bool,
+    /// The JSON schema
+    pub schema: serde_json::Value,
+}
+
+/// Chat completion request
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChatRequest {
+    /// Model identifier
+    pub model: String,
+    /// Conversation messages
+    pub messages: Vec<ChatMessage>,
+    /// Maximum tokens to generate
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<usize>,
+    /// Temperature (0.0 to 2.0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    /// Top-p sampling (0.0 to 1.0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f32>,
+    /// Top-k sampling
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_k: Option<usize>,
+    /// Stop sequences
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop: Option<Vec<String>>,
+    /// Presence penalty (-2.0 to 2.0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub presence_penalty: Option<f32>,
+    /// Frequency penalty (-2.0 to 2.0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<f32>,
+    /// Available tools/functions
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<Tool>>,
+    /// Tool choice setting
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<ToolChoice>,
+    /// Response format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ResponseFormat>,
+    /// Seed for deterministic sampling
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<u64>,
+    /// Whether to stream the response
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<bool>,
+    /// Additional provider-specific parameters
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra: Option<HashMap<String, serde_json::Value>>,
+}
+
+impl ChatRequest {
+    /// Create a new chat request
+    pub fn new(model: impl Into<String>, messages: Vec<ChatMessage>) -> Self {
+        Self {
+            model: model.into(),
+            messages,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            stop: None,
+            presence_penalty: None,
+            frequency_penalty: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+            seed: None,
+            stream: None,
+            extra: None,
+        }
+    }
+
+    /// Set model
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.model = model.into();
+        self
+    }
+
+    /// Add a message
+    pub fn with_message(mut self, message: ChatMessage) -> Self {
+        self.messages.push(message);
+        self
+    }
+
+    /// Set max tokens
+    pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
+        self.max_tokens = Some(max_tokens);
+        self
+    }
+
+    /// Set temperature
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.temperature = Some(temperature.clamp(0.0, 2.0));
+        self
+    }
+
+    /// Set top-p
+    pub fn with_top_p(mut self, top_p: f32) -> Self {
+        self.top_p = Some(top_p.clamp(0.0, 1.0));
+        self
+    }
+
+    /// Set top-k
+    pub fn with_top_k(mut self, top_k: usize) -> Self {
+        self.top_k = Some(top_k);
+        self
+    }
+
+    /// Add stop sequence
+    pub fn with_stop(mut self, stop: Vec<String>) -> Self {
+        self.stop = Some(stop);
+        self
+    }
+
+    /// Add a tool
+    pub fn with_tool(mut self, tool: Tool) -> Self {
+        self.tools.get_or_insert_with(Vec::new).push(tool);
+        self
+    }
+
+    /// Set tool choice
+    pub fn with_tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = Some(choice);
+        self
+    }
+
+    /// Enable JSON mode
+    pub fn with_json_mode(mut self) -> Self {
+        self.response_format = Some(ResponseFormat::JsonObject);
+        self
+    }
+
+    /// Enable streaming
+    pub fn with_streaming(mut self) -> Self {
+        self.stream = Some(true);
+        self
+    }
+
+    /// Set seed for reproducibility
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    /// Estimate total tokens in request
+    pub fn estimate_tokens(&self) -> usize {
+        self.messages.iter().map(|m| m.estimate_tokens()).sum()
+    }
+
+    /// Validate the request
+    pub fn validate(&self) -> LlmResult<()> {
+        if self.messages.is_empty() {
+            return Err(LlmError::InvalidRequest("Messages cannot be empty".to_string()));
+        }
+        
+        if self.messages.iter().all(|m| m.role != Role::User) {
+            return Err(LlmError::InvalidRequest("At least one user message required".to_string()));
+        }
+        
+        if let Some(temp) = self.temperature {
+            if !(0.0..=2.0).contains(&temp) {
+                return Err(LlmError::InvalidRequest(
+                    format!("Temperature must be between 0.0 and 2.0, got {}", temp)
+                ));
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+/// Token usage information
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct TokenUsage {
+    /// Tokens in the prompt/input
+    pub prompt_tokens: usize,
+    /// Tokens in the completion/output
+    pub completion_tokens: usize,
+    /// Total tokens used
+    pub total_tokens: usize,
+}
+
+impl TokenUsage {
+    /// Create new token usage
+    pub fn new(prompt: usize, completion: usize) -> Self {
+        Self {
+            prompt_tokens: prompt,
+            completion_tokens: completion,
+            total_tokens: prompt + completion,
+        }
+    }
+
+    /// Create from just prompt tokens
+    pub fn prompt_only(tokens: usize) -> Self {
+        Self {
+            prompt_tokens: tokens,
+            completion_tokens: 0,
+            total_tokens: tokens,
+        }
+    }
+
+    /// Create from just completion tokens
+    pub fn completion_only(tokens: usize) -> Self {
+        Self {
+            prompt_tokens: 0,
+            completion_tokens: tokens,
+            total_tokens: tokens,
+        }
+    }
+
+    /// Add another usage to this one
+    pub fn add(&mut self, other: &TokenUsage) {
+        self.prompt_tokens += other.prompt_tokens;
+        self.completion_tokens += other.completion_tokens;
+        self.total_tokens += other.total_tokens;
+    }
+
+    /// Calculate cost (simplified, would use actual pricing)
+    pub fn estimate_cost(&self, prompt_price_per_1k: f64, completion_price_per_1k: f64) -> f64 {
+        let prompt_cost = (self.prompt_tokens as f64 / 1000.0) * prompt_price_per_1k;
+        let completion_cost = (self.completion_tokens as f64 / 1000.0) * completion_price_per_1k;
+        prompt_cost + completion_cost
+    }
+
+    /// Check if any tokens were used
+    pub fn is_empty(&self) -> bool {
+        self.total_tokens == 0
+    }
+}
+
+impl fmt::Display for TokenUsage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} prompt + {} completion = {} total", 
+            self.prompt_tokens, self.completion_tokens, self.total_tokens)
+    }
+}
+
+/// Reason why generation

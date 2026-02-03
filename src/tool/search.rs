@@ -27,7 +27,7 @@ impl Tool for GrepTool {
     }
 
     fn description(&self) -> &str {
-        "Search for text or regex patterns in files. Respects .gitignore by default."
+        "grep(pattern: string, path?: string, is_regex?: bool, include?: string, limit?: int) - Search for text or regex patterns in files. Respects .gitignore by default."
     }
 
     fn parameters(&self) -> Value {
@@ -55,14 +55,26 @@ impl Tool for GrepTool {
                     "description": "Maximum number of matches to return"
                 }
             },
-            "required": ["pattern"]
+            "required": ["pattern"],
+            "example": {
+                "pattern": "fn main",
+                "path": "src/",
+                "include": "*.rs"
+            }
         })
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let pattern = args["pattern"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("pattern is required"))?;
+        let pattern = match args["pattern"].as_str() {
+            Some(p) => p,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "grep",
+                "pattern is required",
+                Some(vec!["pattern"]),
+                Some(json!({"pattern": "search text", "path": "src/"})),
+            )),
+        };
         let search_path = args["path"].as_str().unwrap_or(".");
         let is_regex = args["is_regex"].as_bool().unwrap_or(false);
         let include = args["include"].as_str();
