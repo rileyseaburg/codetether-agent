@@ -51,8 +51,11 @@ impl Orchestrator {
             anyhow::bail!("No providers available for orchestration");
         }
         
-        // Parse model from config or use default
-        let (provider, model) = if let Some(ref model_str) = config.model {
+        // Parse model from config, env var, or use default
+        let model_str = config.model.clone()
+            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok());
+        
+        let (provider, model) = if let Some(ref model_str) = model_str {
             let (prov, mod_id) = parse_model_string(model_str);
             let provider = prov
                 .filter(|p| provider_list.contains(p))
@@ -61,7 +64,12 @@ impl Orchestrator {
             let model = mod_id.to_string();
             (provider, model)
         } else {
-            let provider = provider_list[0].to_string();
+            // Default to moonshotai if available, otherwise first provider
+            let provider = if provider_list.contains(&"moonshotai") {
+                "moonshotai".to_string()
+            } else {
+                provider_list[0].to_string()
+            };
             let model = Self::default_model_for_provider(&provider);
             (provider, model)
         };
