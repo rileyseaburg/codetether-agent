@@ -4,10 +4,12 @@
 
 use crate::agent::ToolUse;
 use crate::provider::{Message, Usage};
+use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
@@ -162,9 +164,6 @@ impl Session {
             self.generate_title().await?;
         }
 
-        // Build messages from session
-        let messages = self.messages.clone();
-
         // Determine model to use
         let model = if !model_id.is_empty() {
             model_id
@@ -180,6 +179,10 @@ impl Session {
             }
         };
 
+        // Create tool registry with all available tools
+        let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
+        let tool_definitions = tool_registry.definitions();
+
         // Kimi K2.5 requires temperature=1.0
         let temperature = if model.starts_with("kimi-k2") {
             Some(1.0)
@@ -188,39 +191,104 @@ impl Session {
         };
 
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
+        tracing::info!("Available tools: {}", tool_definitions.len());
 
-        // Create completion request
-        let request = CompletionRequest {
-            messages,
-            tools: Vec::new(), // TODO: Add tools
-            model,
-            temperature,
-            top_p: None,
-            max_tokens: Some(4096),
-            stop: Vec::new(),
-        };
+        // Run agentic loop with tool execution
+        let max_steps = 50;
+        let mut final_output = String::new();
+        
+        for step in 1..=max_steps {
+            tracing::info!(step = step, "Agent step starting");
+            
+            // Build messages from session
+            let messages = self.messages.clone();
+            
+            // Create completion request with tools
+            let request = CompletionRequest {
+                messages,
+                tools: tool_definitions.clone(),
+                model: model.clone(),
+                temperature,
+                top_p: None,
+                max_tokens: Some(8192),
+                stop: Vec::new(),
+            };
 
-        // Call the provider
-        let response = provider.complete(request).await?;
-
-        // Add assistant's response to session using add_message
-        self.add_message(response.message.clone());
+            // Call the provider
+            let response = provider.complete(request).await?;
+            
+            // Extract tool calls from response
+            let tool_calls: Vec<(String, String, serde_json::Value)> = response.message.content.iter()
+                .filter_map(|part| {
+                    if let ContentPart::ToolCall { id, name, arguments } = part {
+                        // Parse arguments JSON string into Value
+                        let args: serde_json::Value = serde_json::from_str(arguments)
+                            .unwrap_or(serde_json::json!({}));
+                        Some((id.clone(), name.clone(), args))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            // Collect text output
+            for part in &response.message.content {
+                if let ContentPart::Text { text } = part {
+                    if !text.is_empty() {
+                        final_output.push_str(text);
+                        final_output.push('\n');
+                    }
+                }
+            }
+            
+            // If no tool calls, we're done
+            if tool_calls.is_empty() {
+                self.add_message(response.message.clone());
+                break;
+            }
+            
+            // Add assistant message with tool calls
+            self.add_message(response.message.clone());
+            
+            tracing::info!(step = step, num_tools = tool_calls.len(), "Executing tool calls");
+            
+            // Execute each tool call
+            for (tool_id, tool_name, tool_input) in tool_calls {
+                tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+                
+                // Get and execute the tool
+                let content = if let Some(tool) = tool_registry.get(&tool_name) {
+                    match tool.execute(tool_input.clone()).await {
+                        Ok(result) => {
+                            tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
+                            result.output
+                        }
+                        Err(e) => {
+                            tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
+                            format!("Error: {}", e)
+                        }
+                    }
+                } else {
+                    tracing::warn!(tool = %tool_name, "Tool not found");
+                    format!("Error: Unknown tool '{}'", tool_name)
+                };
+                
+                // Add tool result message
+                self.add_message(Message {
+                    role: Role::User,
+                    content: vec![ContentPart::ToolResult {
+                        tool_call_id: tool_id,
+                        content,
+                    }],
+                });
+            }
+        }
 
         // Save session after each prompt to persist messages
         self.save().await?;
 
-        // Extract text from response
-        let text = response.message.content
-            .iter()
-            .filter_map(|p| match p {
-                ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-
         Ok(SessionResult {
-            text,
+            text: final_output.trim().to_string(),
             session_id: self.id.clone(),
         })
     }
