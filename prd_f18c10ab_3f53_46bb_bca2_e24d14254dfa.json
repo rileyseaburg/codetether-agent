@@ -45,7 +45,7 @@
         "Percentile calculations (p50, p95, p99)",
         "Tracks per-operation-type latencies"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [
         "US-001"
