@@ -28,7 +28,7 @@
         "Health check for connections",
         "Pool statistics tracking"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [
         "US-001"

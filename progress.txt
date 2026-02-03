@@ -13612,3 +13612,608 @@ impl<C: LlmConnection + 'static> LlmConnectionPool<C> {
                 // Remove stale (reverse order)
                 for &idx in to_remove.iter().rev() {
                     if let
+
+---
+
+## Iteration 2 - US-004 (2026-02-03T18:55:07.982239609+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-004 - Implement pass rate counters for the telemetry collection system. This builds on the metrics module structure created in US-001.
+
+```rust
+// src/metrics/pass_rate.rs - Pass rate counter implementation for telemetry
+
+//! Pass Rate Counters for Operation Success Metrics
+//! 
+//! This module provides thread-safe counters for tracking success/failure rates
+//! of operations with per-operation-type granularity.
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+
+/// Errors that can occur in pass rate operations
+#[derive(Debug, thiserror::Error)]
+pub enum PassRateError {
+    #[error("Counter for operation type '{0}' not found")]
+    CounterNotFound(String),
+    
+    #[error("Invalid pass rate calculation: {0}")]
+    InvalidCalculation(String),
+}
+
+/// Result type for pass rate operations
+pub type PassRateResult<T> = Result<T, PassRateError>;
+
+/// Thread-safe counter for success/failure tracking
+#[derive(Debug)]
+pub struct PassRateCounter {
+    /// Total number of attempts
+    total: AtomicU64,
+    /// Number of successful operations
+    success: AtomicU64,
+    /// Number of failed operations
+    failure: AtomicU64,
+    /// When this counter was created
+    created_at: Instant,
+    /// Last update timestamp
+    last_updated: Mutex<Instant>,
+}
+
+impl PassRateCounter {
+    /// Create a new pass rate counter
+    pub fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            total: AtomicU64::new(0),
+            success: AtomicU64::new(0),
+            failure: AtomicU64::new(0),
+            created_at: now,
+            last_updated: Mutex::new(now),
+        }
+    }
+
+    /// Record a successful operation
+    pub fn record_success(&self) {
+        self.total.fetch_add(1, Ordering::Relaxed);
+        self.success.fetch_add(1, Ordering::Relaxed);
+        *self.last_updated.lock().unwrap() = Instant::now();
+    }
+
+    /// Record a failed operation
+    pub fn record_failure(&self) {
+        self.total.fetch_add(1, Ordering::Relaxed);
+        self.failure.fetch_add(1, Ordering::Relaxed);
+        *self.last_updated.lock().unwrap() = Instant::now();
+    }
+
+    /// Record multiple successes at once (batch operation)
+    pub fn record_successes(&self, count: u64) {
+        self.total.fetch_add(count, Ordering::Relaxed);
+        self.success.fetch_add(count, Ordering::Relaxed);
+        *self.last_updated.lock().unwrap() = Instant::now();
+    }
+
+    /// Record multiple failures at once (batch operation)
+    pub fn record_failures(&self, count: u64) {
+        self.total.fetch_add(count, Ordering::Relaxed);
+        self.failure.fetch_add(count, Ordering::Relaxed);
+        *self.last_updated.lock().unwrap() = Instant::now();
+    }
+
+    /// Get total number of operations
+    pub fn total(&self) -> u64 {
+        self.total.load(Ordering::Relaxed)
+    }
+
+    /// Get number of successful operations
+    pub fn success_count(&self) -> u64 {
+        self.success.load(Ordering::Relaxed)
+    }
+
+    /// Get number of failed operations
+    pub fn failure_count(&self) -> u64 {
+        self.failure.load(Ordering::Relaxed)
+    }
+
+    /// Calculate success rate as a ratio (0.0 to 1.0)
+    /// 
+    /// Returns 0.0 if no operations have been recorded.
+    pub fn success_rate(&self) -> f64 {
+        let total = self.total();
+        if total == 0 {
+            0.0
+        } else {
+            self.success_count() as f64 / total as f64
+        }
+    }
+
+    /// Calculate failure rate as a ratio (0.0 to 1.0)
+    pub fn failure_rate(&self) -> f64 {
+        let total = self.total();
+        if total == 0 {
+            0.0
+        } else {
+            self.failure_count() as f64 / total as f64
+        }
+    }
+
+    /// Get success rate as a percentage (0.0 to 100.0)
+    pub fn success_percentage(&self) -> f64 {
+        self.success_rate() * 100.0
+    }
+
+    /// Get the time since this counter was created
+    pub fn age(&self) -> Duration {
+        self.created_at.elapsed()
+    }
+
+    /// Get the time since last update
+    pub fn time_since_update(&self) -> Duration {
+        self.last_updated.lock().unwrap().elapsed()
+    }
+
+    /// Reset all counters to zero
+    pub fn reset(&self) {
+        self.total.store(0, Ordering::Relaxed);
+        self.success.store(0, Ordering::Relaxed);
+        self.failure.store(0, Ordering::Relaxed);
+        *self.last_updated.lock().unwrap() = Instant::now();
+    }
+
+    /// Get a snapshot of current values
+    pub fn snapshot(&self) -> PassRateSnapshot {
+        PassRateSnapshot {
+            total: self.total(),
+            success: self.success_count(),
+            failure: self.failure_count(),
+            success_rate: self.success_rate(),
+            failure_rate: self.failure_rate(),
+            timestamp: Instant::now(),
+        }
+    }
+}
+
+impl Default for PassRateCounter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Immutable snapshot of pass rate counter state
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PassRateSnapshot {
+    pub total: u64,
+    pub success: u64,
+    pub failure: u64,
+    pub success_rate: f64,
+    pub failure_rate: f64,
+    pub timestamp: Instant,
+}
+
+impl PassRateSnapshot {
+    /// Get success count as percentage string
+    pub fn success_rate_display(&self) -> String {
+        format!("{:.2}%", self.success_rate * 100.0)
+    }
+
+    /// Check if this represents any operations
+    pub fn has_data(&self) -> bool {
+        self.total > 0
+    }
+}
+
+/// Thread-safe registry of pass rate counters by operation type
+#[derive(Debug)]
+pub struct PassRateRegistry {
+    /// Map of operation type to counter
+    counters: RwLock<HashMap<String, Arc<PassRateCounter>>>,
+    /// Default counter for untracked operations
+    default_counter: Arc<PassRateCounter>,
+}
+
+impl PassRateRegistry {
+    /// Create a new pass rate registry
+    pub fn new() -> Self {
+        Self {
+            counters: RwLock::new(HashMap::new()),
+            default_counter: Arc::new(PassRateCounter::new()),
+        }
+    }
+
+    /// Get or create a counter for an operation type
+    pub fn counter(&self, operation_type: impl AsRef<str>) -> Arc<PassRateCounter> {
+        let op_type = operation_type.as_ref().to_string();
+        
+        // Fast path: read lock to check if exists
+        {
+            let counters = self.counters.read().unwrap();
+            if let Some(counter) = counters.get(&op_type) {
+                return Arc::clone(counter);
+            }
+        }
+
+        // Slow path: write lock to create
+        let mut counters = self.counters.write().unwrap();
+        counters.entry(op_type.clone())
+            .or_insert_with(|| {
+                trace!("Creating new pass rate counter for '{}'", op_type);
+                Arc::new(PassRateCounter::new())
+            })
+            .clone()
+    }
+
+    /// Get counter if it exists, None otherwise
+    pub fn get_counter(&self, operation_type: impl AsRef<str>) -> Option<Arc<PassRateCounter>> {
+        let counters = self.counters.read().unwrap();
+        counters.get(operation_type.as_ref()).cloned()
+    }
+
+    /// Record success for a specific operation type
+    pub fn record_success(&self, operation_type: impl AsRef<str>) {
+        self.counter(operation_type).record_success();
+    }
+
+    /// Record failure for a specific operation type
+    pub fn record_failure(&self, operation_type: impl AsRef<str>) {
+        self.counter(operation_type).record_failure();
+    }
+
+    /// Get all registered operation types
+    pub fn operation_types(&self) -> Vec<String> {
+        let counters = self.counters.read().unwrap();
+        counters.keys().cloned().collect()
+    }
+
+    /// Get snapshots for all operation types
+    pub fn all_snapshots(&self) -> HashMap<String, PassRateSnapshot> {
+        let counters = self.counters.read().unwrap();
+        counters.iter()
+            .map(|(op_type, counter)| {
+                (op_type.clone(), counter.snapshot())
+            })
+            .collect()
+    }
+
+    /// Get aggregate statistics across all operation types
+    pub fn aggregate_snapshot(&self) -> PassRateSnapshot {
+        let counters = self.counters.read().unwrap();
+        let mut total = 0u64;
+        let mut success = 0u64;
+        let mut failure = 0u64;
+
+        for counter in counters.values() {
+            let snap = counter.snapshot();
+            total += snap.total;
+            success += snap.success;
+            failure += snap.failure;
+        }
+
+        let success_rate = if total == 0 {
+            0.0
+        } else {
+            success as f64 / total as f64
+        };
+
+        PassRateSnapshot {
+            total,
+            success,
+            failure,
+            success_rate,
+            failure_rate: 1.0 - success_rate,
+            timestamp: Instant::now(),
+        }
+    }
+
+    /// Reset all counters
+    pub fn reset_all(&self) {
+        let counters = self.counters.read().unwrap();
+        for counter in counters.values() {
+            counter.reset();
+        }
+    }
+
+    /// Remove a counter (returns true if it existed)
+    pub fn remove_counter(&self, operation_type: impl AsRef<str>) -> bool {
+        let mut counters = self.counters.write().unwrap();
+        counters.remove(operation_type.as_ref()).is_some()
+    }
+
+    /// Get the number of registered operation types
+    pub fn len(&self) -> usize {
+        self.counters.read().unwrap().len()
+    }
+
+    /// Check if any counters are registered
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Clear all counters
+    pub fn clear(&self) {
+        let mut counters = self.counters.write().unwrap();
+        counters.clear();
+    }
+}
+
+impl Default for PassRateRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Builder for creating pass rate tracking with common patterns
+#[derive(Debug)]
+pub struct PassRateTracker {
+    registry: Arc<PassRateRegistry>,
+    /// Prefix for all operation types in this tracker
+    prefix: Option<String>,
+}
+
+impl PassRateTracker {
+    /// Create a new tracker with a fresh registry
+    pub fn new() -> Self {
+        Self {
+            registry: Arc::new(PassRateRegistry::new()),
+            prefix: None,
+        }
+    }
+
+    /// Create with a specific registry
+    pub fn with_registry(registry: Arc<PassRateRegistry>) -> Self {
+        Self {
+            registry,
+            prefix: None,
+        }
+    }
+
+    /// Set a prefix for all operation types
+    pub fn with_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.prefix = Some(prefix.into());
+        self
+    }
+
+    /// Build the full operation type name
+    fn operation_type(&self, name: impl AsRef<str>) -> String {
+        match &self.prefix {
+            Some(prefix) => format!("{}.{}", prefix, name.as_ref()),
+            None => name.as_ref().to_string(),
+        }
+    }
+
+    /// Record success for an operation
+    pub fn success(&self, operation: impl AsRef<str>) {
+        self.registry.record_success(self.operation_type(operation));
+    }
+
+    /// Record failure for an operation
+    pub fn failure(&self, operation: impl AsRef<str>) {
+        self.registry.record_failure(self.operation_type(operation));
+    }
+
+    /// Execute a closure and track its success/failure
+    pub fn track<T, E>(&self, operation: impl AsRef<str>, f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+        let result = f();
+        match &result {
+            Ok(_) => self.success(operation),
+            Err(_) => self.failure(operation),
+        }
+        result
+    }
+
+    /// Execute an async closure and track its success/failure
+    pub async fn track_async<T, E, F, Fut>(&self, operation: impl AsRef<str>, f: F) -> Result<T, E>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = Result<T, E>>,
+    {
+        let result = f().await;
+        match &result {
+            Ok(_) => self.success(operation),
+            Err(_) => self.failure(operation),
+        }
+        result
+    }
+
+    /// Get the underlying registry
+    pub fn registry(&self) -> &Arc<PassRateRegistry> {
+        &self.registry
+    }
+
+    /// Get snapshot for a specific operation
+    pub fn snapshot(&self, operation: impl AsRef<str>) -> Option<PassRateSnapshot> {
+        self.registry.get_counter(self.operation_type(operation))
+            .map(|c| c.snapshot())
+    }
+
+    /// Get all snapshots with prefix
+    pub fn all_snapshots(&self) -> HashMap<String, PassRateSnapshot> {
+        let prefix = self.prefix.as_deref().unwrap_or("");
+        self.registry.all_snapshots()
+            .into_iter()
+            .filter(|(k, _)| k.starts_with(prefix))
+            .collect()
+    }
+}
+
+impl Default for PassRateTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Macro for easy pass rate tracking
+#[macro_export]
+macro_rules! track_pass_rate {
+    ($tracker:expr, $operation:expr, $body:expr) => {
+        $tracker.track($operation, || $body)
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pass_rate_counter_basic() {
+        let counter = PassRateCounter::new();
+        
+        assert_eq!(counter.total(), 0);
+        assert_eq!(counter.success_count(), 0);
+        assert_eq!(counter.failure_count(), 0);
+        assert_eq!(counter.success_rate(), 0.0);
+        
+        counter.record_success();
+        assert_eq!(counter.total(), 1);
+        assert_eq!(counter.success_count(), 1);
+        assert_eq!(counter.success_rate(), 1.0);
+        
+        counter.record_failure();
+        assert_eq!(counter.total(), 2);
+        assert_eq!(counter.failure_count(), 1);
+        assert_eq!(counter.success_rate(), 0.5);
+    }
+
+    #[test]
+    fn test_pass_rate_counter_batch() {
+        let counter = PassRateCounter::new();
+        
+        counter.record_successes(10);
+        counter.record_failures(5);
+        
+        assert_eq!(counter.total(), 15);
+        assert_eq!(counter.success_count(), 10);
+        assert_eq!(counter.failure_count(), 5);
+        assert_eq!(counter.success_rate(), 10.0 / 15.0);
+    }
+
+    #[test]
+    fn test_pass_rate_counter_reset() {
+        let counter = PassRateCounter::new();
+        
+        counter.record_success();
+        counter.record_failure();
+        assert_eq!(counter.total(), 2);
+        
+        counter.reset();
+        assert_eq!(counter.total(), 0);
+        assert_eq!(counter.success_count(), 0);
+        assert_eq!(counter.failure_count(), 0);
+    }
+
+    #[test]
+    fn test_pass_rate_counter_snapshot() {
+        let counter = PassRateCounter::new();
+        
+        counter.record_success();
+        counter.record_failure();
+        
+        let snap = counter.snapshot();
+        assert_eq!(snap.total, 2);
+        assert_eq!(snap.success, 1);
+        assert_eq!(snap.failure, 1);
+        assert_eq!(snap.success_rate, 0.5);
+        assert!(snap.has_data());
+    }
+
+    #[test]
+    fn test_pass_rate_registry() {
+        let registry = PassRateRegistry::new();
+        
+        // Create counters on demand
+        registry.record_success("compile");
+        registry.record_success("compile");
+        registry.record_failure("compile");
+        
+        registry.record_success("test");
+        registry.record_failure("test");
+        
+        let compile_counter = registry.get_counter("compile").unwrap();
+        assert_eq!(compile_counter.total(), 3);
+        assert_eq!(compile_counter.success_rate(), 2.0 / 3.0);
+        
+        let test_counter = registry.get_counter("test").unwrap();
+        assert_eq!(test_counter.total(), 2);
+        assert_eq!(test_counter.success_rate(), 0.5);
+        
+        // Check all operation types
+        let types = registry.operation_types();
+        assert!(types.contains(&"compile".to_string()));
+        assert!(types.contains(&"test".to_string()));
+    }
+
+    #[test]
+    fn test_pass_rate_registry_aggregate() {
+        let registry = PassRateRegistry::new();
+        
+        registry.record_success("op1");
+        registry.record_success("op1");
+        registry.record_failure("op2");
+        
+        let aggregate = registry.aggregate_snapshot();
+        assert_eq!(aggregate.total, 3);
+        assert_eq!(aggregate.success, 2);
+        assert_eq!(aggregate.failure, 1);
+        assert_eq!(aggregate.success_rate(), 2.0 / 3.0);
+    }
+
+    #[test]
+    fn test_pass_rate_tracker() {
+        let tracker = PassRateTracker::new()
+            .with_prefix("lsp");
+        
+        tracker.success("hover");
+        tracker.success("hover");
+        tracker.failure("hover");
+        
+        tracker.success("definition");
+        
+        let hover_snap = tracker.snapshot("hover").unwrap();
+        assert_eq!(hover_snap.total, 3);
+        assert_eq!(hover_snap.success, 2);
+        
+        // Check prefixed name
+        let counter = tracker.registry().get_counter("lsp.hover");
+        assert!(counter.is_some());
+    }
+
+    #[test]
+    fn test_pass_rate_tracker_track_closure() {
+        let tracker = PassRateTracker::new();
+        
+        let result: Result<i32, &str> = tracker.track("test_op", || {
+            Ok(42)
+        });
+        assert!(result.is_ok());
+        
+        let snap = tracker.snapshot("test_op").unwrap();
+        assert_eq!(snap.success, 1);
+        assert_eq!(snap.failure, 0);
+        
+        // Test failure tracking
+        let result: Result<i32, &str> = tracker.track("test_op", || {
+            Err("failed")
+        });
+        assert!(result.is_err());
+        
+        let snap = tracker.snapshot("test_op").unwrap();
+        assert_eq!(snap.success, 1);
+        assert_eq!(snap.failure, 1);
+    }
+
+    #[test]
+    fn test_thread_safety() {
+        use std::thread;
+        
+        let registry = Arc::new(PassRateRegistry::new());
+        let mut handles = vec![];
+        
+        // Spawn threads that record successes and failures
+        for i in 0..10 {
+            let reg = Arc::clone(&registry);
+            let handle = thread::spawn(move || {
+                for _ in 0..100 {
+                    if i % 2
