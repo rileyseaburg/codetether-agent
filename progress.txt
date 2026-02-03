@@ -11983,3 +11983,620 @@ impl RlmRouter {
 
     /// Select the best available agent for a content type
     async fn select_agent(&self, content_type
+
+---
+
+## Iteration 1 - US-001 (2026-02-03T18:51:59.114123409+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-001 - Create pool.rs module structure for the RLM connection pooling system. This is the foundational module for managing pools of RLM agent connections.
+
+```rust
+// src/rlm/pool.rs - RLM Connection Pool module structure
+
+//! RLM Connection Pooling
+//! 
+//! This module provides connection pooling for RLM (Remote Language Model) agents,
+//! enabling efficient reuse of pre-warmed agent instances with lifecycle management,
+//! health monitoring, and automatic scaling.
+
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex, Condvar, RwLock};
+use std::time::{Duration, Instant};
+use std::thread::{self, JoinHandle};
+use std::fmt;
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn};
+use serde::{Serialize, Deserialize};
+
+/// Errors that can occur in pool operations
+#[derive(Debug, Error)]
+pub enum PoolError {
+    /// Pool has been closed and cannot accept new operations
+    #[error("Pool is closed")]
+    PoolClosed,
+
+    /// Timeout waiting for an available connection from the pool
+    #[error("Timeout waiting for available connection after {0:?}")]
+    Timeout(Duration),
+
+    /// Failed to create a new agent/connection
+    #[error("Failed to create agent: {0}")]
+    CreationFailed(String),
+
+    /// Agent validation failed during checkout or checkin
+    #[error("Agent validation failed: {0}")]
+    ValidationFailed(String),
+
+    /// Maximum pool size would be exceeded
+    #[error("Maximum pool size ({0}) reached")]
+    MaxPoolSizeReached(usize),
+
+    /// Invalid configuration parameter
+    #[error("Invalid pool configuration: {0}")]
+    InvalidConfig(String),
+
+    /// Agent is not healthy and cannot be used
+    #[error("Agent is unhealthy: {0}")]
+    Unhealthy(String),
+
+    /// Operation was cancelled
+    #[error("Operation cancelled")]
+    Cancelled,
+}
+
+/// Result type for pool operations
+pub type PoolResult<T> = Result<T, PoolError>;
+
+/// Configuration for connection pool behavior
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PoolConfig {
+    /// Minimum number of idle connections to maintain
+    pub min_idle: usize,
+    
+    /// Maximum number of connections in the pool
+    pub max_size: usize,
+    
+    /// Maximum time to wait for a connection from the pool
+    #[serde(with = "serde_duration")]
+    pub acquire_timeout: Duration,
+    
+    /// Maximum time a connection can be idle before being closed
+    #[serde(with = "serde_duration")]
+    pub max_idle_time: Duration,
+    
+    /// Interval between cleanup runs for stale connections
+    #[serde(with = "serde_duration")]
+    pub cleanup_interval: Duration,
+    
+    /// Maximum number of times a connection can be reused
+    pub max_reuse_count: Option<u32>,
+    
+    /// Whether to validate connections on checkout
+    pub validate_on_checkout: bool,
+    
+    /// Whether to validate connections on checkin
+    pub validate_on_checkin: bool,
+    
+    /// Interval between health checks for idle connections
+    #[serde(with = "serde_duration")]
+    pub health_check_interval: Duration,
+    
+    /// Maximum concurrent connection creation attempts
+    pub max_concurrent_creation: usize,
+    
+    /// Name of this pool (for logging/metrics)
+    pub pool_name: String,
+}
+
+impl Default for PoolConfig {
+    fn default() -> Self {
+        Self {
+            min_idle: 2,
+            max_size: 10,
+            acquire_timeout: Duration::from_secs(30),
+            max_idle_time: Duration::from_secs(300), // 5 minutes
+            cleanup_interval: Duration::from_secs(60),
+            max_reuse_count: Some(100),
+            validate_on_checkout: true,
+            validate_on_checkin: true,
+            health_check_interval: Duration::from_secs(30),
+            max_concurrent_creation: 3,
+            pool_name: "default".to_string(),
+        }
+    }
+}
+
+impl PoolConfig {
+    /// Create a new configuration with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set minimum idle connections
+    pub fn with_min_idle(mut self, min_idle: usize) -> Self {
+        self.min_idle = min_idle;
+        self
+    }
+
+    /// Set maximum pool size
+    pub fn with_max_size(mut self, max_size: usize) -> Self {
+        self.max_size = max_size;
+        self
+    }
+
+    /// Set acquire timeout
+    pub fn with_acquire_timeout(mut self, timeout: Duration) -> Self {
+        self.acquire_timeout = timeout;
+        self
+    }
+
+    /// Set maximum idle time before connection is considered stale
+    pub fn with_max_idle_time(mut self, idle_time: Duration) -> Self {
+        self.max_idle_time = idle_time;
+        self
+    }
+
+    /// Set cleanup interval
+    pub fn with_cleanup_interval(mut self, interval: Duration) -> Self {
+        self.cleanup_interval = interval;
+        self
+    }
+
+    /// Set maximum reuse count (None for unlimited)
+    pub fn with_max_reuse_count(mut self, count: Option<u32>) -> Self {
+        self.max_reuse_count = count;
+        self
+    }
+
+    /// Disable validation on checkout
+    pub fn without_checkout_validation(mut self) -> Self {
+        self.validate_on_checkout = false;
+        self
+    }
+
+    /// Disable validation on checkin
+    pub fn without_checkin_validation(mut self) -> Self {
+        self.validate_on_checkin = false;
+        self
+    }
+
+    /// Set pool name
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.pool_name = name.into();
+        self
+    }
+
+    /// Validate the configuration
+    pub fn validate(&self) -> PoolResult<()> {
+        if self.min_idle > self.max_size {
+            return Err(PoolError::InvalidConfig(format!(
+                "min_idle ({}) cannot exceed max_size ({})",
+                self.min_idle, self.max_size
+            )));
+        }
+        if self.max_size == 0 {
+            return Err(PoolError::InvalidConfig(
+                "max_size must be greater than 0".to_string()
+            ));
+        }
+        if self.acquire_timeout.is_zero() {
+            return Err(PoolError::InvalidConfig(
+                "acquire_timeout must be greater than 0".to_string()
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Helper module for serde Duration serialization
+mod serde_duration {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        duration.as_millis().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let millis = u64::deserialize(deserializer)?;
+        Ok(Duration::from_millis(millis))
+    }
+}
+
+/// Metrics for monitoring pool performance
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PoolMetrics {
+    /// Total connections created since pool start
+    pub total_created: u64,
+    
+    /// Total connections destroyed since pool start
+    pub total_destroyed: u64,
+    
+    /// Current number of idle connections
+    pub idle_count: usize,
+    
+    /// Current number of active (checked out) connections
+    pub active_count: usize,
+    
+    /// Total acquire operations
+    pub total_acquired: u64,
+    
+    /// Total release operations
+    pub total_released: u64,
+    
+    /// Number of acquire timeouts
+    pub timeout_count: u64,
+    
+    /// Number of failed connection creations
+    pub creation_failures: u64,
+    
+    /// Number of validation failures
+    pub validation_failures: u64,
+    
+    /// Number of stale connections cleaned up
+    pub stale_cleaned: u64,
+    
+    /// Average acquire time in microseconds
+    pub avg_acquire_time_us: u64,
+    
+    /// Peak active connections seen
+    pub peak_active: usize,
+    
+    /// Timestamp of last cleanup run
+    pub last_cleanup: Option<Instant>,
+    
+    /// Pool name for identification
+    pub pool_name: String,
+}
+
+impl PoolMetrics {
+    /// Create new empty metrics
+    pub fn new(pool_name: impl Into<String>) -> Self {
+        Self {
+            pool_name: pool_name.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Get total pool size (idle + active)
+    pub fn total_size(&self) -> usize {
+        self.idle_count + self.active_count
+    }
+
+    /// Get utilization ratio (0.0 to 1.0)
+    pub fn utilization(&self) -> f64 {
+        let total = self.total_size();
+        if total == 0 {
+            0.0
+        } else {
+            self.active_count as f64 / total as f64
+        }
+    }
+
+    /// Get availability ratio (idle / total)
+    pub fn availability(&self) -> f64 {
+        let total = self.total_size();
+        if total == 0 {
+            0.0
+        } else {
+            self.idle_count as f64 / total as f64
+        }
+    }
+}
+
+/// Trait for connections/agents that can be pooled
+/// 
+/// Implement this trait for any type that should be managed by the connection pool.
+pub trait PooledConnection: Send + Sync {
+    /// Unique identifier for this connection instance
+    fn connection_id(&self) -> &str;
+    
+    /// Check if the connection is still healthy and usable
+    fn is_healthy(&self) -> bool;
+    
+    /// Reset connection state for reuse (optional optimization)
+    /// 
+    /// Called when a connection is returned to the pool.
+    /// Return Ok if reset succeeded, Err with message if connection should be discarded.
+    fn reset(&mut self) -> Result<(), String>;
+    
+    /// Get connection statistics
+    fn connection_stats(&self) -> ConnectionStats;
+    
+    /// Close the connection (called when removing from pool)
+    fn close(&mut self);
+}
+
+/// Statistics for an individual pooled connection
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ConnectionStats {
+    /// When the connection was created
+    pub created_at: Instant,
+    
+    /// Number of times this connection has been used
+    pub use_count: u32,
+    
+    /// Total time spent processing across all uses
+    #[serde(skip)]
+    pub total_processing_time: Duration,
+    
+    /// When the connection was last used
+    pub last_used: Option<Instant>,
+    
+    /// Number of errors encountered
+    pub error_count: u32,
+    
+    /// Connection ID
+    pub connection_id: String,
+}
+
+/// Internal wrapper for pooled connections with metadata
+struct PooledConnectionWrapper<C: PooledConnection> {
+    connection: C,
+    stats: ConnectionStats,
+    checked_out_at: Option<Instant>,
+    last_health_check: Instant,
+}
+
+impl<C: PooledConnection> PooledConnectionWrapper<C> {
+    fn new(connection: C) -> Self {
+        let now = Instant::now();
+        let connection_id = connection.connection_id().to_string();
+        
+        Self {
+            connection,
+            stats: ConnectionStats {
+                created_at: now,
+                use_count: 0,
+                total_processing_time: Duration::default(),
+                last_used: None,
+                error_count: 0,
+                connection_id,
+            },
+            checked_out_at: None,
+            last_health_check: now,
+        }
+    }
+
+    /// Check if connection is stale (idle too long)
+    fn is_stale(&self, max_idle_time: Duration) -> bool {
+        match self.stats.last_used {
+            Some(last_used) => last_used.elapsed() > max_idle_time,
+            None => self.stats.created_at.elapsed() > max_idle_time,
+        }
+    }
+
+    /// Check if connection has exceeded max reuse count
+    fn exceeds_max_uses(&self, max_uses: Option<u32>) -> bool {
+        match max_uses {
+            Some(max) => self.stats.use_count >= max,
+            None => false,
+        }
+    }
+
+    /// Record checkout
+    fn record_checkout(&mut self) {
+        self.checked_out_at = Some(Instant::now());
+        self.stats.use_count += 1;
+    }
+
+    /// Record checkin
+    fn record_checkin(&mut self) {
+        if let Some(checkout_time) = self.checked_out_at {
+            self.stats.total_processing_time += checkout_time.elapsed();
+        }
+        self.stats.last_used = Some(Instant::now());
+        self.checked_out_at = None;
+    }
+
+    /// Record error
+    fn record_error(&mut self) {
+        self.stats.error_count += 1;
+    }
+}
+
+/// Handle to a checked-out connection from the pool
+/// 
+/// When this handle is dropped, the connection is automatically returned to the pool.
+pub struct ConnectionHandle<C: PooledConnection> {
+    connection: Option<C>,
+    pool: Arc<ConnectionPoolInner<C>>,
+    checkout_time: Instant,
+    // Store the wrapper stats to merge back on return
+    stats: Option<ConnectionStats>,
+}
+
+impl<C: PooledConnection> ConnectionHandle<C> {
+    /// Get immutable reference to the underlying connection
+    pub fn connection(&self) -> &C {
+        self.connection.as_ref().expect("connection always present until drop")
+    }
+
+    /// Get mutable reference to the underlying connection
+    pub fn connection_mut(&mut self) -> &mut C {
+        self.connection.as_mut().expect("connection always present until drop")
+    }
+
+    /// Record that an error occurred during use
+    /// 
+    /// This marks the connection for potential discard on return.
+    pub fn record_error(&mut self) {
+        if let Some(ref mut stats) = self.stats {
+            stats.error_count += 1;
+        }
+    }
+
+    /// Get time since checkout
+    pub fn elapsed(&self) -> Duration {
+        self.checkout_time.elapsed()
+    }
+
+    /// Manually return the connection to the pool early
+    /// 
+    /// This is equivalent to dropping the handle, but allows explicit control.
+    pub fn return_to_pool(mut self) {
+        // Drop impl handles the actual return
+        drop(self.connection.take());
+    }
+}
+
+impl<C: PooledConnection> Drop for ConnectionHandle<C> {
+    fn drop(&mut self) {
+        if let Some(connection) = self.connection.take() {
+            // Merge our stats updates back
+            let _ = self.pool.release(connection, self.stats.take());
+        }
+    }
+}
+
+/// Inner state of the connection pool (protected by mutex)
+struct ConnectionPoolInner<C: PooledConnection> {
+    config: PoolConfig,
+    idle_connections: VecDeque<PooledConnectionWrapper<C>>,
+    active_count: usize,
+    metrics: PoolMetrics,
+    closed: bool,
+    creation_in_progress: usize,
+    total_connections: usize, // idle + active
+}
+
+/// The RLM Connection Pool
+/// 
+/// Manages a pool of reusable connections with lifecycle management,
+/// health monitoring, and automatic scaling.
+pub struct ConnectionPool<C: PooledConnection> {
+    inner: Arc<Mutex<ConnectionPoolInner<C>>>,
+    not_empty: Arc<Condvar>,
+    factory: Arc<dyn Fn() -> PoolResult<C> + Send + Sync>,
+    validator: Arc<dyn Fn(&C) -> bool + Send + Sync>,
+    cleanup_handle: Option<JoinHandle<()>>,
+    metrics_snapshot: Arc<RwLock<PoolMetrics>>,
+}
+
+impl<C: PooledConnection + 'static> ConnectionPool<C> {
+    /// Create a new connection pool
+    /// 
+    /// # Arguments
+    /// * `config` - Pool configuration
+    /// * `factory` - Function to create new connections
+    /// * `validator` - Function to validate connection health
+    pub fn new<F, V>(
+        config: PoolConfig,
+        factory: F,
+        validator: V,
+    ) -> PoolResult<Self>
+    where
+        F: Fn() -> PoolResult<C> + Send + Sync + 'static,
+        V: Fn(&C) -> bool + Send + Sync + 'static,
+    {
+        config.validate()?;
+
+        let metrics = PoolMetrics::new(&config.pool_name);
+        
+        let inner = Arc::new(Mutex::new(ConnectionPoolInner {
+            config: config.clone(),
+            idle_connections: VecDeque::with_capacity(config.max_size),
+            active_count: 0,
+            metrics,
+            closed: false,
+            creation_in_progress: 0,
+            total_connections: 0,
+        }));
+
+        let not_empty = Arc::new(Condvar::new());
+        let metrics_snapshot = Arc::new(RwLock::new(PoolMetrics::new(&config.pool_name)));
+
+        let pool = Self {
+            inner: inner.clone(),
+            not_empty: not_empty.clone(),
+            factory: Arc::new(factory),
+            validator: Arc::new(validator),
+            cleanup_handle: None,
+            metrics_snapshot,
+        };
+
+        // Pre-warm the pool
+        pool.pre_warm()?;
+
+        // Start background maintenance thread
+        let cleanup_handle = pool.start_maintenance_thread(inner, not_empty, config);
+
+        Ok(Self {
+            cleanup_handle: Some(cleanup_handle),
+            ..pool
+        })
+    }
+
+    /// Pre-warm the pool with minimum idle connections
+    fn pre_warm(&self) -> PoolResult<()> {
+        let config = {
+            let inner = self.inner.lock().unwrap();
+            inner.config.clone()
+        };
+
+        info!("Pre-warming pool '{}' with {} connections", 
+            config.pool_name, config.min_idle);
+
+        let mut created = 0;
+        for i in 0..config.min_idle {
+            if self.try_create_connection().is_ok() {
+                created += 1;
+            } else {
+                warn!("Failed to create pre-warm connection {}/{}", i + 1, config.min_idle);
+            }
+        }
+
+        info!("Pool '{}' pre-warmed with {}/{} connections", 
+            config.pool_name, created, config.min_idle);
+        Ok(())
+    }
+
+    /// Try to create a new connection and add to pool
+    fn try_create_connection(&self) -> PoolResult<()> {
+        let mut inner = self.inner.lock().unwrap();
+
+        if inner.total_connections >= inner.config.max_size {
+            return Err(PoolError::MaxPoolSizeReached(inner.config.max_size));
+        }
+
+        if inner.creation_in_progress >= inner.config.max_concurrent_creation {
+            return Err(PoolError::CreationFailed("Too many concurrent creations".to_string()));
+        }
+
+        inner.creation_in_progress += 1;
+        drop(inner);
+
+        // Create connection outside lock
+        let result = (self.factory)();
+
+        let mut inner = self.inner.lock().unwrap();
+        inner.creation_in_progress -= 1;
+
+        match result {
+            Ok(connection) => {
+                if (self.validator)(&connection) {
+                    let wrapper = PooledConnectionWrapper::new(connection);
+                    let conn_id = wrapper.stats.connection_id.clone();
+                    inner.idle_connections.push_back(wrapper);
+                    inner.total_connections += 1;
+                    inner.metrics.total_created += 1;
+                    inner.metrics.idle_count = inner.idle_connections.len();
+                    trace!("Created connection {} for pool '{}'", conn_id, inner.config.pool_name);
+                    self.not_empty.notify_one();
+                    Ok(())
+                } else {
+                    inner.metrics.creation_failures += 1;
+                    Err(PoolError::ValidationFailed("New connection failed validation".to_string()))
+                }
+            }
+            Err(e) => {
+               

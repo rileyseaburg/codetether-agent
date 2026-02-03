@@ -1,0 +1,157 @@
+{
+  "project": "codetether-agent",
+  "feature": "Telemetry Collection for Success Metrics",
+  "branch_name": "feature/telemetry-collection-for-success-metrics",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Create metrics module structure and dependencies",
+      "description": "Create src/metrics/ directory structure and add required dependencies (opentelemetry, prometheus, metrics crates) to Cargo.toml for telemetry collection.",
+      "acceptance_criteria": [
+        "src/metrics/mod.rs exists",
+        "Cargo.toml has opentelemetry, prometheus, metrics dependencies",
+        "cargo check passes"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-002",
+      "title": "Implement token usage tracking",
+      "description": "Create TokenUsageTracker that tracks input/output tokens per request, per model, and per operation type with aggregation capabilities.",
+      "acceptance_criteria": [
+        "TokenUsage struct with input/output/total fields",
+        "TokenUsageTracker with record() and get_stats() methods",
+        "Tracks per-model and per-operation metrics",
+        "Thread-safe implementation"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-003",
+      "title": "Implement latency histograms",
+      "description": "Create LatencyHistogram that records operation latencies with configurable buckets for p50, p95, p99 percentiles.",
+      "acceptance_criteria": [
+        "LatencyHistogram with record() method",
+        "Configurable histogram buckets",
+        "Percentile calculations (p50, p95, p99)",
+        "Tracks per-operation-type latencies"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-004",
+      "title": "Implement pass rate counters",
+      "description": "Create PassRateCounter that tracks success/failure rates for operations with counters and ratios.",
+      "acceptance_criteria": [
+        "PassRateCounter with success/failure counters",
+        "Pass rate ratio calculation",
+        "Per-operation-type tracking",
+        "Thread-safe counters"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-005",
+      "title": "Implement Prometheus exporter",
+      "description": "Create Prometheus exporter that exposes metrics in Prometheus exposition format on an HTTP endpoint.",
+      "acceptance_criteria": [
+        "PrometheusExporter struct",
+        "HTTP endpoint serving /metrics",
+        "Proper Prometheus format output",
+        "Configurable port and path"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-002",
+        "US-003",
+        "US-004"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Implement OpenTelemetry exporter",
+      "description": "Create OpenTelemetry exporter that sends metrics to OTLP endpoints (grpc/http).",
+      "acceptance_criteria": [
+        "OpenTelemetryExporter struct",
+        "OTLP/gRPC support",
+        "OTLP/HTTP support",
+        "Configurable endpoint and headers"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-002",
+        "US-003",
+        "US-004"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-007",
+      "title": "Implement privacy-preserving options",
+      "description": "Add privacy controls including PII redaction, aggregation before export, sampling, and opt-out mechanisms.",
+      "acceptance_criteria": [
+        "PrivacyConfig with enable/disable flags",
+        "PII redaction for sensitive fields",
+        "Aggregation options (no raw data)",
+        "Sampling rate configuration",
+        "Complete opt-out support"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-008",
+      "title": "Create metrics collector and integration",
+      "description": "Create main MetricsCollector that orchestrates all metric types and exporters with configuration.",
+      "acceptance_criteria": [
+        "MetricsCollector orchestrates all components",
+        "Configuration from file/env",
+        "Integration with existing code paths",
+        "Documentation and examples"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-005",
+        "US-006",
+        "US-007"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-03T18:52:22.907887368+00:00",
+  "updated_at": "2026-02-03T18:52:22.907890378+00:00"
+}
