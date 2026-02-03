@@ -1,0 +1,484 @@
+{
+  "id": "06-subagent-worktrees",
+  "title": "Subagent Worktree Isolation",
+  "version": "1.0.0",
+  "status": "draft",
+  "created": "2026-02-03",
+  "updated": "2026-02-03",
+  "owner": "opencode-core",
+  "summary": "Enable subagents to work in isolated git worktrees with automatic branch merging upon completion",
+  
+  "problem": {
+    "description": "Currently, subagents work in the same directory as the parent agent, which can lead to conflicts, race conditions, and difficulty tracking which changes were made by which agent.",
+    "pain_points": [
+      "File conflicts when parent and subagent modify the same files",
+      "No isolation between concurrent subagent operations",
+      "Difficult to track or rollback subagent changes independently",
+      "Cannot easily test subagent changes before accepting them",
+      "No clear audit trail of what each subagent modified"
+    ]
+  },
+
+  "solution": {
+    "description": "Each subagent automatically creates its own git worktree branched from the parent's current state. Upon successful completion, the parent agent merges the subagent's branch into its own workspace, reviews changes, and reports back.",
+    "key_features": [
+      "Automatic worktree creation for subagents",
+      "Branch-based isolation per subagent",
+      "Automatic merge of subagent changes on completion",
+      "Conflict detection and resolution workflow",
+      "Cleanup of worktrees after merge"
+    ]
+  },
+
+  "requirements": {
+    "functional": [
+      {
+        "id": "FR-01",
+        "priority": "must",
+        "description": "When launching a subagent, automatically create a new worktree",
+        "acceptance_criteria": [
+          "Worktree is created with unique name derived from subagent task",
+          "Branch name follows pattern: opencode/subagent-{task-slug}-{random}",
+          "Worktree directory created under Global.Path.data/worktree/{projectId}/",
+          "Subagent receives worktree directory as working directory"
+        ]
+      },
+      {
+        "id": "FR-02",
+        "priority": "must",
+        "description": "Subagent operates entirely within its worktree",
+        "acceptance_criteria": [
+          "All file operations happen in worktree directory",
+          "File paths are resolved relative to worktree",
+          "Tool calls (read_file, write_file, etc.) use worktree root",
+          "Terminal commands execute with worktree as cwd"
+        ]
+      },
+      {
+        "id": "FR-03",
+        "priority": "must",
+        "description": "On subagent completion, parent agent merges worktree branch",
+        "acceptance_criteria": [
+          "Parent agent receives notification of subagent completion",
+          "Parent fetches changes from subagent branch",
+          "Parent attempts merge of subagent branch into current branch",
+          "If merge succeeds changes are incorporated",
+          "If merge fails conflict resolution workflow initiates"
+        ]
+      },
+      {
+        "id": "FR-04",
+        "priority": "must",
+        "description": "Parent agent reviews merged changes before reporting",
+        "acceptance_criteria": [
+          "Parent can see git diff of merged changes",
+          "Parent can view list of modified files",
+          "Parent summarizes changes in report to user",
+          "Parent can optionally request user confirmation before accepting"
+        ]
+      },
+      {
+        "id": "FR-05",
+        "priority": "must",
+        "description": "Clean up worktree after successful merge",
+        "acceptance_criteria": [
+          "Worktree directory is removed",
+          "Subagent branch is deleted",
+          "Only keep worktree on merge failure for debugging",
+          "User can manually clean up failed worktrees"
+        ]
+      },
+      {
+        "id": "FR-06",
+        "priority": "should",
+        "description": "Handle merge conflicts gracefully",
+        "acceptance_criteria": [
+          "Detect merge conflicts automatically",
+          "Present conflict details to user",
+          "Offer options: auto-resolve, manual resolve, reject changes",
+          "Log conflict for later review"
+        ]
+      },
+      {
+        "id": "FR-07",
+        "priority": "should",
+        "description": "Support nested subagents (subagent spawning subagent)",
+        "acceptance_criteria": [
+          "Each level gets its own worktree",
+          "Merges bubble up: sub-subagent -> subagent -> parent",
+          "Branch naming reflects hierarchy",
+          "Cleanup happens in reverse order"
+        ]
+      },
+      {
+        "id": "FR-08",
+        "priority": "could",
+        "description": "Allow parent to preview changes before merge",
+        "acceptance_criteria": [
+          "Parent can request diff before accepting",
+          "Parent can selectively stage changes",
+          "Parent can reject all or partial changes",
+          "Changes not merged unless explicitly accepted"
+        ]
+      }
+    ],
+
+    "non_functional": [
+      {
+        "id": "NFR-01",
+        "category": "performance",
+        "description": "Worktree creation must complete in under 5 seconds for repos < 1GB"
+      },
+      {
+        "id": "NFR-02",
+        "category": "reliability",
+        "description": "Failed subagents must not leave orphaned worktrees (or provide cleanup command)"
+      },
+      {
+        "id": "NFR-03",
+        "category": "usability",
+        "description": "User should be able to list and manage all active worktrees"
+      },
+      {
+        "id": "NFR-04",
+        "category": "compatibility",
+        "description": "Must work with git versions >= 2.5 (when worktree was introduced)"
+      }
+    ]
+  },
+
+  "technical_design": {
+    "components": [
+      {
+        "name": "SubagentWorktree",
+        "location": "packages/opencode/src/agent/subagent-worktree.ts",
+        "responsibilities": [
+          "Create worktree for subagent",
+          "Track subagent -> worktree mapping",
+          "Manage worktree lifecycle",
+          "Clean up on completion or failure"
+        ]
+      },
+      {
+        "name": "WorktreeMerger",
+        "location": "packages/opencode/src/worktree/merger.ts",
+        "responsibilities": [
+          "Merge subagent branch into parent workspace",
+          "Detect and report conflicts",
+          "Generate merge summaries",
+          "Handle merge rollback"
+        ]
+      },
+      {
+        "name": "runSubagent (enhanced)",
+        "location": "packages/opencode/src/tool/runSubagent.ts",
+        "responsibilities": [
+          "Check if worktree isolation is enabled",
+          "Create worktree before launching subagent",
+          "Pass worktree directory to subagent context",
+          "Trigger merge on subagent completion",
+          "Report merge results"
+        ]
+      }
+    ],
+
+    "data_structures": {
+      "SubagentWorktreeContext": {
+        "subagentId": "string",
+        "worktreeInfo": "Worktree.Info",
+        "parentDirectory": "string",
+        "createdAt": "timestamp",
+        "status": "'active' | 'merging' | 'merged' | 'failed'"
+      },
+      "MergeResult": {
+        "success": "boolean",
+        "conflicts": "string[]",
+        "filesChanged": "number",
+        "additions": "number",
+        "deletions": "number",
+        "summary": "string"
+      }
+    },
+
+    "workflow": {
+      "steps": [
+        {
+          "step": 1,
+          "actor": "Parent Agent",
+          "action": "Receives runSubagent request",
+          "output": "Task description for subagent"
+        },
+        {
+          "step": 2,
+          "actor": "SubagentWorktree",
+          "action": "Creates worktree from current HEAD",
+          "output": "Worktree.Info with branch and directory"
+        },
+        {
+          "step": 3,
+          "actor": "Subagent Launcher",
+          "action": "Spawns subagent with worktree as working directory",
+          "output": "Running subagent instance"
+        },
+        {
+          "step": 4,
+          "actor": "Subagent",
+          "action": "Performs work, makes changes, commits",
+          "output": "Completed task with changes in worktree branch"
+        },
+        {
+          "step": 5,
+          "actor": "WorktreeMerger",
+          "action": "Merges subagent branch into parent workspace",
+          "output": "MergeResult with success/conflict info"
+        },
+        {
+          "step": 6,
+          "actor": "Parent Agent",
+          "action": "Reviews merge, generates summary",
+          "output": "Report to user with changes summary"
+        },
+        {
+          "step": 7,
+          "actor": "SubagentWorktree",
+          "action": "Cleans up worktree and branch (if merge successful)",
+          "output": "Cleaned workspace"
+        }
+      ]
+    }
+  },
+
+  "configuration": {
+    "flags": [
+      {
+        "name": "OPENCODE_SUBAGENT_WORKTREES",
+        "type": "boolean",
+        "default": true,
+        "description": "Enable worktree isolation for subagents"
+      },
+      {
+        "name": "OPENCODE_SUBAGENT_AUTO_MERGE",
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically merge subagent changes on success"
+      },
+      {
+        "name": "OPENCODE_SUBAGENT_CLEANUP_ON_FAILURE",
+        "type": "boolean",
+        "default": false,
+        "description": "Remove worktree even if subagent fails (for debugging)"
+      }
+    ],
+    "config_options": [
+      {
+        "path": "subagent.worktree.enabled",
+        "type": "boolean",
+        "default": true
+      },
+      {
+        "path": "subagent.worktree.autoMerge",
+        "type": "boolean",
+        "default": true
+      },
+      {
+        "path": "subagent.worktree.requireReview",
+        "type": "boolean",
+        "default": false,
+        "description": "Require explicit user approval before merging"
+      }
+    ]
+  },
+
+  "api": {
+    "new_functions": [
+      {
+        "name": "Worktree.createForSubagent",
+        "signature": "async (input: { subagentId: string, taskDescription: string }) => Promise<Worktree.Info>",
+        "description": "Creates a worktree specifically for a subagent"
+      },
+      {
+        "name": "Worktree.merge",
+        "signature": "async (input: { worktree: Worktree.Info, target?: string }) => Promise<MergeResult>",
+        "description": "Merges worktree branch into target branch (default: current)"
+      },
+      {
+        "name": "Worktree.getDiff",
+        "signature": "async (input: { worktree: Worktree.Info }) => Promise<string>",
+        "description": "Returns git diff of changes in worktree"
+      },
+      {
+        "name": "Worktree.listActive",
+        "signature": "async () => Promise<Worktree.Info[]>",
+        "description": "Lists all active worktrees for current project"
+      }
+    ],
+    "modified_functions": [
+      {
+        "name": "runSubagent",
+        "changes": [
+          "Add optional `useWorktree` parameter (default: true)",
+          "Create worktree before launching subagent if enabled",
+          "Pass worktree directory in subagent context",
+          "Merge worktree on completion",
+          "Include merge summary in return message"
+        ]
+      }
+    ]
+  },
+
+  "error_handling": {
+    "scenarios": [
+      {
+        "scenario": "Worktree creation fails",
+        "response": "Fall back to parent workspace, log warning"
+      },
+      {
+        "scenario": "Merge has conflicts",
+        "response": "Present conflicts to user, offer resolution options"
+      },
+      {
+        "scenario": "Subagent crashes mid-execution",
+        "response": "Leave worktree for debugging, notify user of cleanup command"
+      },
+      {
+        "scenario": "Disk space exhausted during worktree creation",
+        "response": "Error immediately, suggest cleaning old worktrees"
+      },
+      {
+        "scenario": "Parent workspace has uncommitted changes",
+        "response": "Warn user, optionally stash changes before merge"
+      }
+    ]
+  },
+
+  "testing": {
+    "unit_tests": [
+      "Worktree.createForSubagent creates unique branches",
+      "Worktree.merge handles clean merge correctly",
+      "Worktree.merge detects conflicts",
+      "Worktree.remove cleans up properly",
+      "SubagentWorktree tracks multiple concurrent worktrees"
+    ],
+    "integration_tests": [
+      "Full subagent workflow with worktree",
+      "Nested subagents with multiple worktree levels",
+      "Concurrent subagents with separate worktrees",
+      "Merge conflict resolution workflow",
+      "Failed subagent cleanup"
+    ],
+    "edge_cases": [
+      "Subagent makes no changes (empty merge)",
+      "Subagent deletes files that parent modified",
+      "Multiple subagents modify same file",
+      "Subagent runs in non-git project (should fail gracefully)",
+      "Very large changeset (1000+ files)"
+    ]
+  },
+
+  "rollout": {
+    "phases": [
+      {
+        "phase": 1,
+        "milestone": "Basic Implementation",
+        "features": ["FR-01", "FR-02", "FR-03", "FR-05"],
+        "timeline": "Week 1-2"
+      },
+      {
+        "phase": 2,
+        "milestone": "Merge & Review",
+        "features": ["FR-04", "FR-06"],
+        "timeline": "Week 3"
+      },
+      {
+        "phase": 3,
+        "milestone": "Advanced Features",
+        "features": ["FR-07", "FR-08"],
+        "timeline": "Week 4"
+      }
+    ],
+    "feature_flag": "OPENCODE_SUBAGENT_WORKTREES",
+    "default_enabled": false,
+    "gradual_rollout": true
+  },
+
+  "metrics": {
+    "success_criteria": [
+      {
+        "metric": "Subagent isolation rate",
+        "target": "> 95% of subagents run in worktrees"
+      },
+      {
+        "metric": "Clean merge rate",
+        "target": "> 90% of merges succeed without conflicts"
+      },
+      {
+        "metric": "Worktree creation time",
+        "target": "< 5 seconds for typical projects"
+      },
+      {
+        "metric": "Orphaned worktree rate",
+        "target": "< 1% of worktrees remain after completion"
+      }
+    ],
+    "monitoring": [
+      "Track worktree creation/deletion events",
+      "Log merge success/failure rates",
+      "Monitor disk usage of worktree directory",
+      "Alert on excessive worktree accumulation"
+    ]
+  },
+
+  "documentation": {
+    "required": [
+      "User guide: Understanding subagent worktrees",
+      "Developer guide: Implementing worktree-aware tools",
+      "Troubleshooting: Cleaning up orphaned worktrees",
+      "Architecture doc: Worktree lifecycle management"
+    ]
+  },
+
+  "open_questions": [
+    "Should we auto-commit subagent changes before merge, or require subagent to commit?",
+    "How do we handle subagents that need to access parent's uncommitted changes?",
+    "Should worktrees share .git/objects (hardlink) or have separate object stores?",
+    "What's the cleanup policy for old worktrees after crash/restart?",
+    "Do we support subagent worktrees for non-git VCS (svn, hg)?",
+    "Should parent be able to cancel subagent and still merge partial work?"
+  ],
+
+  "risks": [
+    {
+      "risk": "Disk space exhaustion from many worktrees",
+      "likelihood": "medium",
+      "impact": "high",
+      "mitigation": "Implement aggressive cleanup, warn on low disk space"
+    },
+    {
+      "risk": "Complex merge conflicts overwhelming users",
+      "likelihood": "medium",
+      "impact": "medium",
+      "mitigation": "Provide clear conflict resolution UX, auto-resolution hints"
+    },
+    {
+      "risk": "Performance degradation on very large repos",
+      "likelihood": "low",
+      "impact": "medium",
+      "mitigation": "Use sparse checkout, shallow clones where possible"
+    },
+    {
+      "risk": "Confusion about which workspace is active",
+      "likelihood": "medium",
+      "impact": "low",
+      "mitigation": "Clear UI indicators, terminal prompt updates"
+    }
+  ],
+
+  "future_enhancements": [
+    "Visual merge conflict resolution UI",
+    "Subagent change preview before execution",
+    "Persistent worktrees for long-running subagent tasks",
+    "Parallel subagent execution with automatic merge scheduling",
+    "Worktree-based rollback for failed agent operations",
+    "Integration with code review tools (GitHub PR from subagent branch)"
+  ]
+}

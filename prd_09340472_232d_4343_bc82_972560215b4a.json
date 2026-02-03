@@ -29,7 +29,7 @@
         "StreamingChunk enum for SSE events",
         "TokenUsage with prompt/completion/total counts"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [
         "US-001"

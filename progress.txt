@@ -18437,3 +18437,621 @@ impl fmt::Display for TokenUsage {
 }
 
 /// Reason why generation
+
+---
+
+## Iteration 7 - US-006 (2026-02-03T19:04:42.810441941+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-006 - Implement throughput optimization including request batching, connection reuse, and adaptive concurrency based on response times. This builds on the pool and metrics infrastructure from previous stories.
+
+```rust
+// src/rlm/throughput.rs - Throughput optimization with batching and adaptive concurrency
+
+//! Throughput Optimization for RLM Operations
+//! 
+//! This module provides throughput optimization including:
+//! - Request batching for small chunks
+//! - Adaptive concurrency based on latency measurements
+//! - Connection warmup strategies
+//! - Throughput metrics tracking
+
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex, RwLock, atomic::{AtomicU64, AtomicUsize, AtomicBool, Ordering}};
+use std::time::{Duration, Instant};
+use std::future::Future;
+use std::pin::Pin;
+use tokio::sync::{mpsc, Semaphore, oneshot, RwLock as AsyncRwLock};
+use tokio::time::{interval, timeout, sleep};
+use tokio::task::JoinSet;
+use futures::future::join_all;
+use tracing::{debug, error, info, trace, warn};
+use thiserror::Error;
+use serde::{Serialize, Deserialize};
+
+use crate::rlm::pool::{ConnectionPool, PooledConnection, PoolConfig};
+use crate::rlm::metrics::latency::{LatencyHistogram, LatencyStats, BucketConfig};
+use crate::rlm::processing::{WorkChunk, ChunkResult, ProcessingError, ProcessingResult};
+
+/// Errors that can occur in throughput optimization
+#[derive(Debug, Error)]
+pub enum ThroughputError {
+    #[error("Batch processing failed: {0}")]
+    BatchFailed(String),
+
+    #[error("Adaptive concurrency adjustment failed: {0}")]
+    ConcurrencyAdjustmentFailed(String),
+
+    #[error("Throughput limit exceeded: {0} ops/sec")]
+    RateLimitExceeded(f64),
+
+    #[error("Warmup failed: {0}")]
+    WarmupFailed(String),
+
+    #[error("Metrics collection error: {0}")]
+    MetricsError(String),
+
+    #[error("Processing error: {0}")]
+    Processing(#[from] ProcessingError),
+
+    #[error("Pool error: {0}")]
+    Pool(#[from] crate::rlm::pool::PoolError),
+}
+
+/// Result type for throughput operations
+pub type ThroughputResult<T> = Result<T, ThroughputError>;
+
+/// Configuration for throughput optimization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThroughputConfig {
+    /// Enable request batching
+    pub enable_batching: bool,
+    
+    /// Maximum batch size (number of requests)
+    pub max_batch_size: usize,
+    
+    /// Maximum batch wait time (accumulate requests before sending)
+    #[serde(with = "serde_duration_millis")]
+    pub batch_wait_time: Duration,
+    
+    /// Minimum batch size to trigger processing
+    pub min_batch_size: usize,
+    
+    /// Enable adaptive concurrency
+    pub enable_adaptive_concurrency: bool,
+    
+    /// Initial concurrency level
+    pub initial_concurrency: usize,
+    
+    /// Minimum concurrency level
+    pub min_concurrency: usize,
+    
+    /// Maximum concurrency level
+    pub max_concurrency: usize,
+    
+    /// Target latency for adaptive adjustment (ms)
+    pub target_latency_ms: u64,
+    
+    /// Latency threshold for reducing concurrency (multiplier of target)
+    pub latency_threshold_multiplier: f64,
+    
+    /// Adjustment interval for adaptive concurrency
+    #[serde(with = "serde_duration_millis")]
+    pub adjustment_interval: Duration,
+    
+    /// Concurrency adjustment step size
+    pub concurrency_step: usize,
+    
+    /// Enable connection warmup
+    pub enable_warmup: bool,
+    
+    /// Number of warmup requests
+    pub warmup_requests: usize,
+    
+    /// Warmup concurrency
+    pub warmup_concurrency: usize,
+    
+    /// Enable throughput metrics tracking
+    pub enable_metrics: bool,
+    
+    /// Metrics collection interval
+    #[serde(with = "serde_duration_millis")]
+    pub metrics_interval: Duration,
+    
+    /// Target throughput (ops/sec), 0 = unlimited
+    pub target_throughput: f64,
+}
+
+// Serde helper for Duration
+mod serde_duration_millis {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        duration.as_millis().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let millis = u64::deserialize(deserializer)?;
+        Ok(Duration::from_millis(millis))
+    }
+}
+
+impl Default for ThroughputConfig {
+    fn default() -> Self {
+        Self {
+            enable_batching: true,
+            max_batch_size: 32,
+            batch_wait_time: Duration::from_millis(10),
+            min_batch_size: 4,
+            enable_adaptive_concurrency: true,
+            initial_concurrency: 10,
+            min_concurrency: 1,
+            max_concurrency: 100,
+            target_latency_ms: 500,
+            latency_threshold_multiplier: 2.0,
+            adjustment_interval: Duration::from_secs(10),
+            concurrency_step: 2,
+            enable_warmup: true,
+            warmup_requests: 10,
+            warmup_concurrency: 5,
+            enable_metrics: true,
+            metrics_interval: Duration::from_secs(5),
+            target_throughput: 0.0,
+        }
+    }
+}
+
+impl ThroughputConfig {
+    /// Create new config with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Enable batching with custom settings
+    pub fn with_batching(mut self, max_size: usize, wait_time_ms: u64) -> Self {
+        self.enable_batching = true;
+        self.max_batch_size = max_size;
+        self.batch_wait_time = Duration::from_millis(wait_time_ms);
+        self
+    }
+
+    /// Disable batching
+    pub fn without_batching(mut self) -> Self {
+        self.enable_batching = false;
+        self
+    }
+
+    /// Enable adaptive concurrency
+    pub fn with_adaptive_concurrency(
+        mut self,
+        initial: usize,
+        min: usize,
+        max: usize,
+        target_latency_ms: u64,
+    ) -> Self {
+        self.enable_adaptive_concurrency = true;
+        self.initial_concurrency = initial;
+        self.min_concurrency = min;
+        self.max_concurrency = max;
+        self.target_latency_ms = target_latency_ms;
+        self
+    }
+
+    /// Disable adaptive concurrency
+    pub fn without_adaptive_concurrency(mut self) -> Self {
+        self.enable_adaptive_concurrency = false;
+        self
+    }
+
+    /// Enable warmup
+    pub fn with_warmup(mut self, requests: usize, concurrency: usize) -> Self {
+        self.enable_warmup = true;
+        self.warmup_requests = requests;
+        self.warmup_concurrency = concurrency;
+        self
+    }
+
+    /// Disable warmup
+    pub fn without_warmup(mut self) -> Self {
+        self.enable_warmup = false;
+        self
+    }
+
+    /// Set target throughput limit
+    pub fn with_throughput_limit(mut self, ops_per_sec: f64) -> Self {
+        self.target_throughput = ops_per_sec;
+        self
+    }
+
+    /// Validate configuration
+    pub fn validate(&self) -> ThroughputResult<()> {
+        if self.enable_batching && self.min_batch_size > self.max_batch_size {
+            return Err(ThroughputError::BatchFailed(
+                "min_batch_size cannot exceed max_batch_size".to_string()
+            ));
+        }
+        if self.enable_adaptive_concurrency && self.min_concurrency > self.max_concurrency {
+            return Err(ThroughputError::ConcurrencyAdjustmentFailed(
+                "min_concurrency cannot exceed max_concurrency".to_string()
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Throughput metrics for monitoring
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct ThroughputMetrics {
+    /// Operations per second (current)
+    pub ops_per_second: f64,
+    
+    /// Operations per second (peak)
+    pub peak_ops_per_second: f64,
+    
+    /// Average latency (ms)
+    pub avg_latency_ms: f64,
+    
+    /// p95 latency (ms)
+    pub p95_latency_ms: f64,
+    
+    /// p99 latency (ms)
+    pub p99_latency_ms: f64,
+    
+    /// Current concurrency level
+    pub current_concurrency: usize,
+    
+    /// Current batch size
+    pub current_batch_size: usize,
+    
+    /// Total operations processed
+    pub total_operations: u64,
+    
+    /// Total batches processed
+    pub total_batches: u64,
+    
+    /// Average batch size
+    pub avg_batch_size: f64,
+    
+    /// Connection pool utilization (0.0 to 1.0)
+    pub pool_utilization: f64,
+    
+    /// Time spent in batching queue (ms)
+    pub avg_queue_time_ms: f64,
+    
+    /// Timestamp
+    pub timestamp: Instant,
+}
+
+impl ThroughputMetrics {
+    /// Create new empty metrics
+    pub fn new() -> Self {
+        Self {
+            timestamp: Instant::now(),
+            ..Default::default()
+        }
+    }
+
+    /// Calculate throughput efficiency (actual vs target)
+    pub fn efficiency(&self) -> f64 {
+        if self.ops_per_second == 0.0 {
+            0.0
+        } else {
+            // Lower of latency efficiency and throughput efficiency
+            let latency_eff = if self.avg_latency_ms > 0.0 {
+                1000.0 / self.avg_latency_ms / self.ops_per_second
+            } else {
+                1.0
+            };
+            latency_eff.min(1.0)
+        }
+    }
+}
+
+/// A batch of requests to be processed together
+#[derive(Debug)]
+pub struct RequestBatch<T> {
+    /// Unique batch ID
+    pub id: String,
+    /// Requests in this batch
+    pub requests: Vec<T>,
+    /// When the batch was created
+    pub created_at: Instant,
+    /// When the batch was submitted
+    pub submitted_at: Option<Instant>,
+    /// Response senders
+    pub response_senders: Vec<oneshot::Sender<ChunkResult>>,
+}
+
+impl<T> RequestBatch<T> {
+    /// Create a new batch
+    pub fn new(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            requests: Vec::new(),
+            created_at: Instant::now(),
+            submitted_at: None,
+            response_senders: Vec::new(),
+        }
+    }
+
+    /// Add a request to the batch
+    pub fn add(&mut self, request: T, response_sender: oneshot::Sender<ChunkResult>) {
+        self.requests.push(request);
+        self.response_senders.push(response_sender);
+    }
+
+    /// Get batch size
+    pub fn len(&self) -> usize {
+        self.requests.len()
+    }
+
+    /// Check if batch is empty
+    pub fn is_empty(&self) -> bool {
+        self.requests.is_empty()
+    }
+
+    /// Check if batch has reached capacity
+    pub fn is_full(&self, capacity: usize) -> bool {
+        self.requests.len() >= capacity
+    }
+
+    /// Age of the batch
+    pub fn age(&self) -> Duration {
+        self.created_at.elapsed()
+    }
+
+    /// Mark as submitted
+    pub fn mark_submitted(&mut self) {
+        self.submitted_at = Some(Instant::now());
+    }
+}
+
+/// Adaptive concurrency controller
+pub struct AdaptiveConcurrencyController {
+    /// Current concurrency limit
+    current: AtomicUsize,
+    
+    /// Minimum concurrency
+    min: usize,
+    
+    /// Maximum concurrency
+    max: usize,
+    
+    /// Target latency (ms)
+    target_latency_ms: u64,
+    
+    /// Latency threshold multiplier
+    threshold_multiplier: f64,
+    
+    /// Adjustment step size
+    step: usize,
+    
+    /// Latency histogram for tracking
+    latency_histogram: Arc<LatencyHistogram>,
+    
+    /// Last adjustment time
+    last_adjustment: Mutex<Instant>,
+    
+    /// Adjustment interval
+    adjustment_interval: Duration,
+    
+    /// Consecutive increases (for backoff)
+    consecutive_increases: AtomicUsize,
+    
+    /// Consecutive decreases
+    consecutive_decreases: AtomicUsize,
+}
+
+impl AdaptiveConcurrencyController {
+    /// Create new controller
+    pub fn new(
+        initial: usize,
+        min: usize,
+        max: usize,
+        target_latency_ms: u64,
+        threshold_multiplier: f64,
+        step: usize,
+        adjustment_interval: Duration,
+    ) -> Self {
+        Self {
+            current: AtomicUsize::new(initial),
+            min,
+            max,
+            target_latency_ms,
+            threshold_multiplier,
+            step,
+            latency_histogram: Arc::new(LatencyHistogram::with_bucket_config(
+                "adaptive_latency",
+                BucketConfig::ApiCalls,
+            )),
+            last_adjustment: Mutex::new(Instant::now()),
+            adjustment_interval,
+            consecutive_increases: AtomicUsize::new(0),
+            consecutive_decreases: AtomicUsize::new(0),
+        }
+    }
+
+    /// Get current concurrency limit
+    pub fn current(&self) -> usize {
+        self.current.load(Ordering::Relaxed)
+    }
+
+    /// Record a latency observation
+    pub fn record_latency(&self, latency: Duration) {
+        self.latency_histogram.record(latency);
+    }
+
+    /// Check if adjustment is due
+    fn should_adjust(&self) -> bool {
+        let last = *self.last_adjustment.lock().unwrap();
+        last.elapsed() >= self.adjustment_interval
+    }
+
+    /// Adjust concurrency based on latency measurements
+    pub fn adjust(&self) -> Option<usize> {
+        if !self.should_adjust() {
+            return None;
+        }
+
+        let p95 = self.latency_histogram.p95();
+        let current = self.current();
+        let target = self.target_latency_ms as f64;
+        let threshold = target * self.threshold_multiplier;
+
+        let new_concurrency = if p95 > threshold {
+            // Latency too high, reduce concurrency
+            let decrease = self.step * (1 + self.consecutive_decreases.load(Ordering::Relaxed));
+            let new = current.saturating_sub(decrease).max(self.min);
+            
+            self.consecutive_decreases.fetch_add(1, Ordering::Relaxed);
+            self.consecutive_increases.store(0, Ordering::Relaxed);
+            
+            info!(
+                "Reducing concurrency: {} -> {} (p95={:.1}ms > threshold={:.1}ms)",
+                current, new, p95, threshold
+            );
+            
+            new
+        } else if p95 < target * 0.8 && current < self.max {
+            // Latency good, can increase concurrency
+            let increase = self.step * (1 + self.consecutive_increases.load(Ordering::Relaxed));
+            let new = (current + increase).min(self.max);
+            
+            self.consecutive_increases.fetch_add(1, Ordering::Relaxed);
+            self.consecutive_decreases.store(0, Ordering::Relaxed);
+            
+            info!(
+                "Increasing concurrency: {} -> {} (p95={:.1}ms < target={:.1}ms)",
+                current, new, p95, target
+            );
+            
+            new
+        } else {
+            // No change needed
+            current
+        };
+
+        if new_concurrency != current {
+            self.current.store(new_concurrency, Ordering::Relaxed);
+            *self.last_adjustment.lock().unwrap() = Instant::now();
+            Some(new_concurrency)
+        } else {
+            None
+        }
+    }
+
+    /// Get latency statistics
+    pub fn latency_stats(&self) -> LatencyStats {
+        self.latency_histogram.stats()
+    }
+
+    /// Reset latency histogram
+    pub fn reset_stats(&self) {
+        self.latency_histogram.reset();
+    }
+}
+
+/// Batcher for accumulating small requests into batches
+pub struct RequestBatcher<T> {
+    config: ThroughputConfig,
+    /// Pending batches
+    pending: Arc<Mutex<VecDeque<RequestBatch<T>>>>,
+    /// Current batch being filled
+    current: Arc<Mutex<Option<RequestBatch<T>>>>,
+    /// Batch ready signal
+    ready_tx: mpsc::Sender<RequestBatch<T>>,
+    ready_rx: Arc<Mutex<mpsc::Receiver<RequestBatch<T>>>>,
+    /// Shutdown signal
+    shutdown: Arc<AtomicBool>,
+}
+
+impl<T: Send + 'static> RequestBatcher<T> {
+    /// Create new batcher
+    pub fn new(config: ThroughputConfig) -> Self {
+        let (ready_tx, ready_rx) = mpsc::channel(100);
+        
+        Self {
+            config,
+            pending: Arc::new(Mutex::new(VecDeque::new())),
+            current: Arc::new(Mutex::new(Some(RequestBatch::new("current")))),
+            ready_tx,
+            ready_rx: Arc::new(Mutex::new(ready_rx)),
+            shutdown: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Submit a request for batching
+    pub async fn submit(&self, request: T) -> oneshot::Receiver<ChunkResult> {
+        let (tx, rx) = oneshot::channel();
+        
+        let mut current = self.current.lock().unwrap();
+        
+        if let Some(ref mut batch) = *current {
+            batch.add(request, tx);
+            
+            // Check if batch should be flushed
+            if batch.is_full(self.config.max_batch_size) {
+                let full_batch = current.take().unwrap();
+                drop(current);
+                
+                // Send to ready queue
+                let _ = self.ready_tx.send(full_batch).await;
+                
+                // Create new current batch
+                *self.current.lock().unwrap() = Some(RequestBatch::new(format!("batch_{}", 
+                    Instant::now().elapsed().as_millis())));
+            }
+        } else {
+            // Shouldn't happen, but handle gracefully
+            drop(current);
+            let _ = self.ready_tx.send(RequestBatch::new("emergency")).await;
+        }
+        
+        rx
+    }
+
+    /// Flush current batch regardless of size
+    pub async fn flush(&self) {
+        let mut current = self.current.lock().unwrap();
+        if let Some(batch) = current.take() {
+            if !batch.is_empty() {
+                let _ = self.ready_tx.send(batch).await;
+            }
+            *current = Some(RequestBatch::new(format!("batch_{}", 
+                Instant::now().elapsed().as_millis())));
+        }
+    }
+
+    /// Get next ready batch (with timeout)
+    pub async fn next_batch(&self, timeout: Duration) -> Option<RequestBatch<T>> {
+        let mut rx = self.ready_rx.lock().unwrap();
+        
+        tokio::select! {
+            batch = rx.recv() => batch,
+            _ = sleep(timeout) => {
+                // Timeout - flush current batch
+                drop(rx);
+                self.flush().await;
+                self.ready_rx.lock().unwrap().recv().await
+            }
+        }
+    }
+
+    /// Shutdown the batcher
+    pub async fn shutdown(&self) {
+        self.shutdown.store(true, Ordering::Relaxed);
+        self.flush().await;
+    }
+}
+
+/// Throughput-optimized processor with all optimizations
+pub struct ThroughputProcessor<C: P
