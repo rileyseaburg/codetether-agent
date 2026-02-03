@@ -3,11 +3,25 @@
 //! Tools are the executable capabilities available to agents.
 
 pub mod bash;
+pub mod batch;
+pub mod codesearch;
 pub mod edit;
 pub mod file;
+pub mod invalid;
+pub mod lsp;
 pub mod multiedit;
+pub mod patch;
+pub mod plan;
+pub mod prd;
+pub mod question;
+pub mod ralph;
+pub mod rlm;
 pub mod search;
+pub mod skill;
+pub mod task;
+pub mod todo;
 pub mod webfetch;
+pub mod websearch;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -15,6 +29,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use crate::provider::Provider;
 
 /// A tool that can be executed by an agent
 #[async_trait]
@@ -106,7 +122,7 @@ impl ToolRegistry {
             .collect()
     }
 
-    /// Create registry with all default tools
+    /// Create registry with all default tools (without batch)
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
         
@@ -117,8 +133,73 @@ impl ToolRegistry {
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(edit::EditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
+        registry.register(Arc::new(lsp::LspTool::new()));
         registry.register(Arc::new(webfetch::WebFetchTool::new()));
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
+        registry.register(Arc::new(websearch::WebSearchTool::new()));
+        registry.register(Arc::new(codesearch::CodeSearchTool::new()));
+        registry.register(Arc::new(patch::ApplyPatchTool::new()));
+        registry.register(Arc::new(todo::TodoReadTool::new()));
+        registry.register(Arc::new(todo::TodoWriteTool::new()));
+        registry.register(Arc::new(question::QuestionTool::new()));
+        registry.register(Arc::new(task::TaskTool::new()));
+        registry.register(Arc::new(plan::PlanEnterTool::new()));
+        registry.register(Arc::new(plan::PlanExitTool::new()));
+        registry.register(Arc::new(skill::SkillTool::new()));
+        registry.register(Arc::new(rlm::RlmTool::new()));
+        registry.register(Arc::new(ralph::RalphTool::new()));
+        registry.register(Arc::new(prd::PrdTool::new()));
+        
+        registry
+    }
+
+    /// Create registry with provider for tools that need it (like RalphTool)
+    pub fn with_provider(provider: Arc<dyn Provider>, model: String) -> Self {
+        let mut registry = Self::new();
+        
+        registry.register(Arc::new(file::ReadTool::new()));
+        registry.register(Arc::new(file::WriteTool::new()));
+        registry.register(Arc::new(file::ListTool::new()));
+        registry.register(Arc::new(file::GlobTool::new()));
+        registry.register(Arc::new(search::GrepTool::new()));
+        registry.register(Arc::new(edit::EditTool::new()));
+        registry.register(Arc::new(bash::BashTool::new()));
+        registry.register(Arc::new(lsp::LspTool::new()));
+        registry.register(Arc::new(webfetch::WebFetchTool::new()));
+        registry.register(Arc::new(multiedit::MultiEditTool::new()));
+        registry.register(Arc::new(websearch::WebSearchTool::new()));
+        registry.register(Arc::new(codesearch::CodeSearchTool::new()));
+        registry.register(Arc::new(patch::ApplyPatchTool::new()));
+        registry.register(Arc::new(todo::TodoReadTool::new()));
+        registry.register(Arc::new(todo::TodoWriteTool::new()));
+        registry.register(Arc::new(question::QuestionTool::new()));
+        registry.register(Arc::new(task::TaskTool::new()));
+        registry.register(Arc::new(plan::PlanEnterTool::new()));
+        registry.register(Arc::new(plan::PlanExitTool::new()));
+        registry.register(Arc::new(skill::SkillTool::new()));
+        registry.register(Arc::new(rlm::RlmTool::new()));
+        // RalphTool with provider for autonomous execution
+        registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
+        registry.register(Arc::new(prd::PrdTool::new()));
+        
+        registry
+    }
+
+    /// Create Arc-wrapped registry with batch tool properly initialized.
+    /// The batch tool needs a weak reference to the registry, so we use
+    /// a two-phase initialization pattern.
+    pub fn with_defaults_arc() -> Arc<Self> {
+        let mut registry = Self::with_defaults();
+        
+        // Create batch tool without registry reference
+        let batch_tool = Arc::new(batch::BatchTool::new());
+        registry.register(batch_tool.clone());
+        
+        // Wrap registry in Arc
+        let registry = Arc::new(registry);
+        
+        // Now give batch tool a weak reference to the registry
+        batch_tool.set_registry(Arc::downgrade(&registry));
         
         registry
     }

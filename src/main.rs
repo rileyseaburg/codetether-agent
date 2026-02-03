@@ -28,7 +28,6 @@ use clap::Parser;
 use cli::{A2aArgs, Cli, Command};
 use swarm::{DecompositionStrategy, SwarmExecutor};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

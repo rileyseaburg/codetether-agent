@@ -4,8 +4,8 @@
 
 pub mod builtin;
 
-use crate::config::{AgentConfig, PermissionAction};
-use crate::provider::{CompletionRequest, Message, Provider, Role, ContentPart, ToolDefinition};
+use crate::config::PermissionAction;
+use crate::provider::{CompletionRequest, Message, Provider, Role, ContentPart};
 use crate::session::Session;
 use crate::tool::{Tool, ToolRegistry, ToolResult};
 use anyhow::Result;

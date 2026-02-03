@@ -1,11 +1,14 @@
 //! AI Provider abstraction layer
 //!
-//! Unified interface for multiple AI providers (OpenAI, Anthropic, Google, etc.)
+//! Unified interface for multiple AI providers (OpenAI, Anthropic, Google, StepFun, etc.)
 
 pub mod anthropic;
 pub mod google;
 pub mod models;
+pub mod moonshot;
 pub mod openai;
+pub mod openrouter;
+pub mod stepfun;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -238,10 +241,31 @@ impl ProviderRegistry {
                         Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                     }
                 }
+                // StepFun - native provider (direct API, not via OpenRouter)
+                "stepfun" => {
+                    match stepfun::StepFunProvider::new(api_key) {
+                        Ok(p) => registry.register(Arc::new(p)),
+                        Err(e) => tracing::warn!("Failed to init stepfun: {}", e),
+                    }
+                }
+                // OpenRouter - native provider with support for extended response formats
+                "openrouter" => {
+                    match openrouter::OpenRouterProvider::new(api_key) {
+                        Ok(p) => registry.register(Arc::new(p)),
+                        Err(e) => tracing::warn!("Failed to init openrouter: {}", e),
+                    }
+                }
+                // Moonshot AI - native provider for Kimi models
+                "moonshotai" | "moonshotai-cn" => {
+                    match moonshot::MoonshotProvider::new(api_key) {
+                        Ok(p) => registry.register(Arc::new(p)),
+                        Err(e) => tracing::warn!("Failed to init moonshotai: {}", e),
+                    }
+                }
                 // OpenAI-compatible providers (with custom base_url)
-                "moonshotai" | "moonshotai-cn" | "deepseek" | "groq" | "togetherai" 
-                | "fireworks-ai" | "openrouter" | "mistral" | "nvidia" | "alibaba"
-                | "openai" | "azure" | "stepfun" => {
+                "deepseek" | "groq" | "togetherai" 
+                | "fireworks-ai" | "mistral" | "nvidia" | "alibaba"
+                | "openai" | "azure" => {
                     if let Some(base_url) = secrets.base_url {
                         match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id) {
                             Ok(p) => registry.register(Arc::new(p)),

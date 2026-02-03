@@ -152,11 +152,10 @@ impl RalphLoop {
             }
         }
 
-        if self.state.status != RalphStatus::Completed {
-            if self.state.current_iteration >= self.state.max_iterations {
+        if self.state.status != RalphStatus::Completed
+            && self.state.current_iteration >= self.state.max_iterations {
                 self.state.status = RalphStatus::MaxIterations;
             }
-        }
 
         info!(
             "Ralph finished: {:?}, {}/{} stories passed",

@@ -156,7 +156,7 @@ impl RlmChunker {
 
         // Time prefix [HH:MM
         if line.starts_with('[') && line.len() > 5 
-            && line.chars().nth(1).map_or(false, |c| c.is_ascii_digit()) {
+            && line.chars().nth(1).is_some_and(|c| c.is_ascii_digit()) {
             return true;
         }
 
@@ -182,7 +182,7 @@ impl RlmChunker {
 
     fn is_document_line(line: &str) -> bool {
         // Markdown headers
-        if line.starts_with('#') && line.chars().nth(1).map_or(false, |c| c == ' ' || c == '#') {
+        if line.starts_with('#') && line.chars().nth(1).is_some_and(|c| c == ' ' || c == '#') {
             return true;
         }
 
@@ -249,7 +249,7 @@ impl RlmChunker {
 
     /// Estimate token count (roughly 4 chars per token)
     pub fn estimate_tokens(text: &str) -> usize {
-        (text.len() + 3) / 4
+        text.len().div_ceil(4)
     }
 
     /// Split content into semantic chunks
@@ -438,7 +438,7 @@ impl RlmChunker {
     /// Select chunks to fit within a token budget
     /// Prioritizes high-priority chunks and recent content
     pub fn select_chunks(chunks: &[Chunk], max_tokens: usize) -> Vec<Chunk> {
-        let mut sorted: Vec<_> = chunks.iter().cloned().collect();
+        let mut sorted: Vec<_> = chunks.to_vec();
         
         // Sort by priority (desc), then by line number (desc for recent)
         sorted.sort_by(|a, b| {

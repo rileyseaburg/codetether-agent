@@ -1,30 +1,191 @@
 {
-  "project": "codetether",
-  "feature": "haiku test",
-  "branch_name": "",
+  "project": "lsp-client",
+  "feature": "LSP Client Implementation",
+  "branch_name": "feature/lsp-client-implementation",
   "version": "1.0",
   "user_stories": [
     {
       "id": "US-001",
-      "title": "Write a haiku about Rust",
-      "description": "Generate a haiku poem about the Rust programming language",
+      "title": "LSP Transport Layer - stdio implementation",
+      "description": "Implement the base transport layer using stdio to communicate with LSP servers. Must support reading/writing JSON-RPC messages with Content-Length headers as per LSP 3.17 spec.",
       "acceptance_criteria": [
-        "Output contains 3 lines",
-        "Follows 5-7-5 syllable pattern"
+        "Can spawn LSP server process (e.g., rust-analyzer)",
+        "Can read LSP messages with Content-Length header parsing",
+        "Can write LSP messages with proper headers",
+        "Handles UTF-8 encoding correctly"
       ],
       "passes": true,
       "priority": 1,
       "depends_on": [],
-      "complexity": 1
+      "complexity": 3
+    },
+    {
+      "id": "US-002",
+      "title": "JSON-RPC Message Framework",
+      "description": "Implement JSON-RPC 2.0 message handling for LSP. Support Request, Response, and Notification message types with proper ID tracking.",
+      "acceptance_criteria": [
+        "Can serialize/deserialize JSON-RPC messages",
+        "Supports Request messages with unique IDs",
+        "Supports Response messages with result/error",
+        "Supports Notification messages (no response needed)",
+        "ID generation and tracking for request/response correlation"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-003",
+      "title": "LSP Initialize Handshake",
+      "description": "Implement the LSP initialize request/response lifecycle. This is the mandatory first step in LSP communication where capabilities are exchanged.",
+      "acceptance_criteria": [
+        "Can send initialize request with client capabilities",
+        "Can receive and parse initialize response",
+        "Can send initialized notification",
+        "Handles server capabilities from response",
+        "Proper error handling for initialization failures"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-004",
+      "title": "Text Document Synchronization - didOpen",
+      "description": "Implement textDocument/didOpen notification to inform server about opened documents.",
+      "acceptance_criteria": [
+        "Can send textDocument/didOpen notification",
+        "Includes TextDocumentItem with uri, languageId, version, text",
+        "Properly handles document URI encoding"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-005",
+      "title": "Text Document Synchronization - didChange",
+      "description": "Implement textDocument/didChange notification for incremental and full document updates.",
+      "acceptance_criteria": [
+        "Supports incremental sync (TextDocumentContentChangeEvent with range)",
+        "Supports full sync (complete document text)",
+        "Proper version tracking",
+        "Can batch multiple changes in single notification"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-004"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Text Document Completion",
+      "description": "Implement textDocument/completion request for code completion support.",
+      "acceptance_criteria": [
+        "Can send textDocument/completion request",
+        "Handles CompletionList response with isIncomplete flag",
+        "Handles CompletionItem array response",
+        "Supports CompletionContext (trigger kind, trigger character)",
+        "Parses completion items with labels, kinds, text edits"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-005"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-007",
+      "title": "Text Document Hover",
+      "description": "Implement textDocument/hover request for hover information display.",
+      "acceptance_criteria": [
+        "Can send textDocument/hover request",
+        "Handles Hover response with MarkupContent",
+        "Handles null response (no hover info)",
+        "Supports Position parameter for cursor location"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-005"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-008",
+      "title": "Text Document Definition",
+      "description": "Implement textDocument/definition request for go-to-definition functionality.",
+      "acceptance_criteria": [
+        "Can send textDocument/definition request",
+        "Handles Location response",
+        "Handles Location array response",
+        "Handles LocationLink array response",
+        "Handles null response"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-005"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-009",
+      "title": "LSP Shutdown and Exit",
+      "description": "Implement graceful shutdown sequence with shutdown request and exit notification.",
+      "acceptance_criteria": [
+        "Can send shutdown request",
+        "Waits for shutdown response before exit",
+        "Can send exit notification",
+        "Proper cleanup of resources",
+        "Handles server process termination"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-010",
+      "title": "LSP Client Configuration and Server Management",
+      "description": "Implement server discovery, configuration, and lifecycle management for multiple language servers.",
+      "acceptance_criteria": [
+        "Can configure LSP server per language",
+        "Supports multiple concurrent LSP connections",
+        "Server process health monitoring",
+        "Auto-restart on server crash",
+        "Configuration for server executable path and args"
+      ],
+      "passes": true,
+      "priority": 3,
+      "depends_on": [
+        "US-001",
+        "US-009"
+      ],
+      "complexity": 4
     }
   ],
   "technical_requirements": [],
   "quality_checks": {
-    "typecheck": "echo 'typecheck passed'",
-    "test": "echo 'tests passed'",
-    "lint": "echo 'lint passed'",
-    "build": "echo 'build passed'"
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build --release"
   },
-  "created_at": "2026-02-02T19:45:00+00:00",
-  "updated_at": "2026-02-02T19:45:00+00:00"
+  "created_at": "2026-02-03T09:48:19.043386430+00:00",
+  "updated_at": "2026-02-03T09:48:19.043388650+00:00"
 }

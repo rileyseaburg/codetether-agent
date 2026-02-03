@@ -324,19 +324,19 @@ impl Config {
         if let Ok(val) = std::env::var("OPENAI_API_KEY") {
             self.providers
                 .entry("openai".to_string())
-                .or_insert_with(ProviderConfig::default)
+                .or_default()
                 .api_key = Some(val);
         }
         if let Ok(val) = std::env::var("ANTHROPIC_API_KEY") {
             self.providers
                 .entry("anthropic".to_string())
-                .or_insert_with(ProviderConfig::default)
+                .or_default()
                 .api_key = Some(val);
         }
         if let Ok(val) = std::env::var("GOOGLE_API_KEY") {
             self.providers
                 .entry("google".to_string())
-                .or_insert_with(ProviderConfig::default)
+                .or_default()
                 .api_key = Some(val);
         }
         if let Ok(val) = std::env::var("CODETETHER_A2A_SERVER") {

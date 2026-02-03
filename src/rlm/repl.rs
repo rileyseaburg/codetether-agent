@@ -13,9 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
-use tokio::sync::Mutex;
 use tokio::time::timeout;
-use tracing::{debug, info, warn};
 
 use crate::provider::{
     CompletionRequest, ContentPart, Message, Provider, Role,
@@ -128,7 +126,7 @@ impl RlmRepl {
             return vec![self.context.clone()];
         }
         
-        let chunk_size = (self.context_lines.len() + n - 1) / n;
+        let chunk_size = self.context_lines.len().div_ceil(n);
         self.context_lines
             .chunks(chunk_size)
             .map(|chunk| chunk.join("\n"))
@@ -371,8 +369,8 @@ impl RlmRepl {
         
         // Remove quotes
         let unquoted = inner
-            .trim_start_matches(|c| c == '"' || c == '\'' || c == '`' || c == '/')
-            .trim_end_matches(|c| c == '"' || c == '\'' || c == '`' || c == '/');
+            .trim_start_matches(['"', '\'', '`', '/'])
+            .trim_end_matches(['"', '\'', '`', '/']);
         
         Some(unquoted.to_string())
     }

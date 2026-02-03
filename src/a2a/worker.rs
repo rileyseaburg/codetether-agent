@@ -1,6 +1,5 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
-use super::types::*;
 use crate::cli::A2aArgs;
 use crate::session::Session;
 use anyhow::Result;

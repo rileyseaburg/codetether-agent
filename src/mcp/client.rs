@@ -9,12 +9,12 @@
 use super::transport::{McpMessage, ProcessTransport, Transport};
 use super::types::*;
 use anyhow::Result;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, oneshot, RwLock};
+use tokio::sync::{oneshot, RwLock};
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 

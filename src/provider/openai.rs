@@ -197,8 +197,9 @@ impl Provider for OpenAIProvider {
         let mut req_builder = CreateChatCompletionRequestArgs::default();
         req_builder.model(&request.model).messages(messages);
 
+        // Pass tools to the API if provided
         if !tools.is_empty() {
-            // Note: tools need conversion, simplified here
+            req_builder.tools(tools);
         }
         if let Some(temp) = request.temperature {
             req_builder.temperature(temp);
@@ -212,10 +213,13 @@ impl Provider for OpenAIProvider {
         let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
 
         let mut content = Vec::new();
+        let mut has_tool_calls = false;
+        
         if let Some(text) = &choice.message.content {
             content.push(ContentPart::Text { text: text.clone() });
         }
         if let Some(tool_calls) = &choice.message.tool_calls {
+            has_tool_calls = !tool_calls.is_empty();
             for tc in tool_calls {
                 content.push(ContentPart::ToolCall {
                     id: tc.id.clone(),
@@ -224,6 +228,19 @@ impl Provider for OpenAIProvider {
                 });
             }
         }
+
+        // Determine finish reason based on response
+        let finish_reason = if has_tool_calls {
+            FinishReason::ToolCalls
+        } else {
+            match choice.finish_reason {
+                Some(async_openai::types::FinishReason::Stop) => FinishReason::Stop,
+                Some(async_openai::types::FinishReason::Length) => FinishReason::Length,
+                Some(async_openai::types::FinishReason::ToolCalls) => FinishReason::ToolCalls,
+                Some(async_openai::types::FinishReason::ContentFilter) => FinishReason::ContentFilter,
+                _ => FinishReason::Stop,
+            }
+        };
 
         Ok(CompletionResponse {
             message: Message {
@@ -236,7 +253,7 @@ impl Provider for OpenAIProvider {
                 total_tokens: response.usage.as_ref().map(|u| u.total_tokens as usize).unwrap_or(0),
                 ..Default::default()
             },
-            finish_reason: FinishReason::Stop,
+            finish_reason,
         })
     }
 

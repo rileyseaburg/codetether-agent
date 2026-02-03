@@ -1,0 +1,180 @@
+{
+  "project": "codetether-agent",
+  "feature": "Missing Feature Implementation",
+  "branch_name": "",
+  "version": "1.1",
+  "user_stories": [
+    {
+      "id": "MF-001",
+      "title": "External Directory Tool",
+      "description": "Create a tool for managing files outside the workspace directory. This enables agents to read/write files in external locations when given explicit permission.",
+      "acceptance_criteria": [
+        "Can read files from paths outside workspace",
+        "Can write files to paths outside workspace",
+        "Validates path is not in sensitive system directories",
+        "Returns appropriate errors for permission issues"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "MF-002",
+      "title": "RLM Pool - Connection Pooling",
+      "description": "Implement connection pooling for RLM (Recursive Language Model) agents. Manages a pool of pre-warmed agent instances that can be reused across requests for better performance.",
+      "acceptance_criteria": [
+        "Pool maintains configurable number of idle agents",
+        "Can acquire/release agents from pool",
+        "Automatic cleanup of stale connections",
+        "Metrics for pool utilization"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "MF-003",
+      "title": "Truncation Utilities",
+      "description": "Smart output truncation for tool responses. When outputs exceed context limits, intelligently truncate while preserving important content (beginning, end, errors).",
+      "acceptance_criteria": [
+        "Configurable max output length",
+        "Preserves first N and last M lines",
+        "Marks truncated sections clearly",
+        "Special handling for error output (preserves errors)",
+        "Works with both text and JSON output"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "MF-004",
+      "title": "LSP Full Integration - Server Management",
+      "description": "Complete LSP server management: spawn, connect, and manage language server processes. Currently lsp.rs is a stub - implement actual communication with language servers.",
+      "acceptance_criteria": [
+        "Can spawn rust-analyzer, typescript-language-server, etc.",
+        "Maintains connection lifecycle for each server",
+        "Proper shutdown and cleanup",
+        "Server restart on crash"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "MF-005"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "MF-005",
+      "title": "LSP Transport - stdio Communication",
+      "description": "Implement stdio transport for communicating with LSP servers. Handle Content-Length headers, message framing, and async read/write.",
+      "acceptance_criteria": [
+        "Parse incoming LSP messages with Content-Length headers",
+        "Write outgoing messages with proper headers",
+        "Handle partial reads and buffering",
+        "Async non-blocking I/O"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "MF-006",
+      "title": "LSP Requests - textDocument/definition",
+      "description": "Implement go-to-definition request. Given a file and position, return the location(s) where the symbol is defined.",
+      "acceptance_criteria": [
+        "Send textDocument/definition request",
+        "Parse Location or LocationLink response",
+        "Handle multiple definitions",
+        "Return file path, line, and column"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "MF-004"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "MF-007",
+      "title": "LSP Requests - textDocument/references",
+      "description": "Implement find-references request. Given a file and position, return all locations that reference the symbol.",
+      "acceptance_criteria": [
+        "Send textDocument/references request",
+        "Parse array of Location responses",
+        "Include declaration optionally",
+        "Return list of file paths with line numbers"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "MF-004"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "MF-008",
+      "title": "LSP Requests - textDocument/hover",
+      "description": "Implement hover request. Given a file and position, return documentation and type information for the symbol.",
+      "acceptance_criteria": [
+        "Send textDocument/hover request",
+        "Parse Hover response (markdown content)",
+        "Extract documentation strings",
+        "Handle MarkupContent and MarkedString formats"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "MF-004"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "MF-009",
+      "title": "LSP Requests - textDocument/completion",
+      "description": "Implement completion request. Given a file and position, return completion suggestions.",
+      "acceptance_criteria": [
+        "Send textDocument/completion request",
+        "Parse CompletionList or CompletionItem[] response",
+        "Include label, kind, detail, documentation",
+        "Support snippet insertion"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "MF-004"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "MF-010",
+      "title": "RLM Router Enhancement",
+      "description": "Enhance the RLM router with smarter routing logic. Route chunks to appropriate sub-agents based on content type (code, docs, config, tests).",
+      "acceptance_criteria": [
+        "Classify chunks by content type",
+        "Route to specialized agents per type",
+        "Parallel processing of independent chunks",
+        "Merge results coherently"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "MF-002"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build --release"
+  },
+  "created_at": "",
+  "updated_at": ""
+}

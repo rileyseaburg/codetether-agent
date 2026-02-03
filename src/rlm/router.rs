@@ -395,7 +395,7 @@ impl RlmRouter {
                 let after = &text[start_idx..];
                 
                 // Find the opening quote/paren
-                if let Some(open_idx) = after.find(|c: char| c == '"' || c == '\'' || c == '`') {
+                if let Some(open_idx) = after.find(['"', '\'', '`']) {
                     let quote_char = after.chars().nth(open_idx)?;
                     let content_start = start_idx + open_idx + 1;
                     
