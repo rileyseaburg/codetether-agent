@@ -12,7 +12,7 @@
         "git2 crate added to Cargo.toml dependencies",
         "cargo check passes with new dependency"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 1

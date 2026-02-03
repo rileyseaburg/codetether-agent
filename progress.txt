@@ -22753,3 +22753,494 @@ echo "- This will enable the Git-based undo system to work natively in Rust"
 
 STORY_COMPLETE: US-001
 ```
+
+---
+
+## Iteration 12 - US-007 (2026-02-03T19:13:53.245969569+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-007 - Implement privacy-preserving options for the telemetry collection system. This includes PII redaction, aggregation before export, sampling, and opt-out mechanisms.
+
+```rust
+// src/metrics/privacy.rs - Privacy-preserving telemetry options
+
+//! Privacy-Preserving Telemetry Options
+//! 
+//! This module provides privacy controls for telemetry collection including:
+//! - PII redaction for sensitive fields
+//! - Aggregation before export (no raw data)
+//! - Sampling rate configuration
+//! - Complete opt-out support
+
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::{Duration, Instant};
+use regex::Regex;
+use serde::{Serialize, Deserialize};
+use tracing::{debug, info, trace, warn, instrument};
+use thiserror::Error;
+
+/// Errors that can occur in privacy operations
+#[derive(Debug, Error, Clone)]
+pub enum PrivacyError {
+    #[error("Invalid regex pattern: {0}")]
+    InvalidPattern(String),
+    
+    #[error("Redaction failed: {0}")]
+    RedactionFailed(String),
+    
+    #[error("Sampling error: {0}")]
+    SamplingError(String),
+    
+    #[error("Privacy violation detected: {0}")]
+    PrivacyViolation(String),
+}
+
+/// Result type for privacy operations
+pub type PrivacyResult<T> = Result<T, PrivacyError>;
+
+/// Privacy level for telemetry data
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PrivacyLevel {
+    /// No privacy protection - raw data (use with caution)
+    None,
+    /// Basic - aggregate only, no individual records
+    Basic,
+    /// Standard - aggregation + sampling + field filtering
+    Standard,
+    /// Strict - maximum privacy, aggressive redaction, high aggregation
+    Strict,
+    /// Complete opt-out - no telemetry collected
+    OptOut,
+}
+
+impl PrivacyLevel {
+    /// Get default sampling rate for this level
+    pub fn default_sampling_rate(&self) -> f64 {
+        match self {
+            Self::None => 1.0,      // 100% - all data
+            Self::Basic => 1.0,     // 100% - but aggregated
+            Self::Standard => 0.1,  // 10% sampling
+            Self::Strict => 0.01,   // 1% sampling
+            Self::OptOut => 0.0,    // 0% - no data
+        }
+    }
+
+    /// Whether to aggregate data before export
+    pub fn should_aggregate(&self) -> bool {
+        matches!(self, Self::Basic | Self::Standard | Self::Strict)
+    }
+
+    /// Whether PII redaction is enabled
+    pub fn should_redact_pii(&self) -> bool {
+        matches!(self, Self::Standard | Self::Strict)
+    }
+
+    /// Whether this level allows any telemetry
+    pub fn allows_telemetry(&self) -> bool {
+        !matches!(self, Self::OptOut)
+    }
+
+    /// Get display name
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Basic => "basic",
+            Self::Standard => "standard",
+            Self::Strict => "strict",
+            Self::OptOut => "opt-out",
+        }
+    }
+}
+
+impl Default for PrivacyLevel {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
+/// Types of PII that can be detected and redacted
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PiiType {
+    /// Email addresses
+    Email,
+    /// IP addresses (IPv4 and IPv6)
+    IpAddress,
+    /// Phone numbers
+    PhoneNumber,
+    /// Credit card numbers
+    CreditCard,
+    /// Social Security Numbers / National IDs
+    Ssn,
+    /// API keys and tokens
+    ApiKey,
+    /// Passwords and secrets
+    Password,
+    /// URLs with credentials
+    UrlWithCredentials,
+    /// Database connection strings
+    DatabaseConnection,
+    /// File paths (potentially revealing system structure)
+    FilePath,
+    /// Usernames in paths/URLs
+    Username,
+    /// Hostnames (can reveal internal infrastructure)
+    Hostname,
+    /// MAC addresses
+    MacAddress,
+    /// Custom pattern
+    Custom(&'static str),
+}
+
+impl PiiType {
+    /// Get regex pattern for this PII type
+    pub fn pattern(&self) -> &'static str {
+        match self {
+            Self::Email => r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            Self::IpAddress => r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b|(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}",
+            Self::PhoneNumber => r"\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b",
+            Self::CreditCard => r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\d{3})\d{11})\b",
+            Self::Ssn => r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b",
+            Self::ApiKey => r"\b(?:api[_-]?key|token|secret|password)\s*[:=]\s*['\"]?[a-zA-Z0-9_\-]{16,}['\"]?\b",
+            Self::Password => r"\b(?:password|passwd|pwd)\s*[:=]\s*['\"]?[^\s'\"]{8,}['\"]?\b",
+            Self::UrlWithCredentials => r"[a-zA-Z][a-zA-Z0-9+.-]*://[^@\s]+@[^\s]+",
+            Self::DatabaseConnection => r"(?:mongodb|mysql|postgresql|postgres|redis|amqp)://[^\s]+",
+            Self::FilePath => r"(?:/home/|/Users/|C:\\Users\\|~\/)[^\s]+",
+            Self::Username => r"\b(?:user|username|login)\s*[:=]\s*['\"]?[a-zA-Z][a-zA-Z0-9_\-]{2,}['\"]?\b",
+            Self::Hostname => r"\b[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]\.(?:local|internal|corp|home)\b",
+            Self::MacAddress => r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b",
+            Self::Custom(_) => "", // Must be provided separately
+        }
+    }
+
+    /// Get replacement string for redaction
+    pub fn replacement(&self) -> String {
+        match self {
+            Self::Email => "[EMAIL_REDACTED]".to_string(),
+            Self::IpAddress => "[IP_REDACTED]".to_string(),
+            Self::PhoneNumber => "[PHONE_REDACTED]".to_string(),
+            Self::CreditCard => "[CC_REDACTED]".to_string(),
+            Self::Ssn => "[SSN_REDACTED]".to_string(),
+            Self::ApiKey => "[API_KEY_REDACTED]".to_string(),
+            Self::Password => "[PASSWORD_REDACTED]".to_string(),
+            Self::UrlWithCredentials => "[URL_WITH_CREDS_REDACTED]".to_string(),
+            Self::DatabaseConnection => "[DB_CONN_REDACTED]".to_string(),
+            Self::FilePath => "[PATH_REDACTED]".to_string(),
+            Self::Username => "[USERNAME_REDACTED]".to_string(),
+            Self::Hostname => "[HOSTNAME_REDACTED]".to_string(),
+            Self::MacAddress => "[MAC_REDACTED]".to_string(),
+            Self::Custom(name) => format!("[{}_REDACTED]", name.to_uppercase()),
+        }
+    }
+}
+
+/// Configuration for PII redaction
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RedactionConfig {
+    /// Types of PII to redact
+    #[serde(default = "default_pii_types")]
+    pub pii_types: Vec<PiiType>,
+    
+    /// Additional custom regex patterns
+    #[serde(default)]
+    pub custom_patterns: Vec<(String, String)>, // (pattern, replacement)
+    
+    /// Whether to redact partial matches
+    #[serde(default = "default_true")]
+    pub redact_partial_matches: bool,
+    
+    /// Minimum length for redaction (avoid false positives on short strings)
+    #[serde(default = "default_min_length")]
+    pub min_match_length: usize,
+    
+    /// Whether to hash instead of remove (for correlation without revealing)
+    #[serde(default)]
+    pub use_hashing: bool,
+    
+    /// Hash salt (if hashing enabled)
+    #[serde(skip)] // Don't serialize secrets
+    pub hash_salt: Option<String>,
+    
+    /// Fields to always redact (exact field names)
+    #[serde(default = "default_sensitive_fields")]
+    pub sensitive_fields: HashSet<String>,
+    
+    /// Whether to redact values in structured data (JSON, etc.)
+    #[serde(default = "default_true")]
+    pub redact_structured_values: bool,
+}
+
+fn default_pii_types() -> Vec<PiiType> {
+    vec![
+        PiiType::Email,
+        PiiType::IpAddress,
+        PiiType::ApiKey,
+        PiiType::Password,
+        PiiType::DatabaseConnection,
+        PiiType::UrlWithCredentials,
+    ]
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_min_length() -> usize {
+    4
+}
+
+fn default_sensitive_fields() -> HashSet<String> {
+    let mut fields = HashSet::new();
+    fields.insert("password".to_string());
+    fields.insert("token".to_string());
+    fields.insert("secret".to_string());
+    fields.insert("api_key".to_string());
+    fields.insert("private_key".to_string());
+    fields.insert("authorization".to_string());
+    fields.insert("cookie".to_string());
+    fields.insert("session_id".to_string());
+    fields
+}
+
+impl Default for RedactionConfig {
+    fn default() -> Self {
+        Self {
+            pii_types: default_pii_types(),
+            custom_patterns: Vec::new(),
+            redact_partial_matches: true,
+            min_match_length: default_min_length(),
+            use_hashing: false,
+            hash_salt: None,
+            sensitive_fields: default_sensitive_fields(),
+            redact_structured_values: true,
+        }
+    }
+}
+
+impl RedactionConfig {
+    /// Create new config with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add PII type to redact
+    pub fn with_pii_type(mut self, pii_type: PiiType) -> Self {
+        if !self.pii_types.contains(&pii_type) {
+            self.pii_types.push(pii_type);
+        }
+        self
+    }
+
+    /// Add custom pattern
+    pub fn with_custom_pattern(
+        mut self,
+        pattern: impl Into<String>,
+        replacement: impl Into<String>,
+    ) -> Self {
+        self.custom_patterns.push((pattern.into(), replacement.into()));
+        self
+    }
+
+    /// Enable hashing mode
+    pub fn with_hashing(mut self, salt: impl Into<String>) -> Self {
+        self.use_hashing = true;
+        self.hash_salt = Some(salt.into());
+        self
+    }
+
+    /// Add sensitive field
+    pub fn with_sensitive_field(mut self, field: impl Into<String>) -> Self {
+        self.sensitive_fields.insert(field.into());
+        self
+    }
+
+    /// Disable structured value redaction
+    pub fn without_structured_redaction(mut self) -> Self {
+        self.redact_structured_values = false;
+        self
+    }
+}
+
+/// PII Redactor for cleaning sensitive data
+pub struct PiiRedactor {
+    config: RedactionConfig,
+    compiled_patterns: Vec<(PiiType, Regex)>,
+    custom_regexes: Vec<(Regex, String)>,
+}
+
+impl PiiRedactor {
+    /// Create new redactor with configuration
+    pub fn new(config: RedactionConfig) -> PrivacyResult<Self> {
+        let mut compiled_patterns = Vec::new();
+        
+        // Compile standard PII patterns
+        for pii_type in &config.pii_types {
+            let pattern = pii_type.pattern();
+            if pattern.is_empty() {
+                continue; // Skip custom patterns without predefined regex
+            }
+            
+            let regex = Regex::new(pattern)
+                .map_err(|e| PrivacyError::InvalidPattern(e.to_string()))?;
+            
+            compiled_patterns.push((*pii_type, regex));
+        }
+        
+        // Compile custom patterns
+        let mut custom_regexes = Vec::new();
+        for (pattern, replacement) in &config.custom_patterns {
+            let regex = Regex::new(pattern)
+                .map_err(|e| PrivacyError::InvalidPattern(e.to_string()))?;
+            custom_regexes.push((regex, replacement.clone()));
+        }
+        
+        Ok(Self {
+            config,
+            compiled_patterns,
+            custom_regexes,
+        })
+    }
+
+    /// Redact PII from a string
+    /// 
+    /// # Arguments
+    /// * `input` - The string to redact
+    /// 
+    /// # Returns
+    /// Redacted string with PII replaced
+    /// 
+    /// # Examples
+    /// ```
+    /// let config = RedactionConfig::new()
+    ///     .with_pii_type(PiiType::Email);
+    /// let redactor = PiiRedactor::new(config).unwrap();
+    /// 
+    /// let result = redactor.redact("Contact me at user@example.com");
+    /// assert_eq!(result, "Contact me at [EMAIL_REDACTED]");
+    /// ```
+    pub fn redact(&self, input: impl AsRef<str>) -> String {
+        let mut result = input.as_ref().to_string();
+        
+        // Apply standard PII patterns
+        for (pii_type, regex) in &self.compiled_patterns {
+            result = regex.replace_all(&result, pii_type.replacement()).to_string();
+        }
+        
+        // Apply custom patterns
+        for (regex, replacement) in &self.custom_regexes {
+            result = regex.replace_all(&result, replacement.as_str()).to_string();
+        }
+        
+        // Redact sensitive fields in structured data if enabled
+        if self.config.redact_structured_values {
+            result = self.redact_structured(&result);
+        }
+        
+        result
+    }
+
+    /// Redact sensitive fields in structured data (JSON-like)
+    fn redact_structured(&self, input: &str) -> String {
+        let mut result = input.to_string();
+        
+        for field in &self.config.sensitive_fields {
+            // Pattern: "field": "value" or 'field': 'value' or field=value
+            let patterns = [
+                format!(r#""{}":\s*"[^"]*""#, regex::escape(field)),
+                format!(r#"'{}':\s*'[^']*'"#, regex::escape(field)),
+                format!(r#"{}\s*=\s*[^\s,;]+"#, regex::escape(field)),
+            ];
+            
+            for pattern in &patterns {
+                if let Ok(regex) = Regex::new(pattern) {
+                    let replacement = format!(r#"{}: "[{}_REDACTED]""#, field, field.to_uppercase());
+                    result = regex.replace_all(&result, replacement.as_str()).to_string();
+                }
+            }
+        }
+        
+        result
+    }
+
+    /// Redact with hashing (preserve correlation)
+    /// 
+    /// Instead of replacing with static text, hash the value so that
+    /// identical values produce identical hashes (useful for correlation).
+    pub fn redact_with_hash(&self, input: impl AsRef<str>) -> String {
+        if !self.config.use_hashing {
+            return self.redact(input);
+        }
+        
+        let input_str = input.as_ref();
+        let mut result = input_str.to_string();
+        
+        for (pii_type, regex) in &self.compiled_patterns {
+            result = regex.replace_all(&result, |caps: &regex::Captures| {
+                let matched = caps.get(0).unwrap().as_str();
+                let hash = self.hash_value(matched);
+                format!("[{}_HASH_{}]", pii_type.replacement().trim_matches(&['[', ']'][..]), &hash[..8])
+            }).to_string();
+        }
+        
+        result
+    }
+
+    /// Hash a value for correlation-preserving redaction
+    fn hash_value(&self, value: &str) -> String {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        
+        let mut hasher = DefaultHasher::new();
+        if let Some(ref salt) = self.config.hash_salt {
+            salt.hash(&mut hasher);
+        }
+        value.hash(&mut hasher);
+        format!("{:x}", hasher.finish())
+    }
+
+    /// Check if string contains potential PII
+    pub fn contains_pii(&self, input: impl AsRef<str>) -> bool {
+        let input_str = input.as_ref();
+        
+        for (_, regex) in &self.compiled_patterns {
+            if regex.is_match(input_str) {
+                return true;
+            }
+        }
+        
+        for (regex, _) in &self.custom_regexes {
+            if regex.is_match(input_str) {
+                return true;
+            }
+        }
+        
+        false
+    }
+}
+
+/// Configuration for data aggregation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AggregationConfig {
+    /// Aggregation window duration
+    #[serde(with = "serde_duration_secs", default = "default_agg_window")]
+    pub window_duration: Duration,
+    
+    /// Minimum number of samples before exporting
+    #[serde(default = "default_min_samples")]
+    pub min_samples: usize,
+    
+    /// Maximum number of samples to aggregate
+    #[serde(default = "default_max_samples")]
+    pub max_samples: usize,
+    
+    /// Fields to aggregate (if empty, all numeric fields)
+    #[serde(default)]
+    pub aggregate_fields: Vec<String>,
+    
+    /// Whether to include count in aggregation
+    #[serde(default = "default_true")]
+    pub include_count: bool,
+    
+    /// Whether to include min/max in aggregation
