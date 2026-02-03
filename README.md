@@ -1,5 +1,8 @@
 # CodeTether Agent
 
+[![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protocol support, written in Rust. Part of the CodeTether ecosystem.
 
 > **Dogfooding Achievement**: This agent was used to implement its own features. Using the `ralph` autonomous loop and `swarm` parallel execution, we implemented 20 user stories (LSP client, RLM pool, truncation utilities, and more) with **100% pass rate** on quality checks. The agent wrote its own code, tested it, and validated it—all autonomously.
@@ -19,16 +22,25 @@ A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protoco
 
 ## Installation
 
+### From crates.io (Recommended)
+
 ```bash
 cargo install codetether-agent
 ```
 
-Or build from source:
+This installs the `codetether` binary to `~/.cargo/bin/`.
+
+### From GitHub Releases
+
+Download pre-built binaries from [GitHub Releases](https://github.com/rileyseaburg/codetether-agent/releases).
+
+### From Source
 
 ```bash
-git clone https://github.com/codetether/codetether-agent
+git clone https://github.com/rileyseaburg/codetether-agent
 cd codetether-agent
 cargo build --release
+# Binary at target/release/codetether
 ```
 
 ## Quick Start
@@ -45,15 +57,42 @@ export VAULT_TOKEN="hvs.your-token"
 Store your provider API keys in Vault:
 
 ```bash
-# OpenAI
-vault kv put secret/codetether/providers/openai api_key="sk-..."
+# Moonshot AI (default provider)
+vault kv put secret/codetether/providers/moonshotai api_key="sk-..."
 
-# Anthropic
-vault kv put secret/codetether/providers/anthropic api_key="sk-ant-..."
+# OpenRouter (access to many models)
+vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
 
 # Google AI
 vault kv put secret/codetether/providers/google api_key="AIza..."
+
+# Anthropic (or via Azure)
+vault kv put secret/codetether/providers/anthropic api_key="sk-ant-..." base_url="https://api.anthropic.com"
+
+# Azure Anthropic
+vault kv put secret/codetether/providers/anthropic api_key="..." base_url="https://your-endpoint.azure.com/anthropic/v1"
+
+# StepFun
+vault kv put secret/codetether/providers/stepfun api_key="..."
+
+# MiniMax
+vault kv put secret/codetether/providers/minimax api_key="..." base_url="https://api.minimax.io/anthropic/v1"
+
+# ZhipuAI (GLM models)
+vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https://api.z.ai/api/paas/v4"
 ```
+
+### Supported Providers
+
+| Provider | Default Model | Notes |
+|----------|---------------|-------|
+| `moonshotai` | `kimi-k2.5` | **Default** - excellent for coding |
+| `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
+| `google` | `gemini-2.5-pro` | Google AI |
+| `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
+| `stepfun` | `step-3.5-flash` | Chinese reasoning model |
+| `minimax` | `MiniMax-M2` | Via Anthropic-compatible API |
+| `zhipuai` | `glm-4.7-flashx` | GLM models |
 
 ### 2. Connect to CodeTether Platform
 
@@ -73,6 +112,31 @@ codetether tui
 
 # Start in a specific project
 codetether tui /path/to/project
+```
+
+## CLI Quick Reference
+
+```bash
+# Interactive TUI (like opencode)
+codetether tui
+
+# Chat mode (no tools)
+codetether run "explain this code"
+
+# Swarm mode - parallel sub-agents for complex tasks
+codetether swarm "implement feature X with tests"
+
+# Ralph - autonomous PRD-driven development
+codetether ralph run --prd prd.json
+
+# Generate a PRD template
+codetether ralph create-prd --feature "My Feature" --project-name "my-app"
+
+# Start HTTP server
+codetether serve --port 4096
+
+# Show config
+codetether config --show
 ```
 
 ## Usage
@@ -100,15 +164,20 @@ Environment variables:
 codetether tui
 ```
 
-### Non-Interactive Mode
+### Non-Interactive Mode (Chat - No Tools)
 
 ```bash
-# Run a single prompt
-codetether run "implement the todo feature"
+# Run a single prompt (chat only, no file editing tools)
+codetether run "explain how this codebase works"
 
 # Continue from last session
 codetether run --continue "add tests for the new feature"
+
+# Use a specific model
+codetether run --model openrouter/stepfun/step-3.5-flash:free "explain this code"
 ```
+
+**Note:** `codetether run` is chat-only mode without tools. For coding tasks, use `swarm` or `ralph`.
 
 ### HTTP Server
 
@@ -170,6 +239,10 @@ secret/codetether/providers/
 | `VAULT_TOKEN` | Vault authentication token |
 | `VAULT_MOUNT` | KV secrets engine mount path (default: `secret`) |
 | `VAULT_SECRETS_PATH` | Path prefix for provider secrets (default: `codetether/providers`) |
+| `CODETETHER_DEFAULT_MODEL` | Default model to use (e.g., `moonshotai/kimi-k2.5`) |
+| `CODETETHER_SERVER` | A2A server URL |
+| `CODETETHER_TOKEN` | Authentication token |
+| `CODETETHER_WORKER_NAME` | Worker name |
 
 ### Using Vault Agent
 
@@ -312,11 +385,17 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
 The `swarm` command decomposes complex tasks into parallelizable subtasks and executes them concurrently:
 
 ```bash
-# Execute a complex task with parallel sub-agents
+# Execute a complex task with parallel sub-agents (uses CODETETHER_DEFAULT_MODEL or defaults to moonshotai/kimi-k2.5)
 codetether swarm "Implement user authentication with tests and documentation"
+
+# Specify a model explicitly
+codetether swarm "Implement feature X" --model moonshotai/kimi-k2.5
 
 # Control parallelism and strategy
 codetether swarm "Refactor the API layer" --strategy domain --max-subagents 8
+
+# Generate JSON output
+codetether swarm "Analyze codebase" --json
 ```
 
 ### Decomposition Strategies
@@ -375,11 +454,14 @@ Ralph is an autonomous agent loop that implements features from a structured PRD
 # Create a new PRD template
 codetether ralph create-prd --feature "User Authentication" --project-name "my-app"
 
-# Run Ralph to implement the PRD
-codetether ralph run -p prd.json -m "kimi-k2.5" --max-iterations 10
+# Run Ralph to implement the PRD (note: -p or --prd is required for custom PRD path)
+codetether ralph run --prd prd.json --model "moonshotai/kimi-k2.5" --max-iterations 10
+
+# Or using short flags
+codetether ralph run -p my-feature-prd.json -m "moonshotai/kimi-k2.5"
 
 # Check status
-codetether ralph status -p prd.json
+codetether ralph status --prd prd.json
 ```
 
 ### How Ralph Works
