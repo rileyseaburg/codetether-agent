@@ -47,7 +47,7 @@
         "list_models() for available models",
         "get_model_info() for capabilities"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [
         "US-002"

@@ -19663,3 +19663,665 @@ pub struct StreamingChunk {
 impl StreamingChunk {
     /// Create a new streaming chunk
     pub fn new
+
+---
+
+## Iteration 8 - US-005 (2026-02-03T19:07:09.240073513+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-005 - Prometheus exporter that exposes metrics in Prometheus exposition format on an HTTP endpoint. This builds on the metrics infrastructure from previous stories.
+
+```rust
+// src/metrics/prometheus.rs - Prometheus metrics exporter implementation
+
+//! Prometheus Metrics Exporter
+//! 
+//! This module provides a Prometheus-compatible HTTP endpoint for exposing metrics
+//! in the Prometheus exposition format. It includes the PrometheusExporter struct,
+//! configurable port/path, and proper formatting.
+
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime};
+use tokio::net::TcpListener;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::task::JoinHandle;
+use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::service::{make_service_fn, service_fn};
+use tracing::{debug, error, info, trace, warn};
+use thiserror::Error;
+use serde::{Serialize, Deserialize};
+
+use crate::metrics::{
+    MetricsError, MetricsResult, MetricsConfig,
+    pass_rate::{PassRateRegistry, PassRateSnapshot},
+    latency::{LatencyHistogram, LatencyStats, HistogramSnapshot},
+    token_usage::{TokenUsageRegistry, TokenUsageSnapshot},
+};
+
+/// Errors specific to Prometheus exporter operations
+#[derive(Debug, Error)]
+pub enum PrometheusError {
+    #[error("Failed to bind to address {0}: {1}")]
+    BindFailed(String, String),
+    
+    #[error("Server error: {0}")]
+    ServerError(String),
+    
+    #[error("Invalid metric format: {0}")]
+    InvalidFormat(String),
+    
+    #[error("Metrics collection error: {0}")]
+    CollectionError(String),
+    
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+/// Result type for Prometheus operations
+pub type PrometheusResult<T> = Result<T, PrometheusError>;
+
+/// Configuration for Prometheus exporter
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrometheusConfig {
+    /// Host to bind to
+    pub host: String,
+    /// Port to listen on
+    pub port: u16,
+    /// Path for metrics endpoint
+    pub metrics_path: String,
+    /// Whether to enable gzip compression
+    pub enable_gzip: bool,
+    /// Maximum scrape timeout
+    #[serde(with = "serde_duration_secs")]
+    pub scrape_timeout: Duration,
+    /// Custom labels to add to all metrics
+    pub global_labels: HashMap<String, String>,
+    /// Whether to include process metrics
+    pub include_process_metrics: bool,
+    /// Whether to include Go runtime metrics (for compatibility)
+    pub go_compat: bool,
+}
+
+// Serde helper for Duration in seconds
+mod serde_duration_secs {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        duration.as_secs().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secs = u64::deserialize(deserializer)?;
+        Ok(Duration::from_secs(secs))
+    }
+}
+
+impl Default for PrometheusConfig {
+    fn default() -> Self {
+        let mut global_labels = HashMap::new();
+        global_labels.insert("service".to_string(), "codetether-agent".to_string());
+        
+        Self {
+            host: "0.0.0.0".to_string(),
+            port: 9090,
+            metrics_path: "/metrics".to_string(),
+            enable_gzip: true,
+            scrape_timeout: Duration::from_secs(30),
+            global_labels,
+            include_process_metrics: true,
+            go_compat: false,
+        }
+    }
+}
+
+impl PrometheusConfig {
+    /// Create new config with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set host and port
+    pub fn with_address(mut self, host: impl Into<String>, port: u16) -> Self {
+        self.host = host.into();
+        self.port = port;
+        self
+    }
+
+    /// Set metrics path
+    pub fn with_path(mut self, path: impl Into<String>) -> Self {
+        self.metrics_path = path.into();
+        self
+    }
+
+    /// Disable gzip compression
+    pub fn without_gzip(mut self) -> Self {
+        self.enable_gzip = false;
+        self
+    }
+
+    /// Add global label
+    pub fn with_label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.global_labels.insert(key.into(), value.into());
+        self
+    }
+
+    /// Enable Go compatibility mode
+    pub fn with_go_compat(mut self) -> Self {
+        self.go_compat = true;
+        self
+    }
+
+    /// Get full address as SocketAddr
+    pub fn socket_addr(&self) -> PrometheusResult<SocketAddr> {
+        let addr = format!("{}:{}", self.host, self.port);
+        addr.parse()
+            .map_err(|e| PrometheusError::BindFailed(addr, e.to_string()))
+    }
+
+    /// Get metrics endpoint URL
+    pub fn metrics_url(&self) -> String {
+        format!("http://{}:{}{}", self.host, self.port, self.metrics_path)
+    }
+}
+
+/// Metric type for Prometheus
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetricType {
+    Counter,
+    Gauge,
+    Histogram,
+    Summary,
+}
+
+impl MetricType {
+    /// Get type name as string
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Counter => "counter",
+            Self::Gauge => "gauge",
+            Self::Histogram => "histogram",
+            Self::Summary => "summary",
+        }
+    }
+}
+
+/// A single Prometheus metric sample
+#[derive(Debug, Clone)]
+pub struct MetricSample {
+    /// Metric name
+    pub name: String,
+    /// Labels (key-value pairs)
+    pub labels: HashMap<String, String>,
+    /// Sample value
+    pub value: f64,
+    /// Timestamp (optional)
+    pub timestamp: Option<i64>,
+}
+
+impl MetricSample {
+    /// Create new sample
+    pub fn new(name: impl Into<String>, value: f64) -> Self {
+        Self {
+            name: name.into(),
+            labels: HashMap::new(),
+            value,
+            timestamp: None,
+        }
+    }
+
+    /// Add label
+    pub fn with_label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.labels.insert(key.into(), value.into());
+        self
+    }
+
+    /// Add labels from map
+    pub fn with_labels(mut self, labels: HashMap<String, String>) -> Self {
+        self.labels.extend(labels);
+        self
+    }
+
+    /// Set timestamp
+    pub fn with_timestamp(mut self, ts: i64) -> Self {
+        self.timestamp = Some(ts);
+        self
+    }
+
+    /// Format as Prometheus exposition format
+    pub fn format(&self) -> String {
+        let labels = if self.labels.is_empty() {
+            String::new()
+        } else {
+            let label_pairs: Vec<String> = self.labels
+                .iter()
+                .map(|(k, v)| format!("{}=\"{}\"", k, escape_label_value(v)))
+                .collect();
+            format!("{{{}}}", label_pairs.join(","))
+        };
+
+        match self.timestamp {
+            Some(ts) => format!("{}{} {} {}", self.name, labels, self.value, ts),
+            None => format!("{}{} {}", self.name, labels, self.value),
+        }
+    }
+}
+
+/// Escape special characters in label value
+fn escape_label_value(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+}
+
+/// Metric family (multiple samples with same name)
+#[derive(Debug, Clone)]
+pub struct MetricFamily {
+    /// Metric name
+    pub name: String,
+    /// Help text
+    pub help: String,
+    /// Metric type
+    pub metric_type: MetricType,
+    /// Samples
+    pub samples: Vec<MetricSample>,
+}
+
+impl MetricFamily {
+    /// Create new metric family
+    pub fn new(
+        name: impl Into<String>,
+        help: impl Into<String>,
+        metric_type: MetricType,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            help: help.into(),
+            metric_type,
+            samples: Vec::new(),
+        }
+    }
+
+    /// Add a sample
+    pub fn add_sample(&mut self, sample: MetricSample) -> &mut Self {
+        self.samples.push(sample);
+        self
+    }
+
+    /// Create and add a sample
+    pub fn sample(
+        &mut self,
+        value: f64,
+    ) -> &mut MetricSample {
+        let sample = MetricSample::new(&self.name, value);
+        self.samples.push(sample);
+        self.samples.last_mut().unwrap()
+    }
+
+    /// Format as Prometheus exposition format
+    pub fn format(&self) -> String {
+        let mut lines = Vec::new();
+        
+        // HELP line
+        lines.push(format!("# HELP {} {}", self.name, self.help));
+        
+        // TYPE line
+        lines.push(format!("# TYPE {} {}", self.name, self.metric_type.as_str()));
+        
+        // Samples
+        for sample in &self.samples {
+            lines.push(sample.format());
+        }
+        
+        // Empty line after family
+        lines.push(String::new());
+        
+        lines.join("\n")
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.samples.is_empty()
+    }
+}
+
+/// Collector trait for metrics collection
+pub trait MetricsCollector: Send + Sync {
+    /// Collect metrics into metric families
+    fn collect(&self) -> Vec<MetricFamily>;
+}
+
+/// Registry of metrics collectors
+pub struct CollectorRegistry {
+    collectors: Vec<Box<dyn MetricsCollector>>,
+}
+
+impl CollectorRegistry {
+    /// Create new registry
+    pub fn new() -> Self {
+        Self {
+            collectors: Vec::new(),
+        }
+    }
+
+    /// Register a collector
+    pub fn register(&mut self, collector: Box<dyn MetricsCollector>) {
+        self.collectors.push(collector);
+    }
+
+    /// Collect all metrics
+    pub fn collect(&self) -> Vec<MetricFamily> {
+        let mut families = Vec::new();
+        for collector in &self.collectors {
+            families.extend(collector.collect());
+        }
+        families
+    }
+}
+
+/// Pass rate metrics collector
+pub struct PassRateCollector {
+    registry: Arc<PassRateRegistry>,
+    global_labels: HashMap<String, String>,
+}
+
+impl PassRateCollector {
+    /// Create new collector
+    pub fn new(registry: Arc<PassRateRegistry>, global_labels: HashMap<String, String>) -> Self {
+        Self {
+            registry,
+            global_labels,
+        }
+    }
+}
+
+impl MetricsCollector for PassRateCollector {
+    fn collect(&self) -> Vec<MetricFamily> {
+        let mut families = Vec::new();
+        let snapshots = self.registry.all_snapshots();
+
+        // Total operations counter
+        let mut total_family = MetricFamily::new(
+            "codetether_operations_total",
+            "Total number of operations",
+            MetricType::Counter,
+        );
+
+        // Success counter
+        let mut success_family = MetricFamily::new(
+            "codetether_operations_successful_total",
+            "Total number of successful operations",
+            MetricType::Counter,
+        );
+
+        // Failure counter
+        let mut failure_family = MetricFamily::new(
+            "codetether_operations_failed_total",
+            "Total number of failed operations",
+            MetricType::Counter,
+        );
+
+        // Success rate gauge
+        let mut rate_family = MetricFamily::new(
+            "codetether_success_rate",
+            "Success rate (0.0 to 1.0)",
+            MetricType::Gauge,
+        );
+
+        for (op_type, snapshot) in snapshots {
+            let mut labels = self.global_labels.clone();
+            labels.insert("operation_type".to_string(), op_type);
+
+            total_family.add_sample(
+                MetricSample::new("codetether_operations_total", snapshot.total as f64)
+                    .with_labels(labels.clone())
+            );
+
+            success_family.add_sample(
+                MetricSample::new("codetether_operations_successful_total", snapshot.success as f64)
+                    .with_labels(labels.clone())
+            );
+
+            failure_family.add_sample(
+                MetricSample::new("codetether_operations_failed_total", snapshot.failure as f64)
+                    .with_labels(labels.clone())
+            );
+
+            rate_family.add_sample(
+                MetricSample::new("codetether_success_rate", snapshot.success_rate)
+                    .with_labels(labels)
+            );
+        }
+
+        families.push(total_family);
+        families.push(success_family);
+        families.push(failure_family);
+        families.push(rate_family);
+
+        families
+    }
+}
+
+/// Latency metrics collector
+pub struct LatencyCollector {
+    histograms: Vec<(String, Arc<LatencyHistogram>)>,
+    global_labels: HashMap<String, String>,
+}
+
+impl LatencyCollector {
+    /// Create new collector
+    pub fn new(global_labels: HashMap<String, String>) -> Self {
+        Self {
+            histograms: Vec::new(),
+            global_labels,
+        }
+    }
+
+    /// Register a histogram
+    pub fn register_histogram(&mut self, name: impl Into<String>, histogram: Arc<LatencyHistogram>) {
+        self.histograms.push((name.into(), histogram));
+    }
+}
+
+impl MetricsCollector for LatencyCollector {
+    fn collect(&self) -> Vec<MetricFamily> {
+        let mut families = Vec::new();
+
+        for (name, histogram) in &self.histograms {
+            let snapshot = histogram.snapshot();
+            let stats = snapshot.stats;
+            let base_name = format!("codetether_latency_{}", name);
+
+            // Bucket counts
+            let mut bucket_family = MetricFamily::new(
+                format!("{}_bucket", base_name),
+                format!("Latency histogram buckets for {}", name),
+                MetricType::Histogram,
+            );
+
+            let mut cumulative = 0u64;
+            for bucket in &snapshot.buckets {
+                cumulative += bucket.count;
+                let mut labels = self.global_labels.clone();
+                labels.insert("le".to_string(), format!("{}", bucket.upper_bound_ms as f64 / 1000.0));
+                
+                bucket_family.add_sample(
+                    MetricSample::new(format!("{}_bucket", base_name), cumulative as f64)
+                        .with_labels(labels)
+                );
+            }
+
+            // +Inf bucket
+            let mut inf_labels = self.global_labels.clone();
+            inf_labels.insert("le".to_string(), "+Inf".to_string());
+            bucket_family.add_sample(
+                MetricSample::new(format!("{}_bucket", base_name), stats.count as f64)
+                    .with_labels(inf_labels)
+            );
+
+            // Sum
+            let sum_family = MetricFamily::new(
+                format!("{}_sum", base_name),
+                format!("Sum of latencies for {}", name),
+                MetricType::Counter,
+            ).sample(stats.sum_ms as f64 / 1000.0)
+             .with_labels(self.global_labels.clone())
+             .clone();
+
+            // Count
+            let count_family = MetricFamily::new(
+                format!("{}_count", base_name),
+                format!("Count of latency observations for {}", name),
+                MetricType::Counter,
+            ).sample(stats.count as f64)
+             .with_labels(self.global_labels.clone())
+             .clone();
+
+            // Gauge metrics for percentiles
+            let mut percentile_family = MetricFamily::new(
+                format!("{}_percentile", base_name),
+                format!("Latency percentiles for {}", name),
+                MetricType::Gauge,
+            );
+
+            let percentiles = vec![
+                ("p50", stats.p50_ms),
+                ("p95", stats.p95_ms),
+                ("p99", stats.p99_ms),
+                ("p999", stats.p999_ms),
+            ];
+
+            for (p_name, value) in percentiles {
+                let mut labels = self.global_labels.clone();
+                labels.insert("percentile".to_string(), p_name.to_string());
+                percentile_family.add_sample(
+                    MetricSample::new(format!("{}_percentile", base_name), value / 1000.0)
+                        .with_labels(labels)
+                );
+            }
+
+            families.push(bucket_family);
+            families.push(sum_family);
+            families.push(count_family);
+            families.push(percentile_family);
+        }
+
+        families
+    }
+}
+
+/// Token usage metrics collector
+pub struct TokenUsageCollector {
+    registry: Arc<TokenUsageRegistry>,
+    global_labels: HashMap<String, String>,
+}
+
+impl TokenUsageCollector {
+    /// Create new collector
+    pub fn new(registry: Arc<TokenUsageRegistry>, global_labels: HashMap<String, String>) -> Self {
+        Self {
+            registry,
+            global_labels,
+        }
+    }
+}
+
+impl MetricsCollector for TokenUsageCollector {
+    fn collect(&self) -> Vec<MetricFamily> {
+        let mut families = Vec::new();
+
+        // Global token usage
+        let global = self.registry.global_snapshot();
+
+        // Input tokens
+        let mut input_family = MetricFamily::new(
+            "codetether_tokens_input_total",
+            "Total input/prompt tokens used",
+            MetricType::Counter,
+        );
+
+        // Output tokens
+        let mut output_family = MetricFamily::new(
+            "codetether_tokens_output_total",
+            "Total output/completion tokens used",
+            MetricType::Counter,
+        );
+
+        // Total tokens
+        let mut total_family = MetricFamily::new(
+            "codetether_tokens_total",
+            "Total tokens used (input + output)",
+            MetricType::Counter,
+        );
+
+        // By model
+        for snapshot in self.registry.model_snapshots() {
+            let mut labels = self.global_labels.clone();
+            labels.insert("model".to_string(), snapshot.name.clone());
+
+            input_family.add_sample(
+                MetricSample::new("codetether_tokens_input_total", snapshot.totals.input as f64)
+                    .with_labels(labels.clone())
+            );
+
+            output_family.add_sample(
+                MetricSample::new("codetether_tokens_output_total", snapshot.totals.output as f64)
+                    .with_labels(labels.clone())
+            );
+
+            total_family.add_sample(
+                MetricSample::new("codetether_tokens_total", snapshot.totals.total() as f64)
+                    .with_labels(labels)
+            );
+        }
+
+        families.push(input_family);
+        families.push(output_family);
+        families.push(total_family);
+
+        families
+    }
+}
+
+/// Process metrics collector (CPU, memory, etc.)
+pub struct ProcessCollector {
+    global_labels: HashMap<String, String>,
+    start_time: SystemTime,
+}
+
+impl ProcessCollector {
+    /// Create new collector
+    pub fn new(global_labels: HashMap<String, String>) -> Self {
+        Self {
+            global_labels,
+            start_time: SystemTime::now(),
+        }
+    }
+
+    /// Get process start time
+    fn start_time_seconds(&self) -> f64 {
+        self.start_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64()
+    }
+
+    /// Get current memory usage (simplified - would use sysinfo in production)
+    fn memory_usage_bytes(&self) -> u64 {
+        // Placeholder - would use getrusage or procfs
+        0
+    }
+
+    /// Get CPU usage (placeholder)
+    fn cpu
