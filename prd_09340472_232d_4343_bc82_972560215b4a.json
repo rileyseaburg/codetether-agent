@@ -118,7 +118,7 @@
         "Handles tool use",
         "Converts to Anthropic message format"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-003"

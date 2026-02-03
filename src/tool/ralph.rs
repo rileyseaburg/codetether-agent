@@ -124,6 +124,9 @@ Actions:
                     auto_commit: true,
                     model: Some(self.model.clone()),
                     use_rlm: false,
+                    parallel_enabled: true,
+                    max_concurrent_stories: 3,
+                    worktree_enabled: true,
                 };
 
                 let mut ralph = RalphLoop::new(
