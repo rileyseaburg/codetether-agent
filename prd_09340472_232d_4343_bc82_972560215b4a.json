@@ -64,7 +64,7 @@
         "validate_request() for token limits",
         "get_token_limit() returns 262144"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-002"
