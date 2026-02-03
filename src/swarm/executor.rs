@@ -14,6 +14,7 @@ pub use super::{Actor, ActorStatus, Handler, SwarmMessage};
 use crate::{
     agent::Agent,
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
+    rlm::RlmExecutor,
     swarm::{SwarmArtifact, SwarmStats},
     tool::ToolRegistry,
     worktree::{WorktreeManager, WorktreeInfo},
@@ -70,9 +71,10 @@ fn estimate_total_tokens(messages: &[Message]) -> usize {
 /// Truncate messages to fit within context limit
 /// 
 /// Strategy:
-/// 1. Keep system message (first) and user message (second) always
-/// 2. Keep the most recent assistant + tool result pairs
-/// 3. Drop oldest middle messages (summarize if possible)
+/// 1. First, aggressively truncate large tool results
+/// 2. Keep system message (first) and user message (second) always
+/// 3. Keep the most recent assistant + tool result pairs together
+/// 4. Drop oldest middle messages in matched pairs
 fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
     let target_tokens = ((context_limit as f64) * TRUNCATION_THRESHOLD) as usize - RESPONSE_RESERVE_TOKENS;
     
@@ -88,20 +90,41 @@ fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
         "Context approaching limit, truncating conversation history"
     );
     
+    // FIRST: Aggressively truncate large tool results (this is the main culprit)
+    truncate_large_tool_results(messages, 2000); // Max 2k tokens per tool result
+    
+    let after_tool_truncation = estimate_total_tokens(messages);
+    if after_tool_truncation <= target_tokens {
+        tracing::info!(
+            old_tokens = current_tokens,
+            new_tokens = after_tool_truncation,
+            "Truncated large tool results, context now within limits"
+        );
+        return;
+    }
+    
     // Minimum: keep first 2 (system + initial user) and last 4 messages
     if messages.len() <= 6 {
-        // Can't truncate further, try to truncate individual tool results
-        truncate_large_tool_results(messages, target_tokens);
+        tracing::warn!(
+            tokens = after_tool_truncation,
+            target = target_tokens,
+            "Cannot truncate further - conversation too short"
+        );
         return;
     }
     
     // Remove messages from the middle, keeping first 2 and last 4
+    // But we need to remove in pairs to maintain tool_call_id references
     let keep_start = 2;
     let keep_end = 4;
-    let to_remove = messages.len() - keep_start - keep_end;
+    let removable_count = messages.len() - keep_start - keep_end;
     
-    // Create a summary of what was removed
-    let removed_messages: Vec<_> = messages.drain(keep_start..keep_start + to_remove).collect();
+    if removable_count == 0 {
+        return;
+    }
+    
+    // Remove all middle messages
+    let removed_messages: Vec<_> = messages.drain(keep_start..keep_start + removable_count).collect();
     let summary = summarize_removed_messages(&removed_messages);
     
     // Insert a summary message where we removed content
@@ -120,11 +143,6 @@ fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
         new_tokens = new_tokens,
         "Truncated conversation history"
     );
-    
-    // If still too large, truncate individual tool results
-    if new_tokens > target_tokens {
-        truncate_large_tool_results(messages, target_tokens);
-    }
 }
 
 /// Summarize removed messages for context preservation
@@ -150,42 +168,129 @@ fn summarize_removed_messages(messages: &[Message]) -> String {
 }
 
 /// Truncate large tool results that exceed a reasonable size
-fn truncate_large_tool_results(messages: &mut [Message], target_tokens: usize) {
-    let max_tool_result_tokens = 4000; // Max tokens per tool result
+fn truncate_large_tool_results(messages: &mut [Message], max_tokens_per_result: usize) {
+    let char_limit = max_tokens_per_result * 3; // ~3 chars per token
+    let mut truncated_count = 0;
+    let mut saved_tokens = 0usize;
     
     for message in messages.iter_mut() {
         for part in message.content.iter_mut() {
             if let ContentPart::ToolResult { content, .. } = part {
                 let tokens = estimate_tokens(content);
-                if tokens > max_tool_result_tokens {
-                    // Truncate with ellipsis
-                    let char_limit = max_tool_result_tokens * 3; // ~3 chars per token
-                    if content.len() > char_limit {
-                        let truncated = format!(
-                            "{}...\n\n[Output truncated: {} chars → {} chars to fit context]",
-                            &content[..char_limit],
-                            content.len(),
-                            char_limit
-                        );
-                        *content = truncated;
-                        tracing::debug!(
-                            original_tokens = tokens,
-                            new_tokens = estimate_tokens(content),
-                            "Truncated large tool result"
-                        );
+                if tokens > max_tokens_per_result {
+                    let old_len = content.len();
+                    *content = truncate_single_result(content, char_limit);
+                    saved_tokens += tokens.saturating_sub(estimate_tokens(content));
+                    if content.len() < old_len {
+                        truncated_count += 1;
                     }
                 }
             }
         }
     }
     
-    let new_total = estimate_total_tokens(messages);
-    if new_total > target_tokens {
-        tracing::warn!(
-            tokens = new_total,
-            target = target_tokens,
-            "Context still exceeds target after truncation - request may fail"
+    if truncated_count > 0 {
+        tracing::info!(
+            truncated_count = truncated_count,
+            saved_tokens = saved_tokens,
+            max_tokens_per_result = max_tokens_per_result,
+            "Truncated large tool results"
         );
+    }
+}
+
+/// Truncate a single result string to a maximum character limit
+fn truncate_single_result(content: &str, max_chars: usize) -> String {
+    if content.len() <= max_chars {
+        return content.to_string();
+    }
+    
+    // Try to find a good break point (newline) near the limit
+    let break_point = content[..max_chars.min(content.len())]
+        .rfind('\n')
+        .unwrap_or(max_chars.min(content.len()));
+    
+    let truncated = format!(
+        "{}...\n\n[OUTPUT TRUNCATED: {} → {} chars to fit context limit]",
+        &content[..break_point],
+        content.len(),
+        break_point
+    );
+    
+    tracing::debug!(
+        original_len = content.len(),
+        truncated_len = truncated.len(),
+        "Truncated large result"
+    );
+    
+    truncated
+}
+
+/// Threshold for when to use RLM vs truncation (in characters)
+const RLM_THRESHOLD_CHARS: usize = 50_000;
+
+/// Max chars for simple truncation (below RLM threshold)
+const SIMPLE_TRUNCATE_CHARS: usize = 6000;
+
+/// Process a large tool result using RLM to intelligently summarize it
+async fn process_large_result_with_rlm(
+    content: &str,
+    tool_name: &str,
+    provider: Arc<dyn Provider>,
+    model: &str,
+) -> String {
+    if content.len() <= SIMPLE_TRUNCATE_CHARS {
+        return content.to_string();
+    }
+    
+    // For medium-sized content, just truncate
+    if content.len() <= RLM_THRESHOLD_CHARS {
+        return truncate_single_result(content, SIMPLE_TRUNCATE_CHARS);
+    }
+    
+    // For very large content, use RLM to intelligently summarize
+    tracing::info!(
+        tool = %tool_name,
+        content_len = content.len(),
+        "Using RLM to process large tool result"
+    );
+    
+    let query = format!(
+        "Summarize the key information from this {} output. \
+         Focus on: errors, warnings, important findings, and actionable items. \
+         Be concise but thorough.",
+        tool_name
+    );
+    
+    let mut executor = RlmExecutor::new(content.to_string(), provider, model.to_string())
+        .with_max_iterations(3);
+    
+    match executor.analyze(&query).await {
+        Ok(result) => {
+            tracing::info!(
+                tool = %tool_name,
+                original_len = content.len(),
+                summary_len = result.answer.len(),
+                iterations = result.iterations,
+                "RLM summarized large result"
+            );
+            
+            format!(
+                "[RLM Summary of {} output ({} chars → {} chars)]\n\n{}",
+                tool_name,
+                content.len(),
+                result.answer.len(),
+                result.answer
+            )
+        }
+        Err(e) => {
+            tracing::warn!(
+                tool = %tool_name,
+                error = %e,
+                "RLM analysis failed, falling back to truncation"
+            );
+            truncate_single_result(content, SIMPLE_TRUNCATE_CHARS)
+        }
     }
 }
 
@@ -924,11 +1029,20 @@ async fn run_agent_loop(
                 "Tool result"
             );
             
-            tool_results.push((call_id, result));
+            // Process large results with RLM or truncate smaller ones
+            let result = if result.len() > RLM_THRESHOLD_CHARS {
+                // Use RLM for very large results
+                process_large_result_with_rlm(&result, &tool_name, Arc::clone(&provider), model).await
+            } else {
+                // Simple truncation for medium results
+                truncate_single_result(&result, SIMPLE_TRUNCATE_CHARS)
+            };
+            
+            tool_results.push((call_id, tool_name, result));
         }
         
         // Add tool results to conversation
-        for (call_id, result) in tool_results {
+        for (call_id, _tool_name, result) in tool_results {
             messages.push(Message {
                 role: Role::Tool,
                 content: vec![ContentPart::ToolResult {
