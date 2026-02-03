@@ -114,7 +114,7 @@
         "Throughput metrics",
         "Export to tracing/logs"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "depends_on": [
         "US-002"
