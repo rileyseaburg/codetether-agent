@@ -293,7 +293,7 @@ impl RalphLoop {
                     let prompt = Self::build_story_prompt(&story, &prd_info, &story_working_dir);
                     
                     // Call the LLM
-                    let result = Self::call_llm_static(&provider, &model, &prompt).await;
+                    let result = Self::call_llm_static(&provider, &model, &prompt, &story_working_dir).await;
                     
                     let entry = match &result {
                         Ok(response) => {
@@ -458,14 +458,23 @@ Respond with the implementation and any shell commands needed.
     }
     
     /// Call LLM (static version for parallel execution)
-    async fn call_llm_static(provider: &Arc<dyn Provider>, model: &str, prompt: &str) -> anyhow::Result<String> {
+    async fn call_llm_static(provider: &Arc<dyn Provider>, model: &str, prompt: &str, working_dir: &PathBuf) -> anyhow::Result<String> {
         use crate::provider::ContentPart;
         
+        // Build system prompt with AGENTS.md
+        let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
+        
         let request = CompletionRequest {
-            messages: vec![Message {
-                role: Role::User,
-                content: vec![ContentPart::Text { text: prompt.to_string() }],
-            }],
+            messages: vec![
+                Message {
+                    role: Role::System,
+                    content: vec![ContentPart::Text { text: system_prompt }],
+                },
+                Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text { text: prompt.to_string() }],
+                },
+            ],
             tools: Vec::new(),
             model: model.to_string(),
             temperature: Some(0.7),
@@ -594,11 +603,20 @@ Respond with the implementation and any shell commands needed.
     async fn call_llm(&self, prompt: &str) -> anyhow::Result<String> {
         use crate::provider::ContentPart;
         
+        // Build system prompt with AGENTS.md
+        let system_prompt = crate::agent::builtin::build_system_prompt(&self.state.working_dir);
+        
         let request = CompletionRequest {
-            messages: vec![Message {
-                role: Role::User,
-                content: vec![ContentPart::Text { text: prompt.to_string() }],
-            }],
+            messages: vec![
+                Message {
+                    role: Role::System,
+                    content: vec![ContentPart::Text { text: system_prompt }],
+                },
+                Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text { text: prompt.to_string() }],
+                },
+            ],
             tools: Vec::new(),
             model: self.model.clone(),
             temperature: Some(0.7),
