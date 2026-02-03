@@ -13,7 +13,7 @@
         "Module is declared in src/rlm/mod.rs",
         "Basic types and traits are defined"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 2
