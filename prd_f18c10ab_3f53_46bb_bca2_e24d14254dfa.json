@@ -13,7 +13,7 @@
         "Cargo.toml has opentelemetry, prometheus, metrics dependencies",
         "cargo check passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 2
