@@ -138,6 +138,16 @@ impl Orchestrator {
             .collect::<Vec<_>>()
             .join("\n");
         
+        tracing::debug!("Decomposition response: {}", text);
+        
+        if text.trim().is_empty() {
+            // Fallback to single task if decomposition fails
+            tracing::warn!("Empty decomposition response, falling back to single task");
+            let subtask = SubTask::new("Main Task", task);
+            self.subtasks.insert(subtask.id.clone(), subtask.clone());
+            return Ok(vec![subtask]);
+        }
+        
         let subtasks = self.parse_decomposition(&text)?;
         
         // Store subtasks

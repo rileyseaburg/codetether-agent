@@ -8,4 +8,3 @@ pub mod server;
 pub mod types;
 pub mod worker;
 
-pub use types::*;

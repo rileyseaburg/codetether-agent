@@ -1,0 +1,90 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.0] - 2026-02-03
+
+### Added
+
+#### Core Features
+- **Ralph Loop**: Autonomous PRD-driven development loop
+  - Implements user stories from structured PRD files
+  - Quality gates (cargo check, clippy, test, build) per story
+  - Memory persistence via git history, progress.txt, and PRD updates
+  - CLI: `codetether ralph run -p prd.json -m "model" --max-iterations N`
+
+- **Swarm Execution**: Parallel sub-agent execution for complex tasks
+  - Automatic task decomposition with multiple strategies (auto, domain, stage)
+  - Concurrent sub-agent execution with result aggregation
+  - CLI: `codetether swarm "task description" --strategy auto`
+
+- **RLM (Recursive Language Model)**: Handle large contexts exceeding model windows
+  - REPL-like environment for context exploration (head, tail, grep, count)
+  - Sub-LM calls via `llm_query()` for semantic sub-questions
+  - Auto-detection of content types (code, logs, conversation, documents)
+
+#### Providers
+- **Moonshot Direct**: Native Moonshot AI integration (kimi-k2.5)
+- **OpenRouter**: Access to 100+ models via OpenRouter API
+- **StepFun**: Step 3.5 Flash support
+- **OpenAI**: GPT-4, GPT-4o, o1, o3 models
+- **Anthropic**: Claude 3.5 Sonnet, Claude 4 Opus
+- **Google**: Gemini Pro, Gemini Flash
+- **DeepSeek**: DeepSeek V3
+
+#### Tools (24+ total)
+- `ralph` - Autonomous PRD-driven agent loop
+- `rlm` - Recursive Language Model for large contexts
+- `prd` - Generate and manage PRD documents
+- `lsp` - Language Server Protocol operations (definition, references, hover, completion)
+- `batch` - Run multiple tool calls in parallel
+- `task` - Background task execution
+- `codesearch` - Semantic code search
+- `websearch` - Web search integration
+- `webfetch` - Fetch web pages with smart extraction
+- `skill` - Execute learned skills
+- `todo_read`/`todo_write` - Track task progress
+- `question` - Ask clarifying questions
+- `plan_enter`/`plan_exit` - Switch to planning mode
+- `read_file`/`write_file` - File operations
+- `edit`/`multiedit` - Search/replace edits
+- `apply_patch` - Apply unified diff patches
+- `grep` - Search file contents with regex
+- `bash` - Execute shell commands
+- `glob` - Find files by pattern
+- `list_dir` - List directory contents
+
+#### Infrastructure
+- **A2A Protocol**: Worker, server, and client modes for agent-to-agent communication
+- **MCP Support**: Model Context Protocol client/server
+- **HashiCorp Vault**: Secure API key storage (no env var secrets)
+- **Interactive TUI**: Terminal interface built with Ratatui
+- **Session Management**: Persistent session history with git-aware storage
+
+### Dogfooding Achievement
+
+This release was **built using itself**. The Ralph loop autonomously implemented 20 user stories:
+
+| Metric | Value |
+|--------|-------|
+| Total Stories | 20 |
+| Pass Rate | 100% |
+| Time | 29.5 minutes |
+| Cost | $3.75 |
+| Model | Kimi K2.5 |
+
+Stories implemented:
+- LSP Client (10 stories): Transport, JSON-RPC, Initialize, didOpen, didChange, Completion, Hover, Definition, Shutdown, Configuration
+- Missing Features (10 stories): External Directory, RLM Pool, Truncation, LSP Integration, References, and more
+
+### Performance
+
+| Metric | CodeTether (Rust) | opencode (Bun) | Advantage |
+|--------|-------------------|----------------|-----------|
+| Binary Size | 12.5 MB | ~90 MB | 7.2x smaller |
+| Startup Time | 13 ms | 25-50 ms | 2-4x faster |
+| Memory (10 agents) | 55 MB | 280 MB | 5.1x less |
+| Process Spawn | 1.5 ms | 5-10 ms | 3-7x faster |

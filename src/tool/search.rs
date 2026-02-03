@@ -5,7 +5,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json::{json, Value};
-use std::path::Path;
 use ignore::WalkBuilder;
 
 /// Search for text in files

@@ -20,7 +20,7 @@ clap = { version = "4", features = ["derive", "env"] }
 
 # HTTP server/client
 axum = { version = "0.8", features = ["ws", "macros"] }
-reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+reqwest = { version = "0.13.1", features = ["json", "stream", "rustls-tls"], default-features = false }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace", "auth"] }
 
@@ -29,19 +29,19 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # AI providers
-async-openai = "0.28"
+async-openai = "0.32.4"
 
 # A2A/MCP protocols
 jsonrpc-core = "18"
 
 # TUI
-ratatui = "0.29"
-crossterm = "0.28"
+ratatui = "0.30.0"
+crossterm = "0.29.0"
 
 # Config
 config = "0.15"
 directories = "6"
-toml = "0.8"
+toml = "0.9.8"
 
 # Secrets (HashiCorp Vault)
 vaultrs = "0.7"
@@ -51,18 +51,22 @@ anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
 urlencoding = "2"
-rand = "0.8"
+rand = "0.9.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-trait = "0.1"
+lazy_static = "1.4"
 parking_lot = "0.12"
 dashmap = "6"
 glob = "0.3"
+html-escape = "0.2"
 ignore = "0.4"
+walkdir = "2"
 regex = "1"
 similar = "2"
+lsp-types = "0.97.0"
 
 [dev-dependencies]
 tokio-test = "0.4"

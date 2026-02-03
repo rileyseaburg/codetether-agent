@@ -18,7 +18,6 @@ pub use orchestrator::Orchestrator;
 pub use subtask::{SubAgent, SubTask, SubTaskContext, SubTaskResult, SubTaskStatus};
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Maximum number of concurrent sub-agents
 pub const MAX_SUBAGENTS: usize = 100;
@@ -49,6 +48,12 @@ pub struct SwarmConfig {
     
     /// Model to use for sub-agents (provider/model format)
     pub model: Option<String>,
+    
+    /// Max concurrent API requests (rate limiting)
+    pub max_concurrent_requests: usize,
+    
+    /// Delay between API calls in ms (rate limiting)
+    pub request_delay_ms: u64,
 }
 
 impl Default for SwarmConfig {
@@ -57,10 +62,12 @@ impl Default for SwarmConfig {
             max_subagents: MAX_SUBAGENTS,
             max_steps_per_subagent: 100,
             max_total_steps: MAX_TOOL_CALLS,
-            subagent_timeout_secs: 300,
+            subagent_timeout_secs: 600,  // 10 minutes for complex tasks
             parallel_enabled: true,
             critical_path_threshold: 10,
             model: None,
+            max_concurrent_requests: 3,  // V1 tier allows 3 concurrent
+            request_delay_ms: 1000,      // V1 tier: 60 RPM, 3 concurrent = fast
         }
     }
 }
