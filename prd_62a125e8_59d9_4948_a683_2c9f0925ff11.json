@@ -45,7 +45,7 @@
         "Circuit breaker for failing endpoints",
         "Retry policy configuration"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-002"

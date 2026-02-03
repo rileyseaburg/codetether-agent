@@ -14831,3 +14831,1197 @@ impl RetryExecutor {
         if let Some(ref cb) = self.circuit_breaker {
             if !cb.allow_request() {
 
+
+---
+
+## Iteration 3 - US-002 (2026-02-03T18:56:53.204579289+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-002 - Token Usage Tracking for the telemetry collection system. This creates a TokenUsageTracker that tracks input/output tokens per request, per model, and per operation type with aggregation capabilities.
+
+```rust
+// src/metrics/token_usage.rs - Token usage tracking for LLM operations
+
+//! Token Usage Tracking
+//! 
+//! This module provides comprehensive token usage tracking for LLM operations,
+//! including input/output tokens per request, per model, and per operation type
+//! with aggregation and statistics capabilities.
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+
+/// Errors that can occur in token usage operations
+#[derive(Debug, thiserror::Error)]
+pub enum TokenUsageError {
+    #[error("Invalid token count: {0}")]
+    InvalidTokenCount(String),
+    
+    #[error("Model '{0}' not found in tracker")]
+    ModelNotFound(String),
+    
+    #[error("Operation type '{0}' not found in tracker")]
+    OperationNotFound(String),
+}
+
+/// Result type for token usage operations
+pub type TokenUsageResult<T> = Result<T, TokenUsageError>;
+
+/// Token counts for a single request/operation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct TokenCounts {
+    /// Number of tokens in the input/prompt
+    pub input: u64,
+    /// Number of tokens in the output/completion
+    pub output: u64,
+}
+
+impl TokenCounts {
+    /// Create new token counts
+    pub fn new(input: u64, output: u64) -> Self {
+        Self { input, output }
+    }
+
+    /// Get total tokens (input + output)
+    pub fn total(&self) -> u64 {
+        self.input.saturating_add(self.output)
+    }
+
+    /// Add another TokenCounts to this one
+    pub fn add(&mut self, other: &TokenCounts) {
+        self.input = self.input.saturating_add(other.input);
+        self.output = self.output.saturating_add(other.output);
+    }
+
+    /// Create from just input tokens (output unknown/zero)
+    pub fn input_only(input: u64) -> Self {
+        Self { input, output: 0 }
+    }
+
+    /// Create from just output tokens (input unknown/zero)
+    pub fn output_only(output: u64) -> Self {
+        Self { input: 0, output }
+    }
+
+    /// Check if both input and output are zero
+    pub fn is_empty(&self) -> bool {
+        self.input == 0 && self.output == 0
+    }
+
+    /// Calculate cost estimate (simplified, would use actual pricing in production)
+    /// Returns estimated cost in arbitrary units (e.g., dollars * 1000)
+    pub fn estimated_cost(&self, input_price_per_1k: f64, output_price_per_1k: f64) -> f64 {
+        let input_cost = (self.input as f64 / 1000.0) * input_price_per_1k;
+        let output_cost = (self.output as f64 / 1000.0) * output_price_per_1k;
+        input_cost + output_cost
+    }
+}
+
+impl std::fmt::Display for TokenCounts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} in / {} out ({} total)", self.input, self.output, self.total())
+    }
+}
+
+/// Statistics for token usage over time
+#[derive(Debug, Clone, Default)]
+pub struct TokenStats {
+    /// Total number of requests tracked
+    pub request_count: u64,
+    /// Total input tokens across all requests
+    pub total_input: u64,
+    /// Total output tokens across all requests
+    pub total_output: u64,
+    /// Total tokens (input + output)
+    pub total_tokens: u64,
+    /// Average input tokens per request
+    pub avg_input: f64,
+    /// Average output tokens per request
+    pub avg_output: f64,
+    /// Average total tokens per request
+    pub avg_total: f64,
+    /// Maximum input tokens in a single request
+    pub max_input: u64,
+    /// Maximum output tokens in a single request
+    pub max_output: u64,
+    /// Maximum total tokens in a single request
+    pub max_total: u64,
+    /// Minimum input tokens in a single request (0 if not set)
+    pub min_input: u64,
+    /// Minimum output tokens in a single request (0 if not set)
+    pub min_output: u64,
+    /// When tracking started
+    pub since: Instant,
+    /// Last update timestamp
+    pub last_updated: Instant,
+}
+
+impl TokenStats {
+    /// Create new empty stats
+    pub fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            request_count: 0,
+            total_input: 0,
+            total_output: 0,
+            total_tokens: 0,
+            avg_input: 0.0,
+            avg_output: 0.0,
+            avg_total: 0.0,
+            max_input: 0,
+            max_output: 0,
+            max_total: 0,
+            min_input: u64::MAX,
+            min_output: u64::MAX,
+            since: now,
+            last_updated: now,
+        }
+    }
+
+    /// Record a new token count
+    pub fn record(&mut self, counts: &TokenCounts) {
+        self.request_count += 1;
+        self.total_input = self.total_input.saturating_add(counts.input);
+        self.total_output = self.total_output.saturating_add(counts.output);
+        self.total_tokens = self.total_tokens.saturating_add(counts.total());
+
+        // Update averages
+        self.avg_input = self.total_input as f64 / self.request_count as f64;
+        self.avg_output = self.total_output as f64 / self.request_count as f64;
+        self.avg_total = self.total_tokens as f64 / self.request_count as f64;
+
+        // Update max
+        self.max_input = self.max_input.max(counts.input);
+        self.max_output = self.max_output.max(counts.output);
+        self.max_total = self.max_total.max(counts.total());
+
+        // Update min (skip zeros for meaningful mins)
+        if counts.input > 0 {
+            self.min_input = self.min_input.min(counts.input);
+        }
+        if counts.output > 0 {
+            self.min_output = self.min_output.min(counts.output);
+        }
+
+        self.last_updated = Instant::now();
+    }
+
+    /// Get input/output ratio (output per input token)
+    pub fn io_ratio(&self) -> f64 {
+        if self.total_input == 0 {
+            0.0
+        } else {
+            self.total_output as f64 / self.total_input as f64
+        }
+    }
+
+    /// Get duration since tracking started
+    pub fn duration(&self) -> Duration {
+        self.since.elapsed()
+    }
+
+    /// Get tokens per second rate
+    pub fn tokens_per_second(&self) -> f64 {
+        let secs = self.duration().as_secs_f64();
+        if secs == 0.0 {
+            0.0
+        } else {
+            self.total_tokens as f64 / secs
+        }
+    }
+
+    /// Reset all statistics
+    pub fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    /// Merge another TokenStats into this one
+    pub fn merge(&mut self, other: &TokenStats) {
+        self.request_count += other.request_count;
+        self.total_input = self.total_input.saturating_add(other.total_input);
+        self.total_output = self.total_output.saturating_add(other.total_output);
+        self.total_tokens = self.total_tokens.saturating_add(other.total_tokens);
+
+        // Recalculate averages
+        if self.request_count > 0 {
+            self.avg_input = self.total_input as f64 / self.request_count as f64;
+            self.avg_output = self.total_output as f64 / self.request_count as f64;
+            self.avg_total = self.total_tokens as f64 / self.request_count as f64;
+        }
+
+        self.max_input = self.max_input.max(other.max_input);
+        self.max_output = self.max_output.max(other.max_output);
+        self.max_total = self.max_total.max(other.max_total);
+
+        // For min, take the minimum of both, but handle MAX sentinel
+        self.min_input = if other.min_input == u64::MAX {
+            self.min_input
+        } else if self.min_input == u64::MAX {
+            other.min_input
+        } else {
+            self.min_input.min(other.min_input)
+        };
+
+        self.min_output = if other.min_output == u64::MAX {
+            self.min_output
+        } else if self.min_output == u64::MAX {
+            other.min_output
+        } else {
+            self.min_output.min(other.min_output)
+        };
+
+        self.last_updated = Instant::now();
+    }
+}
+
+impl Default for TokenStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Thread-safe token usage tracker for a single model or operation type
+#[derive(Debug)]
+pub struct TokenUsageTracker {
+    /// Atomic counters for thread-safe updates
+    total_input: AtomicU64,
+    total_output: AtomicU64,
+    request_count: AtomicU64,
+    
+    /// Mutable stats for detailed tracking
+    stats: Mutex<TokenStats>,
+    
+    /// Model name or operation type this tracker represents
+    name: String,
+}
+
+impl TokenUsageTracker {
+    /// Create a new tracker for a named model/operation
+    pub fn new(name: impl Into<String>) -> Self {
+        let name = name.into();
+        Self {
+            total_input: AtomicU64::new(0),
+            total_output: AtomicU64::new(0),
+            request_count: AtomicU64::new(0),
+            stats: Mutex::new(TokenStats::new()),
+            name,
+        }
+    }
+
+    /// Record token usage for a single request
+    pub fn record(&self, input: u64, output: u64) {
+        let counts = TokenCounts::new(input, output);
+        
+        // Update atomics
+        self.total_input.fetch_add(input, Ordering::Relaxed);
+        self.total_output.fetch_add(output, Ordering::Relaxed);
+        self.request_count.fetch_add(1, Ordering::Relaxed);
+        
+        // Update detailed stats
+        let mut stats = self.stats.lock().unwrap();
+        stats.record(&counts);
+    }
+
+    /// Record with TokenCounts struct
+    pub fn record_counts(&self, counts: &TokenCounts) {
+        self.record(counts.input, counts.output);
+    }
+
+    /// Record input tokens only (output not yet known)
+    pub fn record_input(&self, input: u64) {
+        self.record(input, 0);
+    }
+
+    /// Record output tokens (adds to existing input if tracked separately)
+    pub fn record_output(&self, output: u64) {
+        // This is tricky - we don't know which request this output belongs to
+        // For now, just add to totals without incrementing request count
+        self.total_output.fetch_add(output, Ordering::Relaxed);
+        
+        let mut stats = self.stats.lock().unwrap();
+        stats.total_output = stats.total_output.saturating_add(output);
+        stats.total_tokens = stats.total_tokens.saturating_add(output);
+        // Don't update averages or counts since this is a partial update
+        stats.last_updated = Instant::now();
+    }
+
+    /// Get current totals (fast, atomic)
+    pub fn totals(&self) -> TokenCounts {
+        TokenCounts {
+            input: self.total_input.load(Ordering::Relaxed),
+            output: self.total_output.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Get request count (fast, atomic)
+    pub fn request_count(&self) -> u64 {
+        self.request_count.load(Ordering::Relaxed)
+    }
+
+    /// Get detailed statistics
+    pub fn stats(&self) -> TokenStats {
+        self.stats.lock().unwrap().clone()
+    }
+
+    /// Get tracker name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Reset all tracking
+    pub fn reset(&self) {
+        self.total_input.store(0, Ordering::Relaxed);
+        self.total_output.store(0, Ordering::Relaxed);
+        self.request_count.store(0, Ordering::Relaxed);
+        self.stats.lock().unwrap().reset();
+    }
+
+    /// Get a snapshot of current state
+    pub fn snapshot(&self) -> TokenUsageSnapshot {
+        TokenUsageSnapshot {
+            name: self.name.clone(),
+            totals: self.totals(),
+            request_count: self.request_count(),
+            stats: self.stats(),
+        }
+    }
+}
+
+/// Immutable snapshot of token usage state
+#[derive(Debug, Clone)]
+pub struct TokenUsageSnapshot {
+    pub name: String,
+    pub totals: TokenCounts,
+    pub request_count: u64,
+    pub stats: TokenStats,
+}
+
+impl TokenUsageSnapshot {
+    /// Display summary
+    pub fn summary(&self) -> String {
+        format!(
+            "{}: {} requests, {} total tokens ({} in / {} out), avg {:.1} tokens/req",
+            self.name,
+            self.request_count,
+            self.totals.total(),
+            self.totals.input,
+            self.totals.output,
+            self.stats.avg_total
+        )
+    }
+}
+
+/// Multi-dimensional token usage tracker
+/// 
+/// Tracks usage by model, by operation type, and provides aggregation
+#[derive(Debug)]
+pub struct TokenUsageRegistry {
+    /// Trackers by model name
+    by_model: RwLock<HashMap<String, Arc<TokenUsageTracker>>>,
+    /// Trackers by operation type
+    by_operation: RwLock<HashMap<String, Arc<TokenUsageTracker>>>,
+    /// Global tracker for all usage
+    global: Arc<TokenUsageTracker>,
+}
+
+impl TokenUsageRegistry {
+    /// Create new registry
+    pub fn new() -> Self {
+        Self {
+            by_model: RwLock::new(HashMap::new()),
+            by_operation: RwLock::new(HashMap::new()),
+            global: Arc::new(TokenUsageTracker::new("global")),
+        }
+    }
+
+    /// Get or create tracker for a model
+    pub fn model_tracker(&self, model: impl AsRef<str>) -> Arc<TokenUsageTracker> {
+        let model_name = model.as_ref().to_string();
+        
+        // Fast path: read
+        {
+            let models = self.by_model.read().unwrap();
+            if let Some(tracker) = models.get(&model_name) {
+                return Arc::clone(tracker);
+            }
+        }
+
+        // Slow path: write
+        let mut models = self.by_model.write().unwrap();
+        models.entry(model_name.clone())
+            .or_insert_with(|| Arc::new(TokenUsageTracker::new(model_name)))
+            .clone()
+    }
+
+    /// Get or create tracker for an operation type
+    pub fn operation_tracker(&self, operation: impl AsRef<str>) -> Arc<TokenUsageTracker> {
+        let op_name = operation.as_ref().to_string();
+        
+        // Fast path: read
+        {
+            let ops = self.by_operation.read().unwrap();
+            if let Some(tracker) = ops.get(&op_name) {
+                return Arc::clone(tracker);
+            }
+        }
+
+        // Slow path: write
+        let mut ops = self.by_operation.write().unwrap();
+        ops.entry(op_name.clone())
+            .or_insert_with(|| Arc::new(TokenUsageTracker::new(op_name)))
+            .clone()
+    }
+
+    /// Record usage with model and operation context
+    pub fn record(
+        &self,
+        model: impl AsRef<str>,
+        operation: impl AsRef<str>,
+        input: u64,
+        output: u64,
+    ) {
+        let counts = TokenCounts::new(input, output);
+        
+        // Record globally
+        self.global.record_counts(&counts);
+        
+        // Record by model
+        self.model_tracker(model).record_counts(&counts);
+        
+        // Record by operation
+        self.operation_tracker(operation).record_counts(&counts);
+    }
+
+    /// Record with TokenCounts
+    pub fn record_counts(
+        &self,
+        model: impl AsRef<str>,
+        operation: impl AsRef<str>,
+        counts: &TokenCounts,
+    ) {
+        self.global.record_counts(counts);
+        self.model_tracker(model).record_counts(counts);
+        self.operation_tracker(operation).record_counts(counts);
+    }
+
+    /// Get global tracker
+    pub fn global_tracker(&self) -> &Arc<TokenUsageTracker> {
+        &self.global
+    }
+
+    /// Get all model trackers
+    pub fn model_trackers(&self) -> Vec<Arc<TokenUsageTracker>> {
+        let models = self.by_model.read().unwrap();
+        models.values().cloned().collect()
+    }
+
+    /// Get all operation trackers
+    pub fn operation_trackers(&self) -> Vec<Arc<TokenUsageTracker>> {
+        let ops = self.by_operation.read().unwrap();
+        ops.values().cloned().collect()
+    }
+
+    /// Get specific model tracker
+    pub fn get_model(&self, model: impl AsRef<str>) -> Option<Arc<TokenUsageTracker>> {
+        let models = self.by_model.read().unwrap();
+        models.get(model.as_ref()).cloned()
+    }
+
+    /// Get specific operation tracker
+    pub fn get_operation(&self, operation: impl AsRef<str>) -> Option<Arc<TokenUsageTracker>> {
+        let ops = self.by_operation.read().unwrap();
+        ops.get(operation.as_ref()).cloned()
+    }
+
+    /// Get all model names
+    pub fn models(&self) -> Vec<String> {
+        let models = self.by_model.read().unwrap();
+        models.keys().cloned().collect()
+    }
+
+    /// Get all operation names
+    pub fn operations(&self) -> Vec<String> {
+        let ops = self.by_operation.read().unwrap();
+        ops.keys().cloned().collect()
+    }
+
+    /// Get global snapshot
+    pub fn global_snapshot(&self) -> TokenUsageSnapshot {
+        self.global.snapshot()
+    }
+
+    /// Get all model snapshots
+    pub fn model_snapshots(&self) -> Vec<TokenUsageSnapshot> {
+        self.model_trackers().iter().map(|t| t.snapshot()).collect()
+    }
+
+    /// Get all operation snapshots
+    pub fn operation_snapshots(&self) -> Vec<TokenUsageSnapshot> {
+        self.operation_trackers().iter().map(|t| t.snapshot()).collect()
+    }
+
+    /// Aggregate stats across all models
+    pub fn aggregate_by_model(&self) -> TokenStats {
+        let mut aggregate = TokenStats::new();
+        for tracker in self.model_trackers() {
+            aggregate.merge(&tracker.stats());
+        }
+        aggregate
+    }
+
+    /// Aggregate stats across all operations
+    pub fn aggregate_by_operation(&self) -> TokenStats {
+        let mut aggregate = TokenStats::new();
+        for tracker in self.operation_trackers() {
+            aggregate.merge(&tracker.stats());
+        }
+        aggregate
+    }
+
+    /// Reset all trackers
+    pub fn reset_all(&self) {
+        self.global.reset();
+        
+        for tracker in self.model_trackers() {
+            tracker.reset();
+        }
+        
+        for tracker in self.operation_trackers() {
+            tracker.reset();
+        }
+    }
+
+    /// Clear all model trackers
+    pub fn clear_models(&self) {
+        let mut models = self.by_model.write().unwrap();
+
+
+---
+
+## Iteration 1 - US-001 (2026-02-03T18:56:54.114702423+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-001 - Create unified LLM module structure as specified in the PRD. This is the foundation for the unified LLM client with token management.
+
+```bash
+#!/bin/bash
+set -e
+
+# Create the src/llm/ directory structure
+mkdir -p src/llm
+
+echo "Created src/llm/ directory"
+
+# Create mod.rs - the module entry point with exports
+cat > src/llm/mod.rs << 'EOF'
+//! Unified LLM Client with Token Management
+//! 
+//! This module provides a unified interface for interacting with various LLM providers
+//! (OpenAI, Anthropic, Cohere, etc.) with built-in token management, rate limiting,
+//! and cost tracking capabilities.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+// Re-export main types
+pub use client::{LlmClient, LlmClientBuilder};
+pub use types::{
+    LlmProvider, 
+    LlmRequest, 
+    LlmResponse, 
+    LlmError,
+    LlmResult,
+    Message,
+    Role,
+    ModelInfo,
+    TokenUsage,
+    FinishReason,
+};
+pub use chunking::{ChunkingStrategy, TextChunker, ChunkConfig};
+pub use provider::{ProviderConfig, ProviderRegistry};
+
+/// Module containing the core LLM client implementation
+pub mod client;
+
+/// Module containing type definitions for requests, responses, and providers
+pub mod types;
+
+/// Module containing text chunking strategies for large context handling
+pub mod chunking;
+
+/// Module containing provider-specific implementations and configurations
+pub mod provider;
+
+/// Configuration for the unified LLM module
+#[derive(Debug, Clone)]
+pub struct LlmConfig {
+    /// Default provider to use when not specified
+    pub default_provider: LlmProvider,
+    
+    /// Maximum tokens per request
+    pub max_tokens: usize,
+    
+    /// Default timeout for requests
+    pub request_timeout: Duration,
+    
+    /// Whether to enable token usage tracking
+    pub track_token_usage: bool,
+    
+    /// Whether to enable cost tracking
+    pub track_costs: bool,
+    
+    /// Chunking configuration for large texts
+    pub chunking: ChunkConfig,
+}
+
+impl Default for LlmConfig {
+    fn default() -> Self {
+        Self {
+            default_provider: LlmProvider::OpenAi,
+            max_tokens: 4096,
+            request_timeout: Duration::from_secs(60),
+            track_token_usage: true,
+            track_costs: true,
+            chunking: ChunkConfig::default(),
+        }
+    }
+}
+
+impl LlmConfig {
+    /// Create new config with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set default provider
+    pub fn with_default_provider(mut self, provider: LlmProvider) -> Self {
+        self.default_provider = provider;
+        self
+    }
+
+    /// Set maximum tokens
+    pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
+        self.max_tokens = max_tokens;
+        self
+    }
+
+    /// Set request timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.request_timeout = timeout;
+        self
+    }
+
+    /// Disable token tracking
+    pub fn without_token_tracking(mut self) -> Self {
+        self.track_token_usage = false;
+        self
+    }
+
+    /// Disable cost tracking
+    pub fn without_cost_tracking(mut self) -> Self {
+        self.track_costs = false;
+        self
+    }
+
+    /// Set chunking configuration
+    pub fn with_chunking(mut self, chunking: ChunkConfig) -> Self {
+        self.chunking = chunking;
+        self
+    }
+}
+
+/// Initialize the LLM module with configuration
+pub fn init(config: LlmConfig) -> LlmResult<Arc<LlmClient>> {
+    let client = LlmClientBuilder::new()
+        .with_config(config)
+        .build()?;
+    
+    Ok(Arc::new(client))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_llm_config_defaults() {
+        let config = LlmConfig::default();
+        assert!(matches!(config.default_provider, LlmProvider::OpenAi));
+        assert_eq!(config.max_tokens, 4096);
+        assert!(config.track_token_usage);
+        assert!(config.track_costs);
+    }
+
+    #[test]
+    fn test_llm_config_builder() {
+        let config = LlmConfig::new()
+            .with_default_provider(LlmProvider::Anthropic)
+            .with_max_tokens(8192)
+            .with_timeout(Duration::from_secs(120))
+            .without_token_tracking();
+
+        assert!(matches!(config.default_provider, LlmProvider::Anthropic));
+        assert_eq!(config.max_tokens, 8192);
+        assert_eq!(config.request_timeout, Duration::from_secs(120));
+        assert!(!config.track_token_usage);
+        assert!(config.track_costs);
+    }
+}
+EOF
+
+echo "Created src/llm/mod.rs"
+
+# Create types.rs - core type definitions
+cat > src/llm/types.rs << 'EOF'
+//! Type definitions for the unified LLM client
+//! 
+//! This module defines the core types used across all LLM providers including
+//! messages, requests, responses, and provider configurations.
+
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt;
+use thiserror::Error;
+
+/// Errors that can occur in LLM operations
+#[derive(Debug, Error, Clone)]
+pub enum LlmError {
+    /// Authentication failed with provider
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+
+    /// Rate limit exceeded
+    #[error("Rate limit exceeded. Retry after: {0:?}")]
+    RateLimitExceeded(std::time::Duration),
+
+    /// Context window exceeded
+    #[error("Context window exceeded: {0} tokens > {1} max")]
+    ContextWindowExceeded(usize, usize),
+
+    /// Provider returned an error
+    #[error("Provider error ({0}): {1}")]
+    ProviderError(String, String),
+
+    /// Network or connection error
+    #[error("Connection error: {0}")]
+    ConnectionError(String),
+
+    /// Request timeout
+    #[error("Request timeout after {0:?}")]
+    Timeout(std::time::Duration),
+
+    /// Invalid request parameters
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+
+    /// Token budget exceeded
+    #[error("Token budget exceeded: used {0}, budget {1}")]
+    TokenBudgetExceeded(usize, usize),
+
+    /// Chunking error
+    #[error("Chunking error: {0}")]
+    ChunkingError(String),
+
+    /// Provider not available
+    #[error("Provider not available: {0}")]
+    ProviderNotAvailable(String),
+
+    /// Unknown or internal error
+    #[error("Internal error: {0}")]
+    Internal(String),
+}
+
+/// Result type for LLM operations
+pub type LlmResult<T> = Result<T, LlmError>;
+
+/// Supported LLM providers
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LlmProvider {
+    /// OpenAI (GPT-4, GPT-3.5, etc.)
+    OpenAi,
+    /// Anthropic (Claude models)
+    Anthropic,
+    /// Cohere
+    Cohere,
+    /// Local/self-hosted models
+    Local,
+    /// Custom provider
+    Custom(&'static str),
+}
+
+impl LlmProvider {
+    /// Get provider name as string
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OpenAi => "openai",
+            Self::Anthropic => "anthropic",
+            Self::Cohere => "cohere",
+            Self::Local => "local",
+            Self::Custom(s) => s,
+        }
+    }
+
+    /// Get default model for this provider
+    pub fn default_model(&self) -> &str {
+        match self {
+            Self::OpenAi => "gpt-4",
+            Self::Anthropic => "claude-3-opus-20240229",
+            Self::Cohere => "command-r-plus",
+            Self::Local => "local-model",
+            Self::Custom(_) => "custom-model",
+        }
+    }
+
+    /// Check if provider supports streaming
+    pub fn supports_streaming(&self) -> bool {
+        matches!(self, Self::OpenAi | Self::Anthropic | Self::Cohere | Self::Local)
+    }
+
+    /// Check if provider supports function calling
+    pub fn supports_functions(&self) -> bool {
+        matches!(self, Self::OpenAi | Self::Anthropic)
+    }
+}
+
+impl fmt::Display for LlmProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Role in a conversation message
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    /// System message (instructions, context)
+    System,
+    /// User message
+    User,
+    /// Assistant message
+    Assistant,
+    /// Function/tool result
+    Function,
+    /// Tool message (newer OpenAI format)
+    Tool,
+}
+
+impl Role {
+    /// Get role as string
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::User => "user",
+            Self::Assistant => "assistant",
+            Self::Function => "function",
+            Self::Tool => "tool",
+        }
+    }
+}
+
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// A message in the conversation
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Message {
+    /// Role of the message sender
+    pub role: Role,
+    /// Content of the message
+    pub content: String,
+    /// Optional name (for function calling)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Optional tool calls (for assistant messages with function calls)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
+    /// Optional tool call ID (for tool responses)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+}
+
+impl Message {
+    /// Create a new message
+    pub fn new(role: Role, content: impl Into<String>) -> Self {
+        Self {
+            role,
+            content: content.into(),
+            name: None,
+            tool_calls: None,
+            tool_call_id: None,
+        }
+    }
+
+    /// Create a system message
+    pub fn system(content: impl Into<String>) -> Self {
+        Self::new(Role::System, content)
+    }
+
+    /// Create a user message
+    pub fn user(content: impl Into<String>) -> Self {
+        Self::new(Role::User, content)
+    }
+
+    /// Create an assistant message
+    pub fn assistant(content: impl Into<String>) -> Self {
+        Self::new(Role::Assistant, content)
+    }
+
+    /// Create a function result message
+    pub fn function(name: impl Into<String>, content: impl Into<String>) -> Self {
+        let mut msg = Self::new(Role::Function, content);
+        msg.name = Some(name.into());
+        msg
+    }
+
+    /// Create a tool response message
+    pub fn tool(tool_call_id: impl Into<String>, content: impl Into<String>) -> Self {
+        let mut msg = Self::new(Role::Tool, content);
+        msg.tool_call_id = Some(tool_call_id.into());
+        msg
+    }
+
+    /// Set name for the message
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Estimate token count for this message (rough approximation)
+    pub fn estimate_tokens(&self) -> usize {
+        // Very rough estimate: 4 chars per token on average
+        // Plus overhead for role and formatting
+        let content_tokens = self.content.len() / 4;
+        let overhead = match self.role {
+            Role::System => 4,
+            Role::User => 3,
+            Role::Assistant => 3,
+            Role::Function => 5,
+            Role::Tool => 5,
+        };
+        content_tokens + overhead
+    }
+}
+
+/// Tool/function call from assistant
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ToolCall {
+    /// ID of the tool call
+    pub id: String,
+    /// Type of tool call (usually "function")
+    pub r#type: String,
+    /// Function call details
+    pub function: FunctionCall,
+}
+
+/// Function call details
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionCall {
+    /// Name of the function to call
+    pub name: String,
+    /// Arguments as JSON string
+    pub arguments: String,
+}
+
+/// LLM request parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmRequest {
+    /// Provider to use (optional - uses default if not specified)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<LlmProvider>,
+    /// Model to use
+    pub model: String,
+    /// Messages in the conversation
+    pub messages: Vec<Message>,
+    /// Maximum tokens to generate
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<usize>,
+    /// Temperature (0.0 to 2.0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    /// Top-p sampling
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f32>,
+    /// Stop sequences
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop: Option<Vec<String>>,
+    /// Presence penalty
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub presence_penalty: Option<f32>,
+    /// Frequency penalty
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<f32>,
+    /// Tools/functions available
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<Tool>>,
+    /// Tool choice setting
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<ToolChoice>,
+    /// Response format (for JSON mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ResponseFormat>,
+    /// Additional provider-specific parameters
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_params: Option<HashMap<String, serde_json::Value>>,
+}
+
+impl LlmRequest {
+    /// Create a new request with required fields
+    pub fn new(model: impl Into<String>, messages: Vec<Message>) -> Self {
+        Self {
+            provider: None,
+            model: model.into(),
+            messages,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            presence_penalty: None,
+            frequency_penalty: None,
+            tools: None,
+            tool_choice: None,
+            response_format: None,
+            extra_params: None,
+        }
+    }
+
+    /// Create with a specific provider
+    pub fn with_provider(mut self, provider: LlmProvider) -> Self {
+        self.provider = Some(provider);
+        self
+    }
+
+    /// Set max tokens
+    pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
+        self.max_tokens = Some(max_tokens);
+        self
+    }
+
+    /// Set temperature
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.temperature = Some(temperature.clamp(0.0, 2.0));
+        self
+    }
+
+    /// Set top-p
+    pub fn with_top_p(mut self, top_p: f32) -> Self {
+        self.top_p = Some(top_p.clamp(0.0, 1.0));
+        self
+    }
+
+    /// Add a tool
+    pub fn with_tool(mut self, tool: Tool) -> Self {
+        self.tools.get_or_insert_with(Vec::new).push(tool);
+        self
+    }
+
+    /// Enable JSON mode
+    pub fn with_json_mode(mut self) -> Self {
+        self.response_format = Some(ResponseFormat::JsonObject);
+        self
+    }
+
+    /// Estimate total tokens in request
+    pub fn estimate_tokens(&self) -> usize {
+        self.messages.iter().map(|m| m.estimate_tokens()).sum()
+    }
+}
+
+/// Tool definition for function calling
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tool {
+    /// Type of tool (usually "function")
+    pub r#type: String,
+    /// Function definition
+    pub function: FunctionDefinition,
+}
+
+/// Function definition
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionDefinition {
+    /// Function name
+    pub name: String,
+    /// Function description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// JSON schema for parameters
+    pub parameters: serde_json::Value,
+}
+
+/// Tool choice setting
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ToolChoice {
+    /// Let the model decide
+    Auto,
+    /// Force a tool call
+    Required,
+    /// Force a specific tool
+    Tool { tool: Tool },
+    /// Don't use tools
+    None,
+}
+
+/// Response format specification
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResponseFormat {
+    /// Standard text response
+    Text,
+    /// JSON object response
+    JsonObject,
+    /// JSON schema constrained response
+    JsonSchema { schema: serde_json::Value },
+}
+
+/// LLM response
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LlmResponse {
+    /// Response ID
+    pub id: String,
+    /// Provider that generated the response
+    pub provider: LlmProvider,
+    /// Model used
+    pub model: String,
+    /// Generated message
+    pub message: Message,
+    /// Token usage information
+    pub usage: TokenUsage,
+    /// Finish reason
+    pub finish_reason: FinishReason,
+    /// When the response was received
+    #[serde(skip)]
+    pub received_at: std::time::Instant,
+}
+
+/// Token usage information
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+pub struct TokenUsage {
+    /// Tokens in the prompt
+    pub prompt_tokens: usize,
+    /// Tokens in the completion
+    pub completion_tokens: usize,
+    /// Total tokens used
+    pub total_tokens: usize,
+}
+
+impl TokenUsage {
+    /// Create new token usage
+    pub fn new(prompt: usize, completion: usize) -> Self {
+        Self {
+            prompt_tokens: prompt,
+            completion_tokens: completion,
+            total_tokens: prompt + completion,
+        }
+    }
+
+    /// Calculate cost based on pricing (simplified)
+    pub fn estimate_cost(&
