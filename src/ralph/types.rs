@@ -28,7 +28,7 @@ pub struct UserStory {
     pub priority: u8,
     
     /// Dependencies on other story IDs
-    #[serde(default)]
+    #[serde(default, alias = "dependencies")]
     pub depends_on: Vec<String>,
     
     /// Estimated complexity (1-5)
