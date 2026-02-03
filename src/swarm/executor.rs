@@ -587,6 +587,12 @@ impl SwarmExecutor {
                     .map(|wt| wt.path.display().to_string())
                     .unwrap_or_else(|| ".".to_string());
                 
+                // Load AGENTS.md from working directory
+                let working_path = std::path::Path::new(&working_dir);
+                let agents_md_content = crate::agent::builtin::load_agents_md(working_path)
+                    .map(|(content, _)| format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}"))
+                    .unwrap_or_default();
+                
                 // Build the system prompt for this sub-agent
                 let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
                 let system_prompt = format!(
@@ -618,7 +624,7 @@ If your task is complex and involves multiple implementation steps, use the prd 
 
 NOTE: Use your unique PRD file '{}' so parallel agents don't conflict.
 
-When done, provide a brief summary of what you accomplished.",
+When done, provide a brief summary of what you accomplished.{agents_md_content}",
                     specialty,
                     subtask_id,
                     working_dir,

@@ -193,6 +193,10 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
+        // Build system prompt with AGENTS.md
+        let cwd = self.metadata.directory.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+        let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+
         // Run agentic loop with tool execution
         let max_steps = 50;
         let mut final_output = String::new();
@@ -200,8 +204,12 @@ impl Session {
         for step in 1..=max_steps {
             tracing::info!(step = step, "Agent step starting");
             
-            // Build messages from session
-            let messages = self.messages.clone();
+            // Build messages with system prompt first
+            let mut messages = vec![Message {
+                role: Role::System,
+                content: vec![ContentPart::Text { text: system_prompt.clone() }],
+            }];
+            messages.extend(self.messages.clone());
             
             // Create completion request with tools
             let request = CompletionRequest {
