@@ -65,7 +65,7 @@
   {
     "id": "todo_1770153919563",
     "content": "Fix field `content` in tool/codesearch.rs - add to display/debug",
-    "status": "in_progress",
+    "status": "inprogress",
     "priority": "high",
     "created_at": "2026-02-03T16:51:44.674002993+00:00"
   },
@@ -226,7 +226,7 @@
   {
     "id": "todo_1770153919586",
     "content": "Implement telemetry collection for success metrics: token usage, latency histograms, pass rate counters, Prometheus/OpenTelemetry export, privacy-preserving options",
-    "status": "in_progress",
+    "status": "inprogress",
     "priority": "high",
     "created_at": "2026-02-03T18:51:45.153605193+00:00"
   },
@@ -247,7 +247,7 @@
   {
     "id": "todo_1770153919589",
     "content": "Execute PRD using Ralph autonomous agent",
-    "status": "in_progress",
+    "status": "inprogress",
     "priority": "high",
     "created_at": "2026-02-03T19:43:23.250355301+00:00"
   },
@@ -257,5 +257,26 @@
     "status": "done",
     "priority": "high",
     "created_at": "2026-02-03T21:24:13.604639565+00:00"
+  },
+  {
+    "id": "todo_1770159884171",
+    "content": "Analyze current TUI implementation and Session/Provider integration",
+    "status": "done",
+    "priority": "critical",
+    "created_at": "2026-02-03T23:04:44.171774308+00:00"
+  },
+  {
+    "id": "todo_1770159884172",
+    "content": "Analyze Agent-Swarm integration requirements",
+    "status": "done",
+    "priority": "critical",
+    "created_at": "2026-02-03T23:04:44.172099892+00:00"
+  },
+  {
+    "id": "todo_1770159884173",
+    "content": "Analyze telemetry/metrics collection needs",
+    "status": "done",
+    "priority": "critical",
+    "created_at": "2026-02-03T23:04:44.173852128+00:00"
   }
 ]
