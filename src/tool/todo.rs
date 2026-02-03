@@ -25,6 +25,7 @@ pub struct TodoItem {
 pub enum TodoStatus {
     #[default]
     Pending,
+    #[serde(alias = "in_progress")]
     InProgress,
     Done,
     Blocked,
