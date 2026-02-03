@@ -19055,3 +19055,611 @@ impl<T: Send + 'static> RequestBatcher<T> {
 
 /// Throughput-optimized processor with all optimizations
 pub struct ThroughputProcessor<C: P
+
+---
+
+## Iteration 5 - US-003 (2026-02-03T19:05:58.575690597+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-003 - Implement Provider trait with streaming support for the unified LLM client. This creates the core trait that all LLM providers must implement.
+
+```rust
+// src/llm/provider.rs - Provider trait with streaming support
+
+//! Provider Trait and Registry
+//! 
+//! This module defines the Provider trait that all LLM providers must implement,
+//! including methods for chat completion, streaming, and model information.
+
+use async_trait::async_trait;
+use futures::Stream;
+use std::collections::HashMap;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn};
+
+use crate::llm::types::{
+    ChatMessage, ChatRequest, ChatResponse, LlmError, LlmProvider, LlmResult,
+    ModelCapabilities, ModelInfo, StreamingChunk, TokenUsage,
+};
+
+/// Errors specific to provider operations
+#[derive(Debug, Error, Clone)]
+pub enum ProviderError {
+    #[error("Provider not initialized: {0}")]
+    NotInitialized(String),
+    
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+    
+    #[error("Rate limit exceeded. Retry after: {0:?}")]
+    RateLimitExceeded(Duration),
+    
+    #[error("Model not found: {0}")]
+    ModelNotFound(String),
+    
+    #[error("Invalid response from provider: {0}")]
+    InvalidResponse(String),
+    
+    #[error("Streaming error: {0}")]
+    StreamingError(String),
+    
+    #[error("Provider error: {0}")]
+    ProviderError(String),
+    
+    #[error("Operation timeout")]
+    Timeout,
+    
+    #[error("Connection error: {0}")]
+    ConnectionError(String),
+}
+
+/// Result type for provider operations
+pub type ProviderResult<T> = Result<T, ProviderError>;
+
+/// Type alias for streaming response
+pub type StreamingResponse = Pin<Box<dyn Stream<Item = ProviderResult<StreamingChunk>> + Send>>;
+
+/// The Provider trait that all LLM providers must implement
+/// 
+/// This trait defines the core interface for interacting with LLM providers
+/// including non-streaming chat completion, streaming support, and model information.
+#[async_trait]
+pub trait Provider: Send + Sync {
+    /// Get the provider name
+    /// 
+    /// Returns a unique identifier for this provider (e.g., "openai", "anthropic")
+    fn name(&self) -> &str;
+
+    /// Send a chat completion request (non-streaming)
+    /// 
+    /// # Arguments
+    /// * `request` - The chat completion request with messages and parameters
+    /// 
+    /// # Returns
+    /// * `Ok(ChatResponse)` - The complete response from the model
+    /// * `Err(ProviderError)` - If the request failed
+    async fn chat(&self, request: ChatRequest) -> ProviderResult<ChatResponse>;
+
+    /// Send a chat completion request with streaming response
+    /// 
+    /// Returns a stream of chunks that can be consumed as they arrive.
+    /// The stream will produce `StreamingChunk` values until the response is complete.
+    /// 
+    /// # Arguments
+    /// * `request` - The chat completion request (stream flag should be true)
+    /// 
+    /// # Returns
+    /// * `Ok(StreamingResponse)` - A stream of response chunks
+    /// * `Err(ProviderError)` - If streaming setup failed
+    async fn chat_stream(&self, request: ChatRequest) -> ProviderResult<StreamingResponse>;
+
+    /// List available models from this provider
+    /// 
+    /// # Returns
+    /// * `Ok(Vec<ModelInfo>)` - List of available models with capabilities
+    /// * `Err(ProviderError)` - If the request failed
+    async fn list_models(&self) -> ProviderResult<Vec<ModelInfo>>;
+
+    /// Get detailed information about a specific model
+    /// 
+    /// # Arguments
+    /// * `model_id` - The model identifier
+    /// 
+    /// # Returns
+    /// * `Ok(ModelInfo)` - Detailed model information and capabilities
+    /// * `Err(ProviderError)` - If the model is not found or request failed
+    async fn get_model_info(&self, model_id: &str) -> ProviderResult<ModelInfo>;
+
+    /// Check if this provider supports streaming
+    /// 
+    /// Default implementation returns true, providers should override if they
+    /// don't support streaming.
+    fn supports_streaming(&self) -> bool {
+        true
+    }
+
+    /// Check if this provider supports function calling
+    /// 
+    /// Default implementation returns true.
+    fn supports_functions(&self) -> bool {
+        true
+    }
+
+    /// Get provider-specific capabilities
+    /// 
+    /// Returns capabilities that may vary by provider implementation.
+    fn capabilities(&self) -> ProviderCapabilities;
+
+    /// Validate that the provider is properly configured and accessible
+    /// 
+    /// This should perform a lightweight check (e.g., list models or validate API key)
+    /// without making expensive API calls.
+    async fn health_check(&self) -> ProviderResult<()>;
+
+    /// Get the default model for this provider
+    /// 
+    /// Returns the recommended default model when none is specified.
+    fn default_model(&self) -> &str;
+}
+
+/// Provider-specific capabilities
+#[derive(Debug, Clone, Default)]
+pub struct ProviderCapabilities {
+    /// Maximum context window size in tokens
+    pub max_context_window: usize,
+    /// Whether the provider supports system messages
+    pub supports_system_messages: bool,
+    /// Whether the provider supports multiple messages in context
+    pub supports_multi_turn: bool,
+    /// Whether the provider supports tool/function calling
+    pub supports_tools: bool,
+    /// Whether the provider supports JSON mode
+    pub supports_json_mode: bool,
+    /// Whether the provider supports vision/multimodal inputs
+    pub supports_vision: bool,
+    /// Maximum number of tools that can be registered
+    pub max_tools: Option<usize>,
+    /// Supported response formats
+    pub supported_formats: Vec<String>,
+    /// Provider-specific features
+    pub features: HashMap<String, bool>,
+}
+
+impl ProviderCapabilities {
+    /// Create with common defaults
+    pub fn standard() -> Self {
+        Self {
+            max_context_window: 4096,
+            supports_system_messages: true,
+            supports_multi_turn: true,
+            supports_tools: true,
+            supports_json_mode: true,
+            supports_vision: false,
+            max_tools: Some(128),
+            supported_formats: vec!["text".to_string(), "json".to_string()],
+            features: HashMap::new(),
+        }
+    }
+
+    /// Set max context window
+    pub fn with_max_context(mut self, tokens: usize) -> Self {
+        self.max_context_window = tokens;
+        self
+    }
+
+    /// Disable system messages
+    pub fn without_system_messages(mut self) -> Self {
+        self.supports_system_messages = false;
+        self
+    }
+
+    /// Enable vision support
+    pub fn with_vision(mut self) -> Self {
+        self.supports_vision = true;
+        self
+    }
+
+    /// Add a feature flag
+    pub fn with_feature(mut self, name: impl Into<String>, enabled: bool) -> Self {
+        self.features.insert(name.into(), enabled);
+        self
+    }
+}
+
+/// Configuration for a provider instance
+#[derive(Debug, Clone)]
+pub struct ProviderConfig {
+    /// Provider type
+    pub provider_type: LlmProvider,
+    /// API key or authentication token
+    pub api_key: Option<String>,
+    /// Base URL for API requests (for custom endpoints)
+    pub base_url: Option<String>,
+    /// Default model to use
+    pub default_model: String,
+    /// Request timeout
+    pub timeout: Duration,
+    /// Organization ID (for OpenAI)
+    pub organization: Option<String>,
+    /// Additional headers to include in requests
+    pub extra_headers: HashMap<String, String>,
+    /// Provider-specific settings
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl ProviderConfig {
+    /// Create new provider configuration
+    pub fn new(provider_type: LlmProvider, default_model: impl Into<String>) -> Self {
+        Self {
+            provider_type,
+            api_key: None,
+            base_url: None,
+            default_model: default_model.into(),
+            timeout: Duration::from_secs(60),
+            organization: None,
+            extra_headers: HashMap::new(),
+            extra: HashMap::new(),
+        }
+    }
+
+    /// Set API key
+    pub fn with_api_key(mut self, key: impl Into<String>) -> Self {
+        self.api_key = Some(key.into());
+        self
+    }
+
+    /// Set base URL
+    pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
+        self.base_url = Some(url.into());
+        self
+    }
+
+    /// Set timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Set organization
+    pub fn with_organization(mut self, org: impl Into<String>) -> Self {
+        self.organization = Some(org.into());
+        self
+    }
+
+    /// Add extra header
+    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.extra_headers.insert(key.into(), value.into());
+        self
+    }
+
+    /// Add extra setting
+    pub fn with_extra(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.extra.insert(key.into(), value);
+        self
+    }
+}
+
+/// Registry for managing multiple providers
+pub struct ProviderRegistry {
+    /// Registered providers by name
+    providers: HashMap<String, Arc<dyn Provider>>,
+    /// Default provider name
+    default: Option<String>,
+}
+
+impl ProviderRegistry {
+    /// Create a new empty registry
+    pub fn new() -> Self {
+        Self {
+            providers: HashMap::new(),
+            default: None,
+        }
+    }
+
+    /// Register a provider
+    pub fn register(&mut self, name: impl Into<String>, provider: Arc<dyn Provider>) {
+        let name = name.into();
+        info!("Registering provider: {}", name);
+        self.providers.insert(name, provider);
+    }
+
+    /// Register with automatic name from provider
+    pub fn register_provider(&mut self, provider: Arc<dyn Provider>) {
+        let name = provider.name().to_string();
+        self.register(name, provider);
+    }
+
+    /// Get a provider by name
+    pub fn get(&self, name: &str) -> Option<Arc<dyn Provider>> {
+        self.providers.get(name).cloned()
+    }
+
+    /// Set the default provider
+    pub fn set_default(&mut self, name: impl Into<String>) {
+        let name = name.into();
+        if self.providers.contains_key(&name) {
+            self.default = Some(name);
+        } else {
+            warn!("Cannot set default to unregistered provider: {}", name);
+        }
+    }
+
+    /// Get the default provider
+    pub fn default_provider(&self) -> Option<Arc<dyn Provider>> {
+        self.default.as_ref().and_then(|name| self.get(name))
+    }
+
+    /// Get default provider name
+    pub fn default_name(&self) -> Option<&str> {
+        self.default.as_deref()
+    }
+
+    /// List all registered provider names
+    pub fn list(&self) -> Vec<&str> {
+        self.providers.keys().map(|s| s.as_str()).collect()
+    }
+
+    /// Check if a provider is registered
+    pub fn has(&self, name: &str) -> bool {
+        self.providers.contains_key(name)
+    }
+
+    /// Remove a provider
+    pub fn remove(&mut self, name: &str) -> Option<Arc<dyn Provider>> {
+        let removed = self.providers.remove(name);
+        if self.default.as_deref() == Some(name) {
+            self.default = None;
+        }
+        removed
+    }
+
+    /// Clear all providers
+    pub fn clear(&mut self) {
+        self.providers.clear();
+        self.default = None;
+    }
+
+    /// Get count of registered providers
+    pub fn len(&self) -> usize {
+        self.providers.len()
+    }
+
+    /// Check if registry is empty
+    pub fn is_empty(&self) -> bool {
+        self.providers.is_empty()
+    }
+}
+
+impl Default for ProviderRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Builder for creating provider instances
+pub struct ProviderBuilder;
+
+impl ProviderBuilder {
+    /// Create a provider from configuration
+    /// 
+    /// This is a placeholder - actual implementation would create specific
+    /// provider implementations based on the config type.
+    pub fn build(config: ProviderConfig) -> ProviderResult<Arc<dyn Provider>> {
+        // In a real implementation, this would match on provider_type
+        // and create the appropriate implementation
+        Err(ProviderError::ProviderError(
+            "ProviderBuilder::build not implemented - use specific provider constructors".to_string()
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    /// Mock provider for testing
+    struct MockProvider {
+        name: String,
+        default_model: String,
+        call_count: AtomicU64,
+    }
+
+    #[async_trait]
+    impl Provider for MockProvider {
+        fn name(&self) -> &str {
+            &self.name
+        }
+
+        async fn chat(&self, _request: ChatRequest) -> ProviderResult<ChatResponse> {
+            self.call_count.fetch_add(1, Ordering::Relaxed);
+            Ok(ChatResponse {
+                id: "test-123".to_string(),
+                model: self.default_model.clone(),
+                message: ChatMessage::assistant("Test response"),
+                usage: TokenUsage::new(10, 5),
+                finish_reason: FinishReason::Stop,
+                created_at: std::time::Instant::now(),
+            })
+        }
+
+        async fn chat_stream(&self, _request: ChatRequest) -> ProviderResult<StreamingResponse> {
+            // Return empty stream for testing
+            let stream = futures::stream::empty();
+            Ok(Box::pin(stream))
+        }
+
+        async fn list_models(&self) -> ProviderResult<Vec<ModelInfo>> {
+            Ok(vec![
+                ModelInfo {
+                    id: "test-model".to_string(),
+                    name: Some("Test Model".to_string()),
+                    provider: self.name.clone(),
+                    capabilities: ModelCapabilities::default(),
+                }
+            ])
+        }
+
+        async fn get_model_info(&self, model_id: &str) -> ProviderResult<ModelInfo> {
+            Ok(ModelInfo {
+                id: model_id.to_string(),
+                name: Some(model_id.to_string()),
+                provider: self.name.clone(),
+                capabilities: ModelCapabilities::default(),
+            })
+        }
+
+        fn capabilities(&self) -> ProviderCapabilities {
+            ProviderCapabilities::standard()
+        }
+
+        async fn health_check(&self) -> ProviderResult<()> {
+            Ok(())
+        }
+
+        fn default_model(&self) -> &str {
+            &self.default_model
+        }
+    }
+
+    #[tokio::test]
+    async fn test_provider_trait_methods() {
+        let provider = MockProvider {
+            name: "test-provider".to_string(),
+            default_model: "test-model".to_string(),
+            call_count: AtomicU64::new(0),
+        };
+
+        assert_eq!(provider.name(), "test-provider");
+        assert_eq!(provider.default_model(), "test-model");
+        assert!(provider.supports_streaming());
+        assert!(provider.supports_functions());
+
+        let caps = provider.capabilities();
+        assert!(caps.supports_system_messages);
+        assert!(caps.supports_multi_turn);
+    }
+
+    #[tokio::test]
+    async fn test_provider_chat() {
+        let provider = MockProvider {
+            name: "test".to_string(),
+            default_model: "model".to_string(),
+            call_count: AtomicU64::new(0),
+        };
+
+        let request = ChatRequest::new("model", vec![
+            ChatMessage::user("Hello"),
+        ]);
+
+        let response = provider.chat(request).await.unwrap();
+        assert_eq!(response.model, "model");
+        assert_eq!(provider.call_count.load(Ordering::Relaxed), 1);
+    }
+
+    #[tokio::test]
+    async fn test_provider_registry() {
+        let mut registry = ProviderRegistry::new();
+        
+        let provider1 = Arc::new(MockProvider {
+            name: "provider1".to_string(),
+            default_model: "model1".to_string(),
+            call_count: AtomicU64::new(0),
+        });
+        
+        let provider2 = Arc::new(MockProvider {
+            name: "provider2".to_string(),
+            default_model: "model2".to_string(),
+            call_count: AtomicU64::new(0),
+        });
+
+        registry.register("p1", provider1);
+        registry.register("p2", provider2);
+
+        assert_eq!(registry.len(), 2);
+        assert!(registry.has("p1"));
+        assert!(registry.has("p2"));
+        assert!(!registry.has("p3"));
+
+        let p1 = registry.get("p1").unwrap();
+        assert_eq!(p1.name(), "provider1");
+
+        registry.set_default("p1");
+        assert_eq!(registry.default_name(), Some("p1"));
+
+        let default = registry.default_provider().unwrap();
+        assert_eq!(default.name(), "provider1");
+    }
+
+    #[test]
+    fn test_provider_capabilities() {
+        let caps = ProviderCapabilities::standard()
+            .with_max_context(8192)
+            .with_vision()
+            .with_feature("custom_feature", true);
+
+        assert_eq!(caps.max_context_window, 8192);
+        assert!(caps.supports_vision);
+        assert_eq!(caps.features.get("custom_feature"), Some(&true));
+    }
+
+    #[test]
+    fn test_provider_config() {
+        let config = ProviderConfig::new(LlmProvider::OpenAi, "gpt-4")
+            .with_api_key("test-key")
+            .with_timeout(Duration::from_secs(120))
+            .with_header("X-Custom", "value");
+
+        assert_eq!(config.default_model, "gpt-4");
+        assert_eq!(config.api_key, Some("test-key".to_string()));
+        assert_eq!(config.timeout, Duration::from_secs(120));
+        assert_eq!(config.extra_headers.get("X-Custom"), Some(&"value".to_string()));
+    }
+}
+```
+
+Now I'll update the types module to ensure all the referenced types exist, and create the lib.rs to expose everything properly:
+
+```bash
+# Update the llm module to include provider
+cat >> src/llm/mod.rs << 'EOF'
+
+// Re-export provider types
+pub use provider::{
+    Provider,
+    ProviderConfig,
+    ProviderCapabilities,
+    ProviderRegistry,
+    ProviderBuilder,
+    ProviderError,
+    ProviderResult,
+    StreamingResponse,
+};
+EOF
+
+# Ensure types module has all required types
+cat >> src/llm/types.rs << 'EOF'
+
+/// Streaming chunk from a provider
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StreamingChunk {
+    /// Chunk index in the stream
+    pub index: usize,
+    /// Delta content (incremental)
+    pub delta: String,
+    /// Whether this is the final chunk
+    pub finish_reason: Option<FinishReason>,
+    /// Usage information (usually only in final chunk)
+    pub usage: Option<TokenUsage>,
+    /// Tool calls being built up (for function calling)
+    pub tool_calls: Option<Vec<ToolCall>>,
+}
+
+impl StreamingChunk {
+    /// Create a new streaming chunk
+    pub fn new

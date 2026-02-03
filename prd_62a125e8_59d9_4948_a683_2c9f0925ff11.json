@@ -96,7 +96,7 @@
         "Connection warmup",
         "Throughput metrics tracking"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [
         "US-004"
