@@ -92,6 +92,10 @@ impl WorktreeManager {
             return Err(anyhow::anyhow!("git worktree add failed: {}", stderr));
         }
         
+        // Inject workspace stub to isolate from parent workspace
+        // This prevents "current package believes it's in a workspace when it's not" errors
+        self.inject_workspace_stub(&worktree_path)?;
+        
         debug!(
             worktree_id = %id,
             "Worktree created successfully"
@@ -115,6 +119,42 @@ impl WorktreeManager {
             .context("Failed to get current branch")?;
         
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+    
+    /// Inject a workspace stub into the worktree's Cargo.toml
+    /// 
+    /// This makes the worktree a standalone workspace root, preventing Cargo
+    /// from walking upward to find a parent workspace (which would fail since
+    /// the worktree is in a different location than the original repo).
+    fn inject_workspace_stub(&self, worktree_path: &Path) -> Result<()> {
+        let cargo_toml = worktree_path.join("Cargo.toml");
+        
+        if !cargo_toml.exists() {
+            debug!("No Cargo.toml in worktree, skipping workspace stub");
+            return Ok(());
+        }
+        
+        let content = std::fs::read_to_string(&cargo_toml)
+            .context("Failed to read Cargo.toml")?;
+        
+        // Check if already has [workspace] section
+        if content.contains("[workspace]") {
+            debug!("Cargo.toml already has [workspace], skipping stub");
+            return Ok(());
+        }
+        
+        // Prepend [workspace] to make this a standalone workspace root
+        let new_content = format!("[workspace]\n\n{}", content);
+        
+        std::fs::write(&cargo_toml, new_content)
+            .context("Failed to write workspace stub to Cargo.toml")?;
+        
+        info!(
+            cargo_toml = %cargo_toml.display(),
+            "Injected [workspace] stub for hermetic isolation"
+        );
+        
+        Ok(())
     }
     
     /// Merge a worktree's changes back to the parent branch
