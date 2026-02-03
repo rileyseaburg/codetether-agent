@@ -22678,3 +22678,78 @@ mod tests {
 
         // Invalid: target_utilization > 1.0
         let invalid = PoolConfig
+
+---
+
+## Iteration 1 - US-001 (2026-02-03T19:13:15.435441088+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-001 - Add git2 dependency for Git operations as specified in the PRD. This is a straightforward dependency addition to Cargo.toml.
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Implementing US-001: Add git2 dependency for Git operations ==="
+
+# Check if Cargo.toml exists
+if [ ! -f Cargo.toml ]; then
+    echo "Error: Cargo.toml not found in current directory"
+    exit 1
+fi
+
+echo "Current Cargo.toml contents:"
+cat Cargo.toml
+echo ""
+
+# Add git2 dependency to Cargo.toml
+# Check if dependencies section exists
+if grep -q "^\[dependencies\]" Cargo.toml; then
+    # Dependencies section exists, add git2 after it
+    if ! grep -q "^git2" Cargo.toml; then
+        # Insert git2 after the [dependencies] line
+        sed -i '/^\[dependencies\]/a git2 = "0.18"' Cargo.toml
+        echo "Added git2 = \"0.18\" to [dependencies] section"
+    else
+        echo "git2 dependency already exists in Cargo.toml"
+    fi
+else
+    # No dependencies section, create one at the end
+    echo "" >> Cargo.toml
+    echo "[dependencies]" >> Cargo.toml
+    echo 'git2 = "0.18"' >> Cargo.toml
+    echo "Created [dependencies] section and added git2"
+fi
+
+echo ""
+echo "Updated Cargo.toml contents:"
+cat Cargo.toml
+echo ""
+
+# Verify cargo check passes
+echo "=== Running cargo check ==="
+cargo check
+
+echo ""
+echo "=== Verification ==="
+echo "Checking git2 is in dependencies:"
+grep -A 5 "^\[dependencies\]" Cargo.toml | head -10
+
+echo ""
+echo "=== Acceptance Criteria Verification ==="
+echo "✓ git2 crate added to Cargo.toml dependencies"
+echo "✓ cargo check passes with new dependency"
+
+echo ""
+echo "=== What I learned ==="
+echo "- git2 is the standard Rust binding to libgit2, providing native Git operations"
+echo "- Version 0.18 is the current stable release with good compatibility"
+echo "- Adding dependencies to Cargo.toml is straightforward with sed or direct append"
+echo "- cargo check validates that dependencies can be resolved and compiled"
+echo "- The git2 crate allows operations like: clone, commit, diff, blame, revwalk without shelling out to git CLI"
+echo "- This will enable the Git-based undo system to work natively in Rust"
+
+STORY_COMPLETE: US-001
+```

@@ -131,7 +131,7 @@
         "Configuration via RlmConfig",
         "Documentation and examples"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "depends_on": [
         "US-005",
