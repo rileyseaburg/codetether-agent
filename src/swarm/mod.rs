@@ -136,6 +136,15 @@ pub struct SwarmConfig {
     
     /// Delay between API calls in ms (rate limiting)
     pub request_delay_ms: u64,
+    
+    /// Enable worktree isolation for sub-agents
+    pub worktree_enabled: bool,
+    
+    /// Automatically merge worktree changes on success
+    pub worktree_auto_merge: bool,
+    
+    /// Working directory for worktree creation
+    pub working_dir: Option<String>,
 }
 
 impl Default for SwarmConfig {
@@ -150,6 +159,9 @@ impl Default for SwarmConfig {
             model: None,
             max_concurrent_requests: 3,  // V1 tier allows 3 concurrent
             request_delay_ms: 1000,      // V1 tier: 60 RPM, 3 concurrent = fast
+            worktree_enabled: true,      // Enable worktree isolation by default
+            worktree_auto_merge: true,   // Auto-merge on success
+            working_dir: None,
         }
     }
 }
