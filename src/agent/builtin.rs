@@ -185,6 +185,7 @@ pub fn build_system_prompt(cwd: &Path) -> String {
 }
 
 /// Build a complete system prompt for the plan agent, including AGENTS.md content if present.
+#[allow(dead_code)]
 pub fn build_plan_system_prompt(cwd: &Path) -> String {
     let base_prompt = PLAN_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
     
