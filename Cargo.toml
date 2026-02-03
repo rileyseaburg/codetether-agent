@@ -20,7 +20,7 @@ clap = { version = "4", features = ["derive", "env"] }
 
 # HTTP server/client
 axum = { version = "0.8", features = ["ws", "macros"] }
-reqwest = { version = "0.13.1", features = ["json", "stream", "rustls-tls"], default-features = false }
+reqwest = { version = "0.13.1", features = ["json", "stream", "rustls"], default-features = false }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace", "auth"] }
 
@@ -29,7 +29,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # AI providers
-async-openai = "0.32.4"
+async-openai = { version = "0.32.4", features = ["chat-completion"] }
 
 # A2A/MCP protocols
 jsonrpc-core = "18"
