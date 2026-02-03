@@ -1,0 +1,485 @@
+{
+  "document_type": "TUI Technical Specifications",
+  "version": "1.0.0",
+  "last_updated": "2025-01-20",
+  "project": "CodeTether Agent",
+  
+  "framework_versions": {
+    "ratatui": {
+      "current_version": "0.30.0",
+      "description": "A Rust library for building fast, lightweight terminal user interfaces",
+      "architecture": "Immediate-mode rendering with intermediate buffers",
+      "dependencies": ["crossterm"],
+      "upgrade_path": {
+        "latest_stable": "0.30.0",
+        "changelog_url": "https://github.com/ratatui/ratatui/blob/main/CHANGELOG.md",
+        "breaking_changes": [],
+        "recommended": "Current version is up-to-date"
+      }
+    },
+    "crossterm": {
+      "current_version": "0.29.0",
+      "description": "Cross-platform terminal manipulation library for input/output handling",
+      "features_used": [
+        "event handling (keyboard, mouse, resize)",
+        "raw mode management",
+        "alternate screen buffer",
+        "mouse capture"
+      ],
+      "upgrade_path": {
+        "latest_stable": "0.29.0",
+        "changelog_url": "https://github.com/crossterm-rs/crossterm/blob/master/CHANGELOG.md",
+        "breaking_changes": [],
+        "recommended": "Current version is up-to-date"
+      }
+    }
+  },
+
+  "components": {
+    "message_display": {
+      "current_state": {
+        "implementation": "List widget with ListItem components",
+        "code_pattern": "use ratatui::widgets::{List, ListItem};",
+        "features": [
+          "Timestamp display with DarkGray color",
+          "Role-based styling with BOLD modifier",
+          "Multi-line content support",
+          "Empty line separation between messages"
+        ],
+        "limitations": [
+          "No syntax highlighting for code blocks",
+          "Limited rich text formatting",
+          "No inline action buttons"
+        ]
+      },
+      "available_options": [
+        {
+          "name": "Enhanced List (Current + Improvements)",
+          "description": "Extend current List implementation with stateful selection",
+          "widgets": ["List", "ListItem", "ListState", "Block"],
+          "features": [
+            "Selection support with ListState",
+            "Highlight styles for selected messages",
+            "Scroll padding for context preservation",
+            "Custom highlight symbol (e.g., '▶ ')"
+          ],
+          "pros": ["Minimal changes to existing code", "Built-in selection support"],
+          "cons": ["Limited rich content per item"],
+          "effort": "low"
+        },
+        {
+          "name": "Paragraph with Scroll",
+          "description": "Use Paragraph widget with text wrapping and scroll offset",
+          "widgets": ["Paragraph", "Wrap", "Block"],
+          "features": [
+            "Text wrapping with whitespace preservation",
+            "Vertical scrolling with scroll offset",
+            "Better for long-form content"
+          ],
+          "pros": ["Excellent for reading long messages", "Better text wrapping control"],
+          "cons": ["No built-in selection", "More complex scroll management"],
+          "effort": "medium"
+        },
+        {
+          "name": "Hybrid Approach",
+          "description": "Combine List for message list with Paragraph for individual content",
+          "widgets": ["List", "ListItem", "Paragraph", "Scrollbar", "Block"],
+          "features": [
+            "List for message headers and navigation",
+            "Paragraph for rich message content",
+            "Scrollbar widget for visual feedback",
+            "Best of both approaches"
+          ],
+          "pros": ["Rich formatting", "Good navigation", "Visual scroll indicator"],
+          "cons": ["More complex implementation", "Higher memory usage"],
+          "effort": "medium"
+        },
+        {
+          "name": "Table for Structured Messages",
+          "description": "Use Table widget for columnar message display",
+          "widgets": ["Table", "Row", "Cell", "Block"],
+          "features": [
+            "Columnar layout (timestamp, role, content)",
+            "Header and footer support",
+            "Cell selection capabilities"
+          ],
+          "pros": ["Structured layout", "Good for data-heavy messages"],
+          "cons": ["Overkill for chat UI", "Less flexible content"],
+          "effort": "medium"
+        }
+      ],
+      "recommendation": {
+        "primary": "Hybrid Approach",
+        "rationale": "Provides the best balance of navigation (List), rich content display (Paragraph), and user feedback (Scrollbar). Aligns with modern chat UI patterns.",
+        "migration_steps": [
+          "Add ListState for message selection",
+          "Implement Scrollbar widget alongside List",
+          "Create rich content renderer using Paragraph for selected message",
+          "Add syntax highlighting support for code blocks"
+        ]
+      }
+    },
+
+    "input_handling": {
+      "current_state": {
+        "implementation": "crossterm::event polling with KeyEvent handling",
+        "code_pattern": "use crossterm::event::{self, Event, KeyCode, KeyModifiers};",
+        "event_types_supported": ["KeyEvent", "MouseEvent", "ResizeEvent"],
+        "current_bindings": {
+          "Ctrl+C / Ctrl+Q": "Quit application",
+          "?": "Toggle help overlay",
+          "Tab": "Switch agent (build/plan)",
+          "Enter": "Submit message",
+          "↑/↓": "Scroll messages (1 line)",
+          "PgUp/PgDn": "Scroll messages (10 lines)",
+          "←/→": "Move cursor in input",
+          "Home/End": "Jump to input start/end",
+          "Backspace/Delete": "Edit input"
+        },
+        "modifiers_supported": ["CONTROL", "SHIFT", "ALT"]
+      },
+      "available_options": [
+        {
+          "name": "Enhanced Keyboard Navigation",
+          "description": "Add vim-style and extended navigation keys",
+          "new_bindings": {
+            "j/k": "Scroll up/down (vim-style)",
+            "gg/G": "Jump to top/bottom",
+            "/": "Search in messages",
+            "n/N": "Next/previous search result",
+            "Esc": "Clear input or close overlay"
+          },
+          "pros": ["Power user friendly", "Familiar to vim users"],
+          "cons": ["Learning curve for non-vim users"],
+          "effort": "low"
+        },
+        {
+          "name": "Mouse Support Enhancement",
+          "description": "Enable and handle mouse events for interaction",
+          "features": [
+            "Click to select messages",
+            "Scroll wheel support",
+            "Click to position cursor in input",
+            "Button clicks for UI elements"
+          ],
+          "code_changes": [
+            "execute!(stdout, EnableMouseCapture)? already enabled",
+            "Add MouseEvent handling in event loop",
+            "Implement hit testing for clickable areas"
+          ],
+          "pros": ["Intuitive for mouse users", "Modern TUI expectation"],
+          "cons": ["Terminal compatibility issues", "Complex hit testing"],
+          "effort": "medium"
+        },
+        {
+          "name": "Command History",
+          "description": "Add up/down arrow history navigation when input is empty",
+          "features": [
+            "Store submitted messages in history",
+            "Navigate history with ↑/↓ when input empty",
+            "Persist history across sessions (optional)"
+          ],
+          "pros": ["Common shell pattern", "Reduces retyping"],
+          "cons": ["Need to handle multi-line history"],
+          "effort": "low"
+        },
+        {
+          "name": "Bracketed Paste Support",
+          "description": "Handle multi-line paste events properly",
+          "features": [
+            "Detect paste vs typing",
+            "Handle multi-line input gracefully",
+            "Prevent accidental submission"
+          ],
+          "pros": ["Better paste experience", "Prevents broken input"],
+          "cons": ["Terminal support varies"],
+          "effort": "low"
+        },
+        {
+          "name": "Keybinding Configuration",
+          "description": "Allow user-customizable keybindings via config",
+          "features": [
+            "Config file for key mappings",
+            "Multiple preset layouts (vim, emacs, default)",
+            "Conflict detection"
+          ],
+          "pros": ["User customization", "Accessibility"],
+          "cons": ["Complex configuration system", "Testing overhead"],
+          "effort": "high"
+        }
+      ],
+      "recommendation": {
+        "primary": "Enhanced Keyboard Navigation + Command History",
+        "secondary": "Mouse Support Enhancement",
+        "rationale": "Keyboard enhancements provide immediate value with low effort. Mouse support adds modern feel but has compatibility concerns. History is expected behavior for CLI tools.",
+        "implementation_priority": [
+          "1. Add command history with Vec<String>",
+          "2. Implement vim-style navigation keys",
+          "3. Add search functionality with '/'",
+          "4. Enhance mouse handling for scrolling"
+        ]
+      }
+    },
+
+    "scrollable_views": {
+      "current_state": {
+        "implementation": "Manual scroll offset tracking with usize",
+        "code_pattern": "struct App { scroll: usize, ... }",
+        "scroll_behavior": {
+          "Up/Down arrows": "±1 line",
+          "PageUp/PageDown": "±10 lines"
+        },
+        "limitations": [
+          "No visual scroll indicator",
+          "Manual offset calculation",
+          "No scroll-to-bottom on new messages"
+        ]
+      },
+      "available_options": [
+        {
+          "name": "Scrollbar Widget Integration",
+          "description": "Add Ratatui's built-in Scrollbar widget",
+          "widgets": ["Scrollbar", "ScrollbarState", "ScrollbarOrientation"],
+          "features": [
+            "Visual scroll position indicator",
+            "Configurable orientation (vertical/horizontal)",
+            "Customizable symbols and styling",
+            "Track and thumb styling"
+          ],
+          "code_example": "use ratatui::widgets::{Scrollbar, ScrollbarState};",
+          "pros": ["Native Ratatui support", "Visual feedback", "Easy integration"],
+          "cons": ["Takes up screen space"],
+          "effort": "low"
+        },
+        {
+          "name": "Smart Auto-Scroll",
+          "description": "Auto-scroll to bottom on new messages with user override",
+          "features": [
+            "Auto-scroll when at bottom and new message arrives",
+            "Pause auto-scroll when user scrolls up",
+            "Visual indicator for new messages below",
+            "Key to jump to bottom (e.g., 'G' or 'End')"
+          ],
+          "pros": ["Follows chat app conventions", "User control"],
+          "cons": ["State management complexity"],
+          "effort": "medium"
+        },
+        {
+          "name": "Virtual Scrolling",
+          "description": "Efficient rendering for large message histories",
+          "features": [
+            "Only render visible messages",
+            "Handle thousands of messages efficiently",
+            "Maintain scroll position with variable content"
+          ],
+          "pros": ["Performance with large histories", "Memory efficient"],
+          "cons": ["Complex implementation", "Height calculation challenges"],
+          "effort": "high"
+        },
+        {
+          "name": "Searchable Scroll",
+          "description": "Integrate search with scroll navigation",
+          "features": [
+            "Search within messages",
+            "Jump to search results",
+            "Highlight matching text",
+            "Search result counter (e.g., '3/12')"
+          ],
+          "pros": ["Essential for large histories", "Better UX"],
+          "cons": ["Search indexing overhead"],
+          "effort": "medium"
+        }
+      ],
+      "recommendation": {
+        "primary": "Scrollbar Widget + Smart Auto-Scroll",
+        "rationale": "Scrollbar provides essential visual feedback. Smart auto-scroll follows chat conventions and improves UX significantly. Both are well-supported by Ratatui.",
+        "implementation_steps": [
+          "Add ScrollbarState to App struct",
+          "Render Scrollbar widget in message area",
+          "Implement auto-scroll detection (at_bottom flag)",
+          "Add 'new messages' indicator when scrolled up",
+          "Add 'G' key to jump to bottom"
+        ]
+      }
+    },
+
+    "color_styling": {
+      "current_state": {
+        "implementation": "Basic Style usage with Color and Modifier",
+        "code_pattern": "use ratatui::style::{Style, Color, Modifier};",
+        "current_palette": {
+          "DarkGray": "Timestamps",
+          "BOLD": "Role names",
+          "default": "Message content"
+        },
+        "limitations": [
+          "Limited color usage",
+          "No theme system",
+          "No dark/light mode adaptation",
+          "No syntax highlighting"
+        ]
+      },
+      "available_options": [
+        {
+          "name": "Semantic Color System",
+          "description": "Define semantic colors for consistent theming",
+          "colors": {
+            "primary": "Main accent color",
+            "secondary": "Secondary elements",
+            "success": "Success states",
+            "warning": "Warning states",
+            "error": "Error states",
+            "info": "Informational elements",
+            "muted": "Timestamps, metadata",
+            "background": "Background colors",
+            "foreground": "Text colors"
+          },
+          "pros": ["Consistent styling", "Easy theme changes"],
+          "cons": ["Initial setup overhead"],
+          "effort": "low"
+        },
+        {
+          "name": "Role-Based Message Colors",
+          "description": "Distinct colors for different message roles",
+          "role_colors": {
+            "user": "Blue/Cyan",
+            "assistant": "Green",
+            "system": "Yellow/Orange",
+            "error": "Red",
+            "tool": "Magenta/Purple"
+          },
+          "pros": ["Visual distinction", "Quick role identification"],
+          "cons": ["Colorblind accessibility concerns"],
+          "effort": "low"
+        },
+        {
+          "name": "Theme Configuration",
+          "description": "User-configurable color themes",
+          "features": [
+            "Config file for theme selection",
+            "Built-in themes (default, high-contrast, solarized)",
+            "Custom theme support",
+            "Dark/light terminal detection"
+          ],
+          "pros": ["User preference", "Accessibility"],
+          "cons": ["Configuration complexity"],
+          "effort": "medium"
+        },
+        {
+          "name": "Syntax Highlighting",
+          "description": "Add code block syntax highlighting",
+          "crates": ["syntect", "tree-sitter"],
+          "features": [
+            "Language detection from code fences",
+            "Themed syntax highlighting",
+            "Line numbers in code blocks"
+          ],
+          "pros": ["Essential for code display", "Professional appearance"],
+          "cons": ["Additional dependencies", "Performance impact"],
+          "effort": "medium"
+        },
+        {
+          "name": "Gradient and Advanced Effects",
+          "description": "Use Ratatui's advanced styling features",
+          "features": [
+            "Gradient backgrounds",
+            "Border styling",
+            "Undercurl for errors/warnings",
+            "Dimmed/blurred overlays"
+          ],
+          "pros": ["Modern appearance", "Visual hierarchy"],
+          "cons": ["Terminal support varies", "May be overkill"],
+          "effort": "medium"
+        }
+      ],
+      "recommendation": {
+        "primary": "Semantic Color System + Role-Based Message Colors",
+        "secondary": "Syntax Highlighting",
+        "rationale": "Semantic colors provide maintainable theming. Role-based colors improve UX significantly. Syntax highlighting is essential for a coding agent tool.",
+        "implementation_plan": [
+          "Define ColorPalette struct with semantic colors",
+          "Map roles to specific colors (user=blue, assistant=green, etc.)",
+          "Integrate syntect for syntax highlighting",
+          "Add theme config file support (future enhancement)"
+        ],
+        "suggested_palette": {
+          "user_role": "Color::Cyan",
+          "assistant_role": "Color::Green",
+          "system_role": "Color::Yellow",
+          "error_role": "Color::Red",
+          "timestamp": "Color::DarkGray",
+          "border": "Color::Gray",
+          "highlight": "Color::Blue",
+          "background_selected": "Color::DarkGray"
+        }
+      }
+    }
+  },
+
+  "integration_recommendations": {
+    "immediate_actions": [
+      {
+        "priority": "high",
+        "action": "Implement Scrollbar widget for message area",
+        "rationale": "Low effort, high impact UX improvement"
+      },
+      {
+        "priority": "high",
+        "action": "Add role-based color coding",
+        "rationale": "Improves message readability significantly"
+      },
+      {
+        "priority": "medium",
+        "action": "Implement command history",
+        "rationale": "Expected CLI behavior, easy to implement"
+      },
+      {
+        "priority": "medium",
+        "action": "Add smart auto-scroll",
+        "rationale": "Follows chat app conventions"
+      }
+    ],
+    "future_enhancements": [
+      {
+        "priority": "low",
+        "action": "Syntax highlighting for code blocks",
+        "rationale": "Important for coding agent, but requires additional dependencies"
+      },
+      {
+        "priority": "low",
+        "action": "Mouse interaction support",
+        "rationale": "Nice to have, but keyboard-first is acceptable for CLI tool"
+      },
+      {
+        "priority": "low",
+        "action": "Theme configuration system",
+        "rationale": "User customization, can use defaults for now"
+      }
+    ]
+  },
+
+  "dependencies_to_add": {
+    "optional": [
+      {
+        "crate": "syntect",
+        "version": "5.x",
+        "purpose": "Syntax highlighting for code blocks",
+        "features": ["default-fancy"]
+      },
+      {
+        "crate": "tui-textarea",
+        "version": "0.7",
+        "purpose": "Enhanced multi-line text input",
+        "features": ["crossterm"]
+      }
+    ]
+  },
+
+  "code_examples": {
+    "scrollbar_integration": "use ratatui::widgets::{Scrollbar, ScrollbarState, ScrollbarOrientation};\n\n// In App struct\nstruct App {\n    scroll: usize,\n    scrollbar_state: ScrollbarState,\n}\n\n// In render\nlet scrollbar = Scrollbar::default()\n    .orientation(ScrollbarOrientation::VerticalRight)\n    .begin_symbol(Some(\"↑\"))\n    .end_symbol(Some(\"↓\"));\n\nframe.render_stateful_widget(\n    scrollbar,\n    messages_area,\n    &mut app.scrollbar_state,\n);",
+
+    "semantic_colors": "pub struct Theme {\n    pub user_color: Color,\n    pub assistant_color: Color,\n    pub system_color: Color,\n    pub error_color: Color,\n    pub muted_color: Color,\n    pub border_color: Color,\n}\n\nimpl Default for Theme {\n    fn default() -> Self {\n        Self {\n            user_color: Color::Cyan,\n            assistant_color: Color::Green,\n            system_color: Color::Yellow,\n            error_color: Color::Red,\n            muted_color: Color::DarkGray,\n            border_color: Color::Gray,\n        }\n    }\n}",
+
+    "auto_scroll": "fn add_message(&mut self, message: ChatMessage) {\n    let was_at_bottom = self.is_at_bottom();\n    self.messages.push(message);\n    if was_at_bottom {\n        self.scroll_to_bottom();\n    } else {\n    self.new_messages_below += 1;\n    }\n}\n\nfn is_at_bottom(&self) -> bool {\n    self.scroll >= self.messages.len().saturating_sub(self.visible_lines)\n}"
+  }
+}

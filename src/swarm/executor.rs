@@ -483,7 +483,11 @@ impl SwarmExecutor {
         
         // Create shared tool registry with provider for ralph and batch tool
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-        let tool_definitions = tool_registry.definitions();
+        // Filter out 'question' tool - sub-agents must be autonomous, not interactive
+        let tool_definitions: Vec<_> = tool_registry.definitions()
+            .into_iter()
+            .filter(|t| t.name != "question")
+            .collect();
         
         // Create worktree manager if enabled
         let worktree_manager = if self.config.worktree_enabled {
