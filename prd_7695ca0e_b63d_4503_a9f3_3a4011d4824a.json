@@ -1,0 +1,202 @@
+{
+  "project": "codetether-agent",
+  "feature": "RLM UI Visualization Components",
+  "branch_name": "feature/rlm-ui-visualization-components",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Create RLM State Management Module",
+      "description": "Create a state management module in src/tui/rlm_state.rs to track RLM processing progress, chunking operations, connection pool status, token usage, and parallel processing metrics. This module will provide the data model for all RLM UI components.",
+      "acceptance_criteria": [
+        "RlmState struct with fields for chunking progress, connection pool, token usage, parallel processing",
+        "Methods to update state from RLM processing events",
+        "Thread-safe state sharing for async updates",
+        "Integration with existing RLM router/repl modules"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-002",
+      "title": "Design Progress Indicators for Chunking Operations",
+      "description": "Design and implement visual progress indicators for RLM chunking operations. Include: (1) Chunk count progress (e.g., 'Chunk 5/12'), (2) Token processing progress bar, (3) Content type detection indicator, (4) Current operation status text. Must use Ratatui Gauge and Paragraph widgets with Cyan accent color for assistant messages.",
+      "acceptance_criteria": [
+        "ChunkingProgress widget showing current/total chunks",
+        "Token processing gauge with percentage",
+        "Content type badge (Code/Logs/Conversation/Documents/Mixed)",
+        "Status text showing current operation (detecting/splitting/processing)",
+        "Uses Cyan color for active elements per color scheme"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-003",
+      "title": "Design Internal REPL Environment Interface",
+      "description": "Create a split-pane REPL interface with input/output panes. Input pane shows the code/commands being executed by the LLM. Output pane shows execution results, variable values, and FINAL answer. Include syntax highlighting hints and scrollable history.",
+      "acceptance_criteria": [
+        "Split layout with input pane (top/left) and output pane (bottom/right)",
+        "Input pane displays DSL code (head, tail, grep, count, llm_query, FINAL)",
+        "Output pane shows execution results and variable assignments",
+        "Scrollable history for both panes",
+        "Line numbers in input pane",
+        "Highlight FINAL() calls with distinctive styling"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-004",
+      "title": "Design Connection Pool Status Display",
+      "description": "Create a connection pool status widget showing: (1) Active connections count, (2) Connection health indicators, (3) Provider/model being used, (4) Request queue length, (5) Average response time. Use a compact table or list format suitable for sidebar or status bar integration.",
+      "acceptance_criteria": [
+        "Active connections counter with visual indicator",
+        "Health status per connection (healthy/degraded/offline)",
+        "Provider and model name display",
+        "Queue length indicator",
+        "Average response time (last 10 requests)",
+        "Compact design fitting in sidebar or status area"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-005",
+      "title": "Design Parallel Processing Visualization",
+      "description": "Create sparkline and progress bar visualizations for parallel processing. Show: (1) Active worker count, (2) Task queue depth over time (sparkline), (3) Individual task progress bars, (4) Completed vs pending counts. Use Ratatui's Sparkline and Gauge widgets.",
+      "acceptance_criteria": [
+        "Sparkline showing task queue depth history (last 60 seconds)",
+        "Active workers counter",
+        "Individual progress bars for each parallel task",
+        "Completed/pending/failed task counters",
+        "Auto-scaling visualization based on workload"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Design Context Size Indicator with Warnings",
+      "description": "Create a context size indicator showing: (1) Current context size in tokens, (2) Context window limit, (3) Usage percentage with color-coded warnings (green <70%, yellow 70-85%, red >85%), (4) Visual bar showing usage. Include warning messages when approaching limits.",
+      "acceptance_criteria": [
+        "Token count display (current / limit)",
+        "Percentage bar with color coding: Green <70%, Yellow 70-85%, Red >85%",
+        "Warning icon/text when >85%",
+        "Estimated tokens remaining display",
+        "Visual distinction between safe/warning/critical states"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-007",
+      "title": "Design Token Usage Tracking Display",
+      "description": "Create a comprehensive token usage tracking display showing: (1) Session total tokens (input/output), (2) Current request tokens, (3) RLM-specific breakdown (root model vs subcall model), (4) Token usage rate (tokens/minute), (5) Cost estimate placeholder. Display as a compact metrics panel.",
+      "acceptance_criteria": [
+        "Session totals: input tokens, output tokens, total tokens",
+        "Current request token usage",
+        "RLM breakdown: root processing vs sub-queries",
+        "Token rate calculation (tokens/minute)",
+        "Per-model usage tracking",
+        "Compact metrics table format"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-008",
+      "title": "Create RLM Dashboard Component",
+      "description": "Combine all RLM visualization components into a unified dashboard widget that can be displayed as an overlay, sidebar panel, or dedicated tab. The dashboard should be toggleable and show all RLM processing metrics in an organized layout.",
+      "acceptance_criteria": [
+        "Unified dashboard layout integrating all RLM components",
+        "Toggle visibility with keyboard shortcut (F3 or similar)",
+        "Responsive layout adapting to available space",
+        "Clean separation between sections",
+        "Consistent color scheme throughout"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006",
+        "US-007"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-009",
+      "title": "Integrate RLM UI with Existing TUI",
+      "description": "Integrate the RLM visualization components into the existing TUI module (src/tui/mod.rs). Add event handling for RLM state updates, keyboard shortcuts for toggling the dashboard, and proper state synchronization between RLM processing and UI display.",
+      "acceptance_criteria": [
+        "RLM state updates propagate to UI in real-time",
+        "Keyboard shortcut to toggle RLM dashboard (F3)",
+        "RLM processing events update visualizations",
+        "No UI blocking during RLM processing",
+        "Graceful handling when RLM is not active"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-008"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-010",
+      "title": "Add Documentation and Examples",
+      "description": "Create documentation for the RLM UI components including: (1) Component usage examples, (2) Color scheme reference, (3) Keyboard shortcut guide, (4) Screenshot/mockup descriptions. Update relevant documentation files.",
+      "acceptance_criteria": [
+        "UI_COMPONENTS.md documenting all RLM visualizations",
+        "Color scheme documentation matching requirements",
+        "Keyboard shortcut reference",
+        "Usage examples for each component"
+      ],
+      "passes": false,
+      "priority": 4,
+      "depends_on": [
+        "US-008",
+        "US-009"
+      ],
+      "complexity": 2
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-03T19:39:11.540017332+00:00",
+  "updated_at": "2026-02-03T19:39:11.540019262+00:00"
+}
