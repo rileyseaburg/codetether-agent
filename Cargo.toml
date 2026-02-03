@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.85"
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
 license = "MIT"
-repository = "https://github.com/codetether/codetether-agent"
+repository = "https://github.com/rileyseaburg/codetether-agent"
 
 [lib]
 name = "codetether_agent"
