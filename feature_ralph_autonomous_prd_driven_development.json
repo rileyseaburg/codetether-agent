@@ -1,0 +1,83 @@
+{
+  "feature_name": "Ralph - Autonomous PRD-Driven Development",
+  "description": "An autonomous AI agent loop that executes user stories from a structured Product Requirements Document (PRD). Ralph iteratively implements features, maintains state across iterations through git history and persistence files, and ensures quality through automated checks.",
+  "key_capabilities": {
+    "autonomous_implementation": {
+      "description": "Self-directed development loop that processes PRD user stories without human intervention",
+      "details": [
+        "Iterative execution with fresh context per iteration",
+        "Automatic story selection and implementation",
+        "Git-based progress tracking with descriptive commits",
+        "Handles dependencies between stories automatically"
+      ]
+    },
+    "quality_checks": {
+      "description": "Automated validation at multiple stages to ensure code quality",
+      "checks": {
+        "build": "Verify project compiles successfully",
+        "lint": "Enforce code style and catch common issues",
+        "test": "Run test suite to prevent regressions",
+        "typecheck": "Validate type safety where applicable"
+      },
+      "failure_handling": "Automatic rollback and retry on quality check failures"
+    },
+    "memory_persistence": {
+      "description": "State management across autonomous iterations",
+      "mechanisms": {
+        "git_history": "Commit history provides complete implementation trail",
+        "progress_txt": "Text file capturing learnings and context from previous iterations",
+        "prd_json": "Structured document tracking completed and pending stories"
+      },
+      "benefits": [
+        "Iteration isolation - each run starts fresh but informed",
+        "Auditability - complete history of decisions and changes",
+        "Recovery - ability to resume from any point"
+      ]
+    }
+  },
+  "technical_requirements": {
+    "input_format": {
+      "type": "JSON PRD file",
+      "schema": {
+        "project": "string - Project name",
+        "feature": "string - Feature name",
+        "stories": [
+          {
+            "id": "string - Unique identifier",
+            "title": "string - Story title",
+            "description": "string - What needs to be implemented",
+            "acceptance_criteria": ["array of strings"],
+            "complexity": "number - Story points or complexity estimate",
+            "priority": "number - Execution priority",
+            "depends_on": ["array of story IDs"]
+          }
+        ],
+        "quality_checks": {
+          "build": "string - Build command",
+          "lint": "string - Lint command",
+          "test": "string - Test command",
+          "typecheck": "string - Type check command"
+        }
+      }
+    },
+    "persistence_files": {
+      "prd_json": "prd.json - Source of truth for story status",
+      "progress_txt": "progress.txt - Context and learnings storage"
+    },
+    "execution_model": {
+      "loop_type": "Autonomous agent with iteration limit",
+      "default_max_iterations": 10,
+      "termination_conditions": [
+        "All stories completed",
+        "Maximum iterations reached",
+        "Unrecoverable error",
+        "Quality checks consistently failing"
+      ]
+    },
+    "integration": {
+      "prd_tool": "Structured PRD generation and validation",
+      "commands": ["analyze", "generate", "validate", "save"],
+      "ralph_tool": "Execution engine with run/status/create-prd actions"
+    }
+  }
+}
