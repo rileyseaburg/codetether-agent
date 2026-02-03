@@ -25,6 +25,170 @@ use std::time::Instant;
 use tokio::sync::RwLock;
 use tokio::time::{timeout, Duration};
 
+/// Default context limit (256k tokens - conservative for most models)
+const DEFAULT_CONTEXT_LIMIT: usize = 256_000;
+
+/// Reserve tokens for the response generation
+const RESPONSE_RESERVE_TOKENS: usize = 8_192;
+
+/// Safety margin before we start truncating (90% of limit)
+const TRUNCATION_THRESHOLD: f64 = 0.85;
+
+/// Estimate token count from text (rough heuristic: ~4 chars per token)
+fn estimate_tokens(text: &str) -> usize {
+    // This is a rough estimate - actual tokenization varies by model
+    // Most tokenizers average 3-5 chars per token for English text
+    // We use 3.5 to be conservative
+    (text.len() as f64 / 3.5).ceil() as usize
+}
+
+/// Estimate total tokens in a message
+fn estimate_message_tokens(message: &Message) -> usize {
+    let mut tokens = 4; // Role overhead
+    
+    for part in &message.content {
+        tokens += match part {
+            ContentPart::Text { text } => estimate_tokens(text),
+            ContentPart::ToolCall { id, name, arguments } => {
+                estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10
+            }
+            ContentPart::ToolResult { tool_call_id, content } => {
+                estimate_tokens(tool_call_id) + estimate_tokens(content) + 6
+            }
+            ContentPart::Image { .. } | ContentPart::File { .. } => 2000, // Binary content is expensive
+        };
+    }
+    
+    tokens
+}
+
+/// Estimate total tokens in all messages
+fn estimate_total_tokens(messages: &[Message]) -> usize {
+    messages.iter().map(estimate_message_tokens).sum()
+}
+
+/// Truncate messages to fit within context limit
+/// 
+/// Strategy:
+/// 1. Keep system message (first) and user message (second) always
+/// 2. Keep the most recent assistant + tool result pairs
+/// 3. Drop oldest middle messages (summarize if possible)
+fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
+    let target_tokens = ((context_limit as f64) * TRUNCATION_THRESHOLD) as usize - RESPONSE_RESERVE_TOKENS;
+    
+    let current_tokens = estimate_total_tokens(messages);
+    if current_tokens <= target_tokens {
+        return;
+    }
+    
+    tracing::warn!(
+        current_tokens = current_tokens,
+        target_tokens = target_tokens,
+        context_limit = context_limit,
+        "Context approaching limit, truncating conversation history"
+    );
+    
+    // Minimum: keep first 2 (system + initial user) and last 4 messages
+    if messages.len() <= 6 {
+        // Can't truncate further, try to truncate individual tool results
+        truncate_large_tool_results(messages, target_tokens);
+        return;
+    }
+    
+    // Remove messages from the middle, keeping first 2 and last 4
+    let keep_start = 2;
+    let keep_end = 4;
+    let to_remove = messages.len() - keep_start - keep_end;
+    
+    // Create a summary of what was removed
+    let removed_messages: Vec<_> = messages.drain(keep_start..keep_start + to_remove).collect();
+    let summary = summarize_removed_messages(&removed_messages);
+    
+    // Insert a summary message where we removed content
+    messages.insert(keep_start, Message {
+        role: Role::User,
+        content: vec![ContentPart::Text { 
+            text: format!("[Context truncated: {} earlier messages removed to fit context window]\n{}", 
+                removed_messages.len(), summary),
+        }],
+    });
+    
+    let new_tokens = estimate_total_tokens(messages);
+    tracing::info!(
+        removed_messages = removed_messages.len(),
+        old_tokens = current_tokens,
+        new_tokens = new_tokens,
+        "Truncated conversation history"
+    );
+    
+    // If still too large, truncate individual tool results
+    if new_tokens > target_tokens {
+        truncate_large_tool_results(messages, target_tokens);
+    }
+}
+
+/// Summarize removed messages for context preservation
+fn summarize_removed_messages(messages: &[Message]) -> String {
+    let mut summary = String::new();
+    let mut tool_calls: Vec<String> = Vec::new();
+    
+    for msg in messages {
+        for part in &msg.content {
+            if let ContentPart::ToolCall { name, .. } = part {
+                if !tool_calls.contains(name) {
+                    tool_calls.push(name.clone());
+                }
+            }
+        }
+    }
+    
+    if !tool_calls.is_empty() {
+        summary.push_str(&format!("Tools used in truncated history: {}", tool_calls.join(", ")));
+    }
+    
+    summary
+}
+
+/// Truncate large tool results that exceed a reasonable size
+fn truncate_large_tool_results(messages: &mut [Message], target_tokens: usize) {
+    let max_tool_result_tokens = 4000; // Max tokens per tool result
+    
+    for message in messages.iter_mut() {
+        for part in message.content.iter_mut() {
+            if let ContentPart::ToolResult { content, .. } = part {
+                let tokens = estimate_tokens(content);
+                if tokens > max_tool_result_tokens {
+                    // Truncate with ellipsis
+                    let char_limit = max_tool_result_tokens * 3; // ~3 chars per token
+                    if content.len() > char_limit {
+                        let truncated = format!(
+                            "{}...\n\n[Output truncated: {} chars → {} chars to fit context]",
+                            &content[..char_limit],
+                            content.len(),
+                            char_limit
+                        );
+                        *content = truncated;
+                        tracing::debug!(
+                            original_tokens = tokens,
+                            new_tokens = estimate_tokens(content),
+                            "Truncated large tool result"
+                        );
+                    }
+                }
+            }
+        }
+    }
+    
+    let new_total = estimate_total_tokens(messages);
+    if new_total > target_tokens {
+        tracing::warn!(
+            tokens = new_total,
+            target = target_tokens,
+            "Context still exceeds target after truncation - request may fail"
+        );
+    }
+}
+
 /// The swarm executor runs subtasks in parallel
 pub struct SwarmExecutor {
     config: SwarmConfig,
@@ -617,6 +781,9 @@ async fn run_agent_loop(
         
         steps += 1;
         tracing::info!(step = steps, "Sub-agent step starting");
+        
+        // Check context size and truncate if approaching limit
+        truncate_messages_to_fit(&mut messages, DEFAULT_CONTEXT_LIMIT);
         
         let request = CompletionRequest {
             messages: messages.clone(),
