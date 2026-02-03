@@ -19,6 +19,7 @@ impl Default for CodeSearchTool {
     fn default() -> Self { Self::new() }
 }
 
+#[allow(dead_code)]
 impl CodeSearchTool {
     pub fn new() -> Self {
         Self { root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) }
@@ -70,6 +71,7 @@ impl CodeSearchTool {
 struct Match {
     path: String,
     line: usize,
+    #[allow(dead_code)]
     content: String,
     context: String,
 }

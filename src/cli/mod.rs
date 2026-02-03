@@ -224,6 +224,10 @@ pub struct RlmArgs {
     /// Output as JSON
     #[arg(long)]
     pub json: bool,
+
+    /// Enable verbose output (shows context summary)
+    #[arg(short, long)]
+    pub verbose: bool,
 }
 
 #[derive(Parser, Debug)]

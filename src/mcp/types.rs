@@ -191,6 +191,26 @@ pub struct McpTool {
     pub input_schema: Value, // JSON Schema
 }
 
+/// Tool metadata for storage and querying
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolMetadata {
+    pub name: String,
+    pub description: Option<String>,
+    pub input_schema: Value,
+    pub registered_at: std::time::SystemTime,
+}
+
+impl ToolMetadata {
+    pub fn new(name: String, description: Option<String>, input_schema: Value) -> Self {
+        Self {
+            name,
+            description,
+            input_schema,
+            registered_at: std::time::SystemTime::now(),
+        }
+    }
+}
+
 /// List tools response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -237,6 +257,28 @@ pub struct McpResource {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
+}
+
+/// Resource metadata for storage and querying
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceMetadata {
+    pub uri: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub mime_type: Option<String>,
+    pub registered_at: std::time::SystemTime,
+}
+
+impl ResourceMetadata {
+    pub fn new(uri: String, name: String, description: Option<String>, mime_type: Option<String>) -> Self {
+        Self {
+            uri,
+            name,
+            description,
+            mime_type,
+            registered_at: std::time::SystemTime::now(),
+        }
+    }
 }
 
 /// List resources response

@@ -468,7 +468,7 @@ pub enum SubAgentMessage {
 pub enum OrchestratorMessage {
     /// Start execution
     Start {
-        subtask: SubTask,
+        subtask: Box<SubTask>,
     },
     
     /// Provide resource

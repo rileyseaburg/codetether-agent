@@ -38,6 +38,7 @@ impl A2AServer {
     }
 
     /// Get the agent card for this server
+    #[allow(dead_code)]
     pub fn card(&self) -> &AgentCard {
         &self.agent_card
     }
@@ -121,11 +122,7 @@ async fn handle_rpc(
         "message/stream" => handle_message_stream(&server, request).await,
         "tasks/get" => handle_tasks_get(&server, request).await,
         "tasks/cancel" => handle_tasks_cancel(&server, request).await,
-        _ => Err(JsonRpcError {
-            code: METHOD_NOT_FOUND,
-            message: format!("Method not found: {}", request.method),
-            data: None,
-        }),
+        _ => Err(JsonRpcError::method_not_found(&request.method)),
     };
 
     match response {
@@ -151,11 +148,8 @@ async fn handle_message_send(
     server: &A2AServer,
     request: JsonRpcRequest,
 ) -> Result<serde_json::Value, JsonRpcError> {
-    let params: MessageSendParams = serde_json::from_value(request.params).map_err(|e| JsonRpcError {
-        code: INVALID_PARAMS,
-        message: format!("Invalid parameters: {}", e),
-        data: None,
-    })?;
+    let params: MessageSendParams = serde_json::from_value(request.params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
 
     // Create a new task
     let task_id = params.message.task_id.clone().unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -177,11 +171,8 @@ async fn handle_message_send(
 
     // TODO: Process the task asynchronously
 
-    serde_json::to_value(task).map_err(|e| JsonRpcError {
-        code: INTERNAL_ERROR,
-        message: format!("Serialization error: {}", e),
-        data: None,
-    })
+    serde_json::to_value(task)
+        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 
 async fn handle_message_stream(
@@ -200,42 +191,33 @@ async fn handle_tasks_get(
     server: &A2AServer,
     request: JsonRpcRequest,
 ) -> Result<serde_json::Value, JsonRpcError> {
-    let params: TaskQueryParams = serde_json::from_value(request.params).map_err(|e| JsonRpcError {
-        code: INVALID_PARAMS,
-        message: format!("Invalid parameters: {}", e),
-        data: None,
-    })?;
+    let params: TaskQueryParams = serde_json::from_value(request.params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
 
-    let task = server.tasks.get(&params.id).ok_or(JsonRpcError {
+    let task = server.tasks.get(&params.id).ok_or_else(|| JsonRpcError {
         code: TASK_NOT_FOUND,
         message: format!("Task not found: {}", params.id),
         data: None,
     })?;
 
-    serde_json::to_value(task.value().clone()).map_err(|e| JsonRpcError {
-        code: INTERNAL_ERROR,
-        message: format!("Serialization error: {}", e),
-        data: None,
-    })
+    serde_json::to_value(task.value().clone())
+        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 
 async fn handle_tasks_cancel(
     server: &A2AServer,
     request: JsonRpcRequest,
 ) -> Result<serde_json::Value, JsonRpcError> {
-    let params: TaskQueryParams = serde_json::from_value(request.params).map_err(|e| JsonRpcError {
-        code: INVALID_PARAMS,
-        message: format!("Invalid parameters: {}", e),
-        data: None,
-    })?;
+    let params: TaskQueryParams = serde_json::from_value(request.params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
 
-    let mut task = server.tasks.get_mut(&params.id).ok_or(JsonRpcError {
+    let mut task = server.tasks.get_mut(&params.id).ok_or_else(|| JsonRpcError {
         code: TASK_NOT_FOUND,
         message: format!("Task not found: {}", params.id),
         data: None,
     })?;
 
-    if task.status.state.is_terminal() {
+    if !task.status.state.is_active() {
         return Err(JsonRpcError {
             code: TASK_NOT_CANCELABLE,
             message: "Task is already in a terminal state".to_string(),
@@ -246,9 +228,6 @@ async fn handle_tasks_cancel(
     task.status.state = TaskState::Cancelled;
     task.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
 
-    serde_json::to_value(task.value().clone()).map_err(|e| JsonRpcError {
-        code: INTERNAL_ERROR,
-        message: format!("Serialization error: {}", e),
-        data: None,
-    })
+    serde_json::to_value(task.value().clone())
+        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }

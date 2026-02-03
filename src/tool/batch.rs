@@ -102,7 +102,19 @@ impl Tool for BatchTool {
                             Err(e) => (i, tool_id, ToolResult::error(format!("Error: {}", e))),
                         }
                     }
-                    None => (i, tool_id.clone(), ToolResult::error(format!("Unknown tool: {}", tool_id))),
+                    None => {
+                        // Use the invalid tool handler for better error messages
+                        let available_tools = registry.list().iter().map(|s| s.to_string()).collect();
+                        let invalid_tool = super::invalid::InvalidTool::with_context(tool_id.clone(), available_tools);
+                        let invalid_args = serde_json::json!({
+                            "requested_tool": tool_id,
+                            "args": args
+                        });
+                        match invalid_tool.execute(invalid_args).await {
+                            Ok(result) => (i, tool_id.clone(), result),
+                            Err(e) => (i, tool_id.clone(), ToolResult::error(format!("Unknown tool: {}. Error: {}", tool_id, e))),
+                        }
+                    }
                 }
             }
         }).collect();

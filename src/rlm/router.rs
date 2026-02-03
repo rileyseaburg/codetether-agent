@@ -390,7 +390,7 @@ impl RlmRouter {
             r#"FINAL!\s*\(\s*["'`]?"#,
         ];
 
-        for pattern_start in patterns {
+        for _pattern_start in patterns {
             if let Some(start_idx) = text.find("FINAL") {
                 let after = &text[start_idx..];
                 

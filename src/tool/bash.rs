@@ -18,6 +18,8 @@ impl BashTool {
         Self { timeout_secs: 120 }
     }
 
+    /// Create a new BashTool with a custom timeout
+    #[allow(dead_code)]
     pub fn with_timeout(timeout_secs: u64) -> Self {
         Self { timeout_secs }
     }

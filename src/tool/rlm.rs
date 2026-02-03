@@ -27,6 +27,7 @@ impl RlmTool {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_chunk_size(max_chunk_size: usize) -> Self {
         Self { max_chunk_size }
     }

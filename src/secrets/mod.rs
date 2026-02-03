@@ -11,6 +11,7 @@ use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::kv2;
 
 /// Path in Vault where provider secrets are stored
+#[allow(dead_code)]
 const DEFAULT_SECRETS_PATH: &str = "secret/data/codetether/providers";
 
 /// Vault-based secrets manager
@@ -134,10 +135,7 @@ impl SecretsManager {
 
     /// Check if a provider has an API key in Vault
     pub async fn has_api_key(&self, provider_id: &str) -> bool {
-        match self.get_api_key(provider_id).await {
-            Ok(Some(_)) => true,
-            _ => false,
-        }
+        matches!(self.get_api_key(provider_id).await, Ok(Some(_)))
     }
 
     /// List all providers that have secrets configured
@@ -194,7 +192,7 @@ impl Default for VaultConfig {
 }
 
 /// Provider secrets stored in Vault
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProviderSecrets {
     /// API key for the provider
     #[serde(default)]
@@ -215,6 +213,31 @@ pub struct ProviderSecrets {
     /// Any provider-specific extra fields
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl std::fmt::Debug for ProviderSecrets {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProviderSecrets")
+            .field("api_key", &self.api_key.as_ref().map(|_| "<REDACTED>"))
+            .field("api_key_len", &self.api_key.as_ref().map(|k| k.len()))
+            .field("base_url", &self.base_url)
+            .field("organization", &self.organization)
+            .field("headers_present", &self.headers.is_some())
+            .field("extra_fields", &self.extra.len())
+            .finish()
+    }
+}
+
+impl ProviderSecrets {
+    /// Check if API key is present and valid (non-empty)
+    pub fn has_valid_api_key(&self) -> bool {
+        self.api_key.as_ref().map(|k| !k.is_empty()).unwrap_or(false)
+    }
+    
+    /// Get API key length without exposing the key
+    pub fn api_key_len(&self) -> Option<usize> {
+        self.api_key.as_ref().map(|k| k.len())
+    }
 }
 
 /// Global secrets manager instance

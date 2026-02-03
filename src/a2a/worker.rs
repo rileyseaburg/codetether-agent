@@ -157,6 +157,7 @@ async fn fetch_pending_tasks(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn connect_stream(
     client: &Client,
     server: &str,

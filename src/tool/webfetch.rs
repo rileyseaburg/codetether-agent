@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use std::time::Duration;
 use super::{Tool, ToolResult};
 
+#[allow(dead_code)]
 const MAX_CONTENT_LENGTH: usize = 10 * 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 

@@ -10,9 +10,34 @@ pub struct GoogleProvider {
     api_key: String,
 }
 
+impl std::fmt::Debug for GoogleProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GoogleProvider")
+            .field("api_key", &"<REDACTED>")
+            .field("api_key_len", &self.api_key.len())
+            .finish()
+    }
+}
+
 impl GoogleProvider {
     pub fn new(api_key: String) -> Result<Self> {
+        tracing::debug!(
+            provider = "google",
+            api_key_len = api_key.len(),
+            "Creating Google provider"
+        );
         Ok(Self { api_key })
+    }
+    
+    /// Validate that the API key is non-empty
+    fn validate_api_key(&self) -> Result<()> {
+        if self.api_key.is_empty() {
+            anyhow::bail!("Google API key is empty");
+        }
+        if self.api_key.len() < 10 {
+            tracing::warn!(provider = "google", "API key seems unusually short");
+        }
+        Ok(())
     }
 }
 
@@ -23,6 +48,9 @@ impl Provider for GoogleProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+        tracing::debug!(provider = "google", "Listing available models");
+        self.validate_api_key()?;
+        
         Ok(vec![
             ModelInfo {
                 id: "gemini-2.5-pro".to_string(),
@@ -51,15 +79,34 @@ impl Provider for GoogleProvider {
         ])
     }
 
-    async fn complete(&self, _request: CompletionRequest) -> Result<CompletionResponse> {
+    async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+        tracing::debug!(
+            provider = "google",
+            model = %request.model,
+            message_count = request.messages.len(),
+            tool_count = request.tools.len(),
+            "Starting completion request"
+        );
+        
+        // Validate API key before making request
+        self.validate_api_key()?;
+        
         // TODO: Implement using reqwest
         anyhow::bail!("Google provider not yet implemented")
     }
 
     async fn complete_stream(
         &self,
-        _request: CompletionRequest,
+        request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        tracing::debug!(
+            provider = "google",
+            model = %request.model,
+            message_count = request.messages.len(),
+            "Starting streaming completion request"
+        );
+        
+        self.validate_api_key()?;
         anyhow::bail!("Google provider not yet implemented")
     }
 }

@@ -20,6 +20,7 @@ impl ApplyPatchTool {
         Self { root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) }
     }
 
+    #[allow(dead_code)]
     pub fn with_root(root: PathBuf) -> Self {
         Self { root }
     }
@@ -59,10 +60,10 @@ impl ApplyPatchTool {
                     });
                 }
             } else if let Some(ref mut hunk) = current_hunk {
-                if line.starts_with('-') {
-                    hunk.old_lines.push(line[1..].to_string());
-                } else if line.starts_with('+') {
-                    hunk.new_lines.push(line[1..].to_string());
+                if let Some(stripped) = line.strip_prefix('-') {
+                    hunk.old_lines.push(stripped.to_string());
+                } else if let Some(stripped) = line.strip_prefix('+') {
+                    hunk.new_lines.push(stripped.to_string());
                 } else if line.starts_with(' ') || line.is_empty() {
                     let content = if line.is_empty() { "" } else { &line[1..] };
                     hunk.old_lines.push(content.to_string());

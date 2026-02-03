@@ -60,6 +60,8 @@ impl McpMessage {
 
 /// Stdio transport for MCP (synchronous version for server mode)
 pub struct StdioTransport {
+    /// Sender channel for outgoing messages (kept alive for transport lifetime)
+    #[allow(dead_code)]
     tx: mpsc::Sender<String>,
     rx: tokio::sync::Mutex<mpsc::Receiver<String>>,
 }
@@ -162,7 +164,7 @@ impl Transport for StdioTransport {
 pub struct SseTransport {
     endpoint: String,
     client: reqwest::Client,
-    tx: mpsc::Sender<String>,
+    _tx: mpsc::Sender<String>,
     rx: tokio::sync::Mutex<mpsc::Receiver<String>>,
 }
 
@@ -187,7 +189,7 @@ impl SseTransport {
         Ok(Self {
             endpoint,
             client,
-            tx: write_tx,
+            _tx: write_tx,
             rx: tokio::sync::Mutex::new(read_rx),
         })
     }

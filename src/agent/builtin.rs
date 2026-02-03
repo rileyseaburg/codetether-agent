@@ -48,6 +48,7 @@ pub fn explore_agent() -> AgentInfo {
 }
 
 /// System prompt for the build agent
+#[allow(dead_code)]
 pub const BUILD_SYSTEM_PROMPT: &str = r#"You are an expert AI programming assistant called CodeTether Agent.
 
 You help users with software development tasks including:
@@ -74,6 +75,7 @@ Current working directory: {cwd}
 "#;
 
 /// System prompt for the plan agent
+#[allow(dead_code)]
 pub const PLAN_SYSTEM_PROMPT: &str = r#"You are an expert AI assistant for code analysis and planning.
 
 Your role is to:
@@ -94,6 +96,10 @@ Current working directory: {cwd}
 "#;
 
 /// System prompt for the explore agent
+/// 
+/// This constant is available for use when creating an explore agent programmatically.
+/// Currently used via the `explore_agent()` function which returns the AgentInfo.
+#[allow(dead_code)]
 pub const EXPLORE_SYSTEM_PROMPT: &str = r#"You are a fast, focused agent for codebase exploration.
 
 Your job is to quickly find relevant code and information. Use tools efficiently:

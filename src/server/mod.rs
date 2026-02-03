@@ -147,9 +147,24 @@ struct PromptRequest {
 }
 
 async fn prompt_session(
-    axum::extract::Path(_id): axum::extract::Path<String>,
-    Json(_req): Json<PromptRequest>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+    Json(req): Json<PromptRequest>,
 ) -> Result<Json<crate::session::SessionResult>, (StatusCode, String)> {
+    // Validate the message is not empty
+    if req.message.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Message cannot be empty".to_string(),
+        ));
+    }
+    
+    // Log the prompt request (uses the message field)
+    tracing::info!(
+        session_id = %id,
+        message_len = req.message.len(),
+        "Received prompt request"
+    );
+    
     // TODO: Implement actual prompting
     Err((
         StatusCode::NOT_IMPLEMENTED,

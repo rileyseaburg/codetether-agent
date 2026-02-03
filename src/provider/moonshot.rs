@@ -137,6 +137,7 @@ struct MoonshotChoice {
 
 #[derive(Debug, Deserialize)]
 struct MoonshotMessage {
+    #[allow(dead_code)]
     role: String,
     #[serde(default)]
     content: Option<String>,
@@ -173,6 +174,7 @@ struct MoonshotUsage {
 
 #[derive(Debug, Deserialize)]
 struct MoonshotError {
+    #[allow(dead_code)]
     error: MoonshotErrorDetail,
 }
 
@@ -287,6 +289,13 @@ impl Provider for MoonshotProvider {
         let response: MoonshotResponse = serde_json::from_str(&text)
             .context(format!("Failed to parse Moonshot response: {}", &text[..text.len().min(200)]))?;
 
+        // Log response metadata for debugging
+        tracing::debug!(
+            response_id = %response.id,
+            model = %response.model,
+            "Received Moonshot response"
+        );
+
         let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
 
         // Log reasoning/thinking content if present (Kimi K2 models)
@@ -315,6 +324,13 @@ impl Provider for MoonshotProvider {
         if let Some(tool_calls) = &choice.message.tool_calls {
             has_tool_calls = !tool_calls.is_empty();
             for tc in tool_calls {
+                // Log tool call details for debugging (uses role and call_type fields)
+                tracing::debug!(
+                    tool_call_id = %tc.id,
+                    call_type = %tc.call_type,
+                    function_name = %tc.function.name,
+                    "Processing tool call"
+                );
                 content.push(ContentPart::ToolCall {
                     id: tc.id.clone(),
                     name: tc.function.name.clone(),
@@ -353,6 +369,13 @@ impl Provider for MoonshotProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        tracing::debug!(
+            provider = "moonshotai",
+            model = %request.model,
+            message_count = request.messages.len(),
+            "Starting streaming completion request (falling back to non-streaming)"
+        );
+        
         // Fall back to non-streaming for now
         let response = self.complete(request).await?;
         let text = response.message.content.iter()

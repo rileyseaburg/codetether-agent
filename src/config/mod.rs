@@ -48,7 +48,7 @@ pub struct Config {
     pub session: SessionConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct ProviderConfig {
     /// API key (can also be set via env var)
     pub api_key: Option<String>,
@@ -62,6 +62,18 @@ pub struct ProviderConfig {
 
     /// Organization ID (for OpenAI)
     pub organization: Option<String>,
+}
+
+impl std::fmt::Debug for ProviderConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProviderConfig")
+            .field("api_key", &self.api_key.as_ref().map(|_| "<REDACTED>"))
+            .field("api_key_len", &self.api_key.as_ref().map(|k| k.len()))
+            .field("base_url", &self.base_url)
+            .field("organization", &self.organization)
+            .field("headers_count", &self.headers.len())
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

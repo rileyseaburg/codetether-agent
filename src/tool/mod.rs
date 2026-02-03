@@ -149,6 +149,8 @@ impl ToolRegistry {
         registry.register(Arc::new(rlm::RlmTool::new()));
         registry.register(Arc::new(ralph::RalphTool::new()));
         registry.register(Arc::new(prd::PrdTool::new()));
+        // Register the invalid tool handler for graceful error handling
+        registry.register(Arc::new(invalid::InvalidTool::new()));
         
         registry
     }
@@ -181,6 +183,8 @@ impl ToolRegistry {
         // RalphTool with provider for autonomous execution
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));
+        // Register the invalid tool handler for graceful error handling
+        registry.register(Arc::new(invalid::InvalidTool::new()));
         
         registry
     }
@@ -190,6 +194,26 @@ impl ToolRegistry {
     /// a two-phase initialization pattern.
     pub fn with_defaults_arc() -> Arc<Self> {
         let mut registry = Self::with_defaults();
+        
+        // Create batch tool without registry reference
+        let batch_tool = Arc::new(batch::BatchTool::new());
+        registry.register(batch_tool.clone());
+        
+        // Wrap registry in Arc
+        let registry = Arc::new(registry);
+        
+        // Now give batch tool a weak reference to the registry
+        batch_tool.set_registry(Arc::downgrade(&registry));
+        
+        registry
+    }
+
+    /// Create Arc-wrapped registry with provider and batch tool properly initialized.
+    /// The batch tool needs a weak reference to the registry, so we use
+    /// a two-phase initialization pattern.
+    #[allow(dead_code)]
+    pub fn with_provider_arc(provider: Arc<dyn Provider>, model: String) -> Arc<Self> {
+        let mut registry = Self::with_provider(provider, model);
         
         // Create batch tool without registry reference
         let batch_tool = Arc::new(batch::BatchTool::new());
