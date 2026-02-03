@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-03
+
+### Added
+
+- **Library Support**: Added `lib.rs` for using codetether-agent as a library
+- **Integration Tests**: Comprehensive A2A client integration tests with mock server
+- **Design Documentation**: Architecture docs for agent-swarm integration, MCP metadata, session management
+- **SwarmMetrics**: Execution metrics tracking for swarm operations
+- **MCP Registry**: Tool discovery and registration via McpRegistry
+
+### Changed
+
+- **async-openai 0.32.4**: Updated to latest API with new chat completion types
+- **A2A Client**: Made public with exposed `call_rpc()` for custom RPC calls
+- **Tool Registry**: Now includes BatchTool and InvalidTool by default
+- **Provider Logging**: Enhanced debug logging with API key validation
+
+### Fixed
+
+- **67 Compiler Warnings → 0**: All unused code now properly integrated via swarm dogfooding
+  - MCP server tool/resource metadata storage
+  - Session add_message and generate_title methods
+  - Provider API key usage in debug output
+  - Error constants (PARSE_ERROR, INVALID_REQUEST, etc.)
+  - Context summary logging in RLM repl
+
+### Dogfooding
+
+This release was refactored by the swarm system itself:
+- **Model**: Kimi K2.5 via Moonshot
+- **Duration**: ~25 minutes
+- **Files Changed**: 54
+- **Lines Added**: 5,507
+- **Warnings Fixed**: 67 → 0
+
 ## [0.1.0] - 2026-02-03
 
 ### Added
