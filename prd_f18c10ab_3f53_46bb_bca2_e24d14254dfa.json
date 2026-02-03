@@ -118,7 +118,7 @@
         "Sampling rate configuration",
         "Complete opt-out support"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-001"
