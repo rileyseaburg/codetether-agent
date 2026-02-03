@@ -1,0 +1,179 @@
+{
+  "project": "codetether-agent",
+  "feature": "Git-based Undo System",
+  "branch_name": "feature/git-based-undo-system",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Add git2 dependency for Git operations",
+      "description": "Add the git2 crate to Cargo.toml for native Git operations without shelling out to git CLI",
+      "acceptance_criteria": [
+        "git2 crate added to Cargo.toml dependencies",
+        "cargo check passes with new dependency"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 1
+    },
+    {
+      "id": "US-002",
+      "title": "Create VCS module structure",
+      "description": "Create src/vcs/ directory with mod.rs and establish the module structure for version control operations",
+      "acceptance_criteria": [
+        "src/vcs/mod.rs exists and is included in lib.rs",
+        "Module exports core types and traits"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 1
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Git repository abstraction",
+      "description": "Create a GitRepo struct that wraps git2::Repository and provides safe operations for common git tasks",
+      "acceptance_criteria": [
+        "GitRepo struct with open/init methods",
+        "Error handling for git operations",
+        "Repository path validation"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-002"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-004",
+      "title": "Implement automatic checkpoint commits",
+      "description": "Create checkpoint system that automatically commits changes before and after AI edits with descriptive messages",
+      "acceptance_criteria": [
+        "Checkpoint::create() method for creating commits",
+        "Handles dirty files by committing them first",
+        "Generates descriptive commit messages",
+        "Tags commits for easy reference"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-005",
+      "title": "Implement undo stack management",
+      "description": "Create an undo stack that tracks checkpoint commits and allows reverting to previous states",
+      "acceptance_criteria": [
+        "UndoStack struct to manage history",
+        "Push/pop operations for checkpoints",
+        "Persistent storage of undo history",
+        "Maximum stack size with LRU eviction"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-004"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Implement branch isolation for experiments",
+      "description": "Create experimental branch management for trying changes in isolation before applying to main branch",
+      "acceptance_criteria": [
+        "ExperimentBranch struct for isolated changes",
+        "Create branch from current state",
+        "Apply/reject experiment workflow",
+        "Auto-merge on success"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-007",
+      "title": "Implement conflict detection",
+      "description": "Detect merge conflicts and working directory conflicts before operations",
+      "acceptance_criteria": [
+        "Detect unmerged paths in repository",
+        "Check for working directory conflicts",
+        "Report conflict details to user",
+        "Prevent operations when conflicts exist"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-008",
+      "title": "Create /undo command handler",
+      "description": "Implement CLI command handler for /undo that integrates with the undo stack",
+      "acceptance_criteria": [
+        "/undo command available in CLI",
+        "Reverts last AI change",
+        "Shows undo confirmation",
+        "Handles edge cases (empty stack, etc.)"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-005"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-009",
+      "title": "Add /diff command handler",
+      "description": "Implement /diff command to show changes since last user message",
+      "acceptance_criteria": [
+        "/diff command shows file changes",
+        "Diff output formatted for terminal",
+        "Compares against last checkpoint"
+      ],
+      "passes": false,
+      "priority": 4,
+      "depends_on": [
+        "US-004"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-010",
+      "title": "Add tests for VCS module",
+      "description": "Create comprehensive tests for all VCS functionality",
+      "acceptance_criteria": [
+        "Unit tests for GitRepo operations",
+        "Integration tests for undo workflow",
+        "Tests for conflict detection",
+        "cargo test passes"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-005",
+        "US-006",
+        "US-007"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build"
+  },
+  "created_at": "2026-02-03T19:12:08.270148992+00:00",
+  "updated_at": "2026-02-03T19:12:08.270151522+00:00"
+}

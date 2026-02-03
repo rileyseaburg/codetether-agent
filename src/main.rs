@@ -23,6 +23,7 @@ mod session;
 pub mod swarm;
 mod tool;
 mod tui;
+mod worktree;
 
 use clap::Parser;
 use cli::{A2aArgs, Cli, Command};

@@ -1,0 +1,228 @@
+{
+  "project": "codetether-agent",
+  "feature": "Unified LLM Client with Token Management",
+  "branch_name": "feature/unified-llm-client-with-token-management",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Create unified LLM module structure",
+      "description": "Create the src/llm/ directory structure with mod.rs, client.rs, types.rs, chunking.rs, and provider implementations. This establishes the foundation for the unified LLM client.",
+      "acceptance_criteria": [
+        "src/llm/ directory exists with mod.rs",
+        "Module exports types, client, and providers",
+        "Integrated into src/lib.rs"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-002",
+      "title": "Implement unified request/response types",
+      "description": "Create unified types for LLM requests and responses including ChatMessage, ChatRequest, ChatResponse, StreamingChunk, TokenUsage, and ModelCapabilities. These types should be provider-agnostic.",
+      "acceptance_criteria": [
+        "ChatMessage with role and content types",
+        "ChatRequest with model, messages, tools, parameters",
+        "ChatResponse with content, usage, finish_reason",
+        "StreamingChunk enum for SSE events",
+        "TokenUsage with prompt/completion/total counts"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Provider trait with streaming support",
+      "description": "Create the Provider trait that all LLM providers must implement, including methods for chat completion, streaming, and model information. Include proper async trait definitions.",
+      "acceptance_criteria": [
+        "Provider trait with name() method",
+        "chat() method for non-streaming",
+        "chat_stream() method returning Stream",
+        "list_models() for available models",
+        "get_model_info() for capabilities"
+      ],
+      "passes": true,
+      "priority": 1,
+      "depends_on": [
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-004",
+      "title": "Implement token counting and limit handling",
+      "description": "Create token counting utilities that estimate token usage for messages. Implement the 262144 token limit awareness and validation.",
+      "acceptance_criteria": [
+        "TokenCounter struct with estimation",
+        "tiktoken-style byte-pair encoding approximation",
+        "validate_request() for token limits",
+        "get_token_limit() returns 262144"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-005",
+      "title": "Implement automatic message chunking",
+      "description": "Create automatic chunking logic that splits long conversations when they approach the token limit. Implement smart truncation that preserves system messages and recent context.",
+      "acceptance_criteria": [
+        "chunk_messages() splits by token count",
+        "Preserves system messages",
+        "Prioritizes recent messages",
+        "Handles edge cases (single message > limit)",
+        "Returns chunk metadata"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-004"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-006",
+      "title": "Implement OpenAI provider",
+      "description": "Create OpenAI provider implementation using the async-openai crate or direct HTTP. Support GPT-4o, GPT-4o-mini, o1, and o3 models with full streaming support.",
+      "acceptance_criteria": [
+        "OpenAI provider implements Provider trait",
+        "Supports chat completions",
+        "Supports streaming via SSE",
+        "Handles tool calling",
+        "Proper error handling"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-007",
+      "title": "Implement Anthropic provider",
+      "description": "Create Anthropic provider implementation for Claude models (Sonnet 4, Opus 4). Support streaming and tool use with proper message format conversion.",
+      "acceptance_criteria": [
+        "Anthropic provider implements Provider trait",
+        "Supports Claude Sonnet 4 and Opus 4",
+        "Supports streaming",
+        "Handles tool use",
+        "Converts to Anthropic message format"
+      ],
+      "passes": true,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Moonshot provider",
+      "description": "Create Moonshot provider for Kimi K2.5 and other Moonshot models. Handle the specific requirements like temperature settings and thinking mode.",
+      "acceptance_criteria": [
+        "Moonshot provider implements Provider trait",
+        "Supports Kimi K2.5",
+        "Handles thinking mode",
+        "Supports tool calling",
+        "Proper message conversion"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-009",
+      "title": "Implement local model provider (Ollama)",
+      "description": "Create a provider for local models via Ollama API. Support any locally hosted model with OpenAI-compatible endpoint.",
+      "acceptance_criteria": [
+        "Ollama provider implements Provider trait",
+        "Connects to local Ollama instance",
+        "Supports streaming",
+        "Auto-detects available models"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-010",
+      "title": "Create unified LLM client with provider routing",
+      "description": "Create the main LLM client that routes requests to appropriate providers, handles chunking, and provides a unified interface. Include provider selection logic.",
+      "acceptance_criteria": [
+        "LLMClient with provider registry",
+        "route_request() selects provider",
+        "automatic_chunking option",
+        "retry logic with fallback",
+        "Unified error handling"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-005",
+        "US-006",
+        "US-007",
+        "US-008"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-011",
+      "title": "Add provider-specific optimizations",
+      "description": "Add optimizations for each provider including rate limiting, retry logic, and provider-specific parameter handling.",
+      "acceptance_criteria": [
+        "Rate limiting per provider",
+        "Exponential backoff retry",
+        "Provider-specific defaults",
+        "Connection pooling"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-010"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-012",
+      "title": "Write tests for LLM module",
+      "description": "Create comprehensive tests for the LLM module including token counting, chunking, provider mocks, and integration tests.",
+      "acceptance_criteria": [
+        "Unit tests for token counting",
+        "Unit tests for chunking logic",
+        "Mock provider for testing",
+        "Integration tests with real providers (optional)"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-010"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build"
+  },
+  "created_at": "2026-02-03T18:55:07.917060679+00:00",
+  "updated_at": "2026-02-03T18:55:07.917063099+00:00"
+}

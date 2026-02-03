@@ -16,6 +16,7 @@ use crate::{
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
     swarm::{SwarmArtifact, SwarmStats},
     tool::ToolRegistry,
+    worktree::{WorktreeManager, WorktreeInfo},
 };
 use anyhow::Result;
 use std::collections::HashMap;
@@ -189,14 +190,14 @@ impl SwarmExecutor {
         })
     }
     
-    /// Execute a single stage of subtasks in parallel (with rate limiting)
+    /// Execute a single stage of subtasks in parallel (with rate limiting and worktree isolation)
     async fn execute_stage(
         &self,
         orchestrator: &Orchestrator,
         subtasks: Vec<SubTask>,
         completed_results: Arc<RwLock<HashMap<String, String>>>,
     ) -> Result<Vec<SubTaskResult>> {
-        let mut handles: Vec<tokio::task::JoinHandle<Result<SubTaskResult, anyhow::Error>>> = Vec::new();
+        let mut handles: Vec<tokio::task::JoinHandle<Result<(SubTaskResult, Option<WorktreeInfo>), anyhow::Error>>> = Vec::new();
         
         // Rate limiting: semaphore for max concurrent requests
         let semaphore = Arc::new(tokio::sync::Semaphore::new(self.config.max_concurrent_requests));
@@ -214,6 +215,33 @@ impl SwarmExecutor {
         // Create shared tool registry with provider for ralph and batch tool
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
         let tool_definitions = tool_registry.definitions();
+        
+        // Create worktree manager if enabled
+        let worktree_manager = if self.config.worktree_enabled {
+            let working_dir = self.config.working_dir.clone()
+                .unwrap_or_else(|| std::env::current_dir()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|_| ".".to_string()));
+            
+            match WorktreeManager::new(&working_dir) {
+                Ok(mgr) => {
+                    tracing::info!(
+                        working_dir = %working_dir,
+                        "Worktree isolation enabled for parallel sub-agents"
+                    );
+                    Some(Arc::new(mgr) as Arc<WorktreeManager>)
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        "Failed to create worktree manager, falling back to shared directory"
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
         
         for (idx, subtask) in subtasks.into_iter().enumerate() {
             let model = model.clone();
@@ -243,6 +271,7 @@ impl SwarmExecutor {
             let registry = Arc::clone(&tool_registry);
             let sem = Arc::clone(&semaphore);
             let stagger_delay = delay_ms * idx as u64;  // Stagger start times
+            let worktree_mgr = worktree_manager.clone();
             
             // Spawn the subtask execution with agentic tool loop
             let handle = tokio::spawn(async move {
@@ -254,11 +283,44 @@ impl SwarmExecutor {
                 
                 let start = Instant::now();
                 
-// Build the system prompt for this sub-agent
-                // Use subtask_id to create unique PRD names for parallel execution
+                // Create worktree for this sub-agent if enabled
+                let worktree_info = if let Some(ref mgr) = worktree_mgr {
+                    let task_slug = subtask_id.replace("-", "_");
+                    match mgr.create(&task_slug) {
+                        Ok(wt) => {
+                            tracing::info!(
+                                subtask_id = %subtask_id,
+                                worktree_path = %wt.path.display(),
+                                worktree_branch = %wt.branch,
+                                "Created worktree for sub-agent"
+                            );
+                            Some(wt)
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                subtask_id = %subtask_id,
+                                error = %e,
+                                "Failed to create worktree, using shared directory"
+                            );
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                
+                // Determine working directory
+                let working_dir = worktree_info.as_ref()
+                    .map(|wt| wt.path.display().to_string())
+                    .unwrap_or_else(|| ".".to_string());
+                
+                // Build the system prompt for this sub-agent
                 let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
                 let system_prompt = format!(
                     "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.
+
+WORKING DIRECTORY: {}
+All file operations should be relative to this directory.
 
 IMPORTANT: You MUST use tools to make changes. Do not just describe what to do - actually do it using the tools available.
 
@@ -269,7 +331,7 @@ Available tools:
 - multiedit: Make multiple edits at once
 - glob: Find files by pattern
 - grep: Search file contents
-- bash: Run shell commands
+- bash: Run shell commands (use cwd: \"{}\" parameter)
 - webfetch: Fetch web pages
 - prd: Generate structured PRD for complex tasks
 - ralph: Run autonomous agent loop on a PRD
@@ -286,6 +348,8 @@ NOTE: Use your unique PRD file '{}' so parallel agents don't conflict.
 When done, provide a brief summary of what you accomplished.",
                     specialty,
                     subtask_id,
+                    working_dir,
+                    working_dir,
                     prd_filename,
                     prd_filename,
                     prd_filename
@@ -314,7 +378,7 @@ When done, provide a brief summary of what you accomplished.",
                 
                 match result {
                     Ok((output, steps, tool_calls)) => {
-                        Ok(SubTaskResult {
+                        Ok((SubTaskResult {
                             subtask_id: subtask_id.clone(),
                             subagent_id: format!("agent-{}", subtask_id),
                             success: true,
@@ -324,10 +388,10 @@ When done, provide a brief summary of what you accomplished.",
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: None,
                             artifacts: Vec::new(),
-                        })
+                        }, worktree_info))
                     }
                     Err(e) => {
-                        Ok(SubTaskResult {
+                        Ok((SubTaskResult {
                             subtask_id: subtask_id.clone(),
                             subagent_id: format!("agent-{}", subtask_id),
                             success: false,
@@ -337,7 +401,7 @@ When done, provide a brief summary of what you accomplished.",
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: Some(e.to_string()),
                             artifacts: Vec::new(),
-                        })
+                        }, worktree_info))
                     }
                 }
             });
@@ -345,11 +409,70 @@ When done, provide a brief summary of what you accomplished.",
             handles.push(handle);
         }
         
-        // Wait for all handles
+        // Wait for all handles and handle worktree merging
         let mut results = Vec::new();
+        let auto_merge = self.config.worktree_auto_merge;
+        
         for handle in handles {
             match handle.await {
-                Ok(Ok(result)) => results.push(result),
+                Ok(Ok((mut result, worktree_info))) => {
+                    // Handle worktree merge if applicable
+                    if let Some(wt) = worktree_info {
+                        if result.success && auto_merge {
+                            if let Some(ref mgr) = worktree_manager {
+                                match mgr.merge(&wt) {
+                                    Ok(merge_result) => {
+                                        if merge_result.success {
+                                            tracing::info!(
+                                                subtask_id = %result.subtask_id,
+                                                files_changed = merge_result.files_changed,
+                                                "Merged worktree changes successfully"
+                                            );
+                                            result.result.push_str(&format!(
+                                                "\n\n--- Merge Result ---\n{}",
+                                                merge_result.summary
+                                            ));
+                                        } else {
+                                            tracing::warn!(
+                                                subtask_id = %result.subtask_id,
+                                                conflicts = ?merge_result.conflicts,
+                                                "Merge had conflicts"
+                                            );
+                                            result.result.push_str(&format!(
+                                                "\n\n--- Merge Conflicts ---\n{}",
+                                                merge_result.summary
+                                            ));
+                                        }
+                                        
+                                        // Cleanup worktree after merge
+                                        if let Err(e) = mgr.cleanup(&wt) {
+                                            tracing::warn!(
+                                                error = %e,
+                                                "Failed to cleanup worktree"
+                                            );
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::error!(
+                                            subtask_id = %result.subtask_id,
+                                            error = %e,
+                                            "Failed to merge worktree"
+                                        );
+                                    }
+                                }
+                            }
+                        } else if !result.success {
+                            // Keep worktree for debugging on failure
+                            tracing::info!(
+                                subtask_id = %result.subtask_id,
+                                worktree_path = %wt.path.display(),
+                                "Keeping worktree for debugging (task failed)"
+                            );
+                        }
+                    }
+                    
+                    results.push(result);
+                }
                 Ok(Err(e)) => {
                     tracing::error!(provider_name = %provider_name, "Subtask error: {}", e);
                 }

@@ -17,3 +17,4 @@ pub mod session;
 pub mod swarm;
 pub mod tool;
 pub mod tui;
+pub mod worktree;

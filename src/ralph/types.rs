@@ -150,6 +150,56 @@ impl Prd {
             story.passes = true;
         }
     }
+    
+    /// Get all stories ready to be worked on (not passed, dependencies met)
+    pub fn ready_stories(&self) -> Vec<&UserStory> {
+        self.user_stories
+            .iter()
+            .filter(|s| !s.passes)
+            .filter(|s| self.dependencies_met(&s.depends_on))
+            .collect()
+    }
+    
+    /// Group stories into parallel execution stages based on dependencies
+    /// Returns a Vec of stages, where each stage is a Vec of stories that can run in parallel
+    pub fn stages(&self) -> Vec<Vec<&UserStory>> {
+        let mut stages: Vec<Vec<&UserStory>> = Vec::new();
+        let mut completed: std::collections::HashSet<String> = self.user_stories
+            .iter()
+            .filter(|s| s.passes)
+            .map(|s| s.id.clone())
+            .collect();
+        
+        let mut remaining: Vec<&UserStory> = self.user_stories
+            .iter()
+            .filter(|s| !s.passes)
+            .collect();
+        
+        while !remaining.is_empty() {
+            // Find all stories whose dependencies are met
+            let (ready, not_ready): (Vec<_>, Vec<_>) = remaining
+                .into_iter()
+                .partition(|s| s.depends_on.iter().all(|dep| completed.contains(dep)));
+            
+            if ready.is_empty() {
+                // Circular dependency or missing deps - just take remaining
+                if !not_ready.is_empty() {
+                    stages.push(not_ready);
+                }
+                break;
+            }
+            
+            // Mark these as "will be completed" for next iteration
+            for story in &ready {
+                completed.insert(story.id.clone());
+            }
+            
+            stages.push(ready);
+            remaining = not_ready;
+        }
+        
+        stages
+    }
 }
 
 /// Ralph execution state
@@ -244,6 +294,18 @@ pub struct RalphConfig {
     /// Whether to use RLM for progress compression
     #[serde(default)]
     pub use_rlm: bool,
+    
+    /// Enable parallel story execution
+    #[serde(default = "default_parallel_enabled")]
+    pub parallel_enabled: bool,
+    
+    /// Maximum concurrent stories to execute
+    #[serde(default = "default_max_concurrent_stories")]
+    pub max_concurrent_stories: usize,
+    
+    /// Use worktree isolation for parallel execution
+    #[serde(default = "default_worktree_enabled")]
+    pub worktree_enabled: bool,
 }
 
 fn default_prd_path() -> String { "prd.json".to_string() }
@@ -251,6 +313,9 @@ fn default_max_iterations() -> usize { 10 }
 fn default_progress_path() -> String { "progress.txt".to_string() }
 fn default_auto_commit() -> bool { false }
 fn default_quality_checks_enabled() -> bool { true }
+fn default_parallel_enabled() -> bool { true }
+fn default_max_concurrent_stories() -> usize { 3 }
+fn default_worktree_enabled() -> bool { true }
 
 impl Default for RalphConfig {
     fn default() -> Self {
@@ -262,6 +327,9 @@ impl Default for RalphConfig {
             quality_checks_enabled: default_quality_checks_enabled(),
             model: None,
             use_rlm: false,
+            parallel_enabled: default_parallel_enabled(),
+            max_concurrent_stories: default_max_concurrent_stories(),
+            worktree_enabled: default_worktree_enabled(),
         }
     }
 }

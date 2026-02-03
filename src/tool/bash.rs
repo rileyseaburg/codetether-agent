@@ -36,7 +36,7 @@ impl Tool for BashTool {
     }
 
     fn description(&self) -> &str {
-        "Execute a shell command. Commands run in a bash shell with the current working directory."
+        "bash(command: string, cwd?: string, timeout?: int) - Execute a shell command. Commands run in a bash shell with the current working directory."
     }
 
     fn parameters(&self) -> Value {
@@ -56,14 +56,25 @@ impl Tool for BashTool {
                     "description": "Timeout in seconds (default: 120)"
                 }
             },
-            "required": ["command"]
+            "required": ["command"],
+            "example": {
+                "command": "ls -la src/",
+                "cwd": "/path/to/project"
+            }
         })
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let command = args["command"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("command is required"))?;
+        let command = match args["command"].as_str() {
+            Some(c) => c,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "bash",
+                "command is required",
+                Some(vec!["command"]),
+                Some(json!({"command": "ls -la", "cwd": "."})),
+            )),
+        };
         let cwd = args["cwd"].as_str();
         let timeout_secs = args["timeout"]
             .as_u64()
@@ -121,11 +132,23 @@ impl Tool for BashTool {
                     .collect(),
                 })
             }
-            Ok(Err(e)) => Ok(ToolResult::error(format!("Failed to execute command: {}", e))),
-            Err(_) => Ok(ToolResult::error(format!(
-                "Command timed out after {} seconds",
-                timeout_secs
-            ))),
+            Ok(Err(e)) => Ok(ToolResult::structured_error(
+                "EXECUTION_FAILED",
+                "bash",
+                &format!("Failed to execute command: {}", e),
+                None,
+                Some(json!({"command": command})),
+            )),
+            Err(_) => Ok(ToolResult::structured_error(
+                "TIMEOUT",
+                "bash",
+                &format!("Command timed out after {} seconds", timeout_secs),
+                None,
+                Some(json!({
+                    "command": command,
+                    "hint": "Consider increasing timeout or breaking into smaller commands"
+                })),
+            )),
         }
     }
 }
