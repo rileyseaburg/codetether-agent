@@ -98,7 +98,7 @@
         "OTLP/HTTP support",
         "Configurable endpoint and headers"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-002",

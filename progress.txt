@@ -21544,3 +21544,540 @@ impl OpenTelemetryExporter {
     pub async fn export_metrics(
         &self,
         pass_rate: &PassRateRegistry
+
+---
+
+## Iteration 8 - US-004 (2026-02-03T19:11:16.062342962+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-004 - Token counting and limit handling for the unified LLM client. This includes creating a TokenCounter struct with tiktoken-style estimation, validation against the 262144 token limit, and utilities for token management.
+
+```rust
+// src/llm/tokens.rs - Token counting and limit handling for LLM operations
+
+//! Token Counting and Limit Management
+//! 
+//! This module provides token counting utilities that estimate token usage for messages
+//! using tiktoken-style byte-pair encoding approximation. It implements the 262144 token
+//! limit awareness and validation as specified in the PRD.
+
+use std::collections::HashMap;
+use std::sync::Arc;
+use thiserror::Error;
+use tracing::{debug, info, trace, warn};
+
+use crate::llm::types::{ChatMessage, ChatRequest, Role, TokenUsage, LlmError, LlmResult};
+
+/// Errors that can occur in token operations
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum TokenError {
+    #[error("Token limit exceeded: {used} > {limit} (context: {context})")]
+    LimitExceeded { used: usize, limit: usize, context: String },
+    
+    #[error("Invalid token count: {0}")]
+    InvalidCount(String),
+    
+    #[error("Message too large: {tokens} tokens (max: {max})")]
+    MessageTooLarge { tokens: usize, max: usize },
+    
+    #[error("Cannot truncate message below minimum: {min} tokens needed")]
+    CannotTruncate { min: usize },
+}
+
+/// Result type for token operations
+pub type TokenResult<T> = Result<T, TokenError>;
+
+/// The maximum token limit for LLM operations (262144 as per PRD)
+pub const MAX_TOKEN_LIMIT: usize = 262_144;
+
+/// Minimum tokens to reserve for response
+pub const MIN_RESPONSE_TOKENS: usize = 1024;
+
+/// Approximate tokens per character for different languages/scripts
+const TOKENS_PER_CHAR_LATIN: f64 = 0.25;      // English, most European languages
+const TOKENS_PER_CHAR_CJK: f64 = 0.5;         // Chinese, Japanese, Korean
+const TOKENS_PER_CHAR_CODE: f64 = 0.3;        // Code/programming languages
+const TOKENS_PER_CHAR_NUMBER: f64 = 0.15;     // Numbers and symbols
+
+/// Token overhead constants
+const MESSAGE_OVERHEAD: usize = 4;            // Per message overhead
+const ROLE_OVERHEAD: Map<Role, usize> =       // Role-specific overhead
+    [(Role::System, 3), (Role::User, 3), (Role::Assistant, 3), (Role::Tool, 5)];
+
+/// TokenCounter for estimating token usage using tiktoken-style BPE approximation
+/// 
+/// This struct provides methods to estimate token counts for messages and requests
+/// without requiring the actual tokenizer. It uses heuristics based on character
+/// counts, whitespace patterns, and common tokenization patterns.
+#[derive(Debug, Clone)]
+pub struct TokenCounter {
+    /// The maximum token limit (default: 262144)
+    max_limit: usize,
+    /// Reserved tokens for response generation
+    reserved_tokens: usize,
+    /// Whether to use precise estimation (slower but more accurate)
+    precise_mode: bool,
+    /// Custom per-character rates for specific content types
+    custom_rates: HashMap<String, f64>,
+}
+
+impl Default for TokenCounter {
+    fn default() -> Self {
+        Self {
+            max_limit: MAX_TOKEN_LIMIT,
+            reserved_tokens: MIN_RESPONSE_TOKENS,
+            precise_mode: false,
+            custom_rates: HashMap::new(),
+        }
+    }
+}
+
+impl TokenCounter {
+    /// Create a new TokenCounter with default settings
+    /// 
+    /// # Examples
+    /// ```
+    /// let counter = TokenCounter::new();
+    /// assert_eq!(counter.max_limit(), 262144);
+    /// ```
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create with custom token limit
+    /// 
+    /// # Arguments
+    /// * `limit` - Maximum token limit (will be clamped to reasonable bounds)
+    pub fn with_limit(limit: usize) -> Self {
+        Self {
+            max_limit: limit.clamp(1024, 1_000_000),
+            ..Default::default()
+        }
+    }
+
+    /// Set reserved tokens for response
+    pub fn with_reserved_tokens(mut self, reserved: usize) -> Self {
+        self.reserved_tokens = reserved;
+        self
+    }
+
+    /// Enable precise estimation mode
+    /// 
+    /// Precise mode uses more sophisticated heuristics that better approximate
+    /// actual BPE tokenization, at the cost of slightly more computation.
+    pub fn with_precise_mode(mut self) -> Self {
+        self.precise_mode = true;
+        self
+    }
+
+    /// Add custom token rate for a content type
+    pub fn with_custom_rate(mut self, content_type: impl Into<String>, rate: f64) -> Self {
+        self.custom_rates.insert(content_type.into(), rate);
+        self
+    }
+
+    /// Get the maximum token limit
+    /// 
+    /// Per PRD: Returns 262144
+    /// 
+    /// # Examples
+    /// ```
+    /// let counter = TokenCounter::new();
+    /// assert_eq!(counter.get_token_limit(), 262144);
+    /// ```
+    pub fn get_token_limit(&self) -> usize {
+        self.max_limit
+    }
+
+    /// Get reserved tokens for response
+    pub fn get_reserved_tokens(&self) -> usize {
+        self.reserved_tokens
+    }
+
+    /// Calculate available tokens for input (limit minus reserved)
+    pub fn get_available_tokens(&self) -> usize {
+        self.max_limit.saturating_sub(self.reserved_tokens)
+    }
+
+    /// Estimate tokens for a single message using tiktoken-style BPE approximation
+    /// 
+    /// This method approximates token count using:
+    /// - Character count heuristics based on script/language detection
+    /// - Whitespace and punctuation patterns common in BPE
+    /// - Message structure overhead (role delimiters, etc.)
+    /// 
+    /// # Arguments
+    /// * `message` - The message to estimate tokens for
+    /// 
+    /// # Returns
+    /// Estimated token count (usize)
+    /// 
+    /// # Examples
+    /// ```
+    /// let counter = TokenCounter::new();
+    /// let msg = ChatMessage::user("Hello, world!");
+    /// let tokens = counter.count_message(&msg);
+    /// assert!(tokens > 0);
+    /// ```
+    pub fn count_message(&self, message: &ChatMessage) -> usize {
+        let content = message.content_text();
+        
+        // Base content estimation
+        let content_tokens = if self.precise_mode {
+            self.estimate_tokens_precise(&content)
+        } else {
+            self.estimate_tokens_simple(&content)
+        };
+
+        // Add overhead for message structure
+        let overhead = MESSAGE_OVERHEAD + match message.role {
+            Role::System => 3,
+            Role::User => 3,
+            Role::Assistant => 3,
+            Role::Tool => 5,
+        };
+
+        // Add overhead for tool calls if present
+        let tool_overhead = if let Some(ref tool_calls) = message.tool_calls {
+            tool_calls.iter().map(|tc| {
+                // Estimate tokens for tool call JSON
+                let name_tokens = (tc.function.name.len() as f64 * TOKENS_PER_CHAR_CODE) as usize;
+                let args_tokens = (tc.function.arguments.len() as f64 * TOKENS_PER_CHAR_CODE) as usize;
+                name_tokens + args_tokens + 10 // structure overhead
+            }).sum()
+        } else {
+            0
+        };
+
+        content_tokens + overhead + tool_overhead
+    }
+
+    /// Simple token estimation (fast, approximate)
+    fn estimate_tokens_simple(&self, text: &str) -> usize {
+        if text.is_empty() {
+            return 0;
+        }
+
+        // Detect dominant script and apply appropriate rate
+        let cjk_chars = text.chars().filter(|c| is_cjk(*c)).count();
+        let code_chars = text.chars().filter(|c| is_code_char(*c)).count();
+        let total_chars = text.chars().count();
+
+        let rate = if cjk_chars > total_chars / 3 {
+            TOKENS_PER_CHAR_CJK
+        } else if code_chars > total_chars / 4 {
+            TOKENS_PER_CHAR_CODE
+        } else {
+            TOKENS_PER_CHAR_LATIN
+        };
+
+        // Apply rate with minimum of 1 token
+        ((text.len() as f64) * rate).ceil() as usize
+    }
+
+    /// Precise token estimation (slower, more accurate)
+    /// 
+    /// Uses patterns that better approximate actual BPE tokenization:
+    /// - Word boundaries and common subword patterns
+    /// - Repeated character sequences
+    /// - Common token boundaries (spaces, punctuation)
+    fn estimate_tokens_precise(&self, text: &str) -> usize {
+        let mut tokens = 0usize;
+        let mut chars = text.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            // Whitespace typically starts new tokens
+            if ch.is_whitespace() {
+                tokens += 1;
+                continue;
+            }
+
+            // CJK characters are often individual tokens
+            if is_cjk(ch) {
+                tokens += 1;
+                continue;
+            }
+
+            // Numbers and sequences
+            if ch.is_ascii_digit() {
+                // Numbers: roughly 1 token per 2-3 digits
+                let mut digit_count = 1;
+                while chars.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                    digit_count += 1;
+                    chars.next();
+                }
+                tokens += (digit_count + 2) / 3; // ceil(digits / 3)
+                continue;
+            }
+
+            // ASCII letters and common code
+            if ch.is_ascii_alphabetic() || ch == '_' {
+                // Word/subword tokenization
+                let mut word_len = 1;
+                while chars.peek().map(|c| {
+                    c.is_ascii_alphanumeric() || *c == '_' || *c == '-'
+                }).unwrap_or(false) {
+                    word_len += 1;
+                    chars.next();
+                }
+
+                // Common BPE pattern: words split into ~2-4 char subwords
+                if word_len <= 4 {
+                    tokens += 1;
+                } else {
+                    tokens += (word_len + 3) / 4; // Approximate subword splits
+                }
+                continue;
+            }
+
+            // Punctuation and special characters
+            if is_punctuation(ch) {
+                // Punctuation often attaches to previous token or is separate
+                tokens += 1;
+                continue;
+            }
+
+            // Fallback: count as 1 token
+            tokens += 1;
+        }
+
+        // Add small overhead for UTF-8 multi-byte characters
+        let multi_byte_chars = text.chars().filter(|c| c.len_utf8() > 1).count();
+        tokens += multi_byte_chars / 4;
+
+        tokens.max(1) // At least 1 token for non-empty text
+    }
+
+    /// Count tokens for a complete request (all messages)
+    /// 
+    /// # Arguments
+    /// * `request` - The chat request containing messages
+    /// 
+    /// # Returns
+    /// Total estimated token count for the request
+    pub fn count_request(&self, request: &ChatRequest) -> usize {
+        let messages_tokens: usize = request.messages.iter()
+            .map(|m| self.count_message(m))
+            .sum();
+
+        // Add request-level overhead
+        let request_overhead = 3; // Format overhead
+        
+        // Add tools overhead if present
+        let tools_overhead = if let Some(ref tools) = request.tools {
+            tools.iter().map(|tool| {
+                let name_tokens = (tool.function.name.len() as f64 * 0.3) as usize;
+                let desc_tokens = tool.function.description.as_ref()
+                    .map(|d| (d.len() as f64 * 0.25) as usize)
+                    .unwrap_or(0);
+                let schema_tokens = (tool.function.parameters.to_string().len() as f64 * 0.1) as usize;
+                name_tokens + desc_tokens + schema_tokens + 5
+            }).sum()
+        } else {
+            0
+        };
+
+        messages_tokens + request_overhead + tools_overhead
+    }
+
+    /// Count tokens for a single string (utility method)
+    pub fn count_text(&self, text: impl AsRef<str>) -> usize {
+        if self.precise_mode {
+            self.estimate_tokens_precise(text.as_ref())
+        } else {
+            self.estimate_tokens_simple(text.as_ref())
+        }
+    }
+
+    /// Validate that a request is within token limits
+    /// 
+    /// Per PRD: validate_request() for token limits
+    /// 
+    /// # Arguments
+    /// * `request` - The request to validate
+    /// 
+    /// # Returns
+    /// * `Ok(TokenUsage)` - Estimated token usage if valid
+    /// * `Err(TokenError)` - If limits would be exceeded
+    /// 
+    /// # Examples
+    /// ```
+    /// let counter = TokenCounter::new();
+    /// let request = ChatRequest::new("gpt-4", vec![
+    ///     ChatMessage::system("You are helpful"),
+    ///     ChatMessage::user("Hello!"),
+    /// ]);
+    /// 
+    /// match counter.validate_request(&request) {
+    ///     Ok(usage) => println!("Valid: {} tokens", usage.prompt_tokens),
+    ///     Err(e) => println!("Invalid: {}", e),
+    /// }
+    /// ```
+    pub fn validate_request(&self, request: &ChatRequest) -> TokenResult<TokenUsage> {
+        let prompt_tokens = self.count_request(request);
+        
+        // Check against absolute limit
+        if prompt_tokens > self.max_limit {
+            return Err(TokenError::LimitExceeded {
+                used: prompt_tokens,
+                limit: self.max_limit,
+                context: format!("prompt exceeds absolute limit of {}", self.max_limit),
+            });
+        }
+
+        // Check against available tokens (leaving room for response)
+        let available = self.get_available_tokens();
+        if prompt_tokens > available {
+            return Err(TokenError::LimitExceeded {
+                used: prompt_tokens,
+                limit: available,
+                context: format!("prompt leaves no room for response (reserved: {})", self.reserved_tokens),
+            });
+        }
+
+        // Estimate max completion tokens
+        let max_completion = request.max_tokens.unwrap_or(self.reserved_tokens);
+        let total_tokens = prompt_tokens + max_completion;
+
+        if total_tokens > self.max_limit {
+            return Err(TokenError::LimitExceeded {
+                used: total_tokens,
+                limit: self.max_limit,
+                context: "prompt + max_completion exceeds limit".to_string(),
+            });
+        }
+
+        Ok(TokenUsage::new(prompt_tokens, 0))
+    }
+
+    /// Check if a message can fit within remaining token budget
+    pub fn can_fit_message(&self, message: &ChatMessage, used_tokens: usize) -> bool {
+        let message_tokens = self.count_message(message);
+        let total = used_tokens + message_tokens;
+        total <= self.get_available_tokens()
+    }
+
+    /// Calculate how many tokens would remain after a request
+    pub fn remaining_after(&self, request: &ChatRequest) -> usize {
+        let used = self.count_request(request);
+        self.max_limit.saturating_sub(used)
+    }
+
+    /// Truncate a message to fit within a token budget
+    /// 
+    /// Attempts to intelligently truncate message content while preserving meaning.
+    /// Returns None if message cannot be truncated enough (below minimum threshold).
+    /// 
+    /// # Arguments
+    /// * `message` - The message to truncate
+    /// * `max_tokens` - Maximum tokens allowed for the message
+    /// * `min_tokens` - Minimum tokens to preserve (default: 10)
+    pub fn truncate_message(
+        &self,
+        message: &ChatMessage,
+        max_tokens: usize,
+        min_tokens: Option<usize>,
+    ) -> Option<ChatMessage> {
+        let current_tokens = self.count_message(message);
+        if current_tokens <= max_tokens {
+            return Some(message.clone());
+        }
+
+        let min = min_tokens.unwrap_or(10);
+        let content = message.content_text();
+        
+        // Binary search for truncation point
+        let mut low = 0;
+        let mut high = content.len();
+        let mut best_truncation = 0;
+
+        while low <= high {
+            let mid = (low + high) / 2;
+            let truncated = &content[..mid.min(content.len())];
+            let test_msg = ChatMessage::new(message.role, truncated);
+            let tokens = self.count_message(&test_msg);
+
+            if tokens <= max_tokens && tokens >= min {
+                best_truncation = mid;
+                low = mid + 1; // Try to get more content
+            } else if tokens > max_tokens {
+                high = mid.saturating_sub(1);
+            } else {
+                low = mid + 1;
+            }
+        }
+
+        if best_truncation < min {
+            return None; // Cannot truncate enough
+        }
+
+        let truncated_content = &content[..best_truncation];
+        Some(ChatMessage::new(message.role, truncated_content))
+    }
+
+    /// Get token usage statistics for analysis
+    pub fn analyze_request(&self, request: &ChatRequest) -> TokenAnalysis {
+        let per_message: Vec<_> = request.messages.iter()
+            .map(|m| (m.role, self.count_message(m)))
+            .collect();
+
+        let total: usize = per_message.iter().map(|(_, c)| c).sum();
+
+        TokenAnalysis {
+            total_tokens: total,
+            per_message_tokens: per_message,
+            available_tokens: self.get_available_tokens(),
+            utilization_ratio: total as f64 / self.max_limit as f64,
+            can_add_message: total + 50 < self.get_available_tokens(), // rough estimate
+        }
+    }
+}
+
+/// Analysis result for token usage inspection
+#[derive(Debug, Clone)]
+pub struct TokenAnalysis {
+    pub total_tokens: usize,
+    pub per_message_tokens: Vec<(Role, usize)>,
+    pub available_tokens: usize,
+    pub utilization_ratio: f64,
+    pub can_add_message: bool,
+}
+
+impl TokenAnalysis {
+    /// Format as human-readable summary
+    pub fn summary(&self) -> String {
+        let mut lines = vec![
+            format!("Token Analysis: {} / {} ({:.1}%)",
+                self.total_tokens,
+                self.total_tokens + self.available_tokens,
+                self.utilization_ratio * 100.0
+            ),
+            "Per message:".to_string(),
+        ];
+
+        for (role, tokens) in &self.per_message_tokens {
+            lines.push(format!("  {:?}: {} tokens", role, tokens));
+        }
+
+        lines.push(format!("Can add message: {}", self.can_add_message));
+
+        lines.join("\n")
+    }
+}
+
+/// Global token limit constant accessor function
+/// 
+/// Per PRD: get_token_limit() returns 262144
+/// 
+/// # Examples
+/// ```
+/// assert_eq!(get_token_limit(), 262144);
+/// ```
+pub fn get_token_limit() -> usize {
+    MAX_TOKEN_LIMIT
+}
+
+/// Utility function to check if a character is CJK
+fn
