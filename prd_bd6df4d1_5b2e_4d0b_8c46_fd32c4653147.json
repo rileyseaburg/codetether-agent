@@ -1,0 +1,124 @@
+{
+  "project": "codetether-agent",
+  "feature": "Security UI Components",
+  "branch_name": "feature/security-ui-components",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Vault Connection Status Indicator",
+      "description": "Create a visual status indicator component that displays the current HashiCorp Vault connection state. The indicator should show: connected (green), disconnected (red), connecting (yellow), or error (red with error message). It should be compact and fit in the status bar or as a small widget.",
+      "acceptance_criteria": [
+        "Status indicator displays connected state with green color",
+        "Status indicator displays disconnected state with red color",
+        "Status indicator displays connecting state with yellow color",
+        "Status indicator displays error state with red color and brief error message",
+        "Component integrates cleanly with existing TUI status bar"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-002",
+      "title": "Provider Selection Interface",
+      "description": "Create a provider selection/credential management interface that lists all available AI providers and their credential status. The interface should show: provider name, connection status (has credentials/missing), and allow selection. Use a list widget with clear visual indicators for each provider's state.",
+      "acceptance_criteria": [
+        "Lists all configured providers from Vault",
+        "Shows credential status for each provider (available/missing)",
+        "Highlights currently selected provider",
+        "Allows navigation with arrow keys",
+        "Integrates as a popup/modal overlay in the TUI"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-003",
+      "title": "Secure Input Component for Secrets",
+      "description": "Implement a secure input widget that masks sensitive data like API keys. The input should display asterisks or dots instead of actual characters, support pasting long API keys, and have a toggle to briefly reveal the content for verification. Include visual feedback for input length without exposing content.",
+      "acceptance_criteria": [
+        "Input masks characters with asterisks or dots",
+        "Supports pasting long API keys",
+        "Has toggle to temporarily reveal content",
+        "Shows input length indicator (e.g., '32 chars')",
+        "Handles backspace and cursor movement correctly"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-004",
+      "title": "API Key Rotation Workflow UI",
+      "description": "Design a multi-step workflow UI for rotating API keys. The workflow should include: step 1 - select provider, step 2 - confirm rotation with warnings, step 3 - enter new key (using secure input), step 4 - verify and save. Each step should have clear navigation (back/next) and confirmation prompts for destructive actions.",
+      "acceptance_criteria": [
+        "Step 1: Provider selection from list",
+        "Step 2: Warning confirmation with provider name",
+        "Step 3: Secure input for new API key with validation",
+        "Step 4: Success/failure feedback",
+        "Cancel option available at each step",
+        "Integrates with Vault for storing new keys"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-002",
+        "US-003"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-005",
+      "title": "Security Audit Log Viewer",
+      "description": "Create a scrollable audit log viewer component for security-related events. The viewer should display: timestamp, event type (key rotation, vault connect/disconnect, provider change), and details. Support filtering by event type and date range. Use a table or structured list layout with color-coded event types.",
+      "acceptance_criteria": [
+        "Displays audit log entries with timestamp, event type, and details",
+        "Color-codes event types (green=success, yellow=warning, red=error)",
+        "Supports scrolling through log entries",
+        "Supports filtering by event type",
+        "Integrates as a popup/modal overlay"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Security Panel Integration",
+      "description": "Integrate all security components into the main TUI with proper navigation. Add keyboard shortcuts to access: provider management (Ctrl+P), vault status (Ctrl+V), key rotation (Ctrl+R), audit logs (Ctrl+L). Ensure components don't interfere with main chat functionality and can be dismissed with Esc.",
+      "acceptance_criteria": [
+        "Ctrl+P opens provider selection",
+        "Ctrl+V shows vault status detail view",
+        "Ctrl+R initiates key rotation workflow",
+        "Ctrl+L opens audit log viewer",
+        "Esc closes any security overlay",
+        "Security components render as overlays without disrupting chat"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-03T19:43:20.045601244+00:00",
+  "updated_at": "2026-02-03T19:43:20.045603205+00:00"
+}
