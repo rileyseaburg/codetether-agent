@@ -20325,3 +20325,592 @@ impl ProcessCollector {
 
     /// Get CPU usage (placeholder)
     fn cpu
+
+---
+
+## Iteration 8 - US-007 (2026-02-03T19:07:46.553032342+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-007 - Implement metrics collection for the connection pool including latency, throughput, error rates, and pool utilization with export to tracing/logs.
+
+```rust
+// src/rlm/metrics.rs - Comprehensive metrics collection for RLM connection pool
+
+//! Metrics Collection for RLM Connection Pool
+//! 
+//! This module provides comprehensive metrics collection including:
+//! - Request latency histograms
+//! - Error rate counters
+//! - Pool utilization gauges
+//! - Throughput metrics
+//! - Export to tracing/logs
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
+use tracing::{debug, error, info, trace, warn, instrument, field};
+use serde::{Serialize, Deserialize};
+use std::fmt;
+
+use crate::rlm::metrics::latency::{LatencyHistogram, LatencyStats, BucketConfig};
+use crate::rlm::metrics::pass_rate::{PassRateRegistry, PassRateSnapshot};
+use crate::rlm::metrics::token_usage::{TokenUsageRegistry, TokenUsageSnapshot};
+
+/// Re-export submodules
+pub mod latency;
+pub mod pass_rate;
+pub mod token_usage;
+
+/// Errors that can occur in metrics operations
+#[derive(Debug, thiserror::Error)]
+pub enum MetricsError {
+    #[error("Metrics collection failed: {0}")]
+    CollectionFailed(String),
+    
+    #[error("Export failed: {0}")]
+    ExportFailed(String),
+    
+    #[error("Histogram error: {0}")]
+    HistogramError(String),
+    
+    #[error("Invalid metric value: {0}")]
+    InvalidValue(String),
+}
+
+/// Result type for metrics operations
+pub type MetricsResult<T> = Result<T, MetricsError>;
+
+/// Metric types for categorization
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MetricType {
+    /// Counter (monotonically increasing)
+    Counter,
+    /// Gauge (can go up and down)
+    Gauge,
+    /// Histogram (distribution of values)
+    Histogram,
+    /// Summary (calculated percentiles)
+    Summary,
+}
+
+impl MetricType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Counter => "counter",
+            Self::Gauge => "gauge",
+            Self::Histogram => "histogram",
+            Self::Summary => "summary",
+        }
+    }
+}
+
+/// Metric labels for dimensions
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct MetricLabels {
+    labels: HashMap<String, String>,
+}
+
+impl MetricLabels {
+    /// Create empty labels
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a label
+    pub fn with(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.labels.insert(key.into(), value.into());
+        self
+    }
+
+    /// Add multiple labels
+    pub fn with_labels(mut self, labels: HashMap<String, String>) -> Self {
+        self.labels.extend(labels);
+        self
+    }
+
+    /// Get label value
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.labels.get(key)
+    }
+
+    /// Convert to tracing fields
+    pub fn as_tracing_fields(&self) -> Vec<(&str, String)> {
+        self.labels.iter()
+            .map(|(k, v)| (k.as_str(), v.clone()))
+            .collect()
+    }
+
+    /// Format as prometheus-style labels
+    pub fn to_prometheus_string(&self) -> String {
+        if self.labels.is_empty() {
+            String::new()
+        } else {
+            let pairs: Vec<_> = self.labels.iter()
+                .map(|(k, v)| format!("{}=\"{}\"", k, v))
+                .collect();
+            format!("{{{}}}", pairs.join(","))
+        }
+    }
+}
+
+impl From<HashMap<String, String>> for MetricLabels {
+    fn from(labels: HashMap<String, String>) -> Self {
+        Self { labels }
+    }
+}
+
+/// A single metric value with metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricValue {
+    /// Metric name
+    pub name: String,
+    /// Metric type
+    pub metric_type: MetricType,
+    /// Value (interpretation depends on type)
+    pub value: f64,
+    /// Additional labels/dimensions
+    pub labels: MetricLabels,
+    /// Timestamp when recorded
+    pub timestamp: Instant,
+    /// Description/help text
+    pub description: Option<String>,
+    /// Unit of measurement
+    pub unit: Option<String>,
+}
+
+impl MetricValue {
+    /// Create a counter metric
+    pub fn counter(name: impl Into<String>, value: f64) -> Self {
+        Self {
+            name: name.into(),
+            metric_type: MetricType::Counter,
+            value,
+            labels: MetricLabels::new(),
+            timestamp: Instant::now(),
+            description: None,
+            unit: None,
+        }
+    }
+
+    /// Create a gauge metric
+    pub fn gauge(name: impl Into<String>, value: f64) -> Self {
+        Self {
+            name: name.into(),
+            metric_type: MetricType::Gauge,
+            value,
+            labels: MetricLabels::new(),
+            timestamp: Instant::now(),
+            description: None,
+            unit: None,
+        }
+    }
+
+    /// Create a histogram observation
+    pub fn histogram_observation(name: impl Into<String>, value: f64) -> Self {
+        Self {
+            name: name.into(),
+            metric_type: MetricType::Histogram,
+            value,
+            labels: MetricLabels::new(),
+            timestamp: Instant::now(),
+            description: None,
+            unit: Some("ms".to_string()),
+        }
+    }
+
+    /// Add labels
+    pub fn with_labels(mut self, labels: MetricLabels) -> Self {
+        self.labels = labels;
+        self
+    }
+
+    /// Add description
+    pub fn with_description(mut self, desc: impl Into<String>) -> Self {
+        self.description = Some(desc.into());
+        self
+    }
+
+    /// Add unit
+    pub fn with_unit(mut self, unit: impl Into<String>) -> Self {
+        self.unit = Some(unit.into());
+        self
+    }
+
+    /// Format for logging
+    pub fn to_log_string(&self) -> String {
+        let labels = self.labels.to_prometheus_string();
+        let unit = self.unit.as_deref().unwrap_or("");
+        format!(
+            "{} {} = {:.3} {} [{}] @ {:?}",
+            self.metric_type.as_str(),
+            self.name,
+            self.value,
+            unit,
+            labels,
+            self.timestamp.elapsed()
+        )
+    }
+}
+
+/// Pool utilization metrics
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct PoolUtilizationMetrics {
+    /// Total pool size (max connections)
+    pub total_size: usize,
+    /// Currently idle connections
+    pub idle_count: usize,
+    /// Currently active (checked out) connections
+    pub active_count: usize,
+    /// Pending waiters (waiting for connection)
+    pub pending_waiters: usize,
+    /// Utilization ratio (0.0 to 1.0)
+    pub utilization_ratio: f64,
+    /// Availability ratio (0.0 to 1.0)
+    pub availability_ratio: f64,
+    /// Saturation (waiters / total)
+    pub saturation_ratio: f64,
+}
+
+impl PoolUtilizationMetrics {
+    /// Calculate derived ratios
+    pub fn calculate(&mut self) {
+        if self.total_size > 0 {
+            self.utilization_ratio = self.active_count as f64 / self.total_size as f64;
+            self.availability_ratio = self.idle_count as f64 / self.total_size as f64;
+            self.saturation_ratio = self.pending_waiters as f64 / self.total_size as f64;
+        }
+    }
+
+    /// Check if pool is saturated
+    pub fn is_saturated(&self) -> bool {
+        self.saturation_ratio > 0.5 || (self.idle_count == 0 && self.pending_waiters > 0)
+    }
+
+    /// Check if pool is underutilized
+    pub fn is_underutilized(&self) -> bool {
+        self.utilization_ratio < 0.3 && self.idle_count > self.total_size / 2
+    }
+}
+
+/// Throughput metrics
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ThroughputMetrics {
+    /// Operations per second (current rate)
+    pub ops_per_second: f64,
+    /// Operations per second (peak)
+    pub peak_ops_per_second: f64,
+    /// Total operations processed
+    pub total_operations: u64,
+    /// Operations in current window
+    pub window_operations: u64,
+    /// Window duration
+    pub window_duration_secs: f64,
+    /// Average throughput over window
+    pub avg_throughput: f64,
+}
+
+/// Error rate metrics
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ErrorRateMetrics {
+    /// Total errors
+    pub total_errors: u64,
+    /// Total attempts
+    pub total_attempts: u64,
+    /// Error rate (0.0 to 1.0)
+    pub error_rate: f64,
+    /// Errors per second
+    pub errors_per_second: f64,
+    /// Error breakdown by type
+    pub error_breakdown: Option<HashMap<String, u64>>,
+}
+
+impl ErrorRateMetrics {
+    /// Calculate error rate
+    pub fn calculate(&mut self) {
+        if self.total_attempts > 0 {
+            self.error_rate = self.total_errors as f64 / self.total_attempts as f64;
+        }
+    }
+
+    /// Check if error rate is concerning
+    pub fn is_concerning(&self, threshold: f64) -> bool {
+        self.error_rate > threshold
+    }
+}
+
+/// Complete snapshot of all pool metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PoolMetricsSnapshot {
+    /// Pool name
+    pub pool_name: String,
+    /// Timestamp
+    pub timestamp: Instant,
+    /// Pool utilization
+    pub utilization: PoolUtilizationMetrics,
+    /// Throughput
+    pub throughput: ThroughputMetrics,
+    /// Error rates
+    pub error_rates: ErrorRateMetrics,
+    /// Latency statistics
+    pub latency: LatencyStats,
+    /// Pass rate snapshot
+    pub pass_rate: PassRateSnapshot,
+    /// Token usage snapshot (if applicable)
+    pub token_usage: Option<TokenUsageSnapshot>,
+    /// Custom metrics
+    pub custom_metrics: HashMap<String, f64>,
+}
+
+impl PoolMetricsSnapshot {
+    /// Create new snapshot
+    pub fn new(pool_name: impl Into<String>) -> Self {
+        Self {
+            pool_name: pool_name.into(),
+            timestamp: Instant::now(),
+            utilization: PoolUtilizationMetrics::default(),
+            throughput: ThroughputMetrics::default(),
+            error_rates: ErrorRateMetrics::default(),
+            latency: LatencyStats::new(),
+            pass_rate: PassRateSnapshot::default(),
+            token_usage: None,
+            custom_metrics: HashMap::new(),
+        }
+    }
+
+    /// Format as human-readable summary
+    pub fn summary(&self) -> String {
+        format!(
+            "Pool '{}' @ {:?}: {} active / {} idle / {} total, {:.1}% util, {:.1} ops/s, {:.2}% errors, p50={:.1}ms p95={:.1}ms p99={:.1}ms",
+            self.pool_name,
+            self.timestamp.elapsed(),
+            self.utilization.active_count,
+            self.utilization.idle_count,
+            self.utilization.total_size,
+            self.utilization.utilization_ratio * 100.0,
+            self.throughput.ops_per_second,
+            self.error_rates.error_rate * 100.0,
+            self.latency.p50_ms,
+            self.latency.p95_ms,
+            self.latency.p99_ms,
+        )
+    }
+
+    /// Format as JSON
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
+    }
+}
+
+/// Metrics collector for connection pool
+pub struct PoolMetricsCollector {
+    /// Pool name
+    pool_name: String,
+    
+    /// Latency histogram for request latencies
+    latency_histogram: Arc<LatencyHistogram>,
+    
+    /// Pass rate registry for success/failure tracking
+    pass_rate_registry: Arc<PassRateRegistry>,
+    
+    /// Token usage registry (optional)
+    token_usage_registry: Option<Arc<TokenUsageRegistry>>,
+    
+    /// Pool utilization gauge
+    utilization: RwLock<PoolUtilizationMetrics>,
+    
+    /// Throughput tracking
+    throughput: RwLock<ThroughputMetrics>,
+    throughput_window_start: Mutex<Instant>,
+    throughput_window_ops: AtomicU64,
+    
+    /// Error tracking
+    error_counter: AtomicU64,
+    attempt_counter: AtomicU64,
+    error_breakdown: RwLock<HashMap<String, AtomicU64>>,
+    
+    /// Custom metrics
+    custom_metrics: RwLock<HashMap<String, AtomicU64>>,
+    
+    /// Last export time
+    last_export: Mutex<Instant>,
+    
+    /// Export interval
+    export_interval: Duration,
+    
+    /// Whether to auto-export to tracing
+    auto_export_to_tracing: bool,
+    
+    /// Whether to auto-export to logs
+    auto_export_to_logs: bool,
+}
+
+impl PoolMetricsCollector {
+    /// Create new metrics collector
+    pub fn new(pool_name: impl Into<String>) -> Self {
+        let name = pool_name.into();
+        
+        Self {
+            pool_name: name.clone(),
+            latency_histogram: Arc::new(LatencyHistogram::with_bucket_config(
+                format!("{}_latency", name),
+                BucketConfig::ApiCalls,
+            )),
+            pass_rate_registry: Arc::new(PassRateRegistry::new()),
+            token_usage_registry: None,
+            utilization: RwLock::new(PoolUtilizationMetrics::default()),
+            throughput: RwLock::new(ThroughputMetrics::default()),
+            throughput_window_start: Mutex::new(Instant::now()),
+            throughput_window_ops: AtomicU64::new(0),
+            error_counter: AtomicU64::new(0),
+            attempt_counter: AtomicU64::new(0),
+            error_breakdown: RwLock::new(HashMap::new()),
+            custom_metrics: RwLock::new(HashMap::new()),
+            last_export: Mutex::new(Instant::now()),
+            export_interval: Duration::from_secs(60),
+            auto_export_to_tracing: true,
+            auto_export_to_logs: true,
+        }
+    }
+
+    /// Create with token tracking enabled
+    pub fn with_token_tracking(mut self) -> Self {
+        self.token_usage_registry = Some(Arc::new(TokenUsageRegistry::new()));
+        self
+    }
+
+    /// Set export interval
+    pub fn with_export_interval(mut self, interval: Duration) -> Self {
+        self.export_interval = interval;
+        self
+    }
+
+    /// Disable auto-export to tracing
+    pub fn without_tracing_export(mut self) -> Self {
+        self.auto_export_to_tracing = false;
+        self
+    }
+
+    /// Disable auto-export to logs
+    pub fn without_log_export(mut self) -> Self {
+        self.auto_export_to_logs = false;
+        self
+    }
+
+    // ============== LATENCY METRICS ==============
+
+    /// Record a request latency
+    #[instrument(skip(self), fields(pool = %self.pool_name))]
+    pub fn record_latency(&self, latency: Duration) {
+        self.latency_histogram.record(latency);
+        
+        trace!(
+            latency_ms = latency.as_millis() as u64,
+            "Recorded request latency"
+        );
+        
+        self.check_auto_export();
+    }
+
+    /// Record latency for a specific operation type
+    pub fn record_operation_latency(&self, operation: impl AsRef<str>, latency: Duration) {
+        self.record_latency(latency);
+        
+        // Also track per-operation latency if needed
+        // (would need separate histograms per operation)
+    }
+
+    /// Get latency statistics
+    pub fn latency_stats(&self) -> LatencyStats {
+        self.latency_histogram.stats()
+    }
+
+    // ============== THROUGHPUT METRICS ==============
+
+    /// Record an operation (for throughput calculation)
+    pub fn record_operation(&self) {
+        self.attempt_counter.fetch_add(1, Ordering::Relaxed);
+        let window_ops = self.throughput_window_ops.fetch_add(1, Ordering::Relaxed);
+        
+        // Calculate throughput if window is large enough
+        if window_ops >= 100 {
+            self.calculate_throughput();
+        }
+    }
+
+    /// Calculate and update throughput metrics
+    fn calculate_throughput(&self) {
+        let mut window_start = self.throughput_window_start.lock().unwrap();
+        let elapsed = window_start.elapsed();
+        
+        if elapsed >= Duration::from_secs(1) {
+            let ops = self.throughput_window_ops.swap(0, Ordering::Relaxed);
+            let ops_per_sec = ops as f64 / elapsed.as_secs_f64();
+            
+            let mut throughput = self.throughput.write().unwrap();
+            throughput.ops_per_second = ops_per_sec;
+            throughput.total_operations += ops;
+            throughput.window_operations = ops;
+            throughput.window_duration_secs = elapsed.as_secs_f64();
+            throughput.avg_throughput = (throughput.avg_throughput + ops_per_sec) / 2.0;
+            
+            if ops_per_sec > throughput.peak_ops_per_second {
+                throughput.peak_ops_per_second = ops_per_sec;
+            }
+            
+            *window_start = Instant::now();
+        }
+    }
+
+    /// Get throughput metrics
+    pub fn throughput_metrics(&self) -> ThroughputMetrics {
+        self.calculate_throughput();
+        *self.throughput.read().unwrap()
+    }
+
+    // ============== ERROR RATE METRICS ==============
+
+    /// Record a successful operation
+    pub fn record_success(&self, operation_type: impl AsRef<str>) {
+        self.record_operation();
+        self.pass_rate_registry.record_success(operation_type);
+    }
+
+    /// Record a failed operation
+    pub fn record_failure(&self, operation_type: impl AsRef<str>, error_type: impl AsRef<str>) {
+        self.record_operation();
+        self.pass_rate_registry.record_failure(operation_type);
+        
+        self.error_counter.fetch_add(1, Ordering::Relaxed);
+        
+        // Track error breakdown
+        let error_key = error_type.as_ref().to_string();
+        let breakdown = self.error_breakdown.read().unwrap();
+        if let Some(counter) = breakdown.get(&error_key) {
+            counter.fetch_add(1, Ordering::Relaxed);
+        } else {
+            drop(breakdown);
+            let mut breakdown = self.error_breakdown.write().unwrap();
+            breakdown.entry(error_key)
+                .or_insert_with(|| AtomicU64::new(0))
+                .fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    /// Get error rate metrics
+    pub fn error_metrics(&self) -> ErrorRateMetrics {
+        let total_errors = self.error_counter.load(Ordering::Relaxed);
+        let total_attempts = self.attempt_counter.load(Ordering::Relaxed);
+        
+        let breakdown = self.error_breakdown.read().unwrap();
+        let error_breakdown: HashMap<String, u64> = breakdown.iter()
+            .map(|(k, v)| (k.clone(), v.load(Ordering::Relaxed)))
+            .collect();
+        
+        let mut metrics = ErrorRateMetrics {
+            total_errors,
+            total_attempts,
+            error_rate: 0.0,
+            errors_per_second: 0.
