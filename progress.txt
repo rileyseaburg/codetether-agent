@@ -24399,3 +24399,557 @@ impl GitRepository {
     pub fn diff_workdir(&self) -> GitResult<Diff> {
         let head = self.head()?;
         let tree
+
+---
+
+## Iteration 12 - US-007 (2026-02-03T19:18:09.675734540+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-007 - Implement Anthropic provider for the unified LLM client. This will create an Anthropic provider implementation that supports Claude Sonnet 4 and Opus 4 models with streaming and tool use.
+
+```rust
+// src/llm/providers/anthropic.rs - Anthropic provider implementation
+
+//! Anthropic Provider Implementation
+//! 
+//! This module implements the Provider trait for Anthropic's Claude API.
+//! Supports Claude Sonnet 4 and Opus 4 models with streaming and tool use.
+
+use async_trait::async_trait;
+use futures::{Stream, StreamExt};
+use reqwest::{Client, header};
+use serde::{Deserialize, Serialize};
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn, instrument};
+
+use crate::llm::{
+    provider::{Provider, ProviderConfig, ProviderCapabilities, ProviderError, ProviderResult, StreamingResponse},
+    types::{
+        ChatMessage, ChatRequest, ChatResponse, Content, ContentPart, FinishReason,
+        FunctionCall, FunctionDefinition, LlmError, LlmProvider, Message, ModelCapabilities,
+        ModelInfo, Role, StreamingChunk, TokenUsage, Tool, ToolCall, ToolChoice,
+    },
+};
+
+/// Errors specific to Anthropic provider operations
+#[derive(Debug, Error)]
+pub enum AnthropicError {
+    #[error("Anthropic API error: {0}")]
+    ApiError(String),
+    
+    #[error("Invalid API key")]
+    InvalidApiKey,
+    
+    #[error("Rate limited: retry after {0:?}")]
+    RateLimited(Duration),
+    
+    #[error("Model {0} not available")]
+    ModelNotAvailable(String),
+    
+    #[error("Context window exceeded: {used} > {limit}")]
+    ContextWindowExceeded { used: usize, limit: usize },
+    
+    #[error("Streaming error: {0}")]
+    StreamingError(String),
+    
+    #[error("Tool use error: {0}")]
+    ToolUseError(String),
+    
+    #[error("Invalid message format: {0}")]
+    InvalidMessageFormat(String),
+    
+    #[error("Request timeout")]
+    Timeout,
+    
+    #[error("Network error: {0}")]
+    NetworkError(String),
+}
+
+impl From<AnthropicError> for ProviderError {
+    fn from(e: AnthropicError) -> Self {
+        match e {
+            AnthropicError::InvalidApiKey => ProviderError::AuthenticationFailed(e.to_string()),
+            AnthropicError::RateLimited(d) => ProviderError::RateLimitExceeded(d),
+            AnthropicError::ModelNotAvailable(m) => ProviderError::ModelNotFound(m),
+            AnthropicError::ContextWindowExceeded { used, limit } => ProviderError::InvalidRequest(
+                format!("Context window exceeded: {} > {}", used, limit)
+            ),
+            AnthropicError::ApiError(msg) => ProviderError::ProviderError("anthropic".to_string(), msg),
+            AnthropicError::StreamingError(msg) => ProviderError::StreamingError(msg),
+            AnthropicError::ToolUseError(msg) => ProviderError::ProviderError("anthropic".to_string(), msg),
+            AnthropicError::InvalidMessageFormat(msg) => ProviderError::InvalidResponse(msg),
+            AnthropicError::Timeout => ProviderError::Timeout(Duration::from_secs(60)),
+            AnthropicError::NetworkError(msg) => ProviderError::ConnectionError(msg),
+        }
+    }
+}
+
+/// Anthropic-supported models
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AnthropicModel {
+    /// Claude 4 Sonnet - Balanced performance and intelligence
+    ClaudeSonnet4,
+    /// Claude 4 Opus - Most powerful model
+    ClaudeOpus4,
+    /// Claude 3.5 Sonnet (legacy but still supported)
+    Claude35Sonnet,
+    /// Claude 3 Opus (legacy)
+    Claude3Opus,
+    /// Claude 3 Sonnet (legacy)
+    Claude3Sonnet,
+    /// Claude 3 Haiku (legacy)
+    Claude3Haiku,
+    /// Custom/other model
+    Custom(String),
+}
+
+impl AnthropicModel {
+    /// Get model ID string for API
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::ClaudeSonnet4 => "claude-sonnet-4-20250514",
+            Self::ClaudeOpus4 => "claude-opus-4-20250514",
+            Self::Claude35Sonnet => "claude-3-5-sonnet-20241022",
+            Self::Claude3Opus => "claude-3-opus-20240229",
+            Self::Claude3Sonnet => "claude-3-sonnet-20240229",
+            Self::Claude3Haiku => "claude-3-haiku-20240307",
+            Self::Custom(s) => s.as_str(),
+        }
+    }
+
+    /// Check if model supports streaming
+    pub fn supports_streaming(&self) -> bool {
+        // All Claude models support streaming
+        true
+    }
+
+    /// Check if model supports tool use
+    pub fn supports_tools(&self) -> bool {
+        // Claude 3.5+ and all Claude 4 models support tool use
+        !matches!(self, Self::Claude3Haiku)
+    }
+
+    /// Get max context window
+    pub fn max_context_tokens(&self) -> usize {
+        match self {
+            Self::ClaudeSonnet4 | Self::ClaudeOpus4 => 200_000,
+            Self::Claude35Sonnet => 200_000,
+            Self::Claude3Opus => 200_000,
+            Self::Claude3Sonnet => 200_000,
+            Self::Claude3Haiku => 200_000,
+            Self::Custom(_) => 200_000,
+        }
+    }
+
+    /// Get max output tokens
+    pub fn max_output_tokens(&self) -> usize {
+        match self {
+            Self::ClaudeSonnet4 | Self::ClaudeOpus4 => 8192,
+            Self::Claude35Sonnet => 8192,
+            Self::Claude3Opus => 4096,
+            Self::Claude3Sonnet => 4096,
+            Self::Claude3Haiku => 4096,
+            Self::Custom(_) => 4096,
+        }
+    }
+
+    /// Check if model is a Claude 4 model
+    pub fn is_claude4(&self) -> bool {
+        matches!(self, Self::ClaudeSonnet4 | Self::ClaudeOpus4)
+    }
+
+    /// Parse from model ID string
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "claude-sonnet-4-20250514" | "claude-sonnet-4" => Self::ClaudeSonnet4,
+            "claude-opus-4-20250514" | "claude-opus-4" => Self::ClaudeOpus4,
+            "claude-3-5-sonnet-20241022" | "claude-3-5-sonnet" => Self::Claude35Sonnet,
+            "claude-3-opus-20240229" | "claude-3-opus" => Self::Claude3Opus,
+            "claude-3-sonnet-20240229" | "claude-3-sonnet" => Self::Claude3Sonnet,
+            "claude-3-haiku-20240307" | "claude-3-haiku" => Self::Claude3Haiku,
+            _ => Self::Custom(s.to_string()),
+        }
+    }
+}
+
+/// Anthropic API request structure
+#[derive(Debug, Serialize)]
+struct AnthropicRequest {
+    model: String,
+    messages: Vec<AnthropicMessage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system: Option<String>,
+    max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_p: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_k: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stop_sequences: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tools: Option<Vec<AnthropicTool>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_choice: Option<AnthropicToolChoice>,
+    stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<AnthropicMetadata>,
+}
+
+/// Anthropic message format
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct AnthropicMessage {
+    role: String,
+    content: AnthropicContent,
+}
+
+/// Anthropic content can be string or array of content blocks
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum AnthropicContent {
+    Text(String),
+    Blocks(Vec<AnthropicContentBlock>),
+}
+
+/// Individual content block
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+enum AnthropicContentBlock {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "image")]
+    Image { source: AnthropicImageSource },
+    #[serde(rename = "tool_use")]
+    ToolUse {
+        id: String,
+        name: String,
+        input: serde_json::Value,
+    },
+    #[serde(rename = "tool_result")]
+    ToolResult {
+        tool_use_id: String,
+        content: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        is_error: Option<bool>,
+    },
+}
+
+/// Image source for vision
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct AnthropicImageSource {
+    #[serde(rename = "type")]
+    source_type: String,
+    media_type: String,
+    data: String,
+}
+
+/// Anthropic tool definition
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct AnthropicTool {
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    input_schema: serde_json::Value,
+}
+
+/// Anthropic tool choice
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum AnthropicToolChoice {
+    Auto { r#type: String },
+    Any { r#type: String },
+    Tool { r#type: String, name: String },
+}
+
+/// Request metadata
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct AnthropicMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_id: Option<String>,
+}
+
+/// Anthropic API response structure
+#[derive(Debug, Deserialize)]
+struct AnthropicResponse {
+    id: String,
+    r#type: String,
+    role: String,
+    content: Vec<AnthropicContentBlock>,
+    model: String,
+    stop_reason: Option<String>,
+    stop_sequence: Option<String>,
+    usage: AnthropicUsage,
+}
+
+/// Anthropic usage information
+#[derive(Debug, Deserialize, Default)]
+struct AnthropicUsage {
+    input_tokens: u32,
+    output_tokens: u32,
+}
+
+/// Anthropic streaming event
+#[derive(Debug, Deserialize)]
+struct AnthropicStreamEvent {
+    #[serde(rename = "type")]
+    event_type: String,
+    #[serde(flatten)]
+    data: AnthropicStreamData,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum AnthropicStreamData {
+    MessageStart { message: AnthropicResponse },
+    ContentBlockStart { index: u32, content_block: AnthropicContentBlock },
+    ContentBlockDelta { index: u32, delta: AnthropicContentDelta },
+    ContentBlockStop { index: u32 },
+    MessageDelta { delta: AnthropicMessageDelta },
+    MessageStop {},
+    Ping {},
+    Error { error: AnthropicErrorDetail },
+}
+
+#[derive(Debug, Deserialize)]
+struct AnthropicContentDelta {
+    #[serde(rename = "type")]
+    delta_type: String,
+    text: Option<String>,
+    partial_json: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AnthropicMessageDelta {
+    stop_reason: Option<String>,
+    stop_sequence: Option<String>,
+    usage: Option<AnthropicUsage>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AnthropicErrorDetail {
+    r#type: String,
+    message: String,
+}
+
+/// Anthropic provider implementation
+pub struct AnthropicProvider {
+    /// HTTP client
+    client: Client,
+    /// API key
+    api_key: String,
+    /// Base URL
+    base_url: String,
+    /// Provider configuration
+    config: ProviderConfig,
+    /// Default model
+    default_model: AnthropicModel,
+    /// API version
+    api_version: String,
+}
+
+impl AnthropicProvider {
+    /// Create a new Anthropic provider from configuration
+    pub fn new(config: ProviderConfig) -> ProviderResult<Self> {
+        let api_key = config.api_key.clone()
+            .ok_or_else(|| ProviderError::AuthenticationFailed(
+                "Anthropic API key required".to_string()
+            ))?;
+
+        let client = Client::builder()
+            .timeout(config.timeout)
+            .build()
+            .map_err(|e| ProviderError::ConnectionError(e.to_string()))?;
+
+        let base_url = config.base_url.clone()
+            .unwrap_or_else(|| "https://api.anthropic.com".to_string());
+
+        let default_model = AnthropicModel::from_str(&config.default_model);
+
+        Ok(Self {
+            client,
+            api_key,
+            base_url,
+            config,
+            default_model,
+            api_version: "2023-06-01".to_string(),
+        })
+    }
+
+    /// Create with explicit API key
+    pub fn with_api_key(api_key: impl Into<String>) -> Self {
+        let config = ProviderConfig::new(LlmProvider::Anthropic, AnthropicModel::ClaudeSonnet4.as_str())
+            .with_api_key(api_key);
+
+        Self::new(config).expect("Valid API key provided")
+    }
+
+    /// Get the underlying HTTP client (for advanced use)
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+
+    /// Build API URL
+    fn api_url(&self, endpoint: &str) -> String {
+        format!("{}/v1/{}", self.base_url.trim_end_matches('/'), endpoint)
+    }
+
+    /// Build request headers
+    fn headers(&self) -> header::HeaderMap {
+        let mut headers = header::HeaderMap::new();
+        
+        headers.insert(
+            "x-api-key",
+            header::HeaderValue::from_str(&self.api_key).unwrap()
+        );
+        
+        headers.insert(
+            "anthropic-version",
+            header::HeaderValue::from_str(&self.api_version).unwrap()
+        );
+        
+        headers.insert(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json")
+        );
+
+        headers
+    }
+
+    /// Convert our ChatMessage to Anthropic format
+    fn convert_messages(&self, messages: &[ChatMessage]) -> ProviderResult<(Vec<AnthropicMessage>, Option<String>)> {
+        let mut anthropic_messages = Vec::new();
+        let mut system_prompt = None;
+
+        for msg in messages {
+            match msg.role {
+                Role::System => {
+                    // Anthropic uses top-level system parameter, not a message
+                    system_prompt = Some(msg.content_text());
+                }
+                Role::User => {
+                    let content = self.convert_content(&msg.content)?;
+                    anthropic_messages.push(AnthropicMessage {
+                        role: "user".to_string(),
+                        content,
+                    });
+                }
+                Role::Assistant => {
+                    let content = if let Some(ref tool_calls) = msg.tool_calls {
+                        // Convert tool calls to content blocks
+                        let mut blocks = vec![];
+                        
+                        // Add text content if present
+                        let text = msg.content_text();
+                        if !text.is_empty() {
+                            blocks.push(AnthropicContentBlock::Text { text });
+                        }
+                        
+                        // Add tool use blocks
+                        for call in tool_calls {
+                            blocks.push(AnthropicContentBlock::ToolUse {
+                                id: call.id.clone(),
+                                name: call.function.name.clone(),
+                                input: serde_json::from_str(&call.function.arguments)
+                                    .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
+                            });
+                        }
+                        
+                        AnthropicContent::Blocks(blocks)
+                    } else {
+                        self.convert_content(&msg.content)?
+                    };
+                    
+                    anthropic_messages.push(AnthropicMessage {
+                        role: "assistant".to_string(),
+                        content,
+                    });
+                }
+                Role::Tool => {
+                    let tool_use_id = msg.tool_call_id.clone()
+                        .ok_or_else(|| AnthropicError::InvalidMessageFormat(
+                            "Tool message missing tool_call_id".to_string()
+                        ))?;
+                    
+                    anthropic_messages.push(AnthropicMessage {
+                        role: "user".to_string(),
+                        content: AnthropicContent::Blocks(vec![
+                            AnthropicContentBlock::ToolResult {
+                                tool_use_id,
+                                content: msg.content_text(),
+                                is_error: None,
+                            }
+                        ]),
+                    });
+                }
+                Role::Function => {
+                    // Map Function role to Tool
+                    let tool_use_id = msg.name.clone()
+                        .unwrap_or_default();
+                    
+                    anthropic_messages.push(AnthropicMessage {
+                        role: "user".to_string(),
+                        content: AnthropicContent::Blocks(vec![
+                            AnthropicContentBlock::ToolResult {
+                                tool_use_id,
+                                content: msg.content_text(),
+                                is_error: None,
+                            }
+                        ]),
+                    });
+                }
+            }
+        }
+
+        Ok((anthropic_messages, system_prompt))
+    }
+
+    /// Convert content to Anthropic format
+    fn convert_content(&self, content: &Content) -> ProviderResult<AnthropicContent> {
+        match content {
+            Content::Text(text) => Ok(AnthropicContent::Text(text.clone())),
+            Content::Parts(parts) => {
+                let blocks: Vec<_> = parts.iter()
+                    .map(|part| match part {
+                        ContentPart::Text { text } => {
+                            AnthropicContentBlock::Text { text: text.clone() }
+                        }
+                        ContentPart::Image { source } => {
+                            let (source_type, media_type, data) = match source {
+                                crate::llm::types::ImageSource::Url { url } => {
+                                    // Anthropic requires base64, not URLs
+                                    // Would need to fetch and encode in production
+                                    ("url".to_string(), "image/jpeg".to_string(), url.clone())
+                                }
+                                crate::llm::types::ImageSource::Base64 { media_type, data } => {
+                                    ("base64".to_string(), media_type.clone(), data.clone())
+                                }
+                            };
+                            
+                            AnthropicContentBlock::Image {
+                                source: AnthropicImageSource {
+                                    source_type,
+                                    media_type,
+                                    data,
+                                }
+                            }
+                        }
+                        _ => unimplemented!("Audio not supported by Anthropic"),
+                    })
+                    .collect();
+                
+                Ok(AnthropicContent::Blocks(blocks))
+            }
+        }
+    }
+
+    /// Convert tools to Anthropic format
+    fn convert_tools(&self, tools: &[Tool]) -> Vec<AnthropicTool> {
+        tools.iter()
+            .map(|tool| AnthropicTool {
+                name: tool.function.name.clone

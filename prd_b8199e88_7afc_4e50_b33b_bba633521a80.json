@@ -25,7 +25,7 @@
         "src/vcs/mod.rs exists and is included in lib.rs",
         "Module exports core types and traits"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 1
