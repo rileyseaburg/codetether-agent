@@ -16633,3 +16633,1190 @@ impl<C: PooledConnection + 'static> ParallelProcessor<C> {
                     queue.lock().unwrap().mark_in_progress(chunk.id.clone());
 
                     // Spawn processing task
+
+---
+
+## Iteration 5 - US-005 (2026-02-03T18:59:37.413915804+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-005 - Result Aggregation for parallel chunk processing with conflict resolution and ordering preservation.
+
+```rust
+// src/rlm/aggregation.rs - Result aggregation for parallel chunk processing
+
+//! Result Aggregation for Parallel Chunk Processing
+//! 
+//! This module provides aggregation of results from parallel chunk processing
+//! with conflict resolution, ordering preservation, and merge strategies for
+//! different content types.
+
+use std::collections::{HashMap, BTreeMap, HashSet};
+use std::cmp::Ordering;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn};
+use serde::{Serialize, Deserialize};
+
+use crate::rlm::processing::{WorkChunk, ChunkResult, ProcessingError};
+
+/// Errors that can occur in aggregation
+#[derive(Debug, Error)]
+pub enum AggregationError {
+    #[error("Conflict resolution failed: {0}")]
+    ConflictResolutionFailed(String),
+
+    #[error("Ordering violation detected: {0}")]
+    OrderingViolation(String),
+
+    #[error("Partial failure: {0} succeeded, {1} failed")]
+    PartialFailure(usize, usize),
+
+    #[error("Merge strategy error: {0}")]
+    MergeError(String),
+
+    #[error("Dependency not satisfied: {0}")]
+    DependencyNotSatisfied(String),
+
+    #[error("Timeout waiting for results: {0:?}")]
+    Timeout(Duration),
+
+    #[error("Processing error: {0}")]
+    Processing(#[from] ProcessingError),
+}
+
+/// Result type for aggregation operations
+pub type AggregationResult<T> = Result<T, AggregationError>;
+
+/// Status of a chunk in the aggregation pipeline
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChunkStatus {
+    /// Waiting for dependencies
+    Pending,
+    /// Ready to process
+    Ready,
+    /// Currently being processed
+    Processing,
+    /// Completed successfully
+    Completed,
+    /// Failed with error
+    Failed,
+    /// Cancelled
+    Cancelled,
+}
+
+/// Enhanced chunk result with metadata for aggregation
+#[derive(Debug, Clone)]
+pub struct AggregatedChunkResult {
+    /// Original chunk result
+    pub result: ChunkResult,
+    /// Original chunk metadata
+    pub chunk: WorkChunk,
+    /// Position in original sequence
+    pub sequence_index: usize,
+    /// Status
+    pub status: ChunkStatus,
+    /// When processing started
+    pub started_at: Option<Instant>,
+    /// When processing completed
+    pub completed_at: Option<Instant>,
+    /// Dependencies that were satisfied
+    pub satisfied_dependencies: Vec<String>,
+    /// Conflicts detected with other chunks
+    pub conflicts: Vec<Conflict>,
+    /// Resolution applied
+    pub resolution: Option<Resolution>,
+}
+
+impl AggregatedChunkResult {
+    /// Create from chunk result and metadata
+    pub fn new(result: ChunkResult, chunk: WorkChunk, sequence_index: usize) -> Self {
+        let status = if result.success {
+            ChunkStatus::Completed
+        } else {
+            ChunkStatus::Failed
+        };
+
+        Self {
+            result,
+            chunk,
+            sequence_index,
+            status,
+            started_at: None,
+            completed_at: Some(Instant::now()),
+            satisfied_dependencies: Vec::new(),
+            conflicts: Vec::new(),
+            resolution: None,
+        }
+    }
+
+    /// Check if this result has conflicts
+    pub fn has_conflicts(&self) -> bool {
+        !self.conflicts.is_empty()
+    }
+
+    /// Get processing duration
+    pub fn processing_duration(&self) -> Option<Duration> {
+        match (self.started_at, self.completed_at) {
+            (Some(start), Some(end)) => Some(end.duration_since(start)),
+            _ => None,
+        }
+    }
+}
+
+/// Conflict between two chunk results
+#[derive(Debug, Clone, PartialEq)]
+pub struct Conflict {
+    /// ID of the other chunk involved in conflict
+    pub other_chunk_id: String,
+    /// Type of conflict
+    pub conflict_type: ConflictType,
+    /// Description of the conflict
+    pub description: String,
+    /// Severity (higher = more severe)
+    pub severity: u8,
+}
+
+/// Types of conflicts that can occur
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConflictType {
+    /// Overlapping content ranges
+    OverlappingRange,
+    /// Contradictory modifications
+    ContradictoryModification,
+    /// Duplicate content
+    DuplicateContent,
+    /// Inconsistent state
+    InconsistentState,
+    /// Dependency violation
+    DependencyViolation,
+    /// Resource contention
+    ResourceContention,
+    /// Version mismatch
+    VersionMismatch,
+    /// Custom conflict type
+    Custom(&'static str),
+}
+
+impl ConflictType {
+    /// Get display name
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OverlappingRange => "overlapping_range",
+            Self::ContradictoryModification => "contradictory_modification",
+            Self::DuplicateContent => "duplicate_content",
+            Self::InconsistentState => "inconsistent_state",
+            Self::DependencyViolation => "dependency_violation",
+            Self::ResourceContention => "resource_contention",
+            Self::VersionMismatch => "version_mismatch",
+            Self::Custom(s) => s,
+        }
+    }
+}
+
+/// Resolution applied to a conflict
+#[derive(Debug, Clone, PartialEq)]
+pub struct Resolution {
+    /// Strategy used
+    pub strategy: ResolutionStrategy,
+    /// Description of resolution
+    pub description: String,
+    /// Whether manual intervention was needed
+    pub required_manual_intervention: bool,
+}
+
+/// Strategies for conflict resolution
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ResolutionStrategy {
+    /// Take the first result (by sequence order)
+    FirstWins,
+    /// Take the last result (by completion time)
+    LastWins,
+    /// Merge the results
+    Merge,
+    /// Take the result with higher priority
+    PriorityWins,
+    /// Take the result with more confidence/quality
+    ConfidenceWins,
+    /// Take the larger/more complete result
+    LargerWins,
+    /// Manual resolution required
+    Manual,
+    /// Custom strategy
+    Custom(&'static str),
+}
+
+impl ResolutionStrategy {
+    /// Get display name
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::FirstWins => "first_wins",
+            Self::LastWins => "last_wins",
+            Self::Merge => "merge",
+            Self::PriorityWins => "priority_wins",
+            Self::ConfidenceWins => "confidence_wins",
+            Self::LargerWins => "larger_wins",
+            Self::Manual => "manual",
+            Self::Custom(s) => s,
+        }
+    }
+}
+
+/// Configuration for aggregation behavior
+#[derive(Debug, Clone)]
+pub struct AggregationConfig {
+    /// Whether to preserve original chunk ordering
+    pub preserve_order: bool,
+    /// Default conflict resolution strategy
+    pub default_resolution: ResolutionStrategy,
+    /// Whether to fail fast on first error
+    pub fail_fast: bool,
+    /// Maximum time to wait for all results
+    pub timeout: Duration,
+    /// Whether to allow partial results
+    pub allow_partial: bool,
+    /// Minimum success ratio to consider aggregation successful (0.0 to 1.0)
+    pub min_success_ratio: f64,
+    /// Whether to detect and resolve conflicts
+    pub enable_conflict_detection: bool,
+    /// Whether to track detailed timing
+    pub track_timing: bool,
+    /// Merge strategy for content
+    pub merge_strategy: MergeStrategy,
+}
+
+impl Default for AggregationConfig {
+    fn default() -> Self {
+        Self {
+            preserve_order: true,
+            default_resolution: ResolutionStrategy::PriorityWins,
+            fail_fast: false,
+            timeout: Duration::from_secs(300),
+            allow_partial: true,
+            min_success_ratio: 0.8,
+            enable_conflict_detection: true,
+            track_timing: true,
+            merge_strategy: MergeStrategy::default(),
+        }
+    }
+}
+
+impl AggregationConfig {
+    /// Create new config
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Preserve original ordering
+    pub fn with_order_preservation(mut self, preserve: bool) -> Self {
+        self.preserve_order = preserve;
+        self
+    }
+
+    /// Set resolution strategy
+    pub fn with_resolution_strategy(mut self, strategy: ResolutionStrategy) -> Self {
+        self.default_resolution = strategy;
+        self
+    }
+
+    /// Enable fail-fast mode
+    pub fn fail_fast(mut self) -> Self {
+        self.fail_fast = true;
+        self
+    }
+
+    /// Set timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Require full success (no partial results)
+    pub fn require_full_success(mut self) -> Self {
+        self.allow_partial = false;
+        self.min_success_ratio = 1.0;
+        self
+    }
+
+    /// Set minimum success ratio
+    pub fn with_min_success_ratio(mut self, ratio: f64) -> Self {
+        self.min_success_ratio = ratio.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Set merge strategy
+    pub fn with_merge_strategy(mut self, strategy: MergeStrategy) -> Self {
+        self.merge_strategy = strategy;
+        self
+    }
+}
+
+/// Strategy for merging content from multiple chunks
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MergeStrategy {
+    /// Concatenate in order
+    Concatenate,
+    /// Concatenate with separators
+    ConcatenateWithSeparator(String),
+    /// Join with newlines
+    JoinLines,
+    /// Merge as JSON array
+    JsonArray,
+    /// Merge as JSON object (keyed by chunk ID)
+    JsonObject,
+    /// Deduplicate while merging
+    Deduplicate,
+    /// Smart merge based on content type
+    Smart,
+    /// Custom merge function
+    Custom(String),
+}
+
+impl Default for MergeStrategy {
+    fn default() -> Self {
+        Self::Smart
+    }
+}
+
+impl MergeStrategy {
+    /// Merge multiple string results
+    pub fn merge_strings(&self, results: &[(usize, String)]) -> String {
+        match self {
+            Self::Concatenate => {
+                results.iter().map(|(_, s)| s.as_str()).collect()
+            }
+            Self::ConcatenateWithSeparator(sep) => {
+                results.iter().map(|(_, s)| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(sep)
+            }
+            Self::JoinLines => {
+                results.iter().map(|(_, s)| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            Self::Deduplicate => {
+                let mut seen = HashSet::new();
+                let mut output = Vec::new();
+                for (_, s) in results {
+                    if seen.insert(s.clone()) {
+                        output.push(s.as_str());
+                    }
+                }
+                output.join("\n")
+            }
+            Self::Smart => {
+                // Try to detect content type and merge appropriately
+                if results.iter().any(|(_, s)| s.trim().starts_with('{')) {
+                    // Looks like JSON
+                    Self::JsonArray.merge_strings(results)
+                } else if results.iter().any(|(_, s)| s.contains('\n')) {
+                    // Multi-line content
+                    Self::JoinLines.merge_strings(results)
+                } else {
+                    Self::ConcatenateWithSeparator(" ".to_string()).merge_strings(results)
+                }
+            }
+            Self::JsonArray => {
+                let items: Vec<_> = results.iter().map(|(_, s)| s).collect();
+                format!("[{}]", items.join(","))
+            }
+            Self::JsonObject => {
+                let entries: Vec<_> = results.iter()
+                    .map(|(idx, s)| format!("\"chunk_{}\": {}", idx, s))
+                    .collect();
+                format!("{{{}}}", entries.join(","))
+            }
+            Self::Custom(_) => {
+                // Would use custom function in real implementation
+                Self::Concatenate.merge_strings(results)
+            }
+        }
+    }
+
+    /// Merge byte arrays
+    pub fn merge_bytes(&self, results: &[(usize, Vec<u8>)]) -> Vec<u8> {
+        match self {
+            Self::Concatenate | Self::ConcatenateWithSeparator(_) | Self::JoinLines => {
+                let mut output = Vec::new();
+                for (_, bytes) in results {
+                    output.extend_from_slice(bytes);
+                }
+                output
+            }
+            Self::Deduplicate => {
+                let mut seen = HashSet::new();
+                let mut output = Vec::new();
+                for (_, bytes) in results {
+                    if seen.insert(bytes.clone()) {
+                        output.extend_from_slice(bytes);
+                    }
+                }
+                output
+            }
+            _ => {
+                // Default to concatenation for complex strategies with bytes
+                let mut output = Vec::new();
+                for (_, bytes) in results {
+                    output.extend_from_slice(bytes);
+                }
+                output
+            }
+        }
+    }
+}
+
+/// The final aggregated result
+#[derive(Debug, Clone)]
+pub struct AggregatedResult {
+    /// Merged output data
+    pub output: Vec<u8>,
+    /// Output as string (if valid UTF-8)
+    pub output_string: Option<String>,
+    /// Individual chunk results (in original order if preserved)
+    pub chunk_results: Vec<AggregatedChunkResult>,
+    /// Number of successful chunks
+    pub success_count: usize,
+    /// Number of failed chunks
+    pub failure_count: usize,
+    /// Total chunks
+    pub total_count: usize,
+    /// Success ratio (0.0 to 1.0)
+    pub success_ratio: f64,
+    /// Whether result is considered successful (meets min_success_ratio)
+    pub is_successful: bool,
+    /// Conflicts detected and resolved
+    pub resolved_conflicts: Vec<Conflict>,
+    /// Total processing time
+    pub total_time: Duration,
+    /// Time spent on aggregation
+    pub aggregation_time: Duration,
+    /// Whether ordering was preserved
+    pub ordering_preserved: bool,
+    /// Metadata
+    pub metadata: HashMap<String, String>,
+}
+
+impl AggregatedResult {
+    /// Create empty result
+    pub fn empty() -> Self {
+        Self {
+            output: Vec::new(),
+            output_string: Some(String::new()),
+            chunk_results: Vec::new(),
+            success_count: 0,
+            failure_count: 0,
+            total_count: 0,
+            success_ratio: 0.0,
+            is_successful: false,
+            resolved_conflicts: Vec::new(),
+            total_time: Duration::ZERO,
+            aggregation_time: Duration::ZERO,
+            ordering_preserved: true,
+            metadata: HashMap::new(),
+        }
+    }
+
+    /// Check if any chunks had conflicts
+    pub fn had_conflicts(&self) -> bool {
+        !self.resolved_conflicts.is_empty() || 
+        self.chunk_results.iter().any(|r| r.has_conflicts())
+    }
+
+    /// Get failed chunk results
+    pub fn failures(&self) -> Vec<&AggregatedChunkResult> {
+        self.chunk_results.iter()
+            .filter(|r| !r.result.success)
+            .collect()
+    }
+
+    /// Get successful chunk results
+    pub fn successes(&self) -> Vec<&AggregatedChunkResult> {
+        self.chunk_results.iter()
+            .filter(|r| r.result.success)
+            .collect()
+    }
+
+    /// Add metadata
+    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+}
+
+/// Result aggregator for parallel chunk processing
+pub struct ResultAggregator {
+    config: AggregationConfig,
+    /// Results by chunk ID
+    results: HashMap<String, AggregatedChunkResult>,
+    /// Results in sequence order
+    sequence_order: Vec<String>,
+    /// Dependency graph
+    dependencies: HashMap<String, Vec<String>>,
+    /// Start time
+    start_time: Instant,
+}
+
+impl ResultAggregator {
+    /// Create new aggregator with configuration
+    pub fn new(config: AggregationConfig, chunks: &[WorkChunk]) -> Self {
+        let mut sequence_order = Vec::with_capacity(chunks.len());
+        let mut dependencies = HashMap::new();
+
+        for (idx, chunk) in chunks.iter().enumerate() {
+            sequence_order.push(chunk.id.clone());
+            if !chunk.dependencies.is_empty() {
+                dependencies.insert(chunk.id.clone(), chunk.dependencies.clone());
+            }
+        }
+
+        Self {
+            config,
+            results: HashMap::with_capacity(chunks.len()),
+            sequence_order,
+            dependencies,
+            start_time: Instant::now(),
+        }
+    }
+
+    /// Add a chunk result
+    pub fn add_result(&mut self, result: ChunkResult, chunk: WorkChunk, sequence_index: usize) -> AggregationResult<()> {
+        if self.config.fail_fast && !result.success {
+            return Err(AggregationError::PartialFailure(
+                self.success_count(),
+                self.failure_count() + 1
+            ));
+        }
+
+        let aggregated = AggregatedChunkResult::new(result, chunk, sequence_index);
+        self.results.insert(aggregated.result.chunk_id.clone(), aggregated);
+        
+        Ok(())
+    }
+
+    /// Add multiple results
+    pub fn add_results(&mut self, results: Vec<(ChunkResult, WorkChunk, usize)>) -> AggregationResult<()> {
+        for (result, chunk, idx) in results {
+            self.add_result(result, chunk, idx)?;
+        }
+        Ok(())
+    }
+
+    /// Check if all results are collected
+    pub fn is_complete(&self) -> bool {
+        self.results.len() == self.sequence_order.len()
+    }
+
+    /// Get count of collected results
+    pub fn collected_count(&self) -> usize {
+        self.results.len()
+    }
+
+    /// Get success count
+    pub fn success_count(&self) -> usize {
+        self.results.values().filter(|r| r.result.success).count()
+    }
+
+    /// Get failure count
+    pub fn failure_count(&self) -> usize {
+        self.results.values().filter(|r| !r.result.success).count()
+    }
+
+    /// Get success ratio
+    pub fn success_ratio(&self) -> f64 {
+        if self.results.is_empty() {
+            0.0
+        } else {
+            self.success_count() as f64 / self.results.len() as f64
+        }
+    }
+
+    /// Detect conflicts between chunk results
+    pub fn detect_conflicts(&self) -> Vec<Conflict> {
+        let mut conflicts = Vec::new();
+
+        if !self.config.enable_conflict_detection {
+            return conflicts;
+        }
+
+        // Check for overlapping ranges if position metadata exists
+        let positioned: Vec<_> = self.results.values()
+            .filter_map(|r| {
+                r.chunk.metadata.get("position").map(|p| {
+                    let parts: Vec<_> = p.split(',').collect();
+                    if parts.len() == 2 {
+                        let start: usize = parts[0].parse().unwrap_or(0);
+                        let end: usize = parts[1].parse().unwrap_or(0);
+                        (r, start, end)
+                    } else {
+                        (r, 0, 0)
+                    }
+                })
+            })
+            .collect();
+
+        // Detect overlaps
+        for i in 0..positioned.len() {
+            for j in (i + 1)..positioned.len() {
+                let (r1, s1, e1) =
+
+---
+
+## Iteration 5 - US-003 (2026-02-03T19:00:41.694252664+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-003 - Create LatencyHistogram that records operation latencies with configurable buckets for p50, p95, p99 percentiles.
+
+```rust
+// src/metrics/latency.rs - Latency histogram implementation for telemetry
+
+//! Latency Histograms for Operation Timing
+//! 
+//! This module provides histogram-based latency tracking for operations,
+//! with configurable buckets and percentile calculations (p50, p95, p99).
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+use std::cmp::Ordering as CmpOrdering;
+
+/// Errors that can occur in latency operations
+#[derive(Debug, thiserror::Error)]
+pub enum LatencyError {
+    #[error("Invalid bucket configuration: {0}")]
+    InvalidBuckets(String),
+    
+    #[error("Operation type '{0}' not found")]
+    OperationNotFound(String),
+    
+    #[error("Invalid latency value: {0}")]
+    InvalidValue(String),
+}
+
+/// Result type for latency operations
+pub type LatencyResult<T> = Result<T, LatencyError>;
+
+/// A single latency bucket with upper bound and count
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bucket {
+    /// Upper bound of this bucket (inclusive) in milliseconds
+    pub upper_bound_ms: u64,
+    /// Count of observations in this bucket
+    pub count: u64,
+}
+
+impl Bucket {
+    /// Create a new bucket with upper bound
+    pub fn new(upper_bound_ms: u64) -> Self {
+        Self {
+            upper_bound_ms,
+            count: 0,
+        }
+    }
+
+    /// Check if a value belongs in this bucket
+    pub fn contains(&self, value_ms: u64) -> bool {
+        value_ms <= self.upper_bound_ms
+    }
+
+    /// Increment count
+    pub fn increment(&mut self) {
+        self.count += 1;
+    }
+
+    /// Add to count
+    pub fn add(&mut self, n: u64) {
+        self.count += n;
+    }
+}
+
+/// Predefined bucket configurations for common use cases
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BucketConfig {
+    /// Default buckets: 1ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s
+    Default,
+    /// Fine-grained for fast operations: 100µs, 500µs, 1ms, 5ms, 10ms, 25ms, 50ms, 100ms
+    FastOperations,
+    /// Coarse for slow operations: 10ms, 50ms, 100ms, 500ms, 1s, 5s, 10s, 30s, 60s
+    SlowOperations,
+    /// API call latencies: 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s
+    ApiCalls,
+    /// Database operations: 1ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 5s
+    Database,
+    /// Custom buckets (use with LatencyHistogram::with_buckets)
+    Custom,
+}
+
+impl BucketConfig {
+    /// Get the bucket upper bounds in milliseconds for this configuration
+    pub fn buckets_ms(&self) -> Vec<u64> {
+        match self {
+            Self::Default => vec![
+                1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000,
+            ],
+            Self::FastOperations => vec![
+                0, 1, 5, 10, 25, 50, 100, // Note: 0 = 100µs bucket (special handling)
+            ],
+            Self::SlowOperations => vec![
+                10, 50, 100, 500, 1000, 5000, 10000, 30000, 60000,
+            ],
+            Self::ApiCalls => vec![
+                5, 10, 25, 50, 100, 250, 500, 1000, 2000, 5000,
+            ],
+            Self::Database => vec![
+                1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000,
+            ],
+            Self::Custom => vec![], // Must provide custom buckets
+        }
+    }
+
+    /// Get display name
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::FastOperations => "fast",
+            Self::SlowOperations => "slow",
+            Self::ApiCalls => "api",
+            Self::Database => "database",
+            Self::Custom => "custom",
+        }
+    }
+}
+
+/// Statistics calculated from histogram data
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LatencyStats {
+    /// Total number of observations
+    pub count: u64,
+    /// Minimum observed latency (ms)
+    pub min_ms: u64,
+    /// Maximum observed latency (ms)
+    pub max_ms: u64,
+    /// Mean latency (ms)
+    pub mean_ms: f64,
+    /// 50th percentile (median)
+    pub p50_ms: f64,
+    /// 95th percentile
+    pub p95_ms: f64,
+    /// 99th percentile
+    pub p99_ms: f64,
+    /// 99.9th percentile
+    pub p999_ms: f64,
+    /// Standard deviation (ms)
+    pub std_dev_ms: f64,
+    /// Sum of all latencies (for mean calculation)
+    pub sum_ms: u64,
+    /// Sum of squared latencies (for std dev)
+    pub sum_squares_ms: u64,
+    /// When tracking started
+    pub since: Instant,
+    /// Last update time
+    pub last_updated: Instant,
+}
+
+impl LatencyStats {
+    /// Create empty stats
+    pub fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            count: 0,
+            min_ms: u64::MAX,
+            max_ms: 0,
+            mean_ms: 0.0,
+            p50_ms: 0.0,
+            p95_ms: 0.0,
+            p99_ms: 0.0,
+            p999_ms: 0.0,
+            std_dev_ms: 0.0,
+            sum_ms: 0,
+            sum_squares_ms: 0,
+            since: now,
+            last_updated: now,
+        }
+    }
+
+    /// Check if stats have any data
+    pub fn has_data(&self) -> bool {
+        self.count > 0
+    }
+
+    /// Get duration since tracking started
+    pub fn duration(&self) -> Duration {
+        self.since.elapsed()
+    }
+
+    /// Get latency range
+    pub fn range_ms(&self) -> u64 {
+        if self.has_data() {
+            self.max_ms - self.min_ms
+        } else {
+            0
+        }
+    }
+}
+
+impl Default for LatencyStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Histogram for tracking operation latencies
+/// 
+/// Thread-safe histogram with configurable buckets and percentile calculation.
+#[derive(Debug)]
+pub struct LatencyHistogram {
+    /// Histogram name/identifier
+    name: String,
+    /// Bucket upper bounds in milliseconds (sorted ascending)
+    buckets: Vec<u64>,
+    /// Atomic counters for each bucket
+    bucket_counts: Vec<AtomicU64>,
+    /// Total count (sum of all buckets)
+    total_count: AtomicU64,
+    /// Sum of all observed values (for mean calculation)
+    sum_ms: AtomicU64,
+    /// Sum of squares (for std dev)
+    sum_squares_ms: AtomicU64,
+    /// Minimum observed value
+    min_ms: AtomicU64,
+    /// Maximum observed value
+    max_ms: AtomicU64,
+    /// When this histogram was created
+    created_at: Instant,
+    /// Last record time
+    last_record: Mutex<Instant>,
+}
+
+impl LatencyHistogram {
+    /// Create a new latency histogram with default buckets
+    pub fn new(name: impl Into<String>) -> Self {
+        Self::with_bucket_config(name, BucketConfig::Default)
+    }
+
+    /// Create with a predefined bucket configuration
+    pub fn with_bucket_config(name: impl Into<String>, config: BucketConfig) -> Self {
+        let buckets = config.buckets_ms();
+        Self::with_buckets(name, buckets)
+    }
+
+    /// Create with custom bucket boundaries (in milliseconds)
+    /// 
+    /// Buckets must be sorted in ascending order and non-empty.
+    pub fn with_buckets(name: impl Into<String>, buckets: Vec<u64>) -> Self {
+        assert!(!buckets.is_empty(), "Buckets cannot be empty");
+        
+        // Ensure buckets are sorted
+        let mut buckets = buckets;
+        buckets.sort_unstable();
+        
+        // Remove duplicates
+        buckets.dedup();
+        
+        let bucket_counts: Vec<_> = (0..buckets.len())
+            .map(|_| AtomicU64::new(0))
+            .collect();
+
+        let now = Instant::now();
+        
+        Self {
+            name: name.into(),
+            buckets,
+            bucket_counts,
+            total_count: AtomicU64::new(0),
+            sum_ms: AtomicU64::new(0),
+            sum_squares_ms: AtomicU64::new(0),
+            min_ms: AtomicU64::new(u64::MAX),
+            max_ms: AtomicU64::new(0),
+            created_at: now,
+            last_record: Mutex::new(now),
+        }
+    }
+
+    /// Record a latency observation
+    /// 
+    /// # Arguments
+    /// * `latency` - The duration to record
+    /// 
+    /// # Example
+    /// ```
+    /// let hist = LatencyHistogram::new("api_calls");
+    /// hist.record(Duration::from_millis(50));
+    /// ```
+    pub fn record(&self, latency: Duration) {
+        let latency_ms = latency.as_millis() as u64;
+        self.record_ms(latency_ms);
+    }
+
+    /// Record a latency in milliseconds directly
+    pub fn record_ms(&self, latency_ms: u64) {
+        // Find the appropriate bucket
+        let bucket_idx = self.find_bucket(latency_ms);
+        
+        // Increment bucket count
+        self.bucket_counts[bucket_idx].fetch_add(1, Ordering::Relaxed);
+        
+        // Update totals
+        self.total_count.fetch_add(1, Ordering::Relaxed);
+        self.sum_ms.fetch_add(latency_ms, Ordering::Relaxed);
+        self.sum_squares_ms.fetch_add(latency_ms * latency_ms, Ordering::Relaxed);
+        
+        // Update min/max
+        self.update_min(latency_ms);
+        self.update_max(latency_ms);
+        
+        // Update last record time
+        *self.last_record.lock().unwrap() = Instant::now();
+    }
+
+    /// Record multiple observations at once (batch)
+    pub fn record_batch(&self, latencies: &[Duration]) {
+        for latency in latencies {
+            self.record(*latency);
+        }
+    }
+
+    /// Find the bucket index for a latency value
+    fn find_bucket(&self, latency_ms: u64) -> usize {
+        // Binary search for the first bucket with upper_bound >= latency_ms
+        match self.buckets.binary_search(&latency_ms) {
+            Ok(idx) => idx,
+            Err(idx) => {
+                // idx is where it would be inserted (first element > latency_ms)
+                // so we want idx (the bucket that contains this value)
+                if idx < self.buckets.len() {
+                    idx
+                } else {
+                    // Value exceeds all buckets - put in last bucket
+                    self.buckets.len() - 1
+                }
+            }
+        }
+    }
+
+    /// Update minimum value atomically
+    fn update_min(&self, value: u64) {
+        let mut current = self.min_ms.load(Ordering::Relaxed);
+        while value < current {
+            match self.min_ms.compare_exchange_weak(
+                current,
+                value,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(actual) => current = actual,
+            }
+        }
+    }
+
+    /// Update maximum value atomically
+    fn update_max(&self, value: u64) {
+        let mut current = self.max_ms.load(Ordering::Relaxed);
+        while value > current {
+            match self.max_ms.compare_exchange_weak(
+                current,
+                value,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(actual) => current = actual,
+            }
+        }
+    }
+
+    /// Get the current bucket counts
+    pub fn bucket_counts(&self) -> Vec<Bucket> {
+        self.buckets
+            .iter()
+            .zip(self.bucket_counts.iter())
+            .map(|(&upper, count)| Bucket {
+                upper_bound_ms: upper,
+                count: count.load(Ordering::Relaxed),
+            })
+            .collect()
+    }
+
+    /// Get total number of observations
+    pub fn count(&self) -> u64 {
+        self.total_count.load(Ordering::Relaxed)
+    }
+
+    /// Get sum of all latencies
+    pub fn sum_ms(&self) -> u64 {
+        self.sum_ms.load(Ordering::Relaxed)
+    }
+
+    /// Get mean latency
+    pub fn mean_ms(&self) -> f64 {
+        let count = self.count();
+        if count == 0 {
+            0.0
+        } else {
+            self.sum_ms() as f64 / count as f64
+        }
+    }
+
+    /// Calculate percentile value
+    /// 
+    /// Uses linear interpolation between buckets for more accurate estimates.
+    pub fn percentile(&self, p: f64) -> f64 {
+        assert!((0.0..=100.0).contains(&p), "Percentile must be between 0 and 100");
+        
+        let total = self.count();
+        if total == 0 {
+            return 0.0;
+        }
+
+        let target = (p / 100.0) * total as f64;
+        let mut cumulative = 0u64;
+
+        // Iterate through buckets to find the percentile
+        for (i, bucket) in self.bucket_counts.iter().enumerate() {
+            let bucket_count = bucket.load(Ordering::Relaxed);
+            let prev_cumulative = cumulative;
+            cumulative += bucket_count;
+
+            if cumulative as f64 >= target {
+                // Found the bucket containing this percentile
+                let bucket_lower = if i == 0 {
+                    0.0
+                } else {
+                    self.buckets[i - 1] as f64
+                };
+                let bucket_upper = self.buckets[i] as f64;
+                
+                if bucket_count == 0 {
+                    return bucket_lower;
+                }
+
+                // Linear interpolation within bucket
+                let position_in_bucket = (target - prev_cumulative as f64) / bucket_count as f64;
+                return bucket_lower + position_in_bucket * (bucket_upper - bucket_lower);
+            }
+        }
+
+        // Return max bucket value if we somehow didn't find it
+        *self.buckets.last().unwrap() as f64
+    }
+
+    /// Get p50 (median) latency
+    pub fn p50(&self) -> f64 {
+        self.percentile(50.0)
+    }
+
+    /// Get p95 latency
+    pub fn p95(&self) -> f64 {
+        self.percentile(95.0)
+    }
+
+    /// Get p99 latency
+    pub fn p99(&self) -> f64 {
+        self.percentile(99.0)
+    }
+
+    /// Get p99.9 latency
+    pub fn p999(&self) -> f64 {
+        self.percentile(99.9)
+    }
+
+    /// Get standard deviation
+    pub fn std_dev(&self) -> f64 {
+        let count = self.count();
+        if count < 2 {
+            return 0.0;
+        }
+
+        let sum = self.sum_ms.load(Ordering::Relaxed) as f64;
+        let sum_squares = self.sum_squares_ms.load(Ordering::Relaxed) as f64;
+        let n = count as f64;
+
+        // Var = E[X^2] - E[X]^2
+        let mean = sum / n;
+        let mean_squares = sum_squares / n;
+        let variance = mean_squares - mean * mean;
+
+        variance.max(0.0).sqrt()
+    }
+
+    /// Get minimum observed latency
+    pub fn min_ms(&self) -> u64 {
+        let min = self.min_ms.load(Ordering::Relaxed);
+        if min == u64::MAX { 0 } else { min }
+    }
+
+    /// Get maximum observed latency
+    pub fn max_ms(&self) -> u64 {
+        self.max_ms.load(Ordering::Relaxed)
+    }
+
+    /// Get all statistics
+    pub fn stats(&self) -> LatencyStats {
+        LatencyStats {
+            count: self.count(),
+            min_ms: self.min_ms(),
+            max_ms: self.max_ms(),
+            mean_ms: self.mean_ms(),
+            p50_ms: self.p50(),
+            p95_ms: self.p95(),
+            p99_ms: self.p99(),
+            p999_ms: self.p999(),
+            std_dev_ms: self.std_dev(),
+            sum_ms: self.sum_ms(),
+            sum_squares_ms: self.sum_squares_ms.load(Ordering::Relaxed),
+            since: self.created_at,
+            last_updated: *self.last_record.lock().unwrap(),
+        }
+    }
+
+    /// Get histogram name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get bucket configuration
+    pub fn buckets(&self) -> &[u64] {
+        &self.buckets
+    }
+
+    /// Reset all counters
+    pub fn reset(&self) {
+        for bucket in &self.bucket_counts {
+            bucket.store(0, Ordering::Relaxed);
+        }
+        self.total_count.store(0, Ordering::Relaxed);
+        self.sum_ms.store(0, Ordering::Relaxed);
+        self.sum_squares_ms.store(0, Ordering::Relaxed);
+        self.min_ms.store(u64::MAX, Ordering::Relaxed);
+        self.max_ms.store(0, Ordering::Relaxed);
+    }
+
+    /// Create a snapshot of current state
+    pub fn snapshot(&self) -> HistogramSnapshot {
+        HistogramSnapshot {
+            name: self.name.clone(),
+            buckets: self.bucket_counts(),
+            stats: self.stats(),
+        }
+    }
+}
+
+/// Immutable snapshot of histogram state
+#[derive(Debug, Clone)]
+pub struct HistogramSnapshot {
+    pub name: String,
+    pub buckets: Vec<Bucket>,
+    pub stats: LatencyStats,
+}
+
+impl HistogramSnapshot {
+    /// Display summary
+    pub fn summary(&self) -> String {
+        format!(
+            "{}: {} samples, p50={:.1
