@@ -27,7 +27,7 @@ impl Tool for ReadTool {
     }
 
     fn description(&self) -> &str {
-        "Read the contents of a file. Provide the file path to read."
+        "read(path: string, offset?: int, limit?: int) - Read the contents of a file. Provide the file path to read."
     }
 
     fn parameters(&self) -> Value {
@@ -47,14 +47,26 @@ impl Tool for ReadTool {
                     "description": "Maximum number of lines to read"
                 }
             },
-            "required": ["path"]
+            "required": ["path"],
+            "example": {
+                "path": "src/main.rs",
+                "offset": 1,
+                "limit": 100
+            }
         })
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let path = args["path"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("path is required"))?;
+        let path = match args["path"].as_str() {
+            Some(p) => p,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "read",
+                "path is required",
+                Some(vec!["path"]),
+                Some(json!({"path": "src/main.rs"})),
+            )),
+        };
         let offset = args["offset"].as_u64().map(|n| n as usize);
         let limit = args["limit"].as_u64().map(|n| n as usize);
 
@@ -97,7 +109,7 @@ impl Tool for WriteTool {
     }
 
     fn description(&self) -> &str {
-        "Write content to a file. Creates the file if it doesn't exist, or overwrites it."
+        "write(path: string, content: string) - Write content to a file. Creates the file if it doesn't exist, or overwrites it."
     }
 
     fn parameters(&self) -> Value {
@@ -113,17 +125,35 @@ impl Tool for WriteTool {
                     "description": "The content to write to the file"
                 }
             },
-            "required": ["path", "content"]
+            "required": ["path", "content"],
+            "example": {
+                "path": "src/config.rs",
+                "content": "// Configuration module\n\npub struct Config {\n    pub debug: bool,\n}\n"
+            }
         })
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let path = args["path"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("path is required"))?;
-        let content = args["content"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("content is required"))?;
+        let path = match args["path"].as_str() {
+            Some(p) => p,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "write",
+                "path is required",
+                Some(vec!["path"]),
+                Some(json!({"path": "src/example.rs", "content": "// file content"})),
+            )),
+        };
+        let content = match args["content"].as_str() {
+            Some(c) => c,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "write",
+                "content is required",
+                Some(vec!["content"]),
+                Some(json!({"path": path, "content": "// file content"})),
+            )),
+        };
 
         // Create parent directories if needed
         if let Some(parent) = PathBuf::from(path).parent() {
@@ -156,7 +186,7 @@ impl Tool for ListTool {
     }
 
     fn description(&self) -> &str {
-        "List the contents of a directory."
+        "list(path: string) - List the contents of a directory."
     }
 
     fn parameters(&self) -> Value {
@@ -168,14 +198,24 @@ impl Tool for ListTool {
                     "description": "The path to the directory to list"
                 }
             },
-            "required": ["path"]
+            "required": ["path"],
+            "example": {
+                "path": "src/"
+            }
         })
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let path = args["path"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("path is required"))?;
+        let path = match args["path"].as_str() {
+            Some(p) => p,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "list",
+                "path is required",
+                Some(vec!["path"]),
+                Some(json!({"path": "src/"})),
+            )),
+        };
 
         let mut entries = fs::read_dir(path).await?;
         let mut items = Vec::new();
@@ -221,7 +261,7 @@ impl Tool for GlobTool {
     }
 
     fn description(&self) -> &str {
-        "Find files matching a glob pattern (e.g., **/*.rs, src/**/*.ts)"
+        "glob(pattern: string, limit?: int) - Find files matching a glob pattern (e.g., **/*.rs, src/**/*.ts)"
     }
 
     fn parameters(&self) -> Value {
@@ -237,14 +277,25 @@ impl Tool for GlobTool {
                     "description": "Maximum number of results to return"
                 }
             },
-            "required": ["pattern"]
+            "required": ["pattern"],
+            "example": {
+                "pattern": "src/**/*.rs",
+                "limit": 50
+            }
         })
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let pattern = args["pattern"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("pattern is required"))?;
+        let pattern = match args["pattern"].as_str() {
+            Some(p) => p,
+            None => return Ok(ToolResult::structured_error(
+                "INVALID_ARGUMENT",
+                "glob",
+                "pattern is required",
+                Some(vec!["pattern"]),
+                Some(json!({"pattern": "src/**/*.rs"})),
+            )),
+        };
         let limit = args["limit"].as_u64().unwrap_or(100) as usize;
 
         let mut matches = Vec::new();
