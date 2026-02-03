@@ -275,7 +275,7 @@ impl Session {
                 
                 // Add tool result message
                 self.add_message(Message {
-                    role: Role::User,
+                    role: Role::Tool,
                     content: vec![ContentPart::ToolResult {
                         tool_call_id: tool_id,
                         content,
