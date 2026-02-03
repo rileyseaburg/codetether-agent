@@ -12967,3 +12967,648 @@ echo "- The module structure follows Rust conventions with mod.rs as the entry p
 
 STORY_COMPLETE: US-001
 ```
+
+---
+
+## Iteration 2 - US-002 (2026-02-03T18:54:16.319987661+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-002 - LLM Connection Pooling with proper connection pool management, health checking, and statistics tracking.
+
+```rust
+// src/llm/pool.rs - LLM Connection Pool implementation
+
+//! LLM Connection Pool
+//! 
+//! This module provides connection pooling for LLM (Large Language Model) providers,
+//! managing connections with configurable pool size, lifecycle management, and health checking.
+
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex, Condvar, atomic::{AtomicU64, Ordering}};
+use std::time::{Duration, Instant};
+use std::thread::{self, JoinHandle};
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn};
+use serde::{Serialize, Deserialize};
+
+/// Errors that can occur in LLM pool operations
+#[derive(Debug, Error, Clone)]
+pub enum LlmPoolError {
+    /// Pool has been closed
+    #[error("Pool is closed")]
+    PoolClosed,
+
+    /// Timeout waiting for available connection
+    #[error("Timeout waiting for connection after {0:?}")]
+    Timeout(Duration),
+
+    /// Failed to create connection
+    #[error("Failed to create LLM connection: {0}")]
+    ConnectionFailed(String),
+
+    /// Connection validation failed
+    #[error("Connection validation failed: {0}")]
+    ValidationFailed(String),
+
+    /// Maximum pool size reached
+    #[error("Maximum pool size ({0}) reached")]
+    MaxPoolSizeReached(usize),
+
+    /// Invalid configuration
+    #[error("Invalid pool configuration: {0}")]
+    InvalidConfig(String),
+
+    /// Connection is unhealthy
+    #[error("Connection is unhealthy: {0}")]
+    Unhealthy(String),
+
+    /// Provider not supported
+    #[error("Provider not supported: {0}")]
+    UnsupportedProvider(String),
+}
+
+/// Result type for pool operations
+pub type LlmPoolResult<T> = Result<T, LlmPoolError>;
+
+/// Supported LLM providers
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LlmProvider {
+    OpenAi,
+    Anthropic,
+    Cohere,
+    Local,
+    Custom(&'static str),
+}
+
+impl LlmProvider {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::OpenAi => "openai",
+            Self::Anthropic => "anthropic",
+            Self::Cohere => "cohere",
+            Self::Local => "local",
+            Self::Custom(s) => s,
+        }
+    }
+}
+
+/// Configuration for LLM connection pool
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmPoolConfig {
+    /// Pool name for identification
+    pub name: String,
+    
+    /// LLM provider type
+    pub provider: LlmProvider,
+    
+    /// Minimum number of idle connections
+    pub min_idle: usize,
+    
+    /// Maximum pool size
+    pub max_size: usize,
+    
+    /// Timeout for acquiring connection from pool
+    #[serde(with = "serde_duration_millis")]
+    pub acquire_timeout: Duration,
+    
+    /// Maximum idle time before connection is closed
+    #[serde(with = "serde_duration_millis")]
+    pub max_idle_time: Duration,
+    
+    /// Interval between health checks
+    #[serde(with = "serde_duration_millis")]
+    pub health_check_interval: Duration,
+    
+    /// Interval between cleanup runs
+    #[serde(with = "serde_duration_millis")]
+    pub cleanup_interval: Duration,
+    
+    /// Maximum number of retries for failed connections
+    pub max_retries: u32,
+    
+    /// Whether to validate on checkout
+    pub validate_on_checkout: bool,
+    
+    /// Whether to validate on checkin
+    pub validate_on_checkin: bool,
+    
+    /// Connection timeout for establishing new connections
+    #[serde(with = "serde_duration_millis")]
+    pub connection_timeout: Duration,
+    
+    /// Request timeout for LLM operations
+    #[serde(with = "serde_duration_millis")]
+    pub request_timeout: Duration,
+}
+
+// Serde helper for Duration in milliseconds
+mod serde_duration_millis {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        duration.as_millis().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let millis = u64::deserialize(deserializer)?;
+        Ok(Duration::from_millis(millis))
+    }
+}
+
+impl Default for LlmPoolConfig {
+    fn default() -> Self {
+        Self {
+            name: "default-llm-pool".to_string(),
+            provider: LlmProvider::OpenAi,
+            min_idle: 1,
+            max_size: 10,
+            acquire_timeout: Duration::from_secs(30),
+            max_idle_time: Duration::from_secs(600), // 10 minutes
+            health_check_interval: Duration::from_secs(30),
+            cleanup_interval: Duration::from_secs(60),
+            max_retries: 3,
+            validate_on_checkout: true,
+            validate_on_checkin: true,
+            connection_timeout: Duration::from_secs(10),
+            request_timeout: Duration::from_secs(120),
+        }
+    }
+}
+
+impl LlmPoolConfig {
+    /// Create new configuration
+    pub fn new(name: impl Into<String>, provider: LlmProvider) -> Self {
+        Self {
+            name: name.into(),
+            provider,
+            ..Default::default()
+        }
+    }
+
+    /// Set pool size range
+    pub fn with_size_range(mut self, min_idle: usize, max_size: usize) -> Self {
+        self.min_idle = min_idle;
+        self.max_size = max_size;
+        self
+    }
+
+    /// Set timeouts
+    pub fn with_timeouts(
+        mut self,
+        acquire: Duration,
+        connection: Duration,
+        request: Duration,
+    ) -> Self {
+        self.acquire_timeout = acquire;
+        self.connection_timeout = connection;
+        self.request_timeout = request;
+        self
+    }
+
+    /// Set idle and cleanup intervals
+    pub fn with_maintenance(
+        mut self,
+        max_idle_time: Duration,
+        health_check: Duration,
+        cleanup: Duration,
+    ) -> Self {
+        self.max_idle_time = max_idle_time;
+        self.health_check_interval = health_check;
+        self.cleanup_interval = cleanup;
+        self
+    }
+
+    /// Disable validation
+    pub fn without_validation(mut self) -> Self {
+        self.validate_on_checkout = false;
+        self.validate_on_checkin = false;
+        self
+    }
+
+    /// Validate configuration
+    pub fn validate(&self) -> LlmPoolResult<()> {
+        if self.min_idle > self.max_size {
+            return Err(LlmPoolError::InvalidConfig(format!(
+                "min_idle ({}) cannot exceed max_size ({})",
+                self.min_idle, self.max_size
+            )));
+        }
+        if self.max_size == 0 {
+            return Err(LlmPoolError::InvalidConfig(
+                "max_size must be greater than 0".to_string()
+            ));
+        }
+        if self.acquire_timeout.is_zero() {
+            return Err(LlmPoolError::InvalidConfig(
+                "acquire_timeout must be greater than 0".to_string()
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Connection health status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum ConnectionHealth {
+    Healthy,
+    Degraded,
+    Unhealthy,
+    Unknown,
+}
+
+/// Statistics for pool monitoring
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct LlmPoolStats {
+    /// Pool name
+    pub name: String,
+    
+    /// Provider type
+    pub provider: String,
+    
+    /// Total connections created
+    pub total_created: u64,
+    
+    /// Total connections destroyed
+    pub total_destroyed: u64,
+    
+    /// Current idle connections
+    pub idle_count: usize,
+    
+    /// Current active (checked out) connections
+    pub active_count: usize,
+    
+    /// Total successful acquisitions
+    pub total_acquired: u64,
+    
+    /// Total releases
+    pub total_released: u64,
+    
+    /// Number of timeouts
+    pub timeout_count: u64,
+    
+    /// Number of failed creations
+    pub creation_failures: u64,
+    
+    /// Number of validation failures
+    pub validation_failures: u64,
+    
+    /// Number of health check failures
+    pub health_check_failures: u64,
+    
+    /// Number of stale connections cleaned
+    pub stale_cleaned: u64,
+    
+    /// Average acquire time in milliseconds
+    pub avg_acquire_time_ms: f64,
+    
+    /// Peak active connections
+    pub peak_active: usize,
+    
+    /// Current pool utilization (0.0 to 1.0)
+    pub utilization: f64,
+    
+    /// Timestamp of last health check
+    pub last_health_check: Option<Instant>,
+    
+    /// Timestamp of last cleanup
+    pub last_cleanup: Option<Instant>,
+}
+
+impl LlmPoolStats {
+    /// Create new stats for named pool
+    pub fn new(name: impl Into<String>, provider: &LlmProvider) -> Self {
+        Self {
+            name: name.into(),
+            provider: provider.as_str().to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// Total pool size
+    pub fn total_size(&self) -> usize {
+        self.idle_count + self.active_count
+    }
+
+    /// Calculate utilization
+    pub fn calculate_utilization(&mut self) {
+        let total = self.total_size();
+        self.utilization = if total == 0 {
+            0.0
+        } else {
+            self.active_count as f64 / total as f64
+        };
+    }
+}
+
+/// Trait for LLM connections that can be pooled
+pub trait LlmConnection: Send + Sync {
+    /// Get connection ID
+    fn id(&self) -> &str;
+    
+    /// Check if connection is healthy
+    fn is_healthy(&self) -> bool;
+    
+    /// Perform health check with detailed result
+    fn health_check(&self) -> ConnectionHealth;
+    
+    /// Get last error if any
+    fn last_error(&self) -> Option<&str>;
+    
+    /// Reset connection state for reuse
+    fn reset(&mut self) -> LlmPoolResult<()>;
+    
+    /// Close the connection
+    fn close(&mut self);
+    
+    /// Get provider type
+    fn provider(&self) -> LlmProvider;
+}
+
+/// Internal wrapper for pooled connections
+struct PooledConnection<C: LlmConnection> {
+    connection: C,
+    created_at: Instant,
+    last_used: Option<Instant>,
+    use_count: u64,
+    last_health_check: Instant,
+    health_status: ConnectionHealth,
+    consecutive_failures: u32,
+}
+
+impl<C: LlmConnection> PooledConnection<C> {
+    fn new(connection: C) -> Self {
+        let now = Instant::now();
+        Self {
+            connection,
+            created_at: now,
+            last_used: None,
+            use_count: 0,
+            last_health_check: now,
+            health_status: ConnectionHealth::Unknown,
+            consecutive_failures: 0,
+        }
+    }
+
+    fn is_stale(&self, max_idle_time: Duration) -> bool {
+        match self.last_used {
+            Some(last) => last.elapsed() > max_idle_time,
+            None => self.created_at.elapsed() > max_idle_time,
+        }
+    }
+
+    fn needs_health_check(&self, interval: Duration) -> bool {
+        self.last_health_check.elapsed() > interval
+    }
+
+    fn record_use(&mut self) {
+        self.use_count += 1;
+        self.last_used = Some(Instant::now());
+    }
+
+    fn record_health_check(&mut self, status: ConnectionHealth) {
+        self.last_health_check = Instant::now();
+        self.health_status = status;
+        
+        match status {
+            ConnectionHealth::Healthy => self.consecutive_failures = 0,
+            ConnectionHealth::Unhealthy => self.consecutive_failures += 1,
+            _ => {}
+        }
+    }
+
+    fn record_failure(&mut self) {
+        self.consecutive_failures += 1;
+    }
+}
+
+/// Handle to checked-out connection
+pub struct LlmConnectionHandle<C: LlmConnection> {
+    connection: Option<C>,
+    pool: Arc<LlmPoolInner<C>>,
+    checkout_time: Instant,
+    use_count_at_checkout: u64,
+}
+
+impl<C: LlmConnection> LlmConnectionHandle<C> {
+    /// Get reference to connection
+    pub fn connection(&self) -> &C {
+        self.connection.as_ref().unwrap()
+    }
+
+    /// Get mutable reference
+    pub fn connection_mut(&mut self) -> &mut C {
+        self.connection.as_mut().unwrap()
+    }
+
+    /// Time since checkout
+    pub fn elapsed(&self) -> Duration {
+        self.checkout_time.elapsed()
+    }
+
+    /// Record successful use
+    pub fn record_success(&mut self) {
+        // Will be applied on return
+    }
+
+    /// Record failure
+    pub fn record_failure(&mut self) {
+        // Will be applied on return
+    }
+}
+
+impl<C: LlmConnection> Drop for LlmConnectionHandle<C> {
+    fn drop(&mut self) {
+        if let Some(conn) = self.connection.take() {
+            let _ = self.pool.release(conn);
+        }
+    }
+}
+
+/// Inner pool state
+struct LlmPoolInner<C: LlmConnection> {
+    config: LlmPoolConfig,
+    idle: VecDeque<PooledConnection<C>>,
+    active_count: usize,
+    stats: LlmPoolStats,
+    closed: bool,
+    creation_in_progress: usize,
+    total_connections: usize,
+    // For tracking acquire times
+    total_acquire_time_ms: AtomicU64,
+    acquire_count: AtomicU64,
+}
+
+/// The LLM Connection Pool
+pub struct LlmConnectionPool<C: LlmConnection> {
+    inner: Arc<Mutex<LlmPoolInner<C>>>,
+    not_empty: Arc<Condvar>,
+    factory: Arc<dyn Fn() -> LlmPoolResult<C> + Send + Sync>,
+    health_checker: Arc<dyn Fn(&C) -> ConnectionHealth + Send + Sync>,
+    maintenance_handle: Option<JoinHandle<()>>,
+    stats_snapshot: Arc<Mutex<LlmPoolStats>>,
+}
+
+impl<C: LlmConnection + 'static> LlmConnectionPool<C> {
+    /// Create new connection pool
+    pub fn new<F, H>(
+        config: LlmPoolConfig,
+        factory: F,
+        health_checker: H,
+    ) -> LlmPoolResult<Self>
+    where
+        F: Fn() -> LlmPoolResult<C> + Send + Sync + 'static,
+        H: Fn(&C) -> ConnectionHealth + Send + Sync + 'static,
+    {
+        config.validate()?;
+
+        let stats = LlmPoolStats::new(&config.name, &config.provider);
+        
+        let inner = Arc::new(Mutex::new(LlmPoolInner {
+            config: config.clone(),
+            idle: VecDeque::with_capacity(config.max_size),
+            active_count: 0,
+            stats,
+            closed: false,
+            creation_in_progress: 0,
+            total_connections: 0,
+            total_acquire_time_ms: AtomicU64::new(0),
+            acquire_count: AtomicU64::new(0),
+        }));
+
+        let not_empty = Arc::new(Condvar::new());
+        let stats_snapshot = Arc::new(Mutex::new(LlmPoolStats::new(&config.name, &config.provider)));
+
+        let pool = Self {
+            inner: inner.clone(),
+            not_empty: not_empty.clone(),
+            factory: Arc::new(factory),
+            health_checker: Arc::new(health_checker),
+            maintenance_handle: None,
+            stats_snapshot,
+        };
+
+        // Pre-warm pool
+        pool.pre_warm()?;
+
+        // Start maintenance thread
+        let maintenance = pool.start_maintenance(inner, not_empty, config);
+
+        Ok(Self {
+            maintenance_handle: Some(maintenance),
+            ..pool
+        })
+    }
+
+    /// Pre-warm with min_idle connections
+    fn pre_warm(&self) -> LlmPoolResult<()> {
+        let config = {
+            let inner = self.inner.lock().unwrap();
+            inner.config.clone()
+        };
+
+        info!("Pre-warming LLM pool '{}' with {} connections", config.name, config.min_idle);
+
+        let mut success = 0;
+        for i in 0..config.min_idle {
+            match self.create_connection() {
+                Ok(()) => success += 1,
+                Err(e) => {
+                    warn!("Failed to create pre-warm connection {}/{}: {}", i + 1, config.min_idle, e);
+                }
+            }
+        }
+
+        info!("LLM pool '{}' pre-warmed: {}/{} connections", config.name, success, config.min_idle);
+        Ok(())
+    }
+
+    /// Create a new connection and add to pool
+    fn create_connection(&self) -> LlmPoolResult<()> {
+        let mut inner = self.inner.lock().unwrap();
+
+        if inner.total_connections >= inner.config.max_size {
+            return Err(LlmPoolError::MaxPoolSizeReached(inner.config.max_size));
+        }
+
+        inner.creation_in_progress += 1;
+        drop(inner);
+
+        // Create outside lock
+        let result = (self.factory)();
+
+        let mut inner = self.inner.lock().unwrap();
+        inner.creation_in_progress -= 1;
+
+        match result {
+            Ok(connection) => {
+                let health = (self.health_checker)(&connection);
+                
+                if matches!(health, ConnectionHealth::Healthy | ConnectionHealth::Unknown) {
+                    let pooled = PooledConnection::new(connection);
+                    inner.idle.push_back(pooled);
+                    inner.total_connections += 1;
+                    inner.stats.total_created += 1;
+                    inner.stats.idle_count = inner.idle.len();
+                    trace!("Created connection for pool '{}'", inner.config.name);
+                    self.not_empty.notify_one();
+                    Ok(())
+                } else {
+                    inner.stats.creation_failures += 1;
+                    Err(LlmPoolError::ValidationFailed(
+                        format!("New connection unhealthy: {:?}", health)
+                    ))
+                }
+            }
+            Err(e) => {
+                inner.stats.creation_failures += 1;
+                Err(e)
+            }
+        }
+    }
+
+    /// Start maintenance thread
+    fn start_maintenance(
+        &self,
+        inner: Arc<Mutex<LlmPoolInner<C>>>,
+        not_empty: Arc<Condvar>,
+        config: LlmPoolConfig,
+    ) -> JoinHandle<()> {
+        let health_checker = self.health_checker.clone();
+        let factory = self.factory.clone();
+
+        thread::spawn(move || {
+            let mut last_health_check = Instant::now();
+
+            loop {
+                thread::sleep(config.cleanup_interval);
+
+                let mut guard = inner.lock().unwrap();
+
+                if guard.closed {
+                    break;
+                }
+
+                let now = Instant::now();
+                let mut to_remove = Vec::new();
+
+                // Find stale connections
+                for (idx, conn) in guard.idle.iter().enumerate() {
+                    if conn.is_stale(config.max_idle_time) {
+                        to_remove.push(idx);
+                        guard.stats.stale_cleaned += 1;
+                        info!("Removing stale connection from pool '{}'", config.name);
+                    }
+                }
+
+                // Remove stale (reverse order)
+                for &idx in to_remove.iter().rev() {
+                    if let
