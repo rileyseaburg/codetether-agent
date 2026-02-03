@@ -79,7 +79,7 @@
         "Proper Prometheus format output",
         "Configurable port and path"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-002",
