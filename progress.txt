@@ -23244,3 +23244,549 @@ pub struct AggregationConfig {
     pub include_count: bool,
     
     /// Whether to include min/max in aggregation
+
+---
+
+## Iteration 10 - US-006 (2026-02-03T19:14:45.196247086+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-006 - Implement OpenAI provider with async-openai crate, supporting GPT-4o, GPT-4o-mini, o1, and o3 models with full streaming support.
+
+```rust
+// src/llm/providers/openai.rs - OpenAI provider implementation
+
+//! OpenAI Provider Implementation
+//! 
+//! This module implements the Provider trait for OpenAI's API using the async-openai crate.
+//! Supports GPT-4o, GPT-4o-mini, o1, and o3 models with streaming and tool calling.
+
+use async_openai::{
+    Client as OpenAiClient,
+    config::OpenAIConfig,
+    types::{
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
+        ChatCompletionRequestUserMessage, ChatCompletionRequestAssistantMessage,
+        ChatCompletionRequestToolMessage, ChatCompletionRequestMessageContent,
+        ChatCompletionRequestUserMessageContent, CreateChatCompletionRequest,
+        ChatCompletionTool, ChatCompletionToolType, FunctionObject,
+        CreateChatCompletionStreamResponse, ChatCompletionChunk,
+        ChatCompletionResponseMessage, ChatCompletionResponseStream,
+    },
+};
+use async_trait::async_trait;
+use futures::{Stream, StreamExt};
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn, instrument};
+
+use crate::llm::{
+    provider::{Provider, ProviderConfig, ProviderCapabilities, ProviderError, ProviderResult, StreamingResponse},
+    types::{
+        ChatMessage, ChatRequest, ChatResponse, Content, ContentPart, FinishReason,
+        FunctionCall, FunctionDefinition, LlmError, LlmProvider, Message, ModelCapabilities,
+        ModelInfo, Role, StreamingChunk, TokenUsage, Tool, ToolCall, ToolChoice,
+    },
+};
+
+/// Errors specific to OpenAI provider operations
+#[derive(Debug, Error)]
+pub enum OpenAiProviderError {
+    #[error("OpenAI API error: {0}")]
+    ApiError(String),
+    
+    #[error("Invalid API key")]
+    InvalidApiKey,
+    
+    #[error("Rate limited: retry after {0:?}")]
+    RateLimited(Duration),
+    
+    #[error("Model {0} not available")]
+    ModelNotAvailable(String),
+    
+    #[error("Streaming error: {0}")]
+    StreamingError(String),
+    
+    #[error("Tool calling not supported for model: {0}")]
+    ToolCallingNotSupported(String),
+    
+    #[error("Invalid message format: {0}")]
+    InvalidMessageFormat(String),
+}
+
+impl From<OpenAiProviderError> for ProviderError {
+    fn from(e: OpenAiProviderError) -> Self {
+        match e {
+            OpenAiProviderError::InvalidApiKey => ProviderError::AuthenticationFailed(e.to_string()),
+            OpenAiProviderError::RateLimited(d) => ProviderError::RateLimitExceeded(d),
+            OpenAiProviderError::ModelNotAvailable(m) => ProviderError::ModelNotFound(m),
+            OpenAiProviderError::ApiError(msg) => ProviderError::ProviderError("openai".to_string(), msg),
+            OpenAiProviderError::StreamingError(msg) => ProviderError::StreamingError(msg),
+            OpenAiProviderError::ToolCallingNotSupported(m) => ProviderError::ProviderError(
+                "openai".to_string(),
+                format!("Tool calling not supported for {}", m)
+            ),
+            OpenAiProviderError::InvalidMessageFormat(msg) => ProviderError::InvalidResponse(msg),
+        }
+    }
+}
+
+/// OpenAI-supported models
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OpenAiModel {
+    /// GPT-4o - Flagship multimodal model
+    Gpt4o,
+    /// GPT-4o-mini - Fast, affordable small model
+    Gpt4oMini,
+    /// o1 - Reasoning model
+    O1,
+    /// o1-mini - Faster reasoning model
+    O1Mini,
+    /// o3 - Latest reasoning model
+    O3,
+    /// o3-mini - Faster o3 variant
+    O3Mini,
+    /// Custom/other model
+    Custom(&'static str),
+}
+
+impl OpenAiModel {
+    /// Get model ID string for API
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Gpt4o => "gpt-4o",
+            Self::Gpt4oMini => "gpt-4o-mini",
+            Self::O1 => "o1",
+            Self::O1Mini => "o1-mini",
+            Self::O3 => "o3",
+            Self::O3Mini => "o3-mini",
+            Self::Custom(s) => s,
+        }
+    }
+
+    /// Check if model supports streaming
+    pub fn supports_streaming(&self) -> bool {
+        // All current OpenAI models support streaming
+        true
+    }
+
+    /// Check if model supports tool calling
+    pub fn supports_tools(&self) -> bool {
+        // o-series models have limited tool support
+        !matches!(self, Self::O1 | Self::O1Mini | Self::O3 | Self::O3Mini)
+    }
+
+    /// Check if model supports system messages
+    pub fn supports_system_messages(&self) -> bool {
+        // o-series models use "developer" role instead of "system"
+        matches!(self, Self::Gpt4o | Self::Gpt4oMini)
+    }
+
+    /// Get max context window
+    pub fn max_context_tokens(&self) -> usize {
+        match self {
+            Self::Gpt4o => 128_000,
+            Self::Gpt4oMini => 128_000,
+            Self::O1 => 200_000,
+            Self::O1Mini => 128_000,
+            Self::O3 => 200_000,
+            Self::O3Mini => 200_000,
+            Self::Custom(_) => 128_000, // Conservative default
+        }
+    }
+
+    /// Get max output tokens
+    pub fn max_output_tokens(&self) -> usize {
+        match self {
+            Self::Gpt4o => 16_384,
+            Self::Gpt4oMini => 16_384,
+            Self::O1 => 100_000,
+            Self::O1Mini => 65_536,
+            Self::O3 => 100_000,
+            Self::O3Mini => 100_000,
+            Self::Custom(_) => 4096,
+        }
+    }
+
+    /// Check if model is a reasoning model (o-series)
+    pub fn is_reasoning_model(&self) -> bool {
+        matches!(self, Self::O1 | Self::O1Mini | Self::O3 | Self::O3Mini)
+    }
+
+    /// Parse from model ID string
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "gpt-4o" => Self::Gpt4o,
+            "gpt-4o-mini" => Self::Gpt4oMini,
+            "o1" => Self::O1,
+            "o1-mini" => Self::O1Mini,
+            "o3" => Self::O3,
+            "o3-mini" => Self::O3Mini,
+            _ => Self::Custom(Box::leak(s.to_string().into_boxed_str())),
+        }
+    }
+}
+
+/// OpenAI provider implementation
+pub struct OpenAiProvider {
+    /// The async-openai client
+    client: OpenAiClient<OpenAIConfig>,
+    /// Provider configuration
+    config: ProviderConfig,
+    /// Default model
+    default_model: OpenAiModel,
+}
+
+impl OpenAiProvider {
+    /// Create a new OpenAI provider from configuration
+    pub fn new(config: ProviderConfig) -> ProviderResult<Self> {
+        let api_key = config.api_key.clone()
+            .ok_or_else(|| ProviderError::AuthenticationFailed(
+                "OpenAI API key required".to_string()
+            ))?;
+
+        let openai_config = OpenAIConfig::new()
+            .with_api_key(api_key);
+
+        // Apply custom base URL if provided
+        let openai_config = if let Some(base_url) = &config.base_url {
+            openai_config.with_api_base(base_url.clone())
+        } else {
+            openai_config
+        };
+
+        let client = OpenAiClient::with_config(openai_config);
+        let default_model = OpenAiModel::from_str(&config.default_model);
+
+        Ok(Self {
+            client,
+            config,
+            default_model,
+        })
+    }
+
+    /// Create with explicit API key
+    pub fn with_api_key(api_key: impl Into<String>) -> Self {
+        let config = ProviderConfig::new(LlmProvider::OpenAi, OpenAiModel::Gpt4o.as_str())
+            .with_api_key(api_key);
+
+        Self::new(config).expect("Valid API key provided")
+    }
+
+    /// Get the underlying client (for advanced use)
+    pub fn client(&self) -> &OpenAiClient<OpenAIConfig> {
+        &self.client
+    }
+
+    /// Convert our ChatMessage to OpenAI's format
+    fn convert_message(&self, msg: &ChatMessage) -> ProviderResult<ChatCompletionRequestMessage> {
+        let role = msg.role;
+        let content = msg.content.clone();
+
+        match role {
+            Role::System => {
+                // o-series models use "developer" role, but async-openai handles this
+                let content_text = content.as_text();
+                Ok(ChatCompletionRequestMessage::System(
+                    ChatCompletionRequestSystemMessage {
+                        content: content_text,
+                        name: msg.name.clone(),
+                    }
+                ))
+            }
+            Role::User => {
+                let content = match content {
+                    Content::Text(text) => {
+                        ChatCompletionRequestUserMessageContent::Text(text)
+                    }
+                    Content::Parts(parts) => {
+                        // Convert multimodal content
+                        let content_parts: Vec<_> = parts.into_iter()
+                            .map(|part| match part {
+                                ContentPart::Text { text } => {
+                                    async_openai::types::ChatCompletionRequestMessageContentPartText {
+                                        r#type: "text",
+                                        text,
+                                    }.into()
+                                }
+                                ContentPart::Image { source } => {
+                                    let image_url = match source {
+                                        crate::llm::types::ImageSource::Url { url } => {
+                                            async_openai::types::ImageUrl {
+                                                url,
+                                                detail: None,
+                                            }
+                                        }
+                                        crate::llm::types::ImageSource::Base64 { media_type, data } => {
+                                            async_openai::types::ImageUrl {
+                                                url: format!("data:{};base64,{}", media_type, data),
+                                                detail: None,
+                                            }
+                                        }
+                                    };
+                                    async_openai::types::ChatCompletionRequestMessageContentPartImage {
+                                        r#type: "image_url",
+                                        image_url,
+                                    }.into()
+                                }
+                                _ => unimplemented!("Audio not yet supported"),
+                            })
+                            .collect();
+                        ChatCompletionRequestUserMessageContent::Array(content_parts)
+                    }
+                };
+
+                Ok(ChatCompletionRequestMessage::User(
+                    ChatCompletionRequestUserMessage {
+                        content,
+                        name: msg.name.clone(),
+                    }
+                ))
+            }
+            Role::Assistant => {
+                let content_text = content.as_text();
+                
+                // Handle tool calls
+                let tool_calls = msg.tool_calls.as_ref().map(|calls| {
+                    calls.iter().map(|call| {
+                        async_openai::types::ChatCompletionMessageToolCall {
+                            id: call.id.clone(),
+                            r#type: ChatCompletionToolType::Function,
+                            function: FunctionObject {
+                                name: call.function.name.clone(),
+                                arguments: call.function.arguments.clone(),
+                                description: None,
+                            },
+                        }
+                    }).collect()
+                });
+
+                Ok(ChatCompletionRequestMessage::Assistant(
+                    ChatCompletionRequestAssistantMessage {
+                        content: Some(content_text),
+                        name: msg.name.clone(),
+                        tool_calls,
+                        function_call: None, // Deprecated, use tool_calls
+                        refusal: None,
+                    }
+                ))
+            }
+            Role::Tool => {
+                let content_text = content.as_text();
+                let tool_call_id = msg.tool_call_id.clone()
+                    .ok_or_else(|| OpenAiProviderError::InvalidMessageFormat(
+                        "Tool message missing tool_call_id".to_string()
+                    ))?;
+
+                Ok(ChatCompletionRequestMessage::Tool(
+                    ChatCompletionRequestToolMessage {
+                        content: content_text,
+                        tool_call_id,
+                    }
+                ))
+            }
+            Role::Function => {
+                // Deprecated role, map to Tool
+                let content_text = content.as_text();
+                let tool_call_id = msg.name.clone()
+                    .unwrap_or_default();
+
+                Ok(ChatCompletionRequestMessage::Tool(
+                    ChatCompletionRequestToolMessage {
+                        content: content_text,
+                        tool_call_id,
+                    }
+                ))
+            }
+        }
+    }
+
+    /// Convert our Tool to OpenAI's format
+    fn convert_tool(&self, tool: &Tool) -> ChatCompletionTool {
+        ChatCompletionTool {
+            r#type: ChatCompletionToolType::Function,
+            function: FunctionObject {
+                name: tool.function.name.clone(),
+                description: tool.function.description.clone(),
+                arguments: tool.function.parameters.to_string(),
+            },
+        }
+    }
+
+    /// Convert ToolChoice to OpenAI format
+    fn convert_tool_choice(&self, choice: &ToolChoice) -> Option<String> {
+        match choice {
+            ToolChoice::Auto => Some("auto".to_string()),
+            ToolChoice::Required => Some("required".to_string()),
+            ToolChoice::None => Some("none".to_string()),
+            ToolChoice::Specific { .. } => {
+                // Would need to construct specific tool choice object
+                Some("auto".to_string()) // Fallback
+            }
+        }
+    }
+
+    /// Convert OpenAI response to our ChatResponse
+    fn convert_response(
+        &self,
+        response: async_openai::types::CreateChatCompletionResponse,
+    ) -> ProviderResult<ChatResponse> {
+        let choice = response.choices.into_iter()
+            .next()
+            .ok_or_else(|| ProviderError::InvalidResponse(
+                "No choices in OpenAI response".to_string()
+            ))?;
+
+        let message = choice.message;
+        let content = message.content.unwrap_or_default();
+
+        // Convert tool calls
+        let tool_calls = message.tool_calls.map(|calls| {
+            calls.into_iter().map(|call| ToolCall {
+                id: call.id,
+                r#type: "function".to_string(),
+                function: FunctionCall {
+                    name: call.function.name,
+                    arguments: call.function.arguments,
+                },
+            }).collect()
+        });
+
+        let role = match message.role.as_str() {
+            "assistant" => Role::Assistant,
+            _ => Role::Assistant, // Default
+        };
+
+        let our_message = ChatMessage {
+            role,
+            content: Content::text(content),
+            name: None,
+            tool_calls,
+            tool_call_id: None,
+            metadata: None,
+        };
+
+        let usage = response.usage.map(|u| TokenUsage::new(
+            u.prompt_tokens as usize,
+            u.completion_tokens as usize,
+        )).unwrap_or_default();
+
+        let finish_reason = choice.finish_reason.map(|fr| match fr.as_str() {
+            "stop" => FinishReason::Stop,
+            "length" => FinishReason::Length,
+            "tool_calls" => FinishReason::ToolCalls,
+            "content_filter" => FinishReason::ContentFilter,
+            _ => FinishReason::Other(fr),
+        }).unwrap_or(FinishReason::Unknown);
+
+        Ok(ChatResponse {
+            id: response.id,
+            provider: LlmProvider::OpenAi,
+            model: response.model,
+            message: our_message,
+            usage,
+            finish_reason,
+            received_at: std::time::Instant::now(),
+        })
+    }
+
+    /// Convert streaming chunk to our StreamingChunk
+    fn convert_stream_chunk(&self, chunk: ChatCompletionChunk) -> ProviderResult<StreamingChunk> {
+        let choice = chunk.choices.into_iter()
+            .next()
+            .ok_or_else(|| ProviderError::InvalidResponse(
+                "No choices in stream chunk".to_string()
+            ))?;
+
+        let delta = choice.delta;
+        let content = delta.content.unwrap_or_default();
+
+        // Convert tool calls from delta
+        let tool_calls = delta.tool_calls.map(|calls| {
+            calls.into_iter().map(|call| ToolCall {
+                id: call.id.unwrap_or_default(),
+                r#type: "function".to_string(),
+                function: FunctionCall {
+                    name: call.function.map(|f| f.name).flatten().unwrap_or_default(),
+                    arguments: call.function.map(|f| f.arguments).flatten().unwrap_or_default(),
+                },
+            }).collect()
+        });
+
+        let finish_reason = choice.finish_reason.map(|fr| match fr.as_str() {
+            "stop" => FinishReason::Stop,
+            "length" => FinishReason::Length,
+            "tool_calls" => FinishReason::ToolCalls,
+            "content_filter" => FinishReason::ContentFilter,
+            _ => FinishReason::Other(fr),
+        });
+
+        Ok(StreamingChunk {
+            index: choice.index as usize,
+            delta: content,
+            finish_reason,
+            usage: None, // Usage usually in final chunk
+            tool_calls,
+        })
+    }
+}
+
+#[async_trait]
+impl Provider for OpenAiProvider {
+    fn name(&self) -> &str {
+        "openai"
+    }
+
+    #[instrument(skip(self, request), fields(model = %request.model))]
+    async fn chat(&self, request: ChatRequest) -> ProviderResult<ChatResponse> {
+        debug!("Sending chat request to OpenAI: model={}", request.model);
+
+        // Convert messages
+        let messages: Vec<_> = request.messages.iter()
+            .map(|m| self.convert_message(m))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Build request
+        let mut openai_request = CreateChatCompletionRequest {
+            model: request.model.clone(),
+            messages,
+            max_tokens: request.max_tokens.map(|t| t as u16),
+            temperature: request.temperature,
+            top_p: request.top_p,
+            presence_penalty: request.presence_penalty,
+            frequency_penalty: request.frequency_penalty,
+            stop: request.stop.map(|s| async_openai::types::Stop::Array(s)),
+            stream: Some(false),
+            tools: request.tools.as_ref().map(|tools| {
+                tools.iter().map(|t| self.convert_tool(t)).collect()
+            }),
+            tool_choice: request.tool_choice.as_ref().and_then(|c| self.convert_tool_choice(c)),
+            response_format: request.response_format.as_ref().map(|rf| match rf {
+                crate::llm::types::ResponseFormat::Text => {
+                    async_openai::types::ResponseFormat::Text
+                }
+                crate::llm::types::ResponseFormat::JsonObject => {
+                    async_openai::types::ResponseFormat::JsonObject
+                }
+                crate::llm::types::ResponseFormat::JsonSchema { schema } => {
+                    async_openai::types::ResponseFormat::JsonSchema {
+                        json_schema: async_openai::types::ResponseFormatJsonSchema {
+                            description: None,
+                            name: "response".to_string(),
+                            schema: Some(schema.clone()),
+                            strict: Some(true),
+                        }
+                    }
+                }
+            }),
+            seed: request.seed.map(|s| s as i64),
+            ..Default::default()
+        };
+
+        // Handle reasoning models (o-series) - they don't support temperature
+        let model = OpenAiModel::from_str(&request.model);
+        if model.is_reasoning_model() {
+            openai_request.t
