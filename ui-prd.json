@@ -1,4 +1,13 @@
 {
+  "project": "codetether-agent",
+  "feature": "UI/UX Components",
+  "branch_name": "feature/ui-components",
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "lint": "cargo clippy --all-features",
+    "test": "cargo test",
+    "build": "cargo build --release"
+  },
   "id": "prd_ui_components",
   "title": "CodeTether Agent - UI/UX Components PRD",
   "version": "1.0.0",
@@ -129,27 +138,27 @@
       "enhancement_options": [
         {
           "name": "Enhanced Keyboard Navigation",
-          "priority": "High",
+          "priority": 1,
           "features": ["Vim-style hjkl", "Page up/down", "Home/End"]
         },
         {
           "name": "Mouse Support",
-          "priority": "Medium",
+          "priority": 2,
           "features": ["Click to select", "Scroll wheel", "Drag selection"]
         },
         {
           "name": "Command History",
-          "priority": "High",
+          "priority": 1,
           "features": ["Up/Down to navigate", "Ctrl+R search", "Persistent history"]
         },
         {
           "name": "Bracketed Paste",
-          "priority": "Low",
+          "priority": 3,
           "features": ["Multi-line paste", "Preserve formatting"]
         },
         {
           "name": "Keybinding Configuration",
-          "priority": "Low",
+          "priority": 3,
           "features": ["Custom keymaps", "Config file support"]
         }
       ]
@@ -345,7 +354,7 @@
         "Different message types have distinct colors",
         "Code blocks are syntax highlighted"
       ],
-      "priority": "high",
+      "priority": 1,
       "dependencies": []
     },
     {
@@ -358,7 +367,7 @@
         "Ctrl+R searches command history",
         "? shows help with all shortcuts"
       ],
-      "priority": "high",
+      "priority": 1,
       "dependencies": []
     },
     {
@@ -371,7 +380,7 @@
         "Changes are only applied after confirmation",
         "Original file is preserved until confirmation"
       ],
-      "priority": "high",
+      "priority": 1,
       "dependencies": []
     },
     {
@@ -384,7 +393,7 @@
         "Works with git for full history",
         "Can undo multiple changes in sequence"
       ],
-      "priority": "medium",
+      "priority": 2,
       "dependencies": ["US-003"]
     },
     {
@@ -397,7 +406,7 @@
         "Changes apply without restart",
         "Fallback to safe defaults if terminal lacks support"
       ],
-      "priority": "low",
+      "priority": 3,
       "dependencies": []
     },
     {
@@ -410,7 +419,7 @@
         "Session total and per-message breakdown available",
         "Cost estimation based on provider pricing"
       ],
-      "priority": "medium",
+      "priority": 2,
       "dependencies": []
     }
   ],
