@@ -22081,3 +22081,600 @@ pub fn get_token_limit() -> usize {
 
 /// Utility function to check if a character is CJK
 fn
+
+---
+
+## Iteration 10 - US-008 (2026-02-03T19:11:27.071978551+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-008 - Add pool configuration and integration with the RLM router for automatic parallel processing. This involves creating the `PoolConfig` struct, integrating it with `RlmRouter`, and enabling configuration via `RlmConfig`.
+
+```rust
+// src/rlm/pool_config.rs - Pool configuration structures for RLM
+
+//! Pool Configuration for RLM Connection Pooling
+//! 
+//! This module provides configuration structures for connection pooling
+//! with sensible defaults and integration with the RLM router.
+
+use std::time::Duration;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+/// Errors that can occur in pool configuration
+#[derive(Debug, Error, Clone)]
+pub enum PoolConfigError {
+    #[error("Invalid pool size: min_idle ({0}) cannot exceed max_size ({1})")]
+    InvalidSize(usize, usize),
+    
+    #[error("Invalid timeout: {0}")]
+    InvalidTimeout(String),
+    
+    #[error("Invalid concurrency: {0}")]
+    InvalidConcurrency(String),
+}
+
+/// Result type for pool configuration operations
+pub type PoolConfigResult<T> = Result<T, PoolConfigError>;
+
+/// Configuration for a connection pool with sensible defaults
+/// 
+/// This struct provides comprehensive configuration for RLM connection pools
+/// with sensible defaults that work well for most use cases.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PoolConfig {
+    /// Pool name for identification and logging
+    #[serde(default = "default_pool_name")]
+    pub name: String,
+    
+    /// Minimum number of idle connections to maintain
+    /// 
+    /// The pool will try to maintain at least this many idle connections
+    /// ready for immediate use. Default: 2
+    #[serde(default = "default_min_idle")]
+    pub min_idle: usize,
+    
+    /// Maximum number of connections in the pool
+    /// 
+    /// Hard limit on total connections (idle + active). Default: 10
+    #[serde(default = "default_max_size")]
+    pub max_size: usize,
+    
+    /// Maximum time to wait for a connection from the pool
+    /// 
+    /// If no connection is available within this time, the request fails.
+    /// Default: 30 seconds
+    #[serde(with = "serde_duration_secs", default = "default_acquire_timeout")]
+    pub acquire_timeout: Duration,
+    
+    /// Maximum time a connection can be idle before being closed
+    /// 
+    /// Connections idle longer than this are considered stale and removed.
+    /// Default: 5 minutes
+    #[serde(with = "serde_duration_secs", default = "default_max_idle_time")]
+    pub max_idle_time: Duration,
+    
+    /// Interval between cleanup runs for stale connections
+    /// 
+    /// How often the pool checks for and removes stale connections.
+    /// Default: 60 seconds
+    #[serde(with = "serde_duration_secs", default = "default_cleanup_interval")]
+    pub cleanup_interval: Duration,
+    
+    /// Maximum number of times a connection can be reused
+    /// 
+    /// None means unlimited reuse. Default: Some(100)
+    #[serde(default = "default_max_reuse_count")]
+    pub max_reuse_count: Option<u32>,
+    
+    /// Whether to validate connections on checkout
+    /// 
+    /// If true, connections are health-checked before being returned.
+    /// Default: true
+    #[serde(default = "default_true")]
+    pub validate_on_checkout: bool,
+    
+    /// Whether to validate connections on checkin
+    /// 
+    /// If true, connections are health-checked when returned to pool.
+    /// Default: true
+    #[serde(default = "default_true")]
+    pub validate_on_checkin: bool,
+    
+    /// Interval between health checks for idle connections
+    /// 
+    /// How often idle connections are proactively health-checked.
+    /// Default: 30 seconds
+    #[serde(with = "serde_duration_secs", default = "default_health_check_interval")]
+    pub health_check_interval: Duration,
+    
+    /// Maximum concurrent connection creation attempts
+    /// 
+    /// Limits how many connections can be created simultaneously to
+    /// prevent thundering herd on pool startup. Default: 3
+    #[serde(default = "default_max_concurrent_creation")]
+    pub max_concurrent_creation: usize,
+    
+    /// Whether to enable automatic pre-warming
+    /// 
+    /// If true, the pool creates min_idle connections on startup.
+    /// Default: true
+    #[serde(default = "default_true")]
+    pub prewarm: bool,
+    
+    /// Connection timeout for establishing new connections
+    /// 
+    /// Maximum time to wait when creating a new connection.
+    /// Default: 10 seconds
+    #[serde(with = "serde_duration_secs", default = "default_connection_timeout")]
+    pub connection_timeout: Duration,
+    
+    /// Whether to enable adaptive pool sizing
+    /// 
+    /// If true, the pool can dynamically adjust size based on load.
+    /// Default: false
+    #[serde(default = "default_false")]
+    pub adaptive_sizing: bool,
+    
+    /// Target utilization ratio for adaptive sizing (0.0 to 1.0)
+    /// 
+    /// The pool tries to maintain this utilization ratio by adjusting
+    /// the number of idle connections. Default: 0.7
+    #[serde(default = "default_target_utilization")]
+    pub target_utilization: f64,
+}
+
+// Default value functions for serde
+fn default_pool_name() -> String {
+    "rlm-pool".to_string()
+}
+
+fn default_min_idle() -> usize {
+    2
+}
+
+fn default_max_size() -> usize {
+    10
+}
+
+fn default_acquire_timeout() -> Duration {
+    Duration::from_secs(30)
+}
+
+fn default_max_idle_time() -> Duration {
+    Duration::from_secs(300) // 5 minutes
+}
+
+fn default_cleanup_interval() -> Duration {
+    Duration::from_secs(60)
+}
+
+fn default_max_reuse_count() -> Option<u32> {
+    Some(100)
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_false() -> bool {
+    false
+}
+
+fn default_health_check_interval() -> Duration {
+    Duration::from_secs(30)
+}
+
+fn default_max_concurrent_creation() -> usize {
+    3
+}
+
+fn default_connection_timeout() -> Duration {
+    Duration::from_secs(10)
+}
+
+fn default_target_utilization() -> f64 {
+    0.7
+}
+
+// Serde helper for Duration in seconds
+mod serde_duration_secs {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        duration.as_secs().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secs = u64::deserialize(deserializer)?;
+        Ok(Duration::from_secs(secs))
+    }
+}
+
+impl Default for PoolConfig {
+    /// Creates a PoolConfig with sensible defaults
+    /// 
+    /// Default configuration:
+    /// - min_idle: 2
+    /// - max_size: 10
+    /// - acquire_timeout: 30s
+    /// - max_idle_time: 5min
+    /// - cleanup_interval: 60s
+    /// - max_reuse_count: 100
+    /// - validate_on_checkout: true
+    /// - validate_on_checkin: true
+    /// - health_check_interval: 30s
+    /// - max_concurrent_creation: 3
+    /// - prewarm: true
+    /// - connection_timeout: 10s
+    fn default() -> Self {
+        Self {
+            name: default_pool_name(),
+            min_idle: default_min_idle(),
+            max_size: default_max_size(),
+            acquire_timeout: default_acquire_timeout(),
+            max_idle_time: default_max_idle_time(),
+            cleanup_interval: default_cleanup_interval(),
+            max_reuse_count: default_max_reuse_count(),
+            validate_on_checkout: default_true(),
+            validate_on_checkin: default_true(),
+            health_check_interval: default_health_check_interval(),
+            max_concurrent_creation: default_max_concurrent_creation(),
+            prewarm: default_true(),
+            connection_timeout: default_connection_timeout(),
+            adaptive_sizing: default_false(),
+            target_utilization: default_target_utilization(),
+        }
+    }
+}
+
+impl PoolConfig {
+    /// Create a new PoolConfig with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create a named pool configuration
+    pub fn named(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            ..Default::default()
+        }
+    }
+
+    // ============== Builder Methods ==============
+
+    /// Set pool name
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = name.into();
+        self
+    }
+
+    /// Set minimum idle connections
+    pub fn with_min_idle(mut self, min_idle: usize) -> Self {
+        self.min_idle = min_idle;
+        self
+    }
+
+    /// Set maximum pool size
+    pub fn with_max_size(mut self, max_size: usize) -> Self {
+        self.max_size = max_size;
+        self
+    }
+
+    /// Set pool size range (min_idle, max_size)
+    pub fn with_size_range(mut self, min_idle: usize, max_size: usize) -> Self {
+        self.min_idle = min_idle;
+        self.max_size = max_size;
+        self
+    }
+
+    /// Set acquire timeout
+    pub fn with_acquire_timeout(mut self, timeout: Duration) -> Self {
+        self.acquire_timeout = timeout;
+        self
+    }
+
+    /// Set max idle time before connections are closed
+    pub fn with_max_idle_time(mut self, idle_time: Duration) -> Self {
+        self.max_idle_time = idle_time;
+        self
+    }
+
+    /// Set cleanup interval
+    pub fn with_cleanup_interval(mut self, interval: Duration) -> Self {
+        self.cleanup_interval = interval;
+        self
+    }
+
+    /// Set maximum reuse count (None for unlimited)
+    pub fn with_max_reuse_count(mut self, count: Option<u32>) -> Self {
+        self.max_reuse_count = count;
+        self
+    }
+
+    /// Disable validation on checkout
+    pub fn without_checkout_validation(mut self) -> Self {
+        self.validate_on_checkout = false;
+        self
+    }
+
+    /// Disable validation on checkin
+    pub fn without_checkin_validation(mut self) -> Self {
+        self.validate_on_checkin = false;
+        self
+    }
+
+    /// Disable pre-warming
+    pub fn without_prewarm(mut self) -> Self {
+        self.prewarm = false;
+        self
+    }
+
+    /// Enable adaptive sizing
+    pub fn with_adaptive_sizing(mut self, target_utilization: f64) -> Self {
+        self.adaptive_sizing = true;
+        self.target_utilization = target_utilization.clamp(0.1, 0.95);
+        self
+    }
+
+    /// Set connection timeout
+    pub fn with_connection_timeout(mut self, timeout: Duration) -> Self {
+        self.connection_timeout = timeout;
+        self
+    }
+
+    // ============== Preset Configurations ==============
+
+    /// High-performance configuration for high-throughput scenarios
+    /// 
+    /// - Larger pool (min: 5, max: 50)
+    /// - Shorter timeouts
+    /// - More aggressive reuse
+    pub fn high_performance() -> Self {
+        Self {
+            name: "high-performance".to_string(),
+            min_idle: 5,
+            max_size: 50,
+            acquire_timeout: Duration::from_secs(10),
+            max_idle_time: Duration::from_secs(60),
+            cleanup_interval: Duration::from_secs(30),
+            max_reuse_count: Some(1000),
+            max_concurrent_creation: 10,
+            prewarm: true,
+            ..Default::default()
+        }
+    }
+
+    /// Conservative configuration for resource-constrained environments
+    /// 
+    /// - Smaller pool (min: 1, max: 5)
+    /// - Longer timeouts
+    /// - More frequent validation
+    pub fn conservative() -> Self {
+        Self {
+            name: "conservative".to_string(),
+            min_idle: 1,
+            max_size: 5,
+            acquire_timeout: Duration::from_secs(60),
+            max_idle_time: Duration::from_secs(120),
+            cleanup_interval: Duration::from_secs(30),
+            max_reuse_count: Some(50),
+            health_check_interval: Duration::from_secs(15),
+            max_concurrent_creation: 1,
+            prewarm: false,
+            ..Default::default()
+        }
+    }
+
+    /// Development/testing configuration
+    /// 
+    /// - Minimal pool (min: 0, max: 2)
+    /// - No prewarm
+    /// - Short timeouts
+    pub fn development() -> Self {
+        Self {
+            name: "development".to_string(),
+            min_idle: 0,
+            max_size: 2,
+            acquire_timeout: Duration::from_secs(5),
+            max_idle_time: Duration::from_secs(30),
+            cleanup_interval: Duration::from_secs(10),
+            max_reuse_count: Some(10),
+            prewarm: false,
+            validate_on_checkout: false,
+            ..Default::default()
+        }
+    }
+
+    // ============== Validation ==============
+
+    /// Validate the configuration
+    /// 
+    /// Checks that:
+    /// - min_idle <= max_size
+    /// - Timeouts are reasonable (not zero)
+    /// - Utilization targets are valid
+    pub fn validate(&self) -> PoolConfigResult<()> {
+        if self.min_idle > self.max_size {
+            return Err(PoolConfigError::InvalidSize(self.min_idle, self.max_size));
+        }
+        
+        if self.max_size == 0 {
+            return Err(PoolConfigError::InvalidConcurrency(
+                "max_size must be greater than 0".to_string()
+            ));
+        }
+        
+        if self.acquire_timeout.is_zero() {
+            return Err(PoolConfigError::InvalidTimeout(
+                "acquire_timeout must be greater than 0".to_string()
+            ));
+        }
+        
+        if !(0.0..=1.0).contains(&self.target_utilization) {
+            return Err(PoolConfigError::InvalidConcurrency(
+                "target_utilization must be between 0.0 and 1.0".to_string()
+            ));
+        }
+        
+        Ok(())
+    }
+
+    /// Calculate recommended concurrency based on pool size
+    /// 
+    /// Returns a recommended max_concurrent value for use with
+    /// the parallel processor based on pool configuration.
+    pub fn recommended_concurrency(&self) -> usize {
+        // Use 80% of max pool size for concurrent operations
+        // to leave headroom for health checks and maintenance
+        (self.max_size as f64 * 0.8) as usize
+    }
+
+    /// Get estimated memory footprint per connection
+    /// 
+    /// Rough estimate for capacity planning. Returns bytes per connection.
+    pub fn estimated_memory_per_connection(&self) -> usize {
+        // Rough estimate: connection object + buffers + metadata
+        // ~1MB per connection is a conservative estimate
+        1024 * 1024
+    }
+
+    /// Get total estimated memory footprint
+    pub fn estimated_total_memory(&self) -> usize {
+        self.max_size * self.estimated_memory_per_connection()
+    }
+}
+
+/// Configuration for multiple pools
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct MultiPoolConfig {
+    /// Default pool configuration
+    #[serde(default)]
+    pub default: PoolConfig,
+    
+    /// Per-provider pool configurations
+    #[serde(default)]
+    pub by_provider: std::collections::HashMap<String, PoolConfig>,
+    
+    /// Whether to use separate pools per provider
+    #[serde(default = "default_true")]
+    pub separate_pools_per_provider: bool,
+}
+
+impl MultiPoolConfig {
+    /// Create new multi-pool configuration
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set default pool config
+    pub fn with_default_pool(mut self, config: PoolConfig) -> Self {
+        self.default = config;
+        self
+    }
+
+    /// Add provider-specific pool config
+    pub fn with_provider_pool(
+        mut self,
+        provider: impl Into<String>,
+        config: PoolConfig,
+    ) -> Self {
+        self.by_provider.insert(provider.into(), config);
+        self
+    }
+
+    /// Get pool config for a provider
+    pub fn get_for_provider(&self, provider: &str) -> PoolConfig {
+        self.by_provider
+            .get(provider)
+            .cloned()
+            .unwrap_or_else(|| self.default.clone())
+    }
+
+    /// Disable separate pools per provider (use single shared pool)
+    pub fn with_shared_pool(mut self) -> Self {
+        self.separate_pools_per_provider = false;
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pool_config_defaults() {
+        let config = PoolConfig::default();
+        
+        assert_eq!(config.name, "rlm-pool");
+        assert_eq!(config.min_idle, 2);
+        assert_eq!(config.max_size, 10);
+        assert_eq!(config.acquire_timeout, Duration::from_secs(30));
+        assert!(config.validate_on_checkout);
+        assert!(config.prewarm);
+    }
+
+    #[test]
+    fn test_pool_config_builder() {
+        let config = PoolConfig::new()
+            .with_name("test-pool")
+            .with_size_range(5, 20)
+            .with_acquire_timeout(Duration::from_secs(10))
+            .without_prewarm()
+            .with_adaptive_sizing(0.8);
+
+        assert_eq!(config.name, "test-pool");
+        assert_eq!(config.min_idle, 5);
+        assert_eq!(config.max_size, 20);
+        assert_eq!(config.acquire_timeout, Duration::from_secs(10));
+        assert!(!config.prewarm);
+        assert!(config.adaptive_sizing);
+        assert_eq!(config.target_utilization, 0.8);
+    }
+
+    #[test]
+    fn test_pool_config_presets() {
+        let high_perf = PoolConfig::high_performance();
+        assert_eq!(high_perf.min_idle, 5);
+        assert_eq!(high_perf.max_size, 50);
+        assert_eq!(high_perf.max_concurrent_creation, 10);
+
+        let conservative = PoolConfig::conservative();
+        assert_eq!(conservative.min_idle, 1);
+        assert_eq!(conservative.max_size, 5);
+        assert!(!conservative.prewarm);
+
+        let dev = PoolConfig::development();
+        assert_eq!(dev.min_idle, 0);
+        assert_eq!(dev.max_size, 2);
+        assert!(!dev.prewarm);
+    }
+
+    #[test]
+    fn test_pool_config_validation() {
+        // Valid config
+        let valid = PoolConfig::new();
+        assert!(valid.validate().is_ok());
+
+        // Invalid: min_idle > max_size
+        let invalid = PoolConfig::new()
+            .with_size_range(10, 5);
+        assert!(invalid.validate().is_err());
+
+        // Invalid: max_size = 0
+        let invalid = PoolConfig::new()
+            .with_max_size(0);
+        assert!(invalid.validate().is_err());
+
+        // Invalid: target_utilization > 1.0
+        let invalid = PoolConfig
