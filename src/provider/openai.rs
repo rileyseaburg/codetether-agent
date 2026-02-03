@@ -7,12 +7,12 @@ use super::{
 use anyhow::Result;
 use async_openai::{
     config::OpenAIConfig,
-    types::{
-        ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessageArgs,
+    types::chat::{
+        ChatCompletionMessageToolCall, ChatCompletionMessageToolCalls, ChatCompletionRequestAssistantMessageArgs,
         ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
         ChatCompletionRequestToolMessageArgs, ChatCompletionRequestUserMessageArgs,
-        ChatCompletionTool, ChatCompletionToolArgs, ChatCompletionToolType, CreateChatCompletionRequestArgs,
-        FunctionObjectArgs,
+        ChatCompletionTool, ChatCompletionTools, CreateChatCompletionRequestArgs,
+        FinishReason as OpenAIFinishReason, FunctionCall, FunctionObjectArgs,
     },
     Client,
 };
@@ -76,19 +76,18 @@ impl OpenAIProvider {
                     );
                 }
                 Role::Assistant => {
-                    let tool_calls: Vec<ChatCompletionMessageToolCall> = msg
+                    let tool_calls: Vec<ChatCompletionMessageToolCalls> = msg
                         .content
                         .iter()
                         .filter_map(|p| match p {
                             ContentPart::ToolCall { id, name, arguments } => {
-                                Some(ChatCompletionMessageToolCall {
+                                Some(ChatCompletionMessageToolCalls::Function(ChatCompletionMessageToolCall {
                                     id: id.clone(),
-                                    r#type: ChatCompletionToolType::Function,
-                                    function: async_openai::types::FunctionCall {
+                                    function: FunctionCall {
                                         name: name.clone(),
                                         arguments: arguments.clone(),
                                     },
-                                })
+                                }))
                             }
                             _ => None,
                         })
@@ -122,21 +121,16 @@ impl OpenAIProvider {
         Ok(result)
     }
 
-    fn convert_tools(tools: &[ToolDefinition]) -> Result<Vec<ChatCompletionTool>> {
+    fn convert_tools(tools: &[ToolDefinition]) -> Result<Vec<ChatCompletionTools>> {
         let mut result = Vec::new();
         for tool in tools {
-            result.push(
-                ChatCompletionToolArgs::default()
-                    .r#type(ChatCompletionToolType::Function)
-                    .function(
-                        FunctionObjectArgs::default()
-                            .name(&tool.name)
-                            .description(&tool.description)
-                            .parameters(tool.parameters.clone())
-                            .build()?,
-                    )
+            result.push(ChatCompletionTools::Function(ChatCompletionTool {
+                function: FunctionObjectArgs::default()
+                    .name(&tool.name)
+                    .description(&tool.description)
+                    .parameters(tool.parameters.clone())
                     .build()?,
-            );
+            }));
         }
         Ok(result)
     }
@@ -221,11 +215,13 @@ impl Provider for OpenAIProvider {
         if let Some(tool_calls) = &choice.message.tool_calls {
             has_tool_calls = !tool_calls.is_empty();
             for tc in tool_calls {
-                content.push(ContentPart::ToolCall {
-                    id: tc.id.clone(),
-                    name: tc.function.name.clone(),
-                    arguments: tc.function.arguments.clone(),
-                });
+                if let ChatCompletionMessageToolCalls::Function(func_call) = tc {
+                    content.push(ContentPart::ToolCall {
+                        id: func_call.id.clone(),
+                        name: func_call.function.name.clone(),
+                        arguments: func_call.function.arguments.clone(),
+                    });
+                }
             }
         }
 
@@ -234,10 +230,10 @@ impl Provider for OpenAIProvider {
             FinishReason::ToolCalls
         } else {
             match choice.finish_reason {
-                Some(async_openai::types::FinishReason::Stop) => FinishReason::Stop,
-                Some(async_openai::types::FinishReason::Length) => FinishReason::Length,
-                Some(async_openai::types::FinishReason::ToolCalls) => FinishReason::ToolCalls,
-                Some(async_openai::types::FinishReason::ContentFilter) => FinishReason::ContentFilter,
+                Some(OpenAIFinishReason::Stop) => FinishReason::Stop,
+                Some(OpenAIFinishReason::Length) => FinishReason::Length,
+                Some(OpenAIFinishReason::ToolCalls) => FinishReason::ToolCalls,
+                Some(OpenAIFinishReason::ContentFilter) => FinishReason::ContentFilter,
                 _ => FinishReason::Stop,
             }
         };
