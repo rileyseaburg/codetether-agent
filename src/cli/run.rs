@@ -17,13 +17,26 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     // Load configuration
     let config = Config::load().await.unwrap_or_default();
 
-    // Create or continue session
+    // Create or continue session - default is to continue last session if it exists
     let mut session = if let Some(session_id) = args.session {
+        tracing::info!("Continuing session: {}", session_id);
         Session::load(&session_id).await?
     } else if args.continue_session {
-        Session::last().await?
+        match Session::last().await {
+            Ok(s) => {
+                tracing::info!("Continuing last session: {}", s.id);
+                s
+            }
+            Err(_) => {
+                let s = Session::new().await?;
+                tracing::info!("Created new session: {}", s.id);
+                s
+            }
+        }
     } else {
-        Session::new().await?
+        let s = Session::new().await?;
+        tracing::info!("Created new session: {}", s.id);
+        s
     };
 
     // Set model: CLI arg > env var > config default
@@ -46,6 +59,8 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         }
         _ => {
             println!("{}", result.text);
+            // Show session ID for continuation
+            eprintln!("\n[Session: {} | Continue with: codetether run -c \"...\"]", session.id);
         }
     }
 
