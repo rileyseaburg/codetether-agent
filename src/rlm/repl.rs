@@ -376,9 +376,10 @@ impl RlmRepl {
     }
 }
 
-enum DslResult {
+pub enum DslResult {
     Output(String),
     Final(String),
+    #[allow(dead_code)]
     Error(String),
 }
 
@@ -395,6 +396,7 @@ pub struct RlmExecutor {
     model: String,
     max_iterations: usize,
     sub_queries: Vec<SubQuery>,
+    verbose: bool,
 }
 
 /// Record of a sub-LM call
@@ -415,12 +417,22 @@ impl RlmExecutor {
             model,
             max_iterations: 5, // Keep iterations limited for speed
             sub_queries: Vec::new(),
+            verbose: false,
         }
     }
 
     /// Set maximum iterations
     pub fn with_max_iterations(mut self, max: usize) -> Self {
         self.max_iterations = max;
+        self
+    }
+
+    /// Enable or disable verbose mode
+    /// 
+    /// When verbose is true, the context summary will be displayed
+    /// at the start of analysis to help users understand what's being analyzed.
+    pub fn with_verbose(mut self, verbose: bool) -> Self {
+        self.verbose = verbose;
         self
     }
 
@@ -431,7 +443,7 @@ impl RlmExecutor {
         let mut total_input_tokens = 0;
         let mut total_output_tokens = 0;
 
-        // Build initial context summary
+        // Build and optionally display context summary
         let context_summary = format!(
             "=== CONTEXT LOADED ===\n\
              Total: {} chars, {} lines\n\
@@ -448,6 +460,15 @@ impl RlmExecutor {
             self.repl.context().len(),
             self.repl.lines().len()
         );
+
+        // Display context summary at the start in verbose mode
+        if self.verbose {
+            tracing::info!("RLM Context Summary:\n{}", context_summary);
+            println!("[RLM] Context loaded: {} chars, {} lines", 
+                self.repl.context().len(), 
+                self.repl.lines().len()
+            );
+        }
 
         let system_prompt = format!(
             "You are a code analysis assistant. Answer questions by examining the provided context.\n\n\
@@ -526,7 +547,27 @@ impl RlmExecutor {
 
             // Extract and execute code blocks
             let code = self.extract_code(&assistant_text);
+            
+            // Display execution details in verbose mode
+            if self.verbose {
+                println!("[RLM] Iteration {}: Executing code:\n{}", iterations, code);
+            }
+            
             let execution_result = self.execute_with_llm_query(&code).await?;
+            
+            // Display execution results in verbose mode
+            if self.verbose {
+                if let Some(ref answer) = execution_result.final_answer {
+                    println!("[RLM] Final answer received: {}", answer);
+                } else if !execution_result.stdout.is_empty() {
+                    let preview = if execution_result.stdout.len() > 200 {
+                        format!("{}...", &execution_result.stdout[..200])
+                    } else {
+                        execution_result.stdout.clone()
+                    };
+                    println!("[RLM] Execution output:\n{}", preview);
+                }
+            }
 
             // Check for final answer
             if let Some(answer) = &execution_result.final_answer {
@@ -759,6 +800,7 @@ pub struct RlmAnalysisResult {
 /// Spawn an external REPL process for Python or Bun
 pub struct ExternalRepl {
     child: Child,
+    #[allow(dead_code)]
     runtime: ReplRuntime,
 }
 
@@ -886,8 +928,14 @@ rl.on('line', async (line) => {{
 
     /// Kill the REPL process
     pub async fn destroy(&mut self) -> Result<()> {
+        tracing::debug!(runtime = ?self.runtime, "Destroying external REPL");
         self.child.kill().await?;
         Ok(())
+    }
+    
+    /// Get the runtime type used by this REPL
+    pub fn runtime(&self) -> ReplRuntime {
+        self.runtime
     }
 }
 

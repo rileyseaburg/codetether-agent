@@ -26,6 +26,7 @@ struct TaskInfo {
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum TaskStatus {
     Pending,
+    #[allow(dead_code)]
     Running,
     Complete,
     Failed,

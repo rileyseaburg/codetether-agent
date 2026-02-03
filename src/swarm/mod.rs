@@ -17,6 +17,88 @@ pub use executor::SwarmExecutor;
 pub use orchestrator::Orchestrator;
 pub use subtask::{SubAgent, SubTask, SubTaskContext, SubTaskResult, SubTaskStatus};
 
+use async_trait::async_trait;
+use anyhow::Result;
+
+/// Actor trait for swarm participants
+/// 
+/// An Actor is an entity that can participate in the swarm by receiving
+/// and processing messages. This is the base trait for all swarm participants.
+#[async_trait]
+pub trait Actor: Send + Sync {
+    /// Get the unique identifier for this actor
+    fn actor_id(&self) -> &str;
+    
+    /// Get the actor's current status
+    fn actor_status(&self) -> ActorStatus;
+    
+    /// Initialize the actor for swarm participation
+    async fn initialize(&mut self) -> Result<()>;
+    
+    /// Shutdown the actor gracefully
+    async fn shutdown(&mut self) -> Result<()>;
+}
+
+/// Handler trait for processing messages in the swarm
+/// 
+/// A Handler can receive and process messages of a specific type.
+/// This enables actors to respond to different message types.
+#[async_trait]
+pub trait Handler<M>: Actor {
+    /// The response type for this handler
+    type Response: Send + Sync;
+    
+    /// Handle a message and return a response
+    async fn handle(&mut self, message: M) -> Result<Self::Response>;
+}
+
+/// Status of an actor in the swarm
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActorStatus {
+    /// Actor is initializing
+    Initializing,
+    /// Actor is ready to process messages
+    Ready,
+    /// Actor is currently processing
+    Busy,
+    /// Actor is paused
+    Paused,
+    /// Actor is shutting down
+    ShuttingDown,
+    /// Actor has stopped
+    Stopped,
+}
+
+impl std::fmt::Display for ActorStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ActorStatus::Initializing => write!(f, "initializing"),
+            ActorStatus::Ready => write!(f, "ready"),
+            ActorStatus::Busy => write!(f, "busy"),
+            ActorStatus::Paused => write!(f, "paused"),
+            ActorStatus::ShuttingDown => write!(f, "shutting_down"),
+            ActorStatus::Stopped => write!(f, "stopped"),
+        }
+    }
+}
+
+/// Message types for swarm coordination
+#[derive(Debug, Clone)]
+pub enum SwarmMessage {
+    /// Execute a task
+    ExecuteTask { task_id: String, instruction: String },
+    /// Report progress
+    Progress { task_id: String, progress: f32, message: String },
+    /// Task completed
+    TaskCompleted { task_id: String, result: String },
+    /// Task failed
+    TaskFailed { task_id: String, error: String },
+    /// Request tool execution
+    ToolRequest { tool_id: String, arguments: serde_json::Value },
+    /// Tool response
+    ToolResponse { tool_id: String, result: crate::tool::ToolResult },
+}
+
 use serde::{Deserialize, Serialize};
 
 /// Maximum number of concurrent sub-agents

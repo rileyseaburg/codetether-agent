@@ -11,6 +11,7 @@ pub struct A2AClient {
     token: Option<String>,
 }
 
+#[allow(dead_code)]
 impl A2AClient {
     /// Create a new A2A client
     pub fn new(base_url: impl Into<String>) -> Self {
@@ -57,6 +58,7 @@ impl A2AClient {
     }
 
     /// Get task status
+    #[allow(dead_code)]
     pub async fn get_task(&self, id: &str, history_length: Option<usize>) -> Result<Task> {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -81,6 +83,7 @@ impl A2AClient {
     }
 
     /// Cancel a task
+    #[allow(dead_code)]
     pub async fn cancel_task(&self, id: &str) -> Result<Task> {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -102,7 +105,7 @@ impl A2AClient {
     }
 
     /// Make a JSON-RPC call
-    async fn call_rpc(&self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
+    pub async fn call_rpc(&self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
         let mut req = self.client.post(&self.base_url);
         
         if let Some(ref token) = self.token {

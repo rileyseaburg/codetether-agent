@@ -36,6 +36,7 @@ impl RalphTool {
     }
 
     /// Set the provider after construction
+    #[allow(dead_code)]
     pub fn set_provider(&mut self, provider: Arc<dyn Provider>, model: String) {
         self.provider = Some(provider);
         self.model = model;

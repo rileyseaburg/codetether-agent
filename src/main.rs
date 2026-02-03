@@ -147,7 +147,8 @@ async fn main() -> anyhow::Result<()> {
                     content.clone(),
                     provider,
                     "kimi-k2-0711-preview".to_string(), // Use Kimi K2.5
-                );
+                )
+                .with_verbose(args.verbose);
                 
                 let result = executor.analyze(&args.query).await?;
 
@@ -393,7 +394,7 @@ async fn main() -> anyhow::Result<()> {
                 }
                 "list-tools" => {
                     // Run as MCP server but just list tools
-                    let server = mcp::McpServer::new_stdio();
+                    let _server = mcp::McpServer::new_stdio();
                     // In a real implementation, we'd query a connected server
                     println!("# Available MCP Tools\n");
                     println!("- **run_command**: Execute shell commands");

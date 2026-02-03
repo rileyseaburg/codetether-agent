@@ -211,8 +211,58 @@ pub struct JsonRpcError {
     pub data: Option<serde_json::Value>,
 }
 
+#[allow(dead_code)]
+impl JsonRpcError {
+    /// Create a parse error (-32700)
+    pub fn parse_error(msg: impl Into<String>) -> Self {
+        Self {
+            code: PARSE_ERROR,
+            message: msg.into(),
+            data: None,
+        }
+    }
+
+    /// Create an invalid request error (-32600)
+    pub fn invalid_request(msg: impl Into<String>) -> Self {
+        Self {
+            code: INVALID_REQUEST,
+            message: msg.into(),
+            data: None,
+        }
+    }
+
+    /// Create a method not found error (-32601)
+    pub fn method_not_found(method: &str) -> Self {
+        Self {
+            code: METHOD_NOT_FOUND,
+            message: format!("Method not found: {}", method),
+            data: None,
+        }
+    }
+
+    /// Create an invalid params error (-32602)
+    pub fn invalid_params(msg: impl Into<String>) -> Self {
+        Self {
+            code: INVALID_PARAMS,
+            message: msg.into(),
+            data: None,
+        }
+    }
+
+    /// Create an internal error (-32603)
+    pub fn internal_error(msg: impl Into<String>) -> Self {
+        Self {
+            code: INTERNAL_ERROR,
+            message: msg.into(),
+            data: None,
+        }
+    }
+}
+
 // Standard JSON-RPC error codes
+#[allow(dead_code)]
 pub const PARSE_ERROR: i32 = -32700;
+#[allow(dead_code)]
 pub const INVALID_REQUEST: i32 = -32600;
 pub const METHOD_NOT_FOUND: i32 = -32601;
 pub const INVALID_PARAMS: i32 = -32602;
@@ -221,8 +271,10 @@ pub const INTERNAL_ERROR: i32 = -32603;
 // A2A-specific error codes
 pub const TASK_NOT_FOUND: i32 = -32001;
 pub const TASK_NOT_CANCELABLE: i32 = -32002;
+#[allow(dead_code)]
 pub const PUSH_NOT_SUPPORTED: i32 = -32003;
 pub const UNSUPPORTED_OPERATION: i32 = -32004;
+#[allow(dead_code)]
 pub const CONTENT_TYPE_NOT_SUPPORTED: i32 = -32005;
 
 /// Message send parameters

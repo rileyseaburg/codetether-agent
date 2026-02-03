@@ -140,6 +140,15 @@ pub struct ProviderRegistry {
     providers: HashMap<String, Arc<dyn Provider>>,
 }
 
+impl std::fmt::Debug for ProviderRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProviderRegistry")
+            .field("provider_count", &self.providers.len())
+            .field("providers", &self.providers.keys().collect::<Vec<_>>())
+            .finish()
+    }
+}
+
 impl ProviderRegistry {
     pub fn new() -> Self {
         Self {

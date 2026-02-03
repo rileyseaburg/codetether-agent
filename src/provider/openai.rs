@@ -24,8 +24,18 @@ pub struct OpenAIProvider {
     provider_name: String,
 }
 
+impl std::fmt::Debug for OpenAIProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenAIProvider")
+            .field("provider_name", &self.provider_name)
+            .field("client", &"<async_openai::Client>")
+            .finish()
+    }
+}
+
 impl OpenAIProvider {
     pub fn new(api_key: String) -> Result<Self> {
+        tracing::debug!(provider = "openai", api_key_len = api_key.len(), "Creating OpenAI provider");
         let config = OpenAIConfig::new().with_api_key(api_key);
         Ok(Self {
             client: Client::with_config(config),
@@ -35,6 +45,12 @@ impl OpenAIProvider {
 
     /// Create with custom base URL (for OpenAI-compatible providers like Moonshot)
     pub fn with_base_url(api_key: String, base_url: String, provider_name: &str) -> Result<Self> {
+        tracing::debug!(
+            provider = provider_name,
+            base_url = %base_url,
+            api_key_len = api_key.len(),
+            "Creating OpenAI-compatible provider"
+        );
         let config = OpenAIConfig::new()
             .with_api_key(api_key)
             .with_api_base(base_url);
@@ -257,6 +273,13 @@ impl Provider for OpenAIProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        tracing::debug!(
+            provider = %self.provider_name,
+            model = %request.model,
+            message_count = request.messages.len(),
+            "Starting streaming completion request"
+        );
+        
         let messages = Self::convert_messages(&request.messages)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();

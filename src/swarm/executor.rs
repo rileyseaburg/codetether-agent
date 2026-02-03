@@ -8,7 +8,11 @@ use super::{
     subtask::{SubTask, SubTaskResult},
     DecompositionStrategy, StageStats, SwarmConfig, SwarmResult,
 };
+
+// Re-export swarm types for convenience
+pub use super::{Actor, ActorStatus, Handler, SwarmMessage};
 use crate::{
+    agent::Agent,
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
     swarm::{SwarmArtifact, SwarmStats},
     tool::ToolRegistry,
@@ -23,12 +27,29 @@ use tokio::time::{timeout, Duration};
 /// The swarm executor runs subtasks in parallel
 pub struct SwarmExecutor {
     config: SwarmConfig,
+    /// Optional agent for handling swarm-level coordination (reserved for future use)
+    coordinator_agent: Option<Arc<tokio::sync::Mutex<Agent>>>,
 }
 
 impl SwarmExecutor {
     /// Create a new executor
     pub fn new(config: SwarmConfig) -> Self {
-        Self { config }
+        Self { 
+            config,
+            coordinator_agent: None,
+        }
+    }
+    
+    /// Set a coordinator agent for swarm-level coordination
+    pub fn with_coordinator_agent(mut self, agent: Arc<tokio::sync::Mutex<Agent>>) -> Self {
+        tracing::debug!("Setting coordinator agent for swarm execution");
+        self.coordinator_agent = Some(agent);
+        self
+    }
+    
+    /// Get the coordinator agent if set
+    pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<Agent>>> {
+        self.coordinator_agent.as_ref()
     }
     
     /// Execute a task using the swarm
@@ -42,7 +63,7 @@ impl SwarmExecutor {
         // Create orchestrator
         let mut orchestrator = Orchestrator::new(self.config.clone()).await?;
         
-        tracing::info!("Starting swarm execution for task");
+        tracing::info!(provider_name = %orchestrator.provider(), "Starting swarm execution for task");
         
         // Decompose the task
         let subtasks = orchestrator.decompose(task, strategy).await?;
@@ -58,7 +79,7 @@ impl SwarmExecutor {
             });
         }
         
-        tracing::info!("Task decomposed into {} subtasks", subtasks.len());
+        tracing::info!(provider_name = %orchestrator.provider(), "Task decomposed into {} subtasks", subtasks.len());
         
         // Execute stages in order
         let max_stage = subtasks.iter().map(|s| s.stage).max().unwrap_or(0);
@@ -90,6 +111,7 @@ impl SwarmExecutor {
             }
             
             tracing::info!(
+                provider_name = %orchestrator.provider(),
                 "Executing stage {} with {} subtasks",
                 stage,
                 stage_subtasks.len()
@@ -133,6 +155,9 @@ impl SwarmExecutor {
             all_results.extend(stage_results);
         }
         
+        // Get provider name before mutable borrow
+        let provider_name = orchestrator.provider().to_string();
+        
         // Calculate final stats
         let stats = orchestrator.stats_mut();
         stats.execution_time_ms = start_time.elapsed().as_millis() as u64;
@@ -148,6 +173,7 @@ impl SwarmExecutor {
         let result = self.aggregate_results(&all_results).await?;
         
         tracing::info!(
+            provider_name = %provider_name,
             "Swarm execution complete: {} subtasks, {:.1}x speedup",
             all_results.len(),
             stats.speedup_factor
@@ -183,13 +209,15 @@ impl SwarmExecutor {
         let provider = providers.get(&provider_name)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", provider_name))?;
         
-        // Create shared tool registry with provider for ralph
-        let tool_registry = Arc::new(ToolRegistry::with_provider(Arc::clone(&provider), model.clone()));
+        tracing::info!(provider_name = %provider_name, "Selected provider for subtask execution");
+        
+        // Create shared tool registry with provider for ralph and batch tool
+        let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
         let tool_definitions = tool_registry.definitions();
         
         for (idx, subtask) in subtasks.into_iter().enumerate() {
             let model = model.clone();
-            let provider_name = provider_name.clone();
+            let _provider_name = provider_name.clone();
             let provider = Arc::clone(&provider);
             
             // Get context from dependencies
@@ -323,10 +351,10 @@ When done, provide a brief summary of what you accomplished.",
             match handle.await {
                 Ok(Ok(result)) => results.push(result),
                 Ok(Err(e)) => {
-                    tracing::error!("Subtask error: {}", e);
+                    tracing::error!(provider_name = %provider_name, "Subtask error: {}", e);
                 }
                 Err(e) => {
-                    tracing::error!("Task join error: {}", e);
+                    tracing::error!(provider_name = %provider_name, "Task join error: {}", e);
                 }
             }
         }
@@ -412,6 +440,7 @@ impl Default for SwarmExecutorBuilder {
 }
 
 /// Run the agentic loop for a sub-agent with tool execution
+#[allow(clippy::too_many_arguments)]
 async fn run_agent_loop(
     provider: Arc<dyn Provider>,
     model: &str,

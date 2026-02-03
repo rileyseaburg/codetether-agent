@@ -27,9 +27,15 @@ pub struct McpServer {
     transport: Arc<dyn Transport>,
     tools: RwLock<HashMap<String, McpToolHandler>>,
     resources: RwLock<HashMap<String, McpResourceHandler>>,
+    /// Prompt handlers for MCP prompts (reserved for future use)
+    #[allow(dead_code)]
     prompts: RwLock<HashMap<String, McpPromptHandler>>,
     initialized: RwLock<bool>,
     server_info: ServerInfo,
+    /// Tool metadata storage for querying tool information
+    metadata: RwLock<HashMap<String, ToolMetadata>>,
+    /// Resource metadata storage for querying resource information
+    resource_metadata: RwLock<HashMap<String, ResourceMetadata>>,
 }
 
 type McpToolHandler = Arc<dyn Fn(Value) -> Result<CallToolResult> + Send + Sync>;
@@ -55,6 +61,8 @@ impl McpServer {
                 name: "codetether".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
+            metadata: RwLock::new(HashMap::new()),
+            resource_metadata: RwLock::new(HashMap::new()),
         };
         
         // Register default tools
@@ -71,11 +79,16 @@ impl McpServer {
     
     /// Register a tool
     pub async fn register_tool(&self, name: &str, description: &str, input_schema: Value, handler: McpToolHandler) {
-        let tool = McpTool {
-            name: name.to_string(),
-            description: Some(description.to_string()),
-            input_schema,
-        };
+        // Store tool metadata
+        let metadata = ToolMetadata::new(
+            name.to_string(),
+            Some(description.to_string()),
+            input_schema.clone(),
+        );
+        
+        let mut metadata_map = self.metadata.write().await;
+        metadata_map.insert(name.to_string(), metadata);
+        drop(metadata_map);
         
         let mut tools = self.tools.write().await;
         tools.insert(name.to_string(), handler);
@@ -85,17 +98,65 @@ impl McpServer {
     
     /// Register a resource
     pub async fn register_resource(&self, uri: &str, name: &str, description: &str, mime_type: Option<&str>, handler: McpResourceHandler) {
-        let resource = McpResource {
-            uri: uri.to_string(),
-            name: name.to_string(),
-            description: Some(description.to_string()),
-            mime_type: mime_type.map(|s| s.to_string()),
-        };
+        // Store resource metadata
+        let metadata = ResourceMetadata::new(
+            uri.to_string(),
+            name.to_string(),
+            Some(description.to_string()),
+            mime_type.map(|s| s.to_string()),
+        );
+        
+        let mut metadata_map = self.resource_metadata.write().await;
+        metadata_map.insert(uri.to_string(), metadata);
+        drop(metadata_map);
         
         let mut resources = self.resources.write().await;
         resources.insert(uri.to_string(), handler);
         
         debug!("Registered MCP resource: {}", uri);
+    }
+    
+    /// Get tool metadata by name
+    pub async fn get_tool_metadata(&self, name: &str) -> Option<ToolMetadata> {
+        let metadata = self.metadata.read().await;
+        metadata.get(name).cloned()
+    }
+    
+    /// Get all tool metadata
+    pub async fn get_all_tool_metadata(&self) -> Vec<ToolMetadata> {
+        let metadata = self.metadata.read().await;
+        metadata.values().cloned().collect()
+    }
+    
+    /// Get resource metadata by URI
+    pub async fn get_resource_metadata(&self, uri: &str) -> Option<ResourceMetadata> {
+        let metadata = self.resource_metadata.read().await;
+        metadata.get(uri).cloned()
+    }
+    
+    /// Get all resource metadata
+    pub async fn get_all_resource_metadata(&self) -> Vec<ResourceMetadata> {
+        let metadata = self.resource_metadata.read().await;
+        metadata.values().cloned().collect()
+    }
+    
+    /// Register a prompt handler
+    pub async fn register_prompt(&self, name: &str, handler: McpPromptHandler) {
+        let mut prompts = self.prompts.write().await;
+        prompts.insert(name.to_string(), handler);
+        debug!("Registered MCP prompt: {}", name);
+    }
+    
+    /// Get a prompt handler by name
+    pub async fn get_prompt_handler(&self, name: &str) -> Option<McpPromptHandler> {
+        let prompts = self.prompts.read().await;
+        prompts.get(name).cloned()
+    }
+    
+    /// List all registered prompt names
+    pub async fn list_prompts(&self) -> Vec<String> {
+        let prompts = self.prompts.read().await;
+        prompts.keys().cloned().collect()
     }
     
     /// Run the MCP server (main loop)
@@ -515,7 +576,7 @@ impl McpServer {
     
     /// Handle list tools request
     async fn handle_list_tools(&self, _params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let tools = self.tools.read().await;
+        let _tools = self.tools.read().await;
         
         let tool_list: Vec<McpTool> = vec![
             McpTool {

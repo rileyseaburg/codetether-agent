@@ -1,0 +1,254 @@
+[
+  {
+    "id": "todo_1770136801317",
+    "content": "Implement Handler trait for Agent",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-03T16:40:01.317774333+00:00"
+  },
+  {
+    "id": "todo_1770136801317",
+    "content": "Implement Handler trait for Agent",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:40:01.317935702+00:00"
+  },
+  {
+    "id": "todo_1770136801318",
+    "content": "Ensure Tool import is used (re-export or register)",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:40:01.318289599+00:00"
+  },
+  {
+    "id": "todo_1770136801319",
+    "content": "Add Agent to swarm initialization",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:40:01.319861254+00:00"
+  },
+  {
+    "id": "todo_1770136801320",
+    "content": "Run cargo check to verify",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:40:01.320049703+00:00"
+  },
+  {
+    "id": "todo_1770137504671",
+    "content": "Fix field `permissions` in agent/mod.rs - add validation/logging",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.671844833+00:00"
+  },
+  {
+    "id": "todo_1770137504672",
+    "content": "Fix Moonshot provider fields (id, model, role, call_type) - add to logging",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.672067300+00:00"
+  },
+  {
+    "id": "todo_1770137504672",
+    "content": "Fix field `tx` in mcp/transport.rs - add logging or usage",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.672607598+00:00"
+  },
+  {
+    "id": "todo_1770137504672",
+    "content": "Fix Moonshot provider fields (id, model, role, call_type) - add to logging",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.672845095+00:00"
+  },
+  {
+    "id": "todo_1770137504673",
+    "content": "Fix field `runtime` in rlm/repl.rs - add logging or usage",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.673206527+00:00"
+  },
+  {
+    "id": "todo_1770137504673",
+    "content": "Fix StepFun provider fields (id, index, role, code) - add to logging",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.673428595+00:00"
+  },
+  {
+    "id": "todo_1770137504673",
+    "content": "Fix field `runtime` in rlm/repl.rs - add logging or usage",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.673808327+00:00"
+  },
+  {
+    "id": "todo_1770137504674",
+    "content": "Fix field `content` in tool/codesearch.rs - add to display/debug",
+    "status": "inprogress",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.674002993+00:00"
+  },
+  {
+    "id": "todo_1770137504674",
+    "content": "Fix field `coordinator_agent` in swarm/executor.rs - add logging or usage",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.674368795+00:00"
+  },
+  {
+    "id": "todo_1770137504674",
+    "content": "Fix field `content` in tool/codesearch.rs - add to display/debug",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.674581572+00:00"
+  },
+  {
+    "id": "todo_1770137504674",
+    "content": "Fix field `cache` in tool/skill.rs - add usage or accessor",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T16:51:44.674919013+00:00"
+  },
+  {
+    "id": "todo_1770138031599",
+    "content": "Implement registration of invalid tool handler in src/tool/invalid.rs and registry initialization",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-03T17:00:31.599307992+00:00"
+  },
+  {
+    "id": "todo_1770138077775",
+    "content": "Fix private_interfaces warning in rlm/repl.rs (DslResult visibility)",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-03T17:01:17.775679997+00:00"
+  },
+  {
+    "id": "todo_1770138077775",
+    "content": "Fix dead_code warnings in a2a/client.rs (unused methods)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.775895795+00:00"
+  },
+  {
+    "id": "todo_1770138077776",
+    "content": "Fix dead_code warnings in a2a/types.rs (unused methods/constants)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.776277982+00:00"
+  },
+  {
+    "id": "todo_1770138077776",
+    "content": "Fix dead_code warnings in agent/builtin.rs (unused constants)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.776477520+00:00"
+  },
+  {
+    "id": "todo_1770138077776",
+    "content": "Fix dead_code warnings in provider/models.rs (unused methods)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.776702070+00:00"
+  },
+  {
+    "id": "todo_1770138077776",
+    "content": "Fix dead_code warnings in provider/moonshot.rs (unused field)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.776931969+00:00"
+  },
+  {
+    "id": "todo_1770138077777",
+    "content": "Fix dead_code warnings in rlm/repl.rs (unused variant)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.777115857+00:00"
+  },
+  {
+    "id": "todo_1770138077777",
+    "content": "Fix dead_code warnings in tool/codesearch.rs (unused methods/fields)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.777310775+00:00"
+  },
+  {
+    "id": "todo_1770138077777",
+    "content": "Fix dead_code warnings in tool/patch.rs (unused methods)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.777498482+00:00"
+  },
+  {
+    "id": "todo_1770138077777",
+    "content": "Fix dead_code warnings in tool/ralph.rs (unused method)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.777671519+00:00"
+  },
+  {
+    "id": "todo_1770138077777",
+    "content": "Fix dead_code warnings in tool/rlm.rs (unused method)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.777855687+00:00"
+  },
+  {
+    "id": "todo_1770138077778",
+    "content": "Fix dead_code warnings in tool/skill.rs (unused methods/fields)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.778055265+00:00"
+  },
+  {
+    "id": "todo_1770138077778",
+    "content": "Fix dead_code warnings in tool/task.rs (unused variant)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.778305006+00:00"
+  },
+  {
+    "id": "todo_1770138077778",
+    "content": "Fix dead_code warnings in tool/webfetch.rs (unused constant)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.778538975+00:00"
+  },
+  {
+    "id": "todo_1770138077778",
+    "content": "Fix clippy::too_many_arguments in a2a/worker.rs",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.778770885+00:00"
+  },
+  {
+    "id": "todo_1770138077778",
+    "content": "Fix clippy::match_like_matches_macro in secrets/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.778929051+00:00"
+  },
+  {
+    "id": "todo_1770138077779",
+    "content": "Fix clippy::too_many_arguments in swarm/executor.rs",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.779085958+00:00"
+  },
+  {
+    "id": "todo_1770138077779",
+    "content": "Fix clippy::large_enum_variant in swarm/orchestrator.rs",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.779240014+00:00"
+  },
+  {
+    "id": "todo_1770138077779",
+    "content": "Fix clippy::manual_strip in tool/patch.rs (2 occurrences)",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-03T17:01:17.779391920+00:00"
+  }
+]

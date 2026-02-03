@@ -97,6 +97,7 @@ pub struct ModelCatalog {
     providers: HashMap<String, ProviderInfo>,
 }
 
+#[allow(dead_code)]
 impl ModelCatalog {
     /// Create an empty catalog
     pub fn new() -> Self {
@@ -113,6 +114,7 @@ impl ModelCatalog {
     }
 
     /// Fetch models with a custom URL (for testing or alternate sources)
+    #[allow(dead_code)]
     pub async fn fetch_from(url: &str) -> anyhow::Result<Self> {
         let response = reqwest::get(url).await?;
         let providers: ModelsApiResponse = response.json().await?;
@@ -169,6 +171,7 @@ impl ModelCatalog {
     }
 
     /// Get list of providers that have API keys configured (async, checks Vault)
+    #[allow(dead_code)]
     pub async fn available_providers_async(&self) -> Vec<String> {
         let mut available = Vec::new();
         for provider_id in self.providers.keys() {
@@ -233,6 +236,7 @@ impl ModelCatalog {
     }
 
     /// List all provider IDs (all, not filtered)
+    #[allow(dead_code)]
     pub fn provider_ids(&self) -> Vec<&str> {
         self.providers.keys().map(|s| s.as_str()).collect()
     }
@@ -304,6 +308,7 @@ impl ModelCatalog {
     }
 
     /// Convert API model info to our internal ModelInfo format
+    #[allow(dead_code)]
     pub fn to_model_info(&self, model: &ApiModelInfo, provider_id: &str) -> super::ModelInfo {
         super::ModelInfo {
             id: model.id.clone(),

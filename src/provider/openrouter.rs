@@ -165,9 +165,11 @@ struct OpenRouterMessage {
 struct OpenRouterToolCall {
     id: String,
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     call_type: String,
     function: OpenRouterFunction,
     #[serde(default)]
+    #[allow(dead_code)]
     index: Option<usize>,
 }
 
@@ -299,7 +301,20 @@ impl Provider for OpenRouterProvider {
         let response: OpenRouterResponse = serde_json::from_str(&text)
             .context(format!("Failed to parse response: {}", &text[..text.len().min(200)]))?;
 
+        // Log response metadata for debugging
+        tracing::debug!(
+            response_id = %response.id,
+            provider = ?response.provider,
+            model = ?response.model,
+            "Received OpenRouter response"
+        );
+
         let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
+        
+        // Log native finish reason if present
+        if let Some(ref native_reason) = choice.native_finish_reason {
+            tracing::debug!(native_finish_reason = %native_reason, "OpenRouter native finish reason");
+        }
 
         // Log reasoning content if present (e.g., Kimi K2 models)
         if let Some(ref reasoning) = choice.message.reasoning {
@@ -333,10 +348,26 @@ impl Provider for OpenRouterProvider {
             }
         }
 
+        // Log message role for debugging
+        tracing::debug!(message_role = %choice.message.role, "OpenRouter message role");
+        
+        // Log refusal if present (model declined to respond)
+        if let Some(ref refusal) = choice.message.refusal {
+            tracing::warn!(refusal = %refusal, "Model refused to respond");
+        }
+
         // Add tool calls if present
         if let Some(tool_calls) = &choice.message.tool_calls {
             has_tool_calls = !tool_calls.is_empty();
             for tc in tool_calls {
+                // Log tool call details (uses call_type and index fields)
+                tracing::debug!(
+                    tool_call_id = %tc.id,
+                    call_type = %tc.call_type,
+                    index = ?tc.index,
+                    function_name = %tc.function.name,
+                    "Processing OpenRouter tool call"
+                );
                 content.push(ContentPart::ToolCall {
                     id: tc.id.clone(),
                     name: tc.function.name.clone(),
@@ -377,6 +408,13 @@ impl Provider for OpenRouterProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        tracing::debug!(
+            provider = "openrouter",
+            model = %request.model,
+            message_count = request.messages.len(),
+            "Starting streaming completion request (falling back to non-streaming)"
+        );
+        
         // For now, fall back to non-streaming
         let response = self.complete(request).await?;
         let text = response.message.content.iter()

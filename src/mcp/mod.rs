@@ -26,5 +26,5 @@ mod transport;
 
 pub use types::*;
 pub use server::McpServer;
-pub use client::McpClient;
+pub use client::{McpClient, McpRegistry};
 pub use transport::{Transport, StdioTransport, SseTransport};

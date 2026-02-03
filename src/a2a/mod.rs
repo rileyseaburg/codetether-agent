@@ -8,3 +8,7 @@ pub mod server;
 pub mod types;
 pub mod worker;
 
+// Re-export commonly used types
+#[allow(unused_imports)]
+pub use client::A2AClient;
+

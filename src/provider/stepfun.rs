@@ -18,12 +18,38 @@ pub struct StepFunProvider {
     client: reqwest::Client,
 }
 
+impl std::fmt::Debug for StepFunProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StepFunProvider")
+            .field("api_key", &"<REDACTED>")
+            .field("api_key_len", &self.api_key.len())
+            .field("client", &"<reqwest::Client>")
+            .finish()
+    }
+}
+
 impl StepFunProvider {
     pub fn new(api_key: String) -> Result<Self> {
+        tracing::debug!(
+            provider = "stepfun",
+            api_key_len = api_key.len(),
+            "Creating StepFun provider"
+        );
         Ok(Self {
             api_key,
             client: reqwest::Client::new(),
         })
+    }
+    
+    /// Validate that the API key is non-empty
+    fn validate_api_key(&self) -> Result<()> {
+        if self.api_key.is_empty() {
+            anyhow::bail!("StepFun API key is empty");
+        }
+        if self.api_key.len() < 10 {
+            tracing::warn!(provider = "stepfun", "API key seems unusually short");
+        }
+        Ok(())
     }
 }
 
@@ -147,6 +173,7 @@ struct StreamDelta {
 
 #[derive(Debug, Deserialize)]
 struct StreamToolCall {
+    #[allow(dead_code)]
     index: usize,
     #[serde(default)]
     id: Option<String>,
@@ -356,6 +383,17 @@ impl Provider for StepFunProvider {
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+        tracing::debug!(
+            provider = "stepfun",
+            model = %request.model,
+            message_count = request.messages.len(),
+            tool_count = request.tools.len(),
+            "Starting completion request"
+        );
+        
+        // Validate API key before making request
+        self.validate_api_key()?;
+        
         let messages = self.convert_messages(&request.messages);
         let tools = self.convert_tools(&request.tools);
 
@@ -387,6 +425,10 @@ impl Provider for StepFunProvider {
 
         if !status.is_success() {
             if let Ok(err) = serde_json::from_str::<ErrorResponse>(&body) {
+                // Log error code if present for debugging
+                if let Some(ref code) = err.error.code {
+                    tracing::error!(error_code = %code, "StepFun API error code");
+                }
                 anyhow::bail!("StepFun API error: {}", err.error.message);
             }
             anyhow::bail!("StepFun API error ({}): {}", status, body);
@@ -395,10 +437,23 @@ impl Provider for StepFunProvider {
         let chat_response: ChatResponse = serde_json::from_str(&body)
             .map_err(|e| anyhow::anyhow!("Failed to parse response: {} - Body: {}", e, body))?;
 
+        // Log response metadata for debugging
+        tracing::debug!(
+            response_id = %chat_response.id,
+            "Received StepFun response"
+        );
+
         let choice = chat_response
             .choices
             .first()
             .ok_or_else(|| anyhow::anyhow!("No choices in response"))?;
+        
+        // Log choice index and role for debugging
+        tracing::debug!(
+            choice_index = choice.index,
+            message_role = %choice.message.role,
+            "Processing StepFun choice"
+        );
 
         // Log usage for tracing
         tracing::info!(
@@ -458,6 +513,16 @@ impl Provider for StepFunProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        tracing::debug!(
+            provider = "stepfun",
+            model = %request.model,
+            message_count = request.messages.len(),
+            tool_count = request.tools.len(),
+            "Starting streaming completion request"
+        );
+        
+        self.validate_api_key()?;
+        
         let messages = self.convert_messages(&request.messages);
         let tools = self.convert_tools(&request.tools);
 

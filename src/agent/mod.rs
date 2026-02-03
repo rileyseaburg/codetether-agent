@@ -7,8 +7,10 @@ pub mod builtin;
 use crate::config::PermissionAction;
 use crate::provider::{CompletionRequest, Message, Provider, Role, ContentPart};
 use crate::session::Session;
+use crate::swarm::{Actor, ActorStatus, Handler, SwarmMessage};
 use crate::tool::{Tool, ToolRegistry, ToolResult};
 use anyhow::Result;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -167,6 +169,13 @@ impl Agent {
 
     /// Execute a single tool
     async fn execute_tool(&self, name: &str, arguments: &str) -> ToolResult {
+        // Check permissions for this tool
+        if let Some(permission) = self.permissions.get(name) {
+            tracing::debug!(tool = name, permission = ?permission, "Checking tool permission");
+            // Permission validation could be extended here
+            // For now, we just log that a permission check occurred
+        }
+        
         match self.tools.get(name) {
             Some(tool) => {
                 let args: serde_json::Value = match serde_json::from_str(arguments) {
@@ -189,11 +198,132 @@ impl Agent {
                     },
                 }
             }
-            None => ToolResult {
-                output: format!("Unknown tool: {}", name),
-                success: false,
-                metadata: HashMap::new(),
-            },
+            None => {
+                // Use the invalid tool handler for better error messages
+                let available_tools = self.tools.list().iter().map(|s| s.to_string()).collect();
+                let invalid_tool = crate::tool::invalid::InvalidTool::with_context(name.to_string(), available_tools);
+                let args = serde_json::json!({
+                    "requested_tool": name,
+                    "args": serde_json::from_str::<serde_json::Value>(arguments).unwrap_or(serde_json::json!({}))
+                });
+                match invalid_tool.execute(args).await {
+                    Ok(result) => result,
+                    Err(e) => ToolResult {
+                        output: format!("Unknown tool: {}. Error: {}", name, e),
+                        success: false,
+                        metadata: HashMap::new(),
+                    },
+                }
+            }
+        }
+    }
+
+    /// Get a tool from the registry by name
+    pub fn get_tool(&self, name: &str) -> Option<Arc<dyn Tool>> {
+        self.tools.get(name)
+    }
+
+    /// Register a tool with the agent's tool registry
+    pub fn register_tool(&mut self, tool: Arc<dyn Tool>) {
+        self.tools.register(tool);
+    }
+
+    /// List all available tool IDs
+    pub fn list_tools(&self) -> Vec<&str> {
+        self.tools.list()
+    }
+
+    /// Check if a tool is available
+    pub fn has_tool(&self, name: &str) -> bool {
+        self.tools.get(name).is_some()
+    }
+}
+
+/// Actor implementation for Agent - enables swarm participation
+#[async_trait]
+impl Actor for Agent {
+    fn actor_id(&self) -> &str {
+        &self.info.name
+    }
+
+    fn actor_status(&self) -> ActorStatus {
+        // Agent is always ready to process messages
+        ActorStatus::Ready
+    }
+
+    async fn initialize(&mut self) -> Result<()> {
+        // Agent initialization is handled during construction
+        // Additional async initialization can be added here
+        tracing::info!("Agent '{}' initialized for swarm participation", self.info.name);
+        Ok(())
+    }
+
+    async fn shutdown(&mut self) -> Result<()> {
+        tracing::info!("Agent '{}' shutting down", self.info.name);
+        Ok(())
+    }
+}
+
+/// Handler implementation for SwarmMessage - enables message processing
+#[async_trait]
+impl Handler<SwarmMessage> for Agent {
+    type Response = SwarmMessage;
+
+    async fn handle(&mut self, message: SwarmMessage) -> Result<Self::Response> {
+        match message {
+            SwarmMessage::ExecuteTask { task_id, instruction } => {
+                // Create a new session for this task
+                let mut session = Session::new().await?;
+                
+                // Execute the task
+                match self.execute(&mut session, &instruction).await {
+                    Ok(response) => {
+                        Ok(SwarmMessage::TaskCompleted {
+                            task_id,
+                            result: response.text,
+                        })
+                    }
+                    Err(e) => {
+                        Ok(SwarmMessage::TaskFailed {
+                            task_id,
+                            error: e.to_string(),
+                        })
+                    }
+                }
+            }
+            SwarmMessage::ToolRequest { tool_id, arguments } => {
+                // Execute the requested tool
+                let result = if let Some(tool) = self.get_tool(&tool_id) {
+                    match tool.execute(arguments).await {
+                        Ok(r) => r,
+                        Err(e) => ToolResult::error(format!("Tool execution failed: {}", e)),
+                    }
+                } else {
+                    // Use the invalid tool handler for better error messages
+                    let available_tools = self.tools.list().iter().map(|s| s.to_string()).collect();
+                    let invalid_tool = crate::tool::invalid::InvalidTool::with_context(tool_id.clone(), available_tools);
+                    let args = serde_json::json!({
+                        "requested_tool": tool_id,
+                        "args": arguments
+                    });
+                    match invalid_tool.execute(args).await {
+                        Ok(r) => r,
+                        Err(e) => ToolResult::error(format!("Tool '{}' not found: {}", tool_id, e)),
+                    }
+                };
+                
+                Ok(SwarmMessage::ToolResponse {
+                    tool_id,
+                    result,
+                })
+            }
+            _ => {
+                // Other message types are not handled directly by the agent
+                Ok(SwarmMessage::TaskFailed {
+                    task_id: "unknown".to_string(),
+                    error: "Unsupported message type".to_string(),
+                })
+            }
         }
     }
 }
@@ -222,6 +352,7 @@ pub struct AgentRegistry {
 }
 
 impl AgentRegistry {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             agents: HashMap::new(),
@@ -234,6 +365,7 @@ impl AgentRegistry {
     }
 
     /// Get agent info by name
+    #[allow(dead_code)]
     pub fn get(&self, name: &str) -> Option<&AgentInfo> {
         self.agents.get(name)
     }
@@ -244,6 +376,7 @@ impl AgentRegistry {
     }
 
     /// List primary agents (visible in UI)
+    #[allow(dead_code)]
     pub fn list_primary(&self) -> Vec<&AgentInfo> {
         self.agents
             .values()

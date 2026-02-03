@@ -12,6 +12,7 @@ use std::path::PathBuf;
 /// for specific tasks like "code review", "testing", etc.
 pub struct SkillTool {
     skills_dir: PathBuf,
+    #[allow(dead_code)]
     cache: HashMap<String, String>,
 }
 
@@ -30,6 +31,7 @@ impl SkillTool {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_dir(dir: PathBuf) -> Self {
         Self {
             skills_dir: dir,
