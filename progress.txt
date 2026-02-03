@@ -16025,3 +16025,611 @@ impl TokenUsage {
 
     /// Calculate cost based on pricing (simplified)
     pub fn estimate_cost(&
+
+---
+
+## Iteration 4 - US-004 (2026-02-03T18:57:47.151248496+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-004 - Implement parallel chunk processing using the connection pool with work distribution and load balancing. This builds on the pool implementation from previous stories.
+
+```rust
+// src/rlm/processing.rs - Parallel chunk processing with connection pool
+
+//! Parallel Chunk Processing with Connection Pool
+//! 
+//! This module provides parallel processing of RLM chunks using the connection pool,
+//! with work distribution, load balancing, and configurable concurrency limits.
+
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex, atomic::{AtomicU64, AtomicBool, Ordering}};
+use std::time::{Duration, Instant};
+use std::future::Future;
+use std::pin::Pin;
+use tokio::sync::{mpsc, Semaphore, oneshot, RwLock};
+use tokio::task::{JoinHandle, JoinSet};
+use futures::future::{join_all, try_join_all};
+use tracing::{debug, error, info, trace, warn};
+use thiserror::Error;
+
+use crate::rlm::pool::{ConnectionPool, PooledConnection, PoolError, PoolConfig};
+use crate::rlm::retry::{RetryConfig, RetryExecutor, CircuitBreaker, CircuitBreakerConfig};
+
+/// Errors that can occur in parallel processing
+#[derive(Debug, Error)]
+pub enum ProcessingError {
+    #[error("Processing cancelled")]
+    Cancelled,
+
+    #[error("No available connections in pool")]
+    PoolExhausted,
+
+    #[error("Chunk processing failed: {0}")]
+    ChunkFailed(String),
+
+    #[error("Batch processing failed: {0}")]
+    BatchFailed(String),
+
+    #[error("Timeout waiting for processing: {0:?}")]
+    Timeout(Duration),
+
+    #[error("Load balancer error: {0}")]
+    LoadBalancer(String),
+
+    #[error("Circuit breaker open: {0}")]
+    CircuitBreakerOpen(String),
+
+    #[error("Pool error: {0}")]
+    Pool(#[from] PoolError),
+
+    #[error("Retry error: {0}")]
+    Retry(#[from] crate::rlm::retry::RetryError),
+}
+
+/// Result type for processing operations
+pub type ProcessingResult<T> = Result<T, ProcessingError>;
+
+/// A chunk of work to be processed
+#[derive(Debug, Clone)]
+pub struct WorkChunk {
+    /// Unique identifier for this chunk
+    pub id: String,
+    /// The actual data to process
+    pub data: Vec<u8>,
+    /// Priority (higher = more important)
+    pub priority: u8,
+    /// Estimated processing complexity (affects load balancing)
+    pub complexity: u32,
+    /// Dependencies that must complete before this chunk
+    pub dependencies: Vec<String>,
+    /// Maximum time allowed for processing
+    pub timeout: Duration,
+    /// Metadata for routing decisions
+    pub metadata: HashMap<String, String>,
+}
+
+impl WorkChunk {
+    /// Create a new work chunk
+    pub fn new(id: impl Into<String>, data: impl Into<Vec<u8>>) -> Self {
+        Self {
+            id: id.into(),
+            data: data.into(),
+            priority: 5,
+            complexity: 1,
+            dependencies: Vec::new(),
+            timeout: Duration::from_secs(60),
+            metadata: HashMap::new(),
+        }
+    }
+
+    /// Set priority
+    pub fn with_priority(mut self, priority: u8) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Set complexity
+    pub fn with_complexity(mut self, complexity: u32) -> Self {
+        self.complexity = complexity;
+        self
+    }
+
+    /// Add dependency
+    pub fn depends_on(mut self, chunk_id: impl Into<String>) -> Self {
+        self.dependencies.push(chunk_id.into());
+        self
+    }
+
+    /// Set timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Add metadata
+    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+
+    /// Get data size in bytes
+    pub fn size_bytes(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// Result of processing a single chunk
+#[derive(Debug, Clone)]
+pub struct ChunkResult {
+    /// Original chunk ID
+    pub chunk_id: String,
+    /// Whether processing succeeded
+    pub success: bool,
+    /// Output data
+    pub output: Option<Vec<u8>>,
+    /// Error message if failed
+    pub error: Option<String>,
+    /// Processing time
+    pub processing_time: Duration,
+    /// Connection ID that processed this
+    pub connection_id: String,
+    /// Retry attempts used
+    pub retry_attempts: u32,
+}
+
+impl ChunkResult {
+    /// Create success result
+    pub fn success(chunk_id: impl Into<String>, output: Vec<u8>, conn_id: impl Into<String>) -> Self {
+        Self {
+            chunk_id: chunk_id.into(),
+            success: true,
+            output: Some(output),
+            error: None,
+            processing_time: Duration::ZERO,
+            connection_id: conn_id.into(),
+            retry_attempts: 0,
+        }
+    }
+
+    /// Create failure result
+    pub fn failure(chunk_id: impl Into<String>, error: impl Into<String>) -> Self {
+        Self {
+            chunk_id: chunk_id.into(),
+            success: false,
+            output: None,
+            error: Some(error.into()),
+            processing_time: Duration::ZERO,
+            connection_id: String::new(),
+            retry_attempts: 0,
+        }
+    }
+}
+
+/// Configuration for parallel processing
+#[derive(Debug, Clone)]
+pub struct ParallelProcessingConfig {
+    /// Maximum concurrent chunks processed
+    pub max_concurrent: usize,
+    /// Maximum chunks per batch
+    pub max_batch_size: usize,
+    /// Timeout for entire batch
+    pub batch_timeout: Duration,
+    /// Whether to enable work stealing
+    pub enable_work_stealing: bool,
+    /// Load balancing strategy
+    pub load_balance_strategy: LoadBalanceStrategy,
+    /// Retry configuration for failed chunks
+    pub retry_config: RetryConfig,
+    /// Whether to process dependencies first
+    pub respect_dependencies: bool,
+    /// Chunk ordering strategy
+    pub ordering: ChunkOrdering,
+}
+
+impl Default for ParallelProcessingConfig {
+    fn default() -> Self {
+        Self {
+            max_concurrent: 10,
+            max_batch_size: 100,
+            batch_timeout: Duration::from_secs(300),
+            enable_work_stealing: true,
+            load_balance_strategy: LoadBalanceStrategy::RoundRobin,
+            retry_config: RetryConfig::default(),
+            respect_dependencies: true,
+            ordering: ChunkOrdering::Priority,
+        }
+    }
+}
+
+impl ParallelProcessingConfig {
+    /// Create new config
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set concurrency limit
+    pub fn with_concurrency(mut self, max_concurrent: usize) -> Self {
+        self.max_concurrent = max_concurrent;
+        self
+    }
+
+    /// Set batch size
+    pub fn with_batch_size(mut self, size: usize) -> Self {
+        self.max_batch_size = size;
+        self
+    }
+
+    /// Set load balance strategy
+    pub fn with_load_balance(mut self, strategy: LoadBalanceStrategy) -> Self {
+        self.load_balance_strategy = strategy;
+        self
+    }
+
+    /// Disable work stealing
+    pub fn without_work_stealing(mut self) -> Self {
+        self.enable_work_stealing = false;
+        self
+    }
+}
+
+/// Load balancing strategies
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoadBalanceStrategy {
+    /// Simple round-robin distribution
+    RoundRobin,
+    /// Least connections (prefer idle connections)
+    LeastConnections,
+    /// Weighted by chunk complexity
+    Weighted,
+    /// Priority-based (higher priority chunks first)
+    Priority,
+    /// First-available (greedy)
+    FirstAvailable,
+}
+
+/// Chunk ordering strategies
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChunkOrdering {
+    /// As submitted
+    Fifo,
+    /// By priority (high to low)
+    Priority,
+    /// By complexity (simple first)
+    SimpleFirst,
+    /// By complexity (complex first)
+    ComplexFirst,
+    /// By size (small first)
+    SmallFirst,
+}
+
+/// Work queue with priority support
+struct PriorityWorkQueue {
+    /// High priority chunks (processed first)
+    high: VecDeque<WorkChunk>,
+    /// Normal priority chunks
+    normal: VecDeque<WorkChunk>,
+    /// Low priority chunks
+    low: VecDeque<WorkChunk>,
+    /// Completed chunk IDs for dependency tracking
+    completed: HashMap<String, ChunkResult>,
+    /// In-progress chunk IDs
+    in_progress: HashMap<String, Instant>,
+}
+
+impl PriorityWorkQueue {
+    fn new() -> Self {
+        Self {
+            high: VecDeque::new(),
+            normal: VecDeque::new(),
+            low: VecDeque::new(),
+            completed: HashMap::new(),
+            in_progress: HashMap::new(),
+        }
+    }
+
+    /// Add chunk to appropriate queue
+    fn push(&mut self, chunk: WorkChunk) {
+        match chunk.priority {
+            8..=10 => self.high.push_back(chunk),
+            4..=7 => self.normal.push_back(chunk),
+            _ => self.low.push_back(chunk),
+        }
+    }
+
+    /// Get next ready chunk (dependencies satisfied)
+    fn pop_ready(&mut self) -> Option<WorkChunk> {
+        // Try high priority first
+        if let Some(pos) = self.find_ready(&self.high) {
+            return Some(self.high.remove(pos).unwrap());
+        }
+        // Then normal
+        if let Some(pos) = self.find_ready(&self.normal) {
+            return Some(self.normal.remove(pos).unwrap());
+        }
+        // Then low
+        if let Some(pos) = self.find_ready(&self.low) {
+            return Some(self.low.remove(pos).unwrap());
+        }
+        None
+    }
+
+    /// Find position of chunk with satisfied dependencies
+    fn find_ready(&self, queue: &VecDeque<WorkChunk>) -> Option<usize> {
+        queue.iter().position(|chunk| {
+            chunk.dependencies.iter().all(|dep| {
+                self.completed.contains_key(dep)
+            })
+        })
+    }
+
+    /// Mark chunk as in-progress
+    fn mark_in_progress(&mut self, chunk_id: String) {
+        self.in_progress.insert(chunk_id, Instant::now());
+    }
+
+    /// Mark chunk as completed
+    fn mark_completed(&mut self, result: ChunkResult) {
+        self.in_progress.remove(&result.chunk_id);
+        self.completed.insert(result.chunk_id.clone(), result);
+    }
+
+    /// Check if all chunks are done
+    fn is_empty(&self) -> bool {
+        self.high.is_empty() && self.normal.is_empty() && self.low.is_empty() && self.in_progress.is_empty()
+    }
+
+    /// Get count of pending chunks
+    fn pending_count(&self) -> usize {
+        self.high.len() + self.normal.len() + self.low.len()
+    }
+
+    /// Get count of in-progress chunks
+    fn in_progress_count(&self) -> usize {
+        self.in_progress.len()
+    }
+
+    /// Steal work from this queue (for work stealing)
+    fn steal(&mut self) -> Option<WorkChunk> {
+        // Try to steal from low priority first, then normal
+        self.low.pop_back().or_else(|| self.normal.pop_back())
+    }
+}
+
+/// Load balancer for distributing work across connections
+struct LoadBalancer {
+    strategy: LoadBalanceStrategy,
+    /// Connection weights (for weighted strategy)
+    weights: HashMap<String, u32>,
+    /// Current round-robin index
+    rr_index: AtomicU64,
+    /// Connection loads (active chunks)
+    connection_loads: RwLock<HashMap<String, usize>>,
+}
+
+impl LoadBalancer {
+    fn new(strategy: LoadBalanceStrategy) -> Self {
+        Self {
+            strategy,
+            weights: HashMap::new(),
+            rr_index: AtomicU64::new(0),
+            connection_loads: RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// Select next connection for a chunk
+    async fn select_connection<C: PooledConnection>(
+        &self,
+        pool: &ConnectionPool<C>,
+        chunk: &WorkChunk,
+    ) -> ProcessingResult<String> {
+        match self.strategy {
+            LoadBalanceStrategy::RoundRobin => {
+                // Get available connections and round-robin
+                let conns = pool.available_connections().await
+                    .map_err(|e| ProcessingError::Pool(e))?;
+                
+                if conns.is_empty() {
+                    return Err(ProcessingError::PoolExhausted);
+                }
+
+                let idx = self.rr_index.fetch_add(1, Ordering::Relaxed) as usize % conns.len();
+                Ok(conns[idx].clone())
+            }
+            LoadBalanceStrategy::LeastConnections => {
+                // Find connection with lowest load
+                let loads = self.connection_loads.read().await;
+                let conns = pool.available_connections().await
+                    .map_err(|e| ProcessingError::Pool(e))?;
+                
+                conns.into_iter()
+                    .min_by_key(|conn| loads.get(conn).copied().unwrap_or(0))
+                    .ok_or(ProcessingError::PoolExhausted)
+            }
+            LoadBalanceStrategy::Weighted => {
+                // Use complexity to weight selection
+                // Higher complexity -> prefer dedicated connection
+                if chunk.complexity > 5 {
+                    // Find least loaded for complex chunks
+                    self.select_least_loaded(pool).await
+                } else {
+                    // Round-robin for simple chunks
+                    self.select_connection(pool, chunk).await
+                }
+            }
+            LoadBalanceStrategy::Priority => {
+                // Priority doesn't affect connection selection, just queue ordering
+                self.select_least_loaded(pool).await
+            }
+            LoadBalanceStrategy::FirstAvailable => {
+                // Greedy: first available connection
+                pool.available_connections().await
+                    .map_err(|e| ProcessingError::Pool(e))?
+                    .into_iter()
+                    .next()
+                    .ok_or(ProcessingError::PoolExhausted)
+            }
+        }
+    }
+
+    async fn select_least_loaded<C: PooledConnection>(
+        &self,
+        pool: &ConnectionPool<C>,
+    ) -> ProcessingResult<String> {
+        let loads = self.connection_loads.read().await;
+        let conns = pool.available_connections().await
+            .map_err(|e| ProcessingError::Pool(e))?;
+        
+        conns.into_iter()
+            .min_by_key(|conn| loads.get(conn).copied().unwrap_or(0))
+            .ok_or(ProcessingError::PoolExhausted)
+    }
+
+    /// Record that a connection is processing a chunk
+    async fn increment_load(&self, connection_id: &str) {
+        let mut loads = self.connection_loads.write().await;
+        *loads.entry(connection_id.to_string()).or_insert(0) += 1;
+    }
+
+    /// Record that a connection finished a chunk
+    async fn decrement_load(&self, connection_id: &str) {
+        let mut loads = self.connection_loads.write().await;
+        if let Some(count) = loads.get_mut(connection_id) {
+            *count = count.saturating_sub(1);
+        }
+    }
+}
+
+/// Processing statistics
+#[derive(Debug, Clone, Default)]
+pub struct ProcessingStats {
+    /// Total chunks processed
+    pub total_chunks: u64,
+    /// Successful chunks
+    pub successful: u64,
+    /// Failed chunks
+    pub failed: u64,
+    /// Cancelled chunks
+    pub cancelled: u64,
+    /// Total processing time
+    pub total_processing_time: Duration,
+    /// Average chunk size
+    pub avg_chunk_size: usize,
+    /// Peak concurrent processing
+    pub peak_concurrent: usize,
+    /// Retried chunks
+    pub retried_chunks: u64,
+    /// Work steal events
+    pub work_steals: u64,
+}
+
+/// Parallel chunk processor using connection pool
+pub struct ParallelProcessor<C: PooledConnection> {
+    pool: Arc<ConnectionPool<C>>,
+    config: ParallelProcessingConfig,
+    load_balancer: Arc<LoadBalancer>,
+    stats: Arc<RwLock<ProcessingStats>>,
+    cancellation: Arc<AtomicBool>,
+    /// Semaphore for limiting concurrency
+    semaphore: Arc<Semaphore>,
+}
+
+impl<C: PooledConnection + 'static> ParallelProcessor<C> {
+    /// Create new parallel processor
+    pub fn new(
+        pool: ConnectionPool<C>,
+        config: ParallelProcessingConfig,
+    ) -> Self {
+        let semaphore = Arc::new(Semaphore::new(config.max_concurrent));
+        
+        Self {
+            pool: Arc::new(pool),
+            config,
+            load_balancer: Arc::new(LoadBalancer::new(LoadBalanceStrategy::RoundRobin)),
+            stats: Arc::new(RwLock::new(ProcessingStats::default())),
+            cancellation: Arc::new(AtomicBool::new(false)),
+            semaphore,
+        }
+    }
+
+    /// Process a batch of chunks in parallel
+    pub async fn process_batch<F, Fut>(
+        &self,
+        chunks: Vec<WorkChunk>,
+        processor: F,
+    ) -> ProcessingResult<Vec<ChunkResult>>
+    where
+        F: Fn(WorkChunk, C) -> Fut + Send + Sync + Clone + 'static,
+        Fut: Future<Output = ProcessingResult<ChunkResult>> + Send,
+    {
+        if chunks.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        info!("Processing batch of {} chunks with max concurrency {}", 
+            chunks.len(), self.config.max_concurrent);
+
+        let start = Instant::now();
+        let mut queue = PriorityWorkQueue::new();
+        
+        // Add chunks to queue with proper ordering
+        let mut chunks: Vec<_> = chunks.into_iter().collect();
+        self.order_chunks(&mut chunks);
+        
+        for chunk in chunks {
+            queue.push(chunk);
+        }
+
+        let queue = Arc::new(Mutex::new(queue));
+        let mut results = Vec::new();
+        let mut join_set = JoinSet::new();
+
+        // Process with timeout
+        let timeout = tokio::time::timeout(self.config.batch_timeout, async {
+            while !self.is_cancelled() {
+                // Check if we're done
+                {
+                    let q = queue.lock().unwrap();
+                    if q.is_empty() {
+                        break;
+                    }
+                }
+
+                // Try to get a permit for concurrent processing
+                let permit = match self.semaphore.clone().try_acquire_owned() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        // At capacity, wait for a task to complete
+                        if let Some(res) = join_set.join_next().await {
+                            match res {
+                                Ok(chunk_result) => {
+                                    self.handle_completion(&queue, &chunk_result).await;
+                                    results.push(chunk_result);
+                                }
+                                Err(e) => {
+                                    error!("Task panicked: {}", e);
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                };
+
+                // Get next ready chunk
+                let chunk = {
+                    let mut q = queue.lock().unwrap();
+                    q.pop_ready()
+                };
+
+                if let Some(chunk) = chunk {
+                    let processor = processor.clone();
+                    let pool = Arc::clone(&self.pool);
+                    let lb = Arc::clone(&self.load_balancer);
+                    let stats = Arc::clone(&self.stats);
+                    let queue = Arc::clone(&queue);
+
+                    // Mark in-progress
+                    queue.lock().unwrap().mark_in_progress(chunk.id.clone());
+
+                    // Spawn processing task

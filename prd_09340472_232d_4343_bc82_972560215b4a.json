@@ -13,7 +13,7 @@
         "Module exports types, client, and providers",
         "Integrated into src/lib.rs"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 2
