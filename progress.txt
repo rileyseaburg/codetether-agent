@@ -23790,3 +23790,612 @@ impl Provider for OpenAiProvider {
         let model = OpenAiModel::from_str(&request.model);
         if model.is_reasoning_model() {
             openai_request.t
+
+---
+
+## Iteration 3 - US-002 (2026-02-03T19:17:09.914244046+00:00)
+
+**Status:** completed
+
+### Summary
+I'll implement US-002 - Create VCS module structure for the Git-based undo system. This builds on the git2 dependency added in US-001.
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Implementing US-002: Create VCS module structure ==="
+
+# Create the VCS module directory
+mkdir -p src/vcs
+
+echo "Created src/vcs/ directory"
+
+# Create mod.rs - the module entry point with exports
+cat > src/vcs/mod.rs << 'EOF'
+//! Version Control System (VCS) Module - Git-based Undo System
+//! 
+//! This module provides Git-based version control operations for the codetether-agent,
+//! enabling automatic commits, branch management, diff generation, and undo functionality.
+//! 
+//! # Architecture
+//! 
+//! The VCS module is organized into submodules:
+//! - `git`: Core Git operations using libgit2
+//! - `undo`: Undo/redo operation management
+//! - `snapshot`: Snapshot creation and restoration
+//! - `branch`: Branch management for isolation
+//! - `diff`: Diff generation and parsing
+//! - `commit`: Commit operations with metadata
+
+use std::path::Path;
+
+// Re-export main types
+pub use git::{GitRepository, GitError, GitResult};
+pub use undo::{UndoManager, UndoOperation, UndoState};
+pub use snapshot::{Snapshot, SnapshotManager};
+pub use branch::{BranchManager, BranchType};
+pub use diff::{DiffGenerator, FileDiff, DiffStats};
+pub use commit::{CommitBuilder, CommitMetadata};
+
+/// Module containing core Git operations using libgit2
+pub mod git;
+
+/// Module for undo/redo operation management
+pub mod undo;
+
+/// Module for snapshot creation and restoration
+pub mod snapshot;
+
+/// Module for branch management
+pub mod branch;
+
+/// Module for diff generation and parsing
+pub mod diff;
+
+/// Module for commit operations
+pub mod commit;
+
+/// Errors that can occur in VCS operations
+#[derive(Debug, thiserror::Error)]
+pub enum VcsError {
+    /// Git operation failed
+    #[error("Git error: {0}")]
+    Git(#[from] GitError),
+    
+    /// Undo operation failed
+    #[error("Undo error: {0}")]
+    Undo(String),
+    
+    /// Snapshot operation failed
+    #[error("Snapshot error: {0}")]
+    Snapshot(String),
+    
+    /// Branch operation failed
+    #[error("Branch error: {0}")]
+    Branch(String),
+    
+    /// Diff operation failed
+    #[error("Diff error: {0}")]
+    Diff(String),
+    
+    /// Commit operation failed
+    #[error("Commit error: {0}")]
+    Commit(String),
+    
+    /// Invalid repository state
+    #[error("Invalid repository state: {0}")]
+    InvalidState(String),
+    
+    /// Repository not found
+    #[error("Repository not found at: {0}")]
+    RepositoryNotFound(String),
+    
+    /// Operation not supported
+    #[error("Operation not supported: {0}")]
+    NotSupported(String),
+    
+    /// IO error
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+/// Result type for VCS operations
+pub type VcsResult<T> = Result<T, VcsError>;
+
+/// Configuration for VCS operations
+#[derive(Debug, Clone)]
+pub struct VcsConfig {
+    /// Repository path
+    pub repo_path: std::path::PathBuf,
+    /// Whether to auto-commit on changes
+    pub auto_commit: bool,
+    /// Commit message template
+    pub commit_template: String,
+    /// Branch prefix for agent operations
+    pub branch_prefix: String,
+    /// Maximum undo history size
+    pub max_undo_history: usize,
+    /// Whether to sign commits
+    pub sign_commits: bool,
+    /// Author name for commits
+    pub author_name: String,
+    /// Author email for commits
+    pub author_email: String,
+}
+
+impl Default for VcsConfig {
+    fn default() -> Self {
+        Self {
+            repo_path: std::path::PathBuf::from("."),
+            auto_commit: true,
+            commit_template: "[codetether] {operation}: {description}".to_string(),
+            branch_prefix: "codetether/".to_string(),
+            max_undo_history: 100,
+            sign_commits: false,
+            author_name: "codetether-agent".to_string(),
+            author_email: "agent@codetether.local".to_string(),
+        }
+    }
+}
+
+impl VcsConfig {
+    /// Create new config with defaults
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set repository path
+    pub fn with_repo_path(mut self, path: impl AsRef<Path>) -> Self {
+        self.repo_path = path.as_ref().to_path_buf();
+        self
+    }
+
+    /// Set auto-commit behavior
+    pub fn with_auto_commit(mut self, auto_commit: bool) -> Self {
+        self.auto_commit = auto_commit;
+        self
+    }
+
+    /// Set commit template
+    pub fn with_commit_template(mut self, template: impl Into<String>) -> Self {
+        self.commit_template = template.into();
+        self
+    }
+
+    /// Set branch prefix
+    pub fn with_branch_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.branch_prefix = prefix.into();
+        self
+    }
+
+    /// Set max undo history
+    pub fn with_max_undo_history(mut self, max: usize) -> Self {
+        self.max_undo_history = max;
+        self
+    }
+
+    /// Set author information
+    pub fn with_author(mut self, name: impl Into<String>, email: impl Into<String>) -> Self {
+        self.author_name = name.into();
+        self.author_email = email.into();
+        self
+    }
+}
+
+/// Main VCS manager that coordinates all VCS operations
+pub struct VcsManager {
+    config: VcsConfig,
+    git: GitRepository,
+    undo: UndoManager,
+    snapshots: SnapshotManager,
+    branches: BranchManager,
+}
+
+impl VcsManager {
+    /// Create a new VCS manager with configuration
+    pub fn new(config: VcsConfig) -> VcsResult<Self> {
+        let git = GitRepository::open(&config.repo_path)?;
+        let undo = UndoManager::new(config.max_undo_history);
+        let snapshots = SnapshotManager::new(&git);
+        let branches = BranchManager::new(&git, &config.branch_prefix);
+
+        Ok(Self {
+            config,
+            git,
+            undo,
+            snapshots,
+            branches,
+        })
+    }
+
+    /// Get the Git repository handle
+    pub fn git(&self) -> &GitRepository {
+        &self.git
+    }
+
+    /// Get the undo manager
+    pub fn undo(&self) -> &UndoManager {
+        &self.undo
+    }
+
+    /// Get mutable undo manager
+    pub fn undo_mut(&mut self) -> &mut UndoManager {
+        &mut self.undo
+    }
+
+    /// Get the snapshot manager
+    pub fn snapshots(&self) -> &SnapshotManager {
+        &self.snapshots
+    }
+
+    /// Get the branch manager
+    pub fn branches(&self) -> &BranchManager {
+        &self.branches
+    }
+
+    /// Get configuration
+    pub fn config(&self) -> &VcsConfig {
+        &self.config
+    }
+}
+
+/// Initialize the VCS module with a repository path
+pub fn init(repo_path: impl AsRef<Path>) -> VcsResult<VcsManager> {
+    let config = VcsConfig::new().with_repo_path(repo_path);
+    VcsManager::new(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vcs_config_defaults() {
+        let config = VcsConfig::default();
+        assert_eq!(config.auto_commit, true);
+        assert_eq!(config.branch_prefix, "codetether/");
+        assert_eq!(config.max_undo_history, 100);
+    }
+
+    #[test]
+    fn test_vcs_config_builder() {
+        let config = VcsConfig::new()
+            .with_repo_path("/tmp/test")
+            .with_auto_commit(false)
+            .with_branch_prefix("agent/")
+            .with_author("Test", "test@example.com");
+
+        assert_eq!(config.repo_path, std::path::PathBuf::from("/tmp/test"));
+        assert_eq!(config.auto_commit, false);
+        assert_eq!(config.branch_prefix, "agent/");
+        assert_eq!(config.author_name, "Test");
+        assert_eq!(config.author_email, "test@example.com");
+    }
+}
+EOF
+
+echo "Created src/vcs/mod.rs"
+
+# Create git.rs - core Git operations
+cat > src/vcs/git.rs << 'EOF'
+//! Core Git Operations
+//! 
+//! This module provides a high-level interface to Git operations using libgit2.
+//! It wraps the git2 crate with error handling and convenience methods.
+
+use git2::{
+    Repository, Signature, Index, Oid, Commit, Branch, BranchType as GitBranchType,
+    StatusOptions, Status, Diff, DiffOptions, Tree, Object,
+};
+use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use thiserror::Error;
+use tracing::{debug, error, info, trace, warn};
+
+/// Errors that can occur in Git operations
+#[derive(Debug, Error)]
+pub enum GitError {
+    #[error("Git2 error: {0}")]
+    Git2(#[from] git2::Error),
+    
+    #[error("Repository not found at: {0}")]
+    RepositoryNotFound(String),
+    
+    #[error("Invalid reference: {0}")]
+    InvalidReference(String),
+    
+    #[error("Merge conflict: {0}")]
+    MergeConflict(String),
+    
+    #[error("Dirty working directory: {0}")]
+    DirtyWorkingDirectory(String),
+    
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+    
+    #[error("Remote error: {0}")]
+    RemoteError(String),
+    
+    #[error("Invalid signature: {0}")]
+    InvalidSignature(String),
+    
+    #[error("Path not in repository: {0}")]
+    PathNotInRepo(String),
+}
+
+/// Result type for Git operations
+pub type GitResult<T> = Result<T, GitError>;
+
+/// Wrapper around git2::Repository with additional functionality
+pub struct GitRepository {
+    repo: Repository,
+    path: PathBuf,
+}
+
+impl GitRepository {
+    /// Open a Git repository at the given path
+    pub fn open(path: impl AsRef<Path>) -> GitResult<Self> {
+        let path = path.as_ref().to_path_buf();
+        let repo = Repository::open(&path)
+            .map_err(|e| match e.code() {
+                git2::ErrorCode::NotFound => GitError::RepositoryNotFound(path.display().to_string()),
+                _ => GitError::Git2(e),
+            })?;
+
+        Ok(Self { repo, path })
+    }
+
+    /// Initialize a new Git repository
+    pub fn init(path: impl AsRef<Path>) -> GitResult<Self> {
+        let path = path.as_ref().to_path_buf();
+        let repo = Repository::init(&path)?;
+        Ok(Self { repo, path })
+    }
+
+    /// Get the underlying git2::Repository
+    pub fn inner(&self) -> &Repository {
+        &self.repo
+    }
+
+    /// Get the repository path
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// Get the Git directory (.git)
+    pub fn git_dir(&self) -> &Path {
+        self.repo.path()
+    }
+
+    /// Check if repository is bare
+    pub fn is_bare(&self) -> bool {
+        self.repo.is_bare()
+    }
+
+    /// Check if repository is empty (no commits)
+    pub fn is_empty(&self) -> GitResult<bool> {
+        Ok(self.repo.is_empty()?)
+    }
+
+    /// Get the current HEAD commit
+    pub fn head(&self) -> GitResult<Commit> {
+        let head = self.repo.head()?;
+        let oid = head.target()
+            .ok_or_else(|| GitError::InvalidReference("HEAD has no target".to_string()))?;
+        let commit = self.repo.find_commit(oid)?;
+        Ok(commit)
+    }
+
+    /// Get current HEAD OID
+    pub fn head_oid(&self) -> GitResult<Oid> {
+        let head = self.repo.head()?;
+        head.target()
+            .ok_or_else(|| GitError::InvalidReference("HEAD has no target".to_string()).into())
+    }
+
+    /// Get the index (staging area)
+    pub fn index(&self) -> GitResult<Index> {
+        Ok(self.repo.index()?)
+    }
+
+    /// Create a signature for commits
+    pub fn signature(&self, name: &str, email: &str) -> GitResult<Signature> {
+        Signature::now(name, email)
+            .map_err(|e| GitError::InvalidSignature(e.to_string()).into())
+    }
+
+    /// Get repository status
+    pub fn status(&self) -> GitResult<HashMap<String, Status>> {
+        let mut opts = StatusOptions::new();
+        opts.include_untracked(true);
+        
+        let statuses = self.repo.statuses(Some(&mut opts))?;
+        let mut result = HashMap::new();
+        
+        for entry in statuses.iter() {
+            if let Some(path) = entry.path() {
+                result.insert(path.to_string(), entry.status());
+            }
+        }
+        
+        Ok(result)
+    }
+
+    /// Check if working directory is clean
+    pub fn is_clean(&self) -> GitResult<bool> {
+        let status = self.status()?;
+        Ok(status.is_empty())
+    }
+
+    /// Check if there are staged changes
+    pub fn has_staged_changes(&self) -> GitResult<bool> {
+        let status = self.status()?;
+        Ok(status.values().any(|s| s.contains(git2::Status::INDEX_NEW) 
+            || s.contains(git2::Status::INDEX_MODIFIED)
+            || s.contains(git2::Status::INDEX_DELETED)
+            || s.contains(git2::Status::INDEX_RENAMED)
+            || s.contains(git2::Status::INDEX_TYPECHANGE)))
+    }
+
+    /// Stage a file
+    pub fn add(&self, path: impl AsRef<Path>) -> GitResult<()> {
+        let mut index = self.index()?;
+        index.add_path(path.as_ref())?;
+        index.write()?;
+        Ok(())
+    }
+
+    /// Stage all changes
+    pub fn add_all(&self) -> GitResult<()> {
+        let mut index = self.index()?;
+        index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
+        index.write()?;
+        Ok(())
+    }
+
+    /// Unstage a file
+    pub fn unstage(&self, path: impl AsRef<Path>) -> GitResult<()> {
+        let head = self.head()?;
+        let head_tree = head.tree()?;
+        let mut index = self.index()?;
+        
+        index.remove_path(path.as_ref())?;
+        
+        // Restore from HEAD if file exists in HEAD
+        if let Ok(entry) = head_tree.get_path(path.as_ref()) {
+            let obj = entry.to_object(&self.repo)?;
+            if let Some(blob) = obj.as_blob() {
+                index.add_frombuffer(&entry, blob.content())?;
+            }
+        }
+        
+        index.write()?;
+        Ok(())
+    }
+
+    /// Create a commit
+    pub fn commit(
+        &self,
+        message: &str,
+        author: &Signature,
+        committer: &Signature,
+    ) -> GitResult<Oid> {
+        let mut index = self.index()?;
+        let tree_oid = index.write_tree()?;
+        let tree = self.repo.find_tree(tree_oid)?;
+        
+        let parent = if self.is_empty()? {
+            Vec::new()
+        } else {
+            vec![self.head()?]
+        };
+        
+        let parents: Vec<&Commit> = parent.iter().collect();
+        
+        let oid = self.repo.commit(
+            Some("HEAD"),
+            author,
+            committer,
+            message,
+            &tree,
+            &parents,
+        )?;
+        
+        info!("Created commit: {}", oid);
+        Ok(oid)
+    }
+
+    /// Get a commit by OID
+    pub fn find_commit(&self, oid: Oid) -> GitResult<Commit> {
+        Ok(self.repo.find_commit(oid)?)
+    }
+
+    /// Get the tree for a commit
+    pub fn tree(&self, commit: &Commit) -> GitResult<Tree> {
+        Ok(commit.tree()?)
+    }
+
+    /// Reset to a specific commit
+    pub fn reset(&self, commit: &Commit, hard: bool) -> GitResult<()> {
+        let kind = if hard {
+            git2::ResetType::Hard
+        } else {
+            git2::ResetType::Mixed
+        };
+        
+        self.repo.reset(commit.as_object(), kind, None)?;
+        Ok(())
+    }
+
+    /// Create a new branch
+    pub fn create_branch(&self, name: &str, commit: &Commit) -> GitResult<Branch> {
+        let branch = self.repo.branch(name, commit, false)?;
+        Ok(branch)
+    }
+
+    /// Find a branch
+    pub fn find_branch(&self, name: &str) -> GitResult<Branch> {
+        // Try local first, then remote
+        if let Ok(branch) = self.repo.find_branch(name, GitBranchType::Local) {
+            return Ok(branch);
+        }
+        
+        self.repo.find_branch(name, GitBranchType::Remote)
+            .map_err(|_| GitError::InvalidReference(format!("Branch not found: {}", name)).into())
+    }
+
+    /// Checkout a branch
+    pub fn checkout_branch(&self, branch: &mut Branch) -> GitResult<()> {
+        let reference = branch.get().name()
+            .ok_or_else(|| GitError::InvalidReference("Invalid branch reference".to_string()))?;
+        
+        self.repo.set_head(reference)?;
+        self.repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+        
+        Ok(())
+    }
+
+    /// Get current branch name
+    pub fn current_branch(&self) -> GitResult<Option<String>> {
+        let head = self.repo.head()?;
+        
+        if head.is_branch() {
+            Ok(head.shorthand().map(|s| s.to_string()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all branches
+    pub fn list_branches(&self) -> GitResult<Vec<(String, GitBranchType)>> {
+        let mut branches = Vec::new();
+        
+        for branch in self.repo.branches(Some(GitBranchType::Local))? {
+            let (branch, branch_type) = branch?;
+            if let Some(name) = branch.name()? {
+                branches.push((name.to_string(), branch_type));
+            }
+        }
+        
+        Ok(branches)
+    }
+
+    /// Delete a branch
+    pub fn delete_branch(&self, name: &str) -> GitResult<()> {
+        let mut branch = self.find_branch(name)?;
+        branch.delete()?;
+        Ok(())
+    }
+
+    /// Create a diff between two trees
+    pub fn diff(&self, old_tree: Option<&Tree>, new_tree: Option<&Tree>) -> GitResult<Diff> {
+        let mut opts = DiffOptions::new();
+        let diff = self.repo.diff_tree_to_tree(old_tree, new_tree, Some(&mut opts))?;
+        Ok(diff)
+    }
+
+    /// Get diff for working directory changes
+    pub fn diff_workdir(&self) -> GitResult<Diff> {
+        let head = self.head()?;
+        let tree

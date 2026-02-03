@@ -100,7 +100,7 @@
         "Handles tool calling",
         "Proper error handling"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-003"
