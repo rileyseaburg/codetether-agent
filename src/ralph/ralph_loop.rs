@@ -259,6 +259,14 @@ impl RalphLoop {
                     let (story_working_dir, worktree_info) = if let Some(ref mgr) = worktree_mgr {
                         match mgr.create(&story.id.to_lowercase().replace("-", "_")) {
                             Ok(wt) => {
+                                // Inject [workspace] stub for hermetic isolation
+                                if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
+                                    warn!(
+                                        story_id = %story.id,
+                                        error = %e,
+                                        "Failed to inject workspace stub"
+                                    );
+                                }
                                 info!(
                                     story_id = %story.id,
                                     worktree_path = %wt.path.display(),
