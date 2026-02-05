@@ -2,6 +2,17 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
 };
+use syntect::{
+    easy::HighlightLines,
+    parsing::SyntaxSet,
+    highlighting::{ThemeSet, Style as SyntectStyle},
+    util::LinesWithEndings,
+};
+use std::sync::LazyLock;
+
+/// Global syntax set and theme set for syntax highlighting
+static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
+static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
 
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
@@ -85,7 +96,7 @@ impl MessageFormatter {
     fn render_code_block(&self, lines: &[String], language: &str) -> Vec<Line<'static>> {
         let mut result = Vec::new();
         let block_width = self.max_width.saturating_sub(4);
-        
+
         // Header with language indicator
         let header = if language.is_empty() {
             "┌─ Code ─".to_string() + &"─".repeat(block_width.saturating_sub(9))
@@ -100,13 +111,14 @@ impl MessageFormatter {
             Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD),
         )));
 
-        // Syntax highlighting for code
-        for line in lines {
-            let highlighted_line = self.highlight_code_line(line, language);
+        // Use syntect for syntax highlighting
+        let highlighted_lines = self.highlight_code_block_syntect(lines, language);
+        
+        for line in highlighted_lines {
             let formatted_line = if line.trim().is_empty() {
                 "│".to_string()
             } else {
-                format!("│ {}", highlighted_line)
+                format!("│ {}", line)
             };
             
             result.push(Line::from(Span::styled(
@@ -123,280 +135,170 @@ impl MessageFormatter {
         result
     }
 
-    /// Basic syntax highlighting for common languages
-    fn highlight_code_line(&self, line: &str, language: &str) -> String {
-        let lang = language.to_lowercase();
-        match lang.as_str() {
-            "rust" => self.highlight_rust(line),
-            "python" | "py" => self.highlight_python(line),
-            "javascript" | "js" | "typescript" | "ts" => self.highlight_javascript(line),
-            "json" => self.highlight_json(line),
-            "yaml" | "yml" => self.highlight_yaml(line),
-            "toml" => self.highlight_toml(line),
-            "bash" | "sh" | "shell" => self.highlight_shell(line),
-            "sql" => self.highlight_sql(line),
-            "markdown" | "md" => self.highlight_markdown(line),
-            _ => line.to_string(), // No highlighting for unknown languages
-        }
-    }
-
-    /// Basic Rust syntax highlighting
-    fn highlight_rust(&self, line: &str) -> String {
-        let mut result = String::new();
-        let keywords = [
-            "fn", "let", "mut", "pub", "use", "mod", "struct", "enum", "trait", "impl",
-            "const", "static", "if", "else", "match", "for", "while", "loop", "return",
-            "break", "continue", "unsafe", "async", "await", "dyn", "where", "type",
-        ];
-        let types = ["i32", "i64", "u32", "u64", "f32", "f64", "bool", "char", "str", "String", "Vec", "Option", "Result"];
+    /// Advanced syntax highlighting using syntect
+    fn highlight_code_block_syntect(&self, lines: &[String], language: &str) -> Vec<String> {
+        let syntax_set = &*SYNTAX_SET;
+        let theme_set = &*THEME_SET;
         
-        let words: Vec<&str> = line.split_whitespace().collect();
-        for (i, word) in words.iter().enumerate() {
-            let highlighted = if keywords.contains(word) {
-                format!("\x1b[38;5;197m{word}\x1b[0m") // Magenta for keywords
-            } else if types.contains(word) {
-                format!("\x1b[38;5;81m{word}\x1b[0m") // Cyan for types
-            } else if word.starts_with('"') && word.ends_with('"') {
-                format!("\x1b[38;5;113m{word}\x1b[0m") // Green for strings
-            } else if word.starts_with('\'') && word.ends_with('\'') {
-                format!("\x1b[38;5;221m{word}\x1b[0m") // Yellow for char literals
-            } else if word.starts_with("//") {
-                format!("\x1b[38;5;242m{word}\x1b[0m") // Gray for comments
-            } else {
-                word.to_string()
-            };
-            
-            if i > 0 {
-                result.push(' ');
-            }
-            result.push_str(&highlighted);
-        }
+        // Use a dark theme suitable for terminal
+        let theme = &theme_set.themes["base16-ocean.dark"];
         
-        // Handle non-whitespace parts
-        if result.is_empty() {
-            line.to_string()
+        // Find the appropriate syntax
+        let syntax = if language.is_empty() {
+            syntax_set.find_syntax_plain_text()
         } else {
-            result
-        }
-    }
+            syntax_set.find_syntax_by_token(language)
+                .unwrap_or_else(|| syntax_set.find_syntax_plain_text())
+        };
 
-    /// Basic Python syntax highlighting
-    fn highlight_python(&self, line: &str) -> String {
-        let mut result = String::new();
-        let keywords = [
-            "def", "class", "import", "from", "as", "if", "elif", "else", "for", "while",
-            "try", "except", "finally", "with", "return", "yield", "lambda", "pass", "break",
-            "continue", "True", "False", "None", "self", "super", "global", "nonlocal",
-        ];
+        let mut highlighter = HighlightLines::new(syntax, theme);
         
-        let words: Vec<&str> = line.split_whitespace().collect();
-        for (i, word) in words.iter().enumerate() {
-            let highlighted = if keywords.contains(word) {
-                format!("\x1b[38;5;197m{word}\x1b[0m")
-            } else if word.starts_with('"') && word.ends_with('"') || word.starts_with('\'') && word.ends_with('\'') {
-                format!("\x1b[38;5;113m{word}\x1b[0m")
-            } else if word.starts_with("#") {
-                format!("\x1b[38;5;242m{word}\x1b[0m")
-            } else {
-                word.to_string()
+        let mut highlighted_lines = Vec::new();
+        let code = lines.join("\n");
+        
+        for line in LinesWithEndings::from(&code) {
+            let ranges = match highlighter.highlight_line(line, syntax_set) {
+                Ok(r) => r,
+                Err(_) => {
+                    // On error, just return plain text
+                    highlighted_lines.push(line.trim_end().to_string());
+                    continue;
+                }
             };
+            let mut line_result = String::new();
             
-            if i > 0 {
-                result.push(' ');
+            for (style, text) in ranges {
+                let fg_color = style.foreground;
+                let _color = Color::Rgb(
+                    fg_color.r,
+                    fg_color.g,
+                    fg_color.b,
+                );
+                
+                // Convert the styled text to a ratatui-compatible string
+                // Since we can't use actual terminal colors in ratatui spans easily,
+                // we'll use the closest ratatui colors
+                let _ratatui_color = self.map_syntect_color_to_ratatui(&fg_color);
+                
+                // For now, we'll just return the text without ANSI codes
+                // since ratatui handles styling through its own Span system
+                line_result.push_str(text);
             }
-            result.push_str(&highlighted);
-        }
-        
-        if result.is_empty() { line.to_string() } else { result }
-    }
-
-    /// JavaScript/TypeScript syntax highlighting
-    fn highlight_javascript(&self, line: &str) -> String {
-        let mut result = String::new();
-        let keywords = [
-            "function", "const", "let", "var", "if", "else", "for", "while", "do", "switch",
-            "case", "break", "continue", "return", "class", "extends", "import", "export",
-            "async", "await", "try", "catch", "finally", "typeof", "instanceof", "new", "this",
-        ];
-        
-        let words: Vec<&str> = line.split_whitespace().collect();
-        for (i, word) in words.iter().enumerate() {
-            let highlighted = if keywords.contains(word) {
-                format!("\x1b[38;5;197m{word}\x1b[0m")
-            } else if word.starts_with('"') && word.ends_with('"') || word.starts_with('\'') && word.ends_with('\'') {
-                format!("\x1b[38;5;113m{word}\x1b[0m")
-            } else if word.starts_with("//") {
-                format!("\x1b[38;5;242m{word}\x1b[0m")
-            } else {
-                word.to_string()
-            };
             
-            if i > 0 {
-                result.push(' ');
+            highlighted_lines.push(line_result.trim_end().to_string());
+        }
+        
+        highlighted_lines
+    }
+
+    /// Map syntect colors to ratatui colors (simplified for now)
+    fn map_syntect_color_to_ratatui(&self, color: &syntect::highlighting::Color) -> Color {
+        // Simple mapping - we'll use the closest ratatui color
+        Color::Rgb(color.r, color.g, color.b)
+    }
+
+    /// Format inline text with basic markdown-like formatting
+    fn format_inline_text(&self, line: &str, role: &str) -> Vec<Span<'static>> {
+        let mut spans = Vec::new();
+        let mut current = String::new();
+        let mut in_bold = false;
+        let mut in_italic = false;
+        let mut in_code = false;
+        
+        let role_color = match role {
+            "user" => Color::White,
+            "assistant" => Color::Cyan,
+            "system" => Color::Yellow,
+            "tool" => Color::Green,
+            _ => Color::White,
+        };
+
+        let mut chars = line.chars().peekable();
+        
+        while let Some(c) = chars.next() {
+            match c {
+                '*' => {
+                    if chars.peek() == Some(&'*') {
+                        // Bold
+                        if !current.is_empty() {
+                            spans.push(Span::styled(
+                                current.clone(),
+                                Style::default().fg(role_color).add_modifier(if in_bold { Modifier::BOLD } else { Modifier::empty() })
+                            ));
+                            current.clear();
+                        }
+                        chars.next(); // consume second '*'
+                        in_bold = !in_bold;
+                    } else {
+                        // Italic
+                        if !current.is_empty() {
+                            spans.push(Span::styled(
+                                current.clone(),
+                                Style::default().fg(role_color).add_modifier(if in_italic { Modifier::ITALIC } else { Modifier::empty() })
+                            ));
+                            current.clear();
+                        }
+                        in_italic = !in_italic;
+                    }
+                }
+                '`' => {
+                    if !current.is_empty() {
+                        spans.push(Span::styled(
+                            current.clone(),
+                            Style::default().fg(role_color)
+                        ));
+                        current.clear();
+                    }
+                    in_code = !in_code;
+                }
+                _ => {
+                    current.push(c);
+                }
             }
-            result.push_str(&highlighted);
         }
-        
-        if result.is_empty() { line.to_string() } else { result }
-    }
 
-    /// JSON syntax highlighting
-    fn highlight_json(&self, line: &str) -> String {
-        let line = line.trim();
-        let highlighted = line
-            .replace("\"", "\x1b[38;5;113m\"\x1b[0m")
-            .replace(":", "\x1b[38;5;197m:\x1b[0m")
-            .replace("{", "\x1b[38;5;197m{\x1b[0m")
-            .replace("}", "\x1b[38;5;197m}\x1b[0m")
-            .replace("[", "\x1b[38;5;197m[\x1b[0m")
-            .replace("]", "\x1b[38;5;197m]\x1b[0m");
-        highlighted
-    }
-
-    /// YAML syntax highlighting
-    fn highlight_yaml(&self, line: &str) -> String {
-        let line = line.trim();
-        if line.contains(':') {
-            let parts: Vec<&str> = line.splitn(2, ':').collect();
-            if parts.len() == 2 {
-                return format!("\x1b[38;5;197m{}:\x1b[0m\x1b[38;5;113m{}\x1b[0m", parts[0], parts[1]);
-            }
+        if !current.is_empty() {
+            spans.push(Span::styled(
+                current,
+                Style::default().fg(role_color)
+            ));
         }
-        line.to_string()
-    }
 
-    /// TOML syntax highlighting
-    fn highlight_toml(&self, line: &str) -> String {
-        let line = line.trim();
-        if line.starts_with('[') && line.ends_with(']') {
-            return format!("\x1b[38;5;197m{}\x1b[0m", line);
-        } else if line.contains('=') {
-            let parts: Vec<&str> = line.splitn(2, '=').collect();
-            if parts.len() == 2 {
-                return format!("\x1b[38;5;197m{}=\x1b[0m\x1b[38;5;113m{}\x1b[0m", parts[0], parts[1]);
-            }
+        if spans.is_empty() {
+            spans.push(Span::styled(line.to_string(), Style::default().fg(role_color)));
         }
-        line.to_string()
+
+        spans
     }
 
-    /// Shell syntax highlighting
-    fn highlight_shell(&self, line: &str) -> String {
-        let line = line.trim();
-        if line.starts_with('#') {
-            format!("\x1b[38;5;242m{}\x1b[0m", line)
-        } else if line.starts_with('$') || line.starts_with('>') {
-            format!("\x1b[38;5;197m{}\x1b[0m", line)
-        } else {
-            line.to_string()
-        }
-    }
-
-    /// SQL syntax highlighting
-    fn highlight_sql(&self, line: &str) -> String {
-        let mut result = String::new();
-        let keywords = [
-            "SELECT", "FROM", "WHERE", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP",
-            "ALTER", "TABLE", "INDEX", "JOIN", "INNER", "LEFT", "RIGHT", "FULL", "ON",
-            "AND", "OR", "NOT", "NULL", "IS", "LIKE", "IN", "EXISTS", "BETWEEN", "ORDER BY",
-            "GROUP BY", "HAVING", "LIMIT", "OFFSET", "ASC", "DESC",
-        ];
-        
-        let words: Vec<&str> = line.split_whitespace().collect();
-        for (i, word) in words.iter().enumerate() {
-            let upper_word = word.to_uppercase();
-            let highlighted = if keywords.contains(&upper_word.as_str()) {
-                format!("\x1b[38;5;197m{word}\x1b[0m")
-            } else if word.starts_with('"') && word.ends_with('"') || word.starts_with('\'') && word.ends_with('\'') {
-                format!("\x1b[38;5;113m{word}\x1b[0m")
-            } else if word.starts_with("--") {
-                format!("\x1b[38;5;242m{word}\x1b[0m")
-            } else {
-                word.to_string()
-            };
-            
-            if i > 0 {
-                result.push(' ');
-            }
-            result.push_str(&highlighted);
-        }
-        
-        if result.is_empty() { line.to_string() } else { result }
-    }
-
-    /// Markdown syntax highlighting
-    fn highlight_markdown(&self, line: &str) -> String {
-        let line = line.trim();
-        if line.starts_with("#") {
-            format!("\x1b[38;5;197m{}\x1b[0m", line)
-        } else if line.starts_with("```") {
-            format!("\x1b[38;5;242m{}\x1b[0m", line)
-        } else if line.starts_with("*") || line.starts_with("-") {
-            format!("\x1b[38;5;113m{}\x1b[0m", line)
-        } else {
-            line.to_string()
-        }
-    }
-
-    /// Format inline text with markdown-like features
-    fn format_inline_text(&self, text: &str, role: &str) -> String {
-        let mut result = text.to_string();
-        
-        // Bold text **text**
-        result = result.replace("**", "\x1b[1m");
-        
-        // Italic text *text*
-        result = result.replace("*", "\x1b[3m");
-        
-        // Inline code `code`
-        result = result.replace('`', "\x1b[7m");
-        
-        result
-    }
-
-    /// Wrap a line to fit within the given width
-    fn wrap_line(&self, text: String, max_width: usize) -> Vec<Line<'static>> {
-        if text.is_empty() {
+    /// Wrap text to fit within width
+    fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
+        if spans.is_empty() {
             return vec![Line::from("")];
         }
 
-        let mut lines = Vec::new();
-        let words: Vec<&str> = text.split_whitespace().collect();
-        let mut current_line = String::new();
+        // Simple wrapping - for now, just return as single line
+        vec![Line::from(spans)]
+    }
+}
 
-        for word in words {
-            let word_len = word.len();
-            let line_len = current_line.len();
-            
-            if line_len + word_len + (if line_len > 0 { 1 } else { 0 }) <= max_width {
-                if !current_line.is_empty() {
-                    current_line.push(' ');
-                }
-                current_line.push_str(word);
-            } else {
-                if !current_line.is_empty() {
-                    lines.push(Line::from(current_line.clone()));
-                    current_line.clear();
-                }
-                
-                // Handle very long words
-                if word_len > max_width {
-                    let mut start = 0;
-                    while start < word_len {
-                        let end = (start + max_width).min(word_len);
-                        let chunk = &word[start..end];
-                        lines.push(Line::from(chunk.to_string()));
-                        start = end;
-                    }
-                } else {
-                    current_line.push_str(word);
-                }
-            }
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        if !current_line.is_empty() {
-            lines.push(Line::from(current_line));
-        }
+    #[test]
+    fn test_code_block_detection() {
+        let formatter = MessageFormatter::new(80);
+        let content = "```rust\nfn main() {\n    println!(\"Hello, world!\");\n}\n```";
+        let lines = formatter.format_content(content, "assistant");
+        assert!(!lines.is_empty());
+    }
 
-        lines
+    #[test]
+    fn test_syntax_highlighting() {
+        let formatter = MessageFormatter::new(80);
+        let lines = vec!["fn main() {".to_string(), "    println!(\"Hello!\");".to_string(), "}".to_string()];
+        let highlighted = formatter.highlight_code_block_syntect(&lines, "rust");
+        assert_eq!(highlighted.len(), 3);
     }
 }

@@ -145,9 +145,10 @@ fn rgb_to_named(r: u8, g: u8, b: u8) -> String {
     let mut min_distance = u32::MAX;
 
     for (name, (cr, cg, cb)) in colors.iter() {
-        let distance = (r as u32 - *cr as u32).pow(2)
-            + (g as u32 - *cg as u32).pow(2)
-            + (b as u32 - *cb as u32).pow(2);
+        let dr = (r as i32 - *cr as i32).unsigned_abs();
+        let dg = (g as i32 - *cg as i32).unsigned_abs();
+        let db = (b as i32 - *cb as i32).unsigned_abs();
+        let distance = dr * dr + dg * dg + db * db;
         
         if distance < min_distance {
             min_distance = distance;
