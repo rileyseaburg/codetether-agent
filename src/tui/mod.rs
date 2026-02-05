@@ -110,11 +110,12 @@ struct ChatMessage {
 
 impl ChatMessage {
     fn new(role: impl Into<String>, content: impl Into<String>) -> Self {
+        let content = content.into();
         Self {
             role: role.into(),
-            content: content.into(),
             timestamp: chrono::Local::now().format("%H:%M").to_string(),
-            message_type: MessageType::Text(String::new()),
+            message_type: MessageType::Text(content.clone()),
+            content,
         }
     }
 
@@ -213,7 +214,6 @@ impl App {
         // Check for /resume command to load a session
         if message.trim() == "/resume" || message.trim().starts_with("/resume ") {
             let session_id = message.trim().strip_prefix("/resume").map(|s| s.trim()).filter(|s| !s.is_empty());
-            
             let loaded = if let Some(id) = session_id {
                 Session::load(id).await
             } else {
@@ -477,7 +477,6 @@ impl App {
         tokio::spawn(async move {
             // Create orchestrator for decomposition
             let orchestrator_result = Orchestrator::new(swarm_config.clone()).await;
-            
             let mut orchestrator = match orchestrator_result {
                 Ok(o) => o,
                 Err(e) => {
@@ -934,10 +933,10 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
                     ]));
                 }
             }
-            _ => {
-                // Regular text message
+            MessageType::Text(text) => {
+                // Regular text message - use the stored text content
                 let formatter = MessageFormatter::new(max_width);
-                let formatted_content = formatter.format_content(&message.content, &message.role);
+                let formatted_content = formatter.format_content(text, &message.role);
                 message_lines.extend(formatted_content);
             }
         }

@@ -477,15 +477,23 @@ impl RalphLoop {
                                                 }
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(wt);
-                                            } else {
-                                                // Non-conflict failure (already aborted)
+                                            } else if merge_result.aborted {
+                                                // Non-conflict failure that was already aborted
                                                 warn!(
                                                     story_id = %story.id,
                                                     summary = %merge_result.summary,
-                                                    "Merge failed (not conflicts)"
+                                                    "Merge was aborted due to non-conflict failure"
                                                 );
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(wt);
+                                            } else {
+                                                // Merge in progress state (should not reach here)
+                                                warn!(
+                                                    story_id = %story.id,
+                                                    summary = %merge_result.summary,
+                                                    "Merge failed but not aborted - manual intervention may be needed"
+                                                );
+                                                // Don't cleanup - leave for debugging
                                             }
                                         }
                                         Err(e) => {

@@ -735,6 +735,17 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                                 "\n\n--- Merge Result ---\n{}",
                                                 merge_result.summary
                                             ));
+                                        } else if merge_result.aborted {
+                                            // Merge was aborted due to non-conflict failure
+                                            tracing::warn!(
+                                                subtask_id = %result.subtask_id,
+                                                summary = %merge_result.summary,
+                                                "Merge was aborted"
+                                            );
+                                            result.result.push_str(&format!(
+                                                "\n\n--- Merge Aborted ---\n{}",
+                                                merge_result.summary
+                                            ));
                                         } else {
                                             tracing::warn!(
                                                 subtask_id = %result.subtask_id,

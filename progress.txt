@@ -1,1 +1,10 @@
 Now I understand the structure. I need to pass the event callback into the spawned tasks. Since the callback is `Arc<dyn Fn>`, I can clone it. Let me update the execute_stage method to emit events:
+
+All changes are in place:
+
+1. ✅ `ChatMessage::new()` now populates `MessageType::Text` with the actual content (not an empty string)
+2. ✅ The display code now uses `MessageType::Text(text)` instead of the wildcard `_` pattern
+3. ✅ The stored text content is used for message display instead of recalculating from `message.content`
+4. ✅ The empty string default `String::new()` has been removed
+
+STORY_COMPLETE: US-004
