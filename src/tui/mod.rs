@@ -87,6 +87,7 @@ struct App {
     messages: Vec<ChatMessage>,
     current_agent: String,
     scroll: usize,
+    max_scroll: usize,
     show_help: bool,
     command_history: Vec<String>,
     history_index: Option<usize>,
@@ -136,6 +137,7 @@ impl App {
             ],
             current_agent: "build".to_string(),
             scroll: 0,
+            max_scroll: 0,
             show_help: false,
             command_history: Vec::new(),
             history_index: None,
@@ -643,6 +645,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
         terminal.draw(|f| ui(f, &app, &theme))?;
 
+        // Update max_scroll estimate for scroll normalization
+        // Each message is roughly 3 lines on average
+        let terminal_height = terminal.size()?.height.saturating_sub(6) as usize; // subtract input + status + borders
+        let estimated_lines = app.messages.len() * 3;
+        app.max_scroll = estimated_lines.saturating_sub(terminal_height);
+
         // Check for async responses
         if let Some(ref mut rx) = app.response_rx {
             if let Ok(response) = rx.try_recv() {
@@ -718,10 +726,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
                     // Vim-style scrolling (Alt + j/k)
                     KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        app.scroll = app.scroll.saturating_add(1);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_add(1).min(app.max_scroll);
                     }
                     KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        app.scroll = app.scroll.saturating_sub(1);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_sub(1);
                     }
 
                     // Command history
@@ -741,17 +751,19 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     KeyCode::Char('G') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         // Go to bottom
-                        app.scroll = usize::MAX;
+                        app.scroll = app.max_scroll;
                     }
 
                     // Enhanced scrolling (with Alt to avoid conflicts)
                     KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
                         // Half page down
-                        app.scroll = app.scroll.saturating_add(5);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_add(5).min(app.max_scroll);
                     }
                     KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
                         // Half page up
-                        app.scroll = app.scroll.saturating_sub(5);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_sub(5);
                     }
 
                     // Text input
@@ -785,18 +797,22 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.cursor_position = app.input.len();
                     }
 
-                    // Scroll
+                    // Scroll (normalize first to handle usize::MAX from auto-scroll)
                     KeyCode::Up => {
-                        app.scroll = app.scroll.saturating_sub(1);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_sub(1);
                     }
                     KeyCode::Down => {
-                        app.scroll = app.scroll.saturating_add(1);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_add(1).min(app.max_scroll);
                     }
                     KeyCode::PageUp => {
-                        app.scroll = app.scroll.saturating_sub(10);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_sub(10);
                     }
                     KeyCode::PageDown => {
-                        app.scroll = app.scroll.saturating_add(10);
+                        let current = app.scroll.min(app.max_scroll);
+                        app.scroll = current.saturating_add(10).min(app.max_scroll);
                     }
 
                     _ => {}
