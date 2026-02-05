@@ -410,20 +410,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.submit_message(&config).await;
                     }
 
-                    // Vim-style navigation
-                    KeyCode::Char('h') if !app.show_help => {
-                        app.cursor_position = app.cursor_position.saturating_sub(1);
-                    }
-                    KeyCode::Char('j') if !app.show_help => {
+                    // Vim-style scrolling (Alt + j/k)
+                    KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
                         app.scroll = app.scroll.saturating_add(1);
                     }
-                    KeyCode::Char('k') if !app.show_help => {
+                    KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
                         app.scroll = app.scroll.saturating_sub(1);
-                    }
-                    KeyCode::Char('l') if !app.show_help => {
-                        if app.cursor_position < app.input.len() {
-                            app.cursor_position += 1;
-                        }
                     }
 
                     // Command history
@@ -437,22 +429,22 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.navigate_history(1);
                     }
 
-                    // Additional Vim-style navigation
-                    KeyCode::Char('g') if key.modifiers.is_empty() => {
+                    // Additional Vim-style navigation (with modifiers to avoid conflicts)
+                    KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.scroll = 0; // Go to top
                     }
-                    KeyCode::Char('G') if key.modifiers.is_empty() => {
-                        // Go to bottom - will be calculated properly in the draw function
-                        app.scroll = usize::MAX; // Use max value, will be clamped
+                    KeyCode::Char('G') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Go to bottom
+                        app.scroll = usize::MAX;
                     }
 
-                    // Enhanced scrolling
-                    KeyCode::Char('d') if key.modifiers.is_empty() => {
-                        // Vim-style page down (half page)
+                    // Enhanced scrolling (with Alt to avoid conflicts)
+                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
+                        // Half page down
                         app.scroll = app.scroll.saturating_add(5);
                     }
-                    KeyCode::Char('u') if key.modifiers.is_empty() => {
-                        // Vim-style page up (half page)
+                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
+                        // Half page up
                         app.scroll = app.scroll.saturating_sub(5);
                     }
 
@@ -721,19 +713,17 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             "  ?            Toggle this help".to_string(),
             "".to_string(),
             "  VIM-STYLE NAVIGATION".to_string(),
-            "  h            Move cursor left (in input)".to_string(),
-            "  j            Scroll down".to_string(),
-            "  k            Scroll up".to_string(),
-            "  l            Move cursor right (in input)".to_string(),
-            "  g            Go to top".to_string(),
-            "  G            Go to bottom".to_string(),
+            "  Alt+j        Scroll down".to_string(),
+            "  Alt+k        Scroll up".to_string(),
+            "  Ctrl+g       Go to top".to_string(),
+            "  Ctrl+G       Go to bottom".to_string(),
             "".to_string(),
             "  SCROLLING".to_string(),
             "  Up/Down      Scroll messages".to_string(),
             "  PageUp       Scroll up one page".to_string(),
             "  PageDown     Scroll down one page".to_string(),
-            "  u            Scroll up half page".to_string(),
-            "  d            Scroll down half page".to_string(),
+            "  Alt+u        Scroll up half page".to_string(),
+            "  Alt+d        Scroll down half page".to_string(),
             "".to_string(),
             "  COMMAND HISTORY".to_string(),
             "  Ctrl+R       Search history (matches current input)".to_string(),
