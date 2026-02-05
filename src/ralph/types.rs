@@ -311,6 +311,14 @@ pub struct RalphConfig {
     /// Use worktree isolation for parallel execution
     #[serde(default = "default_worktree_enabled")]
     pub worktree_enabled: bool,
+
+    /// Timeout in seconds per step for story sub-agents (resets on each step)
+    #[serde(default = "default_story_timeout_secs")]
+    pub story_timeout_secs: u64,
+
+    /// Timeout in seconds per step for conflict resolution sub-agents
+    #[serde(default = "default_conflict_timeout_secs")]
+    pub conflict_timeout_secs: u64,
 }
 
 fn default_prd_path() -> String {
@@ -337,6 +345,12 @@ fn default_max_concurrent_stories() -> usize {
 fn default_worktree_enabled() -> bool {
     true
 }
+fn default_story_timeout_secs() -> u64 {
+    300
+}
+fn default_conflict_timeout_secs() -> u64 {
+    120
+}
 
 impl Default for RalphConfig {
     fn default() -> Self {
@@ -351,6 +365,8 @@ impl Default for RalphConfig {
             parallel_enabled: default_parallel_enabled(),
             max_concurrent_stories: default_max_concurrent_stories(),
             worktree_enabled: default_worktree_enabled(),
+            story_timeout_secs: default_story_timeout_secs(),
+            conflict_timeout_secs: default_conflict_timeout_secs(),
         }
     }
 }

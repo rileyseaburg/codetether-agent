@@ -5,7 +5,7 @@ use ratatui::{
 use std::sync::LazyLock;
 use syntect::{
     easy::HighlightLines,
-    highlighting::{Style as SyntectStyle, ThemeSet},
+    highlighting::ThemeSet,
     parsing::SyntaxSet,
     util::LinesWithEndings,
 };
@@ -281,7 +281,7 @@ impl MessageFormatter {
     }
 
     /// Wrap text to fit within width
-    fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
+    fn wrap_line(&self, spans: Vec<Span<'static>>, _width: usize) -> Vec<Line<'static>> {
         if spans.is_empty() {
             return vec![Line::from("")];
         }
