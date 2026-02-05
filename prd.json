@@ -16,7 +16,7 @@
         "SwarmExecutor emits StageComplete when a stage finishes",
         "TUI receives and displays these events in real-time"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 4
@@ -64,7 +64,7 @@
         "Message display uses the stored content instead of recalculating",
         "Empty string default is removed or properly handled"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [],
       "complexity": 2
@@ -79,7 +79,7 @@
         "Theme can be selected via config file",
         "TUI renders correctly with monochrome theme"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "depends_on": [],
       "complexity": 2
@@ -94,7 +94,7 @@
         "UI shows warning when merge is in progress",
         "Cleanup handles aborted merges correctly"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [],
       "complexity": 3
@@ -110,7 +110,7 @@
         "Telemetry data persisted to disk",
         "TUI displays telemetry summary in status bar"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [],
       "complexity": 4
@@ -142,7 +142,7 @@
         "Wrapped lines maintain proper formatting",
         "Long messages display correctly in TUI"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4,
       "depends_on": [],
       "complexity": 2
