@@ -3,10 +3,10 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::process::Stdio;
 use tokio::process::Command;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 /// Execute shell commands
 pub struct BashTool {
@@ -67,18 +67,18 @@ impl Tool for BashTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let command = match args["command"].as_str() {
             Some(c) => c,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "bash",
-                "command is required",
-                Some(vec!["command"]),
-                Some(json!({"command": "ls -la", "cwd": "."})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "bash",
+                    "command is required",
+                    Some(vec!["command"]),
+                    Some(json!({"command": "ls -la", "cwd": "."})),
+                ));
+            }
         };
         let cwd = args["cwd"].as_str();
-        let timeout_secs = args["timeout"]
-            .as_u64()
-            .unwrap_or(self.timeout_secs);
+        let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
 
         let mut cmd = Command::new("bash");
         cmd.arg("-c")

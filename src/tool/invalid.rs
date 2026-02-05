@@ -3,7 +3,7 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Invalid Tool - A fallback tool that is returned when a model tries to call
 /// a tool that doesn't exist. This provides helpful error messages and suggestions.
@@ -69,7 +69,7 @@ impl Tool for InvalidTool {
         let requested = args["requested_tool"]
             .as_str()
             .unwrap_or(&self.requested_tool);
-        
+
         let passed_args = if let Some(obj) = args.get("args") {
             serde_json::to_string_pretty(obj).unwrap_or_else(|_| "{}".to_string())
         } else {
@@ -78,21 +78,27 @@ impl Tool for InvalidTool {
 
         let suggestions = if !self.available_tools.is_empty() {
             // Find similar tool names
-            let similar: Vec<&String> = self.available_tools
+            let similar: Vec<&String> = self
+                .available_tools
                 .iter()
                 .filter(|t| {
-                    t.contains(requested) || 
-                    requested.contains(t.as_str()) ||
-                    Self::levenshtein(t, requested) <= 3
+                    t.contains(requested)
+                        || requested.contains(t.as_str())
+                        || Self::levenshtein(t, requested) <= 3
                 })
                 .take(3)
                 .collect();
-            
+
             if similar.is_empty() {
                 format!("Available tools: {}", self.available_tools.join(", "))
             } else {
-                format!("Did you mean: {}?\n\nAll available tools: {}", 
-                    similar.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", "),
+                format!(
+                    "Did you mean: {}?\n\nAll available tools: {}",
+                    similar
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", "),
                     self.available_tools.join(", ")
                 )
             }
@@ -118,24 +124,26 @@ impl InvalidTool {
         let b: Vec<char> = b.chars().collect();
         let m = a.len();
         let n = b.len();
-        
-        if m == 0 { return n; }
-        if n == 0 { return m; }
-        
+
+        if m == 0 {
+            return n;
+        }
+        if n == 0 {
+            return m;
+        }
+
         let mut prev: Vec<usize> = (0..=n).collect();
         let mut curr = vec![0; n + 1];
-        
+
         for i in 1..=m {
             curr[0] = i;
             for j in 1..=n {
-                let cost = if a[i-1] == b[j-1] { 0 } else { 1 };
-                curr[j] = (prev[j] + 1)
-                    .min(curr[j-1] + 1)
-                    .min(prev[j-1] + cost);
+                let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+                curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
             }
             std::mem::swap(&mut prev, &mut curr);
         }
-        
+
         prev[n]
     }
 }

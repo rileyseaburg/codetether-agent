@@ -1,11 +1,11 @@
 //! Web Fetch Tool - Fetches content from URLs and converts HTML to markdown/text/html.
 
+use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::Duration;
-use super::{Tool, ToolResult};
 
 #[allow(dead_code)]
 const MAX_CONTENT_LENGTH: usize = 10 * 1024 * 1024;
@@ -16,7 +16,9 @@ pub struct WebFetchTool {
 }
 
 impl Default for WebFetchTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WebFetchTool {
@@ -47,13 +49,23 @@ impl WebFetchTool {
                 result = re.replace_all(&result, rep).to_string();
             }
         }
-        result = regex::Regex::new(r"<[^>]+>").unwrap().replace_all(&result, "").to_string();
-        result.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+        result = regex::Regex::new(r"<[^>]+>")
+            .unwrap()
+            .replace_all(&result, "")
+            .to_string();
+        result
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
     }
 
     fn html_to_text(&self, html: &str) -> String {
         let md = self.html_to_markdown(html);
-        md.replace("**", "").replace("*", "").replace("`", "").replace("# ", "")
+        md.replace("**", "")
+            .replace("*", "")
+            .replace("`", "")
+            .replace("# ", "")
     }
 
     fn is_html(&self, ct: &str, body: &str) -> bool {
@@ -62,14 +74,26 @@ impl WebFetchTool {
 }
 
 #[derive(Deserialize)]
-struct Params { url: String, #[serde(default = "default_fmt")] format: String }
-fn default_fmt() -> String { "markdown".into() }
+struct Params {
+    url: String,
+    #[serde(default = "default_fmt")]
+    format: String,
+}
+fn default_fmt() -> String {
+    "markdown".into()
+}
 
 #[async_trait]
 impl Tool for WebFetchTool {
-    fn id(&self) -> &str { "webfetch" }
-    fn name(&self) -> &str { "Web Fetch" }
-    fn description(&self) -> &str { "Fetch content from URL, convert HTML to markdown/text/html." }
+    fn id(&self) -> &str {
+        "webfetch"
+    }
+    fn name(&self) -> &str {
+        "Web Fetch"
+    }
+    fn description(&self) -> &str {
+        "Fetch content from URL, convert HTML to markdown/text/html."
+    }
     fn parameters(&self) -> Value {
         json!({"type":"object","properties":{"url":{"type":"string"},"format":{"type":"string","enum":["markdown","text","html"],"default":"markdown"}},"required":["url"]})
     }
@@ -80,16 +104,38 @@ impl Tool for WebFetchTool {
         if url.scheme() != "http" && url.scheme() != "https" {
             return Ok(ToolResult::error("Only HTTP/HTTPS supported"));
         }
-        let resp = self.client.get(url).send().await.map_err(|e| anyhow::anyhow!("{}", e))?;
+        let resp = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
         if !resp.status().is_success() {
             return Ok(ToolResult::error(format!("HTTP {}", resp.status())));
         }
-        let ct = resp.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("").to_lowercase();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_lowercase();
         let body = resp.text().await.context("Failed to read body")?;
         let content = match p.format.as_str() {
             "html" => body,
-            "text" => if self.is_html(&ct, &body) { self.html_to_text(&body) } else { body },
-            _ => if self.is_html(&ct, &body) { self.html_to_markdown(&body) } else { body },
+            "text" => {
+                if self.is_html(&ct, &body) {
+                    self.html_to_text(&body)
+                } else {
+                    body
+                }
+            }
+            _ => {
+                if self.is_html(&ct, &body) {
+                    self.html_to_markdown(&body)
+                } else {
+                    body
+                }
+            }
         };
         Ok(ToolResult::success(content).with_metadata("url", json!(p.url)))
     }

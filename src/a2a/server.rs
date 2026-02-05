@@ -3,11 +3,11 @@
 use super::types::*;
 use anyhow::Result;
 use axum::{
+    Router,
     extract::State,
     http::StatusCode,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use dashmap::DashMap;
 use std::sync::Arc;
@@ -152,8 +152,12 @@ async fn handle_message_send(
         .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
 
     // Create a new task
-    let task_id = params.message.task_id.clone().unwrap_or_else(|| Uuid::new_v4().to_string());
-    
+    let task_id = params
+        .message
+        .task_id
+        .clone()
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
     let task = Task {
         id: task_id.clone(),
         context_id: params.message.context_id.clone(),
@@ -211,11 +215,14 @@ async fn handle_tasks_cancel(
     let params: TaskQueryParams = serde_json::from_value(request.params)
         .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
 
-    let mut task = server.tasks.get_mut(&params.id).ok_or_else(|| JsonRpcError {
-        code: TASK_NOT_FOUND,
-        message: format!("Task not found: {}", params.id),
-        data: None,
-    })?;
+    let mut task = server
+        .tasks
+        .get_mut(&params.id)
+        .ok_or_else(|| JsonRpcError {
+            code: TASK_NOT_FOUND,
+            message: format!("Task not found: {}", params.id),
+            data: None,
+        })?;
 
     if !task.status.state.is_active() {
         return Err(JsonRpcError {

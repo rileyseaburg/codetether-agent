@@ -46,13 +46,15 @@ impl A2AClient {
         };
 
         let response = self.call_rpc(request).await?;
-        
+
         if let Some(error) = response.error {
             anyhow::bail!("RPC error {}: {}", error.code, error.message);
         }
 
         let task: Task = serde_json::from_value(
-            response.result.ok_or_else(|| anyhow::anyhow!("No result"))?,
+            response
+                .result
+                .ok_or_else(|| anyhow::anyhow!("No result"))?,
         )?;
         Ok(task)
     }
@@ -71,13 +73,15 @@ impl A2AClient {
         };
 
         let response = self.call_rpc(request).await?;
-        
+
         if let Some(error) = response.error {
             anyhow::bail!("RPC error {}: {}", error.code, error.message);
         }
 
         let task: Task = serde_json::from_value(
-            response.result.ok_or_else(|| anyhow::anyhow!("No result"))?,
+            response
+                .result
+                .ok_or_else(|| anyhow::anyhow!("No result"))?,
         )?;
         Ok(task)
     }
@@ -93,13 +97,15 @@ impl A2AClient {
         };
 
         let response = self.call_rpc(request).await?;
-        
+
         if let Some(error) = response.error {
             anyhow::bail!("RPC error {}: {}", error.code, error.message);
         }
 
         let task: Task = serde_json::from_value(
-            response.result.ok_or_else(|| anyhow::anyhow!("No result"))?,
+            response
+                .result
+                .ok_or_else(|| anyhow::anyhow!("No result"))?,
         )?;
         Ok(task)
     }
@@ -107,7 +113,7 @@ impl A2AClient {
     /// Make a JSON-RPC call
     pub async fn call_rpc(&self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
         let mut req = self.client.post(&self.base_url);
-        
+
         if let Some(ref token) = self.token {
             req = req.bearer_auth(token);
         }

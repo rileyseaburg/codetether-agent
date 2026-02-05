@@ -4,9 +4,9 @@
 //! respecting dependencies and optimizing for critical path.
 
 use super::{
+    DecompositionStrategy, StageStats, SwarmConfig, SwarmResult,
     orchestrator::Orchestrator,
     subtask::{SubTask, SubTaskResult},
-    DecompositionStrategy, StageStats, SwarmConfig, SwarmResult,
 };
 
 // Re-export swarm types for convenience
@@ -17,14 +17,14 @@ use crate::{
     rlm::RlmExecutor,
     swarm::{SwarmArtifact, SwarmStats},
     tool::ToolRegistry,
-    worktree::{WorktreeManager, WorktreeInfo},
+    worktree::{WorktreeInfo, WorktreeManager},
 };
 use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 /// Default context limit (256k tokens - conservative for most models)
 const DEFAULT_CONTEXT_LIMIT: usize = 256_000;
@@ -46,20 +46,23 @@ fn estimate_tokens(text: &str) -> usize {
 /// Estimate total tokens in a message
 fn estimate_message_tokens(message: &Message) -> usize {
     let mut tokens = 4; // Role overhead
-    
+
     for part in &message.content {
         tokens += match part {
             ContentPart::Text { text } => estimate_tokens(text),
-            ContentPart::ToolCall { id, name, arguments } => {
-                estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10
-            }
-            ContentPart::ToolResult { tool_call_id, content } => {
-                estimate_tokens(tool_call_id) + estimate_tokens(content) + 6
-            }
+            ContentPart::ToolCall {
+                id,
+                name,
+                arguments,
+            } => estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10,
+            ContentPart::ToolResult {
+                tool_call_id,
+                content,
+            } => estimate_tokens(tool_call_id) + estimate_tokens(content) + 6,
             ContentPart::Image { .. } | ContentPart::File { .. } => 2000, // Binary content is expensive
         };
     }
-    
+
     tokens
 }
 
@@ -69,30 +72,31 @@ fn estimate_total_tokens(messages: &[Message]) -> usize {
 }
 
 /// Truncate messages to fit within context limit
-/// 
+///
 /// Strategy:
 /// 1. First, aggressively truncate large tool results
 /// 2. Keep system message (first) and user message (second) always
 /// 3. Keep the most recent assistant + tool result pairs together
 /// 4. Drop oldest middle messages in matched pairs
 fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
-    let target_tokens = ((context_limit as f64) * TRUNCATION_THRESHOLD) as usize - RESPONSE_RESERVE_TOKENS;
-    
+    let target_tokens =
+        ((context_limit as f64) * TRUNCATION_THRESHOLD) as usize - RESPONSE_RESERVE_TOKENS;
+
     let current_tokens = estimate_total_tokens(messages);
     if current_tokens <= target_tokens {
         return;
     }
-    
+
     tracing::warn!(
         current_tokens = current_tokens,
         target_tokens = target_tokens,
         context_limit = context_limit,
         "Context approaching limit, truncating conversation history"
     );
-    
+
     // FIRST: Aggressively truncate large tool results (this is the main culprit)
     truncate_large_tool_results(messages, 2000); // Max 2k tokens per tool result
-    
+
     let after_tool_truncation = estimate_total_tokens(messages);
     if after_tool_truncation <= target_tokens {
         tracing::info!(
@@ -102,7 +106,7 @@ fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
         );
         return;
     }
-    
+
     // Minimum: keep first 2 (system + initial user) and last 4 messages
     if messages.len() <= 6 {
         tracing::warn!(
@@ -112,30 +116,38 @@ fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
         );
         return;
     }
-    
+
     // Remove messages from the middle, keeping first 2 and last 4
     // But we need to remove in pairs to maintain tool_call_id references
     let keep_start = 2;
     let keep_end = 4;
     let removable_count = messages.len() - keep_start - keep_end;
-    
+
     if removable_count == 0 {
         return;
     }
-    
+
     // Remove all middle messages
-    let removed_messages: Vec<_> = messages.drain(keep_start..keep_start + removable_count).collect();
+    let removed_messages: Vec<_> = messages
+        .drain(keep_start..keep_start + removable_count)
+        .collect();
     let summary = summarize_removed_messages(&removed_messages);
-    
+
     // Insert a summary message where we removed content
-    messages.insert(keep_start, Message {
-        role: Role::User,
-        content: vec![ContentPart::Text { 
-            text: format!("[Context truncated: {} earlier messages removed to fit context window]\n{}", 
-                removed_messages.len(), summary),
-        }],
-    });
-    
+    messages.insert(
+        keep_start,
+        Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: format!(
+                    "[Context truncated: {} earlier messages removed to fit context window]\n{}",
+                    removed_messages.len(),
+                    summary
+                ),
+            }],
+        },
+    );
+
     let new_tokens = estimate_total_tokens(messages);
     tracing::info!(
         removed_messages = removed_messages.len(),
@@ -149,7 +161,7 @@ fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) {
 fn summarize_removed_messages(messages: &[Message]) -> String {
     let mut summary = String::new();
     let mut tool_calls: Vec<String> = Vec::new();
-    
+
     for msg in messages {
         for part in &msg.content {
             if let ContentPart::ToolCall { name, .. } = part {
@@ -159,11 +171,14 @@ fn summarize_removed_messages(messages: &[Message]) -> String {
             }
         }
     }
-    
+
     if !tool_calls.is_empty() {
-        summary.push_str(&format!("Tools used in truncated history: {}", tool_calls.join(", ")));
+        summary.push_str(&format!(
+            "Tools used in truncated history: {}",
+            tool_calls.join(", ")
+        ));
     }
-    
+
     summary
 }
 
@@ -172,7 +187,7 @@ fn truncate_large_tool_results(messages: &mut [Message], max_tokens_per_result: 
     let char_limit = max_tokens_per_result * 3; // ~3 chars per token
     let mut truncated_count = 0;
     let mut saved_tokens = 0usize;
-    
+
     for message in messages.iter_mut() {
         for part in message.content.iter_mut() {
             if let ContentPart::ToolResult { content, .. } = part {
@@ -188,7 +203,7 @@ fn truncate_large_tool_results(messages: &mut [Message], max_tokens_per_result: 
             }
         }
     }
-    
+
     if truncated_count > 0 {
         tracing::info!(
             truncated_count = truncated_count,
@@ -204,25 +219,25 @@ fn truncate_single_result(content: &str, max_chars: usize) -> String {
     if content.len() <= max_chars {
         return content.to_string();
     }
-    
+
     // Try to find a good break point (newline) near the limit
     let break_point = content[..max_chars.min(content.len())]
         .rfind('\n')
         .unwrap_or(max_chars.min(content.len()));
-    
+
     let truncated = format!(
         "{}...\n\n[OUTPUT TRUNCATED: {} → {} chars to fit context limit]",
         &content[..break_point],
         content.len(),
         break_point
     );
-    
+
     tracing::debug!(
         original_len = content.len(),
         truncated_len = truncated.len(),
         "Truncated large result"
     );
-    
+
     truncated
 }
 
@@ -242,29 +257,29 @@ async fn process_large_result_with_rlm(
     if content.len() <= SIMPLE_TRUNCATE_CHARS {
         return content.to_string();
     }
-    
+
     // For medium-sized content, just truncate
     if content.len() <= RLM_THRESHOLD_CHARS {
         return truncate_single_result(content, SIMPLE_TRUNCATE_CHARS);
     }
-    
+
     // For very large content, use RLM to intelligently summarize
     tracing::info!(
         tool = %tool_name,
         content_len = content.len(),
         "Using RLM to process large tool result"
     );
-    
+
     let query = format!(
         "Summarize the key information from this {} output. \
          Focus on: errors, warnings, important findings, and actionable items. \
          Be concise but thorough.",
         tool_name
     );
-    
-    let mut executor = RlmExecutor::new(content.to_string(), provider, model.to_string())
-        .with_max_iterations(3);
-    
+
+    let mut executor =
+        RlmExecutor::new(content.to_string(), provider, model.to_string()).with_max_iterations(3);
+
     match executor.analyze(&query).await {
         Ok(result) => {
             tracing::info!(
@@ -274,7 +289,7 @@ async fn process_large_result_with_rlm(
                 iterations = result.iterations,
                 "RLM summarized large result"
             );
-            
+
             format!(
                 "[RLM Summary of {} output ({} chars → {} chars)]\n\n{}",
                 tool_name,
@@ -304,24 +319,24 @@ pub struct SwarmExecutor {
 impl SwarmExecutor {
     /// Create a new executor
     pub fn new(config: SwarmConfig) -> Self {
-        Self { 
+        Self {
             config,
             coordinator_agent: None,
         }
     }
-    
+
     /// Set a coordinator agent for swarm-level coordination
     pub fn with_coordinator_agent(mut self, agent: Arc<tokio::sync::Mutex<Agent>>) -> Self {
         tracing::debug!("Setting coordinator agent for swarm execution");
         self.coordinator_agent = Some(agent);
         self
     }
-    
+
     /// Get the coordinator agent if set
     pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<Agent>>> {
         self.coordinator_agent.as_ref()
     }
-    
+
     /// Execute a task using the swarm
     pub async fn execute(
         &self,
@@ -329,15 +344,15 @@ impl SwarmExecutor {
         strategy: DecompositionStrategy,
     ) -> Result<SwarmResult> {
         let start_time = Instant::now();
-        
+
         // Create orchestrator
         let mut orchestrator = Orchestrator::new(self.config.clone()).await?;
-        
+
         tracing::info!(provider_name = %orchestrator.provider(), "Starting swarm execution for task");
-        
+
         // Decompose the task
         let subtasks = orchestrator.decompose(task, strategy).await?;
-        
+
         if subtasks.is_empty() {
             return Ok(SwarmResult {
                 success: false,
@@ -348,54 +363,50 @@ impl SwarmExecutor {
                 error: Some("No subtasks generated".to_string()),
             });
         }
-        
+
         tracing::info!(provider_name = %orchestrator.provider(), "Task decomposed into {} subtasks", subtasks.len());
-        
+
         // Execute stages in order
         let max_stage = subtasks.iter().map(|s| s.stage).max().unwrap_or(0);
         let mut all_results: Vec<SubTaskResult> = Vec::new();
         let artifacts: Vec<SwarmArtifact> = Vec::new();
-        
+
         // Shared state for completed results
-        let completed_results: Arc<RwLock<HashMap<String, String>>> = 
+        let completed_results: Arc<RwLock<HashMap<String, String>>> =
             Arc::new(RwLock::new(HashMap::new()));
-        
+
         for stage in 0..=max_stage {
             let stage_start = Instant::now();
-            
+
             let stage_subtasks: Vec<SubTask> = orchestrator
                 .subtasks_for_stage(stage)
                 .into_iter()
                 .cloned()
                 .collect();
-            
+
             tracing::debug!(
                 "Stage {} has {} subtasks (max_stage={})",
                 stage,
                 stage_subtasks.len(),
                 max_stage
             );
-            
+
             if stage_subtasks.is_empty() {
                 continue;
             }
-            
+
             tracing::info!(
                 provider_name = %orchestrator.provider(),
                 "Executing stage {} with {} subtasks",
                 stage,
                 stage_subtasks.len()
             );
-            
+
             // Execute all subtasks in this stage in parallel
             let stage_results = self
-                .execute_stage(
-                    &orchestrator,
-                    stage_subtasks,
-                    completed_results.clone(),
-                )
+                .execute_stage(&orchestrator, stage_subtasks, completed_results.clone())
                 .await?;
-            
+
             // Update completed results for next stage
             {
                 let mut completed = completed_results.write().await;
@@ -403,12 +414,12 @@ impl SwarmExecutor {
                     completed.insert(result.subtask_id.clone(), result.result.clone());
                 }
             }
-            
+
             // Update orchestrator stats
             let stage_time = stage_start.elapsed().as_millis() as u64;
             let max_steps = stage_results.iter().map(|r| r.steps).max().unwrap_or(0);
             let total_steps: usize = stage_results.iter().map(|r| r.steps).sum();
-            
+
             orchestrator.stats_mut().stages.push(StageStats {
                 stage,
                 subagent_count: stage_results.len(),
@@ -416,39 +427,36 @@ impl SwarmExecutor {
                 total_steps,
                 execution_time_ms: stage_time,
             });
-            
+
             // Mark subtasks as completed
             for result in &stage_results {
                 orchestrator.complete_subtask(&result.subtask_id, result.clone());
             }
-            
+
             all_results.extend(stage_results);
         }
-        
+
         // Get provider name before mutable borrow
         let provider_name = orchestrator.provider().to_string();
-        
+
         // Calculate final stats
         let stats = orchestrator.stats_mut();
         stats.execution_time_ms = start_time.elapsed().as_millis() as u64;
-        stats.sequential_time_estimate_ms = all_results
-            .iter()
-            .map(|r| r.execution_time_ms)
-            .sum();
+        stats.sequential_time_estimate_ms = all_results.iter().map(|r| r.execution_time_ms).sum();
         stats.calculate_critical_path();
         stats.calculate_speedup();
-        
+
         // Aggregate results
         let success = all_results.iter().all(|r| r.success);
         let result = self.aggregate_results(&all_results).await?;
-        
+
         tracing::info!(
             provider_name = %provider_name,
             "Swarm execution complete: {} subtasks, {:.1}x speedup",
             all_results.len(),
             stats.speedup_factor
         );
-        
+
         Ok(SwarmResult {
             success,
             result,
@@ -458,7 +466,7 @@ impl SwarmExecutor {
             error: None,
         })
     }
-    
+
     /// Execute a single stage of subtasks in parallel (with rate limiting and worktree isolation)
     async fn execute_stage(
         &self,
@@ -466,36 +474,43 @@ impl SwarmExecutor {
         subtasks: Vec<SubTask>,
         completed_results: Arc<RwLock<HashMap<String, String>>>,
     ) -> Result<Vec<SubTaskResult>> {
-        let mut handles: Vec<tokio::task::JoinHandle<Result<(SubTaskResult, Option<WorktreeInfo>), anyhow::Error>>> = Vec::new();
-        
+        let mut handles: Vec<
+            tokio::task::JoinHandle<Result<(SubTaskResult, Option<WorktreeInfo>), anyhow::Error>>,
+        > = Vec::new();
+
         // Rate limiting: semaphore for max concurrent requests
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(self.config.max_concurrent_requests));
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(
+            self.config.max_concurrent_requests,
+        ));
         let delay_ms = self.config.request_delay_ms;
-        
+
         // Get provider info for tool registry
         let model = orchestrator.model().to_string();
         let provider_name = orchestrator.provider().to_string();
         let providers = orchestrator.providers();
-        let provider = providers.get(&provider_name)
+        let provider = providers
+            .get(&provider_name)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", provider_name))?;
-        
+
         tracing::info!(provider_name = %provider_name, "Selected provider for subtask execution");
-        
+
         // Create shared tool registry with provider for ralph and batch tool
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
         // Filter out 'question' tool - sub-agents must be autonomous, not interactive
-        let tool_definitions: Vec<_> = tool_registry.definitions()
+        let tool_definitions: Vec<_> = tool_registry
+            .definitions()
             .into_iter()
             .filter(|t| t.name != "question")
             .collect();
-        
+
         // Create worktree manager if enabled
         let worktree_manager = if self.config.worktree_enabled {
-            let working_dir = self.config.working_dir.clone()
-                .unwrap_or_else(|| std::env::current_dir()
+            let working_dir = self.config.working_dir.clone().unwrap_or_else(|| {
+                std::env::current_dir()
                     .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|_| ".".to_string()));
-            
+                    .unwrap_or_else(|_| ".".to_string())
+            });
+
             match WorktreeManager::new(&working_dir) {
                 Ok(mgr) => {
                     tracing::info!(
@@ -515,37 +530,40 @@ impl SwarmExecutor {
         } else {
             None
         };
-        
+
         for (idx, subtask) in subtasks.into_iter().enumerate() {
             let model = model.clone();
             let _provider_name = provider_name.clone();
             let provider = Arc::clone(&provider);
-            
+
             // Get context from dependencies
             let context = {
                 let completed = completed_results.read().await;
                 let mut dep_context = String::new();
                 for dep_id in &subtask.dependencies {
                     if let Some(result) = completed.get(dep_id) {
-                        dep_context.push_str(&format!("\n--- Result from dependency {} ---\n{}\n", dep_id, result));
+                        dep_context.push_str(&format!(
+                            "\n--- Result from dependency {} ---\n{}\n",
+                            dep_id, result
+                        ));
                     }
                 }
                 dep_context
             };
-            
+
             let instruction = subtask.instruction.clone();
             let specialty = subtask.specialty.clone().unwrap_or_default();
             let subtask_id = subtask.id.clone();
             let max_steps = self.config.max_steps_per_subagent;
             let timeout_secs = self.config.subagent_timeout_secs;
-            
+
             // Clone for the async block
             let tools = tool_definitions.clone();
             let registry = Arc::clone(&tool_registry);
             let sem = Arc::clone(&semaphore);
-            let stagger_delay = delay_ms * idx as u64;  // Stagger start times
+            let stagger_delay = delay_ms * idx as u64; // Stagger start times
             let worktree_mgr = worktree_manager.clone();
-            
+
             // Spawn the subtask execution with agentic tool loop
             let handle = tokio::spawn(async move {
                 // Rate limiting: stagger start and acquire semaphore
@@ -553,9 +571,9 @@ impl SwarmExecutor {
                     tokio::time::sleep(Duration::from_millis(stagger_delay)).await;
                 }
                 let _permit = sem.acquire().await.expect("semaphore closed");
-                
+
                 let start = Instant::now();
-                
+
                 // Create worktree for this sub-agent if enabled
                 let worktree_info = if let Some(ref mgr) = worktree_mgr {
                     let task_slug = subtask_id.replace("-", "_");
@@ -581,18 +599,21 @@ impl SwarmExecutor {
                 } else {
                     None
                 };
-                
+
                 // Determine working directory
-                let working_dir = worktree_info.as_ref()
+                let working_dir = worktree_info
+                    .as_ref()
                     .map(|wt| wt.path.display().to_string())
                     .unwrap_or_else(|| ".".to_string());
-                
+
                 // Load AGENTS.md from working directory
                 let working_path = std::path::Path::new(&working_dir);
                 let agents_md_content = crate::agent::builtin::load_agents_md(working_path)
-                    .map(|(content, _)| format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}"))
+                    .map(|(content, _)| {
+                        format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}")
+                    })
                     .unwrap_or_default();
-                
+
                 // Build the system prompt for this sub-agent
                 let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
                 let system_prompt = format!(
@@ -633,7 +654,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     prd_filename,
                     prd_filename
                 );
-                
+
                 let user_prompt = if context.is_empty() {
                     format!("Complete this task:\n\n{}", instruction)
                 } else {
@@ -642,7 +663,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                         instruction, context
                     )
                 };
-                
+
                 // Run the agentic loop
                 let result = run_agent_loop(
                     provider,
@@ -653,11 +674,12 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     registry,
                     max_steps,
                     timeout_secs,
-                ).await;
-                
+                )
+                .await;
+
                 match result {
-                    Ok((output, steps, tool_calls)) => {
-                        Ok((SubTaskResult {
+                    Ok((output, steps, tool_calls)) => Ok((
+                        SubTaskResult {
                             subtask_id: subtask_id.clone(),
                             subagent_id: format!("agent-{}", subtask_id),
                             success: true,
@@ -667,10 +689,11 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: None,
                             artifacts: Vec::new(),
-                        }, worktree_info))
-                    }
-                    Err(e) => {
-                        Ok((SubTaskResult {
+                        },
+                        worktree_info,
+                    )),
+                    Err(e) => Ok((
+                        SubTaskResult {
                             subtask_id: subtask_id.clone(),
                             subagent_id: format!("agent-{}", subtask_id),
                             success: false,
@@ -680,18 +703,19 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: Some(e.to_string()),
                             artifacts: Vec::new(),
-                        }, worktree_info))
-                    }
+                        },
+                        worktree_info,
+                    )),
                 }
             });
-            
+
             handles.push(handle);
         }
-        
+
         // Wait for all handles and handle worktree merging
         let mut results = Vec::new();
         let auto_merge = self.config.worktree_auto_merge;
-        
+
         for handle in handles {
             match handle.await {
                 Ok(Ok((mut result, worktree_info))) => {
@@ -722,7 +746,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                                 merge_result.summary
                                             ));
                                         }
-                                        
+
                                         // Cleanup worktree after merge
                                         if let Err(e) = mgr.cleanup(&wt) {
                                             tracing::warn!(
@@ -749,7 +773,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             );
                         }
                     }
-                    
+
                     results.push(result);
                 }
                 Ok(Err(e)) => {
@@ -760,21 +784,17 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 }
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Aggregate results from all subtasks into a final result
     async fn aggregate_results(&self, results: &[SubTaskResult]) -> Result<String> {
         let mut aggregated = String::new();
-        
+
         for (i, result) in results.iter().enumerate() {
             if result.success {
-                aggregated.push_str(&format!(
-                    "=== Subtask {} ===\n{}\n\n",
-                    i + 1,
-                    result.result
-                ));
+                aggregated.push_str(&format!("=== Subtask {} ===\n{}\n\n", i + 1, result.result));
             } else {
                 aggregated.push_str(&format!(
                     "=== Subtask {} (FAILED) ===\nError: {}\n\n",
@@ -783,10 +803,10 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 ));
             }
         }
-        
+
         Ok(aggregated)
     }
-    
+
     /// Execute a single task without decomposition (for simple cases)
     pub async fn execute_single(&self, task: &str) -> Result<SwarmResult> {
         self.execute(task, DecompositionStrategy::None).await
@@ -804,32 +824,32 @@ impl SwarmExecutorBuilder {
             config: SwarmConfig::default(),
         }
     }
-    
+
     pub fn max_subagents(mut self, max: usize) -> Self {
         self.config.max_subagents = max;
         self
     }
-    
+
     pub fn max_steps_per_subagent(mut self, max: usize) -> Self {
         self.config.max_steps_per_subagent = max;
         self
     }
-    
+
     pub fn max_total_steps(mut self, max: usize) -> Self {
         self.config.max_total_steps = max;
         self
     }
-    
+
     pub fn timeout_secs(mut self, secs: u64) -> Self {
         self.config.subagent_timeout_secs = secs;
         self
     }
-    
+
     pub fn parallel_enabled(mut self, enabled: bool) -> Self {
         self.config.parallel_enabled = enabled;
         self
     }
-    
+
     pub fn build(self) -> SwarmExecutor {
         SwarmExecutor::new(self.config)
     }
@@ -843,7 +863,8 @@ impl Default for SwarmExecutorBuilder {
 
 /// Run the agentic loop for a sub-agent with tool execution
 #[allow(clippy::too_many_arguments)]
-async fn run_agent_loop(
+/// Run an agentic loop with tools - reusable for Ralph and swarm sub-agents
+pub async fn run_agent_loop(
     provider: Arc<dyn Provider>,
     model: &str,
     system_prompt: &str,
@@ -855,7 +876,7 @@ async fn run_agent_loop(
 ) -> Result<(String, usize, usize)> {
     // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
     let temperature = 0.7;
-    
+
     tracing::info!(
         model = %model,
         max_steps = max_steps,
@@ -864,42 +885,46 @@ async fn run_agent_loop(
     );
     tracing::debug!(system_prompt = %system_prompt, "Sub-agent system prompt");
     tracing::debug!(user_prompt = %user_prompt, "Sub-agent user prompt");
-    
+
     // Initialize conversation with system and user messages
     let mut messages = vec![
         Message {
             role: Role::System,
-            content: vec![ContentPart::Text { text: system_prompt.to_string() }],
+            content: vec![ContentPart::Text {
+                text: system_prompt.to_string(),
+            }],
         },
         Message {
             role: Role::User,
-            content: vec![ContentPart::Text { text: user_prompt.to_string() }],
+            content: vec![ContentPart::Text {
+                text: user_prompt.to_string(),
+            }],
         },
     ];
-    
+
     let mut steps = 0;
     let mut total_tool_calls = 0;
     let mut final_output = String::new();
-    
+
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
-    
+
     loop {
         if steps >= max_steps {
             tracing::warn!(max_steps = max_steps, "Sub-agent reached max steps limit");
             break;
         }
-        
+
         if Instant::now() > deadline {
             tracing::warn!(timeout_secs = timeout_secs, "Sub-agent timed out");
             break;
         }
-        
+
         steps += 1;
         tracing::info!(step = steps, "Sub-agent step starting");
-        
+
         // Check context size and truncate if approaching limit
         truncate_messages_to_fit(&mut messages, DEFAULT_CONTEXT_LIMIT);
-        
+
         let request = CompletionRequest {
             messages: messages.clone(),
             tools: tools.clone(),
@@ -909,14 +934,11 @@ async fn run_agent_loop(
             max_tokens: Some(8192),
             stop: Vec::new(),
         };
-        
+
         let step_start = Instant::now();
-        let response = timeout(
-            Duration::from_secs(120),
-            provider.complete(request),
-        ).await??;
+        let response = timeout(Duration::from_secs(120), provider.complete(request)).await??;
         let step_duration = step_start.elapsed();
-        
+
         tracing::info!(
             step = steps,
             duration_ms = step_duration.as_millis() as u64,
@@ -925,23 +947,27 @@ async fn run_agent_loop(
             completion_tokens = response.usage.completion_tokens,
             "Sub-agent step completed LLM call"
         );
-        
+
         // Extract text from response
         let mut text_parts = Vec::new();
         let mut tool_calls = Vec::new();
-        
+
         for part in &response.message.content {
             match part {
                 ContentPart::Text { text } => {
                     text_parts.push(text.clone());
                 }
-                ContentPart::ToolCall { id, name, arguments } => {
+                ContentPart::ToolCall {
+                    id,
+                    name,
+                    arguments,
+                } => {
                     tool_calls.push((id.clone(), name.clone(), arguments.clone()));
                 }
                 _ => {}
             }
         }
-        
+
         // Log assistant output
         if !text_parts.is_empty() {
             final_output = text_parts.join("\n");
@@ -952,7 +978,7 @@ async fn run_agent_loop(
             );
             tracing::debug!(step = steps, output = %final_output, "Sub-agent full output");
         }
-        
+
         // Log tool calls
         if !tool_calls.is_empty() {
             tracing::info!(
@@ -962,26 +988,26 @@ async fn run_agent_loop(
                 "Sub-agent requesting tool calls"
             );
         }
-        
+
         // Add assistant message to history
         messages.push(response.message.clone());
-        
+
         // If no tool calls or stop, we're done
         if response.finish_reason != FinishReason::ToolCalls || tool_calls.is_empty() {
             tracing::info!(
-                steps = steps, 
+                steps = steps,
                 total_tool_calls = total_tool_calls,
                 "Sub-agent finished"
             );
             break;
         }
-        
+
         // Execute tool calls
         let mut tool_results = Vec::new();
-        
+
         for (call_id, tool_name, arguments) in tool_calls {
             total_tool_calls += 1;
-            
+
             tracing::info!(
                 step = steps,
                 tool_call_id = %call_id,
@@ -993,13 +1019,13 @@ async fn run_agent_loop(
                 arguments = %arguments,
                 "Tool call arguments"
             );
-            
+
             let tool_start = Instant::now();
             let result = if let Some(tool) = registry.get(&tool_name) {
                 // Parse arguments as JSON
-                let args: serde_json::Value = serde_json::from_str(&arguments)
-                    .unwrap_or_else(|_| serde_json::json!({}));
-                
+                let args: serde_json::Value =
+                    serde_json::from_str(&arguments).unwrap_or_else(|_| serde_json::json!({}));
+
                 match tool.execute(args).await {
                     Ok(r) => {
                         if r.success {
@@ -1032,25 +1058,26 @@ async fn run_agent_loop(
                 tracing::error!(tool = %tool_name, "Unknown tool requested");
                 format!("Unknown tool: {}", tool_name)
             };
-            
+
             tracing::debug!(
                 tool = %tool_name,
                 result_len = result.len(),
                 "Tool result"
             );
-            
+
             // Process large results with RLM or truncate smaller ones
             let result = if result.len() > RLM_THRESHOLD_CHARS {
                 // Use RLM for very large results
-                process_large_result_with_rlm(&result, &tool_name, Arc::clone(&provider), model).await
+                process_large_result_with_rlm(&result, &tool_name, Arc::clone(&provider), model)
+                    .await
             } else {
                 // Simple truncation for medium results
                 truncate_single_result(&result, SIMPLE_TRUNCATE_CHARS)
             };
-            
+
             tool_results.push((call_id, tool_name, result));
         }
-        
+
         // Add tool results to conversation
         for (call_id, _tool_name, result) in tool_results {
             messages.push(Message {
@@ -1062,6 +1089,6 @@ async fn run_agent_loop(
             });
         }
     }
-    
+
     Ok((final_output, steps, total_tool_calls))
 }

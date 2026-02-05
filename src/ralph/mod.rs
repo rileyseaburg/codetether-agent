@@ -6,8 +6,8 @@
 //! Ralph iterates through PRD user stories, running quality gates after each,
 //! and uses RLM to compress progress when context gets too large.
 
-mod types;
 mod ralph_loop;
+mod types;
 
-pub use types::*;
 pub use ralph_loop::*;
+pub use types::*;

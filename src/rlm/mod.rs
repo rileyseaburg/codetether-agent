@@ -8,12 +8,12 @@
 //! Based on "Recursive Language Models" (Zhang et al. 2025)
 
 pub mod chunker;
-pub mod router;
 pub mod repl;
+pub mod router;
 
 pub use chunker::{Chunk, ChunkOptions, ContentType, RlmChunker};
+pub use repl::{ReplRuntime, RlmAnalysisResult, RlmExecutor, RlmRepl, SubQuery};
 pub use router::{RlmRouter, RoutingContext, RoutingResult};
-pub use repl::{RlmRepl, ReplRuntime, RlmExecutor, RlmAnalysisResult, SubQuery};
 
 use serde::{Deserialize, Serialize};
 

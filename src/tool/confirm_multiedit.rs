@@ -1,10 +1,10 @@
-//! Multi-Edit Tool
+//! Confirm Multi-Edit Tool
 //!
-//! Edit multiple files atomically with an array of replacements.
+//! Edit multiple files with user confirmation via diff display
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use similar::{ChangeTag, TextDiff};
 use std::collections::HashMap;
@@ -13,53 +13,47 @@ use tokio::fs;
 
 use super::{Tool, ToolResult};
 
-pub struct MultiEditTool;
-
-impl Default for MultiEditTool {
-    fn default() -> Self {
-        Self::new()
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfirmMultiEditInput {
+    pub edits: Vec<EditOperation>,
+    pub confirm: Option<bool>,
 }
 
-impl MultiEditTool {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditOperation {
+    pub file: String,
+    pub old_string: String,
+    pub new_string: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditPreview {
+    pub file: String,
+    pub diff: String,
+    pub added: usize,
+    pub removed: usize,
+}
+
+pub struct ConfirmMultiEditTool;
+
+impl ConfirmMultiEditTool {
     pub fn new() -> Self {
         Self
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct MultiEditParams {
-    edits: Vec<EditOperation>,
-}
-
-#[derive(Debug, Deserialize)]
-struct EditOperation {
-    file: String,
-    old_string: String,
-    new_string: String,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct EditResult {
-    file: String,
-    success: bool,
-    message: String,
-}
-
 #[async_trait]
-impl Tool for MultiEditTool {
+impl Tool for ConfirmMultiEditTool {
     fn id(&self) -> &str {
-        "multiedit"
+        "confirm_multiedit"
     }
 
     fn name(&self) -> &str {
-        "Multi Edit"
+        "Confirm Multi Edit"
     }
 
     fn description(&self) -> &str {
-        "Edit multiple files atomically. Each edit replaces an old string with a new string. \
-         All edits are validated before any changes are applied. If any edit fails validation, \
-         no changes are made."
+        "Edit multiple files with confirmation. Shows diffs for all changes and requires user confirmation before applying."
     }
 
     fn parameters(&self) -> Value {
@@ -68,7 +62,7 @@ impl Tool for MultiEditTool {
             "properties": {
                 "edits": {
                     "type": "array",
-                    "description": "Array of edit operations to apply",
+                    "description": "Array of edit operations to preview",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -87,15 +81,19 @@ impl Tool for MultiEditTool {
                         },
                         "required": ["file", "old_string", "new_string"]
                     }
+                },
+                "confirm": {
+                    "type": "boolean",
+                    "description": "Set to true to confirm and apply all changes, false to reject all",
+                    "default": null
                 }
             },
             "required": ["edits"]
         })
     }
 
-    async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let params: MultiEditParams =
-            serde_json::from_value(params).context("Invalid parameters")?;
+    async fn execute(&self, input: Value) -> Result<ToolResult> {
+        let params: ConfirmMultiEditInput = serde_json::from_value(input)?;
 
         if params.edits.is_empty() {
             return Ok(ToolResult::error("No edits provided"));
@@ -103,6 +101,7 @@ impl Tool for MultiEditTool {
 
         // Phase 1: Validation - read all files and check that old_string exists uniquely
         let mut file_contents: Vec<(PathBuf, String, String, String)> = Vec::new();
+        let mut previews: Vec<EditPreview> = Vec::new();
 
         for edit in &params.edits {
             let path = PathBuf::from(&edit.file);
@@ -152,7 +151,6 @@ impl Tool for MultiEditTool {
         // Phase 2: Generate diffs for all changes
         let mut total_added = 0;
         let mut total_removed = 0;
-        let mut previews = Vec::new();
 
         for (path, content, old_string, new_string) in &file_contents {
             let new_content = content.replacen(old_string, new_string, 1);
@@ -186,42 +184,58 @@ impl Tool for MultiEditTool {
                 diff_output.push('\n');
             }
 
-            previews.push(json!({
-                "file": path.display().to_string(),
-                "diff": diff_output.trim(),
-                "added": added,
-                "removed": removed
-            }));
+            previews.push(EditPreview {
+                file: path.display().to_string(),
+                diff: diff_output.trim().to_string(),
+                added,
+                removed,
+            });
 
             total_added += added;
             total_removed += removed;
         }
 
-        // Instead of applying changes immediately, return confirmation prompt
-        let mut all_diffs = String::new();
-        for preview in &previews {
-            let file = preview["file"].as_str().unwrap();
-            let diff = preview["diff"].as_str().unwrap();
-            all_diffs.push_str(&format!("\n=== {} ===\n{}", file, diff));
+        // If no confirmation provided, return diffs for review
+        if params.confirm.is_none() {
+            let mut all_diffs = String::new();
+            for preview in &previews {
+                all_diffs.push_str(&format!("\n=== {} ===\n{}", preview.file, preview.diff));
+            }
+
+            let mut metadata = HashMap::new();
+            metadata.insert("requires_confirmation".to_string(), json!(true));
+            metadata.insert("total_files".to_string(), json!(previews.len()));
+            metadata.insert("total_added".to_string(), json!(total_added));
+            metadata.insert("total_removed".to_string(), json!(total_removed));
+            metadata.insert("previews".to_string(), json!(previews));
+
+            return Ok(ToolResult {
+                output: format!(
+                    "Multi-file changes require confirmation:{}\n\nTotal: {} files, +{} lines, -{} lines",
+                    all_diffs,
+                    previews.len(),
+                    total_added,
+                    total_removed
+                ),
+                success: true,
+                metadata,
+            });
         }
 
-        let mut metadata = HashMap::new();
-        metadata.insert("requires_confirmation".to_string(), json!(true));
-        metadata.insert("total_files".to_string(), json!(file_contents.len()));
-        metadata.insert("total_added".to_string(), json!(total_added));
-        metadata.insert("total_removed".to_string(), json!(total_removed));
-        metadata.insert("previews".to_string(), json!(previews));
+        // Handle confirmation
+        if params.confirm == Some(true) {
+            // Apply all changes
+            for (path, content, old_string, new_string) in file_contents {
+                let new_content = content.replacen(&old_string, &new_string, 1);
+                fs::write(&path, &new_content).await?;
+            }
 
-        Ok(ToolResult {
-            output: format!(
-                "Multi-file changes require confirmation:{}\n\nTotal: {} files, +{} lines, -{} lines",
-                all_diffs,
-                file_contents.len(),
-                total_added,
-                total_removed
-            ),
-            success: true,
-            metadata,
-        })
+            Ok(ToolResult::success(format!(
+                "✓ Applied {} file changes",
+                previews.len()
+            )))
+        } else {
+            Ok(ToolResult::success("✗ All changes rejected by user"))
+        }
     }
 }

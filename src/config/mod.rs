@@ -12,6 +12,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 
+use crate::tui::theme::Theme;
+
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
@@ -167,7 +169,7 @@ pub enum AutoApprovePolicy {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiConfig {
-    /// Theme name
+    /// Theme name ("default", "dark", "light", "solarized-dark", "solarized-light", or custom)
     #[serde(default = "default_theme")]
     pub theme: String,
 
@@ -178,6 +180,14 @@ pub struct UiConfig {
     /// Enable mouse support
     #[serde(default = "default_true")]
     pub mouse: bool,
+
+    /// Custom theme configuration (overrides preset themes)
+    #[serde(default)]
+    pub custom_theme: Option<crate::tui::theme::Theme>,
+
+    /// Enable theme hot-reloading (apply changes without restart)
+    #[serde(default = "default_false")]
+    pub hot_reload: bool,
 }
 
 impl Default for UiConfig {
@@ -186,6 +196,8 @@ impl Default for UiConfig {
             theme: default_theme(),
             line_numbers: true,
             mouse: true,
+            custom_theme: None,
+            hot_reload: false,
         }
     }
 }
@@ -196,6 +208,10 @@ fn default_theme() -> String {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_false() -> bool {
+    false
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -286,7 +302,7 @@ impl Config {
     /// Set a configuration value
     pub async fn set(key: &str, value: &str) -> Result<()> {
         let mut config = Self::load().await?;
-        
+
         // Parse key path and set value
         match key {
             "default_provider" => config.default_provider = Some(value.to_string()),
@@ -323,6 +339,27 @@ impl Config {
             self.a2a = other.a2a;
         }
         self
+    }
+
+    /// Load theme based on configuration
+    pub fn load_theme(&self) -> crate::tui::theme::Theme {
+        // Use custom theme if provided
+        if let Some(custom) = &self.ui.custom_theme {
+            return custom.clone();
+        }
+
+        // Use preset theme
+        match self.ui.theme.as_str() {
+            "dark" | "default" => crate::tui::theme::Theme::dark(),
+            "light" => crate::tui::theme::Theme::light(),
+            "solarized-dark" => crate::tui::theme::Theme::solarized_dark(),
+            "solarized-light" => crate::tui::theme::Theme::solarized_light(),
+            _ => {
+                // Log warning and fallback to dark theme
+                tracing::warn!(theme = %self.ui.theme, "Unknown theme name, falling back to dark");
+                crate::tui::theme::Theme::dark()
+            }
+        }
     }
 
     /// Apply environment variable overrides

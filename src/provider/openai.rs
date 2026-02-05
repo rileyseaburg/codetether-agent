@@ -6,15 +6,16 @@ use super::{
 };
 use anyhow::Result;
 use async_openai::{
+    Client,
     config::OpenAIConfig,
     types::chat::{
-        ChatCompletionMessageToolCall, ChatCompletionMessageToolCalls, ChatCompletionRequestAssistantMessageArgs,
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
-        ChatCompletionRequestToolMessageArgs, ChatCompletionRequestUserMessageArgs,
-        ChatCompletionTool, ChatCompletionTools, CreateChatCompletionRequestArgs,
-        FinishReason as OpenAIFinishReason, FunctionCall, FunctionObjectArgs,
+        ChatCompletionMessageToolCall, ChatCompletionMessageToolCalls,
+        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
+        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestToolMessageArgs,
+        ChatCompletionRequestUserMessageArgs, ChatCompletionTool, ChatCompletionTools,
+        CreateChatCompletionRequestArgs, FinishReason as OpenAIFinishReason, FunctionCall,
+        FunctionObjectArgs,
     },
-    Client,
 };
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -35,7 +36,11 @@ impl std::fmt::Debug for OpenAIProvider {
 
 impl OpenAIProvider {
     pub fn new(api_key: String) -> Result<Self> {
-        tracing::debug!(provider = "openai", api_key_len = api_key.len(), "Creating OpenAI provider");
+        tracing::debug!(
+            provider = "openai",
+            api_key_len = api_key.len(),
+            "Creating OpenAI provider"
+        );
         let config = OpenAIConfig::new().with_api_key(api_key);
         Ok(Self {
             client: Client::with_config(config),
@@ -62,7 +67,7 @@ impl OpenAIProvider {
 
     fn convert_messages(messages: &[Message]) -> Result<Vec<ChatCompletionRequestMessage>> {
         let mut result = Vec::new();
-        
+
         for msg in messages {
             let content = msg
                 .content
@@ -96,15 +101,19 @@ impl OpenAIProvider {
                         .content
                         .iter()
                         .filter_map(|p| match p {
-                            ContentPart::ToolCall { id, name, arguments } => {
-                                Some(ChatCompletionMessageToolCalls::Function(ChatCompletionMessageToolCall {
+                            ContentPart::ToolCall {
+                                id,
+                                name,
+                                arguments,
+                            } => Some(ChatCompletionMessageToolCalls::Function(
+                                ChatCompletionMessageToolCall {
                                     id: id.clone(),
                                     function: FunctionCall {
                                         name: name.clone(),
                                         arguments: arguments.clone(),
                                     },
-                                }))
-                            }
+                                },
+                            )),
                             _ => None,
                         })
                         .collect();
@@ -120,7 +129,11 @@ impl OpenAIProvider {
                 }
                 Role::Tool => {
                     for part in &msg.content {
-                        if let ContentPart::ToolResult { tool_call_id, content } = part {
+                        if let ContentPart::ToolResult {
+                            tool_call_id,
+                            content,
+                        } = part
+                        {
                             result.push(
                                 ChatCompletionRequestToolMessageArgs::default()
                                     .tool_call_id(tool_call_id.clone())
@@ -133,7 +146,7 @@ impl OpenAIProvider {
                 }
             }
         }
-        
+
         Ok(result)
     }
 
@@ -220,11 +233,14 @@ impl Provider for OpenAIProvider {
 
         let response = self.client.chat().create(req_builder.build()?).await?;
 
-        let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
+        let choice = response
+            .choices
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No choices"))?;
 
         let mut content = Vec::new();
         let mut has_tool_calls = false;
-        
+
         if let Some(text) = &choice.message.content {
             content.push(ContentPart::Text { text: text.clone() });
         }
@@ -260,9 +276,21 @@ impl Provider for OpenAIProvider {
                 content,
             },
             usage: Usage {
-                prompt_tokens: response.usage.as_ref().map(|u| u.prompt_tokens as usize).unwrap_or(0),
-                completion_tokens: response.usage.as_ref().map(|u| u.completion_tokens as usize).unwrap_or(0),
-                total_tokens: response.usage.as_ref().map(|u| u.total_tokens as usize).unwrap_or(0),
+                prompt_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.prompt_tokens as usize)
+                    .unwrap_or(0),
+                completion_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.completion_tokens as usize)
+                    .unwrap_or(0),
+                total_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.total_tokens as usize)
+                    .unwrap_or(0),
                 ..Default::default()
             },
             finish_reason,
@@ -279,17 +307,24 @@ impl Provider for OpenAIProvider {
             message_count = request.messages.len(),
             "Starting streaming completion request"
         );
-        
+
         let messages = Self::convert_messages(&request.messages)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
-        req_builder.model(&request.model).messages(messages).stream(true);
+        req_builder
+            .model(&request.model)
+            .messages(messages)
+            .stream(true);
 
         if let Some(temp) = request.temperature {
             req_builder.temperature(temp);
         }
 
-        let stream = self.client.chat().create_stream(req_builder.build()?).await?;
+        let stream = self
+            .client
+            .chat()
+            .create_stream(req_builder.build()?)
+            .await?;
 
         Ok(stream
             .map(|result| match result {

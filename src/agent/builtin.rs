@@ -97,7 +97,7 @@ Current working directory: {cwd}
 "#;
 
 /// System prompt for the explore agent
-/// 
+///
 /// This constant is available for use when creating an explore agent programmatically.
 /// Currently used via the `explore_agent()` function which returns the AgentInfo.
 #[allow(dead_code)]
@@ -116,7 +116,7 @@ Be thorough but fast. Return the most relevant results without unnecessary explo
 /// Returns the content and path if found.
 pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> {
     let mut current = start_dir.to_path_buf();
-    
+
     loop {
         let agents_path = current.join("AGENTS.md");
         if agents_path.exists() {
@@ -124,13 +124,13 @@ pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> 
                 return Some((content, agents_path));
             }
         }
-        
+
         // Try parent directory
         if !current.pop() {
             break;
         }
     }
-    
+
     None
 }
 
@@ -139,7 +139,7 @@ pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> 
 pub fn load_all_agents_md(start_dir: &Path) -> Vec<(String, std::path::PathBuf)> {
     let mut results = Vec::new();
     let mut current = start_dir.to_path_buf();
-    
+
     loop {
         let agents_path = current.join("AGENTS.md");
         if agents_path.exists() {
@@ -147,40 +147,42 @@ pub fn load_all_agents_md(start_dir: &Path) -> Vec<(String, std::path::PathBuf)>
                 results.push((content, agents_path));
             }
         }
-        
+
         // Try parent directory
         if !current.pop() {
             break;
         }
     }
-    
+
     results
 }
 
 /// Build a complete system prompt for the build agent, including AGENTS.md content if present.
 pub fn build_system_prompt(cwd: &Path) -> String {
     let base_prompt = BUILD_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
-    
+
     // Load AGENTS.md files (closest first)
     let agents_files = load_all_agents_md(cwd);
-    
+
     if agents_files.is_empty() {
         return base_prompt;
     }
-    
+
     // Build the AGENTS.md section - include all found files, closest last (takes precedence)
     let mut agents_section = String::new();
     agents_section.push_str("\n\n## Project Instructions (AGENTS.md)\n\n");
-    agents_section.push_str("The following instructions were loaded from AGENTS.md files in the project.\n");
-    agents_section.push_str("Follow these project-specific guidelines when working on this codebase.\n\n");
-    
+    agents_section
+        .push_str("The following instructions were loaded from AGENTS.md files in the project.\n");
+    agents_section
+        .push_str("Follow these project-specific guidelines when working on this codebase.\n\n");
+
     // Reverse so closest (most specific) comes last and takes precedence
     for (content, path) in agents_files.iter().rev() {
         agents_section.push_str(&format!("### From {}\n\n", path.display()));
         agents_section.push_str(content);
         agents_section.push_str("\n\n");
     }
-    
+
     format!("{base_prompt}{agents_section}")
 }
 
@@ -188,22 +190,22 @@ pub fn build_system_prompt(cwd: &Path) -> String {
 #[allow(dead_code)]
 pub fn build_plan_system_prompt(cwd: &Path) -> String {
     let base_prompt = PLAN_SYSTEM_PROMPT.replace("{cwd}", &cwd.display().to_string());
-    
+
     // Load AGENTS.md files
     let agents_files = load_all_agents_md(cwd);
-    
+
     if agents_files.is_empty() {
         return base_prompt;
     }
-    
+
     let mut agents_section = String::new();
     agents_section.push_str("\n\n## Project Instructions (AGENTS.md)\n\n");
-    
+
     for (content, path) in agents_files.iter().rev() {
         agents_section.push_str(&format!("### From {}\n\n", path.display()));
         agents_section.push_str(content);
         agents_section.push_str("\n\n");
     }
-    
+
     format!("{base_prompt}{agents_section}")
 }

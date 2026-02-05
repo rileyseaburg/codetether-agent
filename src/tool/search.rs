@@ -3,9 +3,9 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use regex::Regex;
-use serde_json::{json, Value};
 use ignore::WalkBuilder;
+use regex::Regex;
+use serde_json::{Value, json};
 
 /// Search for text in files
 pub struct GrepTool;
@@ -67,13 +67,15 @@ impl Tool for GrepTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let pattern = match args["pattern"].as_str() {
             Some(p) => p,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "grep",
-                "pattern is required",
-                Some(vec!["pattern"]),
-                Some(json!({"pattern": "search text", "path": "src/"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "grep",
+                    "pattern is required",
+                    Some(vec!["pattern"]),
+                    Some(json!({"pattern": "search text", "path": "src/"})),
+                ));
+            }
         };
         let search_path = args["path"].as_str().unwrap_or(".");
         let is_regex = args["is_regex"].as_bool().unwrap_or(false);

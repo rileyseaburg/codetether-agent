@@ -15,9 +15,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::time::timeout;
 
-use crate::provider::{
-    CompletionRequest, ContentPart, Message, Provider, Role,
-};
+use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 
 /// REPL runtime options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -72,13 +70,21 @@ impl RlmRepl {
 
     /// Get first n lines
     pub fn head(&self, n: usize) -> Vec<&str> {
-        self.context_lines.iter().take(n).map(|s| s.as_str()).collect()
+        self.context_lines
+            .iter()
+            .take(n)
+            .map(|s| s.as_str())
+            .collect()
     }
 
     /// Get last n lines
     pub fn tail(&self, n: usize) -> Vec<&str> {
         let start = self.context_lines.len().saturating_sub(n);
-        self.context_lines.iter().skip(start).map(|s| s.as_str()).collect()
+        self.context_lines
+            .iter()
+            .skip(start)
+            .map(|s| s.as_str())
+            .collect()
     }
 
     /// Search for lines matching a pattern
@@ -87,7 +93,8 @@ impl RlmRepl {
             Ok(r) => r,
             Err(_) => {
                 // Fall back to simple contains
-                return self.context_lines
+                return self
+                    .context_lines
                     .iter()
                     .enumerate()
                     .filter(|(_, line)| line.contains(pattern))
@@ -125,7 +132,7 @@ impl RlmRepl {
         if n == 0 {
             return vec![self.context.clone()];
         }
-        
+
         let chunk_size = self.context_lines.len().div_ceil(n);
         self.context_lines
             .chunks(chunk_size)
@@ -144,7 +151,7 @@ impl RlmRepl {
     }
 
     /// Execute analysis code (interpreted based on runtime)
-    /// 
+    ///
     /// For Rust runtime, this uses a simple DSL:
     /// - head(n) - first n lines
     /// - tail(n) - last n lines
@@ -199,16 +206,23 @@ impl RlmRepl {
         if line.starts_with("FINAL(") || line.starts_with("FINAL!(") {
             let start = line.find('(').unwrap() + 1;
             let end = line.rfind(')').unwrap_or(line.len());
-            let answer = line[start..end].trim().trim_matches(|c| c == '"' || c == '\'' || c == '`');
+            let answer = line[start..end]
+                .trim()
+                .trim_matches(|c| c == '"' || c == '\'' || c == '`');
             return Some(DslResult::Final(answer.to_string()));
         }
 
         // Check for print/console.log
-        if line.starts_with("print(") || line.starts_with("println!(") || line.starts_with("console.log(") {
+        if line.starts_with("print(")
+            || line.starts_with("println!(")
+            || line.starts_with("console.log(")
+        {
             let start = line.find('(').unwrap() + 1;
             let end = line.rfind(')').unwrap_or(line.len());
-            let content = line[start..end].trim().trim_matches(|c| c == '"' || c == '\'' || c == '`');
-            
+            let content = line[start..end]
+                .trim()
+                .trim_matches(|c| c == '"' || c == '\'' || c == '`');
+
             // Expand variables
             let expanded = self.expand_expression(content);
             return Some(DslResult::Output(expanded));
@@ -217,13 +231,14 @@ impl RlmRepl {
         // Check for variable assignment
         if let Some(eq_pos) = line.find('=') {
             if !line.contains("==") && !line.starts_with("if ") {
-                let var_name = line[..eq_pos].trim()
+                let var_name = line[..eq_pos]
+                    .trim()
                     .trim_start_matches("let ")
                     .trim_start_matches("const ")
                     .trim_start_matches("var ")
                     .trim();
                 let expr = line[eq_pos + 1..].trim().trim_end_matches(';');
-                
+
                 let value = self.evaluate_expression(expr);
                 self.set_var(var_name, value);
                 return None;
@@ -231,10 +246,15 @@ impl RlmRepl {
         }
 
         // Check for function calls that should output
-        if line.starts_with("head(") || line.starts_with("tail(") || 
-           line.starts_with("grep(") || line.starts_with("count(") ||
-           line.starts_with("lines()") || line.starts_with("slice(") ||
-           line.starts_with("chunks(") || line.starts_with("context") {
+        if line.starts_with("head(")
+            || line.starts_with("tail(")
+            || line.starts_with("grep(")
+            || line.starts_with("count(")
+            || line.starts_with("lines()")
+            || line.starts_with("slice(")
+            || line.starts_with("chunks(")
+            || line.starts_with("context")
+        {
             let result = self.evaluate_expression(line);
             return Some(DslResult::Output(result));
         }
@@ -245,7 +265,7 @@ impl RlmRepl {
     fn expand_expression(&self, expr: &str) -> String {
         // Simple variable expansion
         let mut result = expr.to_string();
-        
+
         for (name, value) in &self.variables {
             let patterns = [
                 format!("${{{}}}", name),
@@ -322,13 +342,20 @@ impl RlmRepl {
         if expr.starts_with("chunks(") || expr.starts_with("chunk(") {
             let n = self.extract_number(expr).unwrap_or(5);
             let chunks = self.chunks(n);
-            return format!("[{} chunks of {} lines each]", chunks.len(), 
-                chunks.first().map(|c| c.lines().count()).unwrap_or(0));
+            return format!(
+                "[{} chunks of {} lines each]",
+                chunks.len(),
+                chunks.first().map(|c| c.lines().count()).unwrap_or(0)
+            );
         }
 
         // context
         if expr == "context" || expr.starts_with("context.slice") || expr.starts_with("context[") {
-            return format!("[Context: {} chars, {} lines]", self.context.len(), self.context_lines.len());
+            return format!(
+                "[Context: {} chars, {} lines]",
+                self.context.len(),
+                self.context_lines.len()
+            );
         }
 
         // Variable reference
@@ -337,9 +364,10 @@ impl RlmRepl {
         }
 
         // String literal
-        if (expr.starts_with('"') && expr.ends_with('"')) || 
-           (expr.starts_with('\'') && expr.ends_with('\'')) {
-            return expr[1..expr.len()-1].to_string();
+        if (expr.starts_with('"') && expr.ends_with('"'))
+            || (expr.starts_with('\'') && expr.ends_with('\''))
+        {
+            return expr[1..expr.len() - 1].to_string();
         }
 
         expr.to_string()
@@ -356,8 +384,9 @@ impl RlmRepl {
         let start = expr.find('(').unwrap_or(0);
         let end = expr.find(')').unwrap_or(expr.len());
         let inner = &expr[start + 1..end];
-        
-        inner.split(',')
+
+        inner
+            .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect()
     }
@@ -366,12 +395,12 @@ impl RlmRepl {
         let start = expr.find('(')?;
         let end = expr.rfind(')')?;
         let inner = expr[start + 1..end].trim();
-        
+
         // Remove quotes
         let unquoted = inner
             .trim_start_matches(['"', '\'', '`', '/'])
             .trim_end_matches(['"', '\'', '`', '/']);
-        
+
         Some(unquoted.to_string())
     }
 }
@@ -384,7 +413,7 @@ pub enum DslResult {
 }
 
 /// LLM-powered RLM executor
-/// 
+///
 /// This is the main entry point for RLM processing. It:
 /// 1. Loads context into a REPL environment
 /// 2. Lets the LLM write analysis code
@@ -428,7 +457,7 @@ impl RlmExecutor {
     }
 
     /// Enable or disable verbose mode
-    /// 
+    ///
     /// When verbose is true, the context summary will be displayed
     /// at the start of analysis to help users understand what's being analyzed.
     pub fn with_verbose(mut self, verbose: bool) -> Self {
@@ -464,8 +493,9 @@ impl RlmExecutor {
         // Display context summary at the start in verbose mode
         if self.verbose {
             tracing::info!("RLM Context Summary:\n{}", context_summary);
-            println!("[RLM] Context loaded: {} chars, {} lines", 
-                self.repl.context().len(), 
+            println!(
+                "[RLM] Context loaded: {} chars, {} lines",
+                self.repl.context().len(),
                 self.repl.lines().len()
             );
         }
@@ -489,7 +519,9 @@ impl RlmExecutor {
         let mut messages = vec![
             Message {
                 role: Role::System,
-                content: vec![ContentPart::Text { text: system_prompt }],
+                content: vec![ContentPart::Text {
+                    text: system_prompt,
+                }],
             },
             Message {
                 role: Role::User,
@@ -517,8 +549,10 @@ impl RlmExecutor {
                     top_p: None,
                     max_tokens: Some(2000),
                     stop: vec![],
-                })
-            ).await {
+                }),
+            )
+            .await
+            {
                 Ok(Ok(r)) => {
                     tracing::debug!("LLM response received");
                     r
@@ -531,7 +565,10 @@ impl RlmExecutor {
             total_output_tokens += response.usage.completion_tokens;
 
             // Extract code from response
-            let assistant_text = response.message.content.iter()
+            let assistant_text = response
+                .message
+                .content
+                .iter()
                 .filter_map(|p| match p {
                     ContentPart::Text { text } => Some(text.as_str()),
                     _ => None,
@@ -542,19 +579,21 @@ impl RlmExecutor {
             // Add assistant message
             messages.push(Message {
                 role: Role::Assistant,
-                content: vec![ContentPart::Text { text: assistant_text.clone() }],
+                content: vec![ContentPart::Text {
+                    text: assistant_text.clone(),
+                }],
             });
 
             // Extract and execute code blocks
             let code = self.extract_code(&assistant_text);
-            
+
             // Display execution details in verbose mode
             if self.verbose {
                 println!("[RLM] Iteration {}: Executing code:\n{}", iterations, code);
             }
-            
+
             let execution_result = self.execute_with_llm_query(&code).await?;
-            
+
             // Display execution results in verbose mode
             if self.verbose {
                 if let Some(ref answer) = execution_result.final_answer {
@@ -629,11 +668,16 @@ impl RlmExecutor {
         text.lines()
             .filter(|line| {
                 let l = line.trim();
-                l.starts_with("head(") || l.starts_with("tail(") ||
-                l.starts_with("grep(") || l.starts_with("count(") ||
-                l.starts_with("llm_query(") || l.starts_with("FINAL(") ||
-                l.starts_with("let ") || l.starts_with("const ") ||
-                l.starts_with("print") || l.starts_with("console.")
+                l.starts_with("head(")
+                    || l.starts_with("tail(")
+                    || l.starts_with("grep(")
+                    || l.starts_with("count(")
+                    || l.starts_with("llm_query(")
+                    || l.starts_with("FINAL(")
+                    || l.starts_with("let ")
+                    || l.starts_with("const ")
+                    || l.starts_with("print")
+                    || l.starts_with("console.")
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -683,7 +727,8 @@ impl RlmExecutor {
         let (query, context_slice) = self.parse_llm_query(line);
 
         // Get the context to send
-        let context_to_analyze = context_slice.clone()
+        let context_to_analyze = context_slice
+            .clone()
             .unwrap_or_else(|| self.repl.context().to_string());
 
         // Truncate context for sub-query to avoid overwhelming the LLM
@@ -713,17 +758,23 @@ impl RlmExecutor {
             },
         ];
 
-        let response = self.provider.complete(CompletionRequest {
-            messages,
-            tools: vec![],
-            model: self.model.clone(),
-            temperature: Some(0.3),
-            top_p: None,
-            max_tokens: Some(500),
-            stop: vec![],
-        }).await?;
+        let response = self
+            .provider
+            .complete(CompletionRequest {
+                messages,
+                tools: vec![],
+                model: self.model.clone(),
+                temperature: Some(0.3),
+                top_p: None,
+                max_tokens: Some(500),
+                stop: vec![],
+            })
+            .await?;
 
-        let answer = response.message.content.iter()
+        let answer = response
+            .message
+            .content
+            .iter()
             .filter_map(|p| match p {
                 ContentPart::Text { text } => Some(text.as_str()),
                 _ => None,
@@ -808,7 +859,7 @@ impl ExternalRepl {
     /// Create a Bun/Node.js REPL
     pub async fn spawn_bun(context: &str) -> Result<Self> {
         let init_script = Self::generate_bun_init(context);
-        
+
         // Write init script to temp file
         let temp_dir = std::env::temp_dir().join("rlm-repl");
         tokio::fs::create_dir_all(&temp_dir).await?;
@@ -816,8 +867,12 @@ impl ExternalRepl {
         tokio::fs::write(&script_path, init_script).await?;
 
         // Try bun first, fall back to node
-        let runtime = if Self::is_bun_available().await { "bun" } else { "node" };
-        
+        let runtime = if Self::is_bun_available().await {
+            "bun"
+        } else {
+            "node"
+        };
+
         let child = Command::new(runtime)
             .arg(&script_path)
             .stdin(Stdio::piped())
@@ -841,9 +896,13 @@ impl ExternalRepl {
     }
 
     fn generate_bun_init(context: &str) -> String {
-        let escaped = context.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
-        
-        format!(r#"
+        let escaped = context
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n");
+
+        format!(
+            r#"
 const readline = require('readline');
 const rl = readline.createInterface({{ input: process.stdin, output: process.stdout, terminal: false }});
 
@@ -875,14 +934,23 @@ rl.on('line', async (line) => {{
     }}
     console.log("__DONE__");
 }});
-"#)
+"#
+        )
     }
 
     /// Execute code and get result
     pub async fn execute(&mut self, code: &str) -> Result<ReplResult> {
-        let stdin = self.child.stdin.as_mut().ok_or_else(|| anyhow::anyhow!("No stdin"))?;
-        let stdout = self.child.stdout.as_mut().ok_or_else(|| anyhow::anyhow!("No stdout"))?;
-        
+        let stdin = self
+            .child
+            .stdin
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("No stdin"))?;
+        let stdout = self
+            .child
+            .stdout
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("No stdout"))?;
+
         stdin.write_all(code.as_bytes()).await?;
         stdin.write_all(b"\n").await?;
         stdin.flush().await?;
@@ -932,7 +1000,7 @@ rl.on('line', async (line) => {{
         self.child.kill().await?;
         Ok(())
     }
-    
+
     /// Get the runtime type used by this REPL
     pub fn runtime(&self) -> ReplRuntime {
         self.runtime
@@ -945,13 +1013,16 @@ mod tests {
 
     #[test]
     fn test_repl_head_tail() {
-        let context = (1..=100).map(|i| format!("line {}", i)).collect::<Vec<_>>().join("\n");
+        let context = (1..=100)
+            .map(|i| format!("line {}", i))
+            .collect::<Vec<_>>()
+            .join("\n");
         let repl = RlmRepl::new(context, ReplRuntime::Rust);
-        
+
         let head = repl.head(5);
         assert_eq!(head.len(), 5);
         assert_eq!(head[0], "line 1");
-        
+
         let tail = repl.tail(5);
         assert_eq!(tail.len(), 5);
         assert_eq!(tail[4], "line 100");
@@ -961,7 +1032,7 @@ mod tests {
     fn test_repl_grep() {
         let context = "error: something failed\ninfo: all good\nerror: another failure".to_string();
         let repl = RlmRepl::new(context, ReplRuntime::Rust);
-        
+
         let matches = repl.grep("error");
         assert_eq!(matches.len(), 2);
     }
@@ -970,16 +1041,19 @@ mod tests {
     fn test_repl_execute_final() {
         let context = "test content".to_string();
         let mut repl = RlmRepl::new(context, ReplRuntime::Rust);
-        
+
         let result = repl.execute(r#"FINAL("This is the answer")"#);
         assert_eq!(result.final_answer, Some("This is the answer".to_string()));
     }
 
     #[test]
     fn test_repl_chunks() {
-        let context = (1..=100).map(|i| format!("line {}", i)).collect::<Vec<_>>().join("\n");
+        let context = (1..=100)
+            .map(|i| format!("line {}", i))
+            .collect::<Vec<_>>()
+            .join("\n");
         let repl = RlmRepl::new(context, ReplRuntime::Rust);
-        
+
         let chunks = repl.chunks(5);
         assert_eq!(chunks.len(), 5);
     }

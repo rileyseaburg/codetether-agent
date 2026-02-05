@@ -5,7 +5,7 @@
 pub mod builtin;
 
 use crate::config::PermissionAction;
-use crate::provider::{CompletionRequest, Message, Provider, Role, ContentPart};
+use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 use crate::session::Session;
 use crate::swarm::{Actor, ActorStatus, Handler, SwarmMessage};
 use crate::tool::{Tool, ToolRegistry, ToolResult};
@@ -64,15 +64,13 @@ impl Agent {
     }
 
     /// Execute a prompt and return the response
-    pub async fn execute(
-        &self,
-        session: &mut Session,
-        prompt: &str,
-    ) -> Result<AgentResponse> {
+    pub async fn execute(&self, session: &mut Session, prompt: &str) -> Result<AgentResponse> {
         // Add user message to session
         session.add_message(Message {
             role: Role::User,
-            content: vec![ContentPart::Text { text: prompt.to_string() }],
+            content: vec![ContentPart::Text {
+                text: prompt.to_string(),
+            }],
         });
 
         let mut steps = 0;
@@ -88,7 +86,11 @@ impl Agent {
             let request = CompletionRequest {
                 messages: self.build_messages(session),
                 tools: self.tools.definitions(),
-                model: self.info.model.clone().unwrap_or_else(|| "gpt-4o".to_string()),
+                model: self
+                    .info
+                    .model
+                    .clone()
+                    .unwrap_or_else(|| "gpt-4o".to_string()),
                 temperature: self.info.temperature,
                 top_p: self.info.top_p,
                 max_tokens: None,
@@ -105,9 +107,11 @@ impl Agent {
                 .content
                 .iter()
                 .filter_map(|p| match p {
-                    ContentPart::ToolCall { id, name, arguments } => {
-                        Some((id.clone(), name.clone(), arguments.clone()))
-                    }
+                    ContentPart::ToolCall {
+                        id,
+                        name,
+                        arguments,
+                    } => Some((id.clone(), name.clone(), arguments.clone())),
                     _ => None,
                 })
                 .collect();
@@ -135,7 +139,7 @@ impl Agent {
             // Execute tool calls
             for (id, name, arguments) in tool_calls {
                 let result = self.execute_tool(&name, &arguments).await;
-                
+
                 session.tool_uses.push(ToolUse {
                     id: id.clone(),
                     name: name.clone(),
@@ -175,7 +179,7 @@ impl Agent {
             // Permission validation could be extended here
             // For now, we just log that a permission check occurred
         }
-        
+
         match self.tools.get(name) {
             Some(tool) => {
                 let args: serde_json::Value = match serde_json::from_str(arguments) {
@@ -185,10 +189,10 @@ impl Agent {
                             output: format!("Failed to parse arguments: {}", e),
                             success: false,
                             metadata: HashMap::new(),
-                        }
+                        };
                     }
                 };
-                
+
                 match tool.execute(args).await {
                     Ok(result) => result,
                     Err(e) => ToolResult {
@@ -201,7 +205,10 @@ impl Agent {
             None => {
                 // Use the invalid tool handler for better error messages
                 let available_tools = self.tools.list().iter().map(|s| s.to_string()).collect();
-                let invalid_tool = crate::tool::invalid::InvalidTool::with_context(name.to_string(), available_tools);
+                let invalid_tool = crate::tool::invalid::InvalidTool::with_context(
+                    name.to_string(),
+                    available_tools,
+                );
                 let args = serde_json::json!({
                     "requested_tool": name,
                     "args": serde_json::from_str::<serde_json::Value>(arguments).unwrap_or(serde_json::json!({}))
@@ -254,7 +261,10 @@ impl Actor for Agent {
     async fn initialize(&mut self) -> Result<()> {
         // Agent initialization is handled during construction
         // Additional async initialization can be added here
-        tracing::info!("Agent '{}' initialized for swarm participation", self.info.name);
+        tracing::info!(
+            "Agent '{}' initialized for swarm participation",
+            self.info.name
+        );
         Ok(())
     }
 
@@ -271,24 +281,23 @@ impl Handler<SwarmMessage> for Agent {
 
     async fn handle(&mut self, message: SwarmMessage) -> Result<Self::Response> {
         match message {
-            SwarmMessage::ExecuteTask { task_id, instruction } => {
+            SwarmMessage::ExecuteTask {
+                task_id,
+                instruction,
+            } => {
                 // Create a new session for this task
                 let mut session = Session::new().await?;
-                
+
                 // Execute the task
                 match self.execute(&mut session, &instruction).await {
-                    Ok(response) => {
-                        Ok(SwarmMessage::TaskCompleted {
-                            task_id,
-                            result: response.text,
-                        })
-                    }
-                    Err(e) => {
-                        Ok(SwarmMessage::TaskFailed {
-                            task_id,
-                            error: e.to_string(),
-                        })
-                    }
+                    Ok(response) => Ok(SwarmMessage::TaskCompleted {
+                        task_id,
+                        result: response.text,
+                    }),
+                    Err(e) => Ok(SwarmMessage::TaskFailed {
+                        task_id,
+                        error: e.to_string(),
+                    }),
                 }
             }
             SwarmMessage::ToolRequest { tool_id, arguments } => {
@@ -301,7 +310,10 @@ impl Handler<SwarmMessage> for Agent {
                 } else {
                     // Use the invalid tool handler for better error messages
                     let available_tools = self.tools.list().iter().map(|s| s.to_string()).collect();
-                    let invalid_tool = crate::tool::invalid::InvalidTool::with_context(tool_id.clone(), available_tools);
+                    let invalid_tool = crate::tool::invalid::InvalidTool::with_context(
+                        tool_id.clone(),
+                        available_tools,
+                    );
                     let args = serde_json::json!({
                         "requested_tool": tool_id,
                         "args": arguments
@@ -311,11 +323,8 @@ impl Handler<SwarmMessage> for Agent {
                         Err(e) => ToolResult::error(format!("Tool '{}' not found: {}", tool_id, e)),
                     }
                 };
-                
-                Ok(SwarmMessage::ToolResponse {
-                    tool_id,
-                    result,
-                })
+
+                Ok(SwarmMessage::ToolResponse { tool_id, result })
             }
             _ => {
                 // Other message types are not handled directly by the agent
@@ -387,11 +396,11 @@ impl AgentRegistry {
     /// Initialize with builtin agents
     pub fn with_builtins() -> Self {
         let mut registry = Self::new();
-        
+
         registry.register(builtin::build_agent());
         registry.register(builtin::plan_agent());
         registry.register(builtin::explore_agent());
-        
+
         registry
     }
 }

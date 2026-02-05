@@ -3,7 +3,7 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -41,11 +41,11 @@ impl SkillTool {
 
     async fn list_skills(&self) -> Result<Vec<String>> {
         let mut skills = Vec::new();
-        
+
         if !self.skills_dir.exists() {
             return Ok(skills);
         }
-        
+
         let mut entries = tokio::fs::read_dir(&self.skills_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
@@ -63,7 +63,7 @@ impl SkillTool {
                 }
             }
         }
-        
+
         Ok(skills)
     }
 
@@ -73,13 +73,13 @@ impl SkillTool {
         if dir_skill.exists() {
             return Ok(tokio::fs::read_to_string(&dir_skill).await?);
         }
-        
+
         // Check for file-based skill
         let file_skill = self.skills_dir.join(format!("{}.md", name));
         if file_skill.exists() {
             return Ok(tokio::fs::read_to_string(&file_skill).await?);
         }
-        
+
         anyhow::bail!("Skill '{}' not found", name)
     }
 }
@@ -139,7 +139,11 @@ impl Tool for SkillTool {
                     Ok(ToolResult::success(format!(
                         "Available skills ({}):\n{}",
                         skills.len(),
-                        skills.iter().map(|s| format!("  - {}", s)).collect::<Vec<_>>().join("\n")
+                        skills
+                            .iter()
+                            .map(|s| format!("  - {}", s))
+                            .collect::<Vec<_>>()
+                            .join("\n")
                     )))
                 }
             }
@@ -147,7 +151,7 @@ impl Tool for SkillTool {
                 let name = args["skill_name"]
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("skill_name is required for 'load' action"))?;
-                
+
                 match self.load_skill(name).await {
                     Ok(content) => Ok(ToolResult::success(format!(
                         "=== Skill: {} ===\n\n{}",
@@ -156,7 +160,10 @@ impl Tool for SkillTool {
                     Err(e) => Ok(ToolResult::error(format!("Failed to load skill: {}", e))),
                 }
             }
-            _ => Ok(ToolResult::error(format!("Unknown action: {}. Use 'list' or 'load'.", action))),
+            _ => Ok(ToolResult::error(format!(
+                "Unknown action: {}. Use 'list' or 'load'.",
+                action
+            ))),
         }
     }
 }

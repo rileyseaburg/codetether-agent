@@ -40,7 +40,7 @@ impl StepFunProvider {
             client: reqwest::Client::new(),
         })
     }
-    
+
     /// Validate that the API key is non-empty
     fn validate_api_key(&self) -> Result<()> {
         if self.api_key.is_empty() {
@@ -244,7 +244,11 @@ impl StepFunProvider {
                         .content
                         .iter()
                         .filter_map(|p| match p {
-                            ContentPart::ToolCall { id, name, arguments } => Some(ToolCall {
+                            ContentPart::ToolCall {
+                                id,
+                                name,
+                                arguments,
+                            } => Some(ToolCall {
                                 id: id.clone(),
                                 r#type: "function".to_string(),
                                 function: ToolCallFunction {
@@ -259,12 +263,12 @@ impl StepFunProvider {
                     result.push(ChatMessage {
                         role: "assistant".to_string(),
                         // StepFun requires content field to be present (even if empty) when tool_calls exist
-                        content: if content.is_empty() && !tool_calls.is_empty() { 
-                            Some(String::new()) 
-                        } else if content.is_empty() { 
-                            None 
-                        } else { 
-                            Some(content) 
+                        content: if content.is_empty() && !tool_calls.is_empty() {
+                            Some(String::new())
+                        } else if content.is_empty() {
+                            None
+                        } else {
+                            Some(content)
                         },
                         tool_calls: if tool_calls.is_empty() {
                             None
@@ -390,10 +394,10 @@ impl Provider for StepFunProvider {
             tool_count = request.tools.len(),
             "Starting completion request"
         );
-        
+
         // Validate API key before making request
         self.validate_api_key()?;
-        
+
         let messages = self.convert_messages(&request.messages);
         let tools = self.convert_tools(&request.tools);
 
@@ -447,7 +451,7 @@ impl Provider for StepFunProvider {
             .choices
             .first()
             .ok_or_else(|| anyhow::anyhow!("No choices in response"))?;
-        
+
         // Log choice index and role for debugging
         tracing::debug!(
             choice_index = choice.index,
@@ -500,9 +504,21 @@ impl Provider for StepFunProvider {
                 content,
             },
             usage: Usage {
-                prompt_tokens: chat_response.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
-                completion_tokens: chat_response.usage.as_ref().map(|u| u.completion_tokens).unwrap_or(0),
-                total_tokens: chat_response.usage.as_ref().map(|u| u.total_tokens).unwrap_or(0),
+                prompt_tokens: chat_response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.prompt_tokens)
+                    .unwrap_or(0),
+                completion_tokens: chat_response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.completion_tokens)
+                    .unwrap_or(0),
+                total_tokens: chat_response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.total_tokens)
+                    .unwrap_or(0),
                 ..Default::default()
             },
             finish_reason,
@@ -520,9 +536,9 @@ impl Provider for StepFunProvider {
             tool_count = request.tools.len(),
             "Starting streaming completion request"
         );
-        
+
         self.validate_api_key()?;
-        
+
         let messages = self.convert_messages(&request.messages);
         let tools = self.convert_tools(&request.tools);
 

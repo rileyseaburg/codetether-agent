@@ -19,12 +19,12 @@
 //! codetether mcp connect "npx -y @modelcontextprotocol/server-filesystem /path"
 //! ```
 
-mod types;
-mod server;
 mod client;
+mod server;
 mod transport;
+mod types;
 
-pub use types::*;
-pub use server::McpServer;
 pub use client::{McpClient, McpRegistry};
-pub use transport::{Transport, StdioTransport, SseTransport};
+pub use server::McpServer;
+pub use transport::{SseTransport, StdioTransport, Transport};
+pub use types::*;

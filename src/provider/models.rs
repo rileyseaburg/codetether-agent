@@ -122,7 +122,7 @@ impl ModelCatalog {
     }
 
     /// Check if a provider has an API key configured in HashiCorp Vault
-    /// 
+    ///
     /// NOTE: This is a sync wrapper that checks the Vault cache.
     /// For initial population, use `check_provider_api_key_async`.
     pub fn provider_has_api_key(&self, provider_id: &str) -> bool {
@@ -145,7 +145,7 @@ impl ModelCatalog {
     /// Pre-load API key availability from Vault for all providers
     pub async fn preload_available_providers(&self) -> Vec<String> {
         let mut available = Vec::new();
-        
+
         if let Some(manager) = crate::secrets::secrets_manager() {
             // List all configured providers from Vault
             if let Ok(providers) = manager.list_configured_providers().await {
@@ -157,7 +157,7 @@ impl ModelCatalog {
                 }
             }
         }
-        
+
         available
     }
 
@@ -288,7 +288,7 @@ impl ModelCatalog {
     pub fn recommended_coding_models(&self) -> Vec<(&str, &ApiModelInfo)> {
         let preferred_ids = [
             "claude-sonnet-4-20250514",
-            "claude-opus-4-20250514", 
+            "claude-opus-4-20250514",
             "gpt-5-codex",
             "gpt-5.1-codex",
             "gpt-4o",
@@ -314,7 +314,11 @@ impl ModelCatalog {
             id: model.id.clone(),
             name: model.name.clone(),
             provider: provider_id.to_string(),
-            context_window: model.limit.as_ref().map(|l| l.context as usize).unwrap_or(128_000),
+            context_window: model
+                .limit
+                .as_ref()
+                .map(|l| l.context as usize)
+                .unwrap_or(128_000),
             max_output_tokens: model.limit.as_ref().map(|l| l.output as usize),
             supports_vision: model.attachment,
             supports_tools: model.tool_call,

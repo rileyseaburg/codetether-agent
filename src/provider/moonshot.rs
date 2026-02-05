@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub struct MoonshotProvider {
     client: Client,
@@ -40,7 +40,11 @@ impl MoonshotProvider {
 
                 match msg.role {
                     Role::Tool => {
-                        if let Some(ContentPart::ToolResult { tool_call_id, content }) = msg.content.first() {
+                        if let Some(ContentPart::ToolResult {
+                            tool_call_id,
+                            content,
+                        }) = msg.content.first()
+                        {
                             json!({
                                 "role": "tool",
                                 "tool_call_id": tool_call_id,
@@ -51,7 +55,9 @@ impl MoonshotProvider {
                         }
                     }
                     Role::Assistant => {
-                        let text: String = msg.content.iter()
+                        let text: String = msg
+                            .content
+                            .iter()
                             .filter_map(|p| match p {
                                 ContentPart::Text { text } => Some(text.clone()),
                                 _ => None,
@@ -59,9 +65,15 @@ impl MoonshotProvider {
                             .collect::<Vec<_>>()
                             .join("");
 
-                        let tool_calls: Vec<Value> = msg.content.iter()
+                        let tool_calls: Vec<Value> = msg
+                            .content
+                            .iter()
                             .filter_map(|p| match p {
-                                ContentPart::ToolCall { id, name, arguments } => Some(json!({
+                                ContentPart::ToolCall {
+                                    id,
+                                    name,
+                                    arguments,
+                                } => Some(json!({
                                     "id": id,
                                     "type": "function",
                                     "function": {
@@ -87,7 +99,9 @@ impl MoonshotProvider {
                         }
                     }
                     _ => {
-                        let text: String = msg.content.iter()
+                        let text: String = msg
+                            .content
+                            .iter()
                             .filter_map(|p| match p {
                                 ContentPart::Text { text } => Some(text.clone()),
                                 _ => None,
@@ -202,8 +216,8 @@ impl Provider for MoonshotProvider {
                 supports_vision: true,
                 supports_tools: true,
                 supports_streaming: true,
-                input_cost_per_million: Some(0.56),  // ¥4/M tokens
-                output_cost_per_million: Some(2.8),  // ¥20/M tokens
+                input_cost_per_million: Some(0.56), // ¥4/M tokens
+                output_cost_per_million: Some(2.8), // ¥20/M tokens
             },
             ModelInfo {
                 id: "kimi-k2-thinking".to_string(),
@@ -226,7 +240,7 @@ impl Provider for MoonshotProvider {
                 supports_vision: false,
                 supports_tools: true,
                 supports_streaming: true,
-                input_cost_per_million: Some(0.42),  // Cheaper
+                input_cost_per_million: Some(0.42), // Cheaper
                 output_cost_per_million: Some(1.68),
             },
         ])
@@ -237,10 +251,10 @@ impl Provider for MoonshotProvider {
         let tools = Self::convert_tools(&request.tools);
 
         // Kimi K2.5 requires specific temperatures:
-        // - temperature = 1.0 when thinking is enabled  
+        // - temperature = 1.0 when thinking is enabled
         // - temperature = 0.6 when thinking is disabled
         let temperature = if request.model.contains("k2") {
-            0.6  // We disable thinking for tool calling workflows
+            0.6 // We disable thinking for tool calling workflows
         } else {
             request.temperature.unwrap_or(0.7)
         };
@@ -281,13 +295,19 @@ impl Provider for MoonshotProvider {
 
         if !status.is_success() {
             if let Ok(err) = serde_json::from_str::<MoonshotError>(&text) {
-                anyhow::bail!("Moonshot API error: {} ({:?})", err.error.message, err.error.error_type);
+                anyhow::bail!(
+                    "Moonshot API error: {} ({:?})",
+                    err.error.message,
+                    err.error.error_type
+                );
             }
             anyhow::bail!("Moonshot API error: {} {}", status, text);
         }
 
-        let response: MoonshotResponse = serde_json::from_str(&text)
-            .context(format!("Failed to parse Moonshot response: {}", &text[..text.len().min(200)]))?;
+        let response: MoonshotResponse = serde_json::from_str(&text).context(format!(
+            "Failed to parse Moonshot response: {}",
+            &text[..text.len().min(200)]
+        ))?;
 
         // Log response metadata for debugging
         tracing::debug!(
@@ -296,7 +316,10 @@ impl Provider for MoonshotProvider {
             "Received Moonshot response"
         );
 
-        let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
+        let choice = response
+            .choices
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No choices"))?;
 
         // Log reasoning/thinking content if present (Kimi K2 models)
         if let Some(ref reasoning) = choice.message.reasoning_content {
@@ -356,8 +379,16 @@ impl Provider for MoonshotProvider {
                 content,
             },
             usage: Usage {
-                prompt_tokens: response.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
-                completion_tokens: response.usage.as_ref().map(|u| u.completion_tokens).unwrap_or(0),
+                prompt_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.prompt_tokens)
+                    .unwrap_or(0),
+                completion_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.completion_tokens)
+                    .unwrap_or(0),
                 total_tokens: response.usage.as_ref().map(|u| u.total_tokens).unwrap_or(0),
                 ..Default::default()
             },
@@ -375,17 +406,20 @@ impl Provider for MoonshotProvider {
             message_count = request.messages.len(),
             "Starting streaming completion request (falling back to non-streaming)"
         );
-        
+
         // Fall back to non-streaming for now
         let response = self.complete(request).await?;
-        let text = response.message.content.iter()
+        let text = response
+            .message
+            .content
+            .iter()
             .filter_map(|p| match p {
                 ContentPart::Text { text } => Some(text.clone()),
                 _ => None,
             })
             .collect::<Vec<_>>()
             .join("");
-        
+
         Ok(Box::pin(futures::stream::once(async move {
             StreamChunk::Text(text)
         })))

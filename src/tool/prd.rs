@@ -6,22 +6,26 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
 use super::{Tool, ToolResult};
-use crate::ralph::{Prd, UserStory, QualityChecks};
+use crate::ralph::{Prd, QualityChecks, UserStory};
 
 /// Tool for generating PRDs from requirements
 pub struct PrdTool;
 
 impl Default for PrdTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PrdTool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 #[derive(Deserialize)]
@@ -72,9 +76,13 @@ struct QualityChecksInput {
 
 #[async_trait]
 impl Tool for PrdTool {
-    fn id(&self) -> &str { "prd" }
-    fn name(&self) -> &str { "PRD Generator" }
-    
+    fn id(&self) -> &str {
+        "prd"
+    }
+    fn name(&self) -> &str {
+        "PRD Generator"
+    }
+
     fn description(&self) -> &str {
         r#"Generate and validate structured PRDs (Product Requirements Documents) for complex tasks.
 
@@ -162,10 +170,13 @@ The workflow is:
             "analyze" => {
                 let task = p.task_description.unwrap_or_default();
                 if task.is_empty() {
-                    return Ok(ToolResult::error("task_description is required for analyze"));
+                    return Ok(ToolResult::error(
+                        "task_description is required for analyze",
+                    ));
                 }
 
-                let questions = format!(r#"# Task Analysis
+                let questions = format!(
+                    r#"# Task Analysis
 
 ## Task Description
 {task}
@@ -229,7 +240,8 @@ To generate a proper PRD for this task, please provide:
 ```
 
 Once you have the answers, call `prd({{action: 'generate', ...}})` with the data.
-"#);
+"#
+                );
 
                 Ok(ToolResult::success(questions))
             }
@@ -237,8 +249,10 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
             "generate" => {
                 let project = p.project.unwrap_or_else(|| "Project".to_string());
                 let feature = p.feature.unwrap_or_else(|| "Feature".to_string());
-                
-                let stories: Vec<UserStory> = p.stories.unwrap_or_default()
+
+                let stories: Vec<UserStory> = p
+                    .stories
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|s| UserStory {
                         id: s.id,
@@ -279,7 +293,7 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                 };
 
                 let json = serde_json::to_string_pretty(&prd)?;
-                
+
                 Ok(ToolResult::success(format!(
                     "# Generated PRD\n\n```json\n{}\n```\n\nCall `prd({{action: 'validate'}})` to check for errors, then `prd({{action: 'save'}})` to write to file.",
                     json
@@ -290,7 +304,7 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                 // Get PRD from: 1) prd_json string, 2) prd_path file, or 3) inline stories
                 let prd: Prd = if let Some(json_str) = p.prd_json {
                     serde_json::from_str(&json_str)
-                        .context("Failed to parse prd_json - invalid JSON")?    
+                        .context("Failed to parse prd_json - invalid JSON")?
                 } else if let Some(path) = &p.prd_path {
                     let prd_path = PathBuf::from(path);
                     if !prd_path.exists() {
@@ -298,12 +312,14 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                     }
                     let content = tokio::fs::read_to_string(&prd_path).await?;
                     serde_json::from_str(&content)
-                        .context("Failed to parse PRD file - invalid JSON")?    
+                        .context("Failed to parse PRD file - invalid JSON")?
                 } else if p.stories.is_some() {
                     // Build from inline params
                     let project = p.project.clone().unwrap_or_else(|| "Project".to_string());
                     let feature = p.feature.clone().unwrap_or_else(|| "Feature".to_string());
-                    let stories: Vec<UserStory> = p.stories.unwrap_or_default()
+                    let stories: Vec<UserStory> = p
+                        .stories
+                        .unwrap_or_default()
                         .into_iter()
                         .map(|s| UserStory {
                             id: s.id,
@@ -329,13 +345,13 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                     }
                 } else {
                     return Ok(ToolResult::error(
-                        "validate requires one of: prd_json, prd_path, or stories"
+                        "validate requires one of: prd_json, prd_path, or stories",
                     ));
                 };
 
                 // Run validation
                 let validation = validate_prd(&prd);
-                
+
                 if validation.is_valid {
                     Ok(ToolResult::success(format!(
                         "# PRD Validation: PASSED\n\n\
@@ -364,8 +380,10 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                 let project = p.project.unwrap_or_else(|| "Project".to_string());
                 let feature = p.feature.unwrap_or_else(|| "Feature".to_string());
                 let prd_path = PathBuf::from(p.prd_path.unwrap_or_else(|| "prd.json".to_string()));
-                
-                let stories: Vec<UserStory> = p.stories.unwrap_or_default()
+
+                let stories: Vec<UserStory> = p
+                    .stories
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|s| UserStory {
                         id: s.id,
@@ -437,26 +455,28 @@ struct ValidationResult {
 impl ValidationResult {
     fn summary(&self) -> String {
         let mut lines = Vec::new();
-        
+
         if !self.errors.is_empty() {
             lines.push("## Errors".to_string());
             for err in &self.errors {
                 lines.push(format!("- ❌ {}", err));
             }
         }
-        
+
         if !self.warnings.is_empty() {
-            if !lines.is_empty() { lines.push(String::new()); }
+            if !lines.is_empty() {
+                lines.push(String::new());
+            }
             lines.push("## Warnings".to_string());
             for warn in &self.warnings {
                 lines.push(format!("- ⚠️ {}", warn));
             }
         }
-        
+
         if self.is_valid && self.warnings.is_empty() {
             lines.push("✅ All checks passed".to_string());
         }
-        
+
         lines.join("\n")
     }
 }
@@ -465,7 +485,7 @@ impl ValidationResult {
 fn validate_prd(prd: &Prd) -> ValidationResult {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
-    
+
     // 1. Required fields
     if prd.project.is_empty() {
         errors.push("Missing required field: project".to_string());
@@ -476,10 +496,10 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
     if prd.user_stories.is_empty() {
         errors.push("PRD must have at least one user story".to_string());
     }
-    
+
     // Collect all story IDs for reference checks
     let story_ids: HashSet<String> = prd.user_stories.iter().map(|s| s.id.clone()).collect();
-    
+
     // 2. Story-level validation
     let mut seen_ids = HashSet::new();
     for story in &prd.user_stories {
@@ -488,45 +508,45 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
             errors.push(format!("Duplicate story ID: {}", story.id));
         }
         seen_ids.insert(story.id.clone());
-        
+
         // ID format
         if story.id.is_empty() {
             errors.push("Story has empty ID".to_string());
         }
-        
+
         // Title required
         if story.title.is_empty() {
             errors.push(format!("Story {} has empty title", story.id));
         }
-        
+
         // Description required
         if story.description.is_empty() {
             warnings.push(format!("Story {} has empty description", story.id));
         }
-        
+
         // Acceptance criteria
         if story.acceptance_criteria.is_empty() {
             warnings.push(format!("Story {} has no acceptance criteria", story.id));
         }
-        
+
         // Priority range
         if story.priority == 0 {
             warnings.push(format!("Story {} has priority 0 (should be 1+)", story.id));
         }
-        
+
         // Complexity range
         if story.complexity == 0 || story.complexity > 5 {
             warnings.push(format!(
-                "Story {} has complexity {} (should be 1-5)", 
+                "Story {} has complexity {} (should be 1-5)",
                 story.id, story.complexity
             ));
         }
-        
+
         // Dependencies reference valid stories
         for dep in &story.depends_on {
             if !story_ids.contains(dep) {
                 errors.push(format!(
-                    "Story {} depends on non-existent story: {}", 
+                    "Story {} depends on non-existent story: {}",
                     story.id, dep
                 ));
             }
@@ -535,23 +555,26 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
             }
         }
     }
-    
+
     // 3. Check for circular dependencies
     if let Some(cycle) = detect_cycle(prd) {
-        errors.push(format!("Circular dependency detected: {}", cycle.join(" → ")));
+        errors.push(format!(
+            "Circular dependency detected: {}",
+            cycle.join(" → ")
+        ));
     }
-    
+
     // 4. Quality checks
     let qc = &prd.quality_checks;
     if qc.typecheck.is_none() && qc.test.is_none() && qc.lint.is_none() && qc.build.is_none() {
         warnings.push("No quality checks defined - ralph won't verify work".to_string());
     }
-    
+
     // 5. Branch name
     if prd.branch_name.is_empty() {
         warnings.push("No branch_name specified - will auto-generate from feature".to_string());
     }
-    
+
     ValidationResult {
         is_valid: errors.is_empty(),
         errors,
@@ -566,7 +589,7 @@ fn detect_cycle(prd: &Prd) -> Option<Vec<String>> {
         .iter()
         .map(|s| (s.id.as_str(), s))
         .collect();
-    
+
     fn dfs<'a>(
         id: &'a str,
         story_map: &std::collections::HashMap<&str, &'a UserStory>,
@@ -581,14 +604,14 @@ fn detect_cycle(prd: &Prd) -> Option<Vec<String>> {
             cycle.push(id.to_string());
             return Some(cycle);
         }
-        
+
         if visited.contains(id) {
             return None;
         }
-        
+
         visiting.insert(id);
         path.push(id);
-        
+
         if let Some(story) = story_map.get(id) {
             for dep in &story.depends_on {
                 if let Some(cycle) = dfs(dep.as_str(), story_map, visiting, visited, path) {
@@ -596,23 +619,29 @@ fn detect_cycle(prd: &Prd) -> Option<Vec<String>> {
                 }
             }
         }
-        
+
         path.pop();
         visiting.remove(id);
         visited.insert(id);
-        
+
         None
     }
-    
+
     let mut visited = HashSet::new();
-    
+
     for story in &prd.user_stories {
         let mut visiting = HashSet::new();
         let mut path = Vec::new();
-        if let Some(cycle) = dfs(&story.id, &story_map, &mut visiting, &mut visited, &mut path) {
+        if let Some(cycle) = dfs(
+            &story.id,
+            &story_map,
+            &mut visiting,
+            &mut visited,
+            &mut path,
+        ) {
             return Some(cycle);
         }
     }
-    
+
     None
 }

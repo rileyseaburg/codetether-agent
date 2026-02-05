@@ -12,25 +12,23 @@ use tokio::sync::Mutex;
 /// Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
-    let name = args.name.unwrap_or_else(|| format!("codetether-{}", std::process::id()));
+    let name = args
+        .name
+        .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = generate_worker_id();
-    
+
     let codebases: Vec<String> = args
         .codebases
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
-    tracing::info!(
-        "Starting A2A worker: {} ({})",
-        name,
-        worker_id
-    );
+    tracing::info!("Starting A2A worker: {} ({})", name, worker_id);
     tracing::info!("Server: {}", server);
     tracing::info!("Codebases: {:?}", codebases);
 
     let client = Client::new();
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
-    
+
     let auto_approve = match args.auto_approve.as_str() {
         "all" => AutoApprove::All,
         "safe" => AutoApprove::Safe,
@@ -41,11 +39,30 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
 
     // Fetch pending tasks
-    fetch_pending_tasks(&client, server, &args.token, &worker_id, &processing, &auto_approve).await?;
+    fetch_pending_tasks(
+        &client,
+        server,
+        &args.token,
+        &worker_id,
+        &processing,
+        &auto_approve,
+    )
+    .await?;
 
     // Connect to SSE stream
     loop {
-        match connect_stream(&client, server, &args.token, &worker_id, &name, &codebases, &processing, &auto_approve).await {
+        match connect_stream(
+            &client,
+            server,
+            &args.token,
+            &worker_id,
+            &name,
+            &codebases,
+            &processing,
+            &auto_approve,
+        )
+        .await
+        {
             Ok(()) => {
                 tracing::warn!("Stream ended, reconnecting...");
             }
@@ -81,7 +98,7 @@ async fn register_worker(
     codebases: &[String],
 ) -> Result<()> {
     let mut req = client.put(format!("{}/v1/worker/codebases", server));
-    
+
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
@@ -113,7 +130,7 @@ async fn fetch_pending_tasks(
     auto_approve: &AutoApprove,
 ) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
-    
+
     let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
     if let Some(t) = token {
         req = req.bearer_auth(t);
@@ -126,7 +143,7 @@ async fn fetch_pending_tasks(
 
     let data: serde_json::Value = res.json().await?;
     let tasks = data["tasks"].as_array().cloned().unwrap_or_default();
-    
+
     tracing::info!("Found {} pending task(s)", tasks.len());
 
     for task in tasks {
@@ -135,7 +152,7 @@ async fn fetch_pending_tasks(
             if !proc.contains(id) {
                 proc.insert(id.to_string());
                 drop(proc);
-                
+
                 let task_id = id.to_string();
                 let client = client.clone();
                 let server = server.to_string();
@@ -143,9 +160,11 @@ async fn fetch_pending_tasks(
                 let worker_id = worker_id.to_string();
                 let auto_approve = *auto_approve;
                 let processing = processing.clone();
-                
+
                 tokio::spawn(async move {
-                    if let Err(e) = handle_task(&client, &server, &token, &worker_id, &task, auto_approve).await {
+                    if let Err(e) =
+                        handle_task(&client, &server, &token, &worker_id, &task, auto_approve).await
+                    {
                         tracing::error!("Task {} failed: {}", task_id, e);
                     }
                     processing.lock().await.remove(&task_id);
@@ -175,7 +194,8 @@ async fn connect_stream(
         urlencoding::encode(worker_id)
     );
 
-    let mut req = client.get(&url)
+    let mut req = client
+        .get(&url)
         .header("Accept", "text/event-stream")
         .header("X-Worker-ID", worker_id)
         .header("X-Agent-Name", name)
@@ -211,7 +231,9 @@ async fn connect_stream(
                 }
 
                 if let Ok(task) = serde_json::from_str::<serde_json::Value>(data) {
-                    if let Some(id) = task.get("task").and_then(|t| t["id"].as_str())
+                    if let Some(id) = task
+                        .get("task")
+                        .and_then(|t| t["id"].as_str())
                         .or_else(|| task["id"].as_str())
                     {
                         let mut proc = processing.lock().await;
@@ -228,7 +250,16 @@ async fn connect_stream(
                             let processing_clone = processing.clone();
 
                             tokio::spawn(async move {
-                                if let Err(e) = handle_task(&client, &server, &token, &worker_id, &task, auto_approve).await {
+                                if let Err(e) = handle_task(
+                                    &client,
+                                    &server,
+                                    &token,
+                                    &worker_id,
+                                    &task,
+                                    auto_approve,
+                                )
+                                .await
+                                {
                                     tracing::error!("Task {} failed: {}", task_id, e);
                                 }
                                 processing_clone.lock().await.remove(&task_id);
@@ -251,17 +282,22 @@ async fn handle_task(
     task: &serde_json::Value,
     _auto_approve: AutoApprove,
 ) -> Result<()> {
-    let task_id = task.get("task").and_then(|t| t["id"].as_str())
+    let task_id = task
+        .get("task")
+        .and_then(|t| t["id"].as_str())
         .or_else(|| task["id"].as_str())
         .ok_or_else(|| anyhow::anyhow!("No task ID"))?;
-    let title = task.get("task").and_then(|t| t["title"].as_str())
+    let title = task
+        .get("task")
+        .and_then(|t| t["title"].as_str())
         .or_else(|| task["title"].as_str())
         .unwrap_or("Untitled");
 
     tracing::info!("Handling task: {} ({})", title, task_id);
 
     // Claim the task
-    let mut req = client.post(format!("{}/v1/worker/tasks/claim", server))
+    let mut req = client
+        .post(format!("{}/v1/worker/tasks/claim", server))
         .header("X-Worker-ID", worker_id);
     if let Some(t) = token {
         req = req.bearer_auth(t);
@@ -282,7 +318,9 @@ async fn handle_task(
 
     // Create a session and process the task
     let session = Session::new().await?;
-    let prompt = task.get("task").and_then(|t| t["prompt"].as_str())
+    let prompt = task
+        .get("task")
+        .and_then(|t| t["prompt"].as_str())
         .or_else(|| task["prompt"].as_str())
         .or_else(|| task.get("task").and_then(|t| t["description"].as_str()))
         .or_else(|| task["description"].as_str())
@@ -293,7 +331,8 @@ async fn handle_task(
     let result = format!("Task {} processed (session: {})", task_id, session.id);
 
     // Release the task
-    let mut req = client.post(format!("{}/v1/worker/tasks/release", server))
+    let mut req = client
+        .post(format!("{}/v1/worker/tasks/release", server))
         .header("X-Worker-ID", worker_id);
     if let Some(t) = token {
         req = req.bearer_auth(t);

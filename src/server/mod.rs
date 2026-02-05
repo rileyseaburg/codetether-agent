@@ -7,11 +7,11 @@ use crate::cli::ServeArgs;
 use crate::config::Config;
 use anyhow::Result;
 use axum::{
+    Router,
     extract::{Query, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -55,7 +55,12 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
         // Middleware
-        .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
         .layer(TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -157,14 +162,14 @@ async fn prompt_session(
             "Message cannot be empty".to_string(),
         ));
     }
-    
+
     // Log the prompt request (uses the message field)
     tracing::info!(
         session_id = %id,
         message_len = req.message.len(),
         "Received prompt request"
     );
-    
+
     // TODO: Implement actual prompting
     Err((
         StatusCode::NOT_IMPLEMENTED,

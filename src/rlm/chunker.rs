@@ -64,9 +64,10 @@ impl RlmChunker {
     pub fn detect_content_type(content: &str) -> ContentType {
         let lines: Vec<&str> = content.lines().collect();
         let sample_size = lines.len().min(200);
-        
+
         // Sample from head and tail
-        let sample: Vec<&str> = lines.iter()
+        let sample: Vec<&str> = lines
+            .iter()
             .take(sample_size / 2)
             .chain(lines.iter().rev().take(sample_size / 2))
             .copied()
@@ -101,7 +102,8 @@ impl RlmChunker {
             }
         }
 
-        let total = code_indicators + log_indicators + conversation_indicators + document_indicators;
+        let total =
+            code_indicators + log_indicators + conversation_indicators + document_indicators;
         if total == 0 {
             return ContentType::Mixed;
         }
@@ -124,11 +126,10 @@ impl RlmChunker {
     fn is_code_line(line: &str) -> bool {
         // Function/class/import definitions
         let patterns = [
-            "function", "class ", "def ", "const ", "let ", "var ",
-            "import ", "export ", "async ", "fn ", "impl ", "struct ",
-            "enum ", "pub ", "use ", "mod ", "trait ",
+            "function", "class ", "def ", "const ", "let ", "var ", "import ", "export ", "async ",
+            "fn ", "impl ", "struct ", "enum ", "pub ", "use ", "mod ", "trait ",
         ];
-        
+
         if patterns.iter().any(|p| line.starts_with(p)) {
             return true;
         }
@@ -139,8 +140,11 @@ impl RlmChunker {
         }
 
         // Comment lines
-        if line.starts_with("//") || line.starts_with("#") || 
-           line.starts_with("*") || line.starts_with("/*") {
+        if line.starts_with("//")
+            || line.starts_with("#")
+            || line.starts_with("*")
+            || line.starts_with("/*")
+        {
             return true;
         }
 
@@ -149,14 +153,18 @@ impl RlmChunker {
 
     fn is_log_line(line: &str) -> bool {
         // ISO date prefix
-        if line.len() >= 10 && line.chars().take(4).all(|c| c.is_ascii_digit()) 
-            && line.chars().nth(4) == Some('-') {
+        if line.len() >= 10
+            && line.chars().take(4).all(|c| c.is_ascii_digit())
+            && line.chars().nth(4) == Some('-')
+        {
             return true;
         }
 
         // Time prefix [HH:MM
-        if line.starts_with('[') && line.len() > 5 
-            && line.chars().nth(1).is_some_and(|c| c.is_ascii_digit()) {
+        if line.starts_with('[')
+            && line.len() > 5
+            && line.chars().nth(1).is_some_and(|c| c.is_ascii_digit())
+        {
             return true;
         }
 
@@ -173,9 +181,18 @@ impl RlmChunker {
 
     fn is_conversation_line(line: &str) -> bool {
         let patterns = [
-            "[User]:", "[Assistant]:", "[Human]:", "[AI]:",
-            "User:", "Assistant:", "Human:", "AI:",
-            "[Tool ", "<user>", "<assistant>", "<system>",
+            "[User]:",
+            "[Assistant]:",
+            "[Human]:",
+            "[AI]:",
+            "User:",
+            "Assistant:",
+            "Human:",
+            "AI:",
+            "[Tool ",
+            "<user>",
+            "<assistant>",
+            "<system>",
         ];
         patterns.iter().any(|p| line.starts_with(p))
     }
@@ -202,8 +219,13 @@ impl RlmChunker {
         }
 
         // Long prose lines without code terminators
-        if line.len() > 80 && !line.ends_with('{') && !line.ends_with(';') 
-            && !line.ends_with('(') && !line.ends_with(')') && !line.ends_with('=') {
+        if line.len() > 80
+            && !line.ends_with('{')
+            && !line.ends_with(';')
+            && !line.ends_with('(')
+            && !line.ends_with(')')
+            && !line.ends_with('=')
+        {
             return true;
         }
 
@@ -276,7 +298,10 @@ impl RlmChunker {
                     // If chunk is too big, split it
                     if tokens > opts.max_chunk_tokens {
                         let sub_chunks = Self::split_large_chunk(
-                            &current_chunk, current_start, current_type, opts.max_chunk_tokens
+                            &current_chunk,
+                            current_start,
+                            current_type,
+                            opts.max_chunk_tokens,
                         );
                         chunks.extend(sub_chunks);
                     } else {
@@ -312,7 +337,10 @@ impl RlmChunker {
 
             if tokens > opts.max_chunk_tokens {
                 let sub_chunks = Self::split_large_chunk(
-                    &current_chunk, current_start, current_type, opts.max_chunk_tokens
+                    &current_chunk,
+                    current_start,
+                    current_type,
+                    opts.max_chunk_tokens,
                 );
                 chunks.extend(sub_chunks);
             } else {
@@ -345,7 +373,11 @@ impl RlmChunker {
 
             // Tool output markers
             if trimmed.starts_with("[Tool ") {
-                let priority = if trimmed.contains("FAILED") || trimmed.contains("error") { 7 } else { 3 };
+                let priority = if trimmed.contains("FAILED") || trimmed.contains("error") {
+                    7
+                } else {
+                    3
+                };
                 boundaries.insert(i, (ChunkType::ToolOutput, priority));
                 continue;
             }
@@ -363,23 +395,35 @@ impl RlmChunker {
             }
 
             // Function/class definitions
-            let def_patterns = ["function", "class ", "def ", "async function", "export", "fn ", "impl ", "struct ", "enum "];
+            let def_patterns = [
+                "function",
+                "class ",
+                "def ",
+                "async function",
+                "export",
+                "fn ",
+                "impl ",
+                "struct ",
+                "enum ",
+            ];
             if def_patterns.iter().any(|p| trimmed.starts_with(p)) {
                 boundaries.insert(i, (ChunkType::Code, 5));
                 continue;
             }
 
             // Error markers
-            if trimmed.to_lowercase().starts_with("error") || 
-               trimmed.to_lowercase().contains("error:") ||
-               trimmed.starts_with("Exception") || 
-               trimmed.contains("FAILED") {
+            if trimmed.to_lowercase().starts_with("error")
+                || trimmed.to_lowercase().contains("error:")
+                || trimmed.starts_with("Exception")
+                || trimmed.contains("FAILED")
+            {
                 boundaries.insert(i, (ChunkType::Text, 8));
                 continue;
             }
 
             // Section headers
-            if trimmed.starts_with('#') && trimmed.len() > 2 && trimmed.chars().nth(1) == Some(' ') {
+            if trimmed.starts_with('#') && trimmed.len() > 2 && trimmed.chars().nth(1) == Some(' ')
+            {
                 boundaries.insert(i, (ChunkType::Text, 6));
                 continue;
             }
@@ -439,13 +483,11 @@ impl RlmChunker {
     /// Prioritizes high-priority chunks and recent content
     pub fn select_chunks(chunks: &[Chunk], max_tokens: usize) -> Vec<Chunk> {
         let mut sorted: Vec<_> = chunks.to_vec();
-        
+
         // Sort by priority (desc), then by line number (desc for recent)
-        sorted.sort_by(|a, b| {
-            match b.priority.cmp(&a.priority) {
-                std::cmp::Ordering::Equal => b.start_line.cmp(&a.start_line),
-                other => other,
-            }
+        sorted.sort_by(|a, b| match b.priority.cmp(&a.priority) {
+            std::cmp::Ordering::Equal => b.start_line.cmp(&a.start_line),
+            other => other,
         });
 
         let mut selected = Vec::new();
@@ -525,7 +567,10 @@ impl Foo {
 
 [User]: I want to implement a feature.
 "#;
-        assert_eq!(RlmChunker::detect_content_type(content), ContentType::Conversation);
+        assert_eq!(
+            RlmChunker::detect_content_type(content),
+            ContentType::Conversation
+        );
     }
 
     #[test]

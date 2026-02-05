@@ -3,7 +3,7 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// LSP Tool for performing Language Server Protocol operations
 pub struct LspTool {
@@ -83,7 +83,7 @@ impl Tool for LspTool {
         let file_path = args["file_path"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("file_path is required"))?;
-        
+
         // Extract optional position parameters
         let line = args["line"].as_u64().map(|n| n as usize);
         let column = args["column"].as_u64().map(|n| n as usize);
@@ -95,7 +95,7 @@ impl Tool for LspTool {
         } else {
             "".to_string()
         };
-        
+
         let output = format!(
             "LSP operation '{}' for file '{}'{} would be executed here.\n\
             Full implementation pending LSP client integration.",

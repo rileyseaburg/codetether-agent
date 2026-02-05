@@ -1,11 +1,11 @@
 //! Todo Tool - Read and write todo items for task tracking.
 
+use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
-use super::{Tool, ToolResult};
 
 const TODO_FILE: &str = ".codetether-todos.json";
 
@@ -50,18 +50,24 @@ pub struct TodoWriteTool {
 }
 
 impl Default for TodoReadTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Default for TodoWriteTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TodoReadTool {
     pub fn new() -> Self {
-        Self { root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) }
+        Self {
+            root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        }
     }
-    
+
     fn load_todos(&self) -> Result<Vec<TodoItem>> {
         let path = self.root.join(TODO_FILE);
         if !path.exists() {
@@ -74,9 +80,11 @@ impl TodoReadTool {
 
 impl TodoWriteTool {
     pub fn new() -> Self {
-        Self { root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) }
+        Self {
+            root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        }
     }
-    
+
     fn load_todos(&self) -> Result<Vec<TodoItem>> {
         let path = self.root.join(TODO_FILE);
         if !path.exists() {
@@ -85,14 +93,14 @@ impl TodoWriteTool {
         let content = std::fs::read_to_string(&path)?;
         Ok(serde_json::from_str(&content)?)
     }
-    
+
     fn save_todos(&self, todos: &[TodoItem]) -> Result<()> {
         let path = self.root.join(TODO_FILE);
         let content = serde_json::to_string_pretty(todos)?;
         std::fs::write(&path, content)?;
         Ok(())
     }
-    
+
     fn generate_id(&self) -> String {
         use std::time::{SystemTime, UNIX_EPOCH};
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -110,7 +118,7 @@ struct ReadParams {
 
 #[derive(Deserialize)]
 struct WriteParams {
-    action: String,  // add, update, delete, clear
+    action: String, // add, update, delete, clear
     #[serde(default)]
     id: Option<String>,
     #[serde(default)]
@@ -123,9 +131,15 @@ struct WriteParams {
 
 #[async_trait]
 impl Tool for TodoReadTool {
-    fn id(&self) -> &str { "todoread" }
-    fn name(&self) -> &str { "Todo Read" }
-    fn description(&self) -> &str { "Read todo items. Filter by status (pending/in_progress/done/blocked) or priority (low/medium/high/critical)." }
+    fn id(&self) -> &str {
+        "todoread"
+    }
+    fn name(&self) -> &str {
+        "Todo Read"
+    }
+    fn description(&self) -> &str {
+        "Read todo items. Filter by status (pending/in_progress/done/blocked) or priority (low/medium/high/critical)."
+    }
     fn parameters(&self) -> Value {
         json!({
             "type": "object",
@@ -137,63 +151,83 @@ impl Tool for TodoReadTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: ReadParams = serde_json::from_value(params).unwrap_or(ReadParams { status: None, priority: None });
-        
+        let p: ReadParams = serde_json::from_value(params).unwrap_or(ReadParams {
+            status: None,
+            priority: None,
+        });
+
         let todos = self.load_todos()?;
-        
-        let filtered: Vec<&TodoItem> = todos.iter().filter(|t| {
-            if let Some(ref status) = p.status {
-                let expected = match status.as_str() {
-                    "pending" => TodoStatus::Pending,
-                    "in_progress" => TodoStatus::InProgress,
-                    "done" => TodoStatus::Done,
-                    "blocked" => TodoStatus::Blocked,
-                    _ => return true,
-                };
-                if t.status != expected { return false; }
-            }
-            if let Some(ref priority) = p.priority {
-                let expected = match priority.as_str() {
-                    "low" => Priority::Low,
-                    "medium" => Priority::Medium,
-                    "high" => Priority::High,
-                    "critical" => Priority::Critical,
-                    _ => return true,
-                };
-                if t.priority != expected { return false; }
-            }
-            true
-        }).collect();
-        
+
+        let filtered: Vec<&TodoItem> = todos
+            .iter()
+            .filter(|t| {
+                if let Some(ref status) = p.status {
+                    let expected = match status.as_str() {
+                        "pending" => TodoStatus::Pending,
+                        "in_progress" => TodoStatus::InProgress,
+                        "done" => TodoStatus::Done,
+                        "blocked" => TodoStatus::Blocked,
+                        _ => return true,
+                    };
+                    if t.status != expected {
+                        return false;
+                    }
+                }
+                if let Some(ref priority) = p.priority {
+                    let expected = match priority.as_str() {
+                        "low" => Priority::Low,
+                        "medium" => Priority::Medium,
+                        "high" => Priority::High,
+                        "critical" => Priority::Critical,
+                        _ => return true,
+                    };
+                    if t.priority != expected {
+                        return false;
+                    }
+                }
+                true
+            })
+            .collect();
+
         if filtered.is_empty() {
             return Ok(ToolResult::success("No todos found".to_string()));
         }
-        
-        let output = filtered.iter().map(|t| {
-            let status_icon = match t.status {
-                TodoStatus::Pending => "○",
-                TodoStatus::InProgress => "◐",
-                TodoStatus::Done => "●",
-                TodoStatus::Blocked => "✗",
-            };
-            let priority_label = match t.priority {
-                Priority::Low => "[low]",
-                Priority::Medium => "",
-                Priority::High => "[HIGH]",
-                Priority::Critical => "[CRITICAL]",
-            };
-            format!("{} {} {} {}", status_icon, t.id, priority_label, t.content)
-        }).collect::<Vec<_>>().join("\n");
-        
+
+        let output = filtered
+            .iter()
+            .map(|t| {
+                let status_icon = match t.status {
+                    TodoStatus::Pending => "○",
+                    TodoStatus::InProgress => "◐",
+                    TodoStatus::Done => "●",
+                    TodoStatus::Blocked => "✗",
+                };
+                let priority_label = match t.priority {
+                    Priority::Low => "[low]",
+                    Priority::Medium => "",
+                    Priority::High => "[HIGH]",
+                    Priority::Critical => "[CRITICAL]",
+                };
+                format!("{} {} {} {}", status_icon, t.id, priority_label, t.content)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
         Ok(ToolResult::success(output).with_metadata("count", json!(filtered.len())))
     }
 }
 
 #[async_trait]
 impl Tool for TodoWriteTool {
-    fn id(&self) -> &str { "todowrite" }
-    fn name(&self) -> &str { "Todo Write" }
-    fn description(&self) -> &str { "Manage todo items: add, update, delete, or clear todos." }
+    fn id(&self) -> &str {
+        "todowrite"
+    }
+    fn name(&self) -> &str {
+        "Todo Write"
+    }
+    fn description(&self) -> &str {
+        "Manage todo items: add, update, delete, or clear todos."
+    }
     fn parameters(&self) -> Value {
         json!({
             "type": "object",
@@ -211,23 +245,31 @@ impl Tool for TodoWriteTool {
     async fn execute(&self, params: Value) -> Result<ToolResult> {
         let p: WriteParams = serde_json::from_value(params).context("Invalid params")?;
         let mut todos = self.load_todos()?;
-        
+
         match p.action.as_str() {
             "add" => {
-                let content = p.content.ok_or_else(|| anyhow::anyhow!("content required for add"))?;
-                let status = p.status.map(|s| match s.as_str() {
-                    "in_progress" => TodoStatus::InProgress,
-                    "done" => TodoStatus::Done,
-                    "blocked" => TodoStatus::Blocked,
-                    _ => TodoStatus::Pending,
-                }).unwrap_or_default();
-                let priority = p.priority.map(|s| match s.as_str() {
-                    "low" => Priority::Low,
-                    "high" => Priority::High,
-                    "critical" => Priority::Critical,
-                    _ => Priority::Medium,
-                }).unwrap_or_default();
-                
+                let content = p
+                    .content
+                    .ok_or_else(|| anyhow::anyhow!("content required for add"))?;
+                let status = p
+                    .status
+                    .map(|s| match s.as_str() {
+                        "in_progress" => TodoStatus::InProgress,
+                        "done" => TodoStatus::Done,
+                        "blocked" => TodoStatus::Blocked,
+                        _ => TodoStatus::Pending,
+                    })
+                    .unwrap_or_default();
+                let priority = p
+                    .priority
+                    .map(|s| match s.as_str() {
+                        "low" => Priority::Low,
+                        "high" => Priority::High,
+                        "critical" => Priority::Critical,
+                        _ => Priority::Medium,
+                    })
+                    .unwrap_or_default();
+
                 let id = self.generate_id();
                 todos.push(TodoItem {
                     id: id.clone(),
@@ -240,11 +282,16 @@ impl Tool for TodoWriteTool {
                 Ok(ToolResult::success(format!("Added todo: {}", id)))
             }
             "update" => {
-                let id = p.id.ok_or_else(|| anyhow::anyhow!("id required for update"))?;
-                let todo = todos.iter_mut().find(|t| t.id == id)
+                let id =
+                    p.id.ok_or_else(|| anyhow::anyhow!("id required for update"))?;
+                let todo = todos
+                    .iter_mut()
+                    .find(|t| t.id == id)
                     .ok_or_else(|| anyhow::anyhow!("Todo not found: {}", id))?;
-                
-                if let Some(content) = p.content { todo.content = content; }
+
+                if let Some(content) = p.content {
+                    todo.content = content;
+                }
                 if let Some(status) = p.status {
                     todo.status = match status.as_str() {
                         "in_progress" => TodoStatus::InProgress,
@@ -265,7 +312,8 @@ impl Tool for TodoWriteTool {
                 Ok(ToolResult::success(format!("Updated todo: {}", id)))
             }
             "delete" => {
-                let id = p.id.ok_or_else(|| anyhow::anyhow!("id required for delete"))?;
+                let id =
+                    p.id.ok_or_else(|| anyhow::anyhow!("id required for delete"))?;
                 let len_before = todos.len();
                 todos.retain(|t| t.id != id);
                 if todos.len() == len_before {
@@ -280,7 +328,7 @@ impl Tool for TodoWriteTool {
                 self.save_todos(&todos)?;
                 Ok(ToolResult::success(format!("Cleared {} todos", count)))
             }
-            _ => Ok(ToolResult::error(format!("Unknown action: {}", p.action)))
+            _ => Ok(ToolResult::error(format!("Unknown action: {}", p.action))),
         }
     }
 }

@@ -2,347 +2,7 @@
   "project": "codetether-agent",
   "feature": "UI/UX Components",
   "branch_name": "feature/ui-components",
-  "quality_checks": {
-    "typecheck": "cargo check",
-    "lint": "cargo clippy --all-features",
-    "test": "cargo test",
-    "build": "cargo build --release"
-  },
-  "id": "prd_ui_components",
-  "title": "CodeTether Agent - UI/UX Components PRD",
   "version": "1.0.0",
-  "created_at": "2026-02-03T22:00:00Z",
-  "status": "draft",
-  "executive_summary": {
-    "product_vision": "CodeTether Agent represents a paradigm shift in AI-assisted software development - an autonomous implementation engine that transforms product specifications into production-ready code. The UI/UX components enhance developer experience through intuitive interfaces for chat, file editing, and system monitoring.",
-    "key_features": [
-      "Autonomous PRD-Driven Development (Ralph)",
-      "LSP Client Integration",
-      "Recursive Language Model (RLM) Processing",
-      "Interactive TUI Chat Interface",
-      "File Editing with Diff Display"
-    ],
-    "success_metrics": {
-      "autonomous_development": {
-        "pass_rate": ">= 95%",
-        "time_per_story": "< 2 minutes",
-        "token_efficiency": ">= 80%"
-      },
-      "lsp_integration": {
-        "compatibility": ">= 5 language servers",
-        "latency": "< 100ms",
-        "uptime": ">= 99.9%"
-      },
-      "rlm_processing": {
-        "context_size": ">= 1M tokens",
-        "throughput": ">= 10k tokens/sec",
-        "accuracy": ">= 95%"
-      },
-      "performance": {
-        "startup_time": "< 500ms",
-        "memory_usage": "< 500MB",
-        "spawn_time": "< 100ms"
-      }
-    }
-  },
-  "target_personas": [
-    {
-      "name": "Alex",
-      "role": "Senior Software Engineer",
-      "background": "10+ years experience, works on complex distributed systems",
-      "goals": ["Faster feature implementation", "Reduced boilerplate", "Consistent code quality"],
-      "pain_points": ["Repetitive tasks", "Context switching", "Documentation lag"],
-      "how_codetether_helps": "Autonomous implementation from PRDs, intelligent code generation, automatic documentation"
-    },
-    {
-      "name": "Maya",
-      "role": "Tech Lead/Engineering Manager",
-      "background": "Manages team of 8 engineers, responsible for delivery timelines",
-      "goals": ["Predictable velocity", "Quality consistency", "Reduced review cycles"],
-      "pain_points": ["Uneven code quality", "Slow onboarding", "Technical debt"],
-      "how_codetether_helps": "Standardized implementations, built-in quality checks, PRD-driven development"
-    },
-    {
-      "name": "Jordan",
-      "role": "Indie Developer/Startup Founder",
-      "background": "Solo developer building MVP, limited time and resources",
-      "goals": ["Ship faster", "Maintain quality alone", "Focus on business logic"],
-      "pain_points": ["No team for review", "Infrastructure overhead", "Time management"],
-      "how_codetether_helps": "Autonomous development, comprehensive tooling, reduced cognitive load"
-    },
-    {
-      "name": "Dr. Chen",
-      "role": "AI Research Engineer",
-      "background": "PhD in ML, builds research prototypes and production systems",
-      "goals": ["Experiment rapidly", "Integrate models", "Reproducible results"],
-      "pain_points": ["Boilerplate for experiments", "DevOps overhead", "Version management"],
-      "how_codetether_helps": "RLM processing for large contexts, flexible provider support, structured workflows"
-    }
-  ],
-  "tui_framework": {
-    "libraries": {
-      "ratatui": {
-        "version": "0.30.0",
-        "description": "Modern Rust TUI library (forked from tui-rs)",
-        "purpose": "Immediate-mode rendering, widgets, layout"
-      },
-      "crossterm": {
-        "version": "0.29.0",
-        "description": "Cross-platform terminal I/O backend",
-        "purpose": "Input handling, terminal control, colors"
-      }
-    },
-    "message_display": {
-      "current": "List widget with ListItem",
-      "available_widgets": ["List", "Paragraph", "Table", "Block"],
-      "recommendation": "Enhanced List with ListState for selection + Scrollbar widget",
-      "options": [
-        {
-          "name": "Enhanced List",
-          "pros": ["Native selection support", "Built-in scrolling", "Keyboard navigation"],
-          "cons": ["Limited text wrapping", "No inline formatting"],
-          "effort": "Low"
-        },
-        {
-          "name": "Paragraph with Scroll",
-          "pros": ["Text wrapping", "Inline styles", "Scroll position control"],
-          "cons": ["No selection", "Manual scroll tracking"],
-          "effort": "Medium"
-        },
-        {
-          "name": "Hybrid Approach",
-          "pros": ["Best of both", "Rich formatting", "Full navigation"],
-          "cons": ["More complex", "Custom widget needed"],
-          "effort": "High",
-          "recommended": true
-        },
-        {
-          "name": "Table",
-          "pros": ["Column alignment", "Header support"],
-          "cons": ["Not ideal for chat", "Rigid structure"],
-          "effort": "Low"
-        }
-      ]
-    },
-    "input_handling": {
-      "current": "crossterm::event for key events",
-      "supported_modifiers": ["Ctrl", "Shift", "Alt"],
-      "mouse_support": "Available but not enabled",
-      "current_bindings": {
-        "Ctrl+C": "Quit",
-        "Ctrl+Q": "Quit",
-        "?": "Help",
-        "Tab": "Switch agent",
-        "Arrows": "Scroll/Navigate"
-      },
-      "enhancement_options": [
-        {
-          "name": "Enhanced Keyboard Navigation",
-          "priority": 1,
-          "features": ["Vim-style hjkl", "Page up/down", "Home/End"]
-        },
-        {
-          "name": "Mouse Support",
-          "priority": 2,
-          "features": ["Click to select", "Scroll wheel", "Drag selection"]
-        },
-        {
-          "name": "Command History",
-          "priority": 1,
-          "features": ["Up/Down to navigate", "Ctrl+R search", "Persistent history"]
-        },
-        {
-          "name": "Bracketed Paste",
-          "priority": 3,
-          "features": ["Multi-line paste", "Preserve formatting"]
-        },
-        {
-          "name": "Keybinding Configuration",
-          "priority": 3,
-          "features": ["Custom keymaps", "Config file support"]
-        }
-      ]
-    },
-    "scrollable_views": {
-      "current": "Manual scroll tracking",
-      "native_support": ["Paragraph::scroll()", "ListState"],
-      "scrollbar_widget": true,
-      "recommendation": "Use ListState + Scrollbar for proper scroll management",
-      "options": [
-        {
-          "name": "Scrollbar Widget",
-          "description": "Visual scroll indicator",
-          "implementation": "Scrollbar::new(ScrollbarOrientation::VerticalRight)"
-        },
-        {
-          "name": "Smart Auto-Scroll",
-          "description": "Scroll to bottom on new messages unless user scrolled up",
-          "implementation": "Track scroll_locked state, auto-scroll when at bottom"
-        },
-        {
-          "name": "Virtual Scrolling",
-          "description": "Render only visible items for performance",
-          "implementation": "Calculate visible range, render subset"
-        },
-        {
-          "name": "Searchable Scroll",
-          "description": "Jump to search matches",
-          "implementation": "Ctrl+F to search, n/N to navigate matches"
-        }
-      ]
-    },
-    "color_styling": {
-      "support": {
-        "ansi_16": true,
-        "indexed_256": true,
-        "rgb_24bit": true
-      },
-      "text_modifiers": ["Bold", "Italic", "Underlined", "CrossedOut", "Dim"],
-      "current_limitations": "Basic styling only",
-      "recommended_palette": {
-        "user_message": "White",
-        "assistant_message": "Cyan (not Blue for readability)",
-        "system_message": "Yellow",
-        "error": "Red",
-        "success": "Green",
-        "info": "Blue",
-        "muted": "DarkGray"
-      },
-      "enhancement_options": [
-        {
-          "name": "Semantic Color System",
-          "description": "Role-based colors for different message types"
-        },
-        {
-          "name": "Theme Configuration",
-          "description": "User-customizable color schemes"
-        },
-        {
-          "name": "Syntax Highlighting",
-          "description": "Code blocks with language-aware highlighting",
-          "dependency": "syntect"
-        },
-        {
-          "name": "Advanced Effects",
-          "description": "Blinking, reverse video for emphasis"
-        }
-      ]
-    }
-  },
-  "file_editing": {
-    "approaches": {
-      "claude_code": {
-        "description": "Tool-based architecture with explicit file operations",
-        "confirmation": "Required per edit",
-        "undo": "Checkpoint system"
-      },
-      "aider": {
-        "description": "Multiple edit formats optimized for different LLMs",
-        "formats": ["whole", "diff", "diff-fenced", "udiff"],
-        "features": ["Smart fuzzy matching", "Auto-commit with opt-out"],
-        "undo": "Git-based (/undo command)"
-      },
-      "cursor": {
-        "description": "Full IDE with inline editing",
-        "features": ["Side-by-side diff views", "UI-based accept/reject"],
-        "undo": "Editor undo stack"
-      }
-    },
-    "diff_display_formats": {
-      "terminal_colored": {
-        "removed": "Red",
-        "added": "Green",
-        "context": "Default"
-      },
-      "side_by_side": {
-        "description": "IDE-style two-pane diff viewer"
-      },
-      "unified_diff": {
-        "description": "Standard unified diff format with context lines",
-        "markers": {
-          "removed": "- prefix",
-          "added": "+ prefix",
-          "context": "  prefix"
-        }
-      },
-      "search_replace_blocks": {
-        "description": "Git conflict-style markers",
-        "format": "<<<<<<< SEARCH\\n...\\n=======\\n...\\n>>>>>>> REPLACE"
-      }
-    },
-    "confirmation_flows": {
-      "explicit": {
-        "description": "Show diff, ask confirmation, apply, report result",
-        "used_by": "Claude Code"
-      },
-      "auto_commit": {
-        "description": "Apply and commit with optional manual control",
-        "used_by": "Aider"
-      },
-      "ui_based": {
-        "description": "Visual accept/reject buttons",
-        "used_by": "Cursor"
-      }
-    },
-    "undo_redo": {
-      "git_based": {
-        "description": "All tools leverage git commits for undo",
-        "command": "/undo (Aider)",
-        "recommended": true
-      },
-      "checkpoint_system": {
-        "description": "File checkpointing before modifications",
-        "used_by": "Claude Code Agent SDK"
-      },
-      "editor_undo": {
-        "description": "Standard IDE undo stack",
-        "used_by": "Cursor"
-      },
-      "best_practice": "Pre-commit existing changes before applying AI edits"
-    },
-    "ui_patterns": {
-      "chat_interface": {
-        "description": "Natural language commands in chat",
-        "examples": ["Edit file X to add Y", "Refactor function Z"]
-      },
-      "command_interface": {
-        "commands": ["/add", "/undo", "/diff", "/commit"],
-        "used_by": "Aider"
-      },
-      "visual_feedback": {
-        "progress_indicators": true,
-        "token_usage_tracking": true,
-        "error_handling": "did you mean suggestions for failed matches"
-      }
-    }
-  },
-  "scope": {
-    "in_scope": [
-      "Core agent functionality (A2A, tools, TUI, HTTP server)",
-      "Ralph autonomous development",
-      "LSP client implementation",
-      "RLM processing",
-      "Security (Vault integration, multi-provider support)",
-      "TUI chat interface with message display",
-      "Input handling with keyboard navigation",
-      "Scrollable views with visual indicators",
-      "Color/styling system",
-      "File editing with diff display",
-      "Edit confirmation flows",
-      "Undo/redo capabilities"
-    ],
-    "out_of_scope": [
-      "LSP server implementation",
-      "GUI/IDE extensions",
-      "Collaborative editing",
-      "Version control operations (beyond git undo)",
-      "Deployment automation",
-      "Natural language PRD creation",
-      "Mobile support",
-      "Offline operation",
-      "Custom model training"
-    ]
-  },
   "user_stories": [
     {
       "id": "US-001",
@@ -354,8 +14,10 @@
         "Different message types have distinct colors",
         "Code blocks are syntax highlighted"
       ],
+      "passes": false,
       "priority": 1,
-      "dependencies": []
+      "depends_on": [],
+      "complexity": 3
     },
     {
       "id": "US-002",
@@ -367,8 +29,10 @@
         "Ctrl+R searches command history",
         "? shows help with all shortcuts"
       ],
+      "passes": false,
       "priority": 1,
-      "dependencies": []
+      "depends_on": [],
+      "complexity": 3
     },
     {
       "id": "US-003",
@@ -380,8 +44,10 @@
         "Changes are only applied after confirmation",
         "Original file is preserved until confirmation"
       ],
+      "passes": false,
       "priority": 1,
-      "dependencies": []
+      "depends_on": [],
+      "complexity": 3
     },
     {
       "id": "US-004",
@@ -393,8 +59,12 @@
         "Works with git for full history",
         "Can undo multiple changes in sequence"
       ],
+      "passes": false,
       "priority": 2,
-      "dependencies": ["US-003"]
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
     },
     {
       "id": "US-005",
@@ -406,8 +76,10 @@
         "Changes apply without restart",
         "Fallback to safe defaults if terminal lacks support"
       ],
+      "passes": false,
       "priority": 3,
-      "dependencies": []
+      "depends_on": [],
+      "complexity": 3
     },
     {
       "id": "US-006",
@@ -419,70 +91,19 @@
         "Session total and per-message breakdown available",
         "Cost estimation based on provider pricing"
       ],
+      "passes": false,
       "priority": 2,
-      "dependencies": []
+      "depends_on": [],
+      "complexity": 3
     }
   ],
-  "implementation_priorities": {
-    "immediate": [
-      "Enhanced List with Scrollbar for message display",
-      "Semantic color system for message types",
-      "Basic keyboard navigation (arrows, page up/down)",
-      "Diff display for file edits"
-    ],
-    "medium_term": [
-      "Command history with search",
-      "Mouse support",
-      "Theme configuration",
-      "Token usage tracking"
-    ],
-    "future": [
-      "Syntax highlighting for code blocks",
-      "Vim-style modal editing",
-      "Split pane views",
-      "Undo/redo with visual history"
-    ]
+  "technical_requirements": [],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-features",
+    "build": "cargo build --release"
   },
-  "dependencies": {
-    "required": [
-      {
-        "name": "ratatui",
-        "version": "0.30.0",
-        "purpose": "TUI framework"
-      },
-      {
-        "name": "crossterm",
-        "version": "0.29.0",
-        "purpose": "Terminal I/O"
-      }
-    ],
-    "optional": [
-      {
-        "name": "syntect",
-        "purpose": "Syntax highlighting for code blocks"
-      },
-      {
-        "name": "tui-textarea",
-        "purpose": "Enhanced text input widget"
-      }
-    ]
-  },
-  "notes": {
-    "failed_subtasks": {
-      "subtask_3": {
-        "error": "Token limit exceeded (342896 requested, 262144 limit)",
-        "status": "Failed - needs context truncation"
-      },
-      "subtask_4": {
-        "error": "Token limit exceeded (300183 requested, 262144 limit)",
-        "status": "Failed - needs context truncation"
-      }
-    },
-    "recommendations": [
-      "Use Cyan instead of Blue for assistant messages (better readability)",
-      "Implement auto-scroll that pauses when user scrolls up",
-      "Pre-commit changes before applying AI edits for safe undo",
-      "Show did you mean suggestions for failed fuzzy matches"
-    ]
-  }
+  "created_at": "2026-02-03T22:00:00Z",
+  "updated_at": ""
 }

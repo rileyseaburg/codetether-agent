@@ -231,9 +231,12 @@ impl std::fmt::Debug for ProviderSecrets {
 impl ProviderSecrets {
     /// Check if API key is present and valid (non-empty)
     pub fn has_valid_api_key(&self) -> bool {
-        self.api_key.as_ref().map(|k| !k.is_empty()).unwrap_or(false)
+        self.api_key
+            .as_ref()
+            .map(|k| !k.is_empty())
+            .unwrap_or(false)
     }
-    
+
     /// Get API key length without exposing the key
     pub fn api_key_len(&self) -> Option<usize> {
         self.api_key.as_ref().map(|k| k.len())
@@ -284,7 +287,11 @@ pub async fn has_api_key(provider_id: &str) -> bool {
 /// Get full provider secrets (convenience function)
 pub async fn get_provider_secrets(provider_id: &str) -> Option<ProviderSecrets> {
     match SECRETS_MANAGER.get() {
-        Some(manager) => manager.get_provider_secrets(provider_id).await.ok().flatten(),
+        Some(manager) => manager
+            .get_provider_secrets(provider_id)
+            .await
+            .ok()
+            .flatten(),
         None => None,
     }
 }
