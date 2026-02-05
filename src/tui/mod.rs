@@ -10,7 +10,7 @@ pub mod token_display;
 
 use crate::config::Config;
 use crate::session::{Session, SessionEvent};
-use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
+use crate::swarm::{DecompositionStrategy, Orchestrator, SwarmConfig, SwarmExecutor, SwarmStats};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::swarm_view::{render_swarm_view, SubTaskInfo, SwarmEvent, SwarmViewState};
 use crate::tui::theme::Theme;
@@ -355,8 +355,6 @@ impl App {
             ..Default::default()
         };
 
-        let executor = SwarmExecutor::new(swarm_config);
-
         // Create channel for swarm events
         let (tx, rx) = mpsc::channel(100);
         self.swarm_rx = Some(rx);
@@ -374,39 +372,55 @@ impl App {
             total_subtasks: 0,
         }).await;
 
-        // Spawn swarm execution
+        // Spawn swarm execution with real-time events
         tokio::spawn(async move {
+            // Create orchestrator for decomposition
+            let orchestrator_result = Orchestrator::new(swarm_config.clone()).await;
+            
+            let mut orchestrator = match orchestrator_result {
+                Ok(o) => o,
+                Err(e) => {
+                    let _ = tx.send(SwarmEvent::Error(format!("Failed to create orchestrator: {}", e))).await;
+                    return;
+                }
+            };
+
+            // Decompose the task first
+            let subtasks = match orchestrator.decompose(&task_clone, DecompositionStrategy::Automatic).await {
+                Ok(subtasks) => subtasks,
+                Err(e) => {
+                    let _ = tx.send(SwarmEvent::Error(format!("Decomposition failed: {}", e))).await;
+                    return;
+                }
+            };
+
+            // Send decomposition info immediately so UI shows subtasks
+            let subtask_infos: Vec<SubTaskInfo> = subtasks
+                .iter()
+                .map(|s| SubTaskInfo {
+                    id: s.id.clone(),
+                    name: s.name.clone(),
+                    status: crate::swarm::SubTaskStatus::Pending,
+                    stage: s.stage,
+                    dependencies: s.dependencies.clone(),
+                    agent_name: s.specialty.clone(),
+                    current_tool: None,
+                    steps: 0,
+                    max_steps: 50,
+                })
+                .collect();
+
+            let _ = tx.send(SwarmEvent::Decomposed {
+                subtasks: subtask_infos,
+            }).await;
+
+            // Now execute using SwarmExecutor (which will re-decompose but that's ok)
+            let executor = SwarmExecutor::new(swarm_config);
             let result = executor.execute(&task_clone, DecompositionStrategy::Automatic).await;
 
             match result {
                 Ok(swarm_result) => {
-                    // Send decomposition info
-                    let subtask_infos: Vec<SubTaskInfo> = swarm_result
-                        .subtask_results
-                        .iter()
-                        .enumerate()
-                        .map(|(i, r)| SubTaskInfo {
-                            id: r.subtask_id.clone(),
-                            name: format!("Subtask {}", i + 1),
-                            status: if r.success {
-                                crate::swarm::SubTaskStatus::Completed
-                            } else {
-                                crate::swarm::SubTaskStatus::Failed
-                            },
-                            stage: 0,
-                            dependencies: vec![],
-                            agent_name: Some(r.subagent_id.clone()),
-                            current_tool: None,
-                            steps: r.steps,
-                            max_steps: 50,
-                        })
-                        .collect();
-
-                    let _ = tx.send(SwarmEvent::Decomposed {
-                        subtasks: subtask_infos,
-                    }).await;
-
-                    // Send completion
+                    // Send completion with actual results
                     let _ = tx.send(SwarmEvent::Complete {
                         success: swarm_result.success,
                         stats: swarm_result.stats,
