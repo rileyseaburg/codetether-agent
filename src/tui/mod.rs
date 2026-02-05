@@ -8,6 +8,9 @@ pub mod theme;
 pub mod theme_utils;
 pub mod token_display;
 
+/// Sentinel value meaning "scroll to bottom"
+const SCROLL_BOTTOM: usize = 1_000_000;
+
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
 use crate::session::{list_sessions, Session, SessionEvent};
@@ -87,7 +90,6 @@ struct App {
     messages: Vec<ChatMessage>,
     current_agent: String,
     scroll: usize,
-    max_scroll: usize,
     show_help: bool,
     command_history: Vec<String>,
     history_index: Option<usize>,
@@ -137,7 +139,6 @@ impl App {
             ],
             current_agent: "build".to_string(),
             scroll: 0,
-            max_scroll: 0,
             show_help: false,
             command_history: Vec::new(),
             history_index: None,
@@ -268,7 +269,7 @@ impl App {
 
                     self.current_agent = session.agent.clone();
                     self.session = Some(session);
-                    self.scroll = usize::MAX;
+                    self.scroll = SCROLL_BOTTOM;
                 }
                 Err(e) => {
                     self.messages.push(ChatMessage::new("system", format!("Failed to load session: {}", e)));
@@ -289,7 +290,7 @@ impl App {
         self.messages.push(ChatMessage::new("user", message.clone()));
 
         // Auto-scroll to bottom when user sends a message
-        self.scroll = usize::MAX;
+        self.scroll = SCROLL_BOTTOM;
 
         let current_agent = self.current_agent.clone();
         let model = config
@@ -354,7 +355,7 @@ impl App {
 
     fn handle_response(&mut self, event: SessionEvent) {
         // Auto-scroll to bottom when new content arrives
-        self.scroll = usize::MAX;
+        self.scroll = SCROLL_BOTTOM;
 
         match event {
             SessionEvent::Thinking => {
@@ -645,12 +646,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
         terminal.draw(|f| ui(f, &app, &theme))?;
 
-        // Update max_scroll estimate for scroll normalization
-        // Each message is roughly 3 lines on average
-        let terminal_height = terminal.size()?.height.saturating_sub(6) as usize; // subtract input + status + borders
-        let estimated_lines = app.messages.len() * 3;
-        app.max_scroll = estimated_lines.saturating_sub(terminal_height);
-
         // Check for async responses
         if let Some(ref mut rx) = app.response_rx {
             if let Ok(response) = rx.try_recv() {
@@ -726,12 +721,15 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
                     // Vim-style scrolling (Alt + j/k)
                     KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_add(1).min(app.max_scroll);
+                        if app.scroll < SCROLL_BOTTOM {
+                            app.scroll = app.scroll.saturating_add(1);
+                        }
                     }
                     KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_sub(1);
+                        if app.scroll >= SCROLL_BOTTOM {
+                            app.scroll = SCROLL_BOTTOM - 1; // Leave auto-scroll mode
+                        }
+                        app.scroll = app.scroll.saturating_sub(1);
                     }
 
                     // Command history
@@ -750,20 +748,23 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.scroll = 0; // Go to top
                     }
                     KeyCode::Char('G') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        // Go to bottom
-                        app.scroll = app.max_scroll;
+                        // Go to bottom (auto-scroll)
+                        app.scroll = SCROLL_BOTTOM;
                     }
 
                     // Enhanced scrolling (with Alt to avoid conflicts)
                     KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
                         // Half page down
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_add(5).min(app.max_scroll);
+                        if app.scroll < SCROLL_BOTTOM {
+                            app.scroll = app.scroll.saturating_add(5);
+                        }
                     }
                     KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
                         // Half page up
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_sub(5);
+                        if app.scroll >= SCROLL_BOTTOM {
+                            app.scroll = SCROLL_BOTTOM - 1;
+                        }
+                        app.scroll = app.scroll.saturating_sub(5);
                     }
 
                     // Text input
@@ -797,22 +798,28 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.cursor_position = app.input.len();
                     }
 
-                    // Scroll (normalize first to handle usize::MAX from auto-scroll)
+                    // Scroll (normalize first to handle SCROLL_BOTTOM sentinel)
                     KeyCode::Up => {
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_sub(1);
+                        if app.scroll >= SCROLL_BOTTOM {
+                            app.scroll = SCROLL_BOTTOM - 1; // Leave auto-scroll mode
+                        }
+                        app.scroll = app.scroll.saturating_sub(1);
                     }
                     KeyCode::Down => {
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_add(1).min(app.max_scroll);
+                        if app.scroll < SCROLL_BOTTOM {
+                            app.scroll = app.scroll.saturating_add(1);
+                        }
                     }
                     KeyCode::PageUp => {
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_sub(10);
+                        if app.scroll >= SCROLL_BOTTOM {
+                            app.scroll = SCROLL_BOTTOM - 1;
+                        }
+                        app.scroll = app.scroll.saturating_sub(10);
                     }
                     KeyCode::PageDown => {
-                        let current = app.scroll.min(app.max_scroll);
-                        app.scroll = current.saturating_add(10).min(app.max_scroll);
+                        if app.scroll < SCROLL_BOTTOM {
+                            app.scroll = app.scroll.saturating_add(10);
+                        }
                     }
 
                     _ => {}
@@ -998,7 +1005,12 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
     let total_lines = message_lines.len();
     let visible_lines = messages_area.height.saturating_sub(2) as usize;
     let max_scroll = total_lines.saturating_sub(visible_lines);
-    let scroll = app.scroll.min(max_scroll);
+    // SCROLL_BOTTOM means "stick to bottom", otherwise clamp to max_scroll
+    let scroll = if app.scroll >= SCROLL_BOTTOM {
+        max_scroll
+    } else {
+        app.scroll.min(max_scroll)
+    };
 
     // Render messages with scrolling
     let messages_paragraph = Paragraph::new(
