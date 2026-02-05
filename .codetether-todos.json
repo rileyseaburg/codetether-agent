@@ -285,5 +285,12 @@
     "status": "done",
     "priority": "high",
     "created_at": "2026-02-05T06:09:02.659551783+00:00"
+  },
+  {
+    "id": "todo_1770282492393",
+    "content": "Assess src/tui/ for terminal UI documentation and user experience",
+    "status": "inprogress",
+    "priority": "high",
+    "created_at": "2026-02-05T09:08:12.393314282+00:00"
   }
 ]
