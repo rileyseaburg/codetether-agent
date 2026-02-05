@@ -74,6 +74,9 @@ pub enum Command {
 
     /// Show telemetry and execution statistics
     Stats(StatsArgs),
+
+    /// Clean up orphaned worktrees and branches from failed Ralph runs
+    Cleanup(CleanupArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -324,4 +327,19 @@ pub struct StatsArgs {
     /// Show all/summary (default shows summary)
     #[arg(long)]
     pub all: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct CleanupArgs {
+    /// Dry run - show what would be cleaned up without deleting
+    #[arg(short, long)]
+    pub dry_run: bool,
+
+    /// Clean up worktrees only (not branches)
+    #[arg(long)]
+    pub worktrees_only: bool,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
 }

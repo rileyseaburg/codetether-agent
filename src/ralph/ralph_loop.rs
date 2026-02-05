@@ -87,6 +87,21 @@ impl RalphLoop {
             self.state.status = RalphStatus::MaxIterations;
         }
 
+        // Clean up orphaned worktrees and branches
+        if self.config.worktree_enabled {
+            if let Ok(mgr) = WorktreeManager::new(&self.state.working_dir) {
+                match mgr.cleanup_all() {
+                    Ok(count) if count > 0 => {
+                        info!(cleaned = count, "Cleaned up orphaned worktrees/branches");
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!(error = %e, "Failed to cleanup orphaned worktrees");
+                    }
+                }
+            }
+        }
+
         info!(
             "Ralph finished: {:?}, {}/{} stories passed",
             self.state.status,
@@ -819,11 +834,35 @@ Working directory: {}
                     })?;
 
                 if !output.status.success() {
+                    // Parse output to separate errors from warnings
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let combined = format!("{}\n{}", stdout, stderr);
+                    
+                    // Count actual errors vs warnings
+                    let error_count = combined.lines()
+                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                        .count();
+                    let warning_count = combined.lines()
+                        .filter(|line| line.starts_with("warning") || line.contains("warning:"))
+                        .count();
+                    
+                    // Extract the actual error message (not warnings)
+                    let error_summary: String = combined.lines()
+                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                        .take(5) // First 5 error lines
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
                     warn!(
-                        "{} check failed in {:?}: {}",
+                        check = %name,
+                        dir = %dir.display(),
+                        errors = error_count,
+                        warnings = warning_count,
+                        error_summary = %error_summary.chars().take(300).collect::<String>(),
+                        "{} check failed in {:?}",
                         name,
-                        dir,
-                        String::from_utf8_lossy(&output.stderr)
+                        dir
                     );
                     return Ok(false);
                 }
@@ -946,10 +985,33 @@ Respond with the implementation and any shell commands needed.
                     })?;
 
                 if !output.status.success() {
+                    // Parse output to separate errors from warnings
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let combined = format!("{}\n{}", stdout, stderr);
+                    
+                    // Count actual errors vs warnings
+                    let error_count = combined.lines()
+                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                        .count();
+                    let warning_count = combined.lines()
+                        .filter(|line| line.starts_with("warning") || line.contains("warning:"))
+                        .count();
+                    
+                    // Extract the actual error message (not warnings)
+                    let error_summary: String = combined.lines()
+                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                        .take(5) // First 5 error lines
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
                     warn!(
-                        "{} check failed: {}",
-                        name,
-                        String::from_utf8_lossy(&output.stderr)
+                        check = %name,
+                        errors = error_count,
+                        warnings = warning_count,
+                        error_summary = %error_summary.chars().take(300).collect::<String>(),
+                        "{} check failed",
+                        name
                     );
                     return Ok(false);
                 }
