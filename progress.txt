@@ -21,3 +21,12 @@ The warnings are pre-existing in the codebase and not related to my changes.
 STORY_COMPLETE: US-005
 
 Now let me add a method to get merge status for UI display and update the TUI to show merge warnings. First, let me add a method to WorktreeManager to expose merge status:
+
+---
+
+Now I have a clear understanding. Let me implement the telemetry integration. I'll:
+
+1. Add telemetry tracking to tools that don't have it (grep, multiedit, confirm_multiedit, and others)
+2. Update the TUI token display to show telemetry summary
+
+Let me start implementing:
