@@ -13,7 +13,7 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
-use crate::session::{list_sessions, Session, SessionEvent};
+use crate::session::{list_sessions, Session, SessionEvent, SessionSummary};
 use crate::swarm::{DecompositionStrategy, Orchestrator, SwarmConfig, SwarmExecutor, SwarmStats};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::swarm_view::{render_swarm_view, SubTaskInfo, SwarmEvent, SwarmViewState};
@@ -81,6 +81,7 @@ enum MessageType {
 enum ViewMode {
     Chat,
     Swarm,
+    SessionPicker,
 }
 
 /// Application state
@@ -102,6 +103,9 @@ struct App {
     view_mode: ViewMode,
     swarm_state: SwarmViewState,
     swarm_rx: Option<mpsc::Receiver<SwarmEvent>>,
+    // Session picker state
+    session_picker_list: Vec<SessionSummary>,
+    session_picker_selected: usize,
 }
 
 struct ChatMessage {
@@ -150,6 +154,8 @@ impl App {
             view_mode: ViewMode::Chat,
             swarm_state: SwarmViewState::new(),
             swarm_rx: None,
+            session_picker_list: Vec::new(),
+            session_picker_selected: 0,
         }
     }
 
@@ -181,30 +187,22 @@ impl App {
         // Check for /view command to toggle views
         if message.trim() == "/view" || message.trim() == "/swarm" {
             self.view_mode = match self.view_mode {
-                ViewMode::Chat => ViewMode::Swarm,
+                ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
                 ViewMode::Swarm => ViewMode::Chat,
             };
             return;
         }
 
-        // Check for /sessions command to list sessions
+        // Check for /sessions command - open session picker
         if message.trim() == "/sessions" {
             match list_sessions().await {
                 Ok(sessions) => {
                     if sessions.is_empty() {
                         self.messages.push(ChatMessage::new("system", "No saved sessions found."));
                     } else {
-                        let mut output = String::from("Recent sessions:\n\n");
-                        for (i, s) in sessions.iter().take(10).enumerate() {
-                            let title = s.title.as_deref().unwrap_or("(untitled)");
-                            let date = s.updated_at.format("%Y-%m-%d %H:%M");
-                            output.push_str(&format!(
-                                "{}. {} - {} ({} msgs)\n   ID: {}\n\n",
-                                i + 1, title, date, s.message_count, s.id
-                            ));
-                        }
-                        output.push_str("Use /resume to load the last session, or /resume <id> to load a specific one.");
-                        self.messages.push(ChatMessage::new("system", output));
+                        self.session_picker_list = sessions.into_iter().take(10).collect();
+                        self.session_picker_selected = 0;
+                        self.view_mode = ViewMode::SessionPicker;
                     }
                 }
                 Err(e) => {
@@ -670,6 +668,82 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     continue;
                 }
 
+                // Session picker overlay - handle specially
+                if app.view_mode == ViewMode::SessionPicker {
+                    match key.code {
+                        KeyCode::Esc => {
+                            app.view_mode = ViewMode::Chat;
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            if app.session_picker_selected > 0 {
+                                app.session_picker_selected -= 1;
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            if app.session_picker_selected < app.session_picker_list.len().saturating_sub(1) {
+                                app.session_picker_selected += 1;
+                            }
+                        }
+                        KeyCode::Enter => {
+                            if let Some(session_summary) = app.session_picker_list.get(app.session_picker_selected) {
+                                let session_id = session_summary.id.clone();
+                                match Session::load(&session_id).await {
+                                    Ok(session) => {
+                                        app.messages.clear();
+                                        app.messages.push(ChatMessage::new("system", format!(
+                                            "Resumed session: {}\nCreated: {}\n{} messages loaded",
+                                            session.title.as_deref().unwrap_or("(untitled)"),
+                                            session.created_at.format("%Y-%m-%d %H:%M"),
+                                            session.messages.len()
+                                        )));
+
+                                        for msg in &session.messages {
+                                            let role_str = match msg.role {
+                                                Role::System => "system",
+                                                Role::User => "user",
+                                                Role::Assistant => "assistant",
+                                                Role::Tool => "tool",
+                                            };
+
+                                            let text = msg.content.iter()
+                                                .filter_map(|part| {
+                                                    if let ContentPart::Text { text } = part {
+                                                        Some(text.as_str())
+                                                    } else {
+                                                        None
+                                                    }
+                                                })
+                                                .collect::<Vec<_>>()
+                                                .join("\n");
+
+                                            if !text.is_empty() {
+                                                app.messages.push(ChatMessage::new(role_str, text));
+                                            }
+                                        }
+
+                                        app.current_agent = session.agent.clone();
+                                        app.session = Some(session);
+                                        app.scroll = SCROLL_BOTTOM;
+                                        app.view_mode = ViewMode::Chat;
+                                    }
+                                    Err(e) => {
+                                        app.messages.push(ChatMessage::new("system", format!("Failed to load session: {}", e)));
+                                        app.view_mode = ViewMode::Chat;
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
                 match key.code {
                     // Quit
                     KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -687,20 +761,20 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Toggle view mode (F2 or Ctrl+S)
                     KeyCode::F(2) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat => ViewMode::Swarm,
+                            ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
                             ViewMode::Swarm => ViewMode::Chat,
                         };
                     }
                     KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat => ViewMode::Swarm,
+                            ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
                             ViewMode::Swarm => ViewMode::Chat,
                         };
                     }
 
-                    // Escape - return to chat from swarm view
+                    // Escape - return to chat from swarm/picker view
                     KeyCode::Esc => {
-                        if app.view_mode == ViewMode::Swarm {
+                        if app.view_mode == ViewMode::Swarm || app.view_mode == ViewMode::SessionPicker {
                             app.view_mode = ViewMode::Chat;
                         }
                     }
@@ -866,6 +940,74 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             Span::raw(": Toggle view"),
         ]));
         f.render_widget(status, chunks[2]);
+        return;
+    }
+
+    // Session picker view
+    if app.view_mode == ViewMode::SessionPicker {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(1),    // Session list
+                Constraint::Length(1), // Status bar
+            ])
+            .split(f.area());
+
+        // Session list
+        let list_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Select Session (↑↓ to navigate, Enter to load, Esc to cancel) ")
+            .border_style(Style::default().fg(Color::Cyan));
+
+        let mut list_lines: Vec<Line> = Vec::new();
+        list_lines.push(Line::from(""));
+
+        for (i, session) in app.session_picker_list.iter().enumerate() {
+            let is_selected = i == app.session_picker_selected;
+            let title = session.title.as_deref().unwrap_or("(untitled)");
+            let date = session.updated_at.format("%Y-%m-%d %H:%M");
+            let line_str = format!(
+                " {} {} - {} ({} msgs)",
+                if is_selected { "▶" } else { " " },
+                title,
+                date,
+                session.message_count
+            );
+
+            let style = if is_selected {
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            list_lines.push(Line::styled(line_str, style));
+
+            // Add agent info on next line for selected item
+            if is_selected {
+                list_lines.push(Line::styled(
+                    format!("   Agent: {} | ID: {}", session.agent, session.id),
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+        }
+
+        let list = Paragraph::new(list_lines)
+            .block(list_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(list, chunks[0]);
+
+        // Status bar
+        let status = Paragraph::new(Line::from(vec![
+            Span::styled(" SESSION PICKER ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+            Span::raw(" | "),
+            Span::styled("↑↓/jk", Style::default().fg(Color::Yellow)),
+            Span::raw(": Navigate | "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(": Load | "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": Cancel"),
+        ]));
+        f.render_widget(status, chunks[1]);
         return;
     }
 
