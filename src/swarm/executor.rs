@@ -220,10 +220,19 @@ fn truncate_single_result(content: &str, max_chars: usize) -> String {
         return content.to_string();
     }
 
+    // Find a valid char boundary at or before max_chars
+    let safe_limit = {
+        let mut limit = max_chars.min(content.len());
+        while limit > 0 && !content.is_char_boundary(limit) {
+            limit -= 1;
+        }
+        limit
+    };
+
     // Try to find a good break point (newline) near the limit
-    let break_point = content[..max_chars.min(content.len())]
+    let break_point = content[..safe_limit]
         .rfind('\n')
-        .unwrap_or(max_chars.min(content.len()));
+        .unwrap_or(safe_limit);
 
     let truncated = format!(
         "{}...\n\n[OUTPUT TRUNCATED: {} → {} chars to fit context limit]",
