@@ -79,38 +79,38 @@ impl Theme {
     /// Solarized dark theme
     pub fn solarized_dark() -> Self {
         Self {
-            user_color: ColorDef::Rgb(133, 153, 0),      // green
-            assistant_color: ColorDef::Rgb(42, 161, 152), // cyan
-            system_color: ColorDef::Rgb(181, 137, 0),    // yellow
-            tool_color: ColorDef::Rgb(211, 54, 130),     // magenta
-            error_color: ColorDef::Rgb(220, 50, 47),     // red
-            border_color: ColorDef::Rgb(131, 148, 150),  // base1
-            input_border_color: ColorDef::Rgb(238, 232, 213), // base2
-            help_border_color: ColorDef::Rgb(181, 137, 0),    // yellow
-            timestamp_color: ColorDef::Rgb(101, 123, 131), // base01
-            code_block_color: ColorDef::Rgb(88, 110, 117),   // base03
-            status_bar_foreground: ColorDef::Rgb(0, 43, 54), // base03
+            user_color: ColorDef::Rgb(133, 153, 0),              // green
+            assistant_color: ColorDef::Rgb(42, 161, 152),        // cyan
+            system_color: ColorDef::Rgb(181, 137, 0),            // yellow
+            tool_color: ColorDef::Rgb(211, 54, 130),             // magenta
+            error_color: ColorDef::Rgb(220, 50, 47),             // red
+            border_color: ColorDef::Rgb(131, 148, 150),          // base1
+            input_border_color: ColorDef::Rgb(238, 232, 213),    // base2
+            help_border_color: ColorDef::Rgb(181, 137, 0),       // yellow
+            timestamp_color: ColorDef::Rgb(101, 123, 131),       // base01
+            code_block_color: ColorDef::Rgb(88, 110, 117),       // base03
+            status_bar_foreground: ColorDef::Rgb(0, 43, 54),     // base03
             status_bar_background: ColorDef::Rgb(238, 232, 213), // base2
-            background: Some(ColorDef::Rgb(0, 43, 54)),    // base03
+            background: Some(ColorDef::Rgb(0, 43, 54)),          // base03
         }
     }
 
     /// Solarized light theme
     pub fn solarized_light() -> Self {
         Self {
-            user_color: ColorDef::Rgb(133, 153, 0),      // green
-            assistant_color: ColorDef::Rgb(42, 161, 152), // cyan
-            system_color: ColorDef::Rgb(181, 137, 0),    // yellow
-            tool_color: ColorDef::Rgb(211, 54, 130),     // magenta
-            error_color: ColorDef::Rgb(220, 50, 47),     // red
-            border_color: ColorDef::Rgb(88, 110, 117),   // base00
-            input_border_color: ColorDef::Rgb(147, 161, 161), // base1
-            help_border_color: ColorDef::Rgb(181, 137, 0),    // yellow
-            timestamp_color: ColorDef::Rgb(131, 148, 150),    // base1
-            code_block_color: ColorDef::Rgb(147, 161, 161),   // base1
+            user_color: ColorDef::Rgb(133, 153, 0),              // green
+            assistant_color: ColorDef::Rgb(42, 161, 152),        // cyan
+            system_color: ColorDef::Rgb(181, 137, 0),            // yellow
+            tool_color: ColorDef::Rgb(211, 54, 130),             // magenta
+            error_color: ColorDef::Rgb(220, 50, 47),             // red
+            border_color: ColorDef::Rgb(88, 110, 117),           // base00
+            input_border_color: ColorDef::Rgb(147, 161, 161),    // base1
+            help_border_color: ColorDef::Rgb(181, 137, 0),       // yellow
+            timestamp_color: ColorDef::Rgb(131, 148, 150),       // base1
+            code_block_color: ColorDef::Rgb(147, 161, 161),      // base1
             status_bar_foreground: ColorDef::Rgb(238, 232, 213), // base2
-            status_bar_background: ColorDef::Rgb(88, 110, 117),   // base00
-            background: Some(ColorDef::Rgb(253, 246, 227)), // base3
+            status_bar_background: ColorDef::Rgb(88, 110, 117),  // base00
+            background: Some(ColorDef::Rgb(253, 246, 227)),      // base3
         }
     }
 
@@ -206,15 +206,37 @@ impl From<Color> for ColorDef {
 
 // Helper functions for creating common colors
 impl ColorDef {
-    pub fn black() -> Self { ColorDef::Named("black".to_string()) }
-    pub fn red() -> Self { ColorDef::Named("red".to_string()) }
-    pub fn green() -> Self { ColorDef::Named("green".to_string()) }
-    pub fn yellow() -> Self { ColorDef::Named("yellow".to_string()) }
-    pub fn blue() -> Self { ColorDef::Named("blue".to_string()) }
-    pub fn magenta() -> Self { ColorDef::Named("magenta".to_string()) }
-    pub fn cyan() -> Self { ColorDef::Named("cyan".to_string()) }
-    pub fn white() -> Self { ColorDef::Named("white".to_string()) }
-    pub fn gray() -> Self { ColorDef::Named("gray".to_string()) }
-    pub fn dark_gray() -> Self { ColorDef::Named("darkgray".to_string()) }
-    pub fn light_gray() -> Self { ColorDef::Named("gray".to_string()) }
+    pub fn black() -> Self {
+        ColorDef::Named("black".to_string())
+    }
+    pub fn red() -> Self {
+        ColorDef::Named("red".to_string())
+    }
+    pub fn green() -> Self {
+        ColorDef::Named("green".to_string())
+    }
+    pub fn yellow() -> Self {
+        ColorDef::Named("yellow".to_string())
+    }
+    pub fn blue() -> Self {
+        ColorDef::Named("blue".to_string())
+    }
+    pub fn magenta() -> Self {
+        ColorDef::Named("magenta".to_string())
+    }
+    pub fn cyan() -> Self {
+        ColorDef::Named("cyan".to_string())
+    }
+    pub fn white() -> Self {
+        ColorDef::Named("white".to_string())
+    }
+    pub fn gray() -> Self {
+        ColorDef::Named("gray".to_string())
+    }
+    pub fn dark_gray() -> Self {
+        ColorDef::Named("darkgray".to_string())
+    }
+    pub fn light_gray() -> Self {
+        ColorDef::Named("gray".to_string())
+    }
 }

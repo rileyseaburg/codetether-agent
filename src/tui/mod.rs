@@ -2,14 +2,15 @@
 //!
 //! Interactive TUI using Ratatui
 
-pub mod theme;
 pub mod message_formatter;
+pub mod theme;
 pub mod theme_utils;
 pub mod token_display;
 
 use crate::config::Config;
-use crate::tui::theme::Theme;
+use crate::session::Session;
 use crate::tui::message_formatter::MessageFormatter;
+use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
 use crossterm::{
@@ -24,12 +25,12 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
-        Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation,
-        ScrollbarState, Wrap,
+        Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
     },
 };
 use std::io;
 use std::path::PathBuf;
+use tokio::sync::mpsc;
 
 /// Run the TUI
 pub async fn run(project: Option<PathBuf>) -> Result<()> {
@@ -60,6 +61,14 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
     result
 }
 
+/// Message type for chat display
+#[derive(Debug, Clone)]
+enum MessageType {
+    Text(String),
+    ToolCall { name: String, arguments: String },
+    ToolResult { name: String, output: String },
+}
+
 /// Application state
 struct App {
     input: String,
@@ -70,12 +79,43 @@ struct App {
     show_help: bool,
     command_history: Vec<String>,
     history_index: Option<usize>,
+    session: Option<Session>,
+    is_processing: bool,
+    processing_message: Option<String>,
+    response_rx: Option<mpsc::Receiver<AgentResponse>>,
 }
 
 struct ChatMessage {
     role: String,
     content: String,
     timestamp: String,
+    message_type: MessageType,
+}
+
+/// Response from the agent
+#[derive(Debug, Clone)]
+enum AgentResponse {
+    Text(String),
+    ToolCall { name: String, arguments: String },
+    ToolResult { name: String, output: String },
+    Error(String),
+    Complete,
+}
+
+impl ChatMessage {
+    fn new(role: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: role.into(),
+            content: content.into(),
+            timestamp: chrono::Local::now().format("%H:%M").to_string(),
+            message_type: MessageType::Text(String::new()),
+        }
+    }
+
+    fn with_message_type(mut self, message_type: MessageType) -> Self {
+        self.message_type = message_type;
+        self
+    }
 }
 
 impl App {
@@ -84,30 +124,22 @@ impl App {
             input: String::new(),
             cursor_position: 0,
             messages: vec![
-                ChatMessage {
-                    role: "system".to_string(),
-                    content: "Welcome to CodeTether Agent! Type a message to get started, or press ? for help.".to_string(),
-                    timestamp: chrono::Local::now().format("%H:%M").to_string(),
-                },
-                ChatMessage {
-                    role: "assistant".to_string(),
-                    content: "Enhanced message display is now active! Features include:\n\n• Proper text wrapping at terminal width\n• Scrollbar indicating conversation position\n• Distinct colors for different message types\n• Code block formatting with syntax highlighting\n\nExample code block:\n```rust
-fn main() {
-    println!(\"Hello, World!\");
-}
-```\n\nTry scrolling with ↑/↓ keys and PageUp/PageDown!".to_string(),
-                    timestamp: chrono::Local::now().format("%H:%M").to_string(),
-                },
+                ChatMessage::new("system", "Welcome to CodeTether Agent! Type a message to get started, or press ? for help."),
+                ChatMessage::new("assistant", "Enhanced message display is now active! Features include:\n\n• Proper text wrapping at terminal width\n• Scrollbar indicating conversation position\n• Distinct colors for different message types\n• Code block formatting with syntax highlighting\n\nExample code block:\n```rust\nfn main() {\n    println!(\"Hello, World!\");\n}\n```\n\nTry scrolling with ↑/↓ keys and PageUp/PageDown!"),
             ],
             current_agent: "build".to_string(),
             scroll: 0,
             show_help: false,
             command_history: Vec::new(),
             history_index: None,
+            session: None,
+            is_processing: false,
+            processing_message: None,
+            response_rx: None,
         }
     }
 
-    fn submit_message(&mut self) {
+    async fn submit_message(&mut self, config: &Config) {
         if self.input.is_empty() {
             return;
         }
@@ -122,21 +154,99 @@ fn main() {
         }
 
         // Add user message
-        self.messages.push(ChatMessage {
-            role: "user".to_string(),
-            content: message.clone(),
-            timestamp: chrono::Local::now().format("%H:%M").to_string(),
-        });
+        self.messages.push(ChatMessage::new("user", message.clone()));
 
-        // TODO: Actually process the message with the agent
-        self.messages.push(ChatMessage {
-            role: "assistant".to_string(),
-            content: format!(
-                "[Agent processing not yet implemented]\n\nYou said: {}",
-                message
-            ),
-            timestamp: chrono::Local::now().format("%H:%M").to_string(),
+        let current_agent = self.current_agent.clone();
+        let model = config
+            .agents
+            .get(&current_agent)
+            .and_then(|agent| agent.model.clone())
+            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
+            .or_else(|| config.default_model.clone());
+
+        // Initialize session if needed
+        if self.session.is_none() {
+            match Session::new().await {
+                Ok(session) => {
+                    self.session = Some(session);
+                }
+                Err(err) => {
+                    tracing::error!(error = %err, "Failed to create session");
+                    self.messages.push(ChatMessage::new("assistant", format!("Error: {err}")));
+                    return;
+                }
+            }
+        }
+
+        let session = match self.session.as_mut() {
+            Some(session) => session,
+            None => {
+                self.messages.push(ChatMessage::new("assistant", "Error: session not initialized"));
+                return;
+            }
+        };
+
+        if let Some(model) = model {
+            session.metadata.model = Some(model);
+        }
+
+        session.agent = current_agent;
+
+        // Set processing state
+        self.is_processing = true;
+        self.processing_message = Some("Thinking...".to_string());
+
+        // Create channel for async communication
+        let (tx, rx) = mpsc::channel(100);
+        self.response_rx = Some(rx);
+
+        // Clone session for async processing
+        let session_clone = session.clone();
+        let message_clone = message.clone();
+
+        // Spawn async task to process the message
+        tokio::spawn(async move {
+            let mut session = session_clone;
+            match session.prompt(&message_clone).await {
+                Ok(result) => {
+                    let _ = tx.send(AgentResponse::Text(result.text)).await;
+                    let _ = tx.send(AgentResponse::Complete).await;
+                }
+                Err(err) => {
+                    tracing::error!(error = %err, "Agent processing failed");
+                    let _ = tx.send(AgentResponse::Error(format!("Error: {err}"))).await;
+                    let _ = tx.send(AgentResponse::Complete).await;
+                }
+            }
         });
+    }
+
+    fn handle_response(&mut self, response: AgentResponse) {
+        match response {
+            AgentResponse::Text(text) => {
+                self.messages.push(ChatMessage::new("assistant", text));
+            }
+            AgentResponse::ToolCall { name, arguments } => {
+                self.messages.push(
+                    ChatMessage::new("tool", format!("Calling tool: {name}"))
+                        .with_message_type(MessageType::ToolCall { name, arguments }),
+                );
+            }
+            AgentResponse::ToolResult { name, output } => {
+                self.messages.push(
+                    ChatMessage::new("tool", format!("Tool result: {name}"))
+                        .with_message_type(MessageType::ToolResult { name, output }),
+                );
+            }
+            AgentResponse::Error(err) => {
+                self.messages.push(ChatMessage::new("assistant", err));
+            }
+            AgentResponse::Complete => {
+                self.is_processing = false;
+                self.processing_message = None;
+                self.response_rx = None;
+            }
+        }
     }
 
     fn navigate_history(&mut self, direction: isize) {
@@ -182,7 +292,7 @@ fn main() {
         }
 
         let search_term = self.input.trim().to_lowercase();
-        
+
         if search_term.is_empty() {
             // Empty search - show most recent
             if !self.command_history.is_empty() {
@@ -194,27 +304,22 @@ fn main() {
         }
 
         // Find the most recent command that starts with the search term
-        let mut found = false;
         for (index, cmd) in self.command_history.iter().enumerate().rev() {
             if cmd.to_lowercase().starts_with(&search_term) {
                 self.input = cmd.clone();
                 self.cursor_position = self.input.len();
                 self.history_index = Some(index);
-                found = true;
-                break;
+                return;
             }
         }
 
         // If no prefix match, search for contains
-        if !found {
-            for (index, cmd) in self.command_history.iter().enumerate().rev() {
-                if cmd.to_lowercase().contains(&search_term) {
-                    self.input = cmd.clone();
-                    self.cursor_position = self.input.len();
-                    self.history_index = Some(index);
-                    found = true;
-                    break;
-                }
+        for (index, cmd) in self.command_history.iter().enumerate().rev() {
+            if cmd.to_lowercase().contains(&search_term) {
+                self.input = cmd.clone();
+                self.cursor_position = self.input.len();
+                self.history_index = Some(index);
+                return;
             }
         }
     }
@@ -228,12 +333,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let mut theme = crate::tui::theme_utils::validate_theme(&config.load_theme());
 
     // Track last config modification time for hot-reloading
-    let config_paths = vec![
+    let _config_paths = vec![
         std::path::PathBuf::from("./codetether.toml"),
         std::path::PathBuf::from("./.codetether/config.toml"),
     ];
-    
-    let global_config_path = directories::ProjectDirs::from("com", "codetether", "codetether")
+
+    let _global_config_path = directories::ProjectDirs::from("com", "codetether", "codetether")
         .map(|dirs| dirs.config_dir().join("config.toml"));
 
     let mut last_check = std::time::Instant::now();
@@ -242,7 +347,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         // Check for theme changes if hot-reload is enabled
         if config.ui.hot_reload && last_check.elapsed() > std::time::Duration::from_secs(2) {
             if let Ok(new_config) = Config::load().await {
-                if new_config.ui.theme != config.ui.theme || new_config.ui.custom_theme != config.ui.custom_theme {
+                if new_config.ui.theme != config.ui.theme
+                    || new_config.ui.custom_theme != config.ui.custom_theme
+                {
                     theme = crate::tui::theme_utils::validate_theme(&new_config.load_theme());
                     config = new_config;
                 }
@@ -251,6 +358,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         }
 
         terminal.draw(|f| ui(f, &app, &theme))?;
+
+        // Check for async responses
+        if let Some(ref mut rx) = app.response_rx {
+            if let Ok(response) = rx.try_recv() {
+                app.handle_response(response);
+            }
+        }
 
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -287,7 +401,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
                     // Submit message
                     KeyCode::Enter => {
-                        app.submit_message();
+                        app.submit_message(&config).await;
                     }
 
                     // Vim-style navigation
@@ -316,7 +430,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     KeyCode::Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.navigate_history(1);
                     }
-                    
+
                     // Additional Vim-style navigation
                     KeyCode::Char('g') if key.modifiers.is_empty() => {
                         app.scroll = 0; // Go to top
@@ -325,7 +439,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         // Go to bottom - will be calculated properly in the draw function
                         app.scroll = usize::MAX; // Use max value, will be clamped
                     }
-                    
+
                     // Enhanced scrolling
                     KeyCode::Char('d') if key.modifiers.is_empty() => {
                         // Vim-style page down (half page)
@@ -424,12 +538,95 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
         ]);
         message_lines.push(header_line);
 
-        // Format message content with enhanced features
-        let formatter = MessageFormatter::new(max_width);
-        let formatted_content = formatter.format_content(&message.content, &message.role);
-        message_lines.extend(formatted_content);
+        // Format message content based on message type
+        match &message.message_type {
+            MessageType::ToolCall { name, arguments } => {
+                // Tool call display with distinct styling
+                let tool_header = Line::from(vec![
+                    Span::styled("  🔧 ", Style::default().fg(Color::Yellow)),
+                    Span::styled(format!("Tool: {}", name), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                ]);
+                message_lines.push(tool_header);
+                
+                // Arguments (truncated if too long)
+                let args_str = if arguments.len() > 200 {
+                    format!("{}...", &arguments[..197])
+                } else {
+                    arguments.clone()
+                };
+                let args_line = Line::from(vec![
+                    Span::styled("     ", Style::default()),
+                    Span::styled(args_str, Style::default().fg(Color::DarkGray)),
+                ]);
+                message_lines.push(args_line);
+            }
+            MessageType::ToolResult { name, output } => {
+                // Tool result display
+                let result_header = Line::from(vec![
+                    Span::styled("  ✅ ", Style::default().fg(Color::Green)),
+                    Span::styled(format!("Result from {}", name), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                ]);
+                message_lines.push(result_header);
+                
+                // Output (truncated if too long)
+                let output_str = if output.len() > 300 {
+                    format!("{}... (truncated)", &output[..297])
+                } else {
+                    output.clone()
+                };
+                let output_lines: Vec<&str> = output_str.lines().collect();
+                for line in output_lines.iter().take(5) {
+                    let output_line = Line::from(vec![
+                        Span::styled("     ", Style::default()),
+                        Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
+                    ]);
+                    message_lines.push(output_line);
+                }
+                if output_lines.len() > 5 {
+                    message_lines.push(Line::from(vec![
+                        Span::styled("     ", Style::default()),
+                        Span::styled(format!("... and {} more lines", output_lines.len() - 5), Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
+                    ]));
+                }
+            }
+            _ => {
+                // Regular text message
+                let formatter = MessageFormatter::new(max_width);
+                let formatted_content = formatter.format_content(&message.content, &message.role);
+                message_lines.extend(formatted_content);
+            }
+        }
 
         // Add spacing between messages
+        message_lines.push(Line::from(""));
+    }
+
+    // Show processing indicator if active
+    if app.is_processing {
+        let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let spinner_idx = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() / 100) as usize % spinner.len();
+        
+        let processing_line = Line::from(vec![
+            Span::styled(
+                format!("[{}] ", chrono::Local::now().format("%H:%M")),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::styled("assistant", theme.get_role_style("assistant")),
+        ]);
+        message_lines.push(processing_line);
+        
+        let indicator_line = Line::from(vec![
+            Span::styled(
+                format!("  {} {}", spinner[spinner_idx], app.processing_message.as_deref().unwrap_or("Thinking...")),
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ),
+        ]);
+        message_lines.push(indicator_line);
         message_lines.push(Line::from(""));
     }
 
@@ -471,8 +668,16 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
     // Input area
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .title(" Message (Enter to send) ")
-        .border_style(Style::default().fg(theme.input_border_color.to_color()));
+        .title(if app.is_processing {
+            " Message (Processing...) "
+        } else {
+            " Message (Enter to send) "
+        })
+        .border_style(Style::default().fg(if app.is_processing {
+            Color::Yellow
+        } else {
+            theme.input_border_color.to_color()
+        }));
 
     let input = Paragraph::new(app.input.as_str())
         .block(input_block)
@@ -497,7 +702,7 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
 
         // Enhanced token usage details
         let token_display = TokenDisplay::new();
-        let mut token_info = token_display.create_detailed_display();
+        let token_info = token_display.create_detailed_display();
 
         let help_text: Vec<String> = vec![
             "".to_string(),
@@ -581,5 +786,3 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
-
-

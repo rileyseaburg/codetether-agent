@@ -297,7 +297,10 @@ impl ProviderRegistry {
                 },
                 // ZhipuAI - OpenAI-compatible coding API
                 "zhipuai" => {
-                    let base_url = secrets.base_url.clone().unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
+                    let base_url = secrets
+                        .base_url
+                        .clone()
+                        .unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
                     match openai::OpenAIProvider::with_base_url(api_key, base_url, "zhipuai") {
                         Ok(p) => registry.register(Arc::new(p)),
                         Err(e) => tracing::warn!("Failed to init zhipuai: {}", e),

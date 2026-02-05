@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use tokio::fs;
 
-use crate::telemetry::{FileChange, ToolExecution, TOOL_EXECUTIONS, record_persistent};
+use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
 /// Read file contents
 pub struct ReadTool;
@@ -61,7 +61,7 @@ impl Tool for ReadTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let start = Instant::now();
-        
+
         let path = match args["path"].as_str() {
             Some(p) => p,
             None => {
@@ -95,16 +95,16 @@ impl Tool for ReadTool {
         let duration = start.elapsed();
 
         // Record telemetry
-        let file_change = FileChange::read(
-            path,
-            Some((start_line as u32 + 1, end_line as u32)),
+        let file_change = FileChange::read(path, Some((start_line as u32 + 1, end_line as u32)));
+
+        let mut exec = ToolExecution::start(
+            "read",
+            json!({
+                "path": path,
+                "offset": offset,
+                "limit": limit,
+            }),
         );
-        
-        let mut exec = ToolExecution::start("read", json!({
-            "path": path,
-            "offset": offset,
-            "limit": limit,
-        }));
         exec.add_file_change(file_change);
         let exec = exec.complete_success(
             format!("Read {} lines from {}", end_line - start_line, path),
@@ -165,7 +165,7 @@ impl Tool for WriteTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let start = Instant::now();
-        
+
         let path = match args["path"].as_str() {
             Some(p) => p,
             None => {
@@ -219,11 +219,14 @@ impl Tool for WriteTool {
         } else {
             FileChange::create(path, content)
         };
-        
-        let mut exec = ToolExecution::start("write", json!({
-            "path": path,
-            "content_length": content.len(),
-        }));
+
+        let mut exec = ToolExecution::start(
+            "write",
+            json!({
+                "path": path,
+                "content_length": content.len(),
+            }),
+        );
         exec.add_file_change(file_change);
         let exec = exec.complete_success(
             format!("Wrote {} bytes to {}", content.len(), path),

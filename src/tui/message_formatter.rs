@@ -2,13 +2,13 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
 };
+use std::sync::LazyLock;
 use syntect::{
     easy::HighlightLines,
+    highlighting::{Style as SyntectStyle, ThemeSet},
     parsing::SyntaxSet,
-    highlighting::{ThemeSet, Style as SyntectStyle},
     util::LinesWithEndings,
 };
-use std::sync::LazyLock;
 
 /// Global syntax set and theme set for syntax highlighting
 static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
@@ -38,7 +38,9 @@ impl MessageFormatter {
                 if in_code_block {
                     // End of code block - render with syntax highlighting
                     if !code_block_lines.is_empty() {
-                        lines.extend(self.render_code_block(&code_block_lines, &code_block_language));
+                        lines.extend(
+                            self.render_code_block(&code_block_lines, &code_block_language),
+                        );
                         code_block_lines.clear();
                         code_block_language.clear();
                     }
@@ -108,19 +110,21 @@ impl MessageFormatter {
 
         result.push(Line::from(Span::styled(
             header,
-            Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
         )));
 
         // Use syntect for syntax highlighting
         let highlighted_lines = self.highlight_code_block_syntect(lines, language);
-        
+
         for line in highlighted_lines {
             let formatted_line = if line.trim().is_empty() {
                 "│".to_string()
             } else {
                 format!("│ {}", line)
             };
-            
+
             result.push(Line::from(Span::styled(
                 formatted_line,
                 Style::default().fg(Color::DarkGray),
@@ -139,23 +143,24 @@ impl MessageFormatter {
     fn highlight_code_block_syntect(&self, lines: &[String], language: &str) -> Vec<String> {
         let syntax_set = &*SYNTAX_SET;
         let theme_set = &*THEME_SET;
-        
+
         // Use a dark theme suitable for terminal
         let theme = &theme_set.themes["base16-ocean.dark"];
-        
+
         // Find the appropriate syntax
         let syntax = if language.is_empty() {
             syntax_set.find_syntax_plain_text()
         } else {
-            syntax_set.find_syntax_by_token(language)
+            syntax_set
+                .find_syntax_by_token(language)
                 .unwrap_or_else(|| syntax_set.find_syntax_plain_text())
         };
 
         let mut highlighter = HighlightLines::new(syntax, theme);
-        
+
         let mut highlighted_lines = Vec::new();
         let code = lines.join("\n");
-        
+
         for line in LinesWithEndings::from(&code) {
             let ranges = match highlighter.highlight_line(line, syntax_set) {
                 Ok(r) => r,
@@ -166,28 +171,24 @@ impl MessageFormatter {
                 }
             };
             let mut line_result = String::new();
-            
+
             for (style, text) in ranges {
                 let fg_color = style.foreground;
-                let _color = Color::Rgb(
-                    fg_color.r,
-                    fg_color.g,
-                    fg_color.b,
-                );
-                
+                let _color = Color::Rgb(fg_color.r, fg_color.g, fg_color.b);
+
                 // Convert the styled text to a ratatui-compatible string
                 // Since we can't use actual terminal colors in ratatui spans easily,
                 // we'll use the closest ratatui colors
                 let _ratatui_color = self.map_syntect_color_to_ratatui(&fg_color);
-                
+
                 // For now, we'll just return the text without ANSI codes
                 // since ratatui handles styling through its own Span system
                 line_result.push_str(text);
             }
-            
+
             highlighted_lines.push(line_result.trim_end().to_string());
         }
-        
+
         highlighted_lines
     }
 
@@ -204,7 +205,7 @@ impl MessageFormatter {
         let mut in_bold = false;
         let mut in_italic = false;
         let mut in_code = false;
-        
+
         let role_color = match role {
             "user" => Color::White,
             "assistant" => Color::Cyan,
@@ -214,7 +215,7 @@ impl MessageFormatter {
         };
 
         let mut chars = line.chars().peekable();
-        
+
         while let Some(c) = chars.next() {
             match c {
                 '*' => {
@@ -223,7 +224,11 @@ impl MessageFormatter {
                         if !current.is_empty() {
                             spans.push(Span::styled(
                                 current.clone(),
-                                Style::default().fg(role_color).add_modifier(if in_bold { Modifier::BOLD } else { Modifier::empty() })
+                                Style::default().fg(role_color).add_modifier(if in_bold {
+                                    Modifier::BOLD
+                                } else {
+                                    Modifier::empty()
+                                }),
                             ));
                             current.clear();
                         }
@@ -234,7 +239,11 @@ impl MessageFormatter {
                         if !current.is_empty() {
                             spans.push(Span::styled(
                                 current.clone(),
-                                Style::default().fg(role_color).add_modifier(if in_italic { Modifier::ITALIC } else { Modifier::empty() })
+                                Style::default().fg(role_color).add_modifier(if in_italic {
+                                    Modifier::ITALIC
+                                } else {
+                                    Modifier::empty()
+                                }),
                             ));
                             current.clear();
                         }
@@ -245,7 +254,7 @@ impl MessageFormatter {
                     if !current.is_empty() {
                         spans.push(Span::styled(
                             current.clone(),
-                            Style::default().fg(role_color)
+                            Style::default().fg(role_color),
                         ));
                         current.clear();
                     }
@@ -258,14 +267,14 @@ impl MessageFormatter {
         }
 
         if !current.is_empty() {
-            spans.push(Span::styled(
-                current,
-                Style::default().fg(role_color)
-            ));
+            spans.push(Span::styled(current, Style::default().fg(role_color)));
         }
 
         if spans.is_empty() {
-            spans.push(Span::styled(line.to_string(), Style::default().fg(role_color)));
+            spans.push(Span::styled(
+                line.to_string(),
+                Style::default().fg(role_color),
+            ));
         }
 
         spans
@@ -297,7 +306,11 @@ mod tests {
     #[test]
     fn test_syntax_highlighting() {
         let formatter = MessageFormatter::new(80);
-        let lines = vec!["fn main() {".to_string(), "    println!(\"Hello!\");".to_string(), "}".to_string()];
+        let lines = vec![
+            "fn main() {".to_string(),
+            "    println!(\"Hello!\");".to_string(),
+            "}".to_string(),
+        ];
         let highlighted = formatter.highlight_code_block_syntect(&lines, "rust");
         assert_eq!(highlighted.len(), 3);
     }
