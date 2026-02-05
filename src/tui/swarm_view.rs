@@ -1,15 +1,34 @@
 //! Swarm mode view for the TUI
 //!
-//! Displays real-time status of parallel sub-agent execution.
+//! Displays real-time status of parallel sub-agent execution,
+//! with per-sub-agent detail view showing tool call history,
+//! conversation messages, and output.
 
 use crate::swarm::{SubTaskStatus, SwarmStats};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Borders, Gauge, List, ListItem, ListState, Paragraph, Wrap},
     Frame,
 };
+
+/// A recorded tool call for a sub-agent
+#[derive(Debug, Clone)]
+pub struct AgentToolCallDetail {
+    pub tool_name: String,
+    pub input_preview: String,
+    pub output_preview: String,
+    pub success: bool,
+}
+
+/// A conversation message entry for a sub-agent
+#[derive(Debug, Clone)]
+pub struct AgentMessageEntry {
+    pub role: String,
+    pub content: String,
+    pub is_tool_call: bool,
+}
 
 /// Events emitted by swarm execution for TUI updates
 #[derive(Debug, Clone)]
@@ -36,16 +55,36 @@ pub enum SwarmEvent {
         agent_name: String,
         specialty: String,
     },
-    /// SubAgent made a tool call
+    /// SubAgent made a tool call (basic)
     AgentToolCall {
         subtask_id: String,
         tool_name: String,
+    },
+    /// SubAgent made a tool call with detail
+    AgentToolCallDetail {
+        subtask_id: String,
+        detail: AgentToolCallDetail,
+    },
+    /// SubAgent sent/received a message
+    AgentMessage {
+        subtask_id: String,
+        entry: AgentMessageEntry,
     },
     /// SubAgent completed
     AgentComplete {
         subtask_id: String,
         success: bool,
         steps: usize,
+    },
+    /// SubAgent produced output text
+    AgentOutput {
+        subtask_id: String,
+        output: String,
+    },
+    /// SubAgent encountered an error
+    AgentError {
+        subtask_id: String,
+        error: String,
     },
     /// Stage completed
     StageComplete {
@@ -74,10 +113,18 @@ pub struct SubTaskInfo {
     pub current_tool: Option<String>,
     pub steps: usize,
     pub max_steps: usize,
+    /// Tool call history for this sub-agent
+    pub tool_call_history: Vec<AgentToolCallDetail>,
+    /// Conversation messages for this sub-agent
+    pub messages: Vec<AgentMessageEntry>,
+    /// Final output text
+    pub output: Option<String>,
+    /// Error message if failed
+    pub error: Option<String>,
 }
 
 /// State for the swarm view
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SwarmViewState {
     /// Whether swarm mode is active
     pub active: bool,
@@ -93,10 +140,35 @@ pub struct SwarmViewState {
     pub stats: Option<SwarmStats>,
     /// Any error message
     pub error: Option<String>,
-    /// Scroll position in subtask list
-    pub scroll: usize,
     /// Whether execution is complete
     pub complete: bool,
+    /// Currently selected subtask index
+    pub selected_index: usize,
+    /// Whether we're in detail mode (viewing a single agent)
+    pub detail_mode: bool,
+    /// Scroll offset within the detail view
+    pub detail_scroll: usize,
+    /// ListState for StatefulWidget rendering
+    pub list_state: ListState,
+}
+
+impl Default for SwarmViewState {
+    fn default() -> Self {
+        Self {
+            active: false,
+            task: String::new(),
+            subtasks: Vec::new(),
+            current_stage: 0,
+            total_stages: 0,
+            stats: None,
+            error: None,
+            complete: false,
+            selected_index: 0,
+            detail_mode: false,
+            detail_scroll: 0,
+            list_state: ListState::default(),
+        }
+    }
 }
 
 impl SwarmViewState {
@@ -114,12 +186,19 @@ impl SwarmViewState {
                 self.current_stage = 0;
                 self.complete = false;
                 self.error = None;
+                self.selected_index = 0;
+                self.detail_mode = false;
+                self.detail_scroll = 0;
+                self.list_state = ListState::default();
                 // Pre-allocate
                 self.subtasks.reserve(total_subtasks);
             }
             SwarmEvent::Decomposed { subtasks } => {
                 self.subtasks = subtasks;
                 self.total_stages = self.subtasks.iter().map(|s| s.stage).max().unwrap_or(0) + 1;
+                if !self.subtasks.is_empty() {
+                    self.list_state.select(Some(0));
+                }
             }
             SwarmEvent::SubTaskUpdate { id, name, status, agent_name } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == id) {
@@ -142,6 +221,18 @@ impl SwarmViewState {
                     task.steps += 1;
                 }
             }
+            SwarmEvent::AgentToolCallDetail { subtask_id, detail } => {
+                if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
+                    task.current_tool = Some(detail.tool_name.clone());
+                    task.steps += 1;
+                    task.tool_call_history.push(detail);
+                }
+            }
+            SwarmEvent::AgentMessage { subtask_id, entry } => {
+                if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
+                    task.messages.push(entry);
+                }
+            }
             SwarmEvent::AgentComplete { subtask_id, success, steps } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
                     task.status = if success {
@@ -151,6 +242,16 @@ impl SwarmViewState {
                     };
                     task.steps = steps;
                     task.current_tool = None;
+                }
+            }
+            SwarmEvent::AgentOutput { subtask_id, output } => {
+                if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
+                    task.output = Some(output);
+                }
+            }
+            SwarmEvent::AgentError { subtask_id, error } => {
+                if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
+                    task.error = Some(error);
                 }
             }
             SwarmEvent::StageComplete { stage, .. } => {
@@ -164,6 +265,53 @@ impl SwarmViewState {
                 self.error = Some(err);
             }
         }
+    }
+
+    /// Move selection up
+    pub fn select_prev(&mut self) {
+        if self.subtasks.is_empty() {
+            return;
+        }
+        self.selected_index = self.selected_index.saturating_sub(1);
+        self.list_state.select(Some(self.selected_index));
+    }
+
+    /// Move selection down
+    pub fn select_next(&mut self) {
+        if self.subtasks.is_empty() {
+            return;
+        }
+        self.selected_index = (self.selected_index + 1).min(self.subtasks.len() - 1);
+        self.list_state.select(Some(self.selected_index));
+    }
+
+    /// Enter detail mode for the selected subtask
+    pub fn enter_detail(&mut self) {
+        if !self.subtasks.is_empty() {
+            self.detail_mode = true;
+            self.detail_scroll = 0;
+        }
+    }
+
+    /// Exit detail mode, return to list
+    pub fn exit_detail(&mut self) {
+        self.detail_mode = false;
+        self.detail_scroll = 0;
+    }
+
+    /// Scroll detail view down
+    pub fn detail_scroll_down(&mut self, amount: usize) {
+        self.detail_scroll = self.detail_scroll.saturating_add(amount);
+    }
+
+    /// Scroll detail view up
+    pub fn detail_scroll_up(&mut self, amount: usize) {
+        self.detail_scroll = self.detail_scroll.saturating_sub(amount);
+    }
+
+    /// Get the currently selected subtask
+    pub fn selected_subtask(&self) -> Option<&SubTaskInfo> {
+        self.subtasks.get(self.selected_index)
     }
 
     /// Get count of tasks by status
@@ -197,8 +345,14 @@ impl SwarmViewState {
     }
 }
 
-/// Render the swarm view
-pub fn render_swarm_view(f: &mut Frame, state: &SwarmViewState, area: Rect) {
+/// Render the swarm view (takes &mut for StatefulWidget rendering)
+pub fn render_swarm_view(f: &mut Frame, state: &mut SwarmViewState, area: Rect) {
+    // If in detail mode, render full-screen detail for selected agent
+    if state.detail_mode {
+        render_agent_detail(f, state, area);
+        return;
+    }
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -215,7 +369,7 @@ pub fn render_swarm_view(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     // Stage progress
     render_stage_progress(f, state, chunks[1]);
 
-    // Subtask list
+    // Subtask list (stateful for selection)
     render_subtask_list(f, state, chunks[2]);
 
     // Stats footer
@@ -297,15 +451,14 @@ fn render_stage_progress(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     f.render_widget(gauge, area);
 }
 
-fn render_subtask_list(f: &mut Frame, state: &SwarmViewState, area: Rect) {
-    use ratatui::widgets::ListState;
-    
+fn render_subtask_list(f: &mut Frame, state: &mut SwarmViewState, area: Rect) {
+    // Sync ListState selection from selected_index
+    state.list_state.select(Some(state.selected_index));
+
     let items: Vec<ListItem> = state
         .subtasks
         .iter()
-        .enumerate()
-        .map(|(i, task)| {
-            let is_selected = i == state.scroll;
+        .map(|task| {
             let (icon, color) = match task.status {
                 SubTaskStatus::Pending => ("○", Color::DarkGray),
                 SubTaskStatus::Blocked => ("⊘", Color::Yellow),
@@ -317,27 +470,16 @@ fn render_subtask_list(f: &mut Frame, state: &SwarmViewState, area: Rect) {
             };
 
             let mut spans = vec![
-                Span::styled(
-                    if is_selected { "▶ " } else { "  " },
-                    Style::default().fg(Color::Cyan),
-                ),
                 Span::styled(format!("{} ", icon), Style::default().fg(color)),
                 Span::styled(
                     format!("[S{}] ", task.stage),
                     Style::default().fg(Color::DarkGray),
                 ),
-                Span::styled(
-                    &task.name,
-                    if is_selected {
-                        Style::default().fg(Color::White).add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(Color::White)
-                    },
-                ),
+                Span::styled(&task.name, Style::default().fg(Color::White)),
             ];
 
-            // Show agent/tool info for running tasks or selected task
-            if task.status == SubTaskStatus::Running || is_selected {
+            // Show agent/tool info for running tasks
+            if task.status == SubTaskStatus::Running {
                 if let Some(ref agent) = task.agent_name {
                     spans.push(Span::styled(
                         format!(" → {}", agent),
@@ -366,25 +508,244 @@ fn render_subtask_list(f: &mut Frame, state: &SwarmViewState, area: Rect) {
         })
         .collect();
 
-    let help_text = if state.subtasks.is_empty() {
+    let title = if state.subtasks.is_empty() {
         " SubTasks (none yet) "
     } else {
-        " SubTasks (↑↓/jk to navigate) "
+        " SubTasks (↑↓:select  Enter:detail) "
     };
 
     let list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(help_text),
+                .title(title),
         )
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+        .highlight_style(
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .bg(Color::DarkGray),
+        )
+        .highlight_symbol("▶ ");
 
-    // Create list state for proper scrolling
-    let mut list_state = ListState::default();
-    list_state.select(Some(state.scroll));
+    f.render_stateful_widget(list, area, &mut state.list_state);
+}
 
-    f.render_stateful_widget(list, area, &mut list_state);
+/// Render a full-screen detail view for the selected sub-agent
+fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
+    let task = match state.selected_subtask() {
+        Some(t) => t,
+        None => {
+            let p = Paragraph::new("No subtask selected")
+                .block(Block::default().borders(Borders::ALL).title(" Agent Detail "));
+            f.render_widget(p, area);
+            return;
+        }
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(5), // Agent info header
+            Constraint::Min(1),    // Content (tool calls + messages + output)
+            Constraint::Length(1), // Key hints
+        ])
+        .split(area);
+
+    // --- Header: agent info ---
+    let (status_icon, status_color) = match task.status {
+        SubTaskStatus::Pending => ("○ Pending", Color::DarkGray),
+        SubTaskStatus::Blocked => ("⊘ Blocked", Color::Yellow),
+        SubTaskStatus::Running => ("● Running", Color::Cyan),
+        SubTaskStatus::Completed => ("✓ Completed", Color::Green),
+        SubTaskStatus::Failed => ("✗ Failed", Color::Red),
+        SubTaskStatus::Cancelled => ("⊗ Cancelled", Color::DarkGray),
+        SubTaskStatus::TimedOut => ("⏱ Timed Out", Color::Red),
+    };
+
+    let agent_label = task.agent_name.as_deref().unwrap_or("(unassigned)");
+    let header_lines = vec![
+        Line::from(vec![
+            Span::styled("Task: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(&task.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(vec![
+            Span::styled("Agent: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(agent_label, Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled("Status: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(status_icon, Style::default().fg(status_color)),
+            Span::raw("  "),
+            Span::styled("Stage: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{}", task.stage), Style::default().fg(Color::White)),
+            Span::raw("  "),
+            Span::styled("Steps: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{}/{}", task.steps, task.max_steps), Style::default().fg(Color::White)),
+        ]),
+        Line::from(vec![
+            Span::styled("Deps: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                if task.dependencies.is_empty() { "none".to_string() } else { task.dependencies.join(", ") },
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]),
+    ];
+
+    let title = format!(" Agent Detail: {} ", task.id);
+    let header = Paragraph::new(header_lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .border_style(Style::default().fg(status_color)),
+        );
+    f.render_widget(header, chunks[0]);
+
+    // --- Content area: tool history, messages, output ---
+    let mut content_lines: Vec<Line> = Vec::new();
+
+    // Tool call history section
+    if !task.tool_call_history.is_empty() {
+        content_lines.push(Line::from(Span::styled(
+            "─── Tool Call History ───",
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+        )));
+        content_lines.push(Line::from(""));
+
+        for (i, tc) in task.tool_call_history.iter().enumerate() {
+            let icon = if tc.success { "✓" } else { "✗" };
+            let icon_color = if tc.success { Color::Green } else { Color::Red };
+            content_lines.push(Line::from(vec![
+                Span::styled(format!(" {icon} "), Style::default().fg(icon_color)),
+                Span::styled(format!("#{} ", i + 1), Style::default().fg(Color::DarkGray)),
+                Span::styled(&tc.tool_name, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            ]));
+            if !tc.input_preview.is_empty() {
+                content_lines.push(Line::from(vec![
+                    Span::raw("     "),
+                    Span::styled("in: ", Style::default().fg(Color::DarkGray)),
+                    Span::styled(truncate_str(&tc.input_preview, 80), Style::default().fg(Color::White)),
+                ]));
+            }
+            if !tc.output_preview.is_empty() {
+                content_lines.push(Line::from(vec![
+                    Span::raw("     "),
+                    Span::styled("out: ", Style::default().fg(Color::DarkGray)),
+                    Span::styled(truncate_str(&tc.output_preview, 80), Style::default().fg(Color::White)),
+                ]));
+            }
+        }
+        content_lines.push(Line::from(""));
+    } else if task.steps > 0 {
+        // At least show that tool calls happened even without detail
+        content_lines.push(Line::from(Span::styled(
+            format!("─── {} tool calls (no detail captured) ───", task.steps),
+            Style::default().fg(Color::DarkGray),
+        )));
+        content_lines.push(Line::from(""));
+    }
+
+    // Messages section
+    if !task.messages.is_empty() {
+        content_lines.push(Line::from(Span::styled(
+            "─── Conversation ───",
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+        )));
+        content_lines.push(Line::from(""));
+
+        for msg in &task.messages {
+            let (role_color, role_label) = match msg.role.as_str() {
+                "user" => (Color::White, "USER"),
+                "assistant" => (Color::Cyan, "ASST"),
+                "tool" => (Color::Yellow, "TOOL"),
+                "system" => (Color::DarkGray, "SYS "),
+                _ => (Color::White, "    "),
+            };
+            content_lines.push(Line::from(vec![
+                Span::styled(format!(" [{role_label}] "), Style::default().fg(role_color).add_modifier(Modifier::BOLD)),
+            ]));
+            // Show message content (truncated lines)
+            for line in msg.content.lines().take(10) {
+                content_lines.push(Line::from(vec![
+                    Span::raw("   "),
+                    Span::styled(line, Style::default().fg(Color::White)),
+                ]));
+            }
+            if msg.content.lines().count() > 10 {
+                content_lines.push(Line::from(vec![
+                    Span::raw("   "),
+                    Span::styled("... (truncated)", Style::default().fg(Color::DarkGray)),
+                ]));
+            }
+            content_lines.push(Line::from(""));
+        }
+    }
+
+    // Output section
+    if let Some(ref output) = task.output {
+        content_lines.push(Line::from(Span::styled(
+            "─── Output ───",
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+        )));
+        content_lines.push(Line::from(""));
+        for line in output.lines().take(20) {
+            content_lines.push(Line::from(Span::styled(line, Style::default().fg(Color::White))));
+        }
+        if output.lines().count() > 20 {
+            content_lines.push(Line::from(Span::styled("... (truncated)", Style::default().fg(Color::DarkGray))));
+        }
+        content_lines.push(Line::from(""));
+    }
+
+    // Error section
+    if let Some(ref err) = task.error {
+        content_lines.push(Line::from(Span::styled(
+            "─── Error ───",
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        )));
+        content_lines.push(Line::from(""));
+        for line in err.lines() {
+            content_lines.push(Line::from(Span::styled(line, Style::default().fg(Color::Red))));
+        }
+        content_lines.push(Line::from(""));
+    }
+
+    // If nothing to show
+    if content_lines.is_empty() {
+        content_lines.push(Line::from(Span::styled(
+            "  Waiting for agent activity...",
+            Style::default().fg(Color::DarkGray),
+        )));
+    }
+
+    let content = Paragraph::new(content_lines)
+        .block(Block::default().borders(Borders::ALL))
+        .wrap(Wrap { trim: false })
+        .scroll((state.detail_scroll as u16, 0));
+    f.render_widget(content, chunks[1]);
+
+    // --- Key hints bar ---
+    let hints = Paragraph::new(Line::from(vec![
+        Span::styled(" Esc", Style::default().fg(Color::Yellow)),
+        Span::raw(": Back  "),
+        Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
+        Span::raw(": Scroll  "),
+        Span::styled("↑/↓", Style::default().fg(Color::Yellow)),
+        Span::raw(": Prev/Next agent"),
+    ]));
+    f.render_widget(hints, chunks[2]);
+}
+
+/// Truncate a string for display, respecting char boundaries
+fn truncate_str(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        s.replace('\n', " ")
+    } else {
+        let mut end = max;
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}...", s[..end].replace('\n', " "))
+    }
 }
 
 fn render_stats(f: &mut Frame, state: &SwarmViewState, area: Rect) {

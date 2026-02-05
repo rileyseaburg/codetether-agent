@@ -150,6 +150,83 @@ impl WorktreeManager {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
 
+    /// Auto-commit any uncommitted changes in a worktree
+    ///
+    /// Sub-agents modify files via tools (write, edit, bash) but never git-commit.
+    /// This stages and commits those changes so the branch actually advances
+    /// before we attempt to merge it.
+    fn auto_commit_worktree(&self, worktree: &WorktreeInfo) -> Result<bool> {
+        // Check for uncommitted changes
+        let status = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&worktree.path)
+            .output()
+            .context("Failed to check worktree status")?;
+
+        let status_output = String::from_utf8_lossy(&status.stdout);
+        if status_output.trim().is_empty() {
+            debug!(
+                worktree_id = %worktree.id,
+                "No uncommitted changes in worktree"
+            );
+            return Ok(false);
+        }
+
+        let changed_files = status_output.lines().count();
+        info!(
+            worktree_id = %worktree.id,
+            changed_files = changed_files,
+            "Auto-committing sub-agent changes in worktree"
+        );
+
+        // Stage all changes
+        let add_output = Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(&worktree.path)
+            .output()
+            .context("Failed to stage worktree changes")?;
+
+        if !add_output.status.success() {
+            let stderr = String::from_utf8_lossy(&add_output.stderr);
+            warn!(
+                worktree_id = %worktree.id,
+                error = %stderr,
+                "git add -A failed in worktree"
+            );
+            return Err(anyhow::anyhow!("Failed to stage changes: {}", stderr));
+        }
+
+        // Commit
+        let commit_msg = format!("subagent({}): automated work", worktree.id);
+        let commit_output = Command::new("git")
+            .args(["commit", "-m", &commit_msg])
+            .current_dir(&worktree.path)
+            .output()
+            .context("Failed to commit worktree changes")?;
+
+        if !commit_output.status.success() {
+            let stderr = String::from_utf8_lossy(&commit_output.stderr);
+            // "nothing to commit" is OK — race between status and add
+            if stderr.contains("nothing to commit") {
+                debug!(worktree_id = %worktree.id, "Nothing to commit after staging");
+                return Ok(false);
+            }
+            warn!(
+                worktree_id = %worktree.id,
+                error = %stderr,
+                "git commit failed in worktree"
+            );
+            return Err(anyhow::anyhow!("Failed to commit changes: {}", stderr));
+        }
+
+        info!(
+            worktree_id = %worktree.id,
+            changed_files = changed_files,
+            "Auto-committed sub-agent changes"
+        );
+        Ok(true)
+    }
+
     /// Merge a worktree's changes back to the parent branch
     pub fn merge(&self, worktree: &WorktreeInfo) -> Result<MergeResult> {
         info!(
@@ -158,6 +235,22 @@ impl WorktreeManager {
             target = %worktree.parent_branch,
             "Merging worktree changes"
         );
+
+        // Auto-commit any uncommitted changes the sub-agent left behind
+        match self.auto_commit_worktree(worktree) {
+            Ok(committed) => {
+                if committed {
+                    info!(worktree_id = %worktree.id, "Auto-committed sub-agent changes before merge");
+                }
+            }
+            Err(e) => {
+                warn!(
+                    worktree_id = %worktree.id,
+                    error = %e,
+                    "Failed to auto-commit worktree changes — merge may show nothing"
+                );
+            }
+        }
 
         // Check if there's already a merge in progress
         if self.is_merging() {

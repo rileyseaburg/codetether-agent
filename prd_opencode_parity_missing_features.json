@@ -1,0 +1,553 @@
+{
+  "project": "codetether-agent",
+  "feature": "OpenCode Parity - Missing Features Port",
+  "branch_name": "feature/opencode-parity-missing-features",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "OPC-001",
+      "title": "MCP CLI Parity - Server Registry and Commands",
+      "description": "Implement full MCP command surface for adding, listing, updating, and debugging MCP servers with persisted configuration and status reporting.",
+      "acceptance_criteria": [
+        "`codetether mcp` supports add/list/remove-like management flows",
+        "MCP server entries are persisted in config and survive restarts",
+        "List output includes server type, endpoint/command, and current status",
+        "Errors clearly distinguish config validation vs connection failures"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-002",
+      "title": "MCP OAuth Lifecycle",
+      "description": "Add OAuth authentication lifecycle for remote MCP servers, including login, token storage, refresh handling, and logout.",
+      "acceptance_criteria": [
+        "`codetether mcp auth` starts OAuth flow for compatible servers",
+        "OAuth credentials are stored securely and reused on reconnect",
+        "`codetether mcp logout` removes stored credentials cleanly",
+        "Auth status shows connected/needs_auth/expired with actionable messages"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "OPC-001"
+      ],
+      "complexity": 5
+    },
+    {
+      "id": "OPC-003",
+      "title": "MCP Tools, Prompts, and Resource Sync",
+      "description": "Expose and refresh MCP tools/prompts/resources dynamically, including handling list-changed notifications.",
+      "acceptance_criteria": [
+        "Connected MCP servers contribute tools to agent execution",
+        "MCP prompts are discoverable and invocable from command/template layer",
+        "MCP resources can be listed and read via CLI/API",
+        "Tool list change notifications trigger refresh without restart"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "OPC-001"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-004",
+      "title": "Server Prompt Execution Endpoint",
+      "description": "Replace placeholder session prompt route with full execution support including validation, tool execution, and streamed progress events.",
+      "acceptance_criteria": [
+        "`POST /api/session/:id/prompt` executes prompts end-to-end",
+        "Request validation rejects empty/invalid payloads with structured errors",
+        "Prompt execution updates session history and usage counters",
+        "Route supports streaming updates or equivalent event emission"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-005",
+      "title": "PTY Runtime Core",
+      "description": "Implement a PTY subsystem for spawning interactive shell sessions, tracking lifecycle, resizing, and I/O buffering.",
+      "acceptance_criteria": [
+        "PTY sessions can be created with command, args, cwd, and env",
+        "PTY sessions support write, resize, list, and terminate operations",
+        "Session metadata tracks pid, status, and title",
+        "Process exit updates state and emits lifecycle events"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 5
+    },
+    {
+      "id": "OPC-006",
+      "title": "PTY HTTP and WebSocket Routes",
+      "description": "Add PTY REST and WebSocket endpoints so external clients can create terminals and interact with running shells in real time.",
+      "acceptance_criteria": [
+        "Server exposes create/get/list/update/delete PTY endpoints",
+        "WebSocket endpoint streams PTY output and accepts input",
+        "Missing PTY sessions return typed not-found errors",
+        "Connections clean up subscribers on disconnect"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "OPC-005"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-007",
+      "title": "Permission Engine - Ask/Allow/Deny Rules",
+      "description": "Implement a first-class permission engine with per-tool and per-path decisions, including one-time and persistent approval flows.",
+      "acceptance_criteria": [
+        "Tool execution consults permission rules before running",
+        "Ask mode supports once/always/reject decisions",
+        "Persisted decisions can be reused by subsequent calls",
+        "Permission denials return structured tool errors"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 5
+    },
+    {
+      "id": "OPC-008",
+      "title": "External Directory Permission Guard",
+      "description": "Port external-directory safety checks so operations outside the workspace require explicit permission.",
+      "acceptance_criteria": [
+        "Read/write/edit tools detect paths outside workspace root",
+        "External access requests map to `external_directory` permission",
+        "Approved external path patterns can be persisted",
+        "Denied access prevents filesystem mutation"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "OPC-007"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-009",
+      "title": "Safe Undo Replacement for Hard Reset",
+      "description": "Replace destructive undo behavior with snapshot-based or revert-based workflows that never require `git reset --hard`.",
+      "acceptance_criteria": [
+        "Undo no longer invokes `git reset --hard`",
+        "Undo can preview and revert targeted changes safely",
+        "Undo integrates with session-level checkpoints",
+        "Undo failures preserve worktree and explain recovery steps"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "OPC-010"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-010",
+      "title": "Snapshot Subsystem",
+      "description": "Implement snapshot tracking, diff, patch, restore, and cleanup lifecycle for session-safe file reverts.",
+      "acceptance_criteria": [
+        "Snapshots can be created incrementally for current workspace state",
+        "Snapshot diff/patch APIs provide changed files and content deltas",
+        "Snapshot restore can revert workspace to prior snapshot",
+        "Periodic cleanup/gc is supported for snapshot storage"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 5
+    },
+    {
+      "id": "OPC-011",
+      "title": "Session Fork and Revert Flows",
+      "description": "Add session forking and message/part-level revert flows backed by snapshots and persisted message graph updates.",
+      "acceptance_criteria": [
+        "Sessions can fork from a parent session at chosen message boundaries",
+        "Revert supports message-level and part-level targets",
+        "Revert cleans up superseded messages/parts consistently",
+        "Fork/revert metadata is persisted and visible in session APIs"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-010"
+      ],
+      "complexity": 5
+    },
+    {
+      "id": "OPC-012",
+      "title": "Session Share and Unshare",
+      "description": "Implement session sharing lifecycle with create/sync/remove operations and share URL metadata in session state.",
+      "acceptance_criteria": [
+        "Session can be shared to remote service when enabled",
+        "Share URL is persisted in session metadata",
+        "Incremental sync propagates session/message/part updates",
+        "Unshare removes remote share and local share metadata"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-015"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-013",
+      "title": "Session Import and Export Commands",
+      "description": "Add CLI commands to export sessions as JSON and import sessions from local JSON or supported share URLs.",
+      "acceptance_criteria": [
+        "`codetether export [session]` outputs complete session payload",
+        "`codetether import <file-or-url>` reconstructs session/messages/parts",
+        "Import validates schema and handles duplicates safely",
+        "Errors report invalid file, invalid URL, and invalid payload cases"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-014"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-014",
+      "title": "Session Management CLI",
+      "description": "Add session management command group with listing, filtering, pagination, and JSON output modes.",
+      "acceptance_criteria": [
+        "`codetether session list` shows recent sessions",
+        "Supports max-count/filter options and JSON output",
+        "Output works for interactive and piped contexts",
+        "Session IDs and titles map cleanly to persisted session data"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "OPC-015",
+      "title": "Event Bus Foundation",
+      "description": "Implement an internal pub/sub event bus for session, tool, mcp, pty, and server events with typed payloads.",
+      "acceptance_criteria": [
+        "Modules can publish and subscribe to typed events",
+        "Event bus supports multiple subscribers safely",
+        "Event delivery errors are isolated from publisher failure",
+        "Core session/tool lifecycle events are emitted"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-016",
+      "title": "Storage Backend Abstraction",
+      "description": "Refactor persistence to a backend abstraction supporting pluggable implementations beyond filesystem JSON.",
+      "acceptance_criteria": [
+        "Storage trait abstraction exists for read/write/update/list/remove",
+        "Filesystem backend conforms to abstraction",
+        "Call sites use abstraction, not direct file IO",
+        "Storage errors are normalized and typed"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-017",
+      "title": "Postgres Storage Backend",
+      "description": "Add optional PostgreSQL storage backend and runtime selection logic for worker/server deployments.",
+      "acceptance_criteria": [
+        "Postgres backend implements storage abstraction",
+        "Backend is selected by config/environment",
+        "Schema initialization and migrations run automatically",
+        "Filesystem fallback remains available when Postgres is disabled"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-016"
+      ],
+      "complexity": 5
+    },
+    {
+      "id": "OPC-018",
+      "title": "Plugin System Core",
+      "description": "Implement plugin loading framework for custom capabilities, including discovery, config, and lifecycle management.",
+      "acceptance_criteria": [
+        "Plugins can be discovered from configured directories",
+        "Plugin load failures are isolated and reported",
+        "Plugin metadata is validated before activation",
+        "Plugin lifecycle hooks are invoked during startup/shutdown"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-019",
+      "title": "Dynamic Custom Tool Loading",
+      "description": "Port dynamic custom tool registration from local tool files/plugins into ToolRegistry at runtime.",
+      "acceptance_criteria": [
+        "Custom tools in configured paths are loaded at runtime",
+        "Tool IDs are namespaced and collision-safe",
+        "Plugin-defined tools can be invoked like built-in tools",
+        "Dynamic tool schema validation errors are surfaced clearly"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-018"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-020",
+      "title": "Agent Management CLI",
+      "description": "Add `agent` command group to create and list agents, including generated prompts and model/permission defaults.",
+      "acceptance_criteria": [
+        "`codetether agent create` scaffolds a valid agent config",
+        "`codetether agent list` displays built-in and user agents",
+        "Generated agent config includes mode, prompt, model, permissions",
+        "Agent configs validate before save"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-007"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-021",
+      "title": "Provider Auth Command Parity",
+      "description": "Implement auth command family for provider credentials, including list/login/logout and plugin-driven OAuth/API flows.",
+      "acceptance_criteria": [
+        "`codetether auth list` shows configured credentials and sources",
+        "`codetether auth login` supports API key and OAuth methods",
+        "`codetether auth logout` removes provider credentials",
+        "Credential storage remains Vault-compatible and secure"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-018"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-022",
+      "title": "Web Command",
+      "description": "Add `web` command to launch server, print local/network URLs, and open browser entrypoint.",
+      "acceptance_criteria": [
+        "`codetether web` starts server with network options",
+        "Command prints local and LAN access URLs",
+        "Browser is opened when supported",
+        "Command respects security config (auth/password requirements)"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "OPC-023",
+      "title": "TUI Remote Attach",
+      "description": "Add ability to attach TUI to a running codetether server URL and optionally resume a specific session.",
+      "acceptance_criteria": [
+        "`codetether attach <url>` connects to remote server",
+        "Optional session ID can resume prior conversation",
+        "Attach mode uses remote event stream for updates",
+        "Attach connection failures are recoverable with clear errors"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-004",
+        "OPC-022"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-024",
+      "title": "ACP Server Command",
+      "description": "Port ACP command for Agent Client Protocol compatibility using stdio NDJSON transport.",
+      "acceptance_criteria": [
+        "`codetether acp` starts ACP server over stdio",
+        "ACP session can proxy to local codetether HTTP server",
+        "Protocol frames are parsed/serialized correctly",
+        "Graceful shutdown on stdin end"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-022"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-025",
+      "title": "PR Helper Command",
+      "description": "Add `pr` command to checkout GitHub pull requests and optionally resume linked sessions.",
+      "acceptance_criteria": [
+        "`codetether pr <number>` checks out PR branch using gh",
+        "Fork PR handling sets correct remote/upstream",
+        "PR body session links can trigger import flow",
+        "Command handles missing gh or auth with explicit guidance"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "OPC-013"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-026",
+      "title": "GitHub Agent Automation Commands",
+      "description": "Port GitHub workflow command family for install/run automation aligned with codetether agent execution.",
+      "acceptance_criteria": [
+        "`codetether github install` scaffolds workflow and setup steps",
+        "`codetether github run` can execute against mock/real event payloads",
+        "Provider/model selection integrates with current registry",
+        "Generated workflow validates against GitHub Actions schema"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "OPC-021"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-027",
+      "title": "Command Template Registry",
+      "description": "Implement reusable command templates (for slash/shortcut commands) with argument substitution and MCP prompt integration.",
+      "acceptance_criteria": [
+        "Built-in templates (e.g., init/review) are available",
+        "User-defined command templates can be loaded from config",
+        "Template placeholders support positional substitutions",
+        "MCP prompts can be exposed as runnable commands"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "OPC-003",
+        "OPC-018"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-028",
+      "title": "Debug Command Suite",
+      "description": "Port debug command namespace for diagnostics (paths, config, ripgrep, lsp, file, snapshot, skill).",
+      "acceptance_criteria": [
+        "`codetether debug` exposes grouped subcommands",
+        "Debug commands return structured machine-readable output",
+        "Debug suite covers file, config, paths, and lsp diagnostics",
+        "Debug commands are read-only and safe by default"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "OPC-010",
+        "OPC-029"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-029",
+      "title": "Server Route and OpenAPI Parity",
+      "description": "Expand server architecture into route modules with stronger API coverage and generated OpenAPI docs.",
+      "acceptance_criteria": [
+        "Server routes are modularized by domain (session/mcp/provider/file/etc.)",
+        "API includes documentation endpoint for OpenAPI schema",
+        "Route validation and typed error responses are standardized",
+        "CORS/auth middleware behavior is configurable"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-004",
+        "OPC-006"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "OPC-030",
+      "title": "Model and Provider UX Parity",
+      "description": "Port model listing/refresh workflows and provider-aware behavior so CLI and runtime can inspect and select models consistently.",
+      "acceptance_criteria": [
+        "`codetether models [provider]` supports filter, verbose, and refresh",
+        "Model metadata includes costs/limits when available",
+        "Provider availability reflects credential status",
+        "Output format is stable for scripting"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-021"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "OPC-031",
+      "title": "Dynamic Tool Gating by Model and Provider",
+      "description": "Implement model/provider-aware tool gating (e.g., apply_patch vs edit/write preferences, provider-specific tool availability).",
+      "acceptance_criteria": [
+        "Tool registry can filter tools based on provider/model",
+        "Gating rules are deterministic and test-covered",
+        "Fallback behavior is defined when preferred tools are unavailable",
+        "Tool definitions presented to model match effective runtime set"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "OPC-019",
+        "OPC-030"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "OPC-032",
+      "title": "Background Scheduler Infrastructure",
+      "description": "Add lightweight scheduler infrastructure for periodic internal tasks such as snapshot cleanup and cache maintenance.",
+      "acceptance_criteria": [
+        "Scheduler can register recurring jobs with intervals",
+        "Jobs can be scoped to instance/global lifecycle",
+        "Scheduler errors are logged without crashing runtime",
+        "Snapshot cleanup is migrated to scheduler job"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "OPC-010",
+        "OPC-015"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [
+    "Use Rust 2024 edition and existing codetether architecture conventions",
+    "Keep secrets in HashiCorp Vault and avoid hardcoded credentials",
+    "All new tool results must use Role::Tool when fed back into model context",
+    "Maintain structured tracing fields for important execution events",
+    "All new CLI and API features require integration tests where feasible"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-features",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-05T20:31:34+00:00",
+  "updated_at": "2026-02-05T20:31:34+00:00"
+}
