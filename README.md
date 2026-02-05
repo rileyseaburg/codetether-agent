@@ -5,7 +5,7 @@
 
 A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protocol support, written in Rust. Part of the CodeTether ecosystem.
 
-> **Dogfooding Achievement**: This agent was used to implement its own features. Using the `ralph` autonomous loop and `swarm` parallel execution, we implemented 20 user stories (LSP client, RLM pool, truncation utilities, and more) with **100% pass rate** on quality checks. The agent wrote its own code, tested it, and validated it—all autonomously.
+![CodeTether TUI](docs/tui-screenshot.png)
 
 ## Features
 
@@ -157,6 +157,14 @@ Environment variables:
 ```bash
 codetether tui
 ```
+
+![CodeTether TUI](docs/tui-screenshot.png)
+
+The TUI provides:
+- **Real-time tool streaming**: See tool calls as they execute
+- **Session management**: `/sessions`, `/resume`, `/new`
+- **Swarm mode**: `/swarm <task>` for parallel execution
+- **Theme support**: Customizable colors via config
 
 ### Non-Interactive Mode (Chat - No Tools)
 

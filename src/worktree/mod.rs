@@ -159,6 +159,22 @@ impl WorktreeManager {
             "Merging worktree changes"
         );
 
+        // Check if there's already a merge in progress
+        if self.is_merging() {
+            warn!(
+                worktree_id = %worktree.id,
+                "Merge already in progress - cannot start new merge"
+            );
+            return Ok(MergeResult {
+                success: false,
+                conflicts: Vec::new(),
+                conflict_diffs: Vec::new(),
+                files_changed: 0,
+                summary: "Merge already in progress".to_string(),
+                aborted: false,
+            });
+        }
+
         // First, get diff stats before merge
         let diff_output = Command::new("git")
             .args([
@@ -440,6 +456,15 @@ impl WorktreeManager {
             path = %worktree.path.display(),
             "Cleaning up worktree"
         );
+
+        // Check if there's an aborted merge and clean it up first
+        if self.is_merging() {
+            warn!(
+                worktree_id = %worktree.id,
+                "Aborted merge detected during cleanup - aborting merge state"
+            );
+            let _ = self.abort_merge();
+        }
 
         // Remove the worktree
         let output = Command::new("git")

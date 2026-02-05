@@ -1,102 +1,167 @@
 {
-  "project": "CodeTether Agent",
-  "feature": "TUI Technical Specifications Implementation",
-  "branch_name": "feature/tui-technical-specifications-implementation",
+  "project": "codetether-agent",
+  "feature": "Implement Unused Code Features",
+  "branch_name": "feature/implement-unused-code-features",
   "version": "1.0",
   "user_stories": [
     {
-      "id": "TS-001",
-      "title": "Integrate Scrollbar Widget for Message Area",
-      "description": "Add visual scroll position indicator to the message display list widget",
+      "id": "US-001",
+      "title": "Implement Swarm Real-Time Event Emission",
+      "description": "Emit SwarmEvent variants (SubTaskUpdate, AgentStarted, AgentToolCall, AgentComplete, StageComplete) during swarm execution to provide real-time TUI updates. Modify the SwarmExecutor to send these events through the event channel as sub-agents progress through their tasks.",
       "acceptance_criteria": [
-        "Scrollbar widget renders alongside message list",
-        "Scrollbar shows current scroll position as percentage",
-        "Scrollbar updates in real-time as user navigates",
-        "Scrollbar uses default Ratatui styling (vertical right orientation)"
+        "SwarmExecutor emits SubTaskUpdate when subtask status changes",
+        "SwarmExecutor emits AgentStarted when a sub-agent begins",
+        "SwarmExecutor emits AgentToolCall when a sub-agent uses a tool",
+        "SwarmExecutor emits AgentComplete when a sub-agent finishes",
+        "SwarmExecutor emits StageComplete when a stage finishes",
+        "TUI receives and displays these events in real-time"
       ],
       "passes": false,
       "priority": 1,
       "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Swarm View Scrolling and Dependencies",
+      "description": "Wire up the scroll field in SwarmViewState for keyboard navigation and visualize task dependencies in the subtask list. Add key handlers for scrolling the subtask list and render dependency information showing which tasks depend on others.",
+      "acceptance_criteria": [
+        "Up/Down arrow keys scroll the subtask list",
+        "PageUp/PageDown scroll by larger amounts",
+        "Scroll position is tracked in SwarmViewState.scroll",
+        "Subtask list shows dependency indicators (e.g., 'depends on: task1, task2')",
+        "Visual indication of which tasks are blocking others"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001"
+      ],
       "complexity": 3
     },
     {
-      "id": "TS-002",
-      "title": "Implement Semantic Color System",
-      "description": "Create a centralized ColorPalette struct for consistent theming across TUI components",
+      "id": "US-003",
+      "title": "Implement MultiEdit Structured Results",
+      "description": "Use the EditResult struct to return structured per-file results from MultiEditTool instead of embedding everything in metadata. Each file edit should return its own EditResult with success status and message.",
       "acceptance_criteria": [
-        "ColorPalette struct defined with semantic color fields",
-        "User messages display in Color::Cyan",
-        "Assistant messages display in Color::Green",
-        "System messages display in Color::Yellow",
-        "Error states display in Color::Red",
-        "Timestamps use Color::DarkGray"
+        "MultiEditTool.execute returns Vec<EditResult>",
+        "Each EditResult contains file path, success bool, and message",
+        "Failed edits are tracked separately from successful ones",
+        "ToolResult output includes summary of all edits with per-file status"
       ],
       "passes": false,
-      "priority": 1,
+      "priority": 3,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-004",
+      "title": "Implement MessageType::Text Content Storage",
+      "description": "Store the actual text content in MessageType::Text variant and use it for message display. Currently the field exists but is never read or populated properly.",
+      "acceptance_criteria": [
+        "MessageType::Text stores the actual message content",
+        "ChatMessage::new populates the Text variant with content",
+        "Message display uses the stored content instead of recalculating",
+        "Empty string default is removed or properly handled"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-005",
+      "title": "Implement Monochrome Theme",
+      "description": "Add a monochrome theme option to the Theme system. The Monochrome variant should use only grayscale colors (black, white, and grays) for accessibility and terminal compatibility.",
+      "acceptance_criteria": [
+        "Theme::monochrome() method exists and returns grayscale theme",
+        "Monochrome theme uses only black, white, darkgray, gray, lightgray colors",
+        "Theme can be selected via config file",
+        "TUI renders correctly with monochrome theme"
+      ],
+      "passes": false,
+      "priority": 4,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-006",
+      "title": "Implement Worktree Merge Conflict Detection",
+      "description": "Use the is_merging method and aborted field for merge conflict detection and handling. Check for merge state before operations and handle aborted merges appropriately in the UI.",
+      "acceptance_criteria": [
+        "is_merging() is called before merge operations to detect state",
+        "MergeResult.aborted is checked and handled",
+        "UI shows warning when merge is in progress",
+        "Cleanup handles aborted merges correctly"
+      ],
+      "passes": false,
+      "priority": 3,
       "depends_on": [],
       "complexity": 3
     },
     {
-      "id": "TS-003",
-      "title": "Add Command History Navigation",
-      "description": "Implement up/down arrow navigation through previously submitted messages",
+      "id": "US-007",
+      "title": "Integrate Telemetry Tracking",
+      "description": "Integrate TOOL_EXECUTIONS and TokenCounts telemetry into the main execution flow. Track tool executions, token usage, and file changes throughout the session.",
       "acceptance_criteria": [
-        "Submitted messages stored in Vec<String> history",
-        "↑/↓ arrows navigate history when input is empty",
-        "History persists for current session",
-        "New input clears history position"
+        "TOOL_EXECUTIONS is used to track tool calls in session",
+        "TokenCounts recorded for each LLM request",
+        "File changes tracked via FileChange structs",
+        "Telemetry data persisted to disk",
+        "TUI displays telemetry summary in status bar"
       ],
       "passes": false,
       "priority": 2,
       "depends_on": [],
-      "complexity": 3
+      "complexity": 4
     },
     {
-      "id": "TS-004",
-      "title": "Implement Smart Auto-Scroll",
-      "description": "Auto-scroll to bottom on new messages with user override when scrolled up",
+      "id": "US-008",
+      "title": "Implement Config Theme Loading",
+      "description": "Use the Theme import in config to load and validate theme configuration from config files. Support theme names (dark, light, solarized_dark, solarized_light, monochrome) and custom theme definitions.",
       "acceptance_criteria": [
-        "Auto-scroll activates when at bottom and new message arrives",
-        "Auto-scroll pauses when user scrolls up manually",
-        "Visual indicator shows new messages are below",
-        "'G' key or 'End' key jumps to bottom"
-      ],
-      "passes": false,
-      "priority": 2,
-      "depends_on": [],
-      "complexity": 3
-    },
-    {
-      "id": "TS-005",
-      "title": "Add Syntax Highlighting for Code Blocks",
-      "description": "Integrate syntect crate to provide syntax highlighting for code blocks in messages",
-      "acceptance_criteria": [
-        "syntect crate added to Cargo.toml",
-        "Code blocks detected from markdown fence syntax",
-        "Language detected from fence identifier",
-        "Themed syntax highlighting applied to code content",
-        "Performance impact measured and acceptable"
+        "Config loads theme by name from config file",
+        "Custom theme colors can be defined in config",
+        "Invalid theme names fallback to default",
+        "Theme hot-reloading works when config changes"
       ],
       "passes": false,
       "priority": 3,
       "depends_on": [
-        "TS-002"
+        "US-005"
       ],
       "complexity": 3
     },
     {
-      "id": "TS-006",
-      "title": "Enhance Mouse Interaction Support",
-      "description": "Enable mouse events for message selection and scrolling",
+      "id": "US-009",
+      "title": "Implement Message Text Wrapping",
+      "description": "Implement proper text wrapping in MessageFormatter.wrap_line using the width parameter. Wrap text at word boundaries to fit within the specified width.",
       "acceptance_criteria": [
-        "Mouse click selects messages",
-        "Scroll wheel navigates message list",
-        "Click positions cursor in input area",
-        "Button clicks detect UI element hit testing"
+        "Text wraps at word boundaries",
+        "Lines don't exceed specified width",
+        "Wrapped lines maintain proper formatting",
+        "Long messages display correctly in TUI"
+      ],
+      "passes": false,
+      "priority": 4,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-010",
+      "title": "Implement Token Display Visualization",
+      "description": "Use the Frame, Paragraph, and Wrap imports in token_display.rs to create visual token usage displays. Show token counts, costs, and context limits in the TUI.",
+      "acceptance_criteria": [
+        "TokenDisplay uses Frame for rendering",
+        "Token usage shown as progress bars or gauges",
+        "Context limit warnings displayed with colors",
+        "Cost estimates shown in status bar"
       ],
       "passes": false,
       "priority": 3,
-      "depends_on": [],
+      "depends_on": [
+        "US-007"
+      ],
       "complexity": 3
     }
   ],
@@ -107,6 +172,6 @@
     "lint": "cargo clippy --all-features",
     "build": "cargo build --release"
   },
-  "created_at": "2026-02-05T01:42:51.936827053+00:00",
-  "updated_at": "2026-02-05T01:42:51.936828963+00:00"
+  "created_at": "2026-02-05T09:18:21.880796002+00:00",
+  "updated_at": "2026-02-05T09:18:21.880798522+00:00"
 }
