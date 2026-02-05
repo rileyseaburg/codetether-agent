@@ -47,6 +47,17 @@ pub struct EditResult {
     pub message: String,
 }
 
+/// Summary of all edit operations
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MultiEditSummary {
+    pub results: Vec<EditResult>,
+    pub total_files: usize,
+    pub success_count: usize,
+    pub failed_count: usize,
+    pub total_added: usize,
+    pub total_removed: usize,
+}
+
 #[async_trait]
 impl Tool for MultiEditTool {
     fn id(&self) -> &str {
@@ -228,23 +239,36 @@ impl Tool for MultiEditTool {
         let successful_edits: Vec<&EditResult> =
             edit_results.iter().filter(|r| r.success).collect();
 
+        // Build structured summary
+        let summary = MultiEditSummary {
+            results: edit_results.clone(),
+            total_files: params.edits.len(),
+            success_count: successful_edits.len(),
+            failed_count: failed_edits.len(),
+            total_added,
+            total_removed,
+        };
+
         if !failed_edits.is_empty() {
-            // Build error summary
+            // Build human-readable error summary for output
             let mut error_summary = String::new();
             for result in &failed_edits {
                 error_summary.push_str(&format!("\n✗ {}: {}", result.file, result.message));
             }
 
+            let output = format!(
+                "Validation failed for {} of {} edits:{}",
+                failed_edits.len(),
+                params.edits.len(),
+                error_summary
+            );
+
             return Ok(ToolResult {
-                output: format!(
-                    "Validation failed for {} of {} edits:{}\n\nNo changes were applied.",
-                    failed_edits.len(),
-                    params.edits.len(),
-                    error_summary
-                ),
+                output,
                 success: false,
                 metadata: {
                     let mut m = HashMap::new();
+                    m.insert("summary".to_string(), json!(summary));
                     m.insert("edit_results".to_string(), json!(edit_results));
                     m.insert("failed_count".to_string(), json!(failed_edits.len()));
                     m.insert("success_count".to_string(), json!(successful_edits.len()));
@@ -261,34 +285,37 @@ impl Tool for MultiEditTool {
             all_diffs.push_str(&format!("\n=== {} ===\n{}", file, diff));
         }
 
-        // Build summary of all edits
+        // Build human-readable summary for output
         let mut edit_summary = String::new();
         for result in &edit_results {
             edit_summary.push_str(&format!("\n✓ {}: {}", result.file, result.message));
         }
 
+        let output = format!(
+            "Multi-file changes require confirmation:{}{}{}\n\nTotal: {} files, +{} lines, -{} lines",
+            all_diffs,
+            if edit_summary.is_empty() {
+                ""
+            } else {
+                "\n\nEdit summary:"
+            },
+            edit_summary,
+            file_contents.len(),
+            total_added,
+            total_removed
+        );
+
         let mut metadata = HashMap::new();
         metadata.insert("requires_confirmation".to_string(), json!(true));
+        metadata.insert("summary".to_string(), json!(summary));
+        metadata.insert("edit_results".to_string(), json!(edit_results));
         metadata.insert("total_files".to_string(), json!(file_contents.len()));
         metadata.insert("total_added".to_string(), json!(total_added));
         metadata.insert("total_removed".to_string(), json!(total_removed));
         metadata.insert("previews".to_string(), json!(previews));
-        metadata.insert("edit_results".to_string(), json!(edit_results));
 
         Ok(ToolResult {
-            output: format!(
-                "Multi-file changes require confirmation:{}{}{}\n\nTotal: {} files, +{} lines, -{} lines",
-                all_diffs,
-                if edit_summary.is_empty() {
-                    ""
-                } else {
-                    "\n\nEdit summary:"
-                },
-                edit_summary,
-                file_contents.len(),
-                total_added,
-                total_removed
-            ),
+            output,
             success: true,
             metadata,
         })
