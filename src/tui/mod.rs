@@ -567,8 +567,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.show_help = true;
                     }
 
-                    // Toggle view mode (F2)
+                    // Toggle view mode (F2 or Ctrl+S)
                     KeyCode::F(2) => {
+                        app.view_mode = match app.view_mode {
+                            ViewMode::Chat => ViewMode::Swarm,
+                            ViewMode::Swarm => ViewMode::Chat,
+                        };
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.view_mode = match app.view_mode {
                             ViewMode::Chat => ViewMode::Swarm,
                             ViewMode::Swarm => ViewMode::Chat,
@@ -705,7 +711,7 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
         // Input area (for returning to chat)
         let input_block = Block::default()
             .borders(Borders::ALL)
-            .title(" Press Esc or /view to return to chat ")
+            .title(" Press Esc, Ctrl+S, or /view to return to chat ")
             .border_style(Style::default().fg(Color::Cyan));
 
         let input = Paragraph::new(app.input.as_str())
@@ -718,8 +724,8 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             Span::styled(" SWARM MODE ", Style::default().fg(Color::Black).bg(Color::Cyan)),
             Span::raw(" | "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
-            Span::raw(": Back to chat | "),
-            Span::styled("F2", Style::default().fg(Color::Yellow)),
+            Span::raw(": Back | "),
+            Span::styled("Ctrl+S", Style::default().fg(Color::Yellow)),
             Span::raw(": Toggle view"),
         ]));
         f.render_widget(status, chunks[2]);
