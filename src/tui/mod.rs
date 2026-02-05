@@ -106,6 +106,8 @@ struct App {
     // Session picker state
     session_picker_list: Vec<SessionSummary>,
     session_picker_selected: usize,
+    // Cached max scroll for key handlers
+    last_max_scroll: usize,
 }
 
 struct ChatMessage {
@@ -156,6 +158,7 @@ impl App {
             swarm_rx: None,
             session_picker_list: Vec::new(),
             session_picker_selected: 0,
+            last_max_scroll: 0,
         }
     }
 
@@ -644,6 +647,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
         terminal.draw(|f| ui(f, &app, &theme))?;
 
+        // Update max_scroll estimate for scroll key handlers
+        // This needs to roughly match what ui() calculates
+        let terminal_height = terminal.size()?.height.saturating_sub(6) as usize;
+        let estimated_lines = app.messages.len() * 4; // rough estimate
+        app.last_max_scroll = estimated_lines.saturating_sub(terminal_height);
+
         // Check for async responses
         if let Some(ref mut rx) = app.response_rx {
             if let Ok(response) = rx.try_recv() {
@@ -801,7 +810,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
                         if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = SCROLL_BOTTOM - 1; // Leave auto-scroll mode
+                            app.scroll = app.last_max_scroll; // Leave auto-scroll mode
                         }
                         app.scroll = app.scroll.saturating_sub(1);
                     }
@@ -836,7 +845,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
                         // Half page up
                         if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = SCROLL_BOTTOM - 1;
+                            app.scroll = app.last_max_scroll;
                         }
                         app.scroll = app.scroll.saturating_sub(5);
                     }
@@ -875,7 +884,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Scroll (normalize first to handle SCROLL_BOTTOM sentinel)
                     KeyCode::Up => {
                         if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = SCROLL_BOTTOM - 1; // Leave auto-scroll mode
+                            app.scroll = app.last_max_scroll; // Leave auto-scroll mode
                         }
                         app.scroll = app.scroll.saturating_sub(1);
                     }
@@ -886,7 +895,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     KeyCode::PageUp => {
                         if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = SCROLL_BOTTOM - 1;
+                            app.scroll = app.last_max_scroll;
                         }
                         app.scroll = app.scroll.saturating_sub(10);
                     }
