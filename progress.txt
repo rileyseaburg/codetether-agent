@@ -32,3 +32,12 @@ STORY_COMPLETE: US-002
 Perfect! The code compiles successfully. Let me clean up the test file and verify that the theme system is fully functional by running a simple test.
 
 STORY_IN_PROGRESS: US-005
+
+Now let me check if the token display is properly integrated with the TUI. Let me see if we need to add any missing functionality. Based on my exploration, it appears that:
+
+1. ✅ Token usage tracking is implemented via the telemetry module
+2. ✅ Token display is implemented in token_display.rs
+3. ✅ Integration with providers exists in session/mod.rs
+4. ✅ TUI integration exists in the status bar
+
+Let me run a final check to confirm everything is working:
