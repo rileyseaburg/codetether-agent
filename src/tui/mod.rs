@@ -9,7 +9,8 @@ pub mod theme_utils;
 pub mod token_display;
 
 use crate::config::Config;
-use crate::session::{Session, SessionEvent};
+use crate::provider::{ContentPart, Role};
+use crate::session::{list_sessions, Session, SessionEvent};
 use crate::swarm::{DecompositionStrategy, Orchestrator, SwarmConfig, SwarmExecutor, SwarmStats};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::swarm_view::{render_swarm_view, SubTaskInfo, SwarmEvent, SwarmViewState};
@@ -129,8 +130,8 @@ impl App {
             input: String::new(),
             cursor_position: 0,
             messages: vec![
-                ChatMessage::new("system", "Welcome to CodeTether Agent! Type a message to get started, or press ? for help.\n\nTip: Prefix with /swarm to run in parallel swarm mode!"),
-                ChatMessage::new("assistant", "Features:\n• Real-time tool call streaming\n• Swarm mode for parallel execution (/swarm <task>)\n• Press Tab to switch agents, ? for help\n\nExample code block:\n```rust\nfn main() {\n    println!(\"Hello, World!\");\n}\n```"),
+                ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
+                ChatMessage::new("assistant", "Quick start:\n• Type a message to chat with the AI\n• /swarm <task> - parallel execution\n• /resume - continue last session\n• /sessions - list saved sessions\n• Tab - switch agents | ? - help"),
             ],
             current_agent: "build".to_string(),
             scroll: 0,
@@ -179,6 +180,106 @@ impl App {
                 ViewMode::Chat => ViewMode::Swarm,
                 ViewMode::Swarm => ViewMode::Chat,
             };
+            return;
+        }
+
+        // Check for /sessions command to list sessions
+        if message.trim() == "/sessions" {
+            match list_sessions().await {
+                Ok(sessions) => {
+                    if sessions.is_empty() {
+                        self.messages.push(ChatMessage::new("system", "No saved sessions found."));
+                    } else {
+                        let mut output = String::from("Recent sessions:\n\n");
+                        for (i, s) in sessions.iter().take(10).enumerate() {
+                            let title = s.title.as_deref().unwrap_or("(untitled)");
+                            let date = s.updated_at.format("%Y-%m-%d %H:%M");
+                            output.push_str(&format!(
+                                "{}. {} - {} ({} msgs)\n   ID: {}\n\n",
+                                i + 1, title, date, s.message_count, s.id
+                            ));
+                        }
+                        output.push_str("Use /resume to load the last session, or /resume <id> to load a specific one.");
+                        self.messages.push(ChatMessage::new("system", output));
+                    }
+                }
+                Err(e) => {
+                    self.messages.push(ChatMessage::new("system", format!("Failed to list sessions: {}", e)));
+                }
+            }
+            return;
+        }
+
+        // Check for /resume command to load a session
+        if message.trim() == "/resume" || message.trim().starts_with("/resume ") {
+            let session_id = message.trim().strip_prefix("/resume").map(|s| s.trim()).filter(|s| !s.is_empty());
+            
+            let loaded = if let Some(id) = session_id {
+                Session::load(id).await
+            } else {
+                Session::last().await
+            };
+
+            match loaded {
+                Ok(session) => {
+                    // Convert session messages to chat messages
+                    self.messages.clear();
+                    self.messages.push(ChatMessage::new("system", format!(
+                        "Resumed session: {}\nCreated: {}\n{} messages loaded",
+                        session.title.as_deref().unwrap_or("(untitled)"),
+                        session.created_at.format("%Y-%m-%d %H:%M"),
+                        session.messages.len()
+                    )));
+
+                    for msg in &session.messages {
+                        let role_str = match msg.role {
+                            Role::System => "system",
+                            Role::User => "user",
+                            Role::Assistant => "assistant",
+                            Role::Tool => "tool",
+                        };
+
+                        // Extract text content
+                        let content: String = msg.content.iter()
+                            .filter_map(|part| match part {
+                                ContentPart::Text { text } => Some(text.clone()),
+                                ContentPart::ToolCall { name, arguments, .. } => {
+                                    Some(format!("[Tool: {}]\n{}", name, arguments))
+                                }
+                                ContentPart::ToolResult { content, .. } => {
+                                    let truncated = if content.len() > 500 {
+                                        format!("{}...", &content[..497])
+                                    } else {
+                                        content.clone()
+                                    };
+                                    Some(format!("[Result]\n{}", truncated))
+                                }
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+
+                        if !content.is_empty() {
+                            self.messages.push(ChatMessage::new(role_str, content));
+                        }
+                    }
+
+                    self.current_agent = session.agent.clone();
+                    self.session = Some(session);
+                    self.scroll = usize::MAX;
+                }
+                Err(e) => {
+                    self.messages.push(ChatMessage::new("system", format!("Failed to load session: {}", e)));
+                }
+            }
+            return;
+        }
+
+        // Check for /new command to start a fresh session
+        if message.trim() == "/new" {
+            self.session = None;
+            self.messages.clear();
+            self.messages.push(ChatMessage::new("system", "Started a new session. Previous session was saved."));
             return;
         }
 
@@ -959,8 +1060,17 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             "".to_string(),
             "  Enter        Send message".to_string(),
             "  Tab          Switch between build/plan agents".to_string(),
+            "  Ctrl+S       Toggle swarm view".to_string(),
             "  Ctrl+C       Quit".to_string(),
             "  ?            Toggle this help".to_string(),
+            "".to_string(),
+            "  SLASH COMMANDS".to_string(),
+            "  /swarm <task>   Run task in parallel swarm mode".to_string(),
+            "  /sessions       List saved sessions".to_string(),
+            "  /resume         Resume most recent session".to_string(),
+            "  /resume <id>    Resume specific session by ID".to_string(),
+            "  /new            Start a fresh session".to_string(),
+            "  /view           Toggle swarm view".to_string(),
             "".to_string(),
             "  VIM-STYLE NAVIGATION".to_string(),
             "  Alt+j        Scroll down".to_string(),
@@ -970,27 +1080,12 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             "".to_string(),
             "  SCROLLING".to_string(),
             "  Up/Down      Scroll messages".to_string(),
-            "  PageUp       Scroll up one page".to_string(),
-            "  PageDown     Scroll down one page".to_string(),
-            "  Alt+u        Scroll up half page".to_string(),
-            "  Alt+d        Scroll down half page".to_string(),
+            "  PageUp/Dn    Scroll one page".to_string(),
+            "  Alt+u/d      Scroll half page".to_string(),
             "".to_string(),
             "  COMMAND HISTORY".to_string(),
-            "  Ctrl+R       Search history (matches current input)".to_string(),
-            "  Ctrl+Up      Previous command".to_string(),
-            "  Ctrl+Down    Next command".to_string(),
-            "".to_string(),
-            "  TEXT EDITING".to_string(),
-            "  Left/Right   Move cursor".to_string(),
-            "  Home/End     Jump to start/end".to_string(),
-            "  Backspace    Delete backwards".to_string(),
-            "  Delete       Delete forwards".to_string(),
-            "".to_string(),
-            "  AGENTS".to_string(),
-            "  ======".to_string(),
-            "".to_string(),
-            "  build        Full access for development work".to_string(),
-            "  plan         Read-only for analysis & exploration".to_string(),
+            "  Ctrl+R       Search history".to_string(),
+            "  Ctrl+Up/Dn   Navigate history".to_string(),
             "".to_string(),
             "  Press ? or Esc to close".to_string(),
             "".to_string(),
