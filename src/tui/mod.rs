@@ -3,13 +3,16 @@
 //! Interactive TUI using Ratatui
 
 pub mod message_formatter;
+pub mod swarm_view;
 pub mod theme;
 pub mod theme_utils;
 pub mod token_display;
 
 use crate::config::Config;
 use crate::session::{Session, SessionEvent};
+use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::message_formatter::MessageFormatter;
+use crate::tui::swarm_view::{render_swarm_view, SubTaskInfo, SwarmEvent, SwarmViewState};
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
@@ -69,6 +72,13 @@ enum MessageType {
     ToolResult { name: String, output: String },
 }
 
+/// View mode for the TUI
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ViewMode {
+    Chat,
+    Swarm,
+}
+
 /// Application state
 struct App {
     input: String,
@@ -84,6 +94,10 @@ struct App {
     processing_message: Option<String>,
     current_tool: Option<String>,
     response_rx: Option<mpsc::Receiver<SessionEvent>>,
+    // Swarm mode state
+    view_mode: ViewMode,
+    swarm_state: SwarmViewState,
+    swarm_rx: Option<mpsc::Receiver<SwarmEvent>>,
 }
 
 struct ChatMessage {
@@ -115,8 +129,8 @@ impl App {
             input: String::new(),
             cursor_position: 0,
             messages: vec![
-                ChatMessage::new("system", "Welcome to CodeTether Agent! Type a message to get started, or press ? for help."),
-                ChatMessage::new("assistant", "Enhanced message display is now active! Features include:\n\n• Proper text wrapping at terminal width\n• Scrollbar indicating conversation position\n• Distinct colors for different message types\n• Code block formatting with syntax highlighting\n\nExample code block:\n```rust\nfn main() {\n    println!(\"Hello, World!\");\n}\n```\n\nTry scrolling with ↑/↓ keys and PageUp/PageDown!"),
+                ChatMessage::new("system", "Welcome to CodeTether Agent! Type a message to get started, or press ? for help.\n\nTip: Prefix with /swarm to run in parallel swarm mode!"),
+                ChatMessage::new("assistant", "Features:\n• Real-time tool call streaming\n• Swarm mode for parallel execution (/swarm <task>)\n• Press Tab to switch agents, ? for help\n\nExample code block:\n```rust\nfn main() {\n    println!(\"Hello, World!\");\n}\n```"),
             ],
             current_agent: "build".to_string(),
             scroll: 0,
@@ -128,6 +142,9 @@ impl App {
             processing_message: None,
             current_tool: None,
             response_rx: None,
+            view_mode: ViewMode::Chat,
+            swarm_state: SwarmViewState::new(),
+            swarm_rx: None,
         }
     }
 
@@ -143,6 +160,26 @@ impl App {
         if !message.trim().is_empty() {
             self.command_history.push(message.clone());
             self.history_index = None;
+        }
+
+        // Check for /swarm command
+        if message.trim().starts_with("/swarm ") {
+            let task = message.trim().strip_prefix("/swarm ").unwrap_or("").to_string();
+            if task.is_empty() {
+                self.messages.push(ChatMessage::new("system", "Usage: /swarm <task description>"));
+                return;
+            }
+            self.start_swarm_execution(task, config).await;
+            return;
+        }
+
+        // Check for /view command to toggle views
+        if message.trim() == "/view" || message.trim() == "/swarm" {
+            self.view_mode = match self.view_mode {
+                ViewMode::Chat => ViewMode::Swarm,
+                ViewMode::Swarm => ViewMode::Chat,
+            };
+            return;
         }
 
         // Add user message
@@ -256,6 +293,130 @@ impl App {
                 self.response_rx = None;
             }
         }
+    }
+
+    /// Handle a swarm event
+    fn handle_swarm_event(&mut self, event: SwarmEvent) {
+        self.swarm_state.handle_event(event.clone());
+
+        // When swarm completes, switch back to chat view with summary
+        if let SwarmEvent::Complete { success, ref stats } = event {
+            self.view_mode = ViewMode::Chat;
+            let summary = if success {
+                format!(
+                    "Swarm completed successfully.\n\
+                     Subtasks: {} completed, {} failed\n\
+                     Total tool calls: {}\n\
+                     Time: {:.1}s (speedup: {:.1}x)",
+                    stats.subagents_completed,
+                    stats.subagents_failed,
+                    stats.total_tool_calls,
+                    stats.execution_time_ms as f64 / 1000.0,
+                    stats.speedup_factor
+                )
+            } else {
+                format!(
+                    "Swarm completed with failures.\n\
+                     Subtasks: {} completed, {} failed\n\
+                     Check the subtask results for details.",
+                    stats.subagents_completed, stats.subagents_failed
+                )
+            };
+            self.messages.push(ChatMessage::new("system", &summary));
+            self.swarm_rx = None;
+        }
+
+        if let SwarmEvent::Error(ref err) = event {
+            self.messages.push(ChatMessage::new("system", &format!("Swarm error: {}", err)));
+        }
+    }
+
+    /// Start swarm execution for a task
+    async fn start_swarm_execution(&mut self, task: String, config: &Config) {
+        // Add user message
+        self.messages.push(ChatMessage::new("user", format!("/swarm {}", task)));
+
+        // Get model from config
+        let model = config
+            .default_model
+            .clone()
+            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok());
+
+        // Configure swarm
+        let swarm_config = SwarmConfig {
+            model,
+            max_subagents: 10,
+            max_steps_per_subagent: 50,
+            worktree_enabled: true,
+            worktree_auto_merge: true,
+            working_dir: Some(std::env::current_dir()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| ".".to_string())),
+            ..Default::default()
+        };
+
+        let executor = SwarmExecutor::new(swarm_config);
+
+        // Create channel for swarm events
+        let (tx, rx) = mpsc::channel(100);
+        self.swarm_rx = Some(rx);
+
+        // Switch to swarm view
+        self.view_mode = ViewMode::Swarm;
+        self.swarm_state = SwarmViewState::new();
+
+        // Clone task for async
+        let task_clone = task.clone();
+
+        // Send initial event
+        let _ = tx.send(SwarmEvent::Started {
+            task: task.clone(),
+            total_subtasks: 0,
+        }).await;
+
+        // Spawn swarm execution
+        tokio::spawn(async move {
+            let result = executor.execute(&task_clone, DecompositionStrategy::Automatic).await;
+
+            match result {
+                Ok(swarm_result) => {
+                    // Send decomposition info
+                    let subtask_infos: Vec<SubTaskInfo> = swarm_result
+                        .subtask_results
+                        .iter()
+                        .enumerate()
+                        .map(|(i, r)| SubTaskInfo {
+                            id: r.subtask_id.clone(),
+                            name: format!("Subtask {}", i + 1),
+                            status: if r.success {
+                                crate::swarm::SubTaskStatus::Completed
+                            } else {
+                                crate::swarm::SubTaskStatus::Failed
+                            },
+                            stage: 0,
+                            dependencies: vec![],
+                            agent_name: Some(r.subagent_id.clone()),
+                            current_tool: None,
+                            steps: r.steps,
+                            max_steps: 50,
+                        })
+                        .collect();
+
+                    let _ = tx.send(SwarmEvent::Decomposed {
+                        subtasks: subtask_infos,
+                    }).await;
+
+                    // Send completion
+                    let _ = tx.send(SwarmEvent::Complete {
+                        success: swarm_result.success,
+                        stats: swarm_result.stats,
+                    }).await;
+                }
+                Err(e) => {
+                    let _ = tx.send(SwarmEvent::Error(e.to_string())).await;
+                }
+            }
+        });
     }
 
     fn navigate_history(&mut self, direction: isize) {
@@ -375,6 +536,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             }
         }
 
+        // Check for swarm events
+        if let Some(ref mut rx) = app.swarm_rx {
+            if let Ok(event) = rx.try_recv() {
+                app.handle_swarm_event(event);
+            }
+        }
+
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 // Help overlay
@@ -397,6 +565,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Help
                     KeyCode::Char('?') => {
                         app.show_help = true;
+                    }
+
+                    // Toggle view mode (F2)
+                    KeyCode::F(2) => {
+                        app.view_mode = match app.view_mode {
+                            ViewMode::Chat => ViewMode::Swarm,
+                            ViewMode::Swarm => ViewMode::Chat,
+                        };
+                    }
+
+                    // Escape - return to chat from swarm view
+                    KeyCode::Esc => {
+                        if app.view_mode == ViewMode::Swarm {
+                            app.view_mode = ViewMode::Chat;
+                        }
                     }
 
                     // Switch agent
@@ -504,6 +687,46 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 }
 
 fn ui(f: &mut Frame, app: &App, theme: &Theme) {
+    // Check view mode
+    if app.view_mode == ViewMode::Swarm {
+        // Render swarm view
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(1),    // Swarm view
+                Constraint::Length(3), // Input
+                Constraint::Length(1), // Status bar
+            ])
+            .split(f.area());
+
+        // Swarm view
+        render_swarm_view(f, &app.swarm_state, chunks[0]);
+
+        // Input area (for returning to chat)
+        let input_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Press Esc or /view to return to chat ")
+            .border_style(Style::default().fg(Color::Cyan));
+
+        let input = Paragraph::new(app.input.as_str())
+            .block(input_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(input, chunks[1]);
+
+        // Status bar
+        let status = Paragraph::new(Line::from(vec![
+            Span::styled(" SWARM MODE ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+            Span::raw(" | "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": Back to chat | "),
+            Span::styled("F2", Style::default().fg(Color::Yellow)),
+            Span::raw(": Toggle view"),
+        ]));
+        f.render_widget(status, chunks[2]);
+        return;
+    }
+
+    // Chat view (default)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
