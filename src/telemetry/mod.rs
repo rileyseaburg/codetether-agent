@@ -1,13 +1,497 @@
 //! Telemetry and usage tracking
 //!
-//! Tracks token usage, costs, and other metrics for monitoring agent performance
+//! Tracks token usage, costs, tool executions, file changes, and other metrics 
+//! for monitoring agent performance and providing audit trails.
 
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime};
 use ratatui::style::Color;
+
+// ============================================================================
+// Tool Execution Tracking
+// ============================================================================
+
+/// Unique identifier for a tool execution
+pub type ToolExecId = u64;
+
+/// A single tool execution record
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolExecution {
+    /// Unique execution ID
+    pub id: ToolExecId,
+    /// Tool name/identifier
+    pub tool_name: String,
+    /// Full input arguments (JSON)
+    pub input: serde_json::Value,
+    /// Output result
+    pub output: Option<String>,
+    /// Whether execution succeeded
+    pub success: bool,
+    /// Error message if failed
+    pub error: Option<String>,
+    /// Execution start time (Unix timestamp ms)
+    pub started_at: u64,
+    /// Duration in milliseconds
+    pub duration_ms: u64,
+    /// Files affected by this tool
+    pub files_affected: Vec<FileChange>,
+    /// Token usage for this execution (if applicable)
+    pub tokens: Option<TokenCounts>,
+    /// Parent execution ID (for nested/sub-agent calls)
+    pub parent_id: Option<ToolExecId>,
+    /// Session or agent ID
+    pub session_id: Option<String>,
+    /// Model used (if applicable)
+    pub model: Option<String>,
+    /// Additional metadata
+    pub metadata: HashMap<String, serde_json::Value>,
+}
+
+impl ToolExecution {
+    /// Create a new tool execution record (call this when starting execution)
+    pub fn start(tool_name: impl Into<String>, input: serde_json::Value) -> Self {
+        static COUNTER: AtomicU64 = AtomicU64::new(1);
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        
+        let started_at = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        
+        Self {
+            id,
+            tool_name: tool_name.into(),
+            input,
+            output: None,
+            success: false,
+            error: None,
+            started_at,
+            duration_ms: 0,
+            files_affected: Vec::new(),
+            tokens: None,
+            parent_id: None,
+            session_id: None,
+            model: None,
+            metadata: HashMap::new(),
+        }
+    }
+    
+    /// Complete the execution with success
+    pub fn complete_success(mut self, output: String, duration: Duration) -> Self {
+        self.output = Some(output);
+        self.success = true;
+        self.duration_ms = duration.as_millis() as u64;
+        self
+    }
+    
+    /// Complete the execution with an error
+    pub fn complete_error(mut self, error: String, duration: Duration) -> Self {
+        self.error = Some(error);
+        self.success = false;
+        self.duration_ms = duration.as_millis() as u64;
+        self
+    }
+    
+    /// Add a file change to this execution
+    pub fn add_file_change(&mut self, change: FileChange) {
+        self.files_affected.push(change);
+    }
+    
+    /// Set parent execution ID
+    pub fn with_parent(mut self, parent_id: ToolExecId) -> Self {
+        self.parent_id = Some(parent_id);
+        self
+    }
+    
+    /// Set session ID
+    pub fn with_session(mut self, session_id: impl Into<String>) -> Self {
+        self.session_id = Some(session_id.into());
+        self
+    }
+    
+    /// Set model
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.model = Some(model.into());
+        self
+    }
+}
+
+/// Type of file change
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FileChangeType {
+    Create,
+    Modify,
+    Delete,
+    Rename,
+    Read,
+}
+
+/// A single file change record
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileChange {
+    /// Type of change
+    pub change_type: FileChangeType,
+    /// File path (relative to workspace)
+    pub path: String,
+    /// Old path (for renames)
+    pub old_path: Option<String>,
+    /// Lines affected (start, end) - 1-indexed
+    pub lines_affected: Option<(u32, u32)>,
+    /// Content before change (for modifications)
+    pub before: Option<String>,
+    /// Content after change (for modifications/creates)
+    pub after: Option<String>,
+    /// Unified diff (if available)
+    pub diff: Option<String>,
+    /// Size in bytes before
+    pub size_before: Option<u64>,
+    /// Size in bytes after
+    pub size_after: Option<u64>,
+    /// Timestamp (Unix ms)
+    pub timestamp: u64,
+}
+
+impl FileChange {
+    /// Create a file creation record
+    pub fn create(path: impl Into<String>, content: impl Into<String>) -> Self {
+        let content = content.into();
+        let lines = content.lines().count() as u32;
+        Self {
+            change_type: FileChangeType::Create,
+            path: path.into(),
+            old_path: None,
+            lines_affected: Some((1, lines)),
+            before: None,
+            after: Some(content.clone()),
+            diff: None,
+            size_before: None,
+            size_after: Some(content.len() as u64),
+            timestamp: current_timestamp_ms(),
+        }
+    }
+    
+    /// Create a file modification record
+    pub fn modify(
+        path: impl Into<String>,
+        before: impl Into<String>,
+        after: impl Into<String>,
+        lines: Option<(u32, u32)>,
+    ) -> Self {
+        let before = before.into();
+        let after = after.into();
+        Self {
+            change_type: FileChangeType::Modify,
+            path: path.into(),
+            old_path: None,
+            lines_affected: lines,
+            before: Some(before.clone()),
+            after: Some(after.clone()),
+            diff: None,
+            size_before: Some(before.len() as u64),
+            size_after: Some(after.len() as u64),
+            timestamp: current_timestamp_ms(),
+        }
+    }
+    
+    /// Create a file modification with diff
+    pub fn modify_with_diff(
+        path: impl Into<String>,
+        before: impl Into<String>,
+        after: impl Into<String>,
+        diff: impl Into<String>,
+        lines: Option<(u32, u32)>,
+    ) -> Self {
+        let mut change = Self::modify(path, before, after, lines);
+        change.diff = Some(diff.into());
+        change
+    }
+    
+    /// Create a file deletion record
+    pub fn delete(path: impl Into<String>, content: impl Into<String>) -> Self {
+        let content = content.into();
+        Self {
+            change_type: FileChangeType::Delete,
+            path: path.into(),
+            old_path: None,
+            lines_affected: None,
+            before: Some(content.clone()),
+            after: None,
+            diff: None,
+            size_before: Some(content.len() as u64),
+            size_after: None,
+            timestamp: current_timestamp_ms(),
+        }
+    }
+    
+    /// Create a file read record (for audit trail)
+    pub fn read(path: impl Into<String>, lines: Option<(u32, u32)>) -> Self {
+        Self {
+            change_type: FileChangeType::Read,
+            path: path.into(),
+            old_path: None,
+            lines_affected: lines,
+            before: None,
+            after: None,
+            diff: None,
+            size_before: None,
+            size_after: None,
+            timestamp: current_timestamp_ms(),
+        }
+    }
+    
+    /// Create a file rename record
+    pub fn rename(old_path: impl Into<String>, new_path: impl Into<String>) -> Self {
+        Self {
+            change_type: FileChangeType::Rename,
+            path: new_path.into(),
+            old_path: Some(old_path.into()),
+            lines_affected: None,
+            before: None,
+            after: None,
+            diff: None,
+            size_before: None,
+            size_after: None,
+            timestamp: current_timestamp_ms(),
+        }
+    }
+    
+    /// Get a short summary of the change
+    pub fn summary(&self) -> String {
+        match self.change_type {
+            FileChangeType::Create => format!("+ {}", self.path),
+            FileChangeType::Modify => {
+                if let Some((start, end)) = self.lines_affected {
+                    format!("M {} (L{}-{})", self.path, start, end)
+                } else {
+                    format!("M {}", self.path)
+                }
+            }
+            FileChangeType::Delete => format!("- {}", self.path),
+            FileChangeType::Rename => format!("R {} -> {}", 
+                self.old_path.as_deref().unwrap_or("?"), self.path),
+            FileChangeType::Read => {
+                if let Some((start, end)) = self.lines_affected {
+                    format!("R {} (L{}-{})", self.path, start, end)
+                } else {
+                    format!("R {}", self.path)
+                }
+            }
+        }
+    }
+}
+
+/// Thread-safe tool execution tracker
+#[derive(Debug)]
+pub struct ToolExecutionTracker {
+    /// All executions (limited to last N)
+    executions: RwLock<Vec<ToolExecution>>,
+    /// Executions by tool name
+    by_tool: RwLock<HashMap<String, Vec<ToolExecId>>>,
+    /// Executions by file path
+    by_file: RwLock<HashMap<String, Vec<ToolExecId>>>,
+    /// Max executions to retain
+    max_executions: usize,
+    /// Total execution count (even if some evicted)
+    total_count: AtomicU64,
+    /// Total duration across all executions
+    total_duration_ms: AtomicU64,
+    /// Error count
+    error_count: AtomicU64,
+}
+
+impl ToolExecutionTracker {
+    /// Create a new tracker with default capacity (1000)
+    pub fn new() -> Self {
+        Self::with_capacity(1000)
+    }
+    
+    /// Create a tracker with specified capacity
+    pub fn with_capacity(max_executions: usize) -> Self {
+        Self {
+            executions: RwLock::new(Vec::with_capacity(max_executions)),
+            by_tool: RwLock::new(HashMap::new()),
+            by_file: RwLock::new(HashMap::new()),
+            max_executions,
+            total_count: AtomicU64::new(0),
+            total_duration_ms: AtomicU64::new(0),
+            error_count: AtomicU64::new(0),
+        }
+    }
+    
+    /// Record a completed tool execution
+    pub fn record(&self, execution: ToolExecution) {
+        let exec_id = execution.id;
+        let tool_name = execution.tool_name.clone();
+        let files: Vec<String> = execution.files_affected.iter()
+            .map(|f| f.path.clone())
+            .collect();
+        let duration = execution.duration_ms;
+        let success = execution.success;
+        
+        // Update atomics
+        self.total_count.fetch_add(1, Ordering::Relaxed);
+        self.total_duration_ms.fetch_add(duration, Ordering::Relaxed);
+        if !success {
+            self.error_count.fetch_add(1, Ordering::Relaxed);
+        }
+        
+        // Store execution
+        {
+            let mut execs = self.executions.write();
+            if execs.len() >= self.max_executions {
+                execs.remove(0);
+            }
+            execs.push(execution);
+        }
+        
+        // Index by tool
+        {
+            let mut by_tool = self.by_tool.write();
+            by_tool.entry(tool_name).or_default().push(exec_id);
+        }
+        
+        // Index by file
+        {
+            let mut by_file = self.by_file.write();
+            for file in files {
+                by_file.entry(file).or_default().push(exec_id);
+            }
+        }
+    }
+    
+    /// Get execution by ID
+    pub fn get(&self, id: ToolExecId) -> Option<ToolExecution> {
+        let execs = self.executions.read();
+        execs.iter().find(|e| e.id == id).cloned()
+    }
+    
+    /// Get all executions for a tool
+    pub fn get_by_tool(&self, tool_name: &str) -> Vec<ToolExecution> {
+        let ids = {
+            let by_tool = self.by_tool.read();
+            by_tool.get(tool_name).cloned().unwrap_or_default()
+        };
+        
+        let execs = self.executions.read();
+        ids.iter()
+            .filter_map(|id| execs.iter().find(|e| e.id == *id).cloned())
+            .collect()
+    }
+    
+    /// Get all executions that affected a file
+    pub fn get_by_file(&self, path: &str) -> Vec<ToolExecution> {
+        let ids = {
+            let by_file = self.by_file.read();
+            by_file.get(path).cloned().unwrap_or_default()
+        };
+        
+        let execs = self.executions.read();
+        ids.iter()
+            .filter_map(|id| execs.iter().find(|e| e.id == *id).cloned())
+            .collect()
+    }
+    
+    /// Get recent executions (last N)
+    pub fn recent(&self, count: usize) -> Vec<ToolExecution> {
+        let execs = self.executions.read();
+        execs.iter().rev().take(count).cloned().collect()
+    }
+    
+    /// Get all file changes across all executions
+    pub fn all_file_changes(&self) -> Vec<(ToolExecId, FileChange)> {
+        let execs = self.executions.read();
+        execs.iter()
+            .flat_map(|e| e.files_affected.iter().map(|f| (e.id, f.clone())))
+            .collect()
+    }
+    
+    /// Get statistics
+    pub fn stats(&self) -> ToolExecutionStats {
+        let total = self.total_count.load(Ordering::Relaxed);
+        let errors = self.error_count.load(Ordering::Relaxed);
+        let duration = self.total_duration_ms.load(Ordering::Relaxed);
+        
+        let execs = self.executions.read();
+        let by_tool = self.by_tool.read();
+        
+        let tool_counts: HashMap<String, u64> = by_tool.iter()
+            .map(|(k, v)| (k.clone(), v.len() as u64))
+            .collect();
+        
+        let file_count = execs.iter()
+            .flat_map(|e| e.files_affected.iter().map(|f| f.path.clone()))
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        
+        ToolExecutionStats {
+            total_executions: total,
+            successful_executions: total.saturating_sub(errors),
+            failed_executions: errors,
+            total_duration_ms: duration,
+            avg_duration_ms: if total > 0 { duration / total } else { 0 },
+            executions_by_tool: tool_counts,
+            unique_files_affected: file_count as u64,
+        }
+    }
+}
+
+impl Default for ToolExecutionTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Statistics about tool executions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolExecutionStats {
+    pub total_executions: u64,
+    pub successful_executions: u64,
+    pub failed_executions: u64,
+    pub total_duration_ms: u64,
+    pub avg_duration_ms: u64,
+    pub executions_by_tool: HashMap<String, u64>,
+    pub unique_files_affected: u64,
+}
+
+impl ToolExecutionStats {
+    /// Format as summary string
+    pub fn summary(&self) -> String {
+        let success_rate = if self.total_executions > 0 {
+            (self.successful_executions as f64 / self.total_executions as f64) * 100.0
+        } else {
+            100.0
+        };
+        
+        format!(
+            "{} executions ({:.1}% success), {} files, avg {:.0}ms",
+            self.total_executions,
+            success_rate,
+            self.unique_files_affected,
+            self.avg_duration_ms
+        )
+    }
+}
+
+/// Helper to get current timestamp in milliseconds
+fn current_timestamp_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Global tool execution tracker
+pub static TOOL_EXECUTIONS: once_cell::sync::Lazy<ToolExecutionTracker> =
+    once_cell::sync::Lazy::new(ToolExecutionTracker::new);
+
+// ============================================================================
+// Token Usage Tracking (existing code below)
+// ============================================================================
 
 /// Token counts for a single request/operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -100,7 +584,7 @@ impl TokenUsageTracker {
         self.total_output.fetch_add(output, Ordering::Relaxed);
         self.total_tokens
             .fetch_add(counts.total(), Ordering::Relaxed);
-        let count = self.request_count.fetch_add(1, Ordering::Relaxed) + 1;
+        let _count = self.request_count.fetch_add(1, Ordering::Relaxed) + 1;
 
         // Update max values
         self.max_input.fetch_max(input, Ordering::Relaxed);
@@ -386,3 +870,163 @@ impl ContextLimit {
 /// Global token usage registry
 pub static TOKEN_USAGE: once_cell::sync::Lazy<TokenUsageRegistry> =
     once_cell::sync::Lazy::new(TokenUsageRegistry::new);
+
+// ============================================================================
+// Telemetry Persistence
+// ============================================================================
+
+/// Persistent telemetry data that can be saved/loaded from disk
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TelemetryData {
+    /// Tool executions (last N)
+    pub executions: Vec<ToolExecution>,
+    /// Summary stats
+    pub stats: TelemetryStats,
+    /// Last updated timestamp
+    pub last_updated: u64,
+}
+
+/// Aggregated statistics for persistence
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TelemetryStats {
+    pub total_executions: u64,
+    pub successful_executions: u64,
+    pub failed_executions: u64,
+    pub total_duration_ms: u64,
+    pub total_input_tokens: u64,
+    pub total_output_tokens: u64,
+    pub total_requests: u64,
+    pub executions_by_tool: HashMap<String, u64>,
+    pub files_modified: HashMap<String, u64>,
+}
+
+impl TelemetryData {
+    /// Get the default telemetry file path
+    pub fn default_path() -> std::path::PathBuf {
+        directories::ProjectDirs::from("com", "codetether", "codetether")
+            .map(|p| p.data_dir().join("telemetry.json"))
+            .unwrap_or_else(|| std::path::PathBuf::from(".codetether/telemetry.json"))
+    }
+    
+    /// Load telemetry from disk
+    pub fn load() -> Self {
+        Self::load_from(&Self::default_path())
+    }
+    
+    /// Load telemetry from a specific path
+    pub fn load_from(path: &std::path::Path) -> Self {
+        match std::fs::read_to_string(path) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+            Err(_) => Self::default(),
+        }
+    }
+    
+    /// Save telemetry to disk
+    pub fn save(&self) -> std::io::Result<()> {
+        self.save_to(&Self::default_path())
+    }
+    
+    /// Save telemetry to a specific path
+    pub fn save_to(&self, path: &std::path::Path) -> std::io::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let content = serde_json::to_string_pretty(self)?;
+        std::fs::write(path, content)
+    }
+    
+    /// Add an execution and update stats
+    pub fn record_execution(&mut self, exec: ToolExecution) {
+        // Update stats
+        self.stats.total_executions += 1;
+        if exec.success {
+            self.stats.successful_executions += 1;
+        } else {
+            self.stats.failed_executions += 1;
+        }
+        self.stats.total_duration_ms += exec.duration_ms;
+        
+        // Track by tool
+        *self.stats.executions_by_tool.entry(exec.tool_name.clone()).or_insert(0) += 1;
+        
+        // Track files modified
+        for file in &exec.files_affected {
+            if file.change_type != FileChangeType::Read {
+                *self.stats.files_modified.entry(file.path.clone()).or_insert(0) += 1;
+            }
+        }
+        
+        // Track tokens if present
+        if let Some(tokens) = &exec.tokens {
+            self.stats.total_input_tokens += tokens.input;
+            self.stats.total_output_tokens += tokens.output;
+            self.stats.total_requests += 1;
+        }
+        
+        // Keep only recent executions (limit to 500)
+        if self.executions.len() >= 500 {
+            self.executions.remove(0);
+        }
+        self.executions.push(exec);
+        
+        self.last_updated = current_timestamp_ms();
+    }
+    
+    /// Get recent executions
+    pub fn recent(&self, count: usize) -> Vec<&ToolExecution> {
+        self.executions.iter().rev().take(count).collect()
+    }
+    
+    /// Get executions by tool name
+    pub fn by_tool(&self, tool_name: &str) -> Vec<&ToolExecution> {
+        self.executions.iter().filter(|e| e.tool_name == tool_name).collect()
+    }
+    
+    /// Get executions that affected a file
+    pub fn by_file(&self, path: &str) -> Vec<&ToolExecution> {
+        self.executions.iter()
+            .filter(|e| e.files_affected.iter().any(|f| f.path == path))
+            .collect()
+    }
+    
+    /// Get all file changes
+    pub fn all_file_changes(&self) -> Vec<(ToolExecId, &FileChange)> {
+        self.executions.iter()
+            .flat_map(|e| e.files_affected.iter().map(move |f| (e.id, f)))
+            .collect()
+    }
+    
+    /// Format as summary
+    pub fn summary(&self) -> String {
+        let success_rate = if self.stats.total_executions > 0 {
+            (self.stats.successful_executions as f64 / self.stats.total_executions as f64) * 100.0
+        } else {
+            100.0
+        };
+        
+        format!(
+            "{} executions ({:.1}% success), {} files modified, {} tokens used",
+            self.stats.total_executions,
+            success_rate,
+            self.stats.files_modified.len(),
+            self.stats.total_input_tokens + self.stats.total_output_tokens
+        )
+    }
+}
+
+/// Global persistent telemetry (loaded on first access, saved on record)
+pub static PERSISTENT_TELEMETRY: once_cell::sync::Lazy<RwLock<TelemetryData>> =
+    once_cell::sync::Lazy::new(|| RwLock::new(TelemetryData::load()));
+
+/// Record an execution to persistent telemetry
+pub fn record_persistent(exec: ToolExecution) {
+    let mut data = PERSISTENT_TELEMETRY.write();
+    data.record_execution(exec);
+    // Best effort save - don't fail the operation if save fails
+    let _ = data.save();
+}
+
+/// Get a snapshot of persistent telemetry
+pub fn get_persistent_stats() -> TelemetryData {
+    PERSISTENT_TELEMETRY.read().clone()
+}

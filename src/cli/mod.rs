@@ -71,6 +71,9 @@ pub enum Command {
 
     /// Model Context Protocol (MCP) server/client
     Mcp(McpArgs),
+
+    /// Show telemetry and execution statistics
+    Stats(StatsArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -286,4 +289,39 @@ pub struct McpArgs {
     /// Output as JSON
     #[arg(long)]
     pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct StatsArgs {
+    /// Show tool execution history
+    #[arg(short, long)]
+    pub tools: bool,
+
+    /// Show file change history
+    #[arg(short, long)]
+    pub files: bool,
+
+    /// Show token usage
+    #[arg(long)]
+    pub tokens: bool,
+
+    /// Filter by tool name
+    #[arg(long)]
+    pub tool: Option<String>,
+
+    /// Filter by file path
+    #[arg(long)]
+    pub file: Option<String>,
+
+    /// Number of recent entries to show
+    #[arg(short, long, default_value = "20")]
+    pub limit: usize,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+
+    /// Show all/summary (default shows summary)
+    #[arg(long)]
+    pub all: bool,
 }

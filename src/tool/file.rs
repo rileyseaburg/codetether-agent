@@ -5,7 +5,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::path::PathBuf;
+use std::time::Instant;
 use tokio::fs;
+
+use crate::telemetry::{FileChange, ToolExecution, TOOL_EXECUTIONS, record_persistent};
 
 /// Read file contents
 pub struct ReadTool;
@@ -57,6 +60,8 @@ impl Tool for ReadTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
+        let start = Instant::now();
+        
         let path = match args["path"].as_str() {
             Some(p) => p,
             None => {
@@ -75,21 +80,42 @@ impl Tool for ReadTool {
         let content = fs::read_to_string(path).await?;
 
         let lines: Vec<&str> = content.lines().collect();
-        let start = offset.map(|o| o.saturating_sub(1)).unwrap_or(0);
-        let end = limit
-            .map(|l| (start + l).min(lines.len()))
+        let start_line = offset.map(|o| o.saturating_sub(1)).unwrap_or(0);
+        let end_line = limit
+            .map(|l| (start_line + l).min(lines.len()))
             .unwrap_or(lines.len());
 
-        let selected: String = lines[start..end]
+        let selected: String = lines[start_line..end_line]
             .iter()
             .enumerate()
-            .map(|(i, line)| format!("{:4} | {}", start + i + 1, line))
+            .map(|(i, line)| format!("{:4} | {}", start_line + i + 1, line))
             .collect::<Vec<_>>()
             .join("\n");
 
+        let duration = start.elapsed();
+
+        // Record telemetry
+        let file_change = FileChange::read(
+            path,
+            Some((start_line as u32 + 1, end_line as u32)),
+        );
+        
+        let mut exec = ToolExecution::start("read", json!({
+            "path": path,
+            "offset": offset,
+            "limit": limit,
+        }));
+        exec.add_file_change(file_change);
+        let exec = exec.complete_success(
+            format!("Read {} lines from {}", end_line - start_line, path),
+            duration,
+        );
+        TOOL_EXECUTIONS.record(exec.clone());
+        record_persistent(exec);
+
         Ok(ToolResult::success(selected)
             .with_metadata("total_lines", json!(lines.len()))
-            .with_metadata("read_lines", json!(end - start)))
+            .with_metadata("read_lines", json!(end_line - start_line)))
     }
 }
 
@@ -138,6 +164,8 @@ impl Tool for WriteTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
+        let start = Instant::now();
+        
         let path = match args["path"].as_str() {
             Some(p) => p,
             None => {
@@ -168,7 +196,41 @@ impl Tool for WriteTool {
             fs::create_dir_all(parent).await?;
         }
 
+        // Check if file exists for telemetry
+        let existed = fs::metadata(path).await.is_ok();
+        let old_content = if existed {
+            fs::read_to_string(path).await.ok()
+        } else {
+            None
+        };
+
         fs::write(path, content).await?;
+
+        let duration = start.elapsed();
+
+        // Record telemetry
+        let file_change = if existed {
+            FileChange::modify(
+                path,
+                old_content.as_deref().unwrap_or(""),
+                content,
+                Some((1, content.lines().count() as u32)),
+            )
+        } else {
+            FileChange::create(path, content)
+        };
+        
+        let mut exec = ToolExecution::start("write", json!({
+            "path": path,
+            "content_length": content.len(),
+        }));
+        exec.add_file_change(file_change);
+        let exec = exec.complete_success(
+            format!("Wrote {} bytes to {}", content.len(), path),
+            duration,
+        );
+        TOOL_EXECUTIONS.record(exec.clone());
+        record_persistent(exec);
 
         Ok(ToolResult::success(format!(
             "Wrote {} bytes to {}",
