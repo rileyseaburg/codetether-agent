@@ -30,3 +30,7 @@ Now I have a clear understanding. Let me implement the telemetry integration. I'
 2. Update the TUI token display to show telemetry summary
 
 Let me start implementing:
+
+---
+
+US-009: The file still has the old implementation. Let me read the full function and re-apply my changes:
