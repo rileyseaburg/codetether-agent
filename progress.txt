@@ -19,3 +19,5 @@ The build completed successfully with only warnings (no errors). The implementat
 The warnings are pre-existing in the codebase and not related to my changes.
 
 STORY_COMPLETE: US-005
+
+Now let me add a method to get merge status for UI display and update the TUI to show merge warnings. First, let me add a method to WorktreeManager to expose merge status:
