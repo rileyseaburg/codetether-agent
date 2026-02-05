@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-02-05
+
+### Added
+
+- **TUI Swarm Mode UI**: Real-time visualization of parallel sub-agent execution
+  - `/swarm <task>` command to run tasks in parallel swarm mode
+  - Live progress display with subtask status, stages, and execution stats
+  - Toggle views with `Ctrl+S` or `/view` command
+
+- **Session Management**: Resume conversations across TUI sessions
+  - `/sessions` - List recent saved sessions
+  - `/resume` - Load most recent session
+  - `/resume <id>` - Load specific session by ID
+  - `/new` - Start fresh session (auto-saves current)
+
+- **Real-time Tool Streaming**: See tool calls as they execute
+  - Live status indicator shows current tool being run
+  - Tool calls and results displayed with distinct styling
+
+- **TUI Enhancements**:
+  - Auto-scroll to bottom on message send/receive
+  - Theme configuration support
+  - Token usage display with cost tracking
+  - File edit confirmation prompts
+  - Keyboard navigation improvements
+
+### Fixed
+
+- **Token Cost Calculation**: Was ~1 trillion times too high, now correctly calculates costs
+- **Vim Key Conflicts**: Added Alt/Ctrl modifiers so h,j,k,l,g,d,u can be typed normally
+- **Swarm UI Updates**: Subtasks now show immediately after decomposition, not just at completion
+- **F2 Key Binding**: Added `Ctrl+S` as reliable alternative (F2 doesn't work in many terminals)
+
+### Changed
+
+- **Default Model**: TUI now defaults to `zhipuai/glm-4.7` for better performance
+- **Help Menu**: Condensed and added slash command documentation
+
 ## [0.2.0] - 2026-02-03
 
 ### Added
