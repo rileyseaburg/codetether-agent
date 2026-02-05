@@ -5,8 +5,11 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::process::Stdio;
+use std::time::Instant;
 use tokio::process::Command;
 use tokio::time::{Duration, timeout};
+
+use crate::telemetry::{ToolExecution, TOOL_EXECUTIONS, record_persistent};
 
 /// Execute shell commands
 pub struct BashTool {
@@ -65,6 +68,8 @@ impl Tool for BashTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
+        let exec_start = Instant::now();
+        
         let command = match args["command"].as_str() {
             Some(c) => c,
             None => {
@@ -118,8 +123,31 @@ impl Tool for BashTool {
                     );
                     (truncated_output, true)
                 } else {
-                    (combined, false)
+                    (combined.clone(), false)
                 };
+
+                let duration = exec_start.elapsed();
+
+                // Record telemetry
+                let exec = ToolExecution::start("bash", json!({
+                    "command": command,
+                    "cwd": cwd,
+                    "timeout": timeout_secs,
+                }));
+                let exec = if success {
+                    exec.complete_success(
+                        format!("exit_code={}, output_len={}", exit_code, combined.len()),
+                        duration,
+                    )
+                } else {
+                    exec.complete_error(
+                        format!("exit_code={}: {}", exit_code, 
+                            combined.lines().next().unwrap_or("(no output)")),
+                        duration,
+                    )
+                };
+                TOOL_EXECUTIONS.record(exec.clone());
+                record_persistent(exec);
 
                 Ok(ToolResult {
                     output: output_str,
@@ -132,23 +160,45 @@ impl Tool for BashTool {
                     .collect(),
                 })
             }
-            Ok(Err(e)) => Ok(ToolResult::structured_error(
-                "EXECUTION_FAILED",
-                "bash",
-                &format!("Failed to execute command: {}", e),
-                None,
-                Some(json!({"command": command})),
-            )),
-            Err(_) => Ok(ToolResult::structured_error(
-                "TIMEOUT",
-                "bash",
-                &format!("Command timed out after {} seconds", timeout_secs),
-                None,
-                Some(json!({
+            Ok(Err(e)) => {
+                let duration = exec_start.elapsed();
+                let exec = ToolExecution::start("bash", json!({
                     "command": command,
-                    "hint": "Consider increasing timeout or breaking into smaller commands"
-                })),
-            )),
+                    "cwd": cwd,
+                }))
+                .complete_error(format!("Failed to execute: {}", e), duration);
+                TOOL_EXECUTIONS.record(exec.clone());
+                record_persistent(exec);
+                
+                Ok(ToolResult::structured_error(
+                    "EXECUTION_FAILED",
+                    "bash",
+                    &format!("Failed to execute command: {}", e),
+                    None,
+                    Some(json!({"command": command})),
+                ))
+            }
+            Err(_) => {
+                let duration = exec_start.elapsed();
+                let exec = ToolExecution::start("bash", json!({
+                    "command": command,
+                    "cwd": cwd,
+                }))
+                .complete_error(format!("Timeout after {}s", timeout_secs), duration);
+                TOOL_EXECUTIONS.record(exec.clone());
+                record_persistent(exec);
+                
+                Ok(ToolResult::structured_error(
+                    "TIMEOUT",
+                    "bash",
+                    &format!("Command timed out after {} seconds", timeout_secs),
+                    None,
+                    Some(json!({
+                        "command": command,
+                        "hint": "Consider increasing timeout or breaking into smaller commands"
+                    })),
+                ))
+            }
         }
     }
 }

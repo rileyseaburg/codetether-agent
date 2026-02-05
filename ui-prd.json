@@ -29,7 +29,7 @@
         "Ctrl+R searches command history",
         "? shows help with all shortcuts"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 3
@@ -44,7 +44,7 @@
         "Changes are only applied after confirmation",
         "Original file is preserved until confirmation"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 3
@@ -76,7 +76,7 @@
         "Changes apply without restart",
         "Fallback to safe defaults if terminal lacks support"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [],
       "complexity": 3
@@ -91,7 +91,7 @@
         "Session total and per-message breakdown available",
         "Cost estimation based on provider pricing"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [],
       "complexity": 3
