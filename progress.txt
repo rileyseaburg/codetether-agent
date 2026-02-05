@@ -1,43 +1,8 @@
-Great! The build completed successfully with no errors. Let me analyze the current implementation against the acceptance criteria:
+All changes are in place:
 
-## Analysis of Current Implementation:
+1. ✅ `ChatMessage::new()` now populates `MessageType::Text` with the actual content (not an empty string)
+2. ✅ The display code now uses `MessageType::Text(text)` instead of the wildcard `_` pattern
+3. ✅ The stored text content is used for message display instead of recalculating from `message.content`
+4. ✅ The empty string default `String::new()` has been removed
 
-1. **✅ Vim-style hjkl navigation works** - Already implemented:
-   - `h`: Move cursor left in input (lines 294-296)
-   - `j`: Scroll down in messages (lines 297-299)
-   - `k`: Scroll up in messages (lines 300-302)
-   - `l`: Move cursor right in input (lines 303-306)
-
-2. **✅ Page up/down scrolls by page** - Already implemented:
-   - `PageUp`: Scroll up one page (lines 377-378)
-   - `PageDown`: Scroll down one page (lines 380-381)
-
-3. **✅ Ctrl+R searches command history** - Already implemented:
-   - `Ctrl+R`: Search history (lines 310-312)
-
-4. **✅ ? shows help with all shortcuts** - Already implemented:
-   - `?`: Toggle help overlay (lines 275-277)
-   - Help shows all shortcuts including vim navigation, page scrolling, and Ctrl+R
-
-Additionally, the implementation includes some nice extras:
-- Vim-style `g` (go to top) and `G` (go to bottom)
-- Vim-style `u` (page up half) and `d` (page down half)
-- Arrow keys for navigation
-- Full command history navigation with Ctrl+Up/Down
-
-All acceptance criteria are already fully implemented and working correctly. The code compiles without any errors.
-
-STORY_COMPLETE: US-002
-
-Perfect! The code compiles successfully. Let me clean up the test file and verify that the theme system is fully functional by running a simple test.
-
-STORY_IN_PROGRESS: US-005
-
-Now let me check if the token display is properly integrated with the TUI. Let me see if we need to add any missing functionality. Based on my exploration, it appears that:
-
-1. ✅ Token usage tracking is implemented via the telemetry module
-2. ✅ Token display is implemented in token_display.rs
-3. ✅ Integration with providers exists in session/mod.rs
-4. ✅ TUI integration exists in the status bar
-
-Let me run a final check to confirm everything is working:
+STORY_COMPLETE: US-004
