@@ -40,26 +40,33 @@ impl TokenDisplay {
         self.model_context_limits.get(model).copied()
     }
 
-    /// Calculate cost based on model pricing
-    pub fn calculate_cost(&self, model: &str, tokens: u64) -> CostEstimate {
-        let (input_cost, output_cost) = match model.to_lowercase().as_str() {
-            m if m.contains("gpt-4o") => (0.0025, 0.0100), // $2.50 / $10.00 per million
-            m if m.contains("gpt-4") => (0.0300, 0.0600),  // $30 / $60 per million
-            m if m.contains("claude-3-5-sonnet") => (0.0030, 0.0150), // $3 / $15 per million
-            m if m.contains("claude-3-5-haiku") => (0.0008, 0.0040), // $0.80 / $4 per million
-            m if m.contains("claude-3-opus") => (0.0150, 0.0750), // $15 / $75 per million
-            m if m.contains("gemini-2.0-flash") => (0.000075, 0.00030), // $0.075 / $0.30 per million
-            m if m.contains("gemini-1.5-flash") => (0.000075, 0.00030), // $0.075 / $0.30 per million
-            m if m.contains("gemini-1.5-pro") => (0.00125, 0.0050),     // $1.25 / $5 per million
-            m if m.contains("k1.5") => (0.0080, 0.0080),                // Moonshot K1.5
-            m if m.contains("k1.6") => (0.0060, 0.0060),                // Moonshot K1.6
-            _ => (0.0010, 0.0030),                                      // Default fallback
-        };
+    /// Get pricing for a model (returns $ per million tokens for input/output)
+    fn get_model_pricing(&self, model: &str) -> (f64, f64) {
+        match model.to_lowercase().as_str() {
+            m if m.contains("gpt-4o-mini") => (0.15, 0.60),      // $0.15 / $0.60 per million
+            m if m.contains("gpt-4o") => (2.50, 10.00),         // $2.50 / $10.00 per million
+            m if m.contains("gpt-4-turbo") => (10.00, 30.00),   // $10 / $30 per million
+            m if m.contains("gpt-4") => (30.00, 60.00),         // $30 / $60 per million
+            m if m.contains("claude-3-5-sonnet") => (3.00, 15.00), // $3 / $15 per million
+            m if m.contains("claude-3-5-haiku") => (0.80, 4.00), // $0.80 / $4 per million
+            m if m.contains("claude-3-opus") => (15.00, 75.00), // $15 / $75 per million
+            m if m.contains("gemini-2.0-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
+            m if m.contains("gemini-1.5-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
+            m if m.contains("gemini-1.5-pro") => (1.25, 5.00),  // $1.25 / $5 per million
+            m if m.contains("glm-4") => (0.50, 0.50),           // ZhipuAI GLM-4 ~$0.50/million
+            m if m.contains("k1.5") => (8.00, 8.00),            // Moonshot K1.5
+            m if m.contains("k1.6") => (6.00, 6.00),            // Moonshot K1.6
+            _ => (1.00, 3.00),                                   // Default fallback
+        }
+    }
 
+    /// Calculate cost for a model given input and output token counts
+    pub fn calculate_cost_for_tokens(&self, model: &str, input_tokens: u64, output_tokens: u64) -> CostEstimate {
+        let (input_price, output_price) = self.get_model_pricing(model);
         CostEstimate::from_tokens(
-            &crate::telemetry::TokenCounts::new(tokens, 0),
-            input_cost * 1_000_000.0,
-            output_cost * 1_000_000.0,
+            &crate::telemetry::TokenCounts::new(input_tokens, output_tokens),
+            input_price,
+            output_price,
         )
     }
 
@@ -129,7 +136,11 @@ impl TokenDisplay {
         let mut total = CostEstimate::default();
 
         for snapshot in model_snapshots {
-            let model_cost = self.calculate_cost(&snapshot.name, snapshot.totals.total());
+            let model_cost = self.calculate_cost_for_tokens(
+                &snapshot.name,
+                snapshot.totals.input,
+                snapshot.totals.output,
+            );
             total.input_cost += model_cost.input_cost;
             total.output_cost += model_cost.output_cost;
             total.total_cost += model_cost.total_cost;
@@ -188,7 +199,11 @@ impl TokenDisplay {
             lines.push("  BY MODEL:".to_string());
 
             for snapshot in model_snapshots.iter().take(5) {
-                let model_cost = self.calculate_cost(&snapshot.name, snapshot.totals.total());
+                let model_cost = self.calculate_cost_for_tokens(
+                    &snapshot.name,
+                    snapshot.totals.input,
+                    snapshot.totals.output,
+                );
                 lines.push(format!(
                     "    {}: {} tokens ({} requests) - {}",
                     snapshot.name,
