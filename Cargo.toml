@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
