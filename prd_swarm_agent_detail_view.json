@@ -7,7 +7,7 @@
     {
       "id": "US-001",
       "title": "Add Per-Agent Data Types and SwarmEvent Variants",
-      "description": "Define lightweight display types for per-agent conversation data in src/tui/swarm_view.rs. Add an AgentToolCallDetail struct with fields: tool_name (String), arguments_summary (String, max 200 chars), output_summary (String, max 500 chars), success (bool). Add an AgentMessageEntry struct with fields: role (String, e.g. 'assistant', 'tool', 'system'), content (String), is_tool_call (bool). Extend SubTaskInfo with new fields: tool_call_history (Vec<AgentToolCallDetail>), messages (Vec<AgentMessageEntry>), output (String), error (Option<String>). Add three new SwarmEvent variants: AgentToolCallRecord { subtask_id: String, tool_name: String, arguments_summary: String, output_summary: String, success: bool }, AgentMessageRecord { subtask_id: String, role: String, content: String }, AgentOutput { subtask_id: String, text: String }. Handle all three new variants in SwarmViewState::handle_event() \u2014 AgentToolCallRecord appends to the matching SubTaskInfo's tool_call_history and also pushes an AgentMessageEntry with is_tool_call=true; AgentMessageRecord appends to messages; AgentOutput appends to output. Keep the existing AgentToolCall variant working as before (it updates current_tool and steps).",
+      "description": "Define lightweight display types for per-agent conversation data in src/tui/swarm_view.rs. Add an AgentToolCallDetail struct with fields: tool_name (String), arguments_summary (String, max 200 chars), output_summary (String, max 500 chars), success (bool). Add an AgentMessageEntry struct with fields: role (String, e.g. 'assistant', 'tool', 'system'), content (String), is_tool_call (bool). Extend SubTaskInfo with new fields: tool_call_history (Vec<AgentToolCallDetail>), messages (Vec<AgentMessageEntry>), output (String), error (Option<String>). Add three new SwarmEvent variants: AgentToolCallRecord { subtask_id: String, tool_name: String, arguments_summary: String, output_summary: String, success: bool }, AgentMessageRecord { subtask_id: String, role: String, content: String }, AgentOutput { subtask_id: String, text: String }. Handle all three new variants in SwarmViewState::handle_event() — AgentToolCallRecord appends to the matching SubTaskInfo's tool_call_history and also pushes an AgentMessageEntry with is_tool_call=true; AgentMessageRecord appends to messages; AgentOutput appends to output. Keep the existing AgentToolCall variant working as before (it updates current_tool and steps).",
       "acceptance_criteria": [
         "AgentToolCallDetail struct exists with tool_name, arguments_summary, output_summary, success fields",
         "AgentMessageEntry struct exists with role, content, is_tool_call fields",
@@ -17,7 +17,7 @@
         "Existing SwarmEvent variants and handling remain unchanged",
         "cargo check passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 3
@@ -35,7 +35,7 @@
         "selected_subtask() returns the correct SubTaskInfo reference",
         "cargo check passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 2
@@ -43,7 +43,7 @@
     {
       "id": "US-003",
       "title": "Render Full-Screen Agent Detail View",
-      "description": "Create a render_agent_detail() function in src/tui/swarm_view.rs that displays a full-screen detail view for a selected sub-agent. Layout: vertical split into header (Length 5), conversation area (Min 1), and footer (Length 1). Header block: bordered, title is agent name. Inside show: line 1 = 'Agent: {agent_name} | Specialty: {from name}' in Cyan, line 2 = 'Status: {status icon+text}' colored by status + 'Steps: {steps}/{max_steps}', line 3 = 'Stage: {stage} | Dependencies: {deps joined}'. Conversation area: bordered block titled ' Conversation ({message_count} messages) '. Render each entry from SubTaskInfo.messages as lines: for non-tool messages show role in brackets colored (Assistant=Cyan, System=DarkGray) followed by content text; for tool call messages show a wrench icon + tool_name in Yellow + truncated arguments on one line, then result/output on next line colored Green if success or Red if not. Use Paragraph with scroll offset (detail_scroll, 0). Footer: single line with key hints 'Esc: Back | \u2191\u2193: Scroll | PgUp/PgDn: Page' in DarkGray. Modify render_swarm_view() to check state.detail_mode \u2014 if true and selected_subtask() returns Some, call render_agent_detail() for the full area and return early, otherwise render the normal layout.",
+      "description": "Create a render_agent_detail() function in src/tui/swarm_view.rs that displays a full-screen detail view for a selected sub-agent. Layout: vertical split into header (Length 5), conversation area (Min 1), and footer (Length 1). Header block: bordered, title is agent name. Inside show: line 1 = 'Agent: {agent_name} | Specialty: {from name}' in Cyan, line 2 = 'Status: {status icon+text}' colored by status + 'Steps: {steps}/{max_steps}', line 3 = 'Stage: {stage} | Dependencies: {deps joined}'. Conversation area: bordered block titled ' Conversation ({message_count} messages) '. Render each entry from SubTaskInfo.messages as lines: for non-tool messages show role in brackets colored (Assistant=Cyan, System=DarkGray) followed by content text; for tool call messages show a wrench icon + tool_name in Yellow + truncated arguments on one line, then result/output on next line colored Green if success or Red if not. Use Paragraph with scroll offset (detail_scroll, 0). Footer: single line with key hints 'Esc: Back | ↑↓: Scroll | PgUp/PgDn: Page' in DarkGray. Modify render_swarm_view() to check state.detail_mode — if true and selected_subtask() returns Some, call render_agent_detail() for the full area and return early, otherwise render the normal layout.",
       "acceptance_criteria": [
         "render_agent_detail() function exists and renders header, conversation, footer",
         "Header shows agent name, status with color, steps, stage, dependencies",
@@ -65,7 +65,7 @@
     {
       "id": "US-004",
       "title": "Subtask List Selection Highlighting",
-      "description": "Update render_subtask_list() in src/tui/swarm_view.rs to support visual selection. Change the function signature to take &mut SwarmViewState (or accept &mut ListState separately) so it can use StatefulWidget rendering. Sync the ListState selected value from SwarmViewState.selected_index before rendering. Set highlight_style to Style with Modifier::BOLD and bg Color::DarkGray so the selected row is visually distinct. Use f.render_stateful_widget() instead of f.render_widget(). Update the block title to ' SubTasks (\u2191\u2193:select Enter:detail) ' to hint at available keys. Also update render_swarm_view() to pass mutable state reference to render_subtask_list().",
+      "description": "Update render_subtask_list() in src/tui/swarm_view.rs to support visual selection. Change the function signature to take &mut SwarmViewState (or accept &mut ListState separately) so it can use StatefulWidget rendering. Sync the ListState selected value from SwarmViewState.selected_index before rendering. Set highlight_style to Style with Modifier::BOLD and bg Color::DarkGray so the selected row is visually distinct. Use f.render_stateful_widget() instead of f.render_widget(). Update the block title to ' SubTasks (↑↓:select Enter:detail) ' to hint at available keys. Also update render_swarm_view() to pass mutable state reference to render_subtask_list().",
       "acceptance_criteria": [
         "render_subtask_list uses StatefulWidget with ListState",
         "Selected subtask row has bold text with dark gray background",
