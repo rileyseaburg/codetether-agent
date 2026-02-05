@@ -1,1 +1,1 @@
-Now let me verify the changes by running cargo check to see if there are any compilation errors:
+Now let me run cargo check to verify our changes compile correctly:
