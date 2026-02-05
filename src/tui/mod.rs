@@ -788,28 +788,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                     }
 
-                    // Swarm view scrolling (when in swarm mode)
-                    KeyCode::Up | KeyCode::Char('k') if app.view_mode == ViewMode::Swarm => {
-                        app.swarm_state.scroll = app.swarm_state.scroll.saturating_sub(1);
-                    }
-                    KeyCode::Down | KeyCode::Char('j') if app.view_mode == ViewMode::Swarm => {
-                        let max_scroll = app.swarm_state.subtasks.len().saturating_sub(1);
-                        app.swarm_state.scroll = (app.swarm_state.scroll + 1).min(max_scroll);
-                    }
-                    KeyCode::PageUp if app.view_mode == ViewMode::Swarm => {
-                        app.swarm_state.scroll = app.swarm_state.scroll.saturating_sub(10);
-                    }
-                    KeyCode::PageDown if app.view_mode == ViewMode::Swarm => {
-                        let max_scroll = app.swarm_state.subtasks.len().saturating_sub(1);
-                        app.swarm_state.scroll = (app.swarm_state.scroll + 10).min(max_scroll);
-                    }
-                    KeyCode::Home if app.view_mode == ViewMode::Swarm => {
-                        app.swarm_state.scroll = 0;
-                    }
-                    KeyCode::End if app.view_mode == ViewMode::Swarm => {
-                        app.swarm_state.scroll = app.swarm_state.subtasks.len().saturating_sub(1);
-                    }
-
                     // Switch agent
                     KeyCode::Tab => {
                         app.current_agent = if app.current_agent == "build" {

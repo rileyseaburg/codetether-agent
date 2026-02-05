@@ -1,0 +1,143 @@
+{
+  "project": "codetether-agent",
+  "feature": "Swarm Sub-Agent Detail View",
+  "branch_name": "feature/swarm-agent-detail-view",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Add Per-Agent Data Types and SwarmEvent Variants",
+      "description": "Define lightweight display types for per-agent conversation data in src/tui/swarm_view.rs. Add an AgentToolCallDetail struct with fields: tool_name (String), arguments_summary (String, max 200 chars), output_summary (String, max 500 chars), success (bool). Add an AgentMessageEntry struct with fields: role (String, e.g. 'assistant', 'tool', 'system'), content (String), is_tool_call (bool). Extend SubTaskInfo with new fields: tool_call_history (Vec<AgentToolCallDetail>), messages (Vec<AgentMessageEntry>), output (String), error (Option<String>). Add three new SwarmEvent variants: AgentToolCallRecord { subtask_id: String, tool_name: String, arguments_summary: String, output_summary: String, success: bool }, AgentMessageRecord { subtask_id: String, role: String, content: String }, AgentOutput { subtask_id: String, text: String }. Handle all three new variants in SwarmViewState::handle_event() \u2014 AgentToolCallRecord appends to the matching SubTaskInfo's tool_call_history and also pushes an AgentMessageEntry with is_tool_call=true; AgentMessageRecord appends to messages; AgentOutput appends to output. Keep the existing AgentToolCall variant working as before (it updates current_tool and steps).",
+      "acceptance_criteria": [
+        "AgentToolCallDetail struct exists with tool_name, arguments_summary, output_summary, success fields",
+        "AgentMessageEntry struct exists with role, content, is_tool_call fields",
+        "SubTaskInfo has tool_call_history, messages, output, error fields with Default values",
+        "SwarmEvent has AgentToolCallRecord, AgentMessageRecord, AgentOutput variants",
+        "handle_event() processes all three new variants correctly",
+        "Existing SwarmEvent variants and handling remain unchanged",
+        "cargo check passes"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-002",
+      "title": "Add Selection and Detail Mode State",
+      "description": "Add interactive selection and detail view state to SwarmViewState in src/tui/swarm_view.rs. Add fields: selected_index (Option<usize>) initialized to None, detail_mode (bool) initialized to false, detail_scroll (usize) initialized to 0. Add a ListState field for ratatui stateful list rendering. Add helper methods: select_next() which moves selected_index forward (wrapping or clamping at subtasks.len()-1), also sets selected_index to Some(0) if currently None; select_prev() which moves backward (clamping at 0); open_detail() which sets detail_mode=true and detail_scroll=0 if selected_index is Some; close_detail() which sets detail_mode=false; scroll_detail_down(amount: usize) which increments detail_scroll; scroll_detail_up(amount: usize) which decrements detail_scroll (saturating at 0); selected_subtask() -> Option<&SubTaskInfo> which returns the selected subtask. Update the Default impl or new() to initialize these fields. Import ratatui::widgets::ListState.",
+      "acceptance_criteria": [
+        "SwarmViewState has selected_index, detail_mode, detail_scroll, list_state fields",
+        "select_next() and select_prev() correctly navigate the subtask list",
+        "open_detail() only activates when a subtask is selected",
+        "close_detail() returns to list mode",
+        "scroll_detail_down and scroll_detail_up handle bounds correctly",
+        "selected_subtask() returns the correct SubTaskInfo reference",
+        "cargo check passes"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-003",
+      "title": "Render Full-Screen Agent Detail View",
+      "description": "Create a render_agent_detail() function in src/tui/swarm_view.rs that displays a full-screen detail view for a selected sub-agent. Layout: vertical split into header (Length 5), conversation area (Min 1), and footer (Length 1). Header block: bordered, title is agent name. Inside show: line 1 = 'Agent: {agent_name} | Specialty: {from name}' in Cyan, line 2 = 'Status: {status icon+text}' colored by status + 'Steps: {steps}/{max_steps}', line 3 = 'Stage: {stage} | Dependencies: {deps joined}'. Conversation area: bordered block titled ' Conversation ({message_count} messages) '. Render each entry from SubTaskInfo.messages as lines: for non-tool messages show role in brackets colored (Assistant=Cyan, System=DarkGray) followed by content text; for tool call messages show a wrench icon + tool_name in Yellow + truncated arguments on one line, then result/output on next line colored Green if success or Red if not. Use Paragraph with scroll offset (detail_scroll, 0). Footer: single line with key hints 'Esc: Back | \u2191\u2193: Scroll | PgUp/PgDn: Page' in DarkGray. Modify render_swarm_view() to check state.detail_mode \u2014 if true and selected_subtask() returns Some, call render_agent_detail() for the full area and return early, otherwise render the normal layout.",
+      "acceptance_criteria": [
+        "render_agent_detail() function exists and renders header, conversation, footer",
+        "Header shows agent name, status with color, steps, stage, dependencies",
+        "Conversation area renders messages with role-colored labels",
+        "Tool calls shown with wrench icon, tool name, arguments, and colored output",
+        "Paragraph uses scroll offset from detail_scroll",
+        "Footer shows keybinding hints",
+        "render_swarm_view() branches on detail_mode to show detail or normal view",
+        "cargo check passes"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001",
+        "US-002"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-004",
+      "title": "Subtask List Selection Highlighting",
+      "description": "Update render_subtask_list() in src/tui/swarm_view.rs to support visual selection. Change the function signature to take &mut SwarmViewState (or accept &mut ListState separately) so it can use StatefulWidget rendering. Sync the ListState selected value from SwarmViewState.selected_index before rendering. Set highlight_style to Style with Modifier::BOLD and bg Color::DarkGray so the selected row is visually distinct. Use f.render_stateful_widget() instead of f.render_widget(). Update the block title to ' SubTasks (\u2191\u2193:select Enter:detail) ' to hint at available keys. Also update render_swarm_view() to pass mutable state reference to render_subtask_list().",
+      "acceptance_criteria": [
+        "render_subtask_list uses StatefulWidget with ListState",
+        "Selected subtask row has bold text with dark gray background",
+        "ListState.selected syncs from SwarmViewState.selected_index",
+        "Block title includes key hint text",
+        "render_swarm_view passes mutable state for stateful rendering",
+        "cargo check passes"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-005",
+      "title": "Wire Swarm Keyboard Handling in TUI",
+      "description": "Add swarm-specific keyboard event handling in src/tui/mod.rs in the run_app() function's key event processing. Add a new branch that checks when app.view_mode is ViewMode::Swarm BEFORE the general key handling. When in Swarm mode and NOT in detail_mode: KeyCode::Up or KeyCode::Char('k') calls app.swarm_state.select_prev(); KeyCode::Down or KeyCode::Char('j') calls app.swarm_state.select_next(); KeyCode::Enter calls app.swarm_state.open_detail(); KeyCode::Esc sets app.view_mode = ViewMode::Chat and app.swarm_state.active = false; then continue to skip general handling. When in Swarm mode AND detail_mode is true: KeyCode::Up or KeyCode::Char('k') calls app.swarm_state.scroll_detail_up(1); KeyCode::Down or KeyCode::Char('j') calls app.swarm_state.scroll_detail_down(1); KeyCode::PageUp calls scroll_detail_up(10); KeyCode::PageDown calls scroll_detail_down(10); KeyCode::Esc calls app.swarm_state.close_detail(); then continue. Keep Ctrl+C/Ctrl+Q quit working in all modes. The existing F2/Ctrl+S toggle and other global keys should still work.",
+      "acceptance_criteria": [
+        "Up/Down arrows navigate subtask selection in swarm list view",
+        "Enter opens the detail view for the selected subtask",
+        "Esc in list view returns to Chat mode",
+        "Up/Down/PageUp/PageDown scroll the detail view content",
+        "Esc in detail view returns to the subtask list",
+        "Ctrl+C and Ctrl+Q still quit from any swarm sub-mode",
+        "j/k keys work as vim-style navigation alternatives",
+        "cargo check passes"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Pipe Per-Agent Events from Executor to TUI",
+      "description": "Modify the swarm executor to emit detailed per-agent events that the TUI can consume. In src/swarm/executor.rs, add an optional event_tx parameter (Option<tokio::sync::mpsc::Sender<crate::tui::swarm_view::SwarmEvent>>) to the run_agent_loop() function signature. Inside run_agent_loop(), after each tool call completes, if event_tx is Some, send SwarmEvent::AgentToolCallRecord with the subtask_id (derive from context or add parameter), tool_name, truncated arguments (first 200 chars), truncated output (first 500 chars), and success status. After each assistant text response, send SwarmEvent::AgentMessageRecord with role='assistant' and the text. Use .send().await and ignore errors (let _ = tx.send(...).await). Update all callers of run_agent_loop() to pass None for event_tx to maintain backward compatibility. In SwarmExecutor::execute_stage(), clone and pass the event_tx to each spawned agent task. In src/tui/mod.rs App::start_swarm_execution(), create the mpsc channel, store the receiver in swarm_rx, and pass the sender to SwarmExecutor. The event_tx should be stored on SwarmExecutor as an optional field set via a with_event_tx() builder method. Update handle_swarm_event() in App to process the new event variants (they are already handled by SwarmViewState::handle_event from US-001).",
+      "acceptance_criteria": [
+        "run_agent_loop accepts optional event_tx parameter",
+        "Tool calls emit AgentToolCallRecord events with truncated args/output",
+        "Assistant responses emit AgentMessageRecord events",
+        "All existing callers pass None and continue working",
+        "SwarmExecutor has with_event_tx builder method",
+        "execute_stage clones and passes event_tx to agent tasks",
+        "start_swarm_execution creates channel and wires sender to executor",
+        "TUI receives and displays per-agent events in real-time",
+        "cargo check passes",
+        "cargo test passes"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 4
+    }
+  ],
+  "technical_requirements": [
+    "Use ratatui StatefulWidget and ListState for selection",
+    "Keep all new types in src/tui/swarm_view.rs to avoid circular deps",
+    "Truncate large tool arguments and outputs to prevent memory bloat",
+    "Maintain backward compatibility with existing SwarmEvent handling"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-features",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-05T00:00:00+00:00",
+  "updated_at": "2026-02-05T00:00:00+00:00"
+}
