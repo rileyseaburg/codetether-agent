@@ -502,7 +502,6 @@ impl WorktreeManager {
     }
 
     /// Clean up all orphaned worktrees
-    #[allow(dead_code)]
     pub fn cleanup_all(&self) -> Result<usize> {
         let worktrees = self.list()?;
         let count = worktrees.len();
@@ -519,7 +518,64 @@ impl WorktreeManager {
             .current_dir(&self.repo_path)
             .output();
 
-        Ok(count)
+        // Clean up orphaned branches (branches that exist but worktrees don't)
+        let orphaned = self.cleanup_orphaned_branches()?;
+        
+        Ok(count + orphaned)
+    }
+
+    /// Clean up orphaned subagent branches (branches with no corresponding worktree)
+    pub fn cleanup_orphaned_branches(&self) -> Result<usize> {
+        // List all branches matching our pattern
+        let output = Command::new("git")
+            .args(["branch", "--list", "codetether/subagent-*"])
+            .current_dir(&self.repo_path)
+            .output()
+            .context("Failed to list branches")?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let branches: Vec<&str> = stdout
+            .lines()
+            .map(|l| l.trim().trim_start_matches("* "))
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        // Get active worktrees
+        let active_worktrees = self.list()?;
+        let active_branches: std::collections::HashSet<&str> = active_worktrees
+            .iter()
+            .map(|wt| wt.branch.as_str())
+            .collect();
+
+        let mut deleted = 0;
+        for branch in branches {
+            if !active_branches.contains(branch) {
+                info!(branch = %branch, "Deleting orphaned subagent branch");
+                let result = Command::new("git")
+                    .args(["branch", "-D", branch])
+                    .current_dir(&self.repo_path)
+                    .output();
+
+                match result {
+                    Ok(output) if output.status.success() => {
+                        deleted += 1;
+                    }
+                    Ok(output) => {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        warn!(branch = %branch, error = %stderr, "Failed to delete orphaned branch");
+                    }
+                    Err(e) => {
+                        warn!(branch = %branch, error = %e, "Failed to run git branch -D");
+                    }
+                }
+            }
+        }
+
+        if deleted > 0 {
+            info!(count = deleted, "Cleaned up orphaned subagent branches");
+        }
+
+        Ok(deleted)
     }
 }
 

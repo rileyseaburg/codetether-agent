@@ -613,6 +613,58 @@ async fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Some(Command::Cleanup(args)) => {
+            // Clean up orphaned worktrees and branches from Ralph runs
+            use worktree::WorktreeManager;
+            
+            let cwd = std::env::current_dir()?;
+            let mgr = WorktreeManager::new(&cwd)?;
+            
+            // List what exists
+            let worktrees = mgr.list()?;
+            
+            if args.dry_run {
+                if args.json {
+                    let output = serde_json::json!({
+                        "dry_run": true,
+                        "worktrees_found": worktrees.len(),
+                        "worktrees": worktrees.iter().map(|wt| {
+                            serde_json::json!({
+                                "id": wt.id,
+                                "branch": wt.branch,
+                                "path": wt.path.display().to_string(),
+                            })
+                        }).collect::<Vec<_>>(),
+                    });
+                    println!("{}", serde_json::to_string_pretty(&output)?);
+                } else {
+                    println!("# Cleanup Preview (Dry Run)\n");
+                    if worktrees.is_empty() {
+                        println!("No orphaned worktrees or branches found.");
+                    } else {
+                        println!("Found {} worktree(s) to clean:\n", worktrees.len());
+                        for wt in &worktrees {
+                            println!("- **{}** → {}", wt.branch, wt.path.display());
+                        }
+                        println!("\nRun without --dry-run to delete.");
+                    }
+                }
+            } else {
+                let count = mgr.cleanup_all()?;
+                
+                if args.json {
+                    println!("{}", serde_json::json!({
+                        "cleaned": count,
+                        "success": true,
+                    }));
+                } else if count > 0 {
+                    println!("Cleaned up {} orphaned worktree(s)/branch(es).", count);
+                } else {
+                    println!("No orphaned worktrees or branches found.");
+                }
+            }
+            Ok(())
+        }
         None => {
             // Default: A2A worker mode
             // Check if we have a server URL from args or environment
