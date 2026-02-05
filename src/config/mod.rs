@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 
-use crate::tui::theme::Theme;
 
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
