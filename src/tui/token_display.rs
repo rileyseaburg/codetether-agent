@@ -1,10 +1,8 @@
 use crate::telemetry::{ContextLimit, CostEstimate, TOKEN_USAGE, TokenUsageSnapshot};
 use crate::tui::theme::Theme;
 use ratatui::{
-    Frame,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Paragraph, Wrap},
 };
 
 /// Enhanced token usage display with costs and warnings

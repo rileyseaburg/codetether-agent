@@ -27,6 +27,7 @@ pub fn detect_color_support() -> ColorSupport {
 
 /// Color support levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ColorSupport {
     Monochrome,
     Ansi8,

@@ -54,7 +54,7 @@
         "render_swarm_view() branches on detail_mode to show detail or normal view",
         "cargo check passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-001",
@@ -74,7 +74,7 @@
         "render_swarm_view passes mutable state for stateful rendering",
         "cargo check passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-002"
@@ -95,7 +95,7 @@
         "j/k keys work as vim-style navigation alternatives",
         "cargo check passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-002"
@@ -118,7 +118,7 @@
         "cargo check passes",
         "cargo test passes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [
         "US-001"

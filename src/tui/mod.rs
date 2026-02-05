@@ -14,9 +14,9 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
 use crate::session::{list_sessions, Session, SessionEvent, SessionSummary};
-use crate::swarm::{DecompositionStrategy, Orchestrator, SwarmConfig, SwarmExecutor, SwarmStats};
+use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::message_formatter::MessageFormatter;
-use crate::tui::swarm_view::{render_swarm_view, SubTaskInfo, SwarmEvent, SwarmViewState};
+use crate::tui::swarm_view::{render_swarm_view, SwarmEvent, SwarmViewState};
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
@@ -110,6 +110,7 @@ struct App {
     last_max_scroll: usize,
 }
 
+#[allow(dead_code)]
 struct ChatMessage {
     role: String,
     content: String,
@@ -468,67 +469,21 @@ impl App {
         self.view_mode = ViewMode::Swarm;
         self.swarm_state = SwarmViewState::new();
 
-        // Clone task for async
-        let task_clone = task.clone();
-
         // Send initial event
         let _ = tx.send(SwarmEvent::Started {
             task: task.clone(),
             total_subtasks: 0,
         }).await;
 
-        // Spawn swarm execution with real-time events
+        // Spawn swarm execution — executor emits all events via event_tx
+        let task_clone = task;
         tokio::spawn(async move {
-            // Create orchestrator for decomposition
-            let orchestrator_result = Orchestrator::new(swarm_config.clone()).await;
-            let mut orchestrator = match orchestrator_result {
-                Ok(o) => o,
-                Err(e) => {
-                    let _ = tx.send(SwarmEvent::Error(format!("Failed to create orchestrator: {}", e))).await;
-                    return;
-                }
-            };
-
-            // Decompose the task first
-            let subtasks = match orchestrator.decompose(&task_clone, DecompositionStrategy::Automatic).await {
-                Ok(subtasks) => subtasks,
-                Err(e) => {
-                    let _ = tx.send(SwarmEvent::Error(format!("Decomposition failed: {}", e))).await;
-                    return;
-                }
-            };
-
-            // Send decomposition info immediately so UI shows subtasks
-            let subtask_infos: Vec<SubTaskInfo> = subtasks
-                .iter()
-                .map(|s| SubTaskInfo {
-                    id: s.id.clone(),
-                    name: s.name.clone(),
-                    status: crate::swarm::SubTaskStatus::Pending,
-                    stage: s.stage,
-                    dependencies: s.dependencies.clone(),
-                    agent_name: s.specialty.clone(),
-                    current_tool: None,
-                    steps: 0,
-                    max_steps: 50,
-                    tool_call_history: Vec::new(),
-                    messages: Vec::new(),
-                    output: None,
-                    error: None,
-                })
-                .collect();
-
-            let _ = tx.send(SwarmEvent::Decomposed {
-                subtasks: subtask_infos,
-            }).await;
-
-            // Now execute using SwarmExecutor (which will re-decompose but that's ok)
-            let executor = SwarmExecutor::new(swarm_config);
+            // Create executor with event channel — it handles decomposition + execution
+            let executor = SwarmExecutor::new(swarm_config).with_event_tx(tx.clone());
             let result = executor.execute(&task_clone, DecompositionStrategy::Automatic).await;
 
             match result {
                 Ok(swarm_result) => {
-                    // Send completion with actual results
                     let _ = tx.send(SwarmEvent::Complete {
                         success: swarm_result.success,
                         stats: swarm_result.stats,
@@ -657,18 +612,20 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         let estimated_lines = app.messages.len() * 4; // rough estimate
         app.last_max_scroll = estimated_lines.saturating_sub(terminal_height);
 
-        // Check for async responses
-        if let Some(ref mut rx) = app.response_rx {
-            if let Ok(response) = rx.try_recv() {
+        // Drain all pending async responses
+        if let Some(mut rx) = app.response_rx.take() {
+            while let Ok(response) = rx.try_recv() {
                 app.handle_response(response);
             }
+            app.response_rx = Some(rx);
         }
 
-        // Check for swarm events
-        if let Some(ref mut rx) = app.swarm_rx {
-            if let Ok(event) = rx.try_recv() {
+        // Drain all pending swarm events
+        if let Some(mut rx) = app.swarm_rx.take() {
+            while let Ok(event) = rx.try_recv() {
                 app.handle_swarm_event(event);
             }
+            app.swarm_rx = Some(rx);
         }
 
         if event::poll(std::time::Duration::from_millis(100))? {

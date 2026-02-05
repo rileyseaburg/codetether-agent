@@ -4,7 +4,6 @@
 
 use crate::agent::ToolUse;
 use crate::provider::{Message, Usage};
-use crate::telemetry::TokenCounts;
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
