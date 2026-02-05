@@ -156,6 +156,9 @@ impl App {
         // Add user message
         self.messages.push(ChatMessage::new("user", message.clone()));
 
+        // Auto-scroll to bottom when user sends a message
+        self.scroll = usize::MAX;
+
         let current_agent = self.current_agent.clone();
         let model = config
             .agents
@@ -222,6 +225,9 @@ impl App {
     }
 
     fn handle_response(&mut self, response: AgentResponse) {
+        // Auto-scroll to bottom when new content arrives
+        self.scroll = usize::MAX;
+
         match response {
             AgentResponse::Text(text) => {
                 self.messages.push(ChatMessage::new("assistant", text));
