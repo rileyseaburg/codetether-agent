@@ -16,7 +16,7 @@ A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protoco
 - **RLM Processing**: Handle context larger than model windows via recursive language model approach
 - **Secure Secrets**: All API keys loaded exclusively from HashiCorp Vault - no environment variable secrets
 - **Interactive TUI**: Beautiful terminal interface built with Ratatui
-- **24+ Tools**: Comprehensive tool system for file ops, LSP, code search, web fetch, and more
+- **27+ Tools**: Comprehensive tool system for file ops, LSP, code search, web fetch, and more
 - **Session Management**: Persistent session history with git-aware storage
 - **High Performance**: Written in Rust for maximum efficiency and reliability
 
@@ -75,13 +75,6 @@ vault kv put secret/codetether/providers/anthropic api_key="..." base_url="https
 # StepFun
 vault kv put secret/codetether/providers/stepfun api_key="..."
 
-# MiniMax
-vault kv put secret/codetether/providers/minimax api_key="..." base_url="https://api.minimax.io/anthropic/v1"
-
-# Novita (OpenAI-compatible)
-vault kv put secret/codetether/providers/novita api_key="..." base_url="https://api.novita.ai/openai/v1"
-
-# ZhipuAI (GLM models)
 vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https://api.z.ai/api/paas/v4"
 ```
 
@@ -94,9 +87,6 @@ vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https:/
 | `google` | `gemini-2.5-pro` | Google AI |
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |
-| `minimax` | `MiniMax-M2` | Via Anthropic-compatible API |
-| `novita` | `qwen/qwen3-coder-next` | OpenAI-compatible API |
-| `zhipuai` | `glm-4.7-flashx` | GLM models |
 
 ### 2. Connect to CodeTether Platform
 
@@ -290,7 +280,7 @@ Specialized for code navigation and discovery.
 
 ## Tools
 
-CodeTether Agent includes 24+ tools for comprehensive development automation:
+CodeTether Agent includes 27+ tools for comprehensive development automation:
 
 ### File Operations
 | Tool | Description |

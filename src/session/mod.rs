@@ -350,6 +350,229 @@ impl Session {
         })
     }
 
+    /// Process a user message with real-time event streaming for UI updates.
+    /// Events are sent through the provided channel as tool calls execute.
+    pub async fn prompt_with_events(
+        &mut self,
+        message: &str,
+        event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
+    ) -> Result<SessionResult> {
+        use crate::provider::{CompletionRequest, ContentPart, ProviderRegistry, Role, parse_model_string};
+
+        let _ = event_tx.send(SessionEvent::Thinking).await;
+
+        // Load provider registry from Vault
+        let registry = ProviderRegistry::from_vault().await?;
+        let providers = registry.list();
+        tracing::info!("Available providers: {:?}", providers);
+
+        // Parse model string (format: "provider/model", "provider", or just "model")
+        let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
+            let (prov, model) = parse_model_string(model_str);
+            if prov.is_some() {
+                (prov.map(|s| s.to_string()), model.to_string())
+            } else if providers.contains(&model) {
+                (Some(model.to_string()), String::new())
+            } else {
+                (None, model.to_string())
+            }
+        } else {
+            (None, String::new())
+        };
+
+        // Determine which provider to use (prefer zhipuai as default)
+        let selected_provider = provider_name
+            .as_deref()
+            .filter(|p| providers.contains(p))
+            .unwrap_or_else(|| {
+                if providers.contains(&"zhipuai") {
+                    "zhipuai"
+                } else {
+                    providers[0]
+                }
+            });
+
+        let provider = registry
+            .get(selected_provider)
+            .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
+
+        // Add user message
+        self.add_message(Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: message.to_string(),
+            }],
+        });
+
+        // Generate title if needed
+        if self.title.is_none() {
+            self.generate_title().await?;
+        }
+
+        // Determine model
+        let model = if !model_id.is_empty() {
+            model_id
+        } else {
+            match selected_provider {
+                "moonshotai" => "kimi-k2.5".to_string(),
+                "anthropic" => "claude-sonnet-4-20250514".to_string(),
+                "openai" => "gpt-4o".to_string(),
+                "google" => "gemini-2.5-pro".to_string(),
+                "zhipuai" => "glm-4.7".to_string(),
+                "openrouter" => "zhipuai/glm-4.7".to_string(),
+                "novita" => "qwen/qwen3-coder-next".to_string(),
+                _ => "glm-4.7".to_string(),
+            }
+        };
+
+        // Create tool registry
+        let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
+        let tool_definitions = tool_registry.definitions();
+
+        let temperature = if model.starts_with("kimi-k2") {
+            Some(1.0)
+        } else {
+            Some(0.7)
+        };
+
+        tracing::info!("Using model: {} via provider: {}", model, selected_provider);
+        tracing::info!("Available tools: {}", tool_definitions.len());
+
+        // Build system prompt
+        let cwd = std::env::var("PWD")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+        let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+
+        let mut final_output = String::new();
+        let max_steps = 50;
+
+        for step in 1..=max_steps {
+            tracing::info!(step = step, "Agent step starting");
+            let _ = event_tx.send(SessionEvent::Thinking).await;
+
+            // Build messages with system prompt first
+            let mut messages = vec![Message {
+                role: Role::System,
+                content: vec![ContentPart::Text {
+                    text: system_prompt.clone(),
+                }],
+            }];
+            messages.extend(self.messages.clone());
+
+            let request = CompletionRequest {
+                messages,
+                tools: tool_definitions.clone(),
+                model: model.clone(),
+                temperature,
+                top_p: None,
+                max_tokens: Some(8192),
+                stop: Vec::new(),
+            };
+
+            let response = provider.complete(request).await?;
+
+            crate::telemetry::TOKEN_USAGE.record_model_usage(
+                &model,
+                response.usage.prompt_tokens as u64,
+                response.usage.completion_tokens as u64,
+            );
+
+            // Extract tool calls
+            let tool_calls: Vec<(String, String, serde_json::Value)> = response
+                .message
+                .content
+                .iter()
+                .filter_map(|part| {
+                    if let ContentPart::ToolCall { id, name, arguments } = part {
+                        let args: serde_json::Value =
+                            serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
+                        Some((id.clone(), name.clone(), args))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Collect text output
+            for part in &response.message.content {
+                if let ContentPart::Text { text } = part {
+                    if !text.is_empty() {
+                        final_output.push_str(text);
+                        final_output.push('\n');
+                        let _ = event_tx.send(SessionEvent::TextChunk(text.clone())).await;
+                    }
+                }
+            }
+
+            if tool_calls.is_empty() {
+                self.add_message(response.message.clone());
+                break;
+            }
+
+            self.add_message(response.message.clone());
+
+            tracing::info!(step = step, num_tools = tool_calls.len(), "Executing tool calls");
+
+            // Execute each tool call with events
+            for (tool_id, tool_name, tool_input) in tool_calls {
+                let args_str = serde_json::to_string(&tool_input).unwrap_or_default();
+                let _ = event_tx
+                    .send(SessionEvent::ToolCallStart {
+                        name: tool_name.clone(),
+                        arguments: args_str,
+                    })
+                    .await;
+
+                tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+
+                let (content, success) = if let Some(tool) = tool_registry.get(&tool_name) {
+                    match tool.execute(tool_input.clone()).await {
+                        Ok(result) => {
+                            tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
+                            (result.output, result.success)
+                        }
+                        Err(e) => {
+                            tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
+                            (format!("Error: {}", e), false)
+                        }
+                    }
+                } else {
+                    tracing::warn!(tool = %tool_name, "Tool not found");
+                    (format!("Error: Unknown tool '{}'", tool_name), false)
+                };
+
+                let _ = event_tx
+                    .send(SessionEvent::ToolCallComplete {
+                        name: tool_name.clone(),
+                        output: content.clone(),
+                        success,
+                    })
+                    .await;
+
+                self.add_message(Message {
+                    role: Role::Tool,
+                    content: vec![ContentPart::ToolResult {
+                        tool_call_id: tool_id,
+                        content,
+                    }],
+                });
+            }
+        }
+
+        self.save().await?;
+
+        let _ = event_tx
+            .send(SessionEvent::TextComplete(final_output.trim().to_string()))
+            .await;
+        let _ = event_tx.send(SessionEvent::Done).await;
+
+        Ok(SessionResult {
+            text: final_output.trim().to_string(),
+            session_id: self.id.clone(),
+        })
+    }
+
     /// Generate a title for the session based on the first message
     /// Only sets title if not already set (for initial title generation)
     pub async fn generate_title(&mut self) -> Result<()> {
@@ -458,6 +681,25 @@ impl Session {
 pub struct SessionResult {
     pub text: String,
     pub session_id: String,
+}
+
+/// Events emitted during session processing for real-time UI updates
+#[derive(Debug, Clone)]
+pub enum SessionEvent {
+    /// Agent is thinking/processing
+    Thinking,
+    /// Tool call started
+    ToolCallStart { name: String, arguments: String },
+    /// Tool call completed with result
+    ToolCallComplete { name: String, output: String, success: bool },
+    /// Partial text output (for streaming)
+    TextChunk(String),
+    /// Final text output
+    TextComplete(String),
+    /// Processing complete
+    Done,
+    /// Error occurred
+    Error(String),
 }
 
 /// List all sessions

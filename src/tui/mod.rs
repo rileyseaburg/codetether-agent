@@ -8,7 +8,7 @@ pub mod theme_utils;
 pub mod token_display;
 
 use crate::config::Config;
-use crate::session::Session;
+use crate::session::{Session, SessionEvent};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
@@ -82,7 +82,8 @@ struct App {
     session: Option<Session>,
     is_processing: bool,
     processing_message: Option<String>,
-    response_rx: Option<mpsc::Receiver<AgentResponse>>,
+    current_tool: Option<String>,
+    response_rx: Option<mpsc::Receiver<SessionEvent>>,
 }
 
 struct ChatMessage {
@@ -90,16 +91,6 @@ struct ChatMessage {
     content: String,
     timestamp: String,
     message_type: MessageType,
-}
-
-/// Response from the agent
-#[derive(Debug, Clone)]
-enum AgentResponse {
-    Text(String),
-    ToolCall { name: String, arguments: String },
-    ToolResult { name: String, output: String },
-    Error(String),
-    Complete,
 }
 
 impl ChatMessage {
@@ -135,6 +126,7 @@ impl App {
             session: None,
             is_processing: false,
             processing_message: None,
+            current_tool: None,
             response_rx: None,
         }
     }
@@ -199,6 +191,7 @@ impl App {
         // Set processing state
         self.is_processing = true;
         self.processing_message = Some("Thinking...".to_string());
+        self.current_tool = None;
 
         // Create channel for async communication
         let (tx, rx) = mpsc::channel(100);
@@ -208,49 +201,58 @@ impl App {
         let session_clone = session.clone();
         let message_clone = message.clone();
 
-        // Spawn async task to process the message
+        // Spawn async task to process the message with event streaming
         tokio::spawn(async move {
             let mut session = session_clone;
-            match session.prompt(&message_clone).await {
-                Ok(result) => {
-                    let _ = tx.send(AgentResponse::Text(result.text)).await;
-                    let _ = tx.send(AgentResponse::Complete).await;
-                }
-                Err(err) => {
-                    tracing::error!(error = %err, "Agent processing failed");
-                    let _ = tx.send(AgentResponse::Error(format!("Error: {err}"))).await;
-                    let _ = tx.send(AgentResponse::Complete).await;
-                }
+            if let Err(err) = session.prompt_with_events(&message_clone, tx.clone()).await {
+                tracing::error!(error = %err, "Agent processing failed");
+                let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
+                let _ = tx.send(SessionEvent::Done).await;
             }
         });
     }
 
-    fn handle_response(&mut self, response: AgentResponse) {
+    fn handle_response(&mut self, event: SessionEvent) {
         // Auto-scroll to bottom when new content arrives
         self.scroll = usize::MAX;
 
-        match response {
-            AgentResponse::Text(text) => {
-                self.messages.push(ChatMessage::new("assistant", text));
+        match event {
+            SessionEvent::Thinking => {
+                self.processing_message = Some("Thinking...".to_string());
+                self.current_tool = None;
             }
-            AgentResponse::ToolCall { name, arguments } => {
+            SessionEvent::ToolCallStart { name, arguments } => {
+                self.processing_message = Some(format!("Running {}...", name));
+                self.current_tool = Some(name.clone());
                 self.messages.push(
-                    ChatMessage::new("tool", format!("Calling tool: {name}"))
+                    ChatMessage::new("tool", format!("🔧 {}", name))
                         .with_message_type(MessageType::ToolCall { name, arguments }),
                 );
             }
-            AgentResponse::ToolResult { name, output } => {
+            SessionEvent::ToolCallComplete { name, output, success } => {
+                let icon = if success { "✓" } else { "✗" };
                 self.messages.push(
-                    ChatMessage::new("tool", format!("Tool result: {name}"))
+                    ChatMessage::new("tool", format!("{} {}", icon, name))
                         .with_message_type(MessageType::ToolResult { name, output }),
                 );
+                self.current_tool = None;
+                self.processing_message = Some("Thinking...".to_string());
             }
-            AgentResponse::Error(err) => {
-                self.messages.push(ChatMessage::new("assistant", err));
+            SessionEvent::TextChunk(_text) => {
+                // Could be used for streaming text display in the future
             }
-            AgentResponse::Complete => {
+            SessionEvent::TextComplete(text) => {
+                if !text.is_empty() {
+                    self.messages.push(ChatMessage::new("assistant", text));
+                }
+            }
+            SessionEvent::Error(err) => {
+                self.messages.push(ChatMessage::new("assistant", format!("Error: {}", err)));
+            }
+            SessionEvent::Done => {
                 self.is_processing = false;
                 self.processing_message = None;
+                self.current_tool = None;
                 self.response_rx = None;
             }
         }
@@ -619,11 +621,15 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
         ]);
         message_lines.push(processing_line);
         
+        // Show different colors based on state
+        let (status_text, status_color) = if let Some(ref tool) = app.current_tool {
+            (format!("  {} Running: {}", spinner[spinner_idx], tool), Color::Cyan)
+        } else {
+            (format!("  {} {}", spinner[spinner_idx], app.processing_message.as_deref().unwrap_or("Thinking...")), Color::Yellow)
+        };
+        
         let indicator_line = Line::from(vec![
-            Span::styled(
-                format!("  {} {}", spinner[spinner_idx], app.processing_message.as_deref().unwrap_or("Thinking...")),
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-            ),
+            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
         ]);
         message_lines.push(indicator_line);
         message_lines.push(Line::from(""));
