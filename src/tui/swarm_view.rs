@@ -298,10 +298,14 @@ fn render_stage_progress(f: &mut Frame, state: &SwarmViewState, area: Rect) {
 }
 
 fn render_subtask_list(f: &mut Frame, state: &SwarmViewState, area: Rect) {
+    use ratatui::widgets::ListState;
+    
     let items: Vec<ListItem> = state
         .subtasks
         .iter()
-        .map(|task| {
+        .enumerate()
+        .map(|(i, task)| {
+            let is_selected = i == state.scroll;
             let (icon, color) = match task.status {
                 SubTaskStatus::Pending => ("○", Color::DarkGray),
                 SubTaskStatus::Blocked => ("⊘", Color::Yellow),
@@ -313,16 +317,27 @@ fn render_subtask_list(f: &mut Frame, state: &SwarmViewState, area: Rect) {
             };
 
             let mut spans = vec![
+                Span::styled(
+                    if is_selected { "▶ " } else { "  " },
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::styled(format!("{} ", icon), Style::default().fg(color)),
                 Span::styled(
                     format!("[S{}] ", task.stage),
                     Style::default().fg(Color::DarkGray),
                 ),
-                Span::styled(&task.name, Style::default().fg(Color::White)),
+                Span::styled(
+                    &task.name,
+                    if is_selected {
+                        Style::default().fg(Color::White).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::White)
+                    },
+                ),
             ];
 
-            // Show agent/tool info for running tasks
-            if task.status == SubTaskStatus::Running {
+            // Show agent/tool info for running tasks or selected task
+            if task.status == SubTaskStatus::Running || is_selected {
                 if let Some(ref agent) = task.agent_name {
                     spans.push(Span::styled(
                         format!(" → {}", agent),
@@ -351,15 +366,25 @@ fn render_subtask_list(f: &mut Frame, state: &SwarmViewState, area: Rect) {
         })
         .collect();
 
+    let help_text = if state.subtasks.is_empty() {
+        " SubTasks (none yet) "
+    } else {
+        " SubTasks (↑↓/jk to navigate) "
+    };
+
     let list = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" SubTasks "),
+                .title(help_text),
         )
         .highlight_style(Style::default().add_modifier(Modifier::BOLD));
 
-    f.render_widget(list, area);
+    // Create list state for proper scrolling
+    let mut list_state = ListState::default();
+    list_state.select(Some(state.scroll));
+
+    f.render_stateful_widget(list, area, &mut list_state);
 }
 
 fn render_stats(f: &mut Frame, state: &SwarmViewState, area: Rect) {
