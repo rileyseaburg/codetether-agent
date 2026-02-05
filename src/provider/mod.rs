@@ -35,11 +35,26 @@ pub enum Role {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentPart {
-    Text { text: String },
-    Image { url: String, mime_type: Option<String> },
-    File { path: String, mime_type: Option<String> },
-    ToolCall { id: String, name: String, arguments: String },
-    ToolResult { tool_call_id: String, content: String },
+    Text {
+        text: String,
+    },
+    Image {
+        url: String,
+        mime_type: Option<String>,
+    },
+    File {
+        path: String,
+        mime_type: Option<String>,
+    },
+    ToolCall {
+        id: String,
+        name: String,
+        arguments: String,
+    },
+    ToolResult {
+        tool_call_id: String,
+        content: String,
+    },
 }
 
 /// Tool definition for the model
@@ -187,7 +202,9 @@ impl ProviderRegistry {
         // Initialize Anthropic
         if let Some(provider_config) = config.providers.get("anthropic") {
             if let Some(api_key) = &provider_config.api_key {
-                registry.register(Arc::new(anthropic::AnthropicProvider::new(api_key.clone())?));
+                registry.register(Arc::new(anthropic::AnthropicProvider::new(
+                    api_key.clone(),
+                )?));
             }
         } else if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
             registry.register(Arc::new(anthropic::AnthropicProvider::new(api_key)?));
@@ -202,16 +219,31 @@ impl ProviderRegistry {
             registry.register(Arc::new(google::GoogleProvider::new(api_key)?));
         }
 
+        // Initialize Novita (OpenAI-compatible)
+        if let Some(provider_config) = config.providers.get("novita") {
+            if let Some(api_key) = &provider_config.api_key {
+                let base_url = provider_config
+                    .base_url
+                    .clone()
+                    .unwrap_or_else(|| "https://api.novita.ai/openai/v1".to_string());
+                registry.register(Arc::new(openai::OpenAIProvider::with_base_url(
+                    api_key.clone(),
+                    base_url,
+                    "novita",
+                )?));
+            }
+        }
+
         Ok(registry)
     }
 
     /// Initialize providers from HashiCorp Vault
-    /// 
+    ///
     /// This loads API keys from Vault and creates providers dynamically.
     /// Supports OpenAI-compatible providers via base_url.
     pub async fn from_vault() -> Result<Self> {
         let mut registry = Self::new();
-        
+
         let manager = match crate::secrets::secrets_manager() {
             Some(m) => m,
             None => {
@@ -244,39 +276,39 @@ impl ProviderRegistry {
                         Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                     }
                 }
-                "google" | "google-vertex" => {
-                    match google::GoogleProvider::new(api_key) {
-                        Ok(p) => registry.register(Arc::new(p)),
-                        Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
-                    }
-                }
+                "google" | "google-vertex" => match google::GoogleProvider::new(api_key) {
+                    Ok(p) => registry.register(Arc::new(p)),
+                    Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                },
                 // StepFun - native provider (direct API, not via OpenRouter)
-                "stepfun" => {
-                    match stepfun::StepFunProvider::new(api_key) {
-                        Ok(p) => registry.register(Arc::new(p)),
-                        Err(e) => tracing::warn!("Failed to init stepfun: {}", e),
-                    }
-                }
+                "stepfun" => match stepfun::StepFunProvider::new(api_key) {
+                    Ok(p) => registry.register(Arc::new(p)),
+                    Err(e) => tracing::warn!("Failed to init stepfun: {}", e),
+                },
                 // OpenRouter - native provider with support for extended response formats
-                "openrouter" => {
-                    match openrouter::OpenRouterProvider::new(api_key) {
-                        Ok(p) => registry.register(Arc::new(p)),
-                        Err(e) => tracing::warn!("Failed to init openrouter: {}", e),
-                    }
-                }
+                "openrouter" => match openrouter::OpenRouterProvider::new(api_key) {
+                    Ok(p) => registry.register(Arc::new(p)),
+                    Err(e) => tracing::warn!("Failed to init openrouter: {}", e),
+                },
                 // Moonshot AI - native provider for Kimi models
-                "moonshotai" | "moonshotai-cn" => {
-                    match moonshot::MoonshotProvider::new(api_key) {
+                "moonshotai" | "moonshotai-cn" => match moonshot::MoonshotProvider::new(api_key) {
+                    Ok(p) => registry.register(Arc::new(p)),
+                    Err(e) => tracing::warn!("Failed to init moonshotai: {}", e),
+                },
+                // ZhipuAI - OpenAI-compatible coding API
+                "zhipuai" => {
+                    let base_url = secrets.base_url.clone().unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
+                    match openai::OpenAIProvider::with_base_url(api_key, base_url, "zhipuai") {
                         Ok(p) => registry.register(Arc::new(p)),
-                        Err(e) => tracing::warn!("Failed to init moonshotai: {}", e),
+                        Err(e) => tracing::warn!("Failed to init zhipuai: {}", e),
                     }
                 }
                 // OpenAI-compatible providers (with custom base_url)
-                "deepseek" | "groq" | "togetherai" 
-                | "fireworks-ai" | "mistral" | "nvidia" | "alibaba"
-                | "openai" | "azure" => {
+                "deepseek" | "groq" | "togetherai" | "fireworks-ai" | "mistral" | "nvidia"
+                | "alibaba" | "openai" | "azure" | "novita" => {
                     if let Some(base_url) = secrets.base_url {
-                        match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id) {
+                        match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id)
+                        {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                         }
@@ -286,14 +318,27 @@ impl ProviderRegistry {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init openai: {}", e),
                         }
+                    } else if provider_id == "novita" {
+                        let base_url = "https://api.novita.ai/openai/v1".to_string();
+                        match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id)
+                        {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                        }
                     } else {
                         // Try using the base_url from the models API
                         if let Ok(catalog) = models::ModelCatalog::fetch().await {
                             if let Some(provider_info) = catalog.get_provider(&provider_id) {
                                 if let Some(api_url) = &provider_info.api {
-                                    match openai::OpenAIProvider::with_base_url(api_key, api_url.clone(), &provider_id) {
+                                    match openai::OpenAIProvider::with_base_url(
+                                        api_key,
+                                        api_url.clone(),
+                                        &provider_id,
+                                    ) {
                                         Ok(p) => registry.register(Arc::new(p)),
-                                        Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                                        Err(e) => {
+                                            tracing::warn!("Failed to init {}: {}", provider_id, e)
+                                        }
                                     }
                                 }
                             }
@@ -314,7 +359,10 @@ impl ProviderRegistry {
             }
         }
 
-        tracing::info!("Registered {} providers from Vault", registry.providers.len());
+        tracing::info!(
+            "Registered {} providers from Vault",
+            registry.providers.len()
+        );
         Ok(registry)
     }
 }

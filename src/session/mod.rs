@@ -4,6 +4,7 @@
 
 use crate::agent::ToolUse;
 use crate::provider::{Message, Usage};
+use crate::telemetry::TokenCounts;
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -68,7 +69,7 @@ impl Session {
     /// Load the last session
     pub async fn last() -> Result<Self> {
         let sessions_dir = Self::sessions_dir()?;
-        
+
         if !sessions_dir.exists() {
             anyhow::bail!("No sessions found");
         }
@@ -106,14 +107,14 @@ impl Session {
     /// Save the session to disk
     pub async fn save(&self) -> Result<()> {
         let path = Self::session_path(&self.id)?;
-        
+
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await?;
         }
 
         let content = serde_json::to_string_pretty(self)?;
         fs::write(&path, content).await?;
-        
+
         Ok(())
     }
 
@@ -125,11 +126,13 @@ impl Session {
 
     /// Execute a prompt and get the result
     pub async fn prompt(&mut self, message: &str) -> Result<SessionResult> {
-        use crate::provider::{ContentPart, Role, ProviderRegistry, CompletionRequest, parse_model_string};
-        
+        use crate::provider::{
+            CompletionRequest, ContentPart, ProviderRegistry, Role, parse_model_string,
+        };
+
         // Load providers from Vault
         let registry = ProviderRegistry::from_vault().await?;
-        
+
         let providers = registry.list();
         if providers.is_empty() {
             anyhow::bail!("No providers available. Configure API keys in HashiCorp Vault.");
@@ -137,26 +140,45 @@ impl Session {
 
         tracing::info!("Available providers: {:?}", providers);
 
-        // Parse model string (format: "provider/model" or just "model")
+        // Parse model string (format: "provider/model", "provider", or just "model")
         let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
             let (prov, model) = parse_model_string(model_str);
-            (prov.map(|s| s.to_string()), model.to_string())
+            if prov.is_some() {
+                // Format: provider/model
+                (prov.map(|s| s.to_string()), model.to_string())
+            } else if providers.contains(&model) {
+                // Format: just provider name (e.g., "novita")
+                (Some(model.to_string()), String::new())
+            } else {
+                // Format: just model name
+                (None, model.to_string())
+            }
         } else {
             (None, String::new())
         };
 
-        // Determine which provider to use
-        let selected_provider = provider_name.as_deref()
+        // Determine which provider to use (prefer zhipuai as default)
+        let selected_provider = provider_name
+            .as_deref()
             .filter(|p| providers.contains(p))
-            .unwrap_or(providers[0]);
+            .unwrap_or_else(|| {
+                if providers.contains(&"zhipuai") {
+                    "zhipuai"
+                } else {
+                    providers[0]
+                }
+            });
 
-        let provider = registry.get(selected_provider)
+        let provider = registry
+            .get(selected_provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
 
         // Add user message to session using add_message
         self.add_message(Message {
             role: Role::User,
-            content: vec![ContentPart::Text { text: message.to_string() }],
+            content: vec![ContentPart::Text {
+                text: message.to_string(),
+            }],
         });
 
         // Generate title if this is the first user message and no title exists
@@ -174,8 +196,10 @@ impl Session {
                 "anthropic" => "claude-sonnet-4-20250514".to_string(),
                 "openai" => "gpt-4o".to_string(),
                 "google" => "gemini-2.5-pro".to_string(),
-                "openrouter" => "stepfun/step-3.5-flash:free".to_string(),
-                _ => "kimi-k2.5".to_string(),
+                "zhipuai" => "glm-4.7".to_string(),
+                "openrouter" => "zhipuai/glm-4.7".to_string(),
+                "novita" => "qwen/qwen3-coder-next".to_string(),
+                _ => "glm-4.7".to_string(),
             }
         };
 
@@ -194,23 +218,29 @@ impl Session {
         tracing::info!("Available tools: {}", tool_definitions.len());
 
         // Build system prompt with AGENTS.md
-        let cwd = self.metadata.directory.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+        let cwd = self
+            .metadata
+            .directory
+            .clone()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
         let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
 
         // Run agentic loop with tool execution
         let max_steps = 50;
         let mut final_output = String::new();
-        
+
         for step in 1..=max_steps {
             tracing::info!(step = step, "Agent step starting");
-            
+
             // Build messages with system prompt first
             let mut messages = vec![Message {
                 role: Role::System,
-                content: vec![ContentPart::Text { text: system_prompt.clone() }],
+                content: vec![ContentPart::Text {
+                    text: system_prompt.clone(),
+                }],
             }];
             messages.extend(self.messages.clone());
-            
+
             // Create completion request with tools
             let request = CompletionRequest {
                 messages,
@@ -224,21 +254,36 @@ impl Session {
 
             // Call the provider
             let response = provider.complete(request).await?;
-            
+
+            // Record token usage
+            crate::telemetry::TOKEN_USAGE.record_model_usage(
+                &model,
+                response.usage.prompt_tokens as u64,
+                response.usage.completion_tokens as u64,
+            );
+
             // Extract tool calls from response
-            let tool_calls: Vec<(String, String, serde_json::Value)> = response.message.content.iter()
+            let tool_calls: Vec<(String, String, serde_json::Value)> = response
+                .message
+                .content
+                .iter()
                 .filter_map(|part| {
-                    if let ContentPart::ToolCall { id, name, arguments } = part {
+                    if let ContentPart::ToolCall {
+                        id,
+                        name,
+                        arguments,
+                    } = part
+                    {
                         // Parse arguments JSON string into Value
-                        let args: serde_json::Value = serde_json::from_str(arguments)
-                            .unwrap_or(serde_json::json!({}));
+                        let args: serde_json::Value =
+                            serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
                         Some((id.clone(), name.clone(), args))
                     } else {
                         None
                     }
                 })
                 .collect();
-            
+
             // Collect text output
             for part in &response.message.content {
                 if let ContentPart::Text { text } = part {
@@ -248,22 +293,26 @@ impl Session {
                     }
                 }
             }
-            
+
             // If no tool calls, we're done
             if tool_calls.is_empty() {
                 self.add_message(response.message.clone());
                 break;
             }
-            
+
             // Add assistant message with tool calls
             self.add_message(response.message.clone());
-            
-            tracing::info!(step = step, num_tools = tool_calls.len(), "Executing tool calls");
-            
+
+            tracing::info!(
+                step = step,
+                num_tools = tool_calls.len(),
+                "Executing tool calls"
+            );
+
             // Execute each tool call
             for (tool_id, tool_name, tool_input) in tool_calls {
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
-                
+
                 // Get and execute the tool
                 let content = if let Some(tool) = tool_registry.get(&tool_name) {
                     match tool.execute(tool_input.clone()).await {
@@ -280,7 +329,7 @@ impl Session {
                     tracing::warn!(tool = %tool_name, "Tool not found");
                     format!("Error: Unknown tool '{}'", tool_name)
                 };
-                
+
                 // Add tool result message
                 self.add_message(Message {
                     role: Role::Tool,
@@ -309,8 +358,11 @@ impl Session {
         }
 
         // Get first user message
-        let first_message = self.messages.iter().find(|m| m.role == crate::provider::Role::User);
-        
+        let first_message = self
+            .messages
+            .iter()
+            .find(|m| m.role == crate::provider::Role::User);
+
         if let Some(msg) = first_message {
             let text: String = msg
                 .content
@@ -337,8 +389,11 @@ impl Session {
     /// Use this for on-demand title updates or after context changes
     pub async fn regenerate_title(&mut self) -> Result<()> {
         // Get first user message
-        let first_message = self.messages.iter().find(|m| m.role == crate::provider::Role::User);
-        
+        let first_message = self
+            .messages
+            .iter()
+            .find(|m| m.role == crate::provider::Role::User);
+
         if let Some(msg) = first_message {
             let text: String = msg
                 .content
@@ -377,7 +432,7 @@ impl Session {
     /// Call this when the session context changes (e.g., directory change, model change)
     pub async fn on_context_change(&mut self, regenerate_title: bool) -> Result<()> {
         self.updated_at = Utc::now();
-        
+
         if regenerate_title {
             self.regenerate_title().await?;
         }

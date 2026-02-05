@@ -14,7 +14,10 @@ use tracing::{info, warn};
 
 /// Tools eligible for RLM routing
 fn rlm_eligible_tools() -> HashSet<&'static str> {
-    ["read", "glob", "grep", "bash", "search"].iter().copied().collect()
+    ["read", "glob", "grep", "bash", "search"]
+        .iter()
+        .copied()
+        .collect()
 }
 
 /// Context for routing decisions
@@ -151,9 +154,18 @@ impl RlmRouter {
         let tail_chars = (max_chars as f64 * 0.3) as usize;
 
         let head: String = output.chars().take(head_chars).collect();
-        let tail: String = output.chars().rev().take(tail_chars).collect::<String>().chars().rev().collect();
+        let tail: String = output
+            .chars()
+            .rev()
+            .take(tail_chars)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
 
-        let omitted_tokens = estimated_tokens - RlmChunker::estimate_tokens(&head) - RlmChunker::estimate_tokens(&tail);
+        let omitted_tokens = estimated_tokens
+            - RlmChunker::estimate_tokens(&head)
+            - RlmChunker::estimate_tokens(&tail);
         let rlm_hint = Self::build_rlm_hint(tool_id, tool_args, estimated_tokens);
 
         let truncated = format!(
@@ -165,23 +177,44 @@ impl RlmRouter {
     }
 
     fn build_rlm_hint(tool_id: &str, args: &serde_json::Value, tokens: usize) -> String {
-        let base = format!("⚠️ OUTPUT TOO LARGE ({} tokens). Use RLM for full analysis:", tokens);
+        let base = format!(
+            "⚠️ OUTPUT TOO LARGE ({} tokens). Use RLM for full analysis:",
+            tokens
+        );
 
         match tool_id {
             "read" => {
-                let path = args.get("filePath").and_then(|v| v.as_str()).unwrap_or("...");
-                format!("{}\n```\nrlm({{ query: \"Analyze this file\", content_paths: [\"{}\"] }})\n```", base, path)
+                let path = args
+                    .get("filePath")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("...");
+                format!(
+                    "{}\n```\nrlm({{ query: \"Analyze this file\", content_paths: [\"{}\"] }})\n```",
+                    base, path
+                )
             }
             "bash" => {
-                format!("{}\n```\nrlm({{ query: \"Analyze this command output\", content: \"<paste or use content_paths>\" }})\n```", base)
+                format!(
+                    "{}\n```\nrlm({{ query: \"Analyze this command output\", content: \"<paste or use content_paths>\" }})\n```",
+                    base
+                )
             }
             "grep" => {
-                let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or("...");
+                let pattern = args
+                    .get("pattern")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("...");
                 let include = args.get("include").and_then(|v| v.as_str()).unwrap_or("*");
-                format!("{}\n```\nrlm({{ query: \"Summarize search results for {}\", content_glob: \"{}\" }})\n```", base, pattern, include)
+                format!(
+                    "{}\n```\nrlm({{ query: \"Summarize search results for {}\", content_glob: \"{}\" }})\n```",
+                    base, pattern, include
+                )
             }
             _ => {
-                format!("{}\n```\nrlm({{ query: \"Summarize this output\", content: \"...\" }})\n```", base)
+                format!(
+                    "{}\n```\nrlm({{ query: \"Summarize this output\", content: \"...\" }})\n```",
+                    base
+                )
             }
         }
     }
@@ -191,7 +224,11 @@ impl RlmRouter {
     /// Based on "Recursive Language Models" (Zhang et al. 2025):
     /// - Context is loaded as a variable in a REPL-like environment
     /// - LLM writes code/queries to analyze, decompose, and recursively sub-call itself
-    pub async fn auto_process(output: &str, ctx: AutoProcessContext<'_>, config: &RlmConfig) -> Result<RlmResult> {
+    pub async fn auto_process(
+        output: &str,
+        ctx: AutoProcessContext<'_>,
+        config: &RlmConfig,
+    ) -> Result<RlmResult> {
         let start = Instant::now();
         let input_tokens = RlmChunker::estimate_tokens(output);
 
@@ -217,7 +254,10 @@ impl RlmRouter {
 
         // Build the query based on tool type
         let base_query = Self::build_query_for_tool(ctx.tool_id, &ctx.tool_args);
-        let query = format!("{}\n\n## Content Analysis Hints\n{}", base_query, content_hints);
+        let query = format!(
+            "{}\n\n## Content Analysis Hints\n{}",
+            base_query, content_hints
+        );
 
         // Build the RLM system prompt
         let system_prompt = Self::build_rlm_system_prompt(input_tokens, ctx.tool_id, &query);
@@ -232,17 +272,15 @@ impl RlmRouter {
         let exploration = Self::build_exploration_summary(&processed_output, input_tokens);
 
         // Run iterative analysis
-        let mut conversation = vec![
-            Message {
-                role: Role::User,
-                content: vec![ContentPart::Text {
-                    text: format!(
-                        "{}\n\nHere is the context exploration:\n```\n{}\n```\n\nNow analyze and answer the query.",
-                        system_prompt, exploration
-                    ),
-                }],
-            },
-        ];
+        let mut conversation = vec![Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: format!(
+                    "{}\n\nHere is the context exploration:\n```\n{}\n```\n\nNow analyze and answer the query.",
+                    system_prompt, exploration
+                ),
+            }],
+        }];
 
         for i in 0..max_iterations {
             iterations = i + 1;
@@ -282,11 +320,18 @@ impl RlmRouter {
                     if iterations > 1 {
                         break; // Use what we have
                     }
-                    return Ok(Self::fallback_result(output, ctx.tool_id, &ctx.tool_args, input_tokens));
+                    return Ok(Self::fallback_result(
+                        output,
+                        ctx.tool_id,
+                        &ctx.tool_args,
+                        input_tokens,
+                    ));
                 }
             };
 
-            let response_text: String = response.message.content
+            let response_text: String = response
+                .message
+                .content
                 .iter()
                 .filter_map(|p| match p {
                     ContentPart::Text { text } => Some(text.clone()),
@@ -317,7 +362,9 @@ impl RlmRouter {
             // Add response to conversation
             conversation.push(Message {
                 role: Role::Assistant,
-                content: vec![ContentPart::Text { text: response_text }],
+                content: vec![ContentPart::Text {
+                    text: response_text,
+                }],
             });
 
             // Prompt for continuation
@@ -345,7 +392,10 @@ impl RlmRouter {
 
         // Fallback if no FINAL was produced
         let answer = final_answer.unwrap_or_else(|| {
-            warn!(iterations, subcalls, "RLM: No FINAL produced, using fallback");
+            warn!(
+                iterations,
+                subcalls, "RLM: No FINAL produced, using fallback"
+            );
             Self::build_enhanced_fallback(output, ctx.tool_id, &ctx.tool_args, input_tokens)
         });
 
@@ -385,20 +435,17 @@ impl RlmRouter {
 
     fn extract_final(text: &str) -> Option<String> {
         // Look for FINAL("...") or FINAL('...') or FINAL!(...)
-        let patterns = [
-            r#"FINAL\s*\(\s*["'`]"#,
-            r#"FINAL!\s*\(\s*["'`]?"#,
-        ];
+        let patterns = [r#"FINAL\s*\(\s*["'`]"#, r#"FINAL!\s*\(\s*["'`]?"#];
 
         for _pattern_start in patterns {
             if let Some(start_idx) = text.find("FINAL") {
                 let after = &text[start_idx..];
-                
+
                 // Find the opening quote/paren
                 if let Some(open_idx) = after.find(['"', '\'', '`']) {
                     let quote_char = after.chars().nth(open_idx)?;
                     let content_start = start_idx + open_idx + 1;
-                    
+
                     // Find matching close
                     let content = &text[content_start..];
                     if let Some(close_idx) = content.find(quote_char) {
@@ -418,8 +465,22 @@ impl RlmRouter {
         let lines: Vec<&str> = content.lines().collect();
         let total_lines = lines.len();
 
-        let head: String = lines.iter().take(30).copied().collect::<Vec<_>>().join("\n");
-        let tail: String = lines.iter().rev().take(50).collect::<Vec<_>>().into_iter().rev().copied().collect::<Vec<_>>().join("\n");
+        let head: String = lines
+            .iter()
+            .take(30)
+            .copied()
+            .collect::<Vec<_>>()
+            .join("\n");
+        let tail: String = lines
+            .iter()
+            .rev()
+            .take(50)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .copied()
+            .collect::<Vec<_>>()
+            .join("\n");
 
         format!(
             "=== CONTEXT EXPLORATION ===\n\
@@ -427,12 +488,20 @@ impl RlmRouter {
              === FIRST 30 LINES ===\n{}\n\n\
              === LAST 50 LINES ===\n{}\n\
              === END EXPLORATION ===",
-            content.len(), total_lines, input_tokens, head, tail
+            content.len(),
+            total_lines,
+            input_tokens,
+            head,
+            tail
         )
     }
 
     fn build_rlm_system_prompt(input_tokens: usize, tool_id: &str, query: &str) -> String {
-        let context_type = if tool_id == "session_context" { "conversation history" } else { "tool output" };
+        let context_type = if tool_id == "session_context" {
+            "conversation history"
+        } else {
+            "tool output"
+        };
 
         format!(
             r#"You are tasked with analyzing large content that cannot fit in a normal context window.
@@ -492,14 +561,24 @@ Be SPECIFIC with file paths, function names, error messages."#.to_string()
         }
     }
 
-    fn build_enhanced_fallback(output: &str, tool_id: &str, tool_args: &serde_json::Value, input_tokens: usize) -> String {
+    fn build_enhanced_fallback(
+        output: &str,
+        tool_id: &str,
+        tool_args: &serde_json::Value,
+        input_tokens: usize,
+    ) -> String {
         let lines: Vec<&str> = output.lines().collect();
 
         if tool_id == "session_context" {
             // Extract key structural information
-            let file_matches: Vec<&str> = lines.iter()
+            let file_matches: Vec<&str> = lines
+                .iter()
                 .filter_map(|l| {
-                    if l.contains(".ts") || l.contains(".rs") || l.contains(".py") || l.contains(".json") {
+                    if l.contains(".ts")
+                        || l.contains(".rs")
+                        || l.contains(".py")
+                        || l.contains(".json")
+                    {
                         Some(*l)
                     } else {
                         None
@@ -508,24 +587,45 @@ Be SPECIFIC with file paths, function names, error messages."#.to_string()
                 .take(15)
                 .collect();
 
-            let tool_calls: Vec<&str> = lines.iter()
+            let tool_calls: Vec<&str> = lines
+                .iter()
                 .filter(|l| l.contains("[Tool "))
                 .take(10)
                 .copied()
                 .collect();
 
-            let errors: Vec<&str> = lines.iter()
-                .filter(|l| l.to_lowercase().contains("error") || l.to_lowercase().contains("failed"))
+            let errors: Vec<&str> = lines
+                .iter()
+                .filter(|l| {
+                    l.to_lowercase().contains("error") || l.to_lowercase().contains("failed")
+                })
                 .take(5)
                 .copied()
                 .collect();
 
-            let head: String = lines.iter().take(30).copied().collect::<Vec<_>>().join("\n");
-            let tail: String = lines.iter().rev().take(80).collect::<Vec<_>>().into_iter().rev().copied().collect::<Vec<_>>().join("\n");
+            let head: String = lines
+                .iter()
+                .take(30)
+                .copied()
+                .collect::<Vec<_>>()
+                .join("\n");
+            let tail: String = lines
+                .iter()
+                .rev()
+                .take(80)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .copied()
+                .collect::<Vec<_>>()
+                .join("\n");
 
             let mut parts = vec![
                 "## Context Summary (Fallback Mode)".to_string(),
-                format!("*Original: {} tokens - RLM processing produced insufficient output*", input_tokens),
+                format!(
+                    "*Original: {} tokens - RLM processing produced insufficient output*",
+                    input_tokens
+                ),
                 String::new(),
             ];
 
@@ -558,16 +658,27 @@ Be SPECIFIC with file paths, function names, error messages."#.to_string()
             parts.join("\n")
         } else {
             let (truncated, _, _) = Self::smart_truncate(output, tool_id, tool_args, 8000);
-            format!("## Fallback Summary\n*RLM processing failed - showing structured excerpt*\n\n{}", truncated)
+            format!(
+                "## Fallback Summary\n*RLM processing failed - showing structured excerpt*\n\n{}",
+                truncated
+            )
         }
     }
 
-    fn fallback_result(output: &str, tool_id: &str, tool_args: &serde_json::Value, input_tokens: usize) -> RlmResult {
+    fn fallback_result(
+        output: &str,
+        tool_id: &str,
+        tool_args: &serde_json::Value,
+        input_tokens: usize,
+    ) -> RlmResult {
         let (truncated, _, _) = Self::smart_truncate(output, tool_id, tool_args, 8000);
         let output_tokens = RlmChunker::estimate_tokens(&truncated);
 
         RlmResult {
-            processed: format!("[RLM processing failed, showing truncated output]\n\n{}", truncated),
+            processed: format!(
+                "[RLM processing failed, showing truncated output]\n\n{}",
+                truncated
+            ),
             stats: RlmStats {
                 input_tokens,
                 output_tokens,

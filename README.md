@@ -78,6 +78,9 @@ vault kv put secret/codetether/providers/stepfun api_key="..."
 # MiniMax
 vault kv put secret/codetether/providers/minimax api_key="..." base_url="https://api.minimax.io/anthropic/v1"
 
+# Novita (OpenAI-compatible)
+vault kv put secret/codetether/providers/novita api_key="..." base_url="https://api.novita.ai/openai/v1"
+
 # ZhipuAI (GLM models)
 vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https://api.z.ai/api/paas/v4"
 ```
@@ -92,6 +95,7 @@ vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https:/
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |
 | `minimax` | `MiniMax-M2` | Via Anthropic-compatible API |
+| `novita` | `qwen/qwen3-coder-next` | OpenAI-compatible API |
 | `zhipuai` | `glm-4.7-flashx` | GLM models |
 
 ### 2. Connect to CodeTether Platform

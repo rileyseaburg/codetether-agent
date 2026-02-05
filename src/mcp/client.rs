@@ -11,10 +11,10 @@ use super::types::*;
 use anyhow::Result;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Duration;
-use tokio::sync::{oneshot, RwLock};
+use tokio::sync::{RwLock, oneshot};
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
@@ -37,19 +37,19 @@ impl McpClient {
     pub async fn connect_subprocess(command: &str, args: &[&str]) -> Result<Arc<Self>> {
         let transport = Arc::new(ProcessTransport::spawn(command, args).await?);
         let client = Arc::new(Self::new(transport));
-        
+
         // Start message receiver
         let client_clone = Arc::clone(&client);
         tokio::spawn(async move {
             client_clone.receive_loop().await;
         });
-        
+
         // Initialize the connection
         client.initialize().await?;
-        
+
         Ok(client)
     }
-    
+
     /// Create a new MCP client with custom transport
     pub fn new(transport: Arc<dyn Transport>) -> Self {
         Self {
@@ -65,7 +65,11 @@ impl McpClient {
     }
 
     /// Create a new MCP client with a shared registry for multi-server management
-    pub fn with_registry(transport: Arc<dyn Transport>, registry: Arc<McpRegistry>, name: Option<String>) -> Self {
+    pub fn with_registry(
+        transport: Arc<dyn Transport>,
+        registry: Arc<McpRegistry>,
+        name: Option<String>,
+    ) -> Self {
         Self {
             transport,
             pending_requests: RwLock::new(HashMap::new()),
@@ -77,7 +81,7 @@ impl McpClient {
             server_name: RwLock::new(name),
         }
     }
-    
+
     /// Initialize the connection with the server
     pub async fn initialize(&self) -> Result<InitializeResult> {
         let params = InitializeParams {
@@ -92,14 +96,16 @@ impl McpClient {
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
         };
-        
-        let response = self.request("initialize", Some(serde_json::to_value(&params)?)).await?;
+
+        let response = self
+            .request("initialize", Some(serde_json::to_value(&params)?))
+            .await?;
         let result: InitializeResult = serde_json::from_value(response)?;
-        
+
         // Store server info
         *self.server_info.write().await = Some(result.server_info.clone());
         *self.server_capabilities.write().await = Some(result.capabilities.clone());
-        
+
         // Register this client with the registry if a server name is set
         if let Some(name) = self.server_name.read().await.clone() {
             // Create a self-reference for registration
@@ -107,158 +113,175 @@ impl McpClient {
             // or use a post-initialization hook
             debug!("Client initialized with server name: {}", name);
         }
-        
+
         // Send initialized notification
         self.notify("notifications/initialized", None).await?;
-        
+
         info!(
             "Connected to MCP server: {} v{}",
             result.server_info.name, result.server_info.version
         );
-        
+
         // Fetch available tools
         if result.capabilities.tools.is_some() {
             self.refresh_tools().await?;
         }
-        
+
         Ok(result)
     }
-    
+
     /// Get the registry associated with this client
     pub fn registry(&self) -> Arc<McpRegistry> {
         Arc::clone(&self.registry)
     }
-    
+
     /// Get the server name if set
     pub async fn server_name(&self) -> Option<String> {
         self.server_name.read().await.clone()
     }
-    
+
     /// Set the server name for registry tracking
     pub async fn set_server_name(&self, name: String) {
         *self.server_name.write().await = Some(name);
     }
-    
+
     /// Check if the connected server has a specific capability
     pub async fn has_capability(&self, capability: &str) -> bool {
         let caps = self.server_capabilities.read().await;
         match capability {
             "tools" => caps.as_ref().map(|c| c.tools.is_some()).unwrap_or(false),
-            "resources" => caps.as_ref().map(|c| c.resources.is_some()).unwrap_or(false),
+            "resources" => caps
+                .as_ref()
+                .map(|c| c.resources.is_some())
+                .unwrap_or(false),
             "prompts" => caps.as_ref().map(|c| c.prompts.is_some()).unwrap_or(false),
             "logging" => caps.as_ref().map(|c| c.logging.is_some()).unwrap_or(false),
             _ => false,
         }
     }
-    
+
     /// Get server capabilities
     pub async fn capabilities(&self) -> Option<ServerCapabilities> {
         self.server_capabilities.read().await.clone()
     }
-    
+
     /// Discover tools from the registry across all connected servers
     pub async fn discover_tools_from_registry(&self) -> Vec<(String, McpTool)> {
         self.registry.all_tools().await
     }
-    
+
     /// Find a tool across all servers in the registry
     pub async fn find_tool_in_registry(&self, tool_name: &str) -> Option<(String, McpTool)> {
         self.registry.find_tool(tool_name).await
     }
-    
+
     /// Refresh the list of available tools
     pub async fn refresh_tools(&self) -> Result<Vec<McpTool>> {
         let response = self.request("tools/list", None).await?;
         let result: ListToolsResult = serde_json::from_value(response)?;
-        
+
         *self.available_tools.write().await = result.tools.clone();
-        
+
         info!("Loaded {} tools from MCP server", result.tools.len());
-        
+
         Ok(result.tools)
     }
-    
+
     /// Get available tools
     pub async fn tools(&self) -> Vec<McpTool> {
         self.available_tools.read().await.clone()
     }
-    
+
     /// Call a tool
     pub async fn call_tool(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
         let params = CallToolParams {
             name: name.to_string(),
             arguments,
         };
-        
-        let response = self.request("tools/call", Some(serde_json::to_value(&params)?)).await?;
+
+        let response = self
+            .request("tools/call", Some(serde_json::to_value(&params)?))
+            .await?;
         let result: CallToolResult = serde_json::from_value(response)?;
-        
+
         Ok(result)
     }
-    
+
     /// List available resources
     pub async fn list_resources(&self) -> Result<Vec<McpResource>> {
         let response = self.request("resources/list", None).await?;
         let result: ListResourcesResult = serde_json::from_value(response)?;
         Ok(result.resources)
     }
-    
+
     /// Read a resource
     pub async fn read_resource(&self, uri: &str) -> Result<ReadResourceResult> {
-        let params = ReadResourceParams { uri: uri.to_string() };
-        let response = self.request("resources/read", Some(serde_json::to_value(&params)?)).await?;
+        let params = ReadResourceParams {
+            uri: uri.to_string(),
+        };
+        let response = self
+            .request("resources/read", Some(serde_json::to_value(&params)?))
+            .await?;
         let result: ReadResourceResult = serde_json::from_value(response)?;
         Ok(result)
     }
-    
+
     /// List available prompts
     pub async fn list_prompts(&self) -> Result<Vec<McpPrompt>> {
         let response = self.request("prompts/list", None).await?;
         let result: ListPromptsResult = serde_json::from_value(response)?;
         Ok(result.prompts)
     }
-    
+
     /// Get a prompt
     pub async fn get_prompt(&self, name: &str, arguments: Value) -> Result<GetPromptResult> {
         let params = GetPromptParams {
             name: name.to_string(),
             arguments,
         };
-        let response = self.request("prompts/get", Some(serde_json::to_value(&params)?)).await?;
+        let response = self
+            .request("prompts/get", Some(serde_json::to_value(&params)?))
+            .await?;
         let result: GetPromptResult = serde_json::from_value(response)?;
         Ok(result)
     }
-    
+
     /// Send a JSON-RPC request and wait for response
     async fn request(&self, method: &str, params: Option<Value>) -> Result<Value> {
         let id = RequestId::Number(self.request_id.fetch_add(1, Ordering::SeqCst));
         let request = JsonRpcRequest::new(id.clone(), method, params);
-        
+
         // Create response channel
         let (tx, rx) = oneshot::channel();
         self.pending_requests.write().await.insert(id.clone(), tx);
-        
+
         // Send request
         self.transport.send_request(request).await?;
-        
+
         // Wait for response with timeout
         let response = timeout(Duration::from_secs(30), rx)
             .await
             .map_err(|_| anyhow::anyhow!("Request timed out"))??;
-        
+
         if let Some(error) = response.error {
-            return Err(anyhow::anyhow!("MCP error {}: {}", error.code, error.message));
+            return Err(anyhow::anyhow!(
+                "MCP error {}: {}",
+                error.code,
+                error.message
+            ));
         }
-        
-        response.result.ok_or_else(|| anyhow::anyhow!("Empty response"))
+
+        response
+            .result
+            .ok_or_else(|| anyhow::anyhow!("Empty response"))
     }
-    
+
     /// Send a notification (no response expected)
     async fn notify(&self, method: &str, params: Option<Value>) -> Result<()> {
         let notification = JsonRpcNotification::new(method, params);
         self.transport.send_notification(notification).await
     }
-    
+
     /// Message receive loop
     async fn receive_loop(&self) {
         loop {
@@ -277,7 +300,7 @@ impl McpClient {
             }
         }
     }
-    
+
     /// Handle an incoming message
     async fn handle_message(&self, message: McpMessage) {
         match message {
@@ -292,7 +315,7 @@ impl McpClient {
             McpMessage::Request(request) => {
                 // Server is making a request to us (e.g., sampling)
                 debug!("Received request from server: {}", request.method);
-                
+
                 let response = match request.method.as_str() {
                     "sampling/createMessage" => {
                         // Handle sampling request
@@ -302,21 +325,19 @@ impl McpClient {
                             JsonRpcError::method_not_found("Sampling not yet implemented"),
                         )
                     }
-                    _ => {
-                        JsonRpcResponse::error(
-                            request.id,
-                            JsonRpcError::method_not_found(&request.method),
-                        )
-                    }
+                    _ => JsonRpcResponse::error(
+                        request.id,
+                        JsonRpcError::method_not_found(&request.method),
+                    ),
                 };
-                
+
                 if let Err(e) = self.transport.send_response(response).await {
                     error!("Failed to send response: {}", e);
                 }
             }
             McpMessage::Notification(notification) => {
                 debug!("Received notification: {}", notification.method);
-                
+
                 match notification.method.as_str() {
                     "notifications/tools/list_changed" => {
                         info!("Tools list changed, refreshing...");
@@ -334,7 +355,7 @@ impl McpClient {
             }
         }
     }
-    
+
     /// Close the connection
     pub async fn close(&self) -> Result<()> {
         self.transport.close().await
@@ -342,7 +363,7 @@ impl McpClient {
 }
 
 /// MCP Server Registry - manages multiple MCP server connections
-/// 
+///
 /// This registry allows managing connections to multiple external MCP servers,
 /// enabling CodeTether to use tools from various sources like filesystem servers,
 /// database servers, and custom tool servers.
@@ -363,76 +384,90 @@ impl McpRegistry {
             tool_index: RwLock::new(HashMap::new()),
         }
     }
-    
+
     /// Connect to an MCP server and register it with the registry
-    pub async fn connect(&self, name: &str, command: &str, args: &[&str]) -> Result<Arc<McpClient>> {
+    pub async fn connect(
+        &self,
+        name: &str,
+        command: &str,
+        args: &[&str],
+    ) -> Result<Arc<McpClient>> {
         let transport = Arc::new(ProcessTransport::spawn(command, args).await?);
         let client = Arc::new(McpClient::with_registry(
-            transport, 
+            transport,
             Arc::new(McpRegistry::new()), // Each client gets its own registry for now
-            Some(name.to_string())
+            Some(name.to_string()),
         ));
-        
+
         // Start message receiver
         let client_clone = Arc::clone(&client);
         tokio::spawn(async move {
             client_clone.receive_loop().await;
         });
-        
+
         // Initialize the connection
         let init_result = client.initialize().await?;
-        
+
         // Register the client
-        self.register(name, Arc::clone(&client), init_result.capabilities).await;
-        
+        self.register(name, Arc::clone(&client), init_result.capabilities)
+            .await;
+
         Ok(client)
     }
-    
+
     /// Register a client with the registry
-    pub async fn register(&self, name: &str, client: Arc<McpClient>, capabilities: ServerCapabilities) {
+    pub async fn register(
+        &self,
+        name: &str,
+        client: Arc<McpClient>,
+        capabilities: ServerCapabilities,
+    ) {
         // Store client
         self.clients.write().await.insert(name.to_string(), client);
-        
+
         // Store capabilities
-        self.server_capabilities.write().await.insert(name.to_string(), capabilities);
-        
+        self.server_capabilities
+            .write()
+            .await
+            .insert(name.to_string(), capabilities);
+
         info!("Registered MCP server '{}' with registry", name);
     }
-    
+
     /// Get a connected client
     pub async fn get(&self, name: &str) -> Option<Arc<McpClient>> {
         self.clients.read().await.get(name).cloned()
     }
-    
+
     /// List all connected servers
     pub async fn list(&self) -> Vec<String> {
         self.clients.read().await.keys().cloned().collect()
     }
-    
+
     /// Get capabilities for a specific server
     pub async fn get_capabilities(&self, name: &str) -> Option<ServerCapabilities> {
         self.server_capabilities.read().await.get(name).cloned()
     }
-    
+
     /// Check if a server has a specific capability
     pub async fn has_capability(&self, name: &str, capability: &str) -> bool {
         let caps = self.server_capabilities.read().await;
-        caps.get(name).map(|c| {
-            match capability {
+        caps.get(name)
+            .map(|c| match capability {
                 "tools" => c.tools.is_some(),
                 "resources" => c.resources.is_some(),
                 "prompts" => c.prompts.is_some(),
                 "logging" => c.logging.is_some(),
                 _ => false,
-            }
-        }).unwrap_or(false)
+            })
+            .unwrap_or(false)
     }
-    
+
     /// List servers that have a specific capability
     pub async fn list_by_capability(&self, capability: &str) -> Vec<String> {
         let mut result = Vec::new();
         let caps = self.server_capabilities.read().await;
-        
+
         for (name, caps) in caps.iter() {
             let has_cap = match capability {
                 "tools" => caps.tools.is_some(),
@@ -445,10 +480,10 @@ impl McpRegistry {
                 result.push(name.clone());
             }
         }
-        
+
         result
     }
-    
+
     /// Disconnect from a server
     pub async fn disconnect(&self, name: &str) -> Result<()> {
         if let Some(client) = self.clients.write().await.remove(name) {
@@ -462,20 +497,20 @@ impl McpRegistry {
         }
         Ok(())
     }
-    
+
     /// Get all available tools from all servers
     pub async fn all_tools(&self) -> Vec<(String, McpTool)> {
         let mut all_tools = Vec::new();
-        
+
         for (name, client) in self.clients.read().await.iter() {
             for tool in client.tools().await {
                 all_tools.push((name.clone(), tool));
             }
         }
-        
+
         all_tools
     }
-    
+
     /// Find a specific tool across all servers
     pub async fn find_tool(&self, tool_name: &str) -> Option<(String, McpTool)> {
         // First check the tool index
@@ -486,43 +521,59 @@ impl McpRegistry {
                 }
             }
         }
-        
+
         // Fallback: search all clients
         for (name, client) in self.clients.read().await.iter() {
             if let Some(tool) = client.tools().await.iter().find(|t| t.name == tool_name) {
                 // Update index
-                self.tool_index.write().await.insert(tool_name.to_string(), name.clone());
+                self.tool_index
+                    .write()
+                    .await
+                    .insert(tool_name.to_string(), name.clone());
                 return Some((name.clone(), tool.clone()));
             }
         }
-        
+
         None
     }
-    
+
     /// Refresh the tool index from all servers
     pub async fn refresh_tool_index(&self) {
         let mut tool_index = self.tool_index.write().await;
         tool_index.clear();
-        
+
         for (name, client) in self.clients.read().await.iter() {
             for tool in client.tools().await {
                 tool_index.insert(tool.name.clone(), name.clone());
             }
         }
-        
+
         info!("Refreshed tool index with {} tools", tool_index.len());
     }
-    
+
     /// Call a tool on a specific server
-    pub async fn call_tool(&self, server: &str, tool: &str, arguments: Value) -> Result<CallToolResult> {
-        let client = self.get(server).await
+    pub async fn call_tool(
+        &self,
+        server: &str,
+        tool: &str,
+        arguments: Value,
+    ) -> Result<CallToolResult> {
+        let client = self
+            .get(server)
+            .await
             .ok_or_else(|| anyhow::anyhow!("Server not found: {}", server))?;
         client.call_tool(tool, arguments).await
     }
-    
+
     /// Call a tool by name, finding the appropriate server automatically
-    pub async fn call_tool_auto(&self, tool_name: &str, arguments: Value) -> Result<CallToolResult> {
-        let (server, _) = self.find_tool(tool_name).await
+    pub async fn call_tool_auto(
+        &self,
+        tool_name: &str,
+        arguments: Value,
+    ) -> Result<CallToolResult> {
+        let (server, _) = self
+            .find_tool(tool_name)
+            .await
             .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", tool_name))?;
         self.call_tool(&server, tool_name, arguments).await
     }

@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub struct OpenRouterProvider {
     client: Client,
@@ -42,7 +42,11 @@ impl OpenRouterProvider {
                 match msg.role {
                     Role::Tool => {
                         // Tool result message
-                        if let Some(ContentPart::ToolResult { tool_call_id, content }) = msg.content.first() {
+                        if let Some(ContentPart::ToolResult {
+                            tool_call_id,
+                            content,
+                        }) = msg.content.first()
+                        {
                             json!({
                                 "role": "tool",
                                 "tool_call_id": tool_call_id,
@@ -54,7 +58,9 @@ impl OpenRouterProvider {
                     }
                     Role::Assistant => {
                         // Assistant message - may have tool calls
-                        let text: String = msg.content.iter()
+                        let text: String = msg
+                            .content
+                            .iter()
                             .filter_map(|p| match p {
                                 ContentPart::Text { text } => Some(text.clone()),
                                 _ => None,
@@ -62,9 +68,15 @@ impl OpenRouterProvider {
                             .collect::<Vec<_>>()
                             .join("");
 
-                        let tool_calls: Vec<Value> = msg.content.iter()
+                        let tool_calls: Vec<Value> = msg
+                            .content
+                            .iter()
                             .filter_map(|p| match p {
-                                ContentPart::ToolCall { id, name, arguments } => Some(json!({
+                                ContentPart::ToolCall {
+                                    id,
+                                    name,
+                                    arguments,
+                                } => Some(json!({
                                     "id": id,
                                     "type": "function",
                                     "function": {
@@ -89,7 +101,9 @@ impl OpenRouterProvider {
                     }
                     _ => {
                         // System or User message
-                        let text: String = msg.content.iter()
+                        let text: String = msg
+                            .content
+                            .iter()
                             .filter_map(|p| match p {
                                 ContentPart::Text { text } => Some(text.clone()),
                                 _ => None,
@@ -225,7 +239,7 @@ impl Provider for OpenRouterProvider {
         struct ModelsResponse {
             data: Vec<ModelData>,
         }
-        
+
         #[derive(Deserialize)]
         struct ModelData {
             id: String,
@@ -235,20 +249,27 @@ impl Provider for OpenRouterProvider {
             context_length: Option<usize>,
         }
 
-        let models: ModelsResponse = response.json().await.unwrap_or(ModelsResponse { data: vec![] });
+        let models: ModelsResponse = response
+            .json()
+            .await
+            .unwrap_or(ModelsResponse { data: vec![] });
 
-        Ok(models.data.into_iter().map(|m| ModelInfo {
-            id: m.id.clone(),
-            name: m.name.unwrap_or_else(|| m.id.clone()),
-            provider: "openrouter".to_string(),
-            context_window: m.context_length.unwrap_or(128_000),
-            max_output_tokens: Some(16_384),
-            supports_vision: false,
-            supports_tools: true,
-            supports_streaming: true,
-            input_cost_per_million: None,
-            output_cost_per_million: None,
-        }).collect())
+        Ok(models
+            .data
+            .into_iter()
+            .map(|m| ModelInfo {
+                id: m.id.clone(),
+                name: m.name.unwrap_or_else(|| m.id.clone()),
+                provider: "openrouter".to_string(),
+                context_window: m.context_length.unwrap_or(128_000),
+                max_output_tokens: Some(16_384),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            })
+            .collect())
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
@@ -271,7 +292,10 @@ impl Provider for OpenRouterProvider {
             body["max_tokens"] = json!(max);
         }
 
-        tracing::debug!("OpenRouter request: {}", serde_json::to_string_pretty(&body).unwrap_or_default());
+        tracing::debug!(
+            "OpenRouter request: {}",
+            serde_json::to_string_pretty(&body).unwrap_or_default()
+        );
 
         let response = self
             .client
@@ -291,15 +315,21 @@ impl Provider for OpenRouterProvider {
         if !status.is_success() {
             // Try to parse as error response
             if let Ok(err) = serde_json::from_str::<OpenRouterError>(&text) {
-                anyhow::bail!("OpenRouter API error: {} (code: {:?})", err.error.message, err.error.code);
+                anyhow::bail!(
+                    "OpenRouter API error: {} (code: {:?})",
+                    err.error.message,
+                    err.error.code
+                );
             }
             anyhow::bail!("OpenRouter API error: {} {}", status, text);
         }
 
         tracing::debug!("OpenRouter response: {}", &text[..text.len().min(500)]);
 
-        let response: OpenRouterResponse = serde_json::from_str(&text)
-            .context(format!("Failed to parse response: {}", &text[..text.len().min(200)]))?;
+        let response: OpenRouterResponse = serde_json::from_str(&text).context(format!(
+            "Failed to parse response: {}",
+            &text[..text.len().min(200)]
+        ))?;
 
         // Log response metadata for debugging
         tracing::debug!(
@@ -309,8 +339,11 @@ impl Provider for OpenRouterProvider {
             "Received OpenRouter response"
         );
 
-        let choice = response.choices.first().ok_or_else(|| anyhow::anyhow!("No choices"))?;
-        
+        let choice = response
+            .choices
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("No choices"))?;
+
         // Log native finish reason if present
         if let Some(ref native_reason) = choice.native_finish_reason {
             tracing::debug!(native_finish_reason = %native_reason, "OpenRouter native finish reason");
@@ -350,7 +383,7 @@ impl Provider for OpenRouterProvider {
 
         // Log message role for debugging
         tracing::debug!(message_role = %choice.message.role, "OpenRouter message role");
-        
+
         // Log refusal if present (model declined to respond)
         if let Some(ref refusal) = choice.message.refusal {
             tracing::warn!(refusal = %refusal, "Model refused to respond");
@@ -395,8 +428,16 @@ impl Provider for OpenRouterProvider {
                 content,
             },
             usage: Usage {
-                prompt_tokens: response.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
-                completion_tokens: response.usage.as_ref().map(|u| u.completion_tokens).unwrap_or(0),
+                prompt_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.prompt_tokens)
+                    .unwrap_or(0),
+                completion_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.completion_tokens)
+                    .unwrap_or(0),
                 total_tokens: response.usage.as_ref().map(|u| u.total_tokens).unwrap_or(0),
                 ..Default::default()
             },
@@ -414,17 +455,20 @@ impl Provider for OpenRouterProvider {
             message_count = request.messages.len(),
             "Starting streaming completion request (falling back to non-streaming)"
         );
-        
+
         // For now, fall back to non-streaming
         let response = self.complete(request).await?;
-        let text = response.message.content.iter()
+        let text = response
+            .message
+            .content
+            .iter()
             .filter_map(|p| match p {
                 ContentPart::Text { text } => Some(text.clone()),
                 _ => None,
             })
             .collect::<Vec<_>>()
             .join("");
-        
+
         Ok(Box::pin(futures::stream::once(async move {
             StreamChunk::Text(text)
         })))

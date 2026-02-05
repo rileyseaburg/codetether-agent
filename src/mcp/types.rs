@@ -67,23 +67,43 @@ pub struct JsonRpcError {
 
 impl JsonRpcError {
     pub fn parse_error(msg: impl Into<String>) -> Self {
-        Self { code: -32700, message: msg.into(), data: None }
+        Self {
+            code: -32700,
+            message: msg.into(),
+            data: None,
+        }
     }
-    
+
     pub fn invalid_request(msg: impl Into<String>) -> Self {
-        Self { code: -32600, message: msg.into(), data: None }
+        Self {
+            code: -32600,
+            message: msg.into(),
+            data: None,
+        }
     }
-    
+
     pub fn method_not_found(method: &str) -> Self {
-        Self { code: -32601, message: format!("Method not found: {}", method), data: None }
+        Self {
+            code: -32601,
+            message: format!("Method not found: {}", method),
+            data: None,
+        }
     }
-    
+
     pub fn invalid_params(msg: impl Into<String>) -> Self {
-        Self { code: -32602, message: msg.into(), data: None }
+        Self {
+            code: -32602,
+            message: msg.into(),
+            data: None,
+        }
     }
-    
+
     pub fn internal_error(msg: impl Into<String>) -> Self {
-        Self { code: -32603, message: msg.into(), data: None }
+        Self {
+            code: -32603,
+            message: msg.into(),
+            data: None,
+        }
     }
 }
 
@@ -270,7 +290,12 @@ pub struct ResourceMetadata {
 }
 
 impl ResourceMetadata {
-    pub fn new(uri: String, name: String, description: Option<String>, mime_type: Option<String>) -> Self {
+    pub fn new(
+        uri: String,
+        name: String,
+        description: Option<String>,
+        mime_type: Option<String>,
+    ) -> Self {
         Self {
             uri,
             name,
@@ -494,7 +519,7 @@ impl JsonRpcResponse {
             error: None,
         }
     }
-    
+
     pub fn error(id: RequestId, error: JsonRpcError) -> Self {
         Self {
             jsonrpc: JSONRPC_VERSION.to_string(),

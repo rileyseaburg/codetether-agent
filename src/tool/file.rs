@@ -3,7 +3,7 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -59,23 +59,27 @@ impl Tool for ReadTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let path = match args["path"].as_str() {
             Some(p) => p,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "read",
-                "path is required",
-                Some(vec!["path"]),
-                Some(json!({"path": "src/main.rs"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "read",
+                    "path is required",
+                    Some(vec!["path"]),
+                    Some(json!({"path": "src/main.rs"})),
+                ));
+            }
         };
         let offset = args["offset"].as_u64().map(|n| n as usize);
         let limit = args["limit"].as_u64().map(|n| n as usize);
 
         let content = fs::read_to_string(path).await?;
-        
+
         let lines: Vec<&str> = content.lines().collect();
         let start = offset.map(|o| o.saturating_sub(1)).unwrap_or(0);
-        let end = limit.map(|l| (start + l).min(lines.len())).unwrap_or(lines.len());
-        
+        let end = limit
+            .map(|l| (start + l).min(lines.len()))
+            .unwrap_or(lines.len());
+
         let selected: String = lines[start..end]
             .iter()
             .enumerate()
@@ -136,23 +140,27 @@ impl Tool for WriteTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let path = match args["path"].as_str() {
             Some(p) => p,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "write",
-                "path is required",
-                Some(vec!["path"]),
-                Some(json!({"path": "src/example.rs", "content": "// file content"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "write",
+                    "path is required",
+                    Some(vec!["path"]),
+                    Some(json!({"path": "src/example.rs", "content": "// file content"})),
+                ));
+            }
         };
         let content = match args["content"].as_str() {
             Some(c) => c,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "write",
-                "content is required",
-                Some(vec!["content"]),
-                Some(json!({"path": path, "content": "// file content"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "write",
+                    "content is required",
+                    Some(vec!["content"]),
+                    Some(json!({"path": path, "content": "// file content"})),
+                ));
+            }
         };
 
         // Create parent directories if needed
@@ -162,7 +170,11 @@ impl Tool for WriteTool {
 
         fs::write(path, content).await?;
 
-        Ok(ToolResult::success(format!("Wrote {} bytes to {}", content.len(), path)))
+        Ok(ToolResult::success(format!(
+            "Wrote {} bytes to {}",
+            content.len(),
+            path
+        )))
     }
 }
 
@@ -208,13 +220,15 @@ impl Tool for ListTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let path = match args["path"].as_str() {
             Some(p) => p,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "list",
-                "path is required",
-                Some(vec!["path"]),
-                Some(json!({"path": "src/"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "list",
+                    "path is required",
+                    Some(vec!["path"]),
+                    Some(json!({"path": "src/"})),
+                ));
+            }
         };
 
         let mut entries = fs::read_dir(path).await?;
@@ -223,7 +237,7 @@ impl Tool for ListTool {
         while let Some(entry) = entries.next_entry().await? {
             let name = entry.file_name().to_string_lossy().to_string();
             let file_type = entry.file_type().await?;
-            
+
             let suffix = if file_type.is_dir() {
                 "/"
             } else if file_type.is_symlink() {
@@ -231,13 +245,12 @@ impl Tool for ListTool {
             } else {
                 ""
             };
-            
+
             items.push(format!("{}{}", name, suffix));
         }
 
         items.sort();
-        Ok(ToolResult::success(items.join("\n"))
-            .with_metadata("count", json!(items.len())))
+        Ok(ToolResult::success(items.join("\n")).with_metadata("count", json!(items.len())))
     }
 }
 
@@ -288,18 +301,20 @@ impl Tool for GlobTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let pattern = match args["pattern"].as_str() {
             Some(p) => p,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "glob",
-                "pattern is required",
-                Some(vec!["pattern"]),
-                Some(json!({"pattern": "src/**/*.rs"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "glob",
+                    "pattern is required",
+                    Some(vec!["pattern"]),
+                    Some(json!({"pattern": "src/**/*.rs"})),
+                ));
+            }
         };
         let limit = args["limit"].as_u64().unwrap_or(100) as usize;
 
         let mut matches = Vec::new();
-        
+
         for entry in glob::glob(pattern)? {
             if matches.len() >= limit {
                 break;

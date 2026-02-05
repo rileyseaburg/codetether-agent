@@ -5,13 +5,13 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use super::{Tool, ToolResult};
-use crate::ralph::{RalphLoop, RalphConfig, create_prd_template, Prd};
 use crate::provider::Provider;
+use crate::ralph::{Prd, RalphConfig, RalphLoop, create_prd_template};
 
 /// Tool for running the Ralph autonomous agent loop
 pub struct RalphTool {
@@ -58,9 +58,13 @@ struct Params {
 
 #[async_trait]
 impl Tool for RalphTool {
-    fn id(&self) -> &str { "ralph" }
-    fn name(&self) -> &str { "Ralph Agent" }
-    
+    fn id(&self) -> &str {
+        "ralph"
+    }
+    fn name(&self) -> &str {
+        "Ralph Agent"
+    }
+
     fn description(&self) -> &str {
         r#"Run the Ralph autonomous agent loop to implement user stories from a PRD.
 
@@ -113,7 +117,9 @@ Actions:
 
         match p.action.as_str() {
             "run" => {
-                let provider = self.provider.as_ref()
+                let provider = self
+                    .provider
+                    .as_ref()
                     .ok_or_else(|| anyhow::anyhow!("No provider configured for Ralph"))?;
 
                 let config = RalphConfig {
@@ -129,12 +135,10 @@ Actions:
                     worktree_enabled: true,
                 };
 
-                let mut ralph = RalphLoop::new(
-                    prd_path,
-                    Arc::clone(provider),
-                    self.model.clone(),
-                    config,
-                ).await.context("Failed to initialize Ralph")?;
+                let mut ralph =
+                    RalphLoop::new(prd_path, Arc::clone(provider), self.model.clone(), config)
+                        .await
+                        .context("Failed to initialize Ralph")?;
 
                 let state = ralph.run().await.context("Ralph loop failed")?;
 
@@ -150,8 +154,16 @@ Actions:
                     total_count,
                     state.current_iteration,
                     state.max_iterations,
-                    state.prd.user_stories.iter()
-                        .map(|s| format!("- [{}] {}: {}", if s.passes { "x" } else { " " }, s.id, s.title))
+                    state
+                        .prd
+                        .user_stories
+                        .iter()
+                        .map(|s| format!(
+                            "- [{}] {}: {}",
+                            if s.passes { "x" } else { " " },
+                            s.id,
+                            s.title
+                        ))
                         .collect::<Vec<_>>()
                         .join("\n")
                 );
@@ -170,40 +182,41 @@ Actions:
                 }
             }
 
-            "status" => {
-                match Prd::load(&prd_path).await {
-                    Ok(prd) => {
-                        let passed_count = prd.passed_count();
-                        let output = format!(
-                            "# Ralph Status\n\n**Project:** {}\n**Feature:** {}\n**Progress:** {}/{} stories\n\n## Stories\n{}",
-                            prd.project,
-                            prd.feature,
-                            passed_count,
-                            prd.user_stories.len(),
-                            prd.user_stories.iter()
-                                .map(|s| format!("- [{}] {}: {}", if s.passes { "x" } else { " " }, s.id, s.title))
-                                .collect::<Vec<_>>()
-                                .join("\n")
-                        );
-                        Ok(ToolResult::success(output))
-                    }
-                    Err(_) => {
-                        Ok(ToolResult::error(format!(
-                            "No PRD found at {}. Create one with: ralph({{action: 'create-prd', project: '...', feature: '...'}})",
-                            prd_path.display()
-                        )))
-                    }
+            "status" => match Prd::load(&prd_path).await {
+                Ok(prd) => {
+                    let passed_count = prd.passed_count();
+                    let output = format!(
+                        "# Ralph Status\n\n**Project:** {}\n**Feature:** {}\n**Progress:** {}/{} stories\n\n## Stories\n{}",
+                        prd.project,
+                        prd.feature,
+                        passed_count,
+                        prd.user_stories.len(),
+                        prd.user_stories
+                            .iter()
+                            .map(|s| format!(
+                                "- [{}] {}: {}",
+                                if s.passes { "x" } else { " " },
+                                s.id,
+                                s.title
+                            ))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    );
+                    Ok(ToolResult::success(output))
                 }
-            }
+                Err(_) => Ok(ToolResult::error(format!(
+                    "No PRD found at {}. Create one with: ralph({{action: 'create-prd', project: '...', feature: '...'}})",
+                    prd_path.display()
+                ))),
+            },
 
             "create-prd" => {
                 let project = p.project.unwrap_or_else(|| "MyProject".to_string());
                 let feature = p.feature.unwrap_or_else(|| "New Feature".to_string());
 
                 let prd = create_prd_template(&project, &feature);
-                
-                prd.save(&prd_path).await
-                    .context("Failed to save PRD")?;
+
+                prd.save(&prd_path).await.context("Failed to save PRD")?;
 
                 let output = format!(
                     "# PRD Created\n\nSaved to: {}\n\n**Project:** {}\n**Feature:** {}\n**Branch:** {}\n\nEdit the file to add your user stories, then run:\n```\nralph({{action: 'run'}})\n```",
@@ -216,12 +229,10 @@ Actions:
                 Ok(ToolResult::success(output))
             }
 
-            _ => {
-                Ok(ToolResult::error(format!(
-                    "Unknown action: {}. Valid actions: run, status, create-prd",
-                    p.action
-                )))
-            }
+            _ => Ok(ToolResult::error(format!(
+                "Unknown action: {}. Valid actions: run, status, create-prd",
+                p.action
+            ))),
         }
     }
 }

@@ -3,7 +3,7 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use similar::{ChangeTag, TextDiff};
 use tokio::fs;
 
@@ -59,33 +59,41 @@ impl Tool for EditTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let path = match args["path"].as_str() {
             Some(p) => p,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "edit",
-                "path is required",
-                Some(vec!["path"]),
-                Some(json!({"path": "src/main.rs", "old_string": "old text", "new_string": "new text"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "edit",
+                    "path is required",
+                    Some(vec!["path"]),
+                    Some(
+                        json!({"path": "src/main.rs", "old_string": "old text", "new_string": "new text"}),
+                    ),
+                ));
+            }
         };
         let old_string = match args["old_string"].as_str() {
             Some(s) => s,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "edit",
-                "old_string is required",
-                Some(vec!["old_string"]),
-                Some(json!({"path": path, "old_string": "old text", "new_string": "new text"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "edit",
+                    "old_string is required",
+                    Some(vec!["old_string"]),
+                    Some(json!({"path": path, "old_string": "old text", "new_string": "new text"})),
+                ));
+            }
         };
         let new_string = match args["new_string"].as_str() {
             Some(s) => s,
-            None => return Ok(ToolResult::structured_error(
-                "INVALID_ARGUMENT",
-                "edit",
-                "new_string is required",
-                Some(vec!["new_string"]),
-                Some(json!({"path": path, "old_string": old_string, "new_string": "new text"})),
-            )),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "edit",
+                    "new_string is required",
+                    Some(vec!["new_string"]),
+                    Some(json!({"path": path, "old_string": old_string, "new_string": "new text"})),
+                ));
+            }
         };
 
         // Read the file
@@ -113,7 +121,10 @@ impl Tool for EditTool {
             return Ok(ToolResult::structured_error(
                 "AMBIGUOUS_MATCH",
                 "edit",
-                &format!("old_string found {} times. Include more context to uniquely identify the location.", count),
+                &format!(
+                    "old_string found {} times. Include more context to uniquely identify the location.",
+                    count
+                ),
                 None,
                 Some(json!({
                     "hint": "Include 3+ lines of context before and after the target text",
@@ -122,25 +133,52 @@ impl Tool for EditTool {
             ));
         }
 
-        // Perform the replacement
+        // Generate preview diff
         let new_content = content.replacen(old_string, new_string, 1);
-
-        // Generate diff for output
         let diff = TextDiff::from_lines(&content, &new_content);
+
         let mut diff_output = String::new();
-        
+        let mut added = 0;
+        let mut removed = 0;
+
         for change in diff.iter_all_changes() {
-            let sign = match change.tag() {
-                ChangeTag::Delete => "-",
-                ChangeTag::Insert => "+",
-                ChangeTag::Equal => " ",
+            let (sign, style) = match change.tag() {
+                ChangeTag::Delete => {
+                    removed += 1;
+                    ("-", "red")
+                }
+                ChangeTag::Insert => {
+                    added += 1;
+                    ("+", "green")
+                }
+                ChangeTag::Equal => (" ", "default"),
             };
-            diff_output.push_str(&format!("{}{}", sign, change));
+
+            let line = format!("{}{}", sign, change);
+            if style == "red" {
+                diff_output.push_str(&format!("\x1b[31m{}\x1b[0m", line.trim_end()));
+            } else if style == "green" {
+                diff_output.push_str(&format!("\x1b[32m{}\x1b[0m", line.trim_end()));
+            } else {
+                diff_output.push_str(&line.trim_end());
+            }
+            diff_output.push('\n');
         }
 
-        // Write the file
-        fs::write(path, &new_content).await?;
+        // Instead of applying changes immediately, return confirmation prompt
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("requires_confirmation".to_string(), serde_json::json!(true));
+        metadata.insert("diff".to_string(), serde_json::json!(diff_output.trim()));
+        metadata.insert("added_lines".to_string(), serde_json::json!(added));
+        metadata.insert("removed_lines".to_string(), serde_json::json!(removed));
+        metadata.insert("path".to_string(), serde_json::json!(path));
+        metadata.insert("old_string".to_string(), serde_json::json!(old_string));
+        metadata.insert("new_string".to_string(), serde_json::json!(new_string));
 
-        Ok(ToolResult::success(format!("Successfully edited {}\n\n{}", path, diff_output)))
+        Ok(ToolResult {
+            output: format!("Changes require confirmation:\n\n{}", diff_output.trim()),
+            success: true,
+            metadata,
+        })
     }
 }

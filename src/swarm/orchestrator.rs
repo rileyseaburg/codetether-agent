@@ -4,8 +4,7 @@
 //! parallelizable subtasks, then coordinates their execution.
 
 use super::{
-    DecompositionStrategy, SubAgent, SubTask, SubTaskResult, SubTaskStatus,
-    SwarmConfig, SwarmStats,
+    DecompositionStrategy, SubAgent, SubTask, SubTaskResult, SubTaskStatus, SwarmConfig, SwarmStats,
 };
 use crate::provider::{CompletionRequest, ContentPart, Message, ProviderRegistry, Role};
 use anyhow::Result;
@@ -16,25 +15,25 @@ use std::collections::HashMap;
 pub struct Orchestrator {
     /// Configuration
     config: SwarmConfig,
-    
+
     /// Provider registry for AI calls
     providers: ProviderRegistry,
-    
+
     /// All subtasks
     subtasks: HashMap<String, SubTask>,
-    
+
     /// All sub-agents
     subagents: HashMap<String, SubAgent>,
-    
+
     /// Completed subtask IDs
     completed: Vec<String>,
-    
+
     /// Current model for orchestration
     model: String,
-    
+
     /// Current provider
     provider: String,
-    
+
     /// Stats
     stats: SwarmStats,
 }
@@ -43,18 +42,20 @@ impl Orchestrator {
     /// Create a new orchestrator
     pub async fn new(config: SwarmConfig) -> Result<Self> {
         use crate::provider::parse_model_string;
-        
+
         let providers = ProviderRegistry::from_vault().await?;
         let provider_list = providers.list();
-        
+
         if provider_list.is_empty() {
             anyhow::bail!("No providers available for orchestration");
         }
-        
+
         // Parse model from config, env var, or use default
-        let model_str = config.model.clone()
+        let model_str = config
+            .model
+            .clone()
             .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok());
-        
+
         let (provider, model) = if let Some(ref model_str) = model_str {
             let (prov, mod_id) = parse_model_string(model_str);
             let provider = prov
@@ -64,8 +65,10 @@ impl Orchestrator {
             let model = mod_id.to_string();
             (provider, model)
         } else {
-            // Default to moonshotai if available, otherwise first provider
-            let provider = if provider_list.contains(&"moonshotai") {
+            // Default to novita (fast, cheap) for swarm, then moonshotai, otherwise first provider
+            let provider = if provider_list.contains(&"novita") {
+                "novita".to_string()
+            } else if provider_list.contains(&"moonshotai") {
                 "moonshotai".to_string()
             } else {
                 provider_list[0].to_string()
@@ -73,9 +76,9 @@ impl Orchestrator {
             let model = Self::default_model_for_provider(&provider);
             (provider, model)
         };
-        
+
         tracing::info!("Orchestrator using model {} via {}", model, provider);
-        
+
         Ok(Self {
             config,
             providers,
@@ -87,7 +90,7 @@ impl Orchestrator {
             stats: SwarmStats::default(),
         })
     }
-    
+
     /// Get default model for a provider
     fn default_model_for_provider(provider: &str) -> String {
         match provider {
@@ -96,10 +99,11 @@ impl Orchestrator {
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
             "openrouter" => "stepfun/step-3.5-flash:free".to_string(),
+            "novita" => "qwen/qwen3-coder-next".to_string(),
             _ => "kimi-k2.5".to_string(),
         }
     }
-    
+
     /// Decompose a complex task into subtasks
     pub async fn decompose(
         &mut self,
@@ -112,19 +116,27 @@ impl Orchestrator {
             self.subtasks.insert(subtask.id.clone(), subtask.clone());
             return Ok(vec![subtask]);
         }
-        
+
         // Use AI to decompose the task
         let decomposition_prompt = self.build_decomposition_prompt(task, strategy);
-        
-        let provider = self.providers.get(&self.provider)
+
+        let provider = self
+            .providers
+            .get(&self.provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", self.provider))?;
-        
-        let temperature = if self.model.starts_with("kimi-k2") { 1.0 } else { 0.7 };
-        
+
+        let temperature = if self.model.starts_with("kimi-k2") {
+            1.0
+        } else {
+            0.7
+        };
+
         let request = CompletionRequest {
             messages: vec![Message {
                 role: Role::User,
-                content: vec![ContentPart::Text { text: decomposition_prompt }],
+                content: vec![ContentPart::Text {
+                    text: decomposition_prompt,
+                }],
             }],
             tools: Vec::new(),
             model: self.model.clone(),
@@ -133,11 +145,13 @@ impl Orchestrator {
             max_tokens: Some(8192),
             stop: Vec::new(),
         };
-        
+
         let response = provider.complete(request).await?;
-        
+
         // Parse the decomposition response
-        let text = response.message.content
+        let text = response
+            .message
+            .content
             .iter()
             .filter_map(|p| match p {
                 ContentPart::Text { text } => Some(text.clone()),
@@ -145,9 +159,9 @@ impl Orchestrator {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        
+
         tracing::debug!("Decomposition response: {}", text);
-        
+
         if text.trim().is_empty() {
             // Fallback to single task if decomposition fails
             tracing::warn!("Empty decomposition response, falling back to single task");
@@ -155,26 +169,26 @@ impl Orchestrator {
             self.subtasks.insert(subtask.id.clone(), subtask.clone());
             return Ok(vec![subtask]);
         }
-        
+
         let subtasks = self.parse_decomposition(&text)?;
-        
+
         // Store subtasks
         for subtask in &subtasks {
             self.subtasks.insert(subtask.id.clone(), subtask.clone());
         }
-        
+
         // Assign stages based on dependencies
         self.assign_stages();
-        
+
         tracing::info!(
             "Decomposed task into {} subtasks across {} stages",
             subtasks.len(),
             self.max_stage() + 1
         );
-        
+
         Ok(subtasks)
     }
-    
+
     /// Build the decomposition prompt
     fn build_decomposition_prompt(&self, task: &str, strategy: DecompositionStrategy) -> String {
         let strategy_instruction = match strategy {
@@ -192,7 +206,7 @@ impl Orchestrator {
             }
             DecompositionStrategy::None => unreachable!(),
         };
-        
+
         format!(
             r#"You are a task orchestrator. Your job is to decompose complex tasks into parallelizable subtasks.
 
@@ -227,7 +241,7 @@ Decompose the task now:"#,
             max_subtasks = self.config.max_subagents,
         )
     }
-    
+
     /// Parse the decomposition response
     fn parse_decomposition(&self, response: &str) -> Result<Vec<SubTask>> {
         // Try to extract JSON from the response
@@ -247,12 +261,12 @@ Decompose the task now:"#,
         } else {
             response
         };
-        
+
         #[derive(Deserialize)]
         struct DecompositionResponse {
             subtasks: Vec<SubTaskDef>,
         }
-        
+
         #[derive(Deserialize)]
         struct SubTaskDef {
             name: String,
@@ -263,29 +277,28 @@ Decompose the task now:"#,
             #[serde(default)]
             priority: i32,
         }
-        
+
         let parsed: DecompositionResponse = serde_json::from_str(json_str.trim())
             .map_err(|e| anyhow::anyhow!("Failed to parse decomposition: {}", e))?;
-        
+
         // Create SubTask objects with proper IDs
         let mut subtasks = Vec::new();
         let mut name_to_id: HashMap<String, String> = HashMap::new();
-        
+
         // First pass: create subtasks and map names to IDs
         for def in &parsed.subtasks {
-            let subtask = SubTask::new(&def.name, &def.instruction)
-                .with_priority(def.priority);
-            
+            let subtask = SubTask::new(&def.name, &def.instruction).with_priority(def.priority);
+
             let subtask = if let Some(ref specialty) = def.specialty {
                 subtask.with_specialty(specialty)
             } else {
                 subtask
             };
-            
+
             name_to_id.insert(def.name.clone(), subtask.id.clone());
             subtasks.push((subtask, def.dependencies.clone()));
         }
-        
+
         // Second pass: resolve dependencies
         let result: Vec<SubTask> = subtasks
             .into_iter()
@@ -298,43 +311,47 @@ Decompose the task now:"#,
                 subtask
             })
             .collect();
-        
+
         Ok(result)
     }
-    
+
     /// Assign stages to subtasks based on dependencies
     fn assign_stages(&mut self) {
         let mut changed = true;
-        
+
         while changed {
             changed = false;
-            
+
             // First collect all updates needed
-            let updates: Vec<(String, usize)> = self.subtasks.iter().filter_map(|(id, subtask)| {
-                if subtask.dependencies.is_empty() {
-                    if subtask.stage != 0 {
-                        Some((id.clone(), 0))
+            let updates: Vec<(String, usize)> = self
+                .subtasks
+                .iter()
+                .filter_map(|(id, subtask)| {
+                    if subtask.dependencies.is_empty() {
+                        if subtask.stage != 0 {
+                            Some((id.clone(), 0))
+                        } else {
+                            None
+                        }
                     } else {
-                        None
+                        let max_dep_stage = subtask
+                            .dependencies
+                            .iter()
+                            .filter_map(|dep_id| self.subtasks.get(dep_id))
+                            .map(|dep| dep.stage)
+                            .max()
+                            .unwrap_or(0);
+
+                        let new_stage = max_dep_stage + 1;
+                        if subtask.stage != new_stage {
+                            Some((id.clone(), new_stage))
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    let max_dep_stage = subtask
-                        .dependencies
-                        .iter()
-                        .filter_map(|dep_id| self.subtasks.get(dep_id))
-                        .map(|dep| dep.stage)
-                        .max()
-                        .unwrap_or(0);
-                    
-                    let new_stage = max_dep_stage + 1;
-                    if subtask.stage != new_stage {
-                        Some((id.clone(), new_stage))
-                    } else {
-                        None
-                    }
-                }
-            }).collect();
-            
+                })
+                .collect();
+
             // Then apply updates
             for (id, new_stage) in updates {
                 if let Some(subtask) = self.subtasks.get_mut(&id) {
@@ -344,12 +361,12 @@ Decompose the task now:"#,
             }
         }
     }
-    
+
     /// Get maximum stage number
     fn max_stage(&self) -> usize {
         self.subtasks.values().map(|s| s.stage).max().unwrap_or(0)
     }
-    
+
     /// Get subtasks ready to execute (dependencies satisfied)
     pub fn ready_subtasks(&self) -> Vec<&SubTask> {
         self.subtasks
@@ -357,7 +374,7 @@ Decompose the task now:"#,
             .filter(|s| s.status == SubTaskStatus::Pending && s.can_run(&self.completed))
             .collect()
     }
-    
+
     /// Get subtasks for a specific stage
     pub fn subtasks_for_stage(&self, stage: usize) -> Vec<&SubTask> {
         self.subtasks
@@ -365,74 +382,74 @@ Decompose the task now:"#,
             .filter(|s| s.stage == stage)
             .collect()
     }
-    
+
     /// Create a sub-agent for a subtask
     pub fn create_subagent(&mut self, subtask: &SubTask) -> SubAgent {
-        let specialty = subtask.specialty.clone().unwrap_or_else(|| "General".to_string());
+        let specialty = subtask
+            .specialty
+            .clone()
+            .unwrap_or_else(|| "General".to_string());
         let name = format!("{} Agent", specialty);
-        
-        let subagent = SubAgent::new(
-            name,
-            specialty,
-            &subtask.id,
-            &self.model,
-            &self.provider,
-        );
-        
+
+        let subagent = SubAgent::new(name, specialty, &subtask.id, &self.model, &self.provider);
+
         self.subagents.insert(subagent.id.clone(), subagent.clone());
         self.stats.subagents_spawned += 1;
-        
+
         subagent
     }
-    
+
     /// Mark a subtask as completed
     pub fn complete_subtask(&mut self, subtask_id: &str, result: SubTaskResult) {
         if let Some(subtask) = self.subtasks.get_mut(subtask_id) {
             subtask.complete(result.success);
-            
+
             if result.success {
                 self.completed.push(subtask_id.to_string());
                 self.stats.subagents_completed += 1;
             } else {
                 self.stats.subagents_failed += 1;
             }
-            
+
             self.stats.total_tool_calls += result.tool_calls;
         }
     }
-    
+
     /// Get all subtasks
     pub fn all_subtasks(&self) -> Vec<&SubTask> {
         self.subtasks.values().collect()
     }
-    
+
     /// Get statistics
     pub fn stats(&self) -> &SwarmStats {
         &self.stats
     }
-    
+
     /// Get mutable statistics
     pub fn stats_mut(&mut self) -> &mut SwarmStats {
         &mut self.stats
     }
-    
+
     /// Check if all subtasks are complete
     pub fn is_complete(&self) -> bool {
         self.subtasks.values().all(|s| {
-            matches!(s.status, SubTaskStatus::Completed | SubTaskStatus::Failed | SubTaskStatus::Cancelled)
+            matches!(
+                s.status,
+                SubTaskStatus::Completed | SubTaskStatus::Failed | SubTaskStatus::Cancelled
+            )
         })
     }
-    
+
     /// Get the provider registry
     pub fn providers(&self) -> &ProviderRegistry {
         &self.providers
     }
-    
+
     /// Get current model
     pub fn model(&self) -> &str {
         &self.model
     }
-    
+
     /// Get current provider
     pub fn provider(&self) -> &str {
         &self.provider
@@ -449,20 +466,20 @@ pub enum SubAgentMessage {
         steps: usize,
         status: String,
     },
-    
+
     /// Tool call made
     ToolCall {
         subagent_id: String,
         tool_name: String,
         success: bool,
     },
-    
+
     /// Subtask completed
     Completed {
         subagent_id: String,
         result: SubTaskResult,
     },
-    
+
     /// Request for resources
     ResourceRequest {
         subagent_id: String,
@@ -475,22 +492,18 @@ pub enum SubAgentMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OrchestratorMessage {
     /// Start execution
-    Start {
-        subtask: Box<SubTask>,
-    },
-    
+    Start { subtask: Box<SubTask> },
+
     /// Provide resource
     Resource {
         resource_type: String,
         resource_id: String,
         content: String,
     },
-    
+
     /// Terminate execution
-    Terminate {
-        reason: String,
-    },
-    
+    Terminate { reason: String },
+
     /// Context update (from completed dependency)
     ContextUpdate {
         dependency_id: String,

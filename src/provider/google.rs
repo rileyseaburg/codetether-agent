@@ -1,8 +1,6 @@
 //! Google AI provider implementation (stub)
 
-use super::{
-    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
-};
+use super::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -28,7 +26,7 @@ impl GoogleProvider {
         );
         Ok(Self { api_key })
     }
-    
+
     /// Validate that the API key is non-empty
     fn validate_api_key(&self) -> Result<()> {
         if self.api_key.is_empty() {
@@ -50,7 +48,7 @@ impl Provider for GoogleProvider {
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         tracing::debug!(provider = "google", "Listing available models");
         self.validate_api_key()?;
-        
+
         Ok(vec![
             ModelInfo {
                 id: "gemini-2.5-pro".to_string(),
@@ -87,10 +85,10 @@ impl Provider for GoogleProvider {
             tool_count = request.tools.len(),
             "Starting completion request"
         );
-        
+
         // Validate API key before making request
         self.validate_api_key()?;
-        
+
         // TODO: Implement using reqwest
         anyhow::bail!("Google provider not yet implemented")
     }
@@ -105,7 +103,7 @@ impl Provider for GoogleProvider {
             message_count = request.messages.len(),
             "Starting streaming completion request"
         );
-        
+
         self.validate_api_key()?;
         anyhow::bail!("Google provider not yet implemented")
     }

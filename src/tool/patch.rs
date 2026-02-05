@@ -1,23 +1,27 @@
 //! Apply Patch Tool - Apply unified diff patches to files.
 
+use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
-use super::{Tool, ToolResult};
 
 pub struct ApplyPatchTool {
     root: PathBuf,
 }
 
 impl Default for ApplyPatchTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ApplyPatchTool {
     pub fn new() -> Self {
-        Self { root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")) }
+        Self {
+            root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        }
     }
 
     #[allow(dead_code)]
@@ -46,13 +50,16 @@ impl ApplyPatchTool {
                         hunks.push(hunk.build(file.clone()));
                     }
                 }
-                
+
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 {
                     let old_range = parts[1].strip_prefix('-').unwrap_or(parts[1]);
-                    let old_start: usize = old_range.split(',').next()
-                        .and_then(|s| s.parse().ok()).unwrap_or(1);
-                    
+                    let old_start: usize = old_range
+                        .split(',')
+                        .next()
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(1);
+
                     current_hunk = Some(HunkBuilder {
                         start_line: old_start,
                         old_lines: Vec::new(),
@@ -71,21 +78,21 @@ impl ApplyPatchTool {
                 }
             }
         }
-        
+
         // Finalize last hunk
         if let Some(hunk) = current_hunk {
             if let Some(file) = &current_file {
                 hunks.push(hunk.build(file.clone()));
             }
         }
-        
+
         Ok(hunks)
     }
 
     fn apply_hunk(&self, content: &str, hunk: &PatchHunk) -> Result<String> {
         let lines: Vec<&str> = content.lines().collect();
         let mut result = Vec::new();
-        
+
         // Find matching location (fuzzy match)
         let mut match_start = None;
         for i in 0..=lines.len().saturating_sub(hunk.old_lines.len()) {
@@ -101,14 +108,19 @@ impl ApplyPatchTool {
                 break;
             }
         }
-        
-        let match_start = match_start.ok_or_else(|| anyhow::anyhow!("Could not find hunk location"))?;
-        
+
+        let match_start =
+            match_start.ok_or_else(|| anyhow::anyhow!("Could not find hunk location"))?;
+
         // Build result
         result.extend(lines[..match_start].iter().map(|s| s.to_string()));
         result.extend(hunk.new_lines.clone());
-        result.extend(lines[match_start + hunk.old_lines.len()..].iter().map(|s| s.to_string()));
-        
+        result.extend(
+            lines[match_start + hunk.old_lines.len()..]
+                .iter()
+                .map(|s| s.to_string()),
+        );
+
         Ok(result.join("\n"))
     }
 }
@@ -147,9 +159,15 @@ struct Params {
 
 #[async_trait]
 impl Tool for ApplyPatchTool {
-    fn id(&self) -> &str { "apply_patch" }
-    fn name(&self) -> &str { "Apply Patch" }
-    fn description(&self) -> &str { "Apply a unified diff patch to files in the workspace." }
+    fn id(&self) -> &str {
+        "apply_patch"
+    }
+    fn name(&self) -> &str {
+        "Apply Patch"
+    }
+    fn description(&self) -> &str {
+        "Apply a unified diff patch to files in the workspace."
+    }
     fn parameters(&self) -> Value {
         json!({
             "type": "object",
@@ -163,43 +181,47 @@ impl Tool for ApplyPatchTool {
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
         let p: Params = serde_json::from_value(params).context("Invalid params")?;
-        
+
         let hunks = self.parse_patch(&p.patch)?;
-        
+
         if hunks.is_empty() {
             return Ok(ToolResult::error("No valid hunks found in patch"));
         }
-        
+
         let mut results = Vec::new();
         let mut files_modified = Vec::new();
-        
+
         // Group hunks by file
-        let mut by_file: std::collections::HashMap<String, Vec<&PatchHunk>> = std::collections::HashMap::new();
+        let mut by_file: std::collections::HashMap<String, Vec<&PatchHunk>> =
+            std::collections::HashMap::new();
         for hunk in &hunks {
             by_file.entry(hunk.file.clone()).or_default().push(hunk);
         }
-        
+
         for (file, file_hunks) in by_file {
             let path = self.root.join(&file);
-            
+
             let mut content = if path.exists() {
                 std::fs::read_to_string(&path).context(format!("Failed to read {}", file))?
             } else {
                 String::new()
             };
-            
+
             for hunk in file_hunks {
                 match self.apply_hunk(&content, hunk) {
                     Ok(new_content) => {
                         content = new_content;
-                        results.push(format!("✓ Applied hunk to {} at line {}", file, hunk.start_line));
+                        results.push(format!(
+                            "✓ Applied hunk to {} at line {}",
+                            file, hunk.start_line
+                        ));
                     }
                     Err(e) => {
                         results.push(format!("✗ Failed to apply hunk to {}: {}", file, e));
                     }
                 }
             }
-            
+
             if !p.dry_run {
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent)?;
@@ -208,10 +230,19 @@ impl Tool for ApplyPatchTool {
                 files_modified.push(file);
             }
         }
-        
-        let action = if p.dry_run { "Would modify" } else { "Modified" };
-        let summary = format!("{} {} files:\n{}", action, files_modified.len(), results.join("\n"));
-        
+
+        let action = if p.dry_run {
+            "Would modify"
+        } else {
+            "Modified"
+        };
+        let summary = format!(
+            "{} {} files:\n{}",
+            action,
+            files_modified.len(),
+            results.join("\n")
+        );
+
         Ok(ToolResult::success(summary).with_metadata("files", json!(files_modified)))
     }
 }

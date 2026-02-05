@@ -21,6 +21,7 @@ pub mod secrets;
 mod server;
 mod session;
 pub mod swarm;
+pub mod telemetry;
 mod tool;
 mod tui;
 mod worktree;
@@ -28,7 +29,7 @@ mod worktree;
 use clap::Parser;
 use cli::{A2aArgs, Cli, Command};
 use swarm::{DecompositionStrategy, SwarmExecutor};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -85,7 +86,10 @@ async fn main() -> anyhow::Result<()> {
                 println!("{}", serde_json::to_string_pretty(&result)?);
             } else {
                 println!("=== Swarm Execution Results ===");
-                println!("Status: {}", if result.success { "SUCCESS" } else { "FAILED" });
+                println!(
+                    "Status: {}",
+                    if result.success { "SUCCESS" } else { "FAILED" }
+                );
                 println!("Subtasks: {}", result.subtask_results.len());
                 println!("Speedup: {:.1}x", result.stats.speedup_factor);
                 println!("Critical Path: {} steps", result.stats.critical_path_length);
@@ -94,16 +98,24 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Rlm(args)) => {
-            use std::io::Read;
             use provider::ProviderRegistry;
-            
+            use std::io::Read;
+
             // Gather content
             let content = if !args.file.is_empty() {
                 let mut parts = Vec::new();
                 for path in &args.file {
                     match std::fs::read_to_string(path) {
-                        Ok(content) => parts.push(format!("=== FILE: {} ===\n{}\n=== END FILE ===\n", path.display(), content)),
-                        Err(e) => parts.push(format!("=== FILE: {} ===\nError: {}\n=== END FILE ===\n", path.display(), e)),
+                        Ok(content) => parts.push(format!(
+                            "=== FILE: {} ===\n{}\n=== END FILE ===\n",
+                            path.display(),
+                            content
+                        )),
+                        Err(e) => parts.push(format!(
+                            "=== FILE: {} ===\nError: {}\n=== END FILE ===\n",
+                            path.display(),
+                            e
+                        )),
                     }
                 }
                 parts.join("\n")
@@ -137,20 +149,21 @@ async fn main() -> anyhow::Result<()> {
 
             // Try to use LLM-powered RLM if provider is available
             let registry = ProviderRegistry::from_vault().await.ok();
-            let provider_opt = registry.as_ref()
+            let provider_opt = registry
+                .as_ref()
                 .and_then(|r| r.get("moonshotai").or_else(|| r.get("openai")));
 
             if let Some(provider) = provider_opt {
                 // Use LLM-powered RLM with llm_query() support
                 tracing::info!("Using LLM-powered RLM analysis");
-                
+
                 let mut executor = rlm::RlmExecutor::new(
                     content.clone(),
                     provider,
                     "kimi-k2-0711-preview".to_string(), // Use Kimi K2.5
                 )
                 .with_verbose(args.verbose);
-                
+
                 let result = executor.analyze(&args.query).await?;
 
                 if args.json {
@@ -169,23 +182,24 @@ async fn main() -> anyhow::Result<()> {
                     println!("**Query:** {}\n", args.query);
                     println!("**Answer:**\n{}\n", result.answer);
                     println!("---");
-                    println!("*Iterations: {} | Sub-queries: {} | Time: {}ms*",
+                    println!(
+                        "*Iterations: {} | Sub-queries: {} | Time: {}ms*",
                         result.iterations,
                         result.sub_queries.len(),
                         result.stats.elapsed_ms
                     );
-                    
+
                     if !result.sub_queries.is_empty() {
                         println!("\n### Sub-queries made:");
                         for (i, sq) in result.sub_queries.iter().enumerate() {
-                            println!("{}. {} -> {} tokens", i+1, sq.query, sq.tokens_used);
+                            println!("{}. {} -> {} tokens", i + 1, sq.query, sq.tokens_used);
                         }
                     }
                 }
             } else {
                 // Fallback to static REPL-based analysis
                 tracing::info!("Using static RLM analysis (no provider available)");
-                
+
                 // For small content, just use chunking
                 if input_tokens < 10000 {
                     let hints = rlm::RlmChunker::get_processing_hints(content_type);
@@ -194,8 +208,10 @@ async fn main() -> anyhow::Result<()> {
                          *Input: {} tokens, Type: {:?}*\n\n\
                          {}\n\n\
                          ---\n\n\
-                         {}", 
-                        input_tokens, content_type, hints, 
+                         {}",
+                        input_tokens,
+                        content_type,
+                        hints,
                         rlm::RlmChunker::compress(&content, args.max_tokens, None)
                     );
 
@@ -214,7 +230,7 @@ async fn main() -> anyhow::Result<()> {
                 } else {
                     // For large content, use REPL-based exploration
                     let repl = rlm::RlmRepl::new(content.clone(), rlm::ReplRuntime::Rust);
-                    
+
                     // Run exploration
                     let exploration = format!(
                         "=== CONTEXT EXPLORATION ===\n\
@@ -236,9 +252,15 @@ async fn main() -> anyhow::Result<()> {
                     let error_summary = if errors.is_empty() {
                         "No errors found".to_string()
                     } else {
-                        format!("Found {} error lines:\n{}", 
+                        format!(
+                            "Found {} error lines:\n{}",
                             errors.len(),
-                            errors.iter().take(5).map(|(i, l)| format!("  {}:{}", i, l)).collect::<Vec<_>>().join("\n")
+                            errors
+                                .iter()
+                                .take(5)
+                                .map(|(i, l)| format!("  {}:{}", i, l))
+                                .collect::<Vec<_>>()
+                                .join("\n")
                         )
                     };
 
@@ -257,7 +279,9 @@ async fn main() -> anyhow::Result<()> {
                          {}\n\n\
                          ### Compressed Content\n\n\
                          {}",
-                        args.query, input_tokens, content_type, 
+                        args.query,
+                        input_tokens,
+                        content_type,
                         exploration,
                         error_summary,
                         hints,
@@ -282,13 +306,13 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Ralph(args)) => {
             use provider::ProviderRegistry;
-            
+
             match args.action.as_str() {
                 "create-prd" => {
                     let project = args.project_name.as_deref().unwrap_or("my-project");
                     let feature = args.feature.as_deref().unwrap_or("new-feature");
                     let prd = ralph::create_prd_template(project, feature);
-                    
+
                     if args.json {
                         println!("{}", serde_json::to_string_pretty(&prd)?);
                     } else {
@@ -299,45 +323,50 @@ async fn main() -> anyhow::Result<()> {
                 }
                 "status" => {
                     let prd = ralph::Prd::load(&args.prd).await?;
-                    let stories: Vec<String> = prd.user_stories.iter()
+                    let stories: Vec<String> = prd
+                        .user_stories
+                        .iter()
                         .map(|s| {
                             let check = if s.passes { "[x]" } else { "[ ]" };
                             format!("- {} {}: {}", check, s.id, s.title)
                         })
                         .collect();
-                    
+
                     println!("# Ralph Status\n");
                     println!("**Project:** {}", prd.project);
                     println!("**Feature:** {}", prd.feature);
                     println!("**Branch:** {}", prd.branch_name);
-                    println!("**Progress:** {}/{} stories\n", prd.passed_count(), prd.user_stories.len());
+                    println!(
+                        "**Progress:** {}/{} stories\n",
+                        prd.passed_count(),
+                        prd.user_stories.len()
+                    );
                     println!("## Stories\n{}", stories.join("\n"));
                     Ok(())
                 }
                 "run" => {
                     tracing::info!("Starting Ralph loop with PRD: {}", args.prd.display());
-                    
+
                     let registry = ProviderRegistry::from_vault().await?;
-                    let provider = registry.get("moonshotai")
+                    let provider = registry
+                        .get("moonshotai")
                         .or_else(|| registry.get("openai"))
                         .ok_or_else(|| anyhow::anyhow!("No provider available in Vault"))?;
-                    
-                    let model = args.model.unwrap_or_else(|| "kimi-k2-0711-preview".to_string());
+
+                    let model = args
+                        .model
+                        .unwrap_or_else(|| "kimi-k2-0711-preview".to_string());
                     let config = ralph::RalphConfig {
                         prd_path: args.prd.to_string_lossy().to_string(),
                         max_iterations: args.max_iterations,
                         ..Default::default()
                     };
-                    
-                    let mut loop_runner = ralph::RalphLoop::new(
-                        args.prd.clone(),
-                        provider,
-                        model,
-                        config,
-                    ).await?;
-                    
+
+                    let mut loop_runner =
+                        ralph::RalphLoop::new(args.prd.clone(), provider, model, config).await?;
+
                     let result = loop_runner.run().await?;
-                    
+
                     if args.json {
                         println!("{}", serde_json::to_string_pretty(&result)?);
                     } else {
@@ -346,7 +375,10 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
                 _ => {
-                    anyhow::bail!("Unknown action: {}. Use run, status, or create-prd", args.action);
+                    anyhow::bail!(
+                        "Unknown action: {}. Use run, status, or create-prd",
+                        args.action
+                    );
                 }
             }
         }
@@ -359,38 +391,44 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
                 "connect" => {
-                    let command = args.command.as_ref()
+                    let command = args
+                        .command
+                        .as_ref()
                         .ok_or_else(|| anyhow::anyhow!("--command required for connect action"))?;
-                    
+
                     // Parse command into parts
                     let parts: Vec<&str> = command.split_whitespace().collect();
                     if parts.is_empty() {
                         anyhow::bail!("Empty command");
                     }
-                    
+
                     let cmd = parts[0];
                     let cmd_args: Vec<&str> = parts[1..].to_vec();
-                    
+
                     tracing::info!("Connecting to MCP server: {}", command);
                     let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
-                    
+
                     // List available tools
                     let tools = client.tools().await;
-                    
+
                     if args.json {
                         println!("{}", serde_json::to_string_pretty(&tools)?);
                     } else {
                         println!("# Connected to MCP Server\n");
                         println!("## Available Tools ({})\n", tools.len());
                         for tool in &tools {
-                            println!("- **{}**: {}", tool.name, tool.description.as_deref().unwrap_or(""));
+                            println!(
+                                "- **{}**: {}",
+                                tool.name,
+                                tool.description.as_deref().unwrap_or("")
+                            );
                         }
                     }
-                    
+
                     // Keep connection alive briefly to show it works
                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                     client.close().await?;
-                    
+
                     Ok(())
                 }
                 "list-tools" => {
@@ -407,19 +445,26 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
                 "call" => {
-                    let tool = args.tool.as_ref()
+                    let tool = args
+                        .tool
+                        .as_ref()
                         .ok_or_else(|| anyhow::anyhow!("--tool required for call action"))?;
-                    let arguments = args.arguments.as_ref()
+                    let arguments = args
+                        .arguments
+                        .as_ref()
                         .map(|s| serde_json::from_str(s))
                         .transpose()?
                         .unwrap_or(serde_json::json!({}));
-                    
+
                     // For now, just show what would be called
                     println!("Would call tool: {} with arguments: {}", tool, arguments);
                     Ok(())
                 }
                 _ => {
-                    anyhow::bail!("Unknown action: {}. Use serve, connect, list-tools, or call", args.action);
+                    anyhow::bail!(
+                        "Unknown action: {}. Use serve, connect, list-tools, or call",
+                        args.action
+                    );
                 }
             }
         }

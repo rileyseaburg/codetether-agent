@@ -3,14 +3,14 @@
 //! These tests demonstrate real usage of A2AClient with a mock server.
 
 use axum::{
-    routing::{get, post},
     Json, Router,
+    routing::{get, post},
 };
 use codetether_agent::a2a::{
     A2AClient,
     types::{
-        AgentCard, AgentCapabilities, AgentSkill, JsonRpcRequest, JsonRpcResponse,
-        Message, MessageRole, MessageSendParams, Part, Task, TaskState, TaskStatus,
+        AgentCapabilities, AgentCard, AgentSkill, JsonRpcRequest, JsonRpcResponse, Message,
+        MessageRole, MessageSendParams, Part, Task, TaskState, TaskStatus,
     },
 };
 use serde_json::json;
@@ -128,9 +128,9 @@ async fn create_mock_server() -> (SocketAddr, tokio::task::JoinHandle<()>) {
                 jsonrpc: "2.0".to_string(),
                 id: request.id,
                 result: None,
-                error: Some(codetether_agent::a2a::types::JsonRpcError::method_not_found(
-                    &request.method,
-                )),
+                error: Some(
+                    codetether_agent::a2a::types::JsonRpcError::method_not_found(&request.method),
+                ),
             }),
         }
     }
@@ -161,7 +161,10 @@ async fn test_a2a_client_get_agent_card() {
     let client = A2AClient::new(format!("http://{}", addr));
 
     // Get agent card
-    let agent_card = client.get_agent_card().await.expect("Failed to get agent card");
+    let agent_card = client
+        .get_agent_card()
+        .await
+        .expect("Failed to get agent card");
 
     // Verify response
     assert_eq!(agent_card.name, "Test Agent");
@@ -197,7 +200,10 @@ async fn test_a2a_client_send_message() {
         configuration: None,
     };
 
-    let task = client.send_message(params).await.expect("Failed to send message");
+    let task = client
+        .send_message(params)
+        .await
+        .expect("Failed to send message");
 
     // Verify response
     assert_eq!(task.id, "task-123");
@@ -252,7 +258,10 @@ async fn test_a2a_client_with_token() {
     let client = A2AClient::new(format!("http://{}", addr)).with_token("test-token-123");
 
     // The token is used internally in call_rpc - this test verifies the builder pattern works
-    let agent_card = client.get_agent_card().await.expect("Failed to get agent card");
+    let agent_card = client
+        .get_agent_card()
+        .await
+        .expect("Failed to get agent card");
     assert_eq!(agent_card.name, "Test Agent");
 }
 
@@ -294,7 +303,7 @@ async fn test_a2a_client_raw_rpc_call() {
 async fn test_a2a_client_base_url_normalization() {
     // Test that trailing slashes are removed from base URL
     let client = A2AClient::new("http://example.com/");
-    
+
     // The client should work with normalized URL
     // We can't easily test the internal state, but we verify the client is created
     // and the with_token builder works

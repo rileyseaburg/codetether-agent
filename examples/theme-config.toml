@@ -1,0 +1,63 @@
+# Example CodeTether configuration with theme customization
+
+[ui]
+# Preset themes: "dark", "light", "solarized-dark", "solarized-light"
+theme = "dark"
+
+# Enable theme hot-reloading (apply changes without restart)
+hot_reload = true
+
+# Custom theme configuration (overrides preset themes)
+# Remove the custom_theme section to use preset themes
+[ui.custom_theme]
+# Message colors
+user_color = { Named = "green" }
+assistant_color = { Rgb = [42, 161, 152] }  # Solarized cyan
+system_color = { Named = "yellow" }
+tool_color = { Named = "magenta" }
+error_color = { Named = "red" }
+
+# Border colors
+border_color = { Named = "cyan" }
+input_border_color = { Named = "white" }
+help_border_color = { Named = "yellow" }
+
+# Additional colors
+timestamp_color = { Named = "darkgray" }
+code_block_color = { Named = "darkgray" }
+
+# Status bar colors
+status_bar_foreground = { Named = "black" }
+status_bar_background = { Named = "white" }
+
+# Background color (None for terminal default)
+background = null
+
+# Alternative: Full custom RGB theme
+# [ui.custom_theme]
+# user_color = { Rgb = [133, 153, 0] }      # Solarized green
+# assistant_color = { Rgb = [42, 161, 152] }  # Solarized cyan
+# system_color = { Rgb = [181, 137, 0] }    # Solarized yellow
+# tool_color = { Rgb = [211, 54, 130] }     # Solarized magenta
+# error_color = { Rgb = [220, 50, 47] }     # Solarized red
+# border_color = { Rgb = [131, 148, 150] }  # Solarized base1
+# input_border_color = { Rgb = [238, 232, 213] }  # Solarized base2
+# help_border_color = { Rgb = [181, 137, 0] }     # Solarized yellow
+# timestamp_color = { Rgb = [101, 123, 131] }     # Solarized base01
+# code_block_color = { Rgb = [88, 110, 117] }     # Solarized base03
+# status_bar_foreground = { Rgb = [0, 43, 54] }   # Solarized base03
+# status_bar_background = { Rgb = [238, 232, 213] }  # Solarized base2
+# background = { Rgb = [0, 43, 54] }    # Solarized base03
+
+# Color format examples:
+# Named colors: "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"
+#               "darkgray", "lightred", "lightgreen", etc.
+# RGB colors: { Rgb = [255, 0, 0] } for red
+# Indexed colors: { Indexed = 196 } for bright red (ANSI 256-color)
+
+# Other UI settings
+line_numbers = true
+mouse = true
+
+# You can test theme changes live by editing this file while the TUI is running
+# with hot_reload = true enabled!

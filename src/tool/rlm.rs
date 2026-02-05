@@ -6,7 +6,7 @@
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// RLM Tool - Invoke the Recursive Language Model subsystem
 /// for analyzing large codebases that exceed the context window
@@ -97,7 +97,7 @@ impl Tool for RlmTool {
                 if query.is_empty() {
                     return Ok(ToolResult::error("query is required for 'analyze' action"));
                 }
-                
+
                 // Collect content from paths or direct content
                 let all_content = if let Some(c) = content {
                     c.to_string()
@@ -135,16 +135,19 @@ impl Tool for RlmTool {
                     all_content.len(),
                     chunks.len(),
                     max_depth,
-                    chunks.first().map(|c| if c.len() > 500 { &c[..500] } else { c }).unwrap_or("")
+                    chunks
+                        .first()
+                        .map(|c| if c.len() > 500 { &c[..500] } else { c })
+                        .unwrap_or("")
                 );
-                
+
                 Ok(ToolResult::success(output))
             }
             "summarize" => {
                 if paths.is_empty() && content.is_none() {
                     return Ok(ToolResult::error("Either 'paths' or 'content' is required"));
                 }
-                
+
                 let all_content = if let Some(c) = content {
                     c.to_string()
                 } else {
@@ -152,7 +155,9 @@ impl Tool for RlmTool {
                     for path in &paths {
                         match tokio::fs::read_to_string(path).await {
                             Ok(c) => collected.push_str(&c),
-                            Err(e) => collected.push_str(&format!("[Error reading {}: {}]\n", path, e)),
+                            Err(e) => {
+                                collected.push_str(&format!("[Error reading {}: {}]\n", path, e))
+                            }
                         }
                     }
                     collected
@@ -169,14 +174,14 @@ impl Tool for RlmTool {
                     all_content.len(),
                     chunks.len()
                 );
-                
+
                 Ok(ToolResult::success(output))
             }
             "search" => {
                 if query.is_empty() {
                     return Ok(ToolResult::error("query is required for 'search' action"));
                 }
-                
+
                 let output = format!(
                     "RLM Semantic Search\n\
                     Query: {}\n\
@@ -184,10 +189,13 @@ impl Tool for RlmTool {
                     [Full RLM would perform semantic search across chunks]",
                     query, paths
                 );
-                
+
                 Ok(ToolResult::success(output))
             }
-            _ => Ok(ToolResult::error(format!("Unknown action: {}. Use 'analyze', 'summarize', or 'search'.", action))),
+            _ => Ok(ToolResult::error(format!(
+                "Unknown action: {}. Use 'analyze', 'summarize', or 'search'.",
+                action
+            ))),
         }
     }
 }
@@ -197,21 +205,22 @@ impl RlmTool {
         let mut chunks = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
         let mut current_chunk = String::new();
-        
+
         for line in lines {
             if current_chunk.len() + line.len() + 1 > self.max_chunk_size
-                && !current_chunk.is_empty() {
-                    chunks.push(current_chunk);
-                    current_chunk = String::new();
-                }
+                && !current_chunk.is_empty()
+            {
+                chunks.push(current_chunk);
+                current_chunk = String::new();
+            }
             current_chunk.push_str(line);
             current_chunk.push('\n');
         }
-        
+
         if !current_chunk.is_empty() {
             chunks.push(current_chunk);
         }
-        
+
         chunks
     }
 }

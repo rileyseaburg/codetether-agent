@@ -14,16 +14,16 @@ use tracing::{debug, error, trace};
 pub trait Transport: Send + Sync {
     /// Send a JSON-RPC request
     async fn send_request(&self, request: JsonRpcRequest) -> Result<()>;
-    
+
     /// Send a JSON-RPC response
     async fn send_response(&self, response: JsonRpcResponse) -> Result<()>;
-    
+
     /// Send a JSON-RPC notification
     async fn send_notification(&self, notification: JsonRpcNotification) -> Result<()>;
-    
+
     /// Receive incoming messages
     async fn receive(&self) -> Result<Option<McpMessage>>;
-    
+
     /// Close the transport
     async fn close(&self) -> Result<()>;
 }
@@ -77,7 +77,7 @@ impl StdioTransport {
     pub fn new() -> Self {
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
         let (read_tx, read_rx) = mpsc::channel::<String>(100);
-        
+
         // Spawn writer thread (blocking IO)
         std::thread::spawn(move || {
             let mut stdout = std::io::stdout().lock();
@@ -93,7 +93,7 @@ impl StdioTransport {
                 }
             }
         });
-        
+
         // Spawn reader thread (blocking IO)
         std::thread::spawn(move || {
             let stdin = std::io::stdin();
@@ -114,13 +114,13 @@ impl StdioTransport {
                 }
             }
         });
-        
+
         Self {
             tx: write_tx,
             rx: tokio::sync::Mutex::new(read_rx),
         }
     }
-    
+
     async fn send_json(&self, value: Value) -> Result<()> {
         let json = serde_json::to_string(&value)?;
         self.tx.send(json).await?;
@@ -133,15 +133,15 @@ impl Transport for StdioTransport {
     async fn send_request(&self, request: JsonRpcRequest) -> Result<()> {
         self.send_json(serde_json::to_value(&request)?).await
     }
-    
+
     async fn send_response(&self, response: JsonRpcResponse) -> Result<()> {
         self.send_json(serde_json::to_value(&response)?).await
     }
-    
+
     async fn send_notification(&self, notification: JsonRpcNotification) -> Result<()> {
         self.send_json(serde_json::to_value(&notification)?).await
     }
-    
+
     async fn receive(&self) -> Result<Option<McpMessage>> {
         let mut rx = self.rx.lock().await;
         match rx.recv().await {
@@ -153,7 +153,7 @@ impl Transport for StdioTransport {
             None => Ok(None),
         }
     }
-    
+
     async fn close(&self) -> Result<()> {
         // Channel will close when transport is dropped
         Ok(())
@@ -174,18 +174,18 @@ impl SseTransport {
         let client = reqwest::Client::new();
         let (write_tx, _write_rx) = mpsc::channel::<String>(100);
         let (read_tx, read_rx) = mpsc::channel::<String>(100);
-        
+
         // TODO: Start SSE connection for receiving messages
         // For now, this is a placeholder
         let endpoint_clone = endpoint.clone();
         let read_tx_clone = read_tx;
-        
+
         tokio::spawn(async move {
             debug!("SSE transport connecting to: {}", endpoint_clone);
             // SSE event stream handling would go here
             let _ = read_tx_clone;
         });
-        
+
         Ok(Self {
             endpoint,
             client,
@@ -193,11 +193,11 @@ impl SseTransport {
             rx: tokio::sync::Mutex::new(read_rx),
         })
     }
-    
+
     async fn send_json(&self, value: Value) -> Result<()> {
         let json = serde_json::to_string(&value)?;
         debug!("SSE TX: {}", json);
-        
+
         // POST to the endpoint
         self.client
             .post(&self.endpoint)
@@ -205,7 +205,7 @@ impl SseTransport {
             .body(json)
             .send()
             .await?;
-        
+
         Ok(())
     }
 }
@@ -215,15 +215,15 @@ impl Transport for SseTransport {
     async fn send_request(&self, request: JsonRpcRequest) -> Result<()> {
         self.send_json(serde_json::to_value(&request)?).await
     }
-    
+
     async fn send_response(&self, response: JsonRpcResponse) -> Result<()> {
         self.send_json(serde_json::to_value(&response)?).await
     }
-    
+
     async fn send_notification(&self, notification: JsonRpcNotification) -> Result<()> {
         self.send_json(serde_json::to_value(&notification)?).await
     }
-    
+
     async fn receive(&self) -> Result<Option<McpMessage>> {
         let mut rx = self.rx.lock().await;
         match rx.recv().await {
@@ -235,7 +235,7 @@ impl Transport for SseTransport {
             None => Ok(None),
         }
     }
-    
+
     async fn close(&self) -> Result<()> {
         Ok(())
     }
@@ -252,20 +252,26 @@ impl ProcessTransport {
     /// Spawn a subprocess and connect via stdio
     pub async fn spawn(command: &str, args: &[&str]) -> Result<Self> {
         use tokio::process::Command;
-        
+
         let mut child = Command::new(command)
             .args(args)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::inherit())
             .spawn()?;
-        
-        let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("No stdout"))?;
-        let mut stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("No stdin"))?;
-        
+
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No stdout"))?;
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No stdin"))?;
+
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
         let (read_tx, read_rx) = mpsc::channel::<String>(100);
-        
+
         // Writer task
         tokio::spawn(async move {
             while let Some(msg) = write_rx.recv().await {
@@ -280,7 +286,7 @@ impl ProcessTransport {
                 }
             }
         });
-        
+
         // Reader task
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout);
@@ -305,14 +311,14 @@ impl ProcessTransport {
                 }
             }
         });
-        
+
         Ok(Self {
             _child: child,
             tx: write_tx,
             rx: tokio::sync::Mutex::new(read_rx),
         })
     }
-    
+
     async fn send_json(&self, value: Value) -> Result<()> {
         let json = serde_json::to_string(&value)?;
         self.tx.send(json).await?;
@@ -325,15 +331,15 @@ impl Transport for ProcessTransport {
     async fn send_request(&self, request: JsonRpcRequest) -> Result<()> {
         self.send_json(serde_json::to_value(&request)?).await
     }
-    
+
     async fn send_response(&self, response: JsonRpcResponse) -> Result<()> {
         self.send_json(serde_json::to_value(&response)?).await
     }
-    
+
     async fn send_notification(&self, notification: JsonRpcNotification) -> Result<()> {
         self.send_json(serde_json::to_value(&notification)?).await
     }
-    
+
     async fn receive(&self) -> Result<Option<McpMessage>> {
         let mut rx = self.rx.lock().await;
         match rx.recv().await {
@@ -345,7 +351,7 @@ impl Transport for ProcessTransport {
             None => Ok(None),
         }
     }
-    
+
     async fn close(&self) -> Result<()> {
         Ok(())
     }

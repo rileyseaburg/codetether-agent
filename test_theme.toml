@@ -1,0 +1,9 @@
+[ui]
+theme = "light"
+hot_reload = true
+
+[ui.custom_theme]
+user_color = { Named = "blue" }
+assistant_color = { Rgb = [255, 100, 50] }
+system_color = { Named = "yellow" }
+error_color = { Named = "red" }

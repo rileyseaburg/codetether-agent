@@ -5,6 +5,8 @@
 pub mod bash;
 pub mod batch;
 pub mod codesearch;
+pub mod confirm_edit;
+pub mod confirm_multiedit;
 pub mod edit;
 pub mod file;
 pub mod invalid;
@@ -20,6 +22,7 @@ pub mod search;
 pub mod skill;
 pub mod task;
 pub mod todo;
+pub mod undo;
 pub mod webfetch;
 pub mod websearch;
 
@@ -78,7 +81,7 @@ impl ToolResult {
     }
 
     /// Create a structured error with code, tool name, missing fields, and example
-    /// 
+    ///
     /// This helps LLMs self-correct by providing actionable information about what went wrong.
     pub fn structured_error(
         code: &str,
@@ -92,23 +95,24 @@ impl ToolResult {
             "tool": tool,
             "message": message,
         });
-        
+
         if let Some(fields) = missing_fields {
             error_obj["missing_fields"] = serde_json::json!(fields);
         }
-        
+
         if let Some(ex) = example {
             error_obj["example"] = ex;
         }
-        
+
         let output = serde_json::to_string_pretty(&serde_json::json!({
             "error": error_obj
-        })).unwrap_or_else(|_| format!("Error: {}", message));
-        
+        }))
+        .unwrap_or_else(|_| format!("Error: {}", message));
+
         let mut metadata = HashMap::new();
         metadata.insert("error_code".to_string(), serde_json::json!(code));
         metadata.insert("tool".to_string(), serde_json::json!(tool));
-        
+
         Self {
             output,
             success: false,
@@ -164,7 +168,7 @@ impl ToolRegistry {
     /// Create registry with all default tools (without batch)
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
-        
+
         registry.register(Arc::new(file::ReadTool::new()));
         registry.register(Arc::new(file::WriteTool::new()));
         registry.register(Arc::new(file::ListTool::new()));
@@ -188,16 +192,19 @@ impl ToolRegistry {
         registry.register(Arc::new(rlm::RlmTool::new()));
         registry.register(Arc::new(ralph::RalphTool::new()));
         registry.register(Arc::new(prd::PrdTool::new()));
+        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
+        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
+        registry.register(Arc::new(undo::UndoTool));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
-        
+
         registry
     }
 
     /// Create registry with provider for tools that need it (like RalphTool)
     pub fn with_provider(provider: Arc<dyn Provider>, model: String) -> Self {
         let mut registry = Self::new();
-        
+
         registry.register(Arc::new(file::ReadTool::new()));
         registry.register(Arc::new(file::WriteTool::new()));
         registry.register(Arc::new(file::ListTool::new()));
@@ -222,9 +229,10 @@ impl ToolRegistry {
         // RalphTool with provider for autonomous execution
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));
+        registry.register(Arc::new(undo::UndoTool));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
-        
+
         registry
     }
 
@@ -233,17 +241,17 @@ impl ToolRegistry {
     /// a two-phase initialization pattern.
     pub fn with_defaults_arc() -> Arc<Self> {
         let mut registry = Self::with_defaults();
-        
+
         // Create batch tool without registry reference
         let batch_tool = Arc::new(batch::BatchTool::new());
         registry.register(batch_tool.clone());
-        
+
         // Wrap registry in Arc
         let registry = Arc::new(registry);
-        
+
         // Now give batch tool a weak reference to the registry
         batch_tool.set_registry(Arc::downgrade(&registry));
-        
+
         registry
     }
 
@@ -253,17 +261,17 @@ impl ToolRegistry {
     #[allow(dead_code)]
     pub fn with_provider_arc(provider: Arc<dyn Provider>, model: String) -> Arc<Self> {
         let mut registry = Self::with_provider(provider, model);
-        
+
         // Create batch tool without registry reference
         let batch_tool = Arc::new(batch::BatchTool::new());
         registry.register(batch_tool.clone());
-        
+
         // Wrap registry in Arc
         let registry = Arc::new(registry);
-        
+
         // Now give batch tool a weak reference to the registry
         batch_tool.set_registry(Arc::downgrade(&registry));
-        
+
         registry
     }
 }

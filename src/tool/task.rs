@@ -1,13 +1,13 @@
 //! Task Tool - Spawn sub-tasks for parallel or sequential execution.
 
+use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
-use serde_json::{json, Value};
-use super::{Tool, ToolResult};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::collections::HashMap;
 use parking_lot::RwLock;
+use serde::Deserialize;
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 static TASK_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
@@ -35,16 +35,20 @@ enum TaskStatus {
 pub struct TaskTool;
 
 impl Default for TaskTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TaskTool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 #[derive(Deserialize)]
 struct Params {
-    action: String,  // create, status, complete, list, cancel
+    action: String, // create, status, complete, list, cancel
     #[serde(default)]
     id: Option<String>,
     #[serde(default)]
@@ -55,9 +59,15 @@ struct Params {
 
 #[async_trait]
 impl Tool for TaskTool {
-    fn id(&self) -> &str { "task" }
-    fn name(&self) -> &str { "Task Manager" }
-    fn description(&self) -> &str { "Manage sub-tasks: create, query status, complete, or list tasks for tracking complex workflows." }
+    fn id(&self) -> &str {
+        "task"
+    }
+    fn name(&self) -> &str {
+        "Task Manager"
+    }
+    fn description(&self) -> &str {
+        "Manage sub-tasks: create, query status, complete, or list tasks for tracking complex workflows."
+    }
     fn parameters(&self) -> Value {
         json!({
             "type": "object",
@@ -77,27 +87,31 @@ impl Tool for TaskTool {
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
         let p: Params = serde_json::from_value(params).context("Invalid params")?;
-        
+
         match p.action.as_str() {
             "create" => {
-                let description = p.description.ok_or_else(|| anyhow::anyhow!("description required"))?;
+                let description = p
+                    .description
+                    .ok_or_else(|| anyhow::anyhow!("description required"))?;
                 let id = format!("task_{}", TASK_COUNTER.fetch_add(1, Ordering::SeqCst));
-                
+
                 let task = TaskInfo {
                     id: id.clone(),
                     description: description.clone(),
                     status: TaskStatus::Pending,
                     result: None,
                 };
-                
+
                 TASK_STORE.write().insert(id.clone(), task);
-                Ok(ToolResult::success(format!("Created task: {} - {}", id, description))
-                    .with_metadata("task_id", json!(id)))
+                Ok(
+                    ToolResult::success(format!("Created task: {} - {}", id, description))
+                        .with_metadata("task_id", json!(id)),
+                )
             }
             "status" => {
                 let id = p.id.ok_or_else(|| anyhow::anyhow!("id required"))?;
                 let store = TASK_STORE.read();
-                
+
                 match store.get(&id) {
                     Some(task) => {
                         let status_str = match task.status {
@@ -107,18 +121,20 @@ impl Tool for TaskTool {
                             TaskStatus::Failed => "failed",
                         };
                         Ok(ToolResult::success(format!(
-                            "Task {} [{}]: {}\n{}", 
-                            task.id, status_str, task.description,
+                            "Task {} [{}]: {}\n{}",
+                            task.id,
+                            status_str,
+                            task.description,
                             task.result.as_deref().unwrap_or("")
                         )))
                     }
-                    None => Ok(ToolResult::error(format!("Task not found: {}", id)))
+                    None => Ok(ToolResult::error(format!("Task not found: {}", id))),
                 }
             }
             "complete" => {
                 let id = p.id.ok_or_else(|| anyhow::anyhow!("id required"))?;
                 let result = p.result.unwrap_or_else(|| "Completed".to_string());
-                
+
                 let mut store = TASK_STORE.write();
                 match store.get_mut(&id) {
                     Some(task) => {
@@ -126,12 +142,12 @@ impl Tool for TaskTool {
                         task.result = Some(result.clone());
                         Ok(ToolResult::success(format!("Completed task: {}", id)))
                     }
-                    None => Ok(ToolResult::error(format!("Task not found: {}", id)))
+                    None => Ok(ToolResult::error(format!("Task not found: {}", id))),
                 }
             }
             "cancel" => {
                 let id = p.id.ok_or_else(|| anyhow::anyhow!("id required"))?;
-                
+
                 let mut store = TASK_STORE.write();
                 match store.get_mut(&id) {
                     Some(task) => {
@@ -139,7 +155,7 @@ impl Tool for TaskTool {
                         task.result = Some("Cancelled".to_string());
                         Ok(ToolResult::success(format!("Cancelled task: {}", id)))
                     }
-                    None => Ok(ToolResult::error(format!("Task not found: {}", id)))
+                    None => Ok(ToolResult::error(format!("Task not found: {}", id))),
                 }
             }
             "list" => {
@@ -147,20 +163,24 @@ impl Tool for TaskTool {
                 if store.is_empty() {
                     return Ok(ToolResult::success("No active tasks".to_string()));
                 }
-                
-                let output = store.values().map(|t| {
-                    let icon = match t.status {
-                        TaskStatus::Pending => "○",
-                        TaskStatus::Running => "◐",
-                        TaskStatus::Complete => "●",
-                        TaskStatus::Failed => "✗",
-                    };
-                    format!("{} {} - {}", icon, t.id, t.description)
-                }).collect::<Vec<_>>().join("\n");
-                
+
+                let output = store
+                    .values()
+                    .map(|t| {
+                        let icon = match t.status {
+                            TaskStatus::Pending => "○",
+                            TaskStatus::Running => "◐",
+                            TaskStatus::Complete => "●",
+                            TaskStatus::Failed => "✗",
+                        };
+                        format!("{} {} - {}", icon, t.id, t.description)
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
                 Ok(ToolResult::success(output).with_metadata("count", json!(store.len())))
             }
-            _ => Ok(ToolResult::error(format!("Unknown action: {}", p.action)))
+            _ => Ok(ToolResult::error(format!("Unknown action: {}", p.action))),
         }
     }
 }

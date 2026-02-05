@@ -1,13 +1,14 @@
 //! Ralph loop - the core autonomous execution loop
 
 use super::types::*;
-use crate::provider::{CompletionRequest, Message, Provider, Role};
+use crate::provider::Provider;
+use crate::swarm::run_agent_loop;
+use crate::tool::ToolRegistry;
 use crate::worktree::WorktreeManager;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
-use tokio::time::{timeout, Duration};
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 /// The main Ralph executor
 pub struct RalphLoop {
@@ -26,7 +27,7 @@ impl RalphLoop {
         config: RalphConfig,
     ) -> anyhow::Result<Self> {
         let prd = Prd::load(&prd_path).await?;
-        
+
         // Get working directory - use parent of prd_path or current directory
         let working_dir = if let Some(parent) = prd_path.parent() {
             if parent.as_os_str().is_empty() {
@@ -81,9 +82,10 @@ impl RalphLoop {
         }
 
         if self.state.status != RalphStatus::Completed
-            && self.state.current_iteration >= self.state.max_iterations {
-                self.state.status = RalphStatus::MaxIterations;
-            }
+            && self.state.current_iteration >= self.state.max_iterations
+        {
+            self.state.status = RalphStatus::MaxIterations;
+        }
 
         info!(
             "Ralph finished: {:?}, {}/{} stories passed",
@@ -94,7 +96,7 @@ impl RalphLoop {
 
         Ok(self.state.clone())
     }
-    
+
     /// Run stories sequentially (original behavior)
     async fn run_sequential(&mut self) -> anyhow::Result<()> {
         while self.state.current_iteration < self.state.max_iterations {
@@ -145,12 +147,12 @@ impl RalphLoop {
                         if self.run_quality_gates().await? {
                             info!("Story {} passed quality checks!", story.id);
                             self.state.prd.mark_passed(&story.id);
-                            
+
                             // Commit changes
                             if self.config.auto_commit {
                                 self.commit_story(&story)?;
                             }
-                            
+
                             // Save updated PRD
                             self.state.prd.save(&self.state.prd_path).await?;
                         } else {
@@ -176,25 +178,27 @@ impl RalphLoop {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Run stories in parallel by stage with worktree isolation
     async fn run_parallel(&mut self) -> anyhow::Result<()> {
         // Clone stages upfront to avoid borrow issues
-        let stages: Vec<Vec<UserStory>> = self.state.prd.stages()
+        let stages: Vec<Vec<UserStory>> = self
+            .state
+            .prd
+            .stages()
             .into_iter()
             .map(|stage| stage.into_iter().cloned().collect())
             .collect();
         let total_stages = stages.len();
-        
+
         info!(
             "Parallel execution: {} stages, {} max concurrent stories",
-            total_stages,
-            self.config.max_concurrent_stories
+            total_stages, self.config.max_concurrent_stories
         );
-        
+
         // Create worktree manager if enabled
         let worktree_mgr = if self.config.worktree_enabled {
             match WorktreeManager::new(&self.state.working_dir) {
@@ -203,25 +207,28 @@ impl RalphLoop {
                     Some(Arc::new(mgr))
                 }
                 Err(e) => {
-                    warn!("Failed to create worktree manager: {}, falling back to sequential within stages", e);
+                    warn!(
+                        "Failed to create worktree manager: {}, falling back to sequential within stages",
+                        e
+                    );
                     None
                 }
             }
         } else {
             None
         };
-        
+
         for (stage_idx, stage_stories) in stages.into_iter().enumerate() {
             if self.state.prd.is_complete() {
                 info!("All stories complete!");
                 self.state.status = RalphStatus::Completed;
                 break;
             }
-            
+
             if self.state.current_iteration >= self.state.max_iterations {
                 break;
             }
-            
+
             let story_count = stage_stories.len();
             info!(
                 "=== Stage {}/{}: {} stories in parallel ===",
@@ -229,20 +236,25 @@ impl RalphLoop {
                 total_stages,
                 story_count
             );
-            
+
             // Stories are already cloned from stages()
             let stories: Vec<UserStory> = stage_stories;
-            
+
             // Execute stories in parallel
-            let semaphore = Arc::new(tokio::sync::Semaphore::new(self.config.max_concurrent_stories));
+            let semaphore = Arc::new(tokio::sync::Semaphore::new(
+                self.config.max_concurrent_stories,
+            ));
             let provider = Arc::clone(&self.provider);
             let model = self.model.clone();
-            let prd_info = (self.state.prd.project.clone(), self.state.prd.feature.clone());
+            let prd_info = (
+                self.state.prd.project.clone(),
+                self.state.prd.feature.clone(),
+            );
             let working_dir = self.state.working_dir.clone();
             let progress_path = self.config.progress_path.clone();
-            
+
             let mut handles = Vec::new();
-            
+
             for story in stories {
                 let sem = Arc::clone(&semaphore);
                 let provider = Arc::clone(&provider);
@@ -251,10 +263,10 @@ impl RalphLoop {
                 let working_dir = working_dir.clone();
                 let worktree_mgr = worktree_mgr.clone();
                 let progress_path = progress_path.clone();
-                
+
                 let handle = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
-                    
+
                     // Create worktree for this story if enabled
                     let (story_working_dir, worktree_info) = if let Some(ref mgr) = worktree_mgr {
                         match mgr.create(&story.id.to_lowercase().replace("-", "_")) {
@@ -286,21 +298,25 @@ impl RalphLoop {
                     } else {
                         (working_dir.clone(), None)
                     };
-                    
-                    info!("Working on story: {} - {} (in {:?})", story.id, story.title, story_working_dir);
-                    
+
+                    info!(
+                        "Working on story: {} - {} (in {:?})",
+                        story.id, story.title, story_working_dir
+                    );
+
                     // Build the prompt with worktree awareness
                     let prompt = Self::build_story_prompt(&story, &prd_info, &story_working_dir);
-                    
+
                     // Call the LLM
-                    let result = Self::call_llm_static(&provider, &model, &prompt, &story_working_dir).await;
-                    
+                    let result =
+                        Self::call_llm_static(&provider, &model, &prompt, &story_working_dir).await;
+
                     let entry = match &result {
                         Ok(response) => {
                             // Append progress to worktree-local progress file
                             let progress_file = story_working_dir.join(&progress_path);
                             let _ = std::fs::write(&progress_file, response);
-                            
+
                             ProgressEntry {
                                 story_id: story.id.clone(),
                                 iteration: 1,
@@ -322,40 +338,43 @@ impl RalphLoop {
                             }
                         }
                     };
-                    
+
                     (story, result.is_ok(), entry, worktree_info, worktree_mgr)
                 });
-                
+
                 handles.push(handle);
             }
-            
+
             // Wait for all stories in this stage
             for handle in handles {
                 match handle.await {
                     Ok((story, success, entry, worktree_info, worktree_mgr)) => {
                         self.state.current_iteration += 1;
                         self.state.progress_log.push(entry);
-                        
+
                         if success {
                             // Run quality gates in the worktree (or main dir)
-                            let check_dir = worktree_info.as_ref()
+                            let check_dir = worktree_info
+                                .as_ref()
                                 .map(|wt| wt.path.clone())
                                 .unwrap_or_else(|| self.state.working_dir.clone());
-                            
+
                             let quality_passed = if self.config.quality_checks_enabled {
-                                self.run_quality_gates_in_dir(&check_dir).await.unwrap_or(false)
+                                self.run_quality_gates_in_dir(&check_dir)
+                                    .await
+                                    .unwrap_or(false)
                             } else {
                                 true
                             };
-                            
+
                             if quality_passed {
                                 info!("Story {} passed quality checks!", story.id);
-                                
+
                                 // Commit in worktree first
                                 if let Some(ref wt) = worktree_info {
                                     let _ = Self::commit_in_dir(&wt.path, &story);
                                 }
-                                
+
                                 // Merge worktree back to main
                                 if let (Some(wt), Some(mgr)) = (&worktree_info, &worktree_mgr) {
                                     match mgr.merge(wt) {
@@ -367,16 +386,86 @@ impl RalphLoop {
                                                     "Merged story changes successfully"
                                                 );
                                                 self.state.prd.mark_passed(&story.id);
+                                                // Cleanup worktree
+                                                let _ = mgr.cleanup(wt);
+                                            } else if !merge_result.conflicts.is_empty() {
+                                                // Real conflicts - spawn conflict resolver
+                                                info!(
+                                                    story_id = %story.id,
+                                                    num_conflicts = merge_result.conflicts.len(),
+                                                    "Spawning conflict resolver sub-agent"
+                                                );
+                                                
+                                                // Try to resolve conflicts
+                                                match Self::resolve_conflicts_static(
+                                                    &provider,
+                                                    &model,
+                                                    &working_dir,
+                                                    &story,
+                                                    &merge_result.conflicts,
+                                                    &merge_result.conflict_diffs,
+                                                ).await {
+                                                    Ok(resolved) => {
+                                                        if resolved {
+                                                            // Complete the merge after resolution
+                                                            let commit_msg = format!(
+                                                                "Merge: resolved conflicts for {}",
+                                                                story.id
+                                                            );
+                                                            match mgr.complete_merge(wt, &commit_msg) {
+                                                                Ok(final_result) => {
+                                                                    if final_result.success {
+                                                                        info!(
+                                                                            story_id = %story.id,
+                                                                            "Merge completed after conflict resolution"
+                                                                        );
+                                                                        self.state.prd.mark_passed(&story.id);
+                                                                    } else {
+                                                                        warn!(
+                                                                            story_id = %story.id,
+                                                                            "Merge failed even after resolution"
+                                                                        );
+                                                                        let _ = mgr.abort_merge();
+                                                                    }
+                                                                }
+                                                                Err(e) => {
+                                                                    warn!(
+                                                                        story_id = %story.id,
+                                                                        error = %e,
+                                                                        "Failed to complete merge after resolution"
+                                                                    );
+                                                                    let _ = mgr.abort_merge();
+                                                                }
+                                                            }
+                                                        } else {
+                                                            warn!(
+                                                                story_id = %story.id,
+                                                                "Conflict resolver could not resolve all conflicts"
+                                                            );
+                                                            let _ = mgr.abort_merge();
+                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        warn!(
+                                                            story_id = %story.id,
+                                                            error = %e,
+                                                            "Conflict resolver failed"
+                                                        );
+                                                        let _ = mgr.abort_merge();
+                                                    }
+                                                }
+                                                // Cleanup worktree
+                                                let _ = mgr.cleanup(wt);
                                             } else {
+                                                // Non-conflict failure (already aborted)
                                                 warn!(
                                                     story_id = %story.id,
-                                                    conflicts = ?merge_result.conflicts,
-                                                    "Merge had conflicts"
+                                                    summary = %merge_result.summary,
+                                                    "Merge failed (not conflicts)"
                                                 );
+                                                // Cleanup worktree
+                                                let _ = mgr.cleanup(wt);
                                             }
-                                            
-                                            // Cleanup worktree
-                                            let _ = mgr.cleanup(wt);
                                         }
                                         Err(e) => {
                                             warn!(
@@ -413,16 +502,20 @@ impl RalphLoop {
                     }
                 }
             }
-            
+
             // Save PRD after each stage
             self.state.prd.save(&self.state.prd_path).await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Build prompt for a story (static version for parallel execution)
-    fn build_story_prompt(story: &UserStory, prd_info: &(String, String), working_dir: &PathBuf) -> String {
+    fn build_story_prompt(
+        story: &UserStory,
+        prd_info: &(String, String),
+        working_dir: &PathBuf,
+    ) -> String {
         format!(
             r#"# PRD: {} - {}
 
@@ -435,13 +528,56 @@ impl RalphLoop {
 ### Acceptance Criteria:
 {}
 
-## Instructions:
-1. Implement the requirements for this story
-2. Write any necessary code changes using the working directory above
-3. Document what you learned
-4. End with `STORY_COMPLETE: {}` when done
+## WORKFLOW (follow this exactly):
 
-Respond with the implementation and any shell commands needed.
+1. **EXPLORE** (2-4 tool calls): Use `glob` and `read` to understand existing code
+2. **IMPLEMENT** (5-15 tool calls): Use `write` or `edit` to make changes
+3. **VERIFY**: Run `bash` with command `cargo check 2>&1` to check for errors
+4. **FIX OR FINISH**:
+   - If no errors: Output `STORY_COMPLETE: {}` and STOP
+   - If errors: Parse the error, fix it, re-run cargo check (max 3 fix attempts)
+   - After 3 failed attempts: Output `STORY_BLOCKED: <error summary>` and STOP
+
+## UNDERSTANDING CARGO ERRORS:
+
+When `cargo check` fails, the output shows:
+```
+error[E0432]: unresolved import `crate::foo::bar`
+  --> src/file.rs:10:5
+   |
+10 | use crate::foo::bar;
+   |             ^^^ could not find `bar` in `foo`
+```
+
+Key parts:
+- `error[E0432]` = error code (search rustc --explain E0432 for details)
+- `src/file.rs:10:5` = file:line:column where error occurs
+- The message explains what's wrong
+
+COMMON FIXES:
+- "unresolved import" → module doesn't exist or isn't exported, check mod.rs
+- "cannot find" → typo in name or missing import
+- "mismatched types" → wrong type, check function signatures
+- "trait bound not satisfied" → missing impl or use statement
+
+## TOOL USAGE:
+- `read`: Read file content (always read before editing!)
+- `edit`: Modify files (MUST include 3+ lines before/after for unique context)
+- `write`: Create new files
+- `bash`: Run commands with `{{"command": "...", "cwd": "{}"}}`
+
+## CRITICAL RULES:
+- ALWAYS read a file before editing it
+- When edit fails with "ambiguous match", include MORE context lines
+- Do NOT add TODO/placeholder comments
+- Run `cargo check 2>&1` to see ALL errors including warnings
+- Count your fix attempts - STOP after 3 failures
+
+## TERMINATION:
+SUCCESS: Output `STORY_COMPLETE: {}`
+BLOCKED: Output `STORY_BLOCKED: <brief error description>`
+
+Do NOT keep iterating indefinitely. Stop when done or blocked.
 "#,
             prd_info.0,
             prd_info.1,
@@ -449,69 +585,200 @@ Respond with the implementation and any shell commands needed.
             story.id,
             story.title,
             story.description,
-            story.acceptance_criteria.iter()
+            story
+                .acceptance_criteria
+                .iter()
                 .map(|c| format!("- {}", c))
                 .collect::<Vec<_>>()
                 .join("\n"),
+            story.id,
+            working_dir.display(),
             story.id
         )
     }
-    
-    /// Call LLM (static version for parallel execution)
-    async fn call_llm_static(provider: &Arc<dyn Provider>, model: &str, prompt: &str, working_dir: &PathBuf) -> anyhow::Result<String> {
-        use crate::provider::ContentPart;
-        
+
+    /// Call LLM with agentic tool loop (static version for parallel execution)
+    async fn call_llm_static(
+        provider: &Arc<dyn Provider>,
+        model: &str,
+        prompt: &str,
+        working_dir: &PathBuf,
+    ) -> anyhow::Result<String> {
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
-        
-        let request = CompletionRequest {
-            messages: vec![
-                Message {
-                    role: Role::System,
-                    content: vec![ContentPart::Text { text: system_prompt }],
-                },
-                Message {
-                    role: Role::User,
-                    content: vec![ContentPart::Text { text: prompt.to_string() }],
-                },
-            ],
-            tools: Vec::new(),
-            model: model.to_string(),
-            temperature: Some(0.7),
-            top_p: None,
-            max_tokens: Some(4096),
-            stop: Vec::new(),
-        };
 
-        let result = timeout(
-            Duration::from_secs(300), // Longer timeout for parallel
-            provider.complete(request)
-        ).await;
+        // Create tool registry with provider for file operations
+        let tool_registry =
+            ToolRegistry::with_provider_arc(Arc::clone(provider), model.to_string());
 
-        match result {
-            Ok(Ok(response)) => {
-                let text = response.message.content.iter()
-                    .filter_map(|part| match part {
-                        ContentPart::Text { text } => Some(text.as_str()),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-                    .join("");
-                Ok(text)
-            }
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(anyhow::anyhow!("LLM call timed out after 300 seconds")),
-        }
+        // Filter out 'question' tool - sub-agents must be autonomous, not interactive
+        let tool_definitions: Vec<_> = tool_registry
+            .definitions()
+            .into_iter()
+            .filter(|t| t.name != "question")
+            .collect();
+
+        info!(
+            "Ralph sub-agent starting with {} tools in {:?}",
+            tool_definitions.len(),
+            working_dir
+        );
+
+        // Run the agentic loop with tools
+        let (output, steps, tool_calls) = run_agent_loop(
+            Arc::clone(provider),
+            model,
+            &system_prompt,
+            prompt,
+            tool_definitions,
+            tool_registry, // Already an Arc<ToolRegistry>
+            30,            // max steps per story (focused implementation)
+            180,           // 3 minute timeout per story
+        )
+        .await?;
+
+        info!(
+            "Ralph sub-agent completed: {} steps, {} tool calls",
+            steps, tool_calls
+        );
+
+        Ok(output)
     }
-    
+
+    /// Resolve merge conflicts using a dedicated sub-agent
+    async fn resolve_conflicts_static(
+        provider: &Arc<dyn Provider>,
+        model: &str,
+        working_dir: &PathBuf,
+        story: &UserStory,
+        conflicts: &[String],
+        conflict_diffs: &[(String, String)],
+    ) -> anyhow::Result<bool> {
+        info!(
+            story_id = %story.id,
+            num_conflicts = conflicts.len(),
+            "Starting conflict resolution sub-agent"
+        );
+
+        // Build prompt with conflict context
+        let conflict_info = conflict_diffs
+            .iter()
+            .map(|(file, diff)| format!("### File: {}\n```diff\n{}\n```", file, diff))
+            .collect::<Vec<_>>()
+            .join("\n\n");
+
+        let prompt = format!(
+            r#"# CONFLICT RESOLUTION TASK
+
+## Story Context: {} - {}
+{}
+
+## Conflicting Files
+The following files have merge conflicts that need resolution:
+{}
+
+## Conflict Details
+{}
+
+## Your Task
+1. Read each conflicting file to see the conflict markers
+2. Understand what BOTH sides are trying to do:
+   - HEAD (main branch): the current state
+   - The incoming branch: the sub-agent's changes for story {}
+3. Resolve each conflict by:
+   - Keeping BOTH changes if they don't actually conflict
+   - Merging the logic if they touch the same code
+   - Preferring the sub-agent's changes if they implement the story requirement
+4. Remove ALL conflict markers (<<<<<<<, =======, >>>>>>>)
+5. Ensure the final code compiles: run `cargo check`
+
+## CRITICAL RULES
+- Do NOT leave any conflict markers in files
+- Do NOT just pick one side - understand and merge the intent
+- MUST run `cargo check` after resolving to verify
+- Stage resolved files with `git add <file>`
+
+## Termination
+SUCCESS: Output `CONFLICTS_RESOLVED` when all files are resolved and compile
+FAILED: Output `CONFLICTS_UNRESOLVED: <reason>` if you cannot resolve
+
+Working directory: {}
+"#,
+            story.id,
+            story.title,
+            story.description,
+            conflicts.iter().map(|f| format!("- {}", f)).collect::<Vec<_>>().join("\n"),
+            conflict_info,
+            story.id,
+            working_dir.display()
+        );
+
+        // Build system prompt
+        let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
+
+        // Create tool registry
+        let tool_registry =
+            ToolRegistry::with_provider_arc(Arc::clone(provider), model.to_string());
+
+        let tool_definitions: Vec<_> = tool_registry
+            .definitions()
+            .into_iter()
+            .filter(|t| t.name != "question")
+            .collect();
+
+        info!(
+            "Conflict resolver starting with {} tools",
+            tool_definitions.len()
+        );
+
+        // Run the resolver with smaller limits (conflicts should be quick to resolve)
+        let (output, steps, tool_calls) = run_agent_loop(
+            Arc::clone(provider),
+            model,
+            &system_prompt,
+            &prompt,
+            tool_definitions,
+            tool_registry,
+            15,  // max 15 steps for conflict resolution
+            120, // 2 minute timeout
+        )
+        .await?;
+
+        info!(
+            story_id = %story.id,
+            steps = steps,
+            tool_calls = tool_calls,
+            "Conflict resolver completed"
+        );
+
+        // Check if resolution was successful
+        let resolved = output.contains("CONFLICTS_RESOLVED") 
+            || (output.contains("resolved") && !output.contains("UNRESOLVED"));
+
+        if resolved {
+            info!(story_id = %story.id, "Conflicts resolved successfully");
+        } else {
+            warn!(
+                story_id = %story.id,
+                output = %output.chars().take(200).collect::<String>(),
+                "Conflict resolution may have failed"
+            );
+        }
+
+        Ok(resolved)
+    }
+
     /// Extract learnings (static version)
     fn extract_learnings_static(response: &str) -> Vec<String> {
-        response.lines()
-            .filter(|line| line.contains("learned") || line.contains("Learning") || line.contains("# What"))
+        response
+            .lines()
+            .filter(|line| {
+                line.contains("learned") || line.contains("Learning") || line.contains("# What")
+            })
             .map(|line| line.trim().to_string())
             .collect()
     }
-    
+
     /// Commit changes in a specific directory
     fn commit_in_dir(dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
         // Stage all changes
@@ -526,14 +793,14 @@ Respond with the implementation and any shell commands needed.
             .args(["commit", "-m", &msg])
             .current_dir(dir)
             .output();
-        
+
         Ok(())
     }
-    
+
     /// Run quality gates in a specific directory
     async fn run_quality_gates_in_dir(&self, dir: &PathBuf) -> anyhow::Result<bool> {
         let checks = &self.state.prd.quality_checks;
-        
+
         for (name, cmd) in [
             ("typecheck", &checks.typecheck),
             ("lint", &checks.lint),
@@ -547,23 +814,29 @@ Respond with the implementation and any shell commands needed.
                     .arg(command)
                     .current_dir(dir)
                     .output()
-                    .map_err(|e| anyhow::anyhow!("Failed to run quality check '{}': {}", name, e))?;
-                
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
+                    })?;
+
                 if !output.status.success() {
-                    warn!("{} check failed in {:?}: {}", name, dir,
-                        String::from_utf8_lossy(&output.stderr));
+                    warn!(
+                        "{} check failed in {:?}: {}",
+                        name,
+                        dir,
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                     return Ok(false);
                 }
             }
         }
-        
+
         Ok(true)
     }
 
     /// Build the prompt for a story
     fn build_prompt(&self, story: &UserStory) -> String {
         let progress = self.load_progress().unwrap_or_default();
-        
+
         format!(
             r#"# PRD: {} - {}
 
@@ -590,67 +863,68 @@ Respond with the implementation and any shell commands needed.
             story.id,
             story.title,
             story.description,
-            story.acceptance_criteria.iter()
+            story
+                .acceptance_criteria
+                .iter()
                 .map(|c| format!("- {}", c))
                 .collect::<Vec<_>>()
                 .join("\n"),
-            if progress.is_empty() { "None yet".to_string() } else { progress },
+            if progress.is_empty() {
+                "None yet".to_string()
+            } else {
+                progress
+            },
             story.id
         )
     }
 
-    /// Call the LLM with a prompt
+    /// Call the LLM with a prompt using agentic tool loop
     async fn call_llm(&self, prompt: &str) -> anyhow::Result<String> {
-        use crate::provider::ContentPart;
-        
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(&self.state.working_dir);
-        
-        let request = CompletionRequest {
-            messages: vec![
-                Message {
-                    role: Role::System,
-                    content: vec![ContentPart::Text { text: system_prompt }],
-                },
-                Message {
-                    role: Role::User,
-                    content: vec![ContentPart::Text { text: prompt.to_string() }],
-                },
-            ],
-            tools: Vec::new(),
-            model: self.model.clone(),
-            temperature: Some(0.7),
-            top_p: None,
-            max_tokens: Some(4096),
-            stop: Vec::new(),
-        };
 
-        let result = timeout(
-            Duration::from_secs(120),
-            self.provider.complete(request)
-        ).await;
+        // Create tool registry with provider for file operations
+        let tool_registry =
+            ToolRegistry::with_provider_arc(Arc::clone(&self.provider), self.model.clone());
 
-        match result {
-            Ok(Ok(response)) => {
-                // Extract text from response message
-                let text = response.message.content.iter()
-                    .filter_map(|part| match part {
-                        ContentPart::Text { text } => Some(text.as_str()),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-                    .join("");
-                Ok(text)
-            }
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(anyhow::anyhow!("LLM call timed out after 120 seconds")),
-        }
+        // Filter out 'question' tool - sub-agents must be autonomous, not interactive
+        let tool_definitions: Vec<_> = tool_registry
+            .definitions()
+            .into_iter()
+            .filter(|t| t.name != "question")
+            .collect();
+
+        info!(
+            "Ralph agent starting with {} tools in {:?}",
+            tool_definitions.len(),
+            self.state.working_dir
+        );
+
+        // Run the agentic loop with tools
+        let (output, steps, tool_calls) = run_agent_loop(
+            Arc::clone(&self.provider),
+            &self.model,
+            &system_prompt,
+            prompt,
+            tool_definitions,
+            tool_registry, // Already an Arc<ToolRegistry>
+            30,            // max steps per story (focused implementation)
+            180,           // 3 minute timeout per story
+        )
+        .await?;
+
+        info!(
+            "Ralph agent completed: {} steps, {} tool calls",
+            steps, tool_calls
+        );
+
+        Ok(output)
     }
 
     /// Run quality gates
     async fn run_quality_gates(&self) -> anyhow::Result<bool> {
         let checks = &self.state.prd.quality_checks;
-        
+
         for (name, cmd) in [
             ("typecheck", &checks.typecheck),
             ("lint", &checks.lint),
@@ -658,29 +932,37 @@ Respond with the implementation and any shell commands needed.
             ("build", &checks.build),
         ] {
             if let Some(command) = cmd {
-                info!("Running {} check in {:?}: {}", name, self.state.working_dir, command);
+                info!(
+                    "Running {} check in {:?}: {}",
+                    name, self.state.working_dir, command
+                );
                 let output = Command::new("/bin/sh")
                     .arg("-c")
                     .arg(command)
                     .current_dir(&self.state.working_dir)
                     .output()
-                    .map_err(|e| anyhow::anyhow!("Failed to run quality check '{}': {}", name, e))?;
-                
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
+                    })?;
+
                 if !output.status.success() {
-                    warn!("{} check failed: {}", name, 
-                        String::from_utf8_lossy(&output.stderr));
+                    warn!(
+                        "{} check failed: {}",
+                        name,
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                     return Ok(false);
                 }
             }
         }
-        
+
         Ok(true)
     }
 
     /// Commit changes for a story
     fn commit_story(&self, story: &UserStory) -> anyhow::Result<()> {
         info!("Committing changes for story: {}", story.id);
-        
+
         // Stage all changes
         let _ = Command::new("git")
             .args(["add", "-A"])
@@ -698,14 +980,16 @@ Respond with the implementation and any shell commands needed.
                 info!("Committed: {}", msg);
             }
             Ok(output) => {
-                warn!("Git commit had no changes or failed: {}",
-                    String::from_utf8_lossy(&output.stderr));
+                warn!(
+                    "Git commit had no changes or failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
             }
             Err(e) => {
                 warn!("Could not run git commit: {}", e);
             }
         }
-        
+
         Ok(())
     }
 
@@ -723,7 +1007,7 @@ Respond with the implementation and any shell commands needed.
                 .current_dir(&self.state.working_dir)
                 .output()?;
         }
-        
+
         Ok(())
     }
 
@@ -737,16 +1021,12 @@ Respond with the implementation and any shell commands needed.
     fn append_progress(&self, entry: &ProgressEntry, response: &str) -> anyhow::Result<()> {
         let path = self.state.working_dir.join(&self.config.progress_path);
         let mut content = self.load_progress().unwrap_or_default();
-        
+
         content.push_str(&format!(
             "\n---\n\n## Iteration {} - {} ({})\n\n**Status:** {}\n\n### Summary\n{}\n",
-            entry.iteration,
-            entry.story_id,
-            entry.timestamp,
-            entry.status,
-            response
+            entry.iteration, entry.story_id, entry.timestamp, entry.status, response
         ));
-        
+
         std::fs::write(path, content)?;
         Ok(())
     }
@@ -754,13 +1034,13 @@ Respond with the implementation and any shell commands needed.
     /// Extract learnings from response
     fn extract_learnings(&self, response: &str) -> Vec<String> {
         let mut learnings = Vec::new();
-        
+
         for line in response.lines() {
             if line.contains("learned") || line.contains("Learning") || line.contains("# What") {
                 learnings.push(line.trim().to_string());
             }
         }
-        
+
         learnings
     }
 
@@ -777,7 +1057,11 @@ Respond with the implementation and any shell commands needed.
             "# Ralph Status"
         };
 
-        let stories: Vec<String> = self.state.prd.user_stories.iter()
+        let stories: Vec<String> = self
+            .state
+            .prd
+            .user_stories
+            .iter()
             .map(|s| {
                 let check = if s.passes { "[x]" } else { "[ ]" };
                 format!("- {} {}: {}", check, s.id, s.title)
@@ -805,21 +1089,16 @@ pub fn create_prd_template(project: &str, feature: &str) -> Prd {
         feature: feature.to_string(),
         branch_name: format!("feature/{}", feature.to_lowercase().replace(' ', "-")),
         version: "1.0".to_string(),
-        user_stories: vec![
-            UserStory {
-                id: "US-001".to_string(),
-                title: "First user story".to_string(),
-                description: "Description of what needs to be implemented".to_string(),
-                acceptance_criteria: vec![
-                    "Criterion 1".to_string(),
-                    "Criterion 2".to_string(),
-                ],
-                passes: false,
-                priority: 1,
-                depends_on: Vec::new(),
-                complexity: 3,
-            },
-        ],
+        user_stories: vec![UserStory {
+            id: "US-001".to_string(),
+            title: "First user story".to_string(),
+            description: "Description of what needs to be implemented".to_string(),
+            acceptance_criteria: vec!["Criterion 1".to_string(), "Criterion 2".to_string()],
+            passes: false,
+            priority: 1,
+            depends_on: Vec::new(),
+            complexity: 3,
+        }],
         technical_requirements: Vec::new(),
         quality_checks: QualityChecks {
             typecheck: Some("cargo check".to_string()),
