@@ -32,7 +32,7 @@
         "Subtask list shows dependency indicators (e.g., 'depends on: task1, task2')",
         "Visual indication of which tasks are blocking others"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "US-001"
@@ -49,7 +49,7 @@
         "Failed edits are tracked separately from successful ones",
         "ToolResult output includes summary of all edits with per-file status"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [],
       "complexity": 2
@@ -125,7 +125,7 @@
         "Invalid theme names fallback to default",
         "Theme hot-reloading works when config changes"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [
         "US-005"
@@ -157,7 +157,7 @@
         "Context limit warnings displayed with colors",
         "Cost estimates shown in status bar"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [
         "US-007"
