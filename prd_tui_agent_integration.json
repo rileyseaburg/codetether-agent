@@ -1,0 +1,92 @@
+{
+  "project": "CodeTether Agent",
+  "feature": "TUI Agent Integration",
+  "branch_name": "feature/tui-agent-integration",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "TAI-001",
+      "title": "Add Session to TUI App State",
+      "description": "Add a Session field to the App struct so the TUI can maintain conversation state and call the agent. Initialize it in App::new() using Session::new().await.",
+      "acceptance_criteria": [
+        "App struct has a session: Option<Session> field",
+        "App::new() becomes async and initializes session",
+        "Session is persisted between messages"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "TAI-002",
+      "title": "Make submit_message Async",
+      "description": "Convert submit_message() to be async so it can call session.prompt(). Use tokio channels or Arc<Mutex> to handle the async response and update the UI.",
+      "acceptance_criteria": [
+        "submit_message() can trigger async processing",
+        "UI remains responsive during agent processing",
+        "Processing indicator shown while waiting"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": ["TAI-001"],
+      "complexity": 3
+    },
+    {
+      "id": "TAI-003",
+      "title": "Call Session.prompt() on Message Submit",
+      "description": "Replace the placeholder response with actual session.prompt() call. Add the agent's response as a ChatMessage when complete.",
+      "acceptance_criteria": [
+        "User message is sent to session.prompt()",
+        "Agent response is displayed in chat",
+        "Errors are shown gracefully in chat"
+      ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": ["TAI-002"],
+      "complexity": 3
+    },
+    {
+      "id": "TAI-004",
+      "title": "Show Processing Indicator",
+      "description": "Display a 'Thinking...' or spinner message while the agent processes. Update the UI to show the agent is working.",
+      "acceptance_criteria": [
+        "Visual indicator appears immediately after submitting",
+        "Indicator disappears when response arrives",
+        "User can still scroll/read previous messages while waiting"
+      ],
+      "passes": false,
+      "priority": 4,
+      "depends_on": ["TAI-003"],
+      "complexity": 2
+    },
+    {
+      "id": "TAI-005",
+      "title": "Handle Tool Calls Display",
+      "description": "When the agent uses tools, display tool calls and results in a collapsible/distinct format so users can see what the agent is doing.",
+      "acceptance_criteria": [
+        "Tool calls are shown with tool name and arguments",
+        "Tool results are shown (possibly truncated)",
+        "Tool calls are visually distinct from regular messages"
+      ],
+      "passes": false,
+      "priority": 5,
+      "depends_on": ["TAI-003"],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [
+    "Use tokio::sync::mpsc channel for async message passing",
+    "Keep UI event loop responsive (non-blocking)",
+    "Handle provider errors gracefully",
+    "Session should auto-save after each exchange"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-features",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-05T02:50:00Z",
+  "updated_at": "2026-02-05T02:50:00Z"
+}

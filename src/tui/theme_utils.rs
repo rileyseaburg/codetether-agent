@@ -10,7 +10,7 @@ pub fn detect_color_support() -> ColorSupport {
             return ColorSupport::TrueColor;
         }
     }
-    
+
     // Check TERM for 256 color support
     if let Ok(term) = std::env::var("TERM") {
         if term.contains("256color") || term.contains("256") {
@@ -20,7 +20,7 @@ pub fn detect_color_support() -> ColorSupport {
             return ColorSupport::Ansi8;
         }
     }
-    
+
     // Default to 8 colors (most common minimum)
     ColorSupport::Ansi8
 }
@@ -67,7 +67,7 @@ pub fn validate_theme(theme: &Theme) -> Theme {
         validated.code_block_color = fallback_color(&theme.code_block_color, &support);
         validated.status_bar_foreground = fallback_color(&theme.status_bar_foreground, &support);
         validated.status_bar_background = fallback_color(&theme.status_bar_background, &support);
-        
+
         if let Some(bg) = &theme.background {
             validated.background = Some(fallback_color(bg, &support));
         }
@@ -149,7 +149,7 @@ fn rgb_to_named(r: u8, g: u8, b: u8) -> String {
         let dg = (g as i32 - *cg as i32).unsigned_abs();
         let db = (b as i32 - *cb as i32).unsigned_abs();
         let distance = dr * dr + dg * dg + db * db;
-        
+
         if distance < min_distance {
             min_distance = distance;
             closest = *name;
@@ -185,7 +185,8 @@ fn indexed_to_named(index: u8) -> String {
             }
         }
         _ => "white",
-    }.to_string()
+    }
+    .to_string()
 }
 
 #[cfg(test)]
@@ -196,7 +197,13 @@ mod tests {
     fn test_color_support_detection() {
         let support = detect_color_support();
         // Just ensure it doesn't panic
-        assert!(matches!(support, ColorSupport::Monochrome | ColorSupport::Ansi8 | ColorSupport::Ansi256 | ColorSupport::TrueColor));
+        assert!(matches!(
+            support,
+            ColorSupport::Monochrome
+                | ColorSupport::Ansi8
+                | ColorSupport::Ansi256
+                | ColorSupport::TrueColor
+        ));
     }
 
     #[test]

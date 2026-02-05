@@ -29,16 +29,38 @@ mod worktree;
 use clap::Parser;
 use cli::{A2aArgs, Cli, Command};
 use swarm::{DecompositionStrategy, SwarmExecutor};
-use telemetry::{TOOL_EXECUTIONS, TOKEN_USAGE, get_persistent_stats};
+use telemetry::{TOKEN_USAGE, TOOL_EXECUTIONS, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    // Check if we're running TUI - if so, redirect logs to file instead of stderr
+    let is_tui = matches!(cli.command, Some(Command::Tui(_)));
+    
     // Initialize tracing
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    if is_tui {
+        // For TUI, log to file to avoid corrupting the display
+        let log_dir = directories::ProjectDirs::from("com", "codetether", "codetether-agent")
+            .map(|p| p.data_dir().to_path_buf())
+            .unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
+        let _ = std::fs::create_dir_all(&log_dir);
+        let log_file = std::fs::File::create(log_dir.join("tui.log")).ok();
+        
+        if let Some(file) = log_file {
+            tracing_subscriber::registry()
+                .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+                .with(tracing_subscriber::fmt::layer().with_writer(std::sync::Mutex::new(file)).with_ansi(false))
+                .init();
+        }
+        // If file creation fails, just don't log
+    } else {
+        tracing_subscriber::registry()
+            .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+            .with(tracing_subscriber::fmt::layer())
+            .init();
+    }
 
     // Initialize HashiCorp Vault connection for secrets
     if let Ok(secrets_manager) = secrets::SecretsManager::from_env().await {
@@ -51,8 +73,6 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("HashiCorp Vault not configured - no provider API keys will be available");
         tracing::warn!("Set VAULT_ADDR and VAULT_TOKEN environment variables to connect");
     }
-
-    let cli = Cli::parse();
 
     match cli.command {
         Some(Command::Tui(args)) => {
@@ -473,7 +493,7 @@ async fn main() -> anyhow::Result<()> {
             // Show telemetry statistics - use persistent data
             let persistent = get_persistent_stats();
             let token_snapshot = TOKEN_USAGE.global_snapshot();
-            
+
             if args.json {
                 let mut output = serde_json::json!({
                     "tool_executions": persistent.stats,
@@ -483,37 +503,37 @@ async fn main() -> anyhow::Result<()> {
                         "requests": persistent.stats.total_requests,
                     }
                 });
-                
+
                 if args.tools || args.all {
                     let recent: Vec<_> = persistent.recent(args.limit).into_iter().collect();
                     output["recent_executions"] = serde_json::json!(recent);
                 }
-                
+
                 if args.files || args.all {
                     let changes = persistent.all_file_changes();
                     let recent_changes: Vec<_> = changes.iter().rev().take(args.limit).collect();
                     output["recent_file_changes"] = serde_json::json!(recent_changes);
                 }
-                
+
                 if let Some(ref tool_name) = args.tool {
                     let tool_execs = persistent.by_tool(tool_name);
                     output["tool_filter"] = serde_json::json!(tool_execs);
                 }
-                
+
                 if let Some(ref file_path) = args.file {
                     let file_execs = persistent.by_file(file_path);
                     output["file_filter"] = serde_json::json!(file_execs);
                 }
-                
+
                 println!("{}", serde_json::to_string_pretty(&output)?);
             } else {
                 println!("# CodeTether Telemetry\n");
-                
+
                 // Summary
                 println!("## Summary\n");
                 println!("**Tool Executions:** {}", persistent.summary());
                 println!("**Token Usage:** {}", token_snapshot.summary());
-                
+
                 // Tool breakdown
                 if !persistent.stats.executions_by_tool.is_empty() {
                     println!("\n## Tool Breakdown\n");
@@ -523,7 +543,7 @@ async fn main() -> anyhow::Result<()> {
                         println!("- **{}**: {} executions", tool, count);
                     }
                 }
-                
+
                 // Files modified
                 if !persistent.stats.files_modified.is_empty() {
                     println!("\n## Files Modified\n");
@@ -533,7 +553,7 @@ async fn main() -> anyhow::Result<()> {
                         println!("- **{}**: {} changes", path, count);
                     }
                 }
-                
+
                 // Recent executions
                 if args.tools || args.all {
                     let recent = persistent.recent(args.limit);
@@ -544,23 +564,24 @@ async fn main() -> anyhow::Result<()> {
                             let files_str = if exec.files_affected.is_empty() {
                                 String::new()
                             } else {
-                                format!(" → {}", exec.files_affected.iter()
-                                    .map(|f| f.summary())
-                                    .collect::<Vec<_>>()
-                                    .join(", "))
+                                format!(
+                                    " → {}",
+                                    exec.files_affected
+                                        .iter()
+                                        .map(|f| f.summary())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                )
                             };
                             println!(
                                 "- {} **{}** ({}ms){}",
-                                status,
-                                exec.tool_name,
-                                exec.duration_ms,
-                                files_str
+                                status, exec.tool_name, exec.duration_ms, files_str
                             );
                         }
                     }
                 }
-                
-                // Recent file changes  
+
+                // Recent file changes
                 if args.files || args.all {
                     let changes = persistent.all_file_changes();
                     if !changes.is_empty() {
@@ -570,7 +591,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
-                
+
                 // Token usage by model
                 if args.tokens || args.all {
                     let model_snapshots = TOKEN_USAGE.model_snapshots();
@@ -581,7 +602,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
-                
+
                 // Filtered results
                 if let Some(ref tool_name) = args.tool {
                     let tool_execs = persistent.by_tool(tool_name);
@@ -593,13 +614,16 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
-                
+
                 if let Some(ref file_path) = args.file {
                     let file_execs = persistent.by_file(file_path);
                     if !file_execs.is_empty() {
                         println!("\n## Changes to '{}'\n", file_path);
                         for exec in file_execs.iter().take(args.limit) {
-                            println!("- **{}** #{} ({}ms)", exec.tool_name, exec.id, exec.duration_ms);
+                            println!(
+                                "- **{}** #{} ({}ms)",
+                                exec.tool_name, exec.id, exec.duration_ms
+                            );
                             for change in &exec.files_affected {
                                 if change.path == *file_path {
                                     if let Some((start, end)) = change.lines_affected {
@@ -616,13 +640,13 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Cleanup(args)) => {
             // Clean up orphaned worktrees and branches from Ralph runs
             use worktree::WorktreeManager;
-            
+
             let cwd = std::env::current_dir()?;
             let mgr = WorktreeManager::new(&cwd)?;
-            
+
             // List what exists
             let worktrees = mgr.list()?;
-            
+
             if args.dry_run {
                 if args.json {
                     let output = serde_json::json!({
@@ -651,12 +675,15 @@ async fn main() -> anyhow::Result<()> {
                 }
             } else {
                 let count = mgr.cleanup_all()?;
-                
+
                 if args.json {
-                    println!("{}", serde_json::json!({
-                        "cleaned": count,
-                        "success": true,
-                    }));
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "cleaned": count,
+                            "success": true,
+                        })
+                    );
                 } else if count > 0 {
                     println!("Cleaned up {} orphaned worktree(s)/branch(es).", count);
                 } else {

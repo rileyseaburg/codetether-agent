@@ -150,10 +150,14 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                     worktree_enabled: true,
                 };
 
-                let mut ralph =
-                    RalphLoop::new(prd_path.clone(), Arc::clone(provider), self.model.clone(), config)
-                        .await
-                        .context("Failed to initialize Ralph")?;
+                let mut ralph = RalphLoop::new(
+                    prd_path.clone(),
+                    Arc::clone(provider),
+                    self.model.clone(),
+                    config,
+                )
+                .await
+                .context("Failed to initialize Ralph")?;
 
                 let state = ralph.run().await.context("Ralph loop failed")?;
 
@@ -191,7 +195,10 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                         feature_branch, feature_branch
                     )
                 } else {
-                    let failed_stories: Vec<_> = state.prd.user_stories.iter()
+                    let failed_stories: Vec<_> = state
+                        .prd
+                        .user_stories
+                        .iter()
                         .filter(|s| !s.passes)
                         .map(|s| format!("- {}: {}", s.id, s.title))
                         .collect();
@@ -205,13 +212,19 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                 };
 
                 let cleanup_note = if cleanup_count > 0 {
-                    format!("\n\n*(Cleaned up {} orphaned worktree(s)/branch(es))*", cleanup_count)
+                    format!(
+                        "\n\n*(Cleaned up {} orphaned worktree(s)/branch(es))*",
+                        cleanup_count
+                    )
                 } else {
                     String::new()
                 };
 
                 let branch_note = if returned_to_original {
-                    format!("\n*(Returned to branch: {})*", starting_branch.as_deref().unwrap_or("main"))
+                    format!(
+                        "\n*(Returned to branch: {})*",
+                        starting_branch.as_deref().unwrap_or("main")
+                    )
                 } else {
                     String::new()
                 };

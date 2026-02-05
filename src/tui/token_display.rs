@@ -1,10 +1,10 @@
-use crate::telemetry::{ContextLimit, CostEstimate, TokenUsageSnapshot, TOKEN_USAGE};
+use crate::telemetry::{ContextLimit, CostEstimate, TOKEN_USAGE, TokenUsageSnapshot};
 use crate::tui::theme::Theme;
 use ratatui::{
+    Frame,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Wrap},
-    Frame,
 };
 
 /// Enhanced token usage display with costs and warnings
@@ -15,7 +15,7 @@ pub struct TokenDisplay {
 impl TokenDisplay {
     pub fn new() -> Self {
         let mut limits = std::collections::HashMap::new();
-        
+
         // Common model context limits
         limits.insert("gpt-4".to_string(), 128_000);
         limits.insert("gpt-4-turbo".to_string(), 128_000);
@@ -44,16 +44,16 @@ impl TokenDisplay {
     pub fn calculate_cost(&self, model: &str, tokens: u64) -> CostEstimate {
         let (input_cost, output_cost) = match model.to_lowercase().as_str() {
             m if m.contains("gpt-4o") => (0.0025, 0.0100), // $2.50 / $10.00 per million
-            m if m.contains("gpt-4") => (0.0300, 0.0600), // $30 / $60 per million
+            m if m.contains("gpt-4") => (0.0300, 0.0600),  // $30 / $60 per million
             m if m.contains("claude-3-5-sonnet") => (0.0030, 0.0150), // $3 / $15 per million
             m if m.contains("claude-3-5-haiku") => (0.0008, 0.0040), // $0.80 / $4 per million
             m if m.contains("claude-3-opus") => (0.0150, 0.0750), // $15 / $75 per million
             m if m.contains("gemini-2.0-flash") => (0.000075, 0.00030), // $0.075 / $0.30 per million
             m if m.contains("gemini-1.5-flash") => (0.000075, 0.00030), // $0.075 / $0.30 per million
-            m if m.contains("gemini-1.5-pro") => (0.00125, 0.0050), // $1.25 / $5 per million
-            m if m.contains("k1.5") => (0.0080, 0.0080), // Moonshot K1.5
-            m if m.contains("k1.6") => (0.0060, 0.0060), // Moonshot K1.6
-            _ => (0.0010, 0.0030), // Default fallback
+            m if m.contains("gemini-1.5-pro") => (0.00125, 0.0050),     // $1.25 / $5 per million
+            m if m.contains("k1.5") => (0.0080, 0.0080),                // Moonshot K1.5
+            m if m.contains("k1.6") => (0.0060, 0.0060),                // Moonshot K1.6
+            _ => (0.0010, 0.0030),                                      // Default fallback
         };
 
         CostEstimate::from_tokens(
@@ -67,12 +67,12 @@ impl TokenDisplay {
     pub fn create_status_bar(&self, theme: &Theme) -> Line<'_> {
         let global_snapshot = TOKEN_USAGE.global_snapshot();
         let model_snapshots = TOKEN_USAGE.model_snapshots();
-        
+
         let total_tokens = global_snapshot.totals.total();
         let session_cost = self.calculate_session_cost();
-        
+
         let mut spans = Vec::new();
-        
+
         // Help indicator
         spans.push(Span::styled(
             " ? ",
@@ -81,7 +81,7 @@ impl TokenDisplay {
                 .bg(theme.status_bar_background.to_color()),
         ));
         spans.push(Span::raw(" Help "));
-        
+
         // Switch agent
         spans.push(Span::styled(
             " Tab ",
@@ -90,7 +90,7 @@ impl TokenDisplay {
                 .bg(theme.status_bar_background.to_color()),
         ));
         spans.push(Span::raw(" Switch Agent "));
-        
+
         // Quit
         spans.push(Span::styled(
             " Ctrl+C ",
@@ -99,19 +99,19 @@ impl TokenDisplay {
                 .bg(theme.status_bar_background.to_color()),
         ));
         spans.push(Span::raw(" Quit "));
-        
+
         // Token usage
         spans.push(Span::styled(
             format!(" Tokens: {} ", total_tokens),
             Style::default().fg(theme.timestamp_color.to_color()),
         ));
-        
+
         // Cost
         spans.push(Span::styled(
             format!(" Cost: {} ", session_cost.format_smart()),
             Style::default().fg(theme.timestamp_color.to_color()),
         ));
-        
+
         // Context warning if active model is near limit
         if let Some(warning) = self.get_context_warning(&model_snapshots) {
             spans.push(Span::styled(
@@ -119,7 +119,7 @@ impl TokenDisplay {
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ));
         }
-        
+
         Line::from(spans)
     }
 
@@ -127,14 +127,14 @@ impl TokenDisplay {
     pub fn calculate_session_cost(&self) -> CostEstimate {
         let model_snapshots = TOKEN_USAGE.model_snapshots();
         let mut total = CostEstimate::default();
-        
+
         for snapshot in model_snapshots {
             let model_cost = self.calculate_cost(&snapshot.name, snapshot.totals.total());
             total.input_cost += model_cost.input_cost;
             total.output_cost += model_cost.output_cost;
             total.total_cost += model_cost.total_cost;
         }
-        
+
         total
     }
 
@@ -143,18 +143,18 @@ impl TokenDisplay {
         if model_snapshots.is_empty() {
             return None;
         }
-        
+
         // Use the model with highest usage as "active"
         let active_model = model_snapshots.iter().max_by_key(|s| s.totals.total())?;
-        
+
         if let Some(limit) = self.get_context_limit(&active_model.name) {
             let context = ContextLimit::new(active_model.totals.total(), limit);
-            
+
             if context.percentage >= 75.0 {
                 return Some(format!("⚠️ Context: {:.1}%", context.percentage));
             }
         }
-        
+
         None
     }
 
@@ -163,12 +163,12 @@ impl TokenDisplay {
         let mut lines = Vec::new();
         let global_snapshot = TOKEN_USAGE.global_snapshot();
         let model_snapshots = TOKEN_USAGE.model_snapshots();
-        
+
         lines.push("".to_string());
         lines.push("  TOKEN USAGE & COSTS".to_string());
         lines.push("  ===================".to_string());
         lines.push("".to_string());
-        
+
         // Global totals
         let total_cost = self.calculate_session_cost();
         lines.push(format!(
@@ -182,11 +182,11 @@ impl TokenDisplay {
             global_snapshot.totals.input, global_snapshot.totals.output
         ));
         lines.push("".to_string());
-        
+
         // Per-model breakdown
         if !model_snapshots.is_empty() {
             lines.push("  BY MODEL:".to_string());
-            
+
             for snapshot in model_snapshots.iter().take(5) {
                 let model_cost = self.calculate_cost(&snapshot.name, snapshot.totals.total());
                 lines.push(format!(
@@ -196,7 +196,7 @@ impl TokenDisplay {
                     snapshot.request_count,
                     model_cost.format_currency()
                 ));
-                
+
                 // Context limit info
                 if let Some(limit) = self.get_context_limit(&snapshot.name) {
                     let context = ContextLimit::new(snapshot.totals.total(), limit);
@@ -208,7 +208,7 @@ impl TokenDisplay {
                     }
                 }
             }
-            
+
             if model_snapshots.len() > 5 {
                 lines.push(format!(
                     "    ... and {} more models",
@@ -217,7 +217,7 @@ impl TokenDisplay {
             }
             lines.push("".to_string());
         }
-        
+
         // Cost estimates
         lines.push("  COST ESTIMATES:".to_string());
         lines.push(format!(
@@ -225,7 +225,7 @@ impl TokenDisplay {
             total_cost.format_currency()
         ));
         lines.push("    Based on approximate pricing".to_string());
-        
+
         lines
     }
 }

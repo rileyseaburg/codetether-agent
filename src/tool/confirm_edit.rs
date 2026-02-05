@@ -12,7 +12,7 @@ use std::time::Instant;
 use tokio::fs;
 
 use super::{Tool, ToolResult};
-use crate::telemetry::{FileChange, ToolExecution, TOOL_EXECUTIONS, record_persistent};
+use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfirmEditInput {
@@ -167,18 +167,20 @@ impl Tool for ConfirmEditTool {
         // Handle confirmation
         if params.confirm == Some(true) {
             let start = Instant::now();
-            
+
             // Calculate line range affected
             let lines_before = old_string.lines().count() as u32;
             let start_line = content[..content.find(old_string).unwrap_or(0)]
-                .lines().count() as u32 + 1;
+                .lines()
+                .count() as u32
+                + 1;
             let end_line = start_line + lines_before.saturating_sub(1);
-            
+
             // Write the file
             fs::write(path, &new_content).await?;
-            
+
             let duration = start.elapsed();
-            
+
             // Record telemetry
             let file_change = FileChange::modify_with_diff(
                 path,
@@ -187,16 +189,24 @@ impl Tool for ConfirmEditTool {
                 &diff_output,
                 Some((start_line, end_line)),
             );
-            
-            let mut exec = ToolExecution::start("confirm_edit", json!({
-                "path": path,
-                "old_string": old_string,
-                "new_string": new_string,
-            }));
+
+            let mut exec = ToolExecution::start(
+                "confirm_edit",
+                json!({
+                    "path": path,
+                    "old_string": old_string,
+                    "new_string": new_string,
+                }),
+            );
             exec.add_file_change(file_change);
             let exec = exec.complete_success(
-                format!("Applied {} changes (+{} -{}) to {}", 
-                    added + removed, added, removed, path),
+                format!(
+                    "Applied {} changes (+{} -{}) to {}",
+                    added + removed,
+                    added,
+                    removed,
+                    path
+                ),
                 duration,
             );
             TOOL_EXECUTIONS.record(exec.clone());

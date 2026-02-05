@@ -58,16 +58,16 @@ impl Tool for UndoTool {
 
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let params: UndoInput = serde_json::from_value(input)?;
-        
+
         // Get current directory
         let cwd = std::env::current_dir()?;
-        
+
         // Check if we're in a git repository
         let status = Command::new("git")
             .args(["rev-parse", "--git-dir"])
             .current_dir(&cwd)
             .status()?;
-            
+
         if !status.success() {
             return Ok(ToolResult {
                 output: "Error: Not in a git repository".to_string(),
@@ -78,12 +78,7 @@ impl Tool for UndoTool {
 
         // Get the last N commits
         let log_output = Command::new("git")
-            .args([
-                "log",
-                "--oneline",
-                "--max-count",
-                &params.steps.to_string(),
-            ])
+            .args(["log", "--oneline", "--max-count", &params.steps.to_string()])
             .current_dir(&cwd)
             .output()?;
 
@@ -112,17 +107,13 @@ impl Tool for UndoTool {
             for commit in &commit_list {
                 preview.push_str(&format!("  {}\n", commit));
             }
-            
+
             // Show what files would be affected
             let diff_output = Command::new("git")
-                .args([
-                    "diff",
-                    &format!("HEAD~{}", params.steps),
-                    "--name-only",
-                ])
+                .args(["diff", &format!("HEAD~{}", params.steps), "--name-only"])
                 .current_dir(&cwd)
                 .output()?;
-                
+
             if diff_output.status.success() {
                 let files = String::from_utf8_lossy(&diff_output.stdout);
                 if !files.trim().is_empty() {
@@ -132,7 +123,7 @@ impl Tool for UndoTool {
                     }
                 }
             }
-            
+
             return Ok(ToolResult {
                 output: preview,
                 success: true,
@@ -142,11 +133,7 @@ impl Tool for UndoTool {
 
         // Actually perform the undo
         let revert_output = Command::new("git")
-            .args([
-                "reset",
-                "--hard",
-                &format!("HEAD~{}", params.steps),
-            ])
+            .args(["reset", "--hard", &format!("HEAD~{}", params.steps)])
             .current_dir(&cwd)
             .output()?;
 
@@ -155,7 +142,7 @@ impl Tool for UndoTool {
             for commit in &commit_list {
                 result.push_str(&format!("  {}\n", commit));
             }
-            
+
             Ok(ToolResult {
                 output: result,
                 success: true,

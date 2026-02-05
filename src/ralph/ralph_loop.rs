@@ -410,7 +410,7 @@ impl RalphLoop {
                                                     num_conflicts = merge_result.conflicts.len(),
                                                     "Spawning conflict resolver sub-agent"
                                                 );
-                                                
+
                                                 // Try to resolve conflicts
                                                 match Self::resolve_conflicts_static(
                                                     &provider,
@@ -419,7 +419,9 @@ impl RalphLoop {
                                                     &story,
                                                     &merge_result.conflicts,
                                                     &merge_result.conflict_diffs,
-                                                ).await {
+                                                )
+                                                .await
+                                                {
                                                     Ok(resolved) => {
                                                         if resolved {
                                                             // Complete the merge after resolution
@@ -427,14 +429,18 @@ impl RalphLoop {
                                                                 "Merge: resolved conflicts for {}",
                                                                 story.id
                                                             );
-                                                            match mgr.complete_merge(wt, &commit_msg) {
+                                                            match mgr
+                                                                .complete_merge(wt, &commit_msg)
+                                                            {
                                                                 Ok(final_result) => {
                                                                     if final_result.success {
                                                                         info!(
                                                                             story_id = %story.id,
                                                                             "Merge completed after conflict resolution"
                                                                         );
-                                                                        self.state.prd.mark_passed(&story.id);
+                                                                        self.state
+                                                                            .prd
+                                                                            .mark_passed(&story.id);
                                                                     } else {
                                                                         warn!(
                                                                             story_id = %story.id,
@@ -722,7 +728,11 @@ Working directory: {}
             story.id,
             story.title,
             story.description,
-            conflicts.iter().map(|f| format!("- {}", f)).collect::<Vec<_>>().join("\n"),
+            conflicts
+                .iter()
+                .map(|f| format!("- {}", f))
+                .collect::<Vec<_>>()
+                .join("\n"),
             conflict_info,
             story.id,
             working_dir.display()
@@ -767,7 +777,7 @@ Working directory: {}
         );
 
         // Check if resolution was successful
-        let resolved = output.contains("CONFLICTS_RESOLVED") 
+        let resolved = output.contains("CONFLICTS_RESOLVED")
             || (output.contains("resolved") && !output.contains("UNRESOLVED"));
 
         if resolved {
@@ -838,18 +848,29 @@ Working directory: {}
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let combined = format!("{}\n{}", stdout, stderr);
-                    
+
                     // Count actual errors vs warnings
-                    let error_count = combined.lines()
-                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                    let error_count = combined
+                        .lines()
+                        .filter(|line| {
+                            line.starts_with("error")
+                                || line.contains("error:")
+                                || line.contains("error[")
+                        })
                         .count();
-                    let warning_count = combined.lines()
+                    let warning_count = combined
+                        .lines()
                         .filter(|line| line.starts_with("warning") || line.contains("warning:"))
                         .count();
-                    
+
                     // Extract the actual error message (not warnings)
-                    let error_summary: String = combined.lines()
-                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                    let error_summary: String = combined
+                        .lines()
+                        .filter(|line| {
+                            line.starts_with("error")
+                                || line.contains("error:")
+                                || line.contains("error[")
+                        })
                         .take(5) // First 5 error lines
                         .collect::<Vec<_>>()
                         .join("\n");
@@ -989,18 +1010,29 @@ Respond with the implementation and any shell commands needed.
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let combined = format!("{}\n{}", stdout, stderr);
-                    
+
                     // Count actual errors vs warnings
-                    let error_count = combined.lines()
-                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                    let error_count = combined
+                        .lines()
+                        .filter(|line| {
+                            line.starts_with("error")
+                                || line.contains("error:")
+                                || line.contains("error[")
+                        })
                         .count();
-                    let warning_count = combined.lines()
+                    let warning_count = combined
+                        .lines()
                         .filter(|line| line.starts_with("warning") || line.contains("warning:"))
                         .count();
-                    
+
                     // Extract the actual error message (not warnings)
-                    let error_summary: String = combined.lines()
-                        .filter(|line| line.starts_with("error") || line.contains("error:") || line.contains("error["))
+                    let error_summary: String = combined
+                        .lines()
+                        .filter(|line| {
+                            line.starts_with("error")
+                                || line.contains("error:")
+                                || line.contains("error[")
+                        })
                         .take(5) // First 5 error lines
                         .collect::<Vec<_>>()
                         .join("\n");

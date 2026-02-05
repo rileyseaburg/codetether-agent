@@ -9,7 +9,7 @@ use std::time::Instant;
 use tokio::process::Command;
 use tokio::time::{Duration, timeout};
 
-use crate::telemetry::{ToolExecution, TOOL_EXECUTIONS, record_persistent};
+use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
 
 /// Execute shell commands
 pub struct BashTool {
@@ -69,7 +69,7 @@ impl Tool for BashTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let exec_start = Instant::now();
-        
+
         let command = match args["command"].as_str() {
             Some(c) => c,
             None => {
@@ -129,11 +129,14 @@ impl Tool for BashTool {
                 let duration = exec_start.elapsed();
 
                 // Record telemetry
-                let exec = ToolExecution::start("bash", json!({
-                    "command": command,
-                    "cwd": cwd,
-                    "timeout": timeout_secs,
-                }));
+                let exec = ToolExecution::start(
+                    "bash",
+                    json!({
+                        "command": command,
+                        "cwd": cwd,
+                        "timeout": timeout_secs,
+                    }),
+                );
                 let exec = if success {
                     exec.complete_success(
                         format!("exit_code={}, output_len={}", exit_code, combined.len()),
@@ -141,8 +144,11 @@ impl Tool for BashTool {
                     )
                 } else {
                     exec.complete_error(
-                        format!("exit_code={}: {}", exit_code, 
-                            combined.lines().next().unwrap_or("(no output)")),
+                        format!(
+                            "exit_code={}: {}",
+                            exit_code,
+                            combined.lines().next().unwrap_or("(no output)")
+                        ),
                         duration,
                     )
                 };
@@ -162,14 +168,17 @@ impl Tool for BashTool {
             }
             Ok(Err(e)) => {
                 let duration = exec_start.elapsed();
-                let exec = ToolExecution::start("bash", json!({
-                    "command": command,
-                    "cwd": cwd,
-                }))
+                let exec = ToolExecution::start(
+                    "bash",
+                    json!({
+                        "command": command,
+                        "cwd": cwd,
+                    }),
+                )
                 .complete_error(format!("Failed to execute: {}", e), duration);
                 TOOL_EXECUTIONS.record(exec.clone());
                 record_persistent(exec);
-                
+
                 Ok(ToolResult::structured_error(
                     "EXECUTION_FAILED",
                     "bash",
@@ -180,14 +189,17 @@ impl Tool for BashTool {
             }
             Err(_) => {
                 let duration = exec_start.elapsed();
-                let exec = ToolExecution::start("bash", json!({
-                    "command": command,
-                    "cwd": cwd,
-                }))
+                let exec = ToolExecution::start(
+                    "bash",
+                    json!({
+                        "command": command,
+                        "cwd": cwd,
+                    }),
+                )
                 .complete_error(format!("Timeout after {}s", timeout_secs), duration);
                 TOOL_EXECUTIONS.record(exec.clone());
                 record_persistent(exec);
-                
+
                 Ok(ToolResult::structured_error(
                     "TIMEOUT",
                     "bash",

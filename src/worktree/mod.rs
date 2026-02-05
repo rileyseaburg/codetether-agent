@@ -195,11 +195,14 @@ impl WorktreeManager {
             let lazy_indicators = [
                 ("TODO", diff_content.matches("TODO").count()),
                 ("FIXME", diff_content.matches("FIXME").count()),
-                ("unimplemented!", diff_content.matches("unimplemented!").count()),
+                (
+                    "unimplemented!",
+                    diff_content.matches("unimplemented!").count(),
+                ),
                 ("todo!", diff_content.matches("todo!").count()),
                 ("panic!", diff_content.matches("panic!").count()),
             ];
-            
+
             let lazy_count: usize = lazy_indicators.iter().map(|(_, c)| c).sum();
             if lazy_count > 0 {
                 let lazy_details: Vec<String> = lazy_indicators
@@ -258,20 +261,21 @@ impl WorktreeManager {
             let stdout = String::from_utf8_lossy(&merge_output.stdout).to_string();
 
             // Check for conflicts
-            let conflicts: Vec<String> = if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") {
-                // Get list of conflicted files
-                let status = Command::new("git")
-                    .args(["diff", "--name-only", "--diff-filter=U"])
-                    .current_dir(&self.repo_path)
-                    .output()?;
+            let conflicts: Vec<String> =
+                if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") {
+                    // Get list of conflicted files
+                    let status = Command::new("git")
+                        .args(["diff", "--name-only", "--diff-filter=U"])
+                        .current_dir(&self.repo_path)
+                        .output()?;
 
-                String::from_utf8_lossy(&status.stdout)
-                    .lines()
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                Vec::new()
-            };
+                    String::from_utf8_lossy(&status.stdout)
+                        .lines()
+                        .map(|s| s.to_string())
+                        .collect()
+                } else {
+                    Vec::new()
+                };
 
             // Better logging for different failure modes
             if stderr.contains("Already up to date") || stdout.contains("Already up to date") {
@@ -297,15 +301,22 @@ impl WorktreeManager {
 
             // Get conflict diffs if there are actual conflicts
             let conflict_diffs: Vec<(String, String)> = if !conflicts.is_empty() {
-                conflicts.iter().filter_map(|file| {
-                    let output = Command::new("git")
-                        .args(["diff", file])
-                        .current_dir(&self.repo_path)
-                        .output()
-                        .ok()?;
-                    let diff = String::from_utf8_lossy(&output.stdout).to_string();
-                    if diff.is_empty() { None } else { Some((file.clone(), diff)) }
-                }).collect()
+                conflicts
+                    .iter()
+                    .filter_map(|file| {
+                        let output = Command::new("git")
+                            .args(["diff", file])
+                            .current_dir(&self.repo_path)
+                            .output()
+                            .ok()?;
+                        let diff = String::from_utf8_lossy(&output.stdout).to_string();
+                        if diff.is_empty() {
+                            None
+                        } else {
+                            Some((file.clone(), diff))
+                        }
+                    })
+                    .collect()
             } else {
                 Vec::new()
             };
@@ -340,7 +351,11 @@ impl WorktreeManager {
     }
 
     /// Complete a merge after conflicts have been resolved
-    pub fn complete_merge(&self, worktree: &WorktreeInfo, commit_message: &str) -> Result<MergeResult> {
+    pub fn complete_merge(
+        &self,
+        worktree: &WorktreeInfo,
+        commit_message: &str,
+    ) -> Result<MergeResult> {
         info!(
             worktree_id = %worktree.id,
             "Completing merge after conflict resolution"
@@ -391,7 +406,7 @@ impl WorktreeManager {
         } else {
             let stderr = String::from_utf8_lossy(&commit_output.stderr).to_string();
             warn!(error = %stderr, "Failed to complete merge commit");
-            
+
             Ok(MergeResult {
                 success: false,
                 conflicts: Vec::new(),
@@ -520,7 +535,7 @@ impl WorktreeManager {
 
         // Clean up orphaned branches (branches that exist but worktrees don't)
         let orphaned = self.cleanup_orphaned_branches()?;
-        
+
         Ok(count + orphaned)
     }
 
