@@ -148,6 +148,8 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                     parallel_enabled: true,
                     max_concurrent_stories: 3,
                     worktree_enabled: true,
+                    story_timeout_secs: 300,
+                    conflict_timeout_secs: 120,
                 };
 
                 let mut ralph = RalphLoop::new(

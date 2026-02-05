@@ -926,7 +926,7 @@ pub async fn run_agent_loop(
     let mut total_tool_calls = 0;
     let mut final_output = String::new();
 
-    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    let mut deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
     loop {
         if steps >= max_steps {
@@ -1108,6 +1108,9 @@ pub async fn run_agent_loop(
                 }],
             });
         }
+
+        // Reset deadline after each successful step — agent is making progress
+        deadline = Instant::now() + Duration::from_secs(timeout_secs);
     }
 
     Ok((final_output, steps, total_tool_calls))

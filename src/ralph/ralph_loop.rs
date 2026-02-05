@@ -773,7 +773,7 @@ Working directory: {}
             tool_definitions,
             tool_registry,
             15,  // max 15 steps for conflict resolution
-            120, // 2 minute timeout
+            120, // 2 min per-step timeout (resets on progress)
         )
         .await?;
 
