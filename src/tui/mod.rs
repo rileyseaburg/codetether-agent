@@ -511,6 +511,10 @@ impl App {
                     current_tool: None,
                     steps: 0,
                     max_steps: 50,
+                    tool_call_history: Vec::new(),
+                    messages: Vec::new(),
+                    output: None,
+                    error: None,
                 })
                 .collect();
 
@@ -645,7 +649,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             last_check = std::time::Instant::now();
         }
 
-        terminal.draw(|f| ui(f, &app, &theme))?;
+        terminal.draw(|f| ui(f, &mut app, &theme))?;
 
         // Update max_scroll estimate for scroll key handlers
         // This needs to roughly match what ui() calculates
@@ -747,6 +751,66 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                         KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             return Ok(());
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
+                // Swarm view key handling
+                if app.view_mode == ViewMode::Swarm {
+                    match key.code {
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Esc => {
+                            if app.swarm_state.detail_mode {
+                                app.swarm_state.exit_detail();
+                            } else {
+                                app.view_mode = ViewMode::Chat;
+                            }
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            if app.swarm_state.detail_mode {
+                                // In detail mode, Up/Down switch between agents
+                                app.swarm_state.exit_detail();
+                                app.swarm_state.select_prev();
+                                app.swarm_state.enter_detail();
+                            } else {
+                                app.swarm_state.select_prev();
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            if app.swarm_state.detail_mode {
+                                app.swarm_state.exit_detail();
+                                app.swarm_state.select_next();
+                                app.swarm_state.enter_detail();
+                            } else {
+                                app.swarm_state.select_next();
+                            }
+                        }
+                        KeyCode::Enter => {
+                            if !app.swarm_state.detail_mode {
+                                app.swarm_state.enter_detail();
+                            }
+                        }
+                        KeyCode::PageDown => {
+                            app.swarm_state.detail_scroll_down(10);
+                        }
+                        KeyCode::PageUp => {
+                            app.swarm_state.detail_scroll_up(10);
+                        }
+                        KeyCode::Char('?') => {
+                            app.show_help = true;
+                        }
+                        KeyCode::F(2) => {
+                            app.view_mode = ViewMode::Chat;
+                        }
+                        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.view_mode = ViewMode::Chat;
                         }
                         _ => {}
                     }
@@ -912,7 +976,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     }
 }
 
-fn ui(f: &mut Frame, app: &App, theme: &Theme) {
+fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     // Check view mode
     if app.view_mode == ViewMode::Swarm {
         // Render swarm view
@@ -926,7 +990,7 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             .split(f.area());
 
         // Swarm view
-        render_swarm_view(f, &app.swarm_state, chunks[0]);
+        render_swarm_view(f, &mut app.swarm_state, chunks[0]);
 
         // Input area (for returning to chat)
         let input_block = Block::default()
@@ -940,14 +1004,32 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
         f.render_widget(input, chunks[1]);
 
         // Status bar
-        let status = Paragraph::new(Line::from(vec![
-            Span::styled(" SWARM MODE ", Style::default().fg(Color::Black).bg(Color::Cyan)),
-            Span::raw(" | "),
-            Span::styled("Esc", Style::default().fg(Color::Yellow)),
-            Span::raw(": Back | "),
-            Span::styled("Ctrl+S", Style::default().fg(Color::Yellow)),
-            Span::raw(": Toggle view"),
-        ]));
+        let status_line = if app.swarm_state.detail_mode {
+            Line::from(vec![
+                Span::styled(" AGENT DETAIL ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+                Span::raw(" | "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": Back to list | "),
+                Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+                Span::raw(": Prev/Next agent | "),
+                Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
+                Span::raw(": Scroll"),
+            ])
+        } else {
+            Line::from(vec![
+                Span::styled(" SWARM MODE ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+                Span::raw(" | "),
+                Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+                Span::raw(": Select | "),
+                Span::styled("Enter", Style::default().fg(Color::Yellow)),
+                Span::raw(": Detail | "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": Back | "),
+                Span::styled("Ctrl+S", Style::default().fg(Color::Yellow)),
+                Span::raw(": Toggle view"),
+            ])
+        };
+        let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
         return;
     }
