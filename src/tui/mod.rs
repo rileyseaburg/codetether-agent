@@ -139,7 +139,7 @@ impl App {
             cursor_position: 0,
             messages: vec![
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
-                ChatMessage::new("assistant", "Quick start:\n• Type a message to chat with the AI\n• /swarm <task> - parallel execution\n• /resume - continue last session\n• /sessions - list saved sessions\n• Tab - switch agents | ? - help"),
+                ChatMessage::new("assistant", "Quick start:\n• Type a message to chat with the AI\n• /swarm <task> - parallel execution\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help"),
             ],
             current_agent: "build".to_string(),
             scroll: 0,
@@ -1235,7 +1235,7 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
             "".to_string(),
             "  SLASH COMMANDS".to_string(),
             "  /swarm <task>   Run task in parallel swarm mode".to_string(),
-            "  /sessions       List saved sessions".to_string(),
+            "  /sessions       Open session picker to resume".to_string(),
             "  /resume         Resume most recent session".to_string(),
             "  /resume <id>    Resume specific session by ID".to_string(),
             "  /new            Start a fresh session".to_string(),
