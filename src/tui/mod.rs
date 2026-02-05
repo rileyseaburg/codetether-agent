@@ -165,7 +165,8 @@ impl App {
             .get(&current_agent)
             .and_then(|agent| agent.model.clone())
             .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
-            .or_else(|| config.default_model.clone());
+            .or_else(|| config.default_model.clone())
+            .or_else(|| Some("zhipuai/glm-4.7".to_string()));
 
         // Initialize session if needed
         if self.session.is_none() {
