@@ -29,7 +29,7 @@ mod worktree;
 use clap::Parser;
 use cli::{A2aArgs, Cli, Command};
 use swarm::{DecompositionStrategy, SwarmExecutor};
-use telemetry::{TOKEN_USAGE, TOOL_EXECUTIONS, get_persistent_stats};
+use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]

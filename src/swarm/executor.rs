@@ -8,6 +8,7 @@ use super::{
     orchestrator::Orchestrator,
     subtask::{SubTask, SubTaskResult},
 };
+use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SwarmEvent, SubTaskInfo};
 
 // Re-export swarm types for convenience
 pub use super::{Actor, ActorStatus, Handler, SwarmMessage};
@@ -23,7 +24,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc};
 use tokio::time::{Duration, timeout};
 
 /// Default context limit (256k tokens - conservative for most models)
@@ -323,6 +324,8 @@ pub struct SwarmExecutor {
     config: SwarmConfig,
     /// Optional agent for handling swarm-level coordination (reserved for future use)
     coordinator_agent: Option<Arc<tokio::sync::Mutex<Agent>>>,
+    /// Optional event channel for TUI real-time updates
+    event_tx: Option<mpsc::Sender<SwarmEvent>>,
 }
 
 impl SwarmExecutor {
@@ -331,7 +334,14 @@ impl SwarmExecutor {
         Self {
             config,
             coordinator_agent: None,
+            event_tx: None,
         }
+    }
+
+    /// Set an event channel for real-time TUI updates
+    pub fn with_event_tx(mut self, tx: mpsc::Sender<SwarmEvent>) -> Self {
+        self.event_tx = Some(tx);
+        self
     }
 
     /// Set a coordinator agent for swarm-level coordination
@@ -344,6 +354,13 @@ impl SwarmExecutor {
     /// Get the coordinator agent if set
     pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<Agent>>> {
         self.coordinator_agent.as_ref()
+    }
+
+    /// Send an event to the TUI if channel is connected (non-blocking)
+    fn try_send_event(&self, event: SwarmEvent) {
+        if let Some(ref tx) = self.event_tx {
+            let _ = tx.try_send(event);
+        }
     }
 
     /// Execute a task using the swarm
@@ -374,6 +391,25 @@ impl SwarmExecutor {
         }
 
         tracing::info!(provider_name = %orchestrator.provider(), "Task decomposed into {} subtasks", subtasks.len());
+
+        // Emit decomposition event for TUI
+        self.try_send_event(SwarmEvent::Decomposed {
+            subtasks: subtasks.iter().map(|s| SubTaskInfo {
+                id: s.id.clone(),
+                name: s.name.clone(),
+                status: crate::swarm::SubTaskStatus::Pending,
+                stage: s.stage,
+                dependencies: s.dependencies.clone(),
+                agent_name: s.specialty.clone(),
+                current_tool: None,
+                steps: 0,
+                max_steps: self.config.max_steps_per_subagent,
+                tool_call_history: Vec::new(),
+                messages: Vec::new(),
+                output: None,
+                error: None,
+            }).collect(),
+        });
 
         // Execute stages in order
         let max_stage = subtasks.iter().map(|s| s.stage).max().unwrap_or(0);
@@ -441,6 +477,15 @@ impl SwarmExecutor {
             for result in &stage_results {
                 orchestrator.complete_subtask(&result.subtask_id, result.clone());
             }
+
+            // Emit stage complete event
+            let stage_completed = stage_results.iter().filter(|r| r.success).count();
+            let stage_failed = stage_results.iter().filter(|r| !r.success).count();
+            self.try_send_event(SwarmEvent::StageComplete {
+                stage,
+                completed: stage_completed,
+                failed: stage_failed,
+            });
 
             all_results.extend(stage_results);
         }
@@ -572,6 +617,7 @@ impl SwarmExecutor {
             let sem = Arc::clone(&semaphore);
             let stagger_delay = delay_ms * idx as u64; // Stagger start times
             let worktree_mgr = worktree_manager.clone();
+            let event_tx = self.event_tx.clone();
 
             // Spawn the subtask execution with agentic tool loop
             let handle = tokio::spawn(async move {
@@ -579,7 +625,7 @@ impl SwarmExecutor {
                 if stagger_delay > 0 {
                     tokio::time::sleep(Duration::from_millis(stagger_delay)).await;
                 }
-                let _permit = sem.acquire().await.expect("semaphore closed");
+                let _permit = sem.acquire().await.map_err(|_| anyhow::anyhow!("Swarm execution cancelled"))?;
 
                 let start = Instant::now();
 
@@ -673,6 +719,15 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     )
                 };
 
+                // Emit AgentStarted event
+                if let Some(ref tx) = event_tx {
+                    let _ = tx.try_send(SwarmEvent::AgentStarted {
+                        subtask_id: subtask_id.clone(),
+                        agent_name: format!("agent-{}", subtask_id),
+                        specialty: specialty.clone(),
+                    });
+                }
+
                 // Run the agentic loop
                 let result = run_agent_loop(
                     provider,
@@ -683,38 +738,68 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     registry,
                     max_steps,
                     timeout_secs,
+                    event_tx.clone(),
+                    subtask_id.clone(),
                 )
                 .await;
 
                 match result {
-                    Ok((output, steps, tool_calls)) => Ok((
-                        SubTaskResult {
-                            subtask_id: subtask_id.clone(),
-                            subagent_id: format!("agent-{}", subtask_id),
-                            success: true,
-                            result: output,
-                            steps,
-                            tool_calls,
-                            execution_time_ms: start.elapsed().as_millis() as u64,
-                            error: None,
-                            artifacts: Vec::new(),
-                        },
-                        worktree_info,
-                    )),
-                    Err(e) => Ok((
-                        SubTaskResult {
-                            subtask_id: subtask_id.clone(),
-                            subagent_id: format!("agent-{}", subtask_id),
-                            success: false,
-                            result: String::new(),
-                            steps: 0,
-                            tool_calls: 0,
-                            execution_time_ms: start.elapsed().as_millis() as u64,
-                            error: Some(e.to_string()),
-                            artifacts: Vec::new(),
-                        },
-                        worktree_info,
-                    )),
+                    Ok((output, steps, tool_calls)) => {
+                        // Emit completion events
+                        if let Some(ref tx) = event_tx {
+                            let _ = tx.try_send(SwarmEvent::AgentOutput {
+                                subtask_id: subtask_id.clone(),
+                                output: output.clone(),
+                            });
+                            let _ = tx.try_send(SwarmEvent::AgentComplete {
+                                subtask_id: subtask_id.clone(),
+                                success: true,
+                                steps,
+                            });
+                        }
+                        Ok((
+                            SubTaskResult {
+                                subtask_id: subtask_id.clone(),
+                                subagent_id: format!("agent-{}", subtask_id),
+                                success: true,
+                                result: output,
+                                steps,
+                                tool_calls,
+                                execution_time_ms: start.elapsed().as_millis() as u64,
+                                error: None,
+                                artifacts: Vec::new(),
+                            },
+                            worktree_info,
+                        ))
+                    }
+                    Err(e) => {
+                        // Emit error events
+                        if let Some(ref tx) = event_tx {
+                            let _ = tx.try_send(SwarmEvent::AgentError {
+                                subtask_id: subtask_id.clone(),
+                                error: e.to_string(),
+                            });
+                            let _ = tx.try_send(SwarmEvent::AgentComplete {
+                                subtask_id: subtask_id.clone(),
+                                success: false,
+                                steps: 0,
+                            });
+                        }
+                        Ok((
+                            SubTaskResult {
+                                subtask_id: subtask_id.clone(),
+                                subagent_id: format!("agent-{}", subtask_id),
+                                success: false,
+                                result: String::new(),
+                                steps: 0,
+                                tool_calls: 0,
+                                execution_time_ms: start.elapsed().as_millis() as u64,
+                                error: Some(e.to_string()),
+                                artifacts: Vec::new(),
+                            },
+                            worktree_info,
+                        ))
+                    }
                 }
             });
 
@@ -893,6 +978,8 @@ pub async fn run_agent_loop(
     registry: Arc<ToolRegistry>,
     max_steps: usize,
     timeout_secs: u64,
+    event_tx: Option<mpsc::Sender<SwarmEvent>>,
+    subtask_id: String,
 ) -> Result<(String, usize, usize)> {
     // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
     let temperature = 0.7;
@@ -997,6 +1084,25 @@ pub async fn run_agent_loop(
                 "Sub-agent text output"
             );
             tracing::debug!(step = steps, output = %final_output, "Sub-agent full output");
+
+            // Emit assistant message event for TUI detail view
+            if let Some(ref tx) = event_tx {
+                let preview = if final_output.len() > 500 {
+                    let mut end = 500;
+                    while end > 0 && !final_output.is_char_boundary(end) { end -= 1; }
+                    format!("{}...", &final_output[..end])
+                } else {
+                    final_output.clone()
+                };
+                let _ = tx.try_send(SwarmEvent::AgentMessage {
+                    subtask_id: subtask_id.clone(),
+                    entry: AgentMessageEntry {
+                        role: "assistant".to_string(),
+                        content: preview,
+                        is_tool_call: false,
+                    },
+                });
+            }
         }
 
         // Log tool calls
@@ -1028,6 +1134,14 @@ pub async fn run_agent_loop(
         for (call_id, tool_name, arguments) in tool_calls {
             total_tool_calls += 1;
 
+            // Emit tool call event
+            if let Some(ref tx) = event_tx {
+                let _ = tx.try_send(SwarmEvent::AgentToolCall {
+                    subtask_id: subtask_id.clone(),
+                    tool_name: tool_name.clone(),
+                });
+            }
+
             tracing::info!(
                 step = steps,
                 tool_call_id = %call_id,
@@ -1041,10 +1155,14 @@ pub async fn run_agent_loop(
             );
 
             let tool_start = Instant::now();
+            let mut tool_success = true;
             let result = if let Some(tool) = registry.get(&tool_name) {
                 // Parse arguments as JSON
                 let args: serde_json::Value =
-                    serde_json::from_str(&arguments).unwrap_or_else(|_| serde_json::json!({}));
+                    serde_json::from_str(&arguments).unwrap_or_else(|e| {
+                        tracing::warn!(tool = %tool_name, error = %e, raw = %arguments, "Failed to parse tool arguments");
+                        serde_json::json!({})
+                    });
 
                 match tool.execute(args).await {
                     Ok(r) => {
@@ -1057,6 +1175,7 @@ pub async fn run_agent_loop(
                             );
                             r.output
                         } else {
+                            tool_success = false;
                             tracing::warn!(
                                 tool = %tool_name,
                                 error = %r.output,
@@ -1066,6 +1185,7 @@ pub async fn run_agent_loop(
                         }
                     }
                     Err(e) => {
+                        tool_success = false;
                         tracing::error!(
                             tool = %tool_name,
                             error = %e,
@@ -1075,9 +1195,37 @@ pub async fn run_agent_loop(
                     }
                 }
             } else {
+                tool_success = false;
                 tracing::error!(tool = %tool_name, "Unknown tool requested");
                 format!("Unknown tool: {}", tool_name)
             };
+
+            // Emit detailed tool call event
+            if let Some(ref tx) = event_tx {
+                let input_preview = if arguments.len() > 200 {
+                    let mut end = 200;
+                    while end > 0 && !arguments.is_char_boundary(end) { end -= 1; }
+                    format!("{}...", &arguments[..end])
+                } else {
+                    arguments.clone()
+                };
+                let output_preview = if result.len() > 500 {
+                    let mut end = 500;
+                    while end > 0 && !result.is_char_boundary(end) { end -= 1; }
+                    format!("{}...", &result[..end])
+                } else {
+                    result.clone()
+                };
+                let _ = tx.try_send(SwarmEvent::AgentToolCallDetail {
+                    subtask_id: subtask_id.clone(),
+                    detail: AgentToolCallDetail {
+                        tool_name: tool_name.clone(),
+                        input_preview,
+                        output_preview,
+                        success: tool_success,
+                    },
+                });
+            }
 
             tracing::debug!(
                 tool = %tool_name,

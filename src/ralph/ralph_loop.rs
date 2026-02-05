@@ -663,6 +663,8 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             tool_registry, // Already an Arc<ToolRegistry>
             30,            // max steps per story (focused implementation)
             180,           // 3 minute timeout per story
+            None,
+            String::new(),
         )
         .await?;
 
@@ -774,6 +776,8 @@ Working directory: {}
             tool_registry,
             15,  // max 15 steps for conflict resolution
             120, // 2 min per-step timeout (resets on progress)
+            None,
+            String::new(),
         )
         .await?;
 
@@ -978,6 +982,8 @@ Respond with the implementation and any shell commands needed.
             tool_registry, // Already an Arc<ToolRegistry>
             30,            // max steps per story (focused implementation)
             180,           // 3 minute timeout per story
+            None,
+            String::new(),
         )
         .await?;
 

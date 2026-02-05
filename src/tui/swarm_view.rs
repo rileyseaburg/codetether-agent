@@ -27,6 +27,7 @@ pub struct AgentToolCallDetail {
 pub struct AgentMessageEntry {
     pub role: String,
     pub content: String,
+    pub is_tool_call: bool,
 }
 
 /// Events emitted by swarm execution for TUI updates
@@ -139,8 +140,6 @@ pub struct SwarmViewState {
     pub stats: Option<SwarmStats>,
     /// Any error message
     pub error: Option<String>,
-    /// Scroll position in subtask list (deprecated, use selected_index)
-    pub scroll: usize,
     /// Whether execution is complete
     pub complete: bool,
     /// Currently selected subtask index
@@ -163,7 +162,6 @@ impl Default for SwarmViewState {
             total_stages: 0,
             stats: None,
             error: None,
-            scroll: 0,
             complete: false,
             selected_index: 0,
             detail_mode: false,
