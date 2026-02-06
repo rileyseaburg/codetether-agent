@@ -150,7 +150,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• /swarm <task> - parallel execution\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
