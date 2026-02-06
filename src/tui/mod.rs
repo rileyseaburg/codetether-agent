@@ -108,7 +108,7 @@ struct App {
     session_picker_list: Vec<SessionSummary>,
     session_picker_selected: usize,
     // Model picker state
-    model_picker_list: Vec<(String, String)>, // (display label, provider/model value)
+    model_picker_list: Vec<(String, String, String)>, // (display label, provider/model value, human name)
     model_picker_selected: usize,
     model_picker_filter: String,
     active_model: Option<String>,
@@ -586,7 +586,7 @@ impl App {
 
     /// Populate and open the model picker overlay
     async fn open_model_picker(&mut self, config: &Config) {
-        let mut models: Vec<(String, String)> = Vec::new();
+        let mut models: Vec<(String, String, String)> = Vec::new();
 
         // Try to build provider registry and list models
         match crate::provider::ProviderRegistry::from_vault().await {
@@ -598,7 +598,8 @@ impl App {
                                 for m in model_list {
                                     let label = format!("{}/{}", provider_name, m.id);
                                     let value = format!("{}/{}", provider_name, m.id);
-                                    models.push((label, value));
+                                    let name = m.name.clone();
+                                    models.push((label, value, name));
                                 }
                             }
                             Err(e) => {
@@ -622,7 +623,8 @@ impl App {
                             for m in model_list {
                                 let label = format!("{}/{}", provider_name, m.id);
                                 let value = format!("{}/{}", provider_name, m.id);
-                                models.push((label, value));
+                                let name = m.name.clone();
+                                models.push((label, value, name));
                             }
                         }
                     }
@@ -646,7 +648,7 @@ impl App {
     }
 
     /// Get filtered model list
-    fn filtered_models(&self) -> Vec<(usize, &(String, String))> {
+    fn filtered_models(&self) -> Vec<(usize, &(String, String, String))> {
         if self.model_picker_filter.is_empty() {
             self.model_picker_list.iter().enumerate().collect()
         } else {
@@ -654,7 +656,10 @@ impl App {
             self.model_picker_list
                 .iter()
                 .enumerate()
-                .filter(|(_, (label, _))| label.to_lowercase().contains(&filter))
+                .filter(|(_, (label, _, name))| {
+                    label.to_lowercase().contains(&filter)
+                        || name.to_lowercase().contains(&filter)
+                })
                 .collect()
         }
     }
@@ -820,7 +825,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                         KeyCode::Enter => {
                             let filtered = app.filtered_models();
-                            if let Some((_, (label, value))) = filtered.get(app.model_picker_selected) {
+                            if let Some((_, (label, value, _name))) = filtered.get(app.model_picker_selected) {
                                 let label = label.clone();
                                 let value = value.clone();
                                 app.active_model = Some(value.clone());
@@ -1264,7 +1269,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             ));
         } else {
             let mut current_provider = String::new();
-            for (display_idx, (_, (label, _))) in filtered.iter().enumerate() {
+            for (display_idx, (_, (label, _, human_name))) in filtered.iter().enumerate() {
                 let provider = label.split('/').next().unwrap_or("");
                 if provider != current_provider {
                     if !current_provider.is_empty() {
@@ -1281,7 +1286,13 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 let is_active = app.active_model.as_deref() == Some(label.as_str());
                 let marker = if is_selected { "▶" } else { " " };
                 let active_marker = if is_active { " ✓" } else { "" };
-                let model_name = label.split('/').skip(1).collect::<Vec<_>>().join("/");
+                let model_id = label.split('/').skip(1).collect::<Vec<_>>().join("/");
+                // Show human name if different from ID
+                let display = if human_name != &model_id && !human_name.is_empty() {
+                    format!("{} ({})", human_name, model_id)
+                } else {
+                    model_id
+                };
 
                 let style = if is_selected {
                     Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)
@@ -1292,7 +1303,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 };
 
                 list_lines.push(Line::styled(
-                    format!("  {} {}{}", marker, model_name, active_marker),
+                    format!("  {} {}{}", marker, display, active_marker),
                     style,
                 ));
             }
