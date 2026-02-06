@@ -25,3 +25,4 @@ Thumbs.db
 # Environment (secrets should ONLY be in Vault)
 .env
 .env.*
+progress.txt
