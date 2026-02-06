@@ -1,1 +1,12 @@
-Now let me run cargo check to verify the changes:
+The build passes with only warnings (no errors). The warnings are pre-existing and not related to my changes.
+
+Let me verify the implementation meets all the acceptance criteria:
+
+1. ✅ A tokio::spawn task sends POST /v1/opencode/workers/{worker_id}/heartbeat every 30 seconds - Implemented in `start_heartbeat` function
+2. ✅ Heartbeat payload includes worker_id, agent_name, status (idle/processing), and active_task_count - Included in the JSON payload
+3. ✅ Heartbeat starts when the worker connects and stops when the worker shuts down - Started before `connect_stream`, cancelled on disconnect with `heartbeat_handle.abort()`
+4. ✅ 3 consecutive heartbeat failures log an error but do not terminate the worker - Implemented with `consecutive_failures` counter and `MAX_FAILURES = 3`
+5. ✅ Heartbeat uses the same auth token as the SSE connection - Passed `args.token.clone()` to heartbeat task
+6. ✅ Heartbeat loop is cancelled and restarted on SSE reconnection - `heartbeat_handle.abort()` called before reconnect sleep
+
+STORY_COMPLETE: US-003
