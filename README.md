@@ -2,23 +2,35 @@
 
 [![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
-A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protocol support, written in Rust. Part of the CodeTether ecosystem.
+A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protocol support, written in Rust. Features a rich terminal UI with dedicated views for swarm orchestration and autonomous PRD-driven development. Part of the CodeTether ecosystem.
 
 ![CodeTether TUI](docs/tui-screenshot.png)
+
+## What's New in v0.1.5
+
+- **Ralph TUI View** — Dedicated real-time view for autonomous PRD loops (`/ralph`). Per-story progress, quality gates, tool calls, and sub-agent messages with magenta theme.
+- **Swarm Detail View** — Full per-agent detail in swarm mode. Arrow keys to navigate subtasks, Enter for tool call history and messages per sub-agent.
+- **Interactive Model Selector** — `/model` command and `Ctrl+M` to browse and pick LLM models at runtime.
+- **Webview Chat Layout** — Dashboard-style TUI with sidebar, inspector pane, and multi-panel chat (`/webview`, `Ctrl+B`).
+- **A2A Worker Enhancements** — Heartbeat loop, robust error recovery, improved registration flow.
+- **Copilot Provider** — GitHub Copilot integration with known-models fallback for the full model catalog.
+
+See [full release notes](https://github.com/rileyseaburg/codetether-agent/releases/tag/v0.1.5).
 
 ## Features
 
 - **A2A-Native**: Built from the ground up for the A2A protocol - works as a worker agent for the CodeTether platform
-- **AI-Powered Coding**: Intelligent code assistance using multiple AI providers (OpenAI, Anthropic, Google, Moonshot, etc.)
-- **Swarm Execution**: Parallel sub-agent execution for complex tasks with automatic decomposition
-- **Ralph Loop**: Autonomous PRD-driven development - give it a spec, get working code
+- **AI-Powered Coding**: Intelligent code assistance using multiple AI providers (OpenAI, Anthropic, Google, Moonshot, GitHub Copilot, etc.)
+- **Swarm Execution**: Parallel sub-agent execution with real-time per-agent event streaming and dedicated TUI detail view
+- **Ralph Loop**: Autonomous PRD-driven development with dedicated TUI view — give it a spec, watch it work story by story
+- **Interactive TUI**: Rich terminal interface with webview layout, model selector, session picker, swarm view, and Ralph view
 - **RLM Processing**: Handle context larger than model windows via recursive language model approach
 - **Secure Secrets**: All API keys loaded exclusively from HashiCorp Vault - no environment variable secrets
-- **Interactive TUI**: Beautiful terminal interface built with Ratatui
 - **27+ Tools**: Comprehensive tool system for file ops, LSP, code search, web fetch, and more
 - **Session Management**: Persistent session history with git-aware storage
-- **High Performance**: Written in Rust for maximum efficiency and reliability
+- **High Performance**: Written in Rust — 13ms startup, <20MB idle memory, true parallelism via tokio
 
 ## Installation
 
@@ -83,6 +95,7 @@ vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https:/
 | Provider | Default Model | Notes |
 |----------|---------------|-------|
 | `moonshotai` | `kimi-k2.5` | **Default** - excellent for coding |
+| `github-copilot` | `claude-opus-4` | GitHub Copilot models (Claude, GPT, Gemini) |
 | `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
 | `google` | `gemini-2.5-pro` | Google AI |
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
@@ -164,10 +177,43 @@ codetether tui
 ![CodeTether TUI](docs/tui-screenshot.png)
 
 The TUI provides:
+- **Webview layout**: Dashboard with sidebar, chat, and inspector (`/webview` or `Ctrl+B`)
+- **Model selector**: Browse and pick models at runtime (`/model` or `Ctrl+M`)
+- **Swarm view**: `/swarm <task>` with real-time per-agent progress, tool calls, and detail view (`Enter` on a subtask)
+- **Ralph view**: `/ralph [prd.json]` with per-story progress, quality gates, and sub-agent activity
+- **Session management**: `/sessions` picker, `/resume`, `/new`
 - **Real-time tool streaming**: See tool calls as they execute
-- **Session management**: `/sessions`, `/resume`, `/new`
-- **Swarm mode**: `/swarm <task>` for parallel execution
-- **Theme support**: Customizable colors via config
+- **Theme support**: Customizable colors via config with hot-reload
+
+### TUI Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/swarm <task>` | Run task in parallel swarm mode |
+| `/ralph [path]` | Start autonomous PRD loop (default: `prd.json`) |
+| `/model [name]` | Open model picker or set model directly |
+| `/sessions` | Open session picker to resume a previous session |
+| `/resume [id]` | Resume most recent or specific session |
+| `/new` | Start a fresh session |
+| `/webview` | Switch to dashboard layout |
+| `/classic` | Switch to single-pane layout |
+| `/inspector` | Toggle inspector pane |
+| `/refresh` | Refresh workspace and session cache |
+| `/view` | Toggle swarm view |
+
+### TUI Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+M` | Open model selector |
+| `Ctrl+B` | Toggle webview/classic layout |
+| `Ctrl+S` / `F2` | Toggle swarm view |
+| `F3` | Toggle inspector pane |
+| `Tab` | Switch between build/plan agents |
+| `Alt+j/k` | Scroll down/up |
+| `Alt+u/d` | Half-page scroll |
+| `Ctrl+R` | Search command history |
+| `?` | Toggle help overlay |
 
 ### Non-Interactive Mode (Chat - No Tools)
 
