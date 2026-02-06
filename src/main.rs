@@ -27,7 +27,7 @@ mod tui;
 mod worktree;
 
 use clap::Parser;
-use cli::{A2aArgs, Cli, Command};
+use cli::{Cli, Command};
 use swarm::{DecompositionStrategy, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
@@ -37,8 +37,9 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Check if we're running TUI - if so, redirect logs to file instead of stderr
-    let is_tui = matches!(cli.command, Some(Command::Tui(_)));
-    
+    // TUI is the default when no subcommand is given
+    let is_tui = matches!(cli.command, Some(Command::Tui(_)) | None);
+
     // Initialize tracing
     if is_tui {
         // For TUI, log to file to avoid corrupting the display
@@ -47,11 +48,15 @@ async fn main() -> anyhow::Result<()> {
             .unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
         let _ = std::fs::create_dir_all(&log_dir);
         let log_file = std::fs::File::create(log_dir.join("tui.log")).ok();
-        
+
         if let Some(file) = log_file {
             tracing_subscriber::registry()
                 .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-                .with(tracing_subscriber::fmt::layer().with_writer(std::sync::Mutex::new(file)).with_ansi(false))
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .with_writer(std::sync::Mutex::new(file))
+                        .with_ansi(false),
+                )
                 .init();
         }
         // If file creation fails, just don't log
@@ -70,7 +75,9 @@ async fn main() -> anyhow::Result<()> {
         // Store in global
         let _ = secrets::init_from_manager(secrets_manager);
     } else {
-        tracing::warn!("HashiCorp Vault not configured - no provider API keys will be available");
+        tracing::warn!(
+            "HashiCorp Vault not configured - Vault provider API keys will be unavailable"
+        );
         tracing::warn!("Set VAULT_ADDR and VAULT_TOKEN environment variables to connect");
     }
 
@@ -81,6 +88,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
+        Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Worker(args)) => a2a::worker::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
         Some(Command::Swarm(args)) => {
@@ -693,41 +701,9 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         None => {
-            // Default: A2A worker mode
-            // Check if we have a server URL from args or environment
-            if let Some(server) = cli.server {
-                let args = A2aArgs {
-                    server,
-                    token: cli.token,
-                    name: cli.name,
-                    codebases: None,
-                    auto_approve: "safe".to_string(),
-                    email: None,
-                    push_url: None,
-                };
-                a2a::worker::run(args).await
-            } else {
-                // No server specified, show help
-                eprintln!("CodeTether Agent v{}", env!("CARGO_PKG_VERSION"));
-                eprintln!();
-                eprintln!("Usage: codetether --server <URL> [OPTIONS]");
-                eprintln!("   or: codetether tui                  # Interactive terminal mode");
-                eprintln!("   or: codetether serve                # Start API server");
-                eprintln!("   or: codetether run <message>        # Non-interactive mode");
-                eprintln!();
-                eprintln!("Environment variables:");
-                eprintln!("  CODETETHER_SERVER   A2A server URL");
-                eprintln!("  CODETETHER_TOKEN    Authentication token");
-                eprintln!();
-                eprintln!("HashiCorp Vault (required for API keys):");
-                eprintln!("  VAULT_ADDR          Vault server address");
-                eprintln!("  VAULT_TOKEN         Vault authentication token");
-                eprintln!("  VAULT_MOUNT         KV secrets mount (default: secret)");
-                eprintln!("  VAULT_SECRETS_PATH  Path prefix (default: codetether/providers)");
-                eprintln!();
-                eprintln!("Run 'codetether --help' for full options.");
-                std::process::exit(1);
-            }
+            // Default: launch TUI
+            let project = cli.project;
+            tui::run(project).await
         }
     }
 }

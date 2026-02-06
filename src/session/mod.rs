@@ -36,6 +36,20 @@ pub struct SessionMetadata {
 }
 
 impl Session {
+    fn default_model_for_provider(provider: &str) -> String {
+        match provider {
+            "moonshotai" => "kimi-k2.5".to_string(),
+            "anthropic" => "claude-sonnet-4-20250514".to_string(),
+            "openai" => "gpt-4o".to_string(),
+            "google" => "gemini-2.5-pro".to_string(),
+            "zhipuai" => "glm-4.7".to_string(),
+            "openrouter" => "zhipuai/glm-4.7".to_string(),
+            "novita" => "qwen/qwen3-coder-next".to_string(),
+            "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
+            _ => "glm-4.7".to_string(),
+        }
+    }
+
     /// Create a new session
     pub async fn new() -> Result<Self> {
         let id = Uuid::new_v4().to_string();
@@ -134,7 +148,9 @@ impl Session {
 
         let providers = registry.list();
         if providers.is_empty() {
-            anyhow::bail!("No providers available. Configure API keys in HashiCorp Vault.");
+            anyhow::bail!(
+                "No providers available. Configure API keys in HashiCorp Vault (for Copilot use `codetether auth copilot`)."
+            );
         }
 
         tracing::info!("Available providers: {:?}", providers);
@@ -189,17 +205,7 @@ impl Session {
         let model = if !model_id.is_empty() {
             model_id
         } else {
-            // Default models per provider
-            match selected_provider {
-                "moonshotai" => "kimi-k2.5".to_string(),
-                "anthropic" => "claude-sonnet-4-20250514".to_string(),
-                "openai" => "gpt-4o".to_string(),
-                "google" => "gemini-2.5-pro".to_string(),
-                "zhipuai" => "glm-4.7".to_string(),
-                "openrouter" => "zhipuai/glm-4.7".to_string(),
-                "novita" => "qwen/qwen3-coder-next".to_string(),
-                _ => "glm-4.7".to_string(),
-            }
+            Self::default_model_for_provider(selected_provider)
         };
 
         // Create tool registry with all available tools
@@ -356,7 +362,9 @@ impl Session {
         message: &str,
         event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
     ) -> Result<SessionResult> {
-        use crate::provider::{CompletionRequest, ContentPart, ProviderRegistry, Role, parse_model_string};
+        use crate::provider::{
+            CompletionRequest, ContentPart, ProviderRegistry, Role, parse_model_string,
+        };
 
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
@@ -412,16 +420,7 @@ impl Session {
         let model = if !model_id.is_empty() {
             model_id
         } else {
-            match selected_provider {
-                "moonshotai" => "kimi-k2.5".to_string(),
-                "anthropic" => "claude-sonnet-4-20250514".to_string(),
-                "openai" => "gpt-4o".to_string(),
-                "google" => "gemini-2.5-pro".to_string(),
-                "zhipuai" => "glm-4.7".to_string(),
-                "openrouter" => "zhipuai/glm-4.7".to_string(),
-                "novita" => "qwen/qwen3-coder-next".to_string(),
-                _ => "glm-4.7".to_string(),
-            }
+            Self::default_model_for_provider(selected_provider)
         };
 
         // Create tool registry
@@ -483,7 +482,12 @@ impl Session {
                 .content
                 .iter()
                 .filter_map(|part| {
-                    if let ContentPart::ToolCall { id, name, arguments } = part {
+                    if let ContentPart::ToolCall {
+                        id,
+                        name,
+                        arguments,
+                    } = part
+                    {
                         let args: serde_json::Value =
                             serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
                         Some((id.clone(), name.clone(), args))
@@ -511,7 +515,11 @@ impl Session {
 
             self.add_message(response.message.clone());
 
-            tracing::info!(step = step, num_tools = tool_calls.len(), "Executing tool calls");
+            tracing::info!(
+                step = step,
+                num_tools = tool_calls.len(),
+                "Executing tool calls"
+            );
 
             // Execute each tool call with events
             for (tool_id, tool_name, tool_input) in tool_calls {
@@ -690,7 +698,11 @@ pub enum SessionEvent {
     /// Tool call started
     ToolCallStart { name: String, arguments: String },
     /// Tool call completed with result
-    ToolCallComplete { name: String, output: String, success: bool },
+    ToolCallComplete {
+        name: String,
+        output: String,
+        success: bool,
+    },
     /// Partial text output (for streaming)
     TextChunk(String),
     /// Final text output

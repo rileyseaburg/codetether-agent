@@ -4,7 +4,7 @@
 name = "codetether-agent"
 version = "0.1.4"
 edition = "2024"
-rust-version = "1.85"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
 license = "MIT"
 repository = "https://github.com/rileyseaburg/codetether-agent"

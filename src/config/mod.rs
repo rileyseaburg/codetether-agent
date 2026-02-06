@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 
-
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {

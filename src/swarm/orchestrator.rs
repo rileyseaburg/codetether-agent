@@ -100,6 +100,7 @@ impl Orchestrator {
             "google" => "gemini-2.5-pro".to_string(),
             "openrouter" => "stepfun/step-3.5-flash:free".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
+            "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
             _ => "kimi-k2.5".to_string(),
         }
     }

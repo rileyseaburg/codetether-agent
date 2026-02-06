@@ -8,7 +8,7 @@ use super::{
     orchestrator::Orchestrator,
     subtask::{SubTask, SubTaskResult},
 };
-use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SwarmEvent, SubTaskInfo};
+use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
 // Re-export swarm types for convenience
 pub use super::{Actor, ActorStatus, Handler, SwarmMessage};
@@ -231,9 +231,7 @@ fn truncate_single_result(content: &str, max_chars: usize) -> String {
     };
 
     // Try to find a good break point (newline) near the limit
-    let break_point = content[..safe_limit]
-        .rfind('\n')
-        .unwrap_or(safe_limit);
+    let break_point = content[..safe_limit].rfind('\n').unwrap_or(safe_limit);
 
     let truncated = format!(
         "{}...\n\n[OUTPUT TRUNCATED: {} → {} chars to fit context limit]",
@@ -394,21 +392,24 @@ impl SwarmExecutor {
 
         // Emit decomposition event for TUI
         self.try_send_event(SwarmEvent::Decomposed {
-            subtasks: subtasks.iter().map(|s| SubTaskInfo {
-                id: s.id.clone(),
-                name: s.name.clone(),
-                status: crate::swarm::SubTaskStatus::Pending,
-                stage: s.stage,
-                dependencies: s.dependencies.clone(),
-                agent_name: s.specialty.clone(),
-                current_tool: None,
-                steps: 0,
-                max_steps: self.config.max_steps_per_subagent,
-                tool_call_history: Vec::new(),
-                messages: Vec::new(),
-                output: None,
-                error: None,
-            }).collect(),
+            subtasks: subtasks
+                .iter()
+                .map(|s| SubTaskInfo {
+                    id: s.id.clone(),
+                    name: s.name.clone(),
+                    status: crate::swarm::SubTaskStatus::Pending,
+                    stage: s.stage,
+                    dependencies: s.dependencies.clone(),
+                    agent_name: s.specialty.clone(),
+                    current_tool: None,
+                    steps: 0,
+                    max_steps: self.config.max_steps_per_subagent,
+                    tool_call_history: Vec::new(),
+                    messages: Vec::new(),
+                    output: None,
+                    error: None,
+                })
+                .collect(),
         });
 
         // Execute stages in order
@@ -625,7 +626,10 @@ impl SwarmExecutor {
                 if stagger_delay > 0 {
                     tokio::time::sleep(Duration::from_millis(stagger_delay)).await;
                 }
-                let _permit = sem.acquire().await.map_err(|_| anyhow::anyhow!("Swarm execution cancelled"))?;
+                let _permit = sem
+                    .acquire()
+                    .await
+                    .map_err(|_| anyhow::anyhow!("Swarm execution cancelled"))?;
 
                 let start = Instant::now();
 
@@ -1089,7 +1093,9 @@ pub async fn run_agent_loop(
             if let Some(ref tx) = event_tx {
                 let preview = if final_output.len() > 500 {
                     let mut end = 500;
-                    while end > 0 && !final_output.is_char_boundary(end) { end -= 1; }
+                    while end > 0 && !final_output.is_char_boundary(end) {
+                        end -= 1;
+                    }
                     format!("{}...", &final_output[..end])
                 } else {
                     final_output.clone()
@@ -1204,14 +1210,18 @@ pub async fn run_agent_loop(
             if let Some(ref tx) = event_tx {
                 let input_preview = if arguments.len() > 200 {
                     let mut end = 200;
-                    while end > 0 && !arguments.is_char_boundary(end) { end -= 1; }
+                    while end > 0 && !arguments.is_char_boundary(end) {
+                        end -= 1;
+                    }
                     format!("{}...", &arguments[..end])
                 } else {
                     arguments.clone()
                 };
                 let output_preview = if result.len() > 500 {
                     let mut end = 500;
-                    while end > 0 && !result.is_char_boundary(end) { end -= 1; }
+                    while end > 0 && !result.is_char_boundary(end) {
+                        end -= 1;
+                    }
                     format!("{}...", &result[..end])
                 } else {
                     result.clone()

@@ -4,10 +4,7 @@ use ratatui::{
 };
 use std::sync::LazyLock;
 use syntect::{
-    easy::HighlightLines,
-    highlighting::ThemeSet,
-    parsing::SyntaxSet,
-    util::LinesWithEndings,
+    easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet, util::LinesWithEndings,
 };
 
 /// Global syntax set and theme set for syntax highlighting
