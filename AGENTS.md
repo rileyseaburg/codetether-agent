@@ -25,6 +25,12 @@ codetether tui
 
 # Run a single prompt
 codetether run "your message"
+
+# Run as A2A worker (connects to server, registers codebases)
+codetether worker --server http://localhost:8001 --codebases /path/to/project --auto-approve safe
+
+# Deploy as a service (one-command wrapper)
+./deploy-worker.sh --codebases /path/to/project
 ```
 
 ## Code Style
@@ -111,9 +117,9 @@ impl Tool for YourTool {
 
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let params: YourToolInput = serde_json::from_value(input)?;
-        
+
         // Tool implementation here
-        
+
         Ok(ToolResult {
             output: "Result text".to_string(),
             success: true,
@@ -244,7 +250,7 @@ Ralph implements PRD-driven development. Key files:
 ```json
 {
   "project": "project-name",
-  "feature": "Feature Name", 
+  "feature": "Feature Name",
   "quality_checks": {
     "typecheck": "cargo check",
     "lint": "cargo clippy",
@@ -280,7 +286,7 @@ When building conversation messages:
 // User message
 Message { role: Role::User, content: vec![ContentPart::Text { text }] }
 
-// Assistant message  
+// Assistant message
 Message { role: Role::Assistant, content: vec![ContentPart::Text { text }] }
 
 // Tool result (MUST use Role::Tool, not Role::User)
