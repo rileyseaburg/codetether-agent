@@ -6,11 +6,11 @@
 
 use crate::swarm::{SubTaskStatus, SwarmStats};
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Gauge, List, ListItem, ListState, Paragraph, Wrap},
-    Frame,
 };
 
 /// A recorded tool call for a sub-agent
@@ -34,14 +34,9 @@ pub struct AgentMessageEntry {
 #[derive(Debug, Clone)]
 pub enum SwarmEvent {
     /// Swarm execution started
-    Started {
-        task: String,
-        total_subtasks: usize,
-    },
+    Started { task: String, total_subtasks: usize },
     /// Task decomposition complete
-    Decomposed {
-        subtasks: Vec<SubTaskInfo>,
-    },
+    Decomposed { subtasks: Vec<SubTaskInfo> },
     /// SubTask status changed
     SubTaskUpdate {
         id: String,
@@ -77,15 +72,9 @@ pub enum SwarmEvent {
         steps: usize,
     },
     /// SubAgent produced output text
-    AgentOutput {
-        subtask_id: String,
-        output: String,
-    },
+    AgentOutput { subtask_id: String, output: String },
     /// SubAgent encountered an error
-    AgentError {
-        subtask_id: String,
-        error: String,
-    },
+    AgentError { subtask_id: String, error: String },
     /// Stage completed
     StageComplete {
         stage: usize,
@@ -93,10 +82,7 @@ pub enum SwarmEvent {
         failed: usize,
     },
     /// Swarm execution complete
-    Complete {
-        success: bool,
-        stats: SwarmStats,
-    },
+    Complete { success: bool, stats: SwarmStats },
     /// Error occurred
     Error(String),
 }
@@ -179,7 +165,10 @@ impl SwarmViewState {
     /// Handle a swarm event
     pub fn handle_event(&mut self, event: SwarmEvent) {
         match event {
-            SwarmEvent::Started { task, total_subtasks } => {
+            SwarmEvent::Started {
+                task,
+                total_subtasks,
+            } => {
                 self.active = true;
                 self.task = task;
                 self.subtasks.clear();
@@ -200,7 +189,12 @@ impl SwarmViewState {
                     self.list_state.select(Some(0));
                 }
             }
-            SwarmEvent::SubTaskUpdate { id, name, status, agent_name } => {
+            SwarmEvent::SubTaskUpdate {
+                id,
+                name,
+                status,
+                agent_name,
+            } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == id) {
                     task.status = status;
                     task.name = name;
@@ -209,13 +203,20 @@ impl SwarmViewState {
                     }
                 }
             }
-            SwarmEvent::AgentStarted { subtask_id, agent_name, .. } => {
+            SwarmEvent::AgentStarted {
+                subtask_id,
+                agent_name,
+                ..
+            } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
                     task.status = SubTaskStatus::Running;
                     task.agent_name = Some(agent_name);
                 }
             }
-            SwarmEvent::AgentToolCall { subtask_id, tool_name } => {
+            SwarmEvent::AgentToolCall {
+                subtask_id,
+                tool_name,
+            } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
                     task.current_tool = Some(tool_name);
                     task.steps += 1;
@@ -233,7 +234,11 @@ impl SwarmViewState {
                     task.messages.push(entry);
                 }
             }
-            SwarmEvent::AgentComplete { subtask_id, success, steps } => {
+            SwarmEvent::AgentComplete {
+                subtask_id,
+                success,
+                steps,
+            } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
                     task.status = if success {
                         SubTaskStatus::Completed
@@ -409,10 +414,7 @@ fn render_header(f: &mut Frame, state: &SwarmViewState, area: Rect) {
         Span::raw(" "),
         Span::styled(format!("✗{}", failed), Style::default().fg(Color::Red)),
         Span::raw(" "),
-        Span::styled(
-            format!("/{}", total),
-            Style::default().fg(Color::DarkGray),
-        ),
+        Span::styled(format!("/{}", total), Style::default().fg(Color::DarkGray)),
     ]);
 
     let paragraph = Paragraph::new(status_line).block(
@@ -515,11 +517,7 @@ fn render_subtask_list(f: &mut Frame, state: &mut SwarmViewState, area: Rect) {
     };
 
     let list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(title),
-        )
+        .block(Block::default().borders(Borders::ALL).title(title))
         .highlight_style(
             Style::default()
                 .add_modifier(Modifier::BOLD)
@@ -535,8 +533,11 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     let task = match state.selected_subtask() {
         Some(t) => t,
         None => {
-            let p = Paragraph::new("No subtask selected")
-                .block(Block::default().borders(Borders::ALL).title(" Agent Detail "));
+            let p = Paragraph::new("No subtask selected").block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Agent Detail "),
+            );
             f.render_widget(p, area);
             return;
         }
@@ -566,7 +567,12 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     let header_lines = vec![
         Line::from(vec![
             Span::styled("Task: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(&task.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                &task.name,
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Agent: ", Style::default().fg(Color::DarkGray)),
@@ -579,25 +585,31 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
             Span::styled(format!("{}", task.stage), Style::default().fg(Color::White)),
             Span::raw("  "),
             Span::styled("Steps: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{}/{}", task.steps, task.max_steps), Style::default().fg(Color::White)),
+            Span::styled(
+                format!("{}/{}", task.steps, task.max_steps),
+                Style::default().fg(Color::White),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Deps: ", Style::default().fg(Color::DarkGray)),
             Span::styled(
-                if task.dependencies.is_empty() { "none".to_string() } else { task.dependencies.join(", ") },
+                if task.dependencies.is_empty() {
+                    "none".to_string()
+                } else {
+                    task.dependencies.join(", ")
+                },
                 Style::default().fg(Color::DarkGray),
             ),
         ]),
     ];
 
     let title = format!(" Agent Detail: {} ", task.id);
-    let header = Paragraph::new(header_lines)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(title)
-                .border_style(Style::default().fg(status_color)),
-        );
+    let header = Paragraph::new(header_lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(status_color)),
+    );
     f.render_widget(header, chunks[0]);
 
     // --- Content area: tool history, messages, output ---
@@ -607,7 +619,9 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     if !task.tool_call_history.is_empty() {
         content_lines.push(Line::from(Span::styled(
             "─── Tool Call History ───",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         )));
         content_lines.push(Line::from(""));
 
@@ -617,20 +631,31 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
             content_lines.push(Line::from(vec![
                 Span::styled(format!(" {icon} "), Style::default().fg(icon_color)),
                 Span::styled(format!("#{} ", i + 1), Style::default().fg(Color::DarkGray)),
-                Span::styled(&tc.tool_name, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    &tc.tool_name,
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]));
             if !tc.input_preview.is_empty() {
                 content_lines.push(Line::from(vec![
                     Span::raw("     "),
                     Span::styled("in: ", Style::default().fg(Color::DarkGray)),
-                    Span::styled(truncate_str(&tc.input_preview, 80), Style::default().fg(Color::White)),
+                    Span::styled(
+                        truncate_str(&tc.input_preview, 80),
+                        Style::default().fg(Color::White),
+                    ),
                 ]));
             }
             if !tc.output_preview.is_empty() {
                 content_lines.push(Line::from(vec![
                     Span::raw("     "),
                     Span::styled("out: ", Style::default().fg(Color::DarkGray)),
-                    Span::styled(truncate_str(&tc.output_preview, 80), Style::default().fg(Color::White)),
+                    Span::styled(
+                        truncate_str(&tc.output_preview, 80),
+                        Style::default().fg(Color::White),
+                    ),
                 ]));
             }
         }
@@ -648,7 +673,9 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     if !task.messages.is_empty() {
         content_lines.push(Line::from(Span::styled(
             "─── Conversation ───",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         )));
         content_lines.push(Line::from(""));
 
@@ -660,9 +687,10 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
                 "system" => (Color::DarkGray, "SYS "),
                 _ => (Color::White, "    "),
             };
-            content_lines.push(Line::from(vec![
-                Span::styled(format!(" [{role_label}] "), Style::default().fg(role_color).add_modifier(Modifier::BOLD)),
-            ]));
+            content_lines.push(Line::from(vec![Span::styled(
+                format!(" [{role_label}] "),
+                Style::default().fg(role_color).add_modifier(Modifier::BOLD),
+            )]));
             // Show message content (truncated lines)
             for line in msg.content.lines().take(10) {
                 content_lines.push(Line::from(vec![
@@ -684,14 +712,22 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     if let Some(ref output) = task.output {
         content_lines.push(Line::from(Span::styled(
             "─── Output ───",
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         )));
         content_lines.push(Line::from(""));
         for line in output.lines().take(20) {
-            content_lines.push(Line::from(Span::styled(line, Style::default().fg(Color::White))));
+            content_lines.push(Line::from(Span::styled(
+                line,
+                Style::default().fg(Color::White),
+            )));
         }
         if output.lines().count() > 20 {
-            content_lines.push(Line::from(Span::styled("... (truncated)", Style::default().fg(Color::DarkGray))));
+            content_lines.push(Line::from(Span::styled(
+                "... (truncated)",
+                Style::default().fg(Color::DarkGray),
+            )));
         }
         content_lines.push(Line::from(""));
     }
@@ -704,7 +740,10 @@ fn render_agent_detail(f: &mut Frame, state: &SwarmViewState, area: Rect) {
         )));
         content_lines.push(Line::from(""));
         for line in err.lines() {
-            content_lines.push(Line::from(Span::styled(line, Style::default().fg(Color::Red))));
+            content_lines.push(Line::from(Span::styled(
+                line,
+                Style::default().fg(Color::Red),
+            )));
         }
         content_lines.push(Line::from(""));
     }

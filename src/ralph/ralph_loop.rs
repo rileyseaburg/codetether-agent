@@ -4,10 +4,13 @@ use super::types::*;
 use crate::provider::Provider;
 use crate::swarm::run_agent_loop;
 use crate::tool::ToolRegistry;
+use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
+use crate::tui::swarm_view::SwarmEvent;
 use crate::worktree::WorktreeManager;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
 /// The main Ralph executor
@@ -16,6 +19,7 @@ pub struct RalphLoop {
     provider: Arc<dyn Provider>,
     model: String,
     config: RalphConfig,
+    event_tx: Option<mpsc::Sender<RalphEvent>>,
 }
 
 impl RalphLoop {
@@ -61,12 +65,112 @@ impl RalphLoop {
             provider,
             model,
             config,
+            event_tx: None,
         })
+    }
+
+    /// Attach an event channel for TUI updates
+    pub fn with_event_tx(mut self, tx: mpsc::Sender<RalphEvent>) -> Self {
+        self.event_tx = Some(tx);
+        self
+    }
+
+    /// Non-blocking send of a Ralph event
+    fn try_send_event(&self, event: RalphEvent) {
+        if let Some(ref tx) = self.event_tx {
+            let _ = tx.try_send(event);
+        }
+    }
+
+    /// Create a bridge that forwards SwarmEvent → RalphEvent for a given story_id.
+    /// Returns the sender to pass to `run_agent_loop` and a join handle for the
+    /// forwarding task.
+    fn create_swarm_event_bridge(
+        ralph_tx: &mpsc::Sender<RalphEvent>,
+        story_id: String,
+    ) -> (mpsc::Sender<SwarmEvent>, tokio::task::JoinHandle<()>) {
+        let (swarm_tx, mut swarm_rx) = mpsc::channel::<SwarmEvent>(100);
+        let ralph_tx = ralph_tx.clone();
+        let handle = tokio::spawn(async move {
+            while let Some(event) = swarm_rx.recv().await {
+                let ralph_event = match event {
+                    SwarmEvent::AgentToolCall { tool_name, .. } => {
+                        RalphEvent::StoryToolCall {
+                            story_id: story_id.clone(),
+                            tool_name,
+                        }
+                    }
+                    SwarmEvent::AgentToolCallDetail { detail, .. } => {
+                        RalphEvent::StoryToolCallDetail {
+                            story_id: story_id.clone(),
+                            detail,
+                        }
+                    }
+                    SwarmEvent::AgentMessage { entry, .. } => {
+                        RalphEvent::StoryMessage {
+                            story_id: story_id.clone(),
+                            entry,
+                        }
+                    }
+                    SwarmEvent::AgentOutput { output, .. } => {
+                        RalphEvent::StoryOutput {
+                            story_id: story_id.clone(),
+                            output,
+                        }
+                    }
+                    SwarmEvent::AgentError { error, .. } => {
+                        RalphEvent::StoryError {
+                            story_id: story_id.clone(),
+                            error,
+                        }
+                    }
+                    _ => continue, // Skip swarm-specific events
+                };
+                if ralph_tx.send(ralph_event).await.is_err() {
+                    break;
+                }
+            }
+        });
+        (swarm_tx, handle)
+    }
+
+    /// Build initial RalphStoryInfo list from the PRD
+    fn build_story_infos(prd: &Prd) -> Vec<RalphStoryInfo> {
+        prd.user_stories
+            .iter()
+            .map(|s| RalphStoryInfo {
+                id: s.id.clone(),
+                title: s.title.clone(),
+                status: if s.passes {
+                    RalphStoryStatus::Passed
+                } else {
+                    RalphStoryStatus::Pending
+                },
+                priority: s.priority,
+                depends_on: s.depends_on.clone(),
+                quality_checks: Vec::new(),
+                tool_call_history: Vec::new(),
+                messages: Vec::new(),
+                output: None,
+                error: None,
+                merge_summary: None,
+                steps: 0,
+                current_tool: None,
+            })
+            .collect()
     }
 
     /// Run the Ralph loop until completion or max iterations
     pub async fn run(&mut self) -> anyhow::Result<RalphState> {
         self.state.status = RalphStatus::Running;
+
+        // Emit Started event
+        self.try_send_event(RalphEvent::Started {
+            project: self.state.prd.project.clone(),
+            feature: self.state.prd.feature.clone(),
+            stories: Self::build_story_infos(&self.state.prd),
+            max_iterations: self.state.max_iterations,
+        });
 
         // Switch to feature branch
         if !self.state.prd.branch_name.is_empty() {
@@ -109,6 +213,13 @@ impl RalphLoop {
             self.state.prd.user_stories.len()
         );
 
+        // Emit Complete event
+        self.try_send_event(RalphEvent::Complete {
+            status: format!("{:?}", self.state.status),
+            passed: self.state.prd.passed_count(),
+            total: self.state.prd.user_stories.len(),
+        });
+
         Ok(self.state.clone())
     }
 
@@ -120,6 +231,12 @@ impl RalphLoop {
                 "=== Ralph iteration {} of {} ===",
                 self.state.current_iteration, self.state.max_iterations
             );
+
+            // Emit iteration event
+            self.try_send_event(RalphEvent::IterationStarted {
+                iteration: self.state.current_iteration,
+                max_iterations: self.state.max_iterations,
+            });
 
             // Check if all stories are complete
             if self.state.prd.is_complete() {
@@ -139,11 +256,16 @@ impl RalphLoop {
 
             info!("Working on story: {} - {}", story.id, story.title);
 
+            // Emit StoryStarted event
+            self.try_send_event(RalphEvent::StoryStarted {
+                story_id: story.id.clone(),
+            });
+
             // Build the prompt
             let prompt = self.build_prompt(&story);
 
             // Call the LLM
-            match self.call_llm(&prompt).await {
+            match self.call_llm(&story.id, &prompt).await {
                 Ok(response) => {
                     // Log progress
                     let entry = ProgressEntry {
@@ -159,9 +281,14 @@ impl RalphLoop {
 
                     // Run quality gates
                     if self.config.quality_checks_enabled {
-                        if self.run_quality_gates().await? {
+                        if self.run_quality_gates_with_events(&story.id).await? {
                             info!("Story {} passed quality checks!", story.id);
                             self.state.prd.mark_passed(&story.id);
+
+                            self.try_send_event(RalphEvent::StoryComplete {
+                                story_id: story.id.clone(),
+                                passed: true,
+                            });
 
                             // Commit changes
                             if self.config.auto_commit {
@@ -172,11 +299,20 @@ impl RalphLoop {
                             self.state.prd.save(&self.state.prd_path).await?;
                         } else {
                             warn!("Story {} failed quality checks", story.id);
+                            self.try_send_event(RalphEvent::StoryComplete {
+                                story_id: story.id.clone(),
+                                passed: false,
+                            });
                         }
                     } else {
                         // No quality checks, just mark as passed
                         self.state.prd.mark_passed(&story.id);
                         self.state.prd.save(&self.state.prd_path).await?;
+
+                        self.try_send_event(RalphEvent::StoryComplete {
+                            story_id: story.id.clone(),
+                            passed: true,
+                        });
                     }
                 }
                 Err(e) => {
@@ -190,6 +326,11 @@ impl RalphLoop {
                         timestamp: chrono::Utc::now().to_rfc3339(),
                     };
                     self.state.progress_log.push(entry);
+
+                    self.try_send_event(RalphEvent::StoryError {
+                        story_id: story.id.clone(),
+                        error: format!("{}", e),
+                    });
                 }
             }
         }
@@ -278,6 +419,7 @@ impl RalphLoop {
                 let working_dir = working_dir.clone();
                 let worktree_mgr = worktree_mgr.clone();
                 let progress_path = progress_path.clone();
+                let ralph_tx = self.event_tx.clone();
 
                 let handle = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
@@ -319,12 +461,31 @@ impl RalphLoop {
                         story.id, story.title, story_working_dir
                     );
 
+                    // Emit StoryStarted event
+                    if let Some(ref tx) = ralph_tx {
+                        let _ = tx.send(RalphEvent::StoryStarted {
+                            story_id: story.id.clone(),
+                        }).await;
+                    }
+
                     // Build the prompt with worktree awareness
                     let prompt = Self::build_story_prompt(&story, &prd_info, &story_working_dir);
 
+                    // Create event bridge for this story's sub-agent
+                    let (bridge_tx, _bridge_handle) = if let Some(ref tx) = ralph_tx {
+                        let (btx, handle) =
+                            Self::create_swarm_event_bridge(tx, story.id.clone());
+                        (Some(btx), Some(handle))
+                    } else {
+                        (None, None)
+                    };
+
                     // Call the LLM
                     let result =
-                        Self::call_llm_static(&provider, &model, &prompt, &story_working_dir).await;
+                        Self::call_llm_static(
+                            &provider, &model, &prompt, &story_working_dir,
+                            bridge_tx, story.id.clone(),
+                        ).await;
 
                     let entry = match &result {
                         Ok(response) => {
@@ -375,7 +536,7 @@ impl RalphLoop {
                                 .unwrap_or_else(|| self.state.working_dir.clone());
 
                             let quality_passed = if self.config.quality_checks_enabled {
-                                self.run_quality_gates_in_dir(&check_dir)
+                                self.run_quality_gates_in_dir_with_events(&check_dir, &story.id)
                                     .await
                                     .unwrap_or(false)
                             } else {
@@ -401,6 +562,15 @@ impl RalphLoop {
                                                     "Merged story changes successfully"
                                                 );
                                                 self.state.prd.mark_passed(&story.id);
+                                                self.try_send_event(RalphEvent::StoryMerge {
+                                                    story_id: story.id.clone(),
+                                                    success: true,
+                                                    summary: merge_result.summary.clone(),
+                                                });
+                                                self.try_send_event(RalphEvent::StoryComplete {
+                                                    story_id: story.id.clone(),
+                                                    passed: true,
+                                                });
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(wt);
                                             } else if !merge_result.conflicts.is_empty() {
@@ -507,9 +677,17 @@ impl RalphLoop {
                                 } else {
                                     // No worktree, just mark passed
                                     self.state.prd.mark_passed(&story.id);
+                                    self.try_send_event(RalphEvent::StoryComplete {
+                                        story_id: story.id.clone(),
+                                        passed: true,
+                                    });
                                 }
                             } else {
                                 warn!("Story {} failed quality checks", story.id);
+                                self.try_send_event(RalphEvent::StoryComplete {
+                                    story_id: story.id.clone(),
+                                    passed: false,
+                                });
                                 // Cleanup worktree without merging
                                 if let (Some(wt), Some(mgr)) = (&worktree_info, &worktree_mgr) {
                                     let _ = mgr.cleanup(wt);
@@ -517,6 +695,10 @@ impl RalphLoop {
                             }
                         } else {
                             // Failed - cleanup worktree without merging (keep for debugging)
+                            self.try_send_event(RalphEvent::StoryError {
+                                story_id: story.id.clone(),
+                                error: "LLM call failed".to_string(),
+                            });
                             if let Some(ref wt) = worktree_info {
                                 info!(
                                     story_id = %story.id,
@@ -632,6 +814,8 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         model: &str,
         prompt: &str,
         working_dir: &PathBuf,
+        event_tx: Option<mpsc::Sender<SwarmEvent>>,
+        story_id: String,
     ) -> anyhow::Result<String> {
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
@@ -663,8 +847,8 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             tool_registry, // Already an Arc<ToolRegistry>
             30,            // max steps per story (focused implementation)
             180,           // 3 minute timeout per story
-            None,
-            String::new(),
+            event_tx,
+            story_id,
         )
         .await?;
 
@@ -834,9 +1018,14 @@ Working directory: {}
         Ok(())
     }
 
-    /// Run quality gates in a specific directory
-    async fn run_quality_gates_in_dir(&self, dir: &PathBuf) -> anyhow::Result<bool> {
+    /// Run quality gates in a specific directory with event emission
+    async fn run_quality_gates_in_dir_with_events(
+        &self,
+        dir: &PathBuf,
+        story_id: &str,
+    ) -> anyhow::Result<bool> {
         let checks = &self.state.prd.quality_checks;
+        let mut all_passed = true;
 
         for (name, cmd) in [
             ("typecheck", &checks.typecheck),
@@ -855,27 +1044,17 @@ Working directory: {}
                         anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
                     })?;
 
-                if !output.status.success() {
-                    // Parse output to separate errors from warnings
+                let passed = output.status.success();
+                self.try_send_event(RalphEvent::StoryQualityCheck {
+                    story_id: story_id.to_string(),
+                    check_name: name.to_string(),
+                    passed,
+                });
+
+                if !passed {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let combined = format!("{}\n{}", stdout, stderr);
-
-                    // Count actual errors vs warnings
-                    let error_count = combined
-                        .lines()
-                        .filter(|line| {
-                            line.starts_with("error")
-                                || line.contains("error:")
-                                || line.contains("error[")
-                        })
-                        .count();
-                    let warning_count = combined
-                        .lines()
-                        .filter(|line| line.starts_with("warning") || line.contains("warning:"))
-                        .count();
-
-                    // Extract the actual error message (not warnings)
                     let error_summary: String = combined
                         .lines()
                         .filter(|line| {
@@ -883,26 +1062,23 @@ Working directory: {}
                                 || line.contains("error:")
                                 || line.contains("error[")
                         })
-                        .take(5) // First 5 error lines
+                        .take(5)
                         .collect::<Vec<_>>()
                         .join("\n");
-
                     warn!(
                         check = %name,
                         dir = %dir.display(),
-                        errors = error_count,
-                        warnings = warning_count,
                         error_summary = %error_summary.chars().take(300).collect::<String>(),
                         "{} check failed in {:?}",
                         name,
                         dir
                     );
-                    return Ok(false);
+                    all_passed = false;
                 }
             }
         }
 
-        Ok(true)
+        Ok(all_passed)
     }
 
     /// Build the prompt for a story
@@ -951,7 +1127,7 @@ Respond with the implementation and any shell commands needed.
     }
 
     /// Call the LLM with a prompt using agentic tool loop
-    async fn call_llm(&self, prompt: &str) -> anyhow::Result<String> {
+    async fn call_llm(&self, story_id: &str, prompt: &str) -> anyhow::Result<String> {
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(&self.state.working_dir);
 
@@ -972,6 +1148,15 @@ Respond with the implementation and any shell commands needed.
             self.state.working_dir
         );
 
+        // Create event bridge if we have an event channel
+        let (bridge_tx, _bridge_handle) = if let Some(ref ralph_tx) = self.event_tx {
+            let (tx, handle) =
+                Self::create_swarm_event_bridge(ralph_tx, story_id.to_string());
+            (Some(tx), Some(handle))
+        } else {
+            (None, None)
+        };
+
         // Run the agentic loop with tools
         let (output, steps, tool_calls) = run_agent_loop(
             Arc::clone(&self.provider),
@@ -982,8 +1167,8 @@ Respond with the implementation and any shell commands needed.
             tool_registry, // Already an Arc<ToolRegistry>
             30,            // max steps per story (focused implementation)
             180,           // 3 minute timeout per story
-            None,
-            String::new(),
+            bridge_tx,
+            story_id.to_string(),
         )
         .await?;
 
@@ -995,9 +1180,10 @@ Respond with the implementation and any shell commands needed.
         Ok(output)
     }
 
-    /// Run quality gates
-    async fn run_quality_gates(&self) -> anyhow::Result<bool> {
+    /// Run quality gates and emit events for each check
+    async fn run_quality_gates_with_events(&self, story_id: &str) -> anyhow::Result<bool> {
         let checks = &self.state.prd.quality_checks;
+        let mut all_passed = true;
 
         for (name, cmd) in [
             ("typecheck", &checks.typecheck),
@@ -1006,10 +1192,7 @@ Respond with the implementation and any shell commands needed.
             ("build", &checks.build),
         ] {
             if let Some(command) = cmd {
-                info!(
-                    "Running {} check in {:?}: {}",
-                    name, self.state.working_dir, command
-                );
+                debug!("Running {} check: {}", name, command);
                 let output = Command::new("/bin/sh")
                     .arg("-c")
                     .arg(command)
@@ -1019,27 +1202,17 @@ Respond with the implementation and any shell commands needed.
                         anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
                     })?;
 
-                if !output.status.success() {
-                    // Parse output to separate errors from warnings
+                let passed = output.status.success();
+                self.try_send_event(RalphEvent::StoryQualityCheck {
+                    story_id: story_id.to_string(),
+                    check_name: name.to_string(),
+                    passed,
+                });
+
+                if !passed {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let combined = format!("{}\n{}", stdout, stderr);
-
-                    // Count actual errors vs warnings
-                    let error_count = combined
-                        .lines()
-                        .filter(|line| {
-                            line.starts_with("error")
-                                || line.contains("error:")
-                                || line.contains("error[")
-                        })
-                        .count();
-                    let warning_count = combined
-                        .lines()
-                        .filter(|line| line.starts_with("warning") || line.contains("warning:"))
-                        .count();
-
-                    // Extract the actual error message (not warnings)
                     let error_summary: String = combined
                         .lines()
                         .filter(|line| {
@@ -1047,24 +1220,22 @@ Respond with the implementation and any shell commands needed.
                                 || line.contains("error:")
                                 || line.contains("error[")
                         })
-                        .take(5) // First 5 error lines
+                        .take(5)
                         .collect::<Vec<_>>()
                         .join("\n");
-
                     warn!(
                         check = %name,
-                        errors = error_count,
-                        warnings = warning_count,
                         error_summary = %error_summary.chars().take(300).collect::<String>(),
                         "{} check failed",
                         name
                     );
-                    return Ok(false);
+                    all_passed = false;
+                    // Don't return early — run all checks so we can show all results
                 }
             }
         }
 
-        Ok(true)
+        Ok(all_passed)
     }
 
     /// Commit changes for a story

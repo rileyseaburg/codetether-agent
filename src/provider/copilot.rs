@@ -325,53 +325,65 @@ impl Provider for CopilotProvider {
             Vec::new()
         };
 
-        // Merge known Copilot models that the API may not yet advertise.
-        // Source: https://docs.github.com/en/copilot/using-github-copilot/ai-models/changing-the-ai-model-for-github-copilot-chat
-        let known_models: Vec<(&str, &str, usize, usize)> = vec![
-            // (id, human name, context_window, max_output)
-            ("claude-opus-4.6", "Claude Opus 4.6", 200_000, 64_000),
-            ("claude-opus-4.5", "Claude Opus 4.5", 200_000, 64_000),
-            ("claude-opus-41", "Claude Opus 4.1", 200_000, 64_000),
-            ("claude-sonnet-4.5", "Claude Sonnet 4.5", 200_000, 64_000),
-            ("claude-sonnet-4", "Claude Sonnet 4", 200_000, 64_000),
-            ("claude-haiku-4.5", "Claude Haiku 4.5", 200_000, 64_000),
-            ("gpt-5.2", "GPT-5.2", 400_000, 128_000),
-            ("gpt-5.2-codex", "GPT-5.2-Codex", 400_000, 128_000),
-            ("gpt-5.1", "GPT-5.1", 400_000, 128_000),
-            ("gpt-5.1-codex", "GPT-5.1-Codex", 264_000, 64_000),
-            ("gpt-5.1-codex-mini", "GPT-5.1-Codex-Mini", 264_000, 64_000),
-            ("gpt-5.1-codex-max", "GPT-5.1-Codex-Max", 264_000, 64_000),
-            ("gpt-5", "GPT-5", 400_000, 128_000),
-            ("gpt-5-codex", "GPT-5-Codex", 264_000, 64_000),
-            ("gpt-5-mini", "GPT-5 mini", 264_000, 64_000),
-            ("gpt-4.1", "GPT-4.1", 128_000, 32_768),
-            ("gpt-4o", "GPT-4o", 128_000, 16_384),
-            ("gemini-2.5-pro", "Gemini 2.5 Pro", 1_000_000, 64_000),
-            ("gemini-3-flash", "Gemini 3 Flash", 1_000_000, 64_000),
-            ("gemini-3-pro", "Gemini 3 Pro", 1_000_000, 64_000),
-            ("grok-code-fast-1", "Grok Code Fast 1", 128_000, 32_768),
-            ("raptor-mini", "Raptor mini", 264_000, 64_000),
-        ];
+        // Enrich API-returned models with known metadata (better names, accurate limits).
+        // We do NOT inject models the API doesn't list — those aren't usable yet.
+        // Source: https://docs.github.com/en/copilot/using-github-copilot/ai-models
+        // NOTE: Model IDs use dots for versions, same as the /models API returns
+        // (e.g. claude-opus-4.5, gpt-5.1, gpt-4.1).
+        let known_metadata: std::collections::HashMap<&str, (&str, usize, usize)> = [
+            ("claude-opus-4.5", ("Claude Opus 4.5", 200_000, 64_000)),
+            ("claude-opus-41", ("Claude Opus 4.1", 200_000, 64_000)),
+            ("claude-sonnet-4.5", ("Claude Sonnet 4.5", 200_000, 64_000)),
+            ("claude-sonnet-4", ("Claude Sonnet 4", 200_000, 64_000)),
+            ("claude-haiku-4.5", ("Claude Haiku 4.5", 200_000, 64_000)),
+            ("gpt-5.2", ("GPT-5.2", 400_000, 128_000)),
+            ("gpt-5.1", ("GPT-5.1", 400_000, 128_000)),
+            ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000)),
+            ("gpt-5.1-codex-mini", ("GPT-5.1-Codex-Mini", 264_000, 64_000)),
+            ("gpt-5.1-codex-max", ("GPT-5.1-Codex-Max", 264_000, 64_000)),
+            ("gpt-5", ("GPT-5", 400_000, 128_000)),
+            ("gpt-5-mini", ("GPT-5 mini", 264_000, 64_000)),
+            ("gpt-4.1", ("GPT-4.1", 128_000, 32_768)),
+            ("gpt-4o", ("GPT-4o", 128_000, 16_384)),
+            ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1_000_000, 64_000)),
+            ("grok-code-fast-1", ("Grok Code Fast 1", 128_000, 32_768)),
+        ]
+        .into_iter()
+        .collect();
 
-        let existing_ids: std::collections::HashSet<String> =
-            models.iter().map(|m| m.id.clone()).collect();
-
-        for (id, name, ctx, max_out) in known_models {
-            if !existing_ids.contains(id) {
-                models.push(ModelInfo {
-                    id: id.to_string(),
-                    name: name.to_string(),
-                    provider: self.provider_name.clone(),
-                    context_window: ctx,
-                    max_output_tokens: Some(max_out),
-                    supports_vision: true,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: Some(0.0),
-                    output_cost_per_million: Some(0.0),
-                });
+        // Apply known metadata to enrich API models that had sparse info
+        for model in &mut models {
+            if let Some((name, ctx, max_out)) = known_metadata.get(model.id.as_str()) {
+                if model.name == model.id {
+                    model.name = name.to_string();
+                }
+                if model.context_window == 128_000 {
+                    model.context_window = *ctx;
+                }
+                if model.max_output_tokens == Some(16_384) {
+                    model.max_output_tokens = Some(*max_out);
+                }
             }
         }
+
+        // Filter out legacy/deprecated models that clutter the picker
+        // (embedding models, old GPT-3.5/4/4o variants without picker flag)
+        models.retain(|m| {
+            !m.id.starts_with("text-embedding")
+                && m.id != "gpt-3.5-turbo"
+                && m.id != "gpt-3.5-turbo-0613"
+                && m.id != "gpt-4-0613"
+                && m.id != "gpt-4o-2024-05-13"
+                && m.id != "gpt-4o-2024-08-06"
+                && m.id != "gpt-4o-2024-11-20"
+                && m.id != "gpt-4o-mini-2024-07-18"
+                && m.id != "gpt-4-o-preview"
+                && m.id != "gpt-4.1-2025-04-14"
+        });
+
+        // Deduplicate by id (API sometimes returns duplicates)
+        let mut seen = std::collections::HashSet::new();
+        models.retain(|m| seen.insert(m.id.clone()));
 
         Ok(models)
     }

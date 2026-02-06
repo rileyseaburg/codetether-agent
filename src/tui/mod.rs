@@ -3,6 +3,7 @@
 //! Interactive TUI using Ratatui
 
 pub mod message_formatter;
+pub mod ralph_view;
 pub mod swarm_view;
 pub mod theme;
 pub mod theme_utils;
@@ -13,9 +14,11 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
+use crate::ralph::{RalphConfig, RalphLoop};
 use crate::session::{Session, SessionEvent, SessionSummary, list_sessions};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::message_formatter::MessageFormatter;
+use crate::tui::ralph_view::{RalphEvent, RalphViewState, render_ralph_view};
 use crate::tui::swarm_view::{SwarmEvent, SwarmViewState, render_swarm_view};
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
@@ -81,6 +84,7 @@ enum MessageType {
 enum ViewMode {
     Chat,
     Swarm,
+    Ralph,
     SessionPicker,
     ModelPicker,
 }
@@ -104,6 +108,9 @@ struct App {
     view_mode: ViewMode,
     swarm_state: SwarmViewState,
     swarm_rx: Option<mpsc::Receiver<SwarmEvent>>,
+    // Ralph mode state
+    ralph_state: RalphViewState,
+    ralph_rx: Option<mpsc::Receiver<RalphEvent>>,
     // Session picker state
     session_picker_list: Vec<SessionSummary>,
     session_picker_selected: usize,
@@ -150,7 +157,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -166,6 +173,8 @@ impl App {
             view_mode: ViewMode::Chat,
             swarm_state: SwarmViewState::new(),
             swarm_rx: None,
+            ralph_state: RalphViewState::new(),
+            ralph_rx: None,
             session_picker_list: Vec::new(),
             session_picker_selected: 0,
             model_picker_list: Vec::new(),
@@ -208,11 +217,24 @@ impl App {
             return;
         }
 
+        // Check for /ralph command
+        if message.trim().starts_with("/ralph") {
+            let prd_path = message
+                .trim()
+                .strip_prefix("/ralph")
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .unwrap_or("prd.json")
+                .to_string();
+            self.start_ralph_execution(prd_path, config).await;
+            return;
+        }
+
         // Check for /view command to toggle views
         if message.trim() == "/view" || message.trim() == "/swarm" {
             self.view_mode = match self.view_mode {
                 ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
-                ViewMode::Swarm => ViewMode::Chat,
+                ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
             };
             return;
         }
@@ -516,6 +538,149 @@ impl App {
         }
     }
 
+    /// Handle a Ralph event
+    fn handle_ralph_event(&mut self, event: RalphEvent) {
+        self.ralph_state.handle_event(event.clone());
+
+        // When Ralph completes, switch back to chat view with summary
+        if let RalphEvent::Complete {
+            ref status,
+            passed,
+            total,
+        } = event
+        {
+            self.view_mode = ViewMode::Chat;
+            let summary = format!(
+                "Ralph loop finished: {}\n\
+                 Stories: {}/{} passed",
+                status, passed, total
+            );
+            self.messages.push(ChatMessage::new("system", &summary));
+            self.ralph_rx = None;
+        }
+
+        if let RalphEvent::Error(ref err) = event {
+            self.messages
+                .push(ChatMessage::new("system", &format!("Ralph error: {}", err)));
+        }
+    }
+
+    /// Start Ralph execution for a PRD
+    async fn start_ralph_execution(&mut self, prd_path: String, config: &Config) {
+        // Add user message
+        self.messages
+            .push(ChatMessage::new("user", format!("/ralph {}", prd_path)));
+
+        // Get model from config
+        let model = self
+            .active_model
+            .clone()
+            .or_else(|| config.default_model.clone())
+            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok());
+
+        let model = match model {
+            Some(m) => m,
+            None => {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "No model configured. Use /model to select one first.",
+                ));
+                return;
+            }
+        };
+
+        // Check PRD exists
+        let prd_file = std::path::PathBuf::from(&prd_path);
+        if !prd_file.exists() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!("PRD file not found: {}", prd_path),
+            ));
+            return;
+        }
+
+        // Create channel for ralph events
+        let (tx, rx) = mpsc::channel(200);
+        self.ralph_rx = Some(rx);
+
+        // Switch to Ralph view
+        self.view_mode = ViewMode::Ralph;
+        self.ralph_state = RalphViewState::new();
+
+        // Build Ralph config
+        let ralph_config = RalphConfig {
+            prd_path: prd_path.clone(),
+            max_iterations: 10,
+            progress_path: "progress.txt".to_string(),
+            quality_checks_enabled: true,
+            auto_commit: true,
+            model: Some(model.clone()),
+            use_rlm: false,
+            parallel_enabled: true,
+            max_concurrent_stories: 3,
+            worktree_enabled: true,
+            story_timeout_secs: 300,
+            conflict_timeout_secs: 120,
+        };
+
+        // Parse provider/model from the model string
+        let (provider_name, model_name) = if let Some(pos) = model.find('/') {
+            (model[..pos].to_string(), model[pos + 1..].to_string())
+        } else {
+            (model.clone(), model.clone())
+        };
+
+        let prd_path_clone = prd_path.clone();
+        let tx_clone = tx.clone();
+
+        // Spawn Ralph execution
+        tokio::spawn(async move {
+            // Get provider from registry
+            let provider = match crate::provider::ProviderRegistry::from_vault().await {
+                Ok(registry) => match registry.get(&provider_name) {
+                    Some(p) => p,
+                    None => {
+                        let _ = tx_clone.send(RalphEvent::Error(
+                            format!("Provider '{}' not found", provider_name),
+                        )).await;
+                        return;
+                    }
+                },
+                Err(e) => {
+                    let _ = tx_clone.send(RalphEvent::Error(
+                        format!("Failed to load providers: {}", e),
+                    )).await;
+                    return;
+                }
+            };
+
+            let prd_path_buf = std::path::PathBuf::from(&prd_path_clone);
+            match RalphLoop::new(prd_path_buf, provider, model_name, ralph_config).await {
+                Ok(ralph) => {
+                    let mut ralph = ralph.with_event_tx(tx_clone.clone());
+                    match ralph.run().await {
+                        Ok(_state) => {
+                            // Complete event already emitted by run()
+                        }
+                        Err(e) => {
+                            let _ = tx_clone.send(RalphEvent::Error(e.to_string())).await;
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = tx_clone.send(RalphEvent::Error(
+                        format!("Failed to initialize Ralph: {}", e),
+                    )).await;
+                }
+            }
+        });
+
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!("Starting Ralph loop with PRD: {}", prd_path),
+        ));
+    }
+
     /// Start swarm execution for a task
     async fn start_swarm_execution(&mut self, task: String, config: &Config) {
         // Add user message
@@ -796,6 +961,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             app.swarm_rx = Some(rx);
         }
 
+        // Drain all pending ralph events
+        if let Some(mut rx) = app.ralph_rx.take() {
+            while let Ok(event) = rx.try_recv() {
+                app.handle_ralph_event(event);
+            }
+            app.ralph_rx = Some(rx);
+        }
+
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 // Help overlay
@@ -1003,6 +1176,62 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     continue;
                 }
 
+                // Ralph view key handling
+                if app.view_mode == ViewMode::Ralph {
+                    match key.code {
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Esc => {
+                            if app.ralph_state.detail_mode {
+                                app.ralph_state.exit_detail();
+                            } else {
+                                app.view_mode = ViewMode::Chat;
+                            }
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            if app.ralph_state.detail_mode {
+                                app.ralph_state.exit_detail();
+                                app.ralph_state.select_prev();
+                                app.ralph_state.enter_detail();
+                            } else {
+                                app.ralph_state.select_prev();
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            if app.ralph_state.detail_mode {
+                                app.ralph_state.exit_detail();
+                                app.ralph_state.select_next();
+                                app.ralph_state.enter_detail();
+                            } else {
+                                app.ralph_state.select_next();
+                            }
+                        }
+                        KeyCode::Enter => {
+                            if !app.ralph_state.detail_mode {
+                                app.ralph_state.enter_detail();
+                            }
+                        }
+                        KeyCode::PageDown => {
+                            app.ralph_state.detail_scroll_down(10);
+                        }
+                        KeyCode::PageUp => {
+                            app.ralph_state.detail_scroll_up(10);
+                        }
+                        KeyCode::Char('?') => {
+                            app.show_help = true;
+                        }
+                        KeyCode::F(2) | KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.view_mode = ViewMode::Chat;
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
                 match key.code {
                     // Quit
                     KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -1021,19 +1250,20 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     KeyCode::F(2) => {
                         app.view_mode = match app.view_mode {
                             ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
-                            ViewMode::Swarm => ViewMode::Chat,
+                            ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                         };
                     }
                     KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.view_mode = match app.view_mode {
                             ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
-                            ViewMode::Swarm => ViewMode::Chat,
+                            ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                         };
                     }
 
                     // Escape - return to chat from swarm/picker view
                     KeyCode::Esc => {
                         if app.view_mode == ViewMode::Swarm
+                            || app.view_mode == ViewMode::Ralph
                             || app.view_mode == ViewMode::SessionPicker
                             || app.view_mode == ViewMode::ModelPicker
                         {
@@ -1227,6 +1457,63 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 Span::raw(": Back | "),
                 Span::styled("Ctrl+S", Style::default().fg(Color::Yellow)),
                 Span::raw(": Toggle view"),
+            ])
+        };
+        let status = Paragraph::new(status_line);
+        f.render_widget(status, chunks[2]);
+        return;
+    }
+
+    // Ralph view
+    if app.view_mode == ViewMode::Ralph {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(1),    // Ralph view
+                Constraint::Length(3), // Input
+                Constraint::Length(1), // Status bar
+            ])
+            .split(f.area());
+
+        render_ralph_view(f, &mut app.ralph_state, chunks[0]);
+
+        let input_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Press Esc to return to chat ")
+            .border_style(Style::default().fg(Color::Magenta));
+
+        let input = Paragraph::new(app.input.as_str())
+            .block(input_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(input, chunks[1]);
+
+        let status_line = if app.ralph_state.detail_mode {
+            Line::from(vec![
+                Span::styled(
+                    " STORY DETAIL ",
+                    Style::default().fg(Color::Black).bg(Color::Magenta),
+                ),
+                Span::raw(" | "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": Back to list | "),
+                Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+                Span::raw(": Prev/Next story | "),
+                Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
+                Span::raw(": Scroll"),
+            ])
+        } else {
+            Line::from(vec![
+                Span::styled(
+                    " RALPH MODE ",
+                    Style::default().fg(Color::Black).bg(Color::Magenta),
+                ),
+                Span::raw(" | "),
+                Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+                Span::raw(": Select | "),
+                Span::styled("Enter", Style::default().fg(Color::Yellow)),
+                Span::raw(": Detail | "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": Back"),
             ])
         };
         let status = Paragraph::new(status_line);
@@ -1645,6 +1932,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             "".to_string(),
             "  SLASH COMMANDS".to_string(),
             "  /swarm <task>   Run task in parallel swarm mode".to_string(),
+            "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
             "  /sessions       Open session picker to resume".to_string(),
             "  /resume         Resume most recent session".to_string(),
             "  /resume <id>    Resume specific session by ID".to_string(),

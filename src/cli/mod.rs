@@ -1,5 +1,6 @@
 //! CLI command definitions and handlers
 
+pub mod auth;
 pub mod config;
 pub mod run;
 
@@ -54,6 +55,9 @@ pub enum Command {
     /// Run with a message (non-interactive)
     Run(RunArgs),
 
+    /// Authenticate provider credentials and store in Vault
+    Auth(AuthArgs),
+
     /// Manage configuration
     Config(ConfigArgs),
 
@@ -77,6 +81,29 @@ pub enum Command {
 
     /// Clean up orphaned worktrees and branches from failed Ralph runs
     Cleanup(CleanupArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct AuthArgs {
+    #[command(subcommand)]
+    pub command: AuthCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AuthCommand {
+    /// Authenticate with GitHub Copilot using device flow
+    Copilot(CopilotAuthArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct CopilotAuthArgs {
+    /// GitHub Enterprise URL or domain (e.g. company.ghe.com)
+    #[arg(long)]
+    pub enterprise_url: Option<String>,
+
+    /// GitHub OAuth app client ID for Copilot device flow
+    #[arg(long, env = "CODETETHER_COPILOT_OAUTH_CLIENT_ID")]
+    pub client_id: Option<String>,
 }
 
 #[derive(Parser, Debug)]

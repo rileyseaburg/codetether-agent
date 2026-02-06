@@ -41,25 +41,30 @@ impl TokenDisplay {
     /// Get pricing for a model (returns $ per million tokens for input/output)
     fn get_model_pricing(&self, model: &str) -> (f64, f64) {
         match model.to_lowercase().as_str() {
-            m if m.contains("gpt-4o-mini") => (0.15, 0.60),      // $0.15 / $0.60 per million
-            m if m.contains("gpt-4o") => (2.50, 10.00),         // $2.50 / $10.00 per million
-            m if m.contains("gpt-4-turbo") => (10.00, 30.00),   // $10 / $30 per million
-            m if m.contains("gpt-4") => (30.00, 60.00),         // $30 / $60 per million
+            m if m.contains("gpt-4o-mini") => (0.15, 0.60), // $0.15 / $0.60 per million
+            m if m.contains("gpt-4o") => (2.50, 10.00),     // $2.50 / $10.00 per million
+            m if m.contains("gpt-4-turbo") => (10.00, 30.00), // $10 / $30 per million
+            m if m.contains("gpt-4") => (30.00, 60.00),     // $30 / $60 per million
             m if m.contains("claude-3-5-sonnet") => (3.00, 15.00), // $3 / $15 per million
             m if m.contains("claude-3-5-haiku") => (0.80, 4.00), // $0.80 / $4 per million
             m if m.contains("claude-3-opus") => (15.00, 75.00), // $15 / $75 per million
             m if m.contains("gemini-2.0-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
             m if m.contains("gemini-1.5-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
-            m if m.contains("gemini-1.5-pro") => (1.25, 5.00),  // $1.25 / $5 per million
-            m if m.contains("glm-4") => (0.50, 0.50),           // ZhipuAI GLM-4 ~$0.50/million
-            m if m.contains("k1.5") => (8.00, 8.00),            // Moonshot K1.5
-            m if m.contains("k1.6") => (6.00, 6.00),            // Moonshot K1.6
-            _ => (1.00, 3.00),                                   // Default fallback
+            m if m.contains("gemini-1.5-pro") => (1.25, 5.00), // $1.25 / $5 per million
+            m if m.contains("glm-4") => (0.50, 0.50),       // ZhipuAI GLM-4 ~$0.50/million
+            m if m.contains("k1.5") => (8.00, 8.00),        // Moonshot K1.5
+            m if m.contains("k1.6") => (6.00, 6.00),        // Moonshot K1.6
+            _ => (1.00, 3.00),                              // Default fallback
         }
     }
 
     /// Calculate cost for a model given input and output token counts
-    pub fn calculate_cost_for_tokens(&self, model: &str, input_tokens: u64, output_tokens: u64) -> CostEstimate {
+    pub fn calculate_cost_for_tokens(
+        &self,
+        model: &str,
+        input_tokens: u64,
+        output_tokens: u64,
+    ) -> CostEstimate {
         let (input_price, output_price) = self.get_model_pricing(model);
         CostEstimate::from_tokens(
             &crate::telemetry::TokenCounts::new(input_tokens, output_tokens),

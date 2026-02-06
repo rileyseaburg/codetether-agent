@@ -3,6 +3,7 @@
 //! Unified interface for multiple AI providers (OpenAI, Anthropic, Google, StepFun, etc.)
 
 pub mod anthropic;
+pub mod copilot;
 pub mod google;
 pub mod models;
 pub mod moonshot;
@@ -244,122 +245,182 @@ impl ProviderRegistry {
     pub async fn from_vault() -> Result<Self> {
         let mut registry = Self::new();
 
-        let manager = match crate::secrets::secrets_manager() {
-            Some(m) => m,
-            None => {
-                tracing::warn!("Vault not configured, no providers will be available");
-                return Ok(registry);
-            }
-        };
+        if let Some(manager) = crate::secrets::secrets_manager() {
+            // List all configured providers from Vault
+            let providers = manager.list_configured_providers().await?;
+            tracing::info!("Found {} providers configured in Vault", providers.len());
 
-        // List all configured providers from Vault
-        let providers = manager.list_configured_providers().await?;
-        tracing::info!("Found {} providers configured in Vault", providers.len());
+            for provider_id in providers {
+                let secrets = match manager.get_provider_secrets(&provider_id).await? {
+                    Some(s) => s,
+                    None => continue,
+                };
 
-        for provider_id in providers {
-            let secrets = match manager.get_provider_secrets(&provider_id).await? {
-                Some(s) => s,
-                None => continue,
-            };
+                let api_key = match secrets.api_key {
+                    Some(key) => key,
+                    None => continue,
+                };
 
-            let api_key = match secrets.api_key {
-                Some(key) => key,
-                None => continue,
-            };
-
-            // Determine which provider implementation to use
-            match provider_id.as_str() {
-                // Native providers
-                "anthropic" | "anthropic-eu" | "anthropic-asia" => {
-                    match anthropic::AnthropicProvider::new(api_key) {
+                // Determine which provider implementation to use
+                match provider_id.as_str() {
+                    // Native providers
+                    "anthropic" | "anthropic-eu" | "anthropic-asia" => {
+                        match anthropic::AnthropicProvider::new(api_key) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                        }
+                    }
+                    "google" | "google-vertex" => match google::GoogleProvider::new(api_key) {
                         Ok(p) => registry.register(Arc::new(p)),
                         Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
-                    }
-                }
-                "google" | "google-vertex" => match google::GoogleProvider::new(api_key) {
-                    Ok(p) => registry.register(Arc::new(p)),
-                    Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
-                },
-                // StepFun - native provider (direct API, not via OpenRouter)
-                "stepfun" => match stepfun::StepFunProvider::new(api_key) {
-                    Ok(p) => registry.register(Arc::new(p)),
-                    Err(e) => tracing::warn!("Failed to init stepfun: {}", e),
-                },
-                // OpenRouter - native provider with support for extended response formats
-                "openrouter" => match openrouter::OpenRouterProvider::new(api_key) {
-                    Ok(p) => registry.register(Arc::new(p)),
-                    Err(e) => tracing::warn!("Failed to init openrouter: {}", e),
-                },
-                // Moonshot AI - native provider for Kimi models
-                "moonshotai" | "moonshotai-cn" => match moonshot::MoonshotProvider::new(api_key) {
-                    Ok(p) => registry.register(Arc::new(p)),
-                    Err(e) => tracing::warn!("Failed to init moonshotai: {}", e),
-                },
-                // ZhipuAI - OpenAI-compatible coding API
-                "zhipuai" => {
-                    let base_url = secrets
-                        .base_url
-                        .clone()
-                        .unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
-                    match openai::OpenAIProvider::with_base_url(api_key, base_url, "zhipuai") {
+                    },
+                    // StepFun - native provider (direct API, not via OpenRouter)
+                    "stepfun" => match stepfun::StepFunProvider::new(api_key) {
                         Ok(p) => registry.register(Arc::new(p)),
-                        Err(e) => tracing::warn!("Failed to init zhipuai: {}", e),
+                        Err(e) => tracing::warn!("Failed to init stepfun: {}", e),
+                    },
+                    // OpenRouter - native provider with support for extended response formats
+                    "openrouter" => match openrouter::OpenRouterProvider::new(api_key) {
+                        Ok(p) => registry.register(Arc::new(p)),
+                        Err(e) => tracing::warn!("Failed to init openrouter: {}", e),
+                    },
+                    // Moonshot AI - native provider for Kimi models
+                    "moonshotai" | "moonshotai-cn" => {
+                        match moonshot::MoonshotProvider::new(api_key) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init moonshotai: {}", e),
+                        }
                     }
-                }
-                // OpenAI-compatible providers (with custom base_url)
-                "deepseek" | "groq" | "togetherai" | "fireworks-ai" | "mistral" | "nvidia"
-                | "alibaba" | "openai" | "azure" | "novita" => {
-                    if let Some(base_url) = secrets.base_url {
-                        match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id)
-                        {
+                    // GitHub Copilot providers require custom headers/token semantics
+                    "github-copilot" => {
+                        let result = if let Some(base_url) = secrets.base_url.clone() {
+                            copilot::CopilotProvider::with_base_url(
+                                api_key,
+                                base_url,
+                                "github-copilot",
+                            )
+                        } else {
+                            copilot::CopilotProvider::new(api_key)
+                        };
+
+                        match result {
                             Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                            Err(e) => tracing::warn!("Failed to init github-copilot: {}", e),
                         }
-                    } else if provider_id == "openai" {
-                        // OpenAI doesn't need a custom base_url
-                        match openai::OpenAIProvider::new(api_key) {
+                    }
+                    "github-copilot-enterprise" => {
+                        let enterprise_url = secrets
+                            .extra
+                            .get("enterpriseUrl")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| {
+                                secrets.extra.get("enterprise_url").and_then(|v| v.as_str())
+                            });
+
+                        let result = if let Some(base_url) = secrets.base_url.clone() {
+                            copilot::CopilotProvider::with_base_url(
+                                api_key,
+                                base_url,
+                                "github-copilot-enterprise",
+                            )
+                        } else if let Some(url) = enterprise_url {
+                            copilot::CopilotProvider::enterprise(api_key, url.to_string())
+                        } else {
+                            copilot::CopilotProvider::with_base_url(
+                                api_key,
+                                "https://api.githubcopilot.com".to_string(),
+                                "github-copilot-enterprise",
+                            )
+                        };
+
+                        match result {
                             Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init openai: {}", e),
+                            Err(e) => {
+                                tracing::warn!("Failed to init github-copilot-enterprise: {}", e)
+                            }
                         }
-                    } else if provider_id == "novita" {
-                        let base_url = "https://api.novita.ai/openai/v1".to_string();
-                        match openai::OpenAIProvider::with_base_url(api_key, base_url, &provider_id)
-                        {
+                    }
+                    // ZhipuAI - OpenAI-compatible coding API
+                    "zhipuai" => {
+                        let base_url = secrets
+                            .base_url
+                            .clone()
+                            .unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
+                        match openai::OpenAIProvider::with_base_url(api_key, base_url, "zhipuai") {
                             Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                            Err(e) => tracing::warn!("Failed to init zhipuai: {}", e),
                         }
-                    } else {
-                        // Try using the base_url from the models API
-                        if let Ok(catalog) = models::ModelCatalog::fetch().await {
-                            if let Some(provider_info) = catalog.get_provider(&provider_id) {
-                                if let Some(api_url) = &provider_info.api {
-                                    match openai::OpenAIProvider::with_base_url(
-                                        api_key,
-                                        api_url.clone(),
-                                        &provider_id,
-                                    ) {
-                                        Ok(p) => registry.register(Arc::new(p)),
-                                        Err(e) => {
-                                            tracing::warn!("Failed to init {}: {}", provider_id, e)
+                    }
+                    // OpenAI-compatible providers (with custom base_url)
+                    "deepseek" | "groq" | "togetherai" | "fireworks-ai" | "mistral" | "nvidia"
+                    | "alibaba" | "openai" | "azure" | "novita" => {
+                        if let Some(base_url) = secrets.base_url.clone() {
+                            match openai::OpenAIProvider::with_base_url(
+                                api_key,
+                                base_url,
+                                &provider_id,
+                            ) {
+                                Ok(p) => registry.register(Arc::new(p)),
+                                Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                            }
+                        } else if provider_id == "openai" {
+                            // OpenAI doesn't need a custom base_url
+                            match openai::OpenAIProvider::new(api_key) {
+                                Ok(p) => registry.register(Arc::new(p)),
+                                Err(e) => tracing::warn!("Failed to init openai: {}", e),
+                            }
+                        } else if provider_id == "novita" {
+                            let base_url = "https://api.novita.ai/openai/v1".to_string();
+                            match openai::OpenAIProvider::with_base_url(
+                                api_key,
+                                base_url,
+                                &provider_id,
+                            ) {
+                                Ok(p) => registry.register(Arc::new(p)),
+                                Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                            }
+                        } else {
+                            // Try using the base_url from the models API
+                            if let Ok(catalog) = models::ModelCatalog::fetch().await {
+                                if let Some(provider_info) = catalog.get_provider(&provider_id) {
+                                    if let Some(api_url) = &provider_info.api {
+                                        match openai::OpenAIProvider::with_base_url(
+                                            api_key,
+                                            api_url.clone(),
+                                            &provider_id,
+                                        ) {
+                                            Ok(p) => registry.register(Arc::new(p)),
+                                            Err(e) => {
+                                                tracing::warn!(
+                                                    "Failed to init {}: {}",
+                                                    provider_id,
+                                                    e
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                // Unknown providers - try as OpenAI-compatible with base_url from API
-                other => {
-                    if let Some(base_url) = secrets.base_url {
-                        match openai::OpenAIProvider::with_base_url(api_key, base_url, other) {
-                            Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init {}: {}", other, e),
+                    // Unknown providers - try as OpenAI-compatible with base_url from API
+                    other => {
+                        if let Some(base_url) = secrets.base_url {
+                            match openai::OpenAIProvider::with_base_url(api_key, base_url, other) {
+                                Ok(p) => registry.register(Arc::new(p)),
+                                Err(e) => tracing::warn!("Failed to init {}: {}", other, e),
+                            }
+                        } else {
+                            tracing::debug!(
+                                "Unknown provider {} without base_url, skipping",
+                                other
+                            );
                         }
-                    } else {
-                        tracing::debug!("Unknown provider {} without base_url, skipping", other);
                     }
                 }
             }
+        } else {
+            tracing::warn!("Vault not configured, no providers will be available");
         }
 
         tracing::info!(
