@@ -1,13 +1,60 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
 use crate::cli::A2aArgs;
+use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use anyhow::Result;
 use futures::StreamExt;
 use reqwest::Client;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
+
+/// Worker status for heartbeat
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WorkerStatus {
+    Idle,
+    Processing,
+}
+
+impl WorkerStatus {
+    fn as_str(&self) -> &'static str {
+        match self {
+            WorkerStatus::Idle => "idle",
+            WorkerStatus::Processing => "processing",
+        }
+    }
+}
+
+/// Heartbeat state shared between the heartbeat task and the main worker
+#[derive(Clone)]
+struct HeartbeatState {
+    worker_id: String,
+    agent_name: String,
+    status: Arc<Mutex<WorkerStatus>>,
+    active_task_count: Arc<Mutex<usize>>,
+}
+
+impl HeartbeatState {
+    fn new(worker_id: String, agent_name: String) -> Self {
+        Self {
+            worker_id,
+            agent_name,
+            status: Arc::new(Mutex::new(WorkerStatus::Idle)),
+            active_task_count: Arc::new(Mutex::new(0)),
+        }
+    }
+
+    async fn set_status(&self, status: WorkerStatus) {
+        *self.status.lock().await = status;
+    }
+
+    async fn set_task_count(&self, count: usize) {
+        *self.active_task_count.lock().await = count;
+    }
+}
 
 /// Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
@@ -35,6 +82,9 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         _ => AutoApprove::None,
     };
 
+    // Create heartbeat state
+    let heartbeat_state = HeartbeatState::new(worker_id.clone(), name.clone());
+
     // Register worker
     register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
 
@@ -51,6 +101,20 @@ pub async fn run(args: A2aArgs) -> Result<()> {
 
     // Connect to SSE stream
     loop {
+        // Re-register worker on each reconnection to report updated models/capabilities
+        if let Err(e) = register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await {
+            tracing::warn!("Failed to re-register worker on reconnection: {}", e);
+        }
+
+        // Start heartbeat task for this connection
+        let heartbeat_handle = start_heartbeat(
+            client.clone(),
+            server.to_string(),
+            args.token.clone(),
+            heartbeat_state.clone(),
+            processing.clone(),
+        );
+
         match connect_stream(
             &client,
             server,
@@ -70,6 +134,11 @@ pub async fn run(args: A2aArgs) -> Result<()> {
                 tracing::error!("Stream error: {}, reconnecting...", e);
             }
         }
+
+        // Cancel heartbeat on disconnection
+        heartbeat_handle.abort();
+        tracing::debug!("Heartbeat cancelled for reconnection");
+
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 }
@@ -89,6 +158,111 @@ enum AutoApprove {
     None,
 }
 
+/// Capabilities of the codetether-agent worker
+const WORKER_CAPABILITIES: &[&str] = &["ralph", "swarm", "rlm", "a2a", "mcp"];
+
+fn task_value<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
+    task.get("task").and_then(|t| t.get(key)).or_else(|| task.get(key))
+}
+
+fn task_str<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a str> {
+    task_value(task, key).and_then(|v| v.as_str())
+}
+
+fn task_metadata(task: &serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
+    task_value(task, "metadata")
+        .and_then(|m| m.as_object())
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn model_ref_to_provider_model(model: &str) -> String {
+    if model.contains(':') {
+        model.replacen(':', "/", 1)
+    } else {
+        model.to_string()
+    }
+}
+
+fn provider_preferences_for_tier(model_tier: Option<&str>) -> &'static [&'static str] {
+    match model_tier.unwrap_or("balanced") {
+        "fast" | "quick" => &[
+            "google",
+            "openai",
+            "moonshotai",
+            "zhipuai",
+            "anthropic",
+            "openrouter",
+            "novita",
+        ],
+        "heavy" | "deep" => &[
+            "anthropic",
+            "openai",
+            "google",
+            "moonshotai",
+            "zhipuai",
+            "openrouter",
+            "novita",
+        ],
+        _ => &[
+            "openai",
+            "anthropic",
+            "google",
+            "moonshotai",
+            "zhipuai",
+            "openrouter",
+            "novita",
+        ],
+    }
+}
+
+fn choose_provider_for_tier<'a>(providers: &'a [&'a str], model_tier: Option<&str>) -> &'a str {
+    for preferred in provider_preferences_for_tier(model_tier) {
+        if let Some(found) = providers.iter().copied().find(|p| *p == *preferred) {
+            return found;
+        }
+    }
+    if let Some(found) = providers.iter().copied().find(|p| *p == "zhipuai") {
+        return found;
+    }
+    providers[0]
+}
+
+fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> String {
+    match model_tier.unwrap_or("balanced") {
+        "fast" | "quick" => match provider {
+            "moonshotai" => "kimi-k2.5".to_string(),
+            "anthropic" => "claude-haiku-4-5".to_string(),
+            "openai" => "gpt-4o-mini".to_string(),
+            "google" => "gemini-2.5-flash".to_string(),
+            "zhipuai" => "glm-4.7".to_string(),
+            "openrouter" => "zhipuai/glm-4.7".to_string(),
+            "novita" => "qwen/qwen3-coder-next".to_string(),
+            _ => "glm-4.7".to_string(),
+        },
+        "heavy" | "deep" => match provider {
+            "moonshotai" => "kimi-k2.5".to_string(),
+            "anthropic" => "claude-sonnet-4-20250514".to_string(),
+            "openai" => "o3".to_string(),
+            "google" => "gemini-2.5-pro".to_string(),
+            "zhipuai" => "glm-4.7".to_string(),
+            "openrouter" => "zhipuai/glm-4.7".to_string(),
+            "novita" => "qwen/qwen3-coder-next".to_string(),
+            _ => "glm-4.7".to_string(),
+        },
+        _ => match provider {
+            "moonshotai" => "kimi-k2.5".to_string(),
+            "anthropic" => "claude-sonnet-4-20250514".to_string(),
+            "openai" => "gpt-4o".to_string(),
+            "google" => "gemini-2.5-pro".to_string(),
+            "zhipuai" => "glm-4.7".to_string(),
+            "openrouter" => "zhipuai/glm-4.7".to_string(),
+            "novita" => "qwen/qwen3-coder-next".to_string(),
+            _ => "glm-4.7".to_string(),
+        },
+    }
+}
+
 async fn register_worker(
     client: &Client,
     server: &str,
@@ -97,6 +271,15 @@ async fn register_worker(
     name: &str,
     codebases: &[String],
 ) -> Result<()> {
+    // Load ProviderRegistry and collect available models
+    let models = match load_provider_models().await {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::warn!("Failed to load provider models: {}, proceeding without model info", e);
+            HashMap::new()
+        }
+    };
+
     let mut req = client.put(format!("{}/v1/worker/codebases", server));
 
     if let Some(t) = token {
@@ -108,6 +291,8 @@ async fn register_worker(
             "codebases": codebases,
             "worker_id": worker_id,
             "agent_name": name,
+            "models": models,
+            "capabilities": WORKER_CAPABILITIES,
         }))
         .send()
         .await?;
@@ -121,6 +306,30 @@ async fn register_worker(
     Ok(())
 }
 
+/// Load ProviderRegistry and collect all available models grouped by provider
+async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
+    let registry = ProviderRegistry::from_vault().await?;
+    let mut models_by_provider: HashMap<String, Vec<String>> = HashMap::new();
+
+    for provider_name in registry.list() {
+        if let Some(provider) = registry.get(provider_name) {
+            match provider.list_models().await {
+                Ok(models) => {
+                    let model_ids: Vec<String> = models.into_iter().map(|m| m.id).collect();
+                    if !model_ids.is_empty() {
+                        models_by_provider.insert(provider_name.to_string(), model_ids);
+                    }
+                }
+                Err(e) => {
+                    tracing::debug!("Failed to list models for {}: {}", provider_name, e);
+                }
+            }
+        }
+    }
+
+    Ok(models_by_provider)
+}
+
 async fn fetch_pending_tasks(
     client: &Client,
     server: &str,
@@ -131,7 +340,7 @@ async fn fetch_pending_tasks(
 ) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
-    let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
+    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
@@ -280,18 +489,10 @@ async fn handle_task(
     token: &Option<String>,
     worker_id: &str,
     task: &serde_json::Value,
-    _auto_approve: AutoApprove,
+    auto_approve: AutoApprove,
 ) -> Result<()> {
-    let task_id = task
-        .get("task")
-        .and_then(|t| t["id"].as_str())
-        .or_else(|| task["id"].as_str())
-        .ok_or_else(|| anyhow::anyhow!("No task ID"))?;
-    let title = task
-        .get("task")
-        .and_then(|t| t["title"].as_str())
-        .or_else(|| task["title"].as_str())
-        .unwrap_or("Untitled");
+    let task_id = task_str(task, "id").ok_or_else(|| anyhow::anyhow!("No task ID"))?;
+    let title = task_str(task, "title").unwrap_or("Untitled");
 
     tracing::info!("Handling task: {} ({})", title, task_id);
 
@@ -316,21 +517,113 @@ async fn handle_task(
 
     tracing::info!("Claimed task: {}", task_id);
 
-    // Create a session and process the task
-    let session = Session::new().await?;
-    let prompt = task
-        .get("task")
-        .and_then(|t| t["prompt"].as_str())
-        .or_else(|| task["prompt"].as_str())
-        .or_else(|| task.get("task").and_then(|t| t["description"].as_str()))
-        .or_else(|| task["description"].as_str())
+    let metadata = task_metadata(task);
+    let resume_session_id = metadata
+        .get("resume_session_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let model_tier = metadata
+        .get("model_tier")
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            metadata
+                .get("routing")
+                .and_then(|r| r.get("model_tier"))
+                .and_then(|v| v.as_str())
+        })
+        .map(|s| s.trim().to_ascii_lowercase());
+    let raw_model = task_str(task, "model_ref")
+        .or_else(|| metadata.get("model_ref").and_then(|v| v.as_str()))
+        .or_else(|| task_str(task, "model"))
+        .or_else(|| metadata.get("model").and_then(|v| v.as_str()));
+    let selected_model = raw_model.map(model_ref_to_provider_model);
+
+    // Resume existing session when requested; fall back to a fresh session if missing.
+    let mut session = if let Some(ref sid) = resume_session_id {
+        match Session::load(sid).await {
+            Ok(existing) => {
+                tracing::info!("Resuming session {} for task {}", sid, task_id);
+                existing
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Could not load session {} for task {} ({}), starting a new session",
+                    sid,
+                    task_id,
+                    e
+                );
+                Session::new().await?
+            }
+        }
+    } else {
+        Session::new().await?
+    };
+
+    if let Some(agent) = task_str(task, "agent_type") {
+        session.agent = agent.to_string();
+    }
+    if let Some(model) = selected_model {
+        session.metadata.model = Some(model);
+    }
+
+    let prompt = task_str(task, "prompt")
+        .or_else(|| task_str(task, "description"))
         .unwrap_or(title);
 
-    // TODO: Actually execute the agent here
-    tracing::info!("Would execute prompt: {}", prompt);
-    let result = format!("Task {} processed (session: {})", task_id, session.id);
+    tracing::info!("Executing prompt: {}", prompt);
 
-    // Release the task
+    // Set up output streaming to forward progress to the server
+    let stream_client = client.clone();
+    let stream_server = server.to_string();
+    let stream_token = token.clone();
+    let stream_worker_id = worker_id.to_string();
+    let stream_task_id = task_id.to_string();
+
+    let output_callback = move |output: String| {
+        let c = stream_client.clone();
+        let s = stream_server.clone();
+        let t = stream_token.clone();
+        let w = stream_worker_id.clone();
+        let tid = stream_task_id.clone();
+        tokio::spawn(async move {
+            let mut req = c
+                .post(format!("{}/v1/agent/tasks/{}/output", s, tid))
+                .header("X-Worker-ID", &w);
+            if let Some(tok) = &t {
+                req = req.bearer_auth(tok);
+            }
+            let _ = req
+                .json(&serde_json::json!({
+                    "worker_id": w,
+                    "output": output,
+                }))
+                .send()
+                .await;
+        });
+    };
+
+    // Execute the session with the appropriate auto-approve policy and stream output
+    let (status, result, error, session_id) = match execute_session_with_policy(
+        &mut session,
+        prompt,
+        auto_approve,
+        model_tier.as_deref(),
+        Some(&output_callback),
+    )
+    .await
+    {
+        Ok(session_result) => {
+            tracing::info!("Task completed successfully: {}", task_id);
+            ("completed", Some(session_result.text), None, Some(session_result.session_id))
+        }
+        Err(e) => {
+            tracing::error!("Task failed: {} - {}", task_id, e);
+            ("failed", None, Some(format!("Error: {}", e)), None)
+        }
+    };
+
+    // Release the task with full details
     let mut req = client
         .post(format!("{}/v1/worker/tasks/release", server))
         .header("X-Worker-ID", worker_id);
@@ -340,15 +633,422 @@ async fn handle_task(
 
     req.json(&serde_json::json!({
         "task_id": task_id,
-        "status": "completed",
+        "status": status,
         "result": result,
+        "error": error,
+        "session_id": session_id.unwrap_or_else(|| session.id.clone()),
     }))
     .send()
     .await?;
 
-    tracing::info!("Task completed: {}", task_id);
+    tracing::info!("Task released: {} with status: {}", task_id, status);
     Ok(())
 }
 
-// Add rand for worker ID generation
-use rand;
+/// Execute a session with the given auto-approve policy
+/// Optionally streams output chunks via the callback
+async fn execute_session_with_policy<F>(
+    session: &mut Session,
+    prompt: &str,
+    auto_approve: AutoApprove,
+    model_tier: Option<&str>,
+    output_callback: Option<&F>,
+) -> Result<crate::session::SessionResult>
+where
+    F: Fn(String),
+{
+    use crate::provider::{
+        CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
+    };
+    use crate::tool::ToolRegistry;
+    use std::sync::Arc;
+
+    // Load provider registry from Vault
+    let registry = ProviderRegistry::from_vault().await?;
+    let providers = registry.list();
+    tracing::info!("Available providers: {:?}", providers);
+
+    if providers.is_empty() {
+        anyhow::bail!("No providers available. Configure API keys in HashiCorp Vault.");
+    }
+
+    // Parse model string
+    let (provider_name, model_id) = if let Some(ref model_str) = session.metadata.model {
+        let (prov, model) = parse_model_string(model_str);
+        if prov.is_some() {
+            (prov.map(|s| s.to_string()), model.to_string())
+        } else if providers.contains(&model) {
+            (Some(model.to_string()), String::new())
+        } else {
+            (None, model.to_string())
+        }
+    } else {
+        (None, String::new())
+    };
+
+    let provider_slice = providers.as_slice();
+    let provider_requested_but_unavailable = provider_name
+        .as_deref()
+        .map(|p| !providers.contains(&p))
+        .unwrap_or(false);
+
+    // Determine which provider to use, preferring explicit request first, then model tier.
+    let selected_provider = provider_name
+        .as_deref()
+        .filter(|p| providers.contains(p))
+        .unwrap_or_else(|| choose_provider_for_tier(provider_slice, model_tier));
+
+    let provider = registry
+        .get(selected_provider)
+        .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
+
+    // Add user message
+    session.add_message(Message {
+        role: Role::User,
+        content: vec![ContentPart::Text {
+            text: prompt.to_string(),
+        }],
+    });
+
+    // Generate title
+    if session.title.is_none() {
+        session.generate_title().await?;
+    }
+
+    // Determine model. If a specific provider was requested but not available,
+    // ignore that model id and fall back to the tier-based default model.
+    let model = if !model_id.is_empty() && !provider_requested_but_unavailable {
+        model_id
+    } else {
+        default_model_for_provider(selected_provider, model_tier)
+    };
+
+    // Create tool registry with filtering based on auto-approve policy
+    let tool_registry = create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve);
+    let tool_definitions = tool_registry.definitions();
+
+    let temperature = if model.starts_with("kimi-k2") {
+        Some(1.0)
+    } else {
+        Some(0.7)
+    };
+
+    tracing::info!(
+        "Using model: {} via provider: {} (tier: {:?})",
+        model,
+        selected_provider,
+        model_tier
+    );
+    tracing::info!("Available tools: {} (auto_approve: {:?})", tool_definitions.len(), auto_approve);
+
+    // Build system prompt
+    let cwd = std::env::var("PWD")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+    let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+
+    let mut final_output = String::new();
+    let max_steps = 50;
+
+    for step in 1..=max_steps {
+        tracing::info!(step = step, "Agent step starting");
+
+        // Build messages with system prompt first
+        let mut messages = vec![Message {
+            role: Role::System,
+            content: vec![ContentPart::Text {
+                text: system_prompt.clone(),
+            }],
+        }];
+        messages.extend(session.messages.clone());
+
+        let request = CompletionRequest {
+            messages,
+            tools: tool_definitions.clone(),
+            model: model.clone(),
+            temperature,
+            top_p: None,
+            max_tokens: Some(8192),
+            stop: Vec::new(),
+        };
+
+        let response = provider.complete(request).await?;
+
+        crate::telemetry::TOKEN_USAGE.record_model_usage(
+            &model,
+            response.usage.prompt_tokens as u64,
+            response.usage.completion_tokens as u64,
+        );
+
+        // Extract tool calls
+        let tool_calls: Vec<(String, String, serde_json::Value)> = response
+            .message
+            .content
+            .iter()
+            .filter_map(|part| {
+                if let ContentPart::ToolCall { id, name, arguments } = part {
+                    let args: serde_json::Value =
+                        serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
+                    Some((id.clone(), name.clone(), args))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Collect text output and stream it
+        for part in &response.message.content {
+            if let ContentPart::Text { text } = part {
+                if !text.is_empty() {
+                    final_output.push_str(text);
+                    final_output.push('\n');
+                    if let Some(cb) = output_callback {
+                        cb(text.clone());
+                    }
+                }
+            }
+        }
+
+        // If no tool calls, we're done
+        if tool_calls.is_empty() {
+            session.add_message(response.message.clone());
+            break;
+        }
+
+        session.add_message(response.message.clone());
+
+        tracing::info!(
+            step = step,
+            num_tools = tool_calls.len(),
+            "Executing tool calls"
+        );
+
+        // Execute each tool call
+        for (tool_id, tool_name, tool_input) in tool_calls {
+            tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+
+            // Stream tool start event
+            if let Some(cb) = output_callback {
+                cb(format!("[tool:start:{}]", tool_name));
+            }
+
+            // Check if tool is allowed based on auto-approve policy
+            if !is_tool_allowed(&tool_name, auto_approve) {
+                let msg = format!("Tool '{}' requires approval but auto-approve policy is {:?}", tool_name, auto_approve);
+                tracing::warn!(tool = %tool_name, "Tool blocked by auto-approve policy");
+                session.add_message(Message {
+                    role: Role::Tool,
+                    content: vec![ContentPart::ToolResult {
+                        tool_call_id: tool_id,
+                        content: msg,
+                    }],
+                });
+                continue;
+            }
+
+            let content = if let Some(tool) = tool_registry.get(&tool_name) {
+                let exec_result: Result<crate::tool::ToolResult> = tool.execute(tool_input.clone()).await;
+                match exec_result {
+                    Ok(result) => {
+                        tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
+                        if let Some(cb) = output_callback {
+                            let status = if result.success { "ok" } else { "err" };
+                            cb(format!("[tool:{}:{}] {}", tool_name, status, &result.output[..result.output.len().min(500)]));
+                        }
+                        result.output
+                    }
+                    Err(e) => {
+                        tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
+                        if let Some(cb) = output_callback {
+                            cb(format!("[tool:{}:err] {}", tool_name, e));
+                        }
+                        format!("Error: {}", e)
+                    }
+                }
+            } else {
+                tracing::warn!(tool = %tool_name, "Tool not found");
+                format!("Error: Unknown tool '{}'", tool_name)
+            };
+
+            session.add_message(Message {
+                role: Role::Tool,
+                content: vec![ContentPart::ToolResult {
+                    tool_call_id: tool_id,
+                    content,
+                }],
+            });
+        }
+    }
+
+    session.save().await?;
+
+    Ok(crate::session::SessionResult {
+        text: final_output.trim().to_string(),
+        session_id: session.id.clone(),
+    })
+}
+
+/// Check if a tool is allowed based on the auto-approve policy
+fn is_tool_allowed(tool_name: &str, auto_approve: AutoApprove) -> bool {
+    match auto_approve {
+        AutoApprove::All => true,
+        AutoApprove::Safe | AutoApprove::None => is_safe_tool(tool_name),
+    }
+}
+
+/// Check if a tool is considered "safe" (read-only)
+fn is_safe_tool(tool_name: &str) -> bool {
+    let safe_tools = [
+        "read",
+        "list",
+        "glob",
+        "grep",
+        "codesearch",
+        "lsp",
+        "webfetch",
+        "websearch",
+        "todo_read",
+        "skill",
+    ];
+    safe_tools.contains(&tool_name)
+}
+
+/// Create a filtered tool registry based on the auto-approve policy
+fn create_filtered_registry(
+    provider: Arc<dyn crate::provider::Provider>,
+    model: String,
+    auto_approve: AutoApprove,
+) -> crate::tool::ToolRegistry {
+    use crate::tool::*;
+
+    let mut registry = ToolRegistry::new();
+
+    // Always add safe tools
+    registry.register(Arc::new(file::ReadTool::new()));
+    registry.register(Arc::new(file::ListTool::new()));
+    registry.register(Arc::new(file::GlobTool::new()));
+    registry.register(Arc::new(search::GrepTool::new()));
+    registry.register(Arc::new(lsp::LspTool::new()));
+    registry.register(Arc::new(webfetch::WebFetchTool::new()));
+    registry.register(Arc::new(websearch::WebSearchTool::new()));
+    registry.register(Arc::new(codesearch::CodeSearchTool::new()));
+    registry.register(Arc::new(todo::TodoReadTool::new()));
+    registry.register(Arc::new(skill::SkillTool::new()));
+
+    // Add potentially dangerous tools only if auto_approve is All
+    if matches!(auto_approve, AutoApprove::All) {
+        registry.register(Arc::new(file::WriteTool::new()));
+        registry.register(Arc::new(edit::EditTool::new()));
+        registry.register(Arc::new(bash::BashTool::new()));
+        registry.register(Arc::new(multiedit::MultiEditTool::new()));
+        registry.register(Arc::new(patch::ApplyPatchTool::new()));
+        registry.register(Arc::new(todo::TodoWriteTool::new()));
+        registry.register(Arc::new(task::TaskTool::new()));
+        registry.register(Arc::new(plan::PlanEnterTool::new()));
+        registry.register(Arc::new(plan::PlanExitTool::new()));
+        registry.register(Arc::new(rlm::RlmTool::new()));
+        registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
+        registry.register(Arc::new(prd::PrdTool::new()));
+        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
+        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
+        registry.register(Arc::new(undo::UndoTool));
+    }
+
+    registry.register(Arc::new(invalid::InvalidTool::new()));
+
+    registry
+}
+
+/// Start the heartbeat background task
+/// Returns a JoinHandle that can be used to cancel the heartbeat
+fn start_heartbeat(
+    client: Client,
+    server: String,
+    token: Option<String>,
+    heartbeat_state: HeartbeatState,
+    processing: Arc<Mutex<HashSet<String>>>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut consecutive_failures = 0u32;
+        const MAX_FAILURES: u32 = 3;
+        const HEARTBEAT_INTERVAL_SECS: u64 = 30;
+
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+        loop {
+            interval.tick().await;
+
+            // Update task count from processing set
+            let active_count = processing.lock().await.len();
+            heartbeat_state.set_task_count(active_count).await;
+
+            // Determine status based on active tasks
+            let status = if active_count > 0 {
+                WorkerStatus::Processing
+            } else {
+                WorkerStatus::Idle
+            };
+            heartbeat_state.set_status(status).await;
+
+            // Send heartbeat
+            let url = format!("{}/v1/agent/workers/{}/heartbeat", server, heartbeat_state.worker_id);
+            let mut req = client.post(&url);
+
+            if let Some(ref t) = token {
+                req = req.bearer_auth(t);
+            }
+
+            let status_str = heartbeat_state.status.lock().await.as_str().to_string();
+            let payload = serde_json::json!({
+                "worker_id": &heartbeat_state.worker_id,
+                "agent_name": &heartbeat_state.agent_name,
+                "status": status_str,
+                "active_task_count": active_count,
+            });
+
+            match req.json(&payload).send().await {
+                Ok(res) => {
+                    if res.status().is_success() {
+                        consecutive_failures = 0;
+                        tracing::debug!(
+                            worker_id = %heartbeat_state.worker_id,
+                            status = status_str,
+                            active_tasks = active_count,
+                            "Heartbeat sent successfully"
+                        );
+                    } else {
+                        consecutive_failures += 1;
+                        tracing::warn!(
+                            worker_id = %heartbeat_state.worker_id,
+                            status = %res.status(),
+                            failures = consecutive_failures,
+                            "Heartbeat failed"
+                        );
+                    }
+                }
+                Err(e) => {
+                    consecutive_failures += 1;
+                    tracing::warn!(
+                        worker_id = %heartbeat_state.worker_id,
+                        error = %e,
+                        failures = consecutive_failures,
+                        "Heartbeat request failed"
+                    );
+                }
+            }
+
+            // Log error after 3 consecutive failures but do not terminate
+            if consecutive_failures >= MAX_FAILURES {
+                tracing::error!(
+                    worker_id = %heartbeat_state.worker_id,
+                    failures = consecutive_failures,
+                    "Heartbeat failed {} consecutive times - worker will continue running and attempt reconnection via SSE loop",
+                    MAX_FAILURES
+                );
+                // Reset counter to avoid spamming error logs
+                consecutive_failures = 0;
+            }
+        }
+    })
+}

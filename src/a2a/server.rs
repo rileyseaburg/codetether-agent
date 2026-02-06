@@ -1,6 +1,7 @@
 //! A2A Server - serve as an A2A agent
 
 use super::types::*;
+use crate::session::Session;
 use anyhow::Result;
 use axum::{
     Router,
@@ -162,33 +163,278 @@ async fn handle_message_send(
         id: task_id.clone(),
         context_id: params.message.context_id.clone(),
         status: TaskStatus {
-            state: TaskState::Submitted,
+            state: TaskState::Working,
             message: Some(params.message.clone()),
             timestamp: Some(chrono::Utc::now().to_rfc3339()),
         },
         artifacts: vec![],
-        history: vec![params.message],
+        history: vec![params.message.clone()],
         metadata: std::collections::HashMap::new(),
     };
 
     server.tasks.insert(task_id.clone(), task.clone());
 
-    // TODO: Process the task asynchronously
+    // Extract prompt text from message parts
+    let prompt: String = params
+        .message
+        .parts
+        .iter()
+        .filter_map(|p| match p {
+            Part::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
-    serde_json::to_value(task)
+    if prompt.is_empty() {
+        // Update task to failed
+        if let Some(mut t) = server.tasks.get_mut(&task_id) {
+            t.status.state = TaskState::Failed;
+            t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+        }
+        return Err(JsonRpcError::invalid_params("No text content in message"));
+    }
+
+    // Determine if blocking (default true for message/send)
+    let blocking = params
+        .configuration
+        .as_ref()
+        .and_then(|c| c.blocking)
+        .unwrap_or(true);
+
+    if blocking {
+        // Synchronous execution: create session, run prompt, return completed task
+        let mut session = Session::new().await.map_err(|e| {
+            JsonRpcError::internal_error(format!("Failed to create session: {}", e))
+        })?;
+
+        match session.prompt(&prompt).await {
+            Ok(result) => {
+                let response_message = Message {
+                    message_id: Uuid::new_v4().to_string(),
+                    role: MessageRole::Agent,
+                    parts: vec![Part::Text {
+                        text: result.text.clone(),
+                    }],
+                    context_id: params.message.context_id.clone(),
+                    task_id: Some(task_id.clone()),
+                    metadata: std::collections::HashMap::new(),
+                };
+
+                let artifact = Artifact {
+                    artifact_id: Uuid::new_v4().to_string(),
+                    parts: vec![Part::Text { text: result.text }],
+                    name: Some("response".to_string()),
+                    description: None,
+                    metadata: std::collections::HashMap::new(),
+                };
+
+                if let Some(mut t) = server.tasks.get_mut(&task_id) {
+                    t.status.state = TaskState::Completed;
+                    t.status.message = Some(response_message.clone());
+                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                    t.artifacts.push(artifact);
+                    t.history.push(response_message);
+                }
+            }
+            Err(e) => {
+                let error_message = Message {
+                    message_id: Uuid::new_v4().to_string(),
+                    role: MessageRole::Agent,
+                    parts: vec![Part::Text {
+                        text: format!("Error: {}", e),
+                    }],
+                    context_id: params.message.context_id.clone(),
+                    task_id: Some(task_id.clone()),
+                    metadata: std::collections::HashMap::new(),
+                };
+
+                if let Some(mut t) = server.tasks.get_mut(&task_id) {
+                    t.status.state = TaskState::Failed;
+                    t.status.message = Some(error_message);
+                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                }
+            }
+        }
+    } else {
+        // Async execution: spawn background task, return immediately with Working state
+        let tasks = server.tasks.clone();
+        let context_id = params.message.context_id.clone();
+        let spawn_task_id = task_id.clone();
+
+        tokio::spawn(async move {
+            let task_id = spawn_task_id;
+            let mut session = match Session::new().await {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::error!("Failed to create session for task {}: {}", task_id, e);
+                    if let Some(mut t) = tasks.get_mut(&task_id) {
+                        t.status.state = TaskState::Failed;
+                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                    }
+                    return;
+                }
+            };
+
+            match session.prompt(&prompt).await {
+                Ok(result) => {
+                    let response_message = Message {
+                        message_id: Uuid::new_v4().to_string(),
+                        role: MessageRole::Agent,
+                        parts: vec![Part::Text {
+                            text: result.text.clone(),
+                        }],
+                        context_id,
+                        task_id: Some(task_id.clone()),
+                        metadata: std::collections::HashMap::new(),
+                    };
+
+                    let artifact = Artifact {
+                        artifact_id: Uuid::new_v4().to_string(),
+                        parts: vec![Part::Text { text: result.text }],
+                        name: Some("response".to_string()),
+                        description: None,
+                        metadata: std::collections::HashMap::new(),
+                    };
+
+                    if let Some(mut t) = tasks.get_mut(&task_id) {
+                        t.status.state = TaskState::Completed;
+                        t.status.message = Some(response_message.clone());
+                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                        t.artifacts.push(artifact);
+                        t.history.push(response_message);
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Task {} failed: {}", task_id, e);
+                    if let Some(mut t) = tasks.get_mut(&task_id) {
+                        t.status.state = TaskState::Failed;
+                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                    }
+                }
+            }
+        });
+    }
+
+    // Return current task state
+    let task = server.tasks.get(&task_id).unwrap();
+    serde_json::to_value(task.value().clone())
         .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 
 async fn handle_message_stream(
-    _server: &A2AServer,
-    _request: JsonRpcRequest,
+    server: &A2AServer,
+    request: JsonRpcRequest,
 ) -> Result<serde_json::Value, JsonRpcError> {
-    // TODO: Implement streaming
-    Err(JsonRpcError {
-        code: UNSUPPORTED_OPERATION,
-        message: "Streaming not yet implemented".to_string(),
-        data: None,
-    })
+    // message/stream submits the task for async processing.
+    // The client should poll tasks/get for status updates.
+    // True SSE streaming requires a dedicated endpoint outside JSON-RPC.
+
+    let params: MessageSendParams = serde_json::from_value(request.params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid parameters: {}", e)))?;
+
+    let task_id = params
+        .message
+        .task_id
+        .clone()
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    let task = Task {
+        id: task_id.clone(),
+        context_id: params.message.context_id.clone(),
+        status: TaskStatus {
+            state: TaskState::Working,
+            message: Some(params.message.clone()),
+            timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        },
+        artifacts: vec![],
+        history: vec![params.message.clone()],
+        metadata: std::collections::HashMap::new(),
+    };
+
+    server.tasks.insert(task_id.clone(), task.clone());
+
+    // Extract prompt
+    let prompt: String = params
+        .message
+        .parts
+        .iter()
+        .filter_map(|p| match p {
+            Part::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    if prompt.is_empty() {
+        if let Some(mut t) = server.tasks.get_mut(&task_id) {
+            t.status.state = TaskState::Failed;
+            t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+        }
+        return Err(JsonRpcError::invalid_params("No text content in message"));
+    }
+
+    // Spawn async processing
+    let tasks = server.tasks.clone();
+    let context_id = params.message.context_id.clone();
+    let spawn_task_id = task_id.clone();
+
+    tokio::spawn(async move {
+        let task_id = spawn_task_id;
+        let mut session = match Session::new().await {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to create session for stream task {}: {}", task_id, e);
+                if let Some(mut t) = tasks.get_mut(&task_id) {
+                    t.status.state = TaskState::Failed;
+                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                }
+                return;
+            }
+        };
+
+        match session.prompt(&prompt).await {
+            Ok(result) => {
+                let response_message = Message {
+                    message_id: Uuid::new_v4().to_string(),
+                    role: MessageRole::Agent,
+                    parts: vec![Part::Text {
+                        text: result.text.clone(),
+                    }],
+                    context_id,
+                    task_id: Some(task_id.clone()),
+                    metadata: std::collections::HashMap::new(),
+                };
+
+                let artifact = Artifact {
+                    artifact_id: Uuid::new_v4().to_string(),
+                    parts: vec![Part::Text { text: result.text }],
+                    name: Some("response".to_string()),
+                    description: None,
+                    metadata: std::collections::HashMap::new(),
+                };
+
+                if let Some(mut t) = tasks.get_mut(&task_id) {
+                    t.status.state = TaskState::Completed;
+                    t.status.message = Some(response_message.clone());
+                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                    t.artifacts.push(artifact);
+                    t.history.push(response_message);
+                }
+            }
+            Err(e) => {
+                tracing::error!("Stream task {} failed: {}", task_id, e);
+                if let Some(mut t) = tasks.get_mut(&task_id) {
+                    t.status.state = TaskState::Failed;
+                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                }
+            }
+        }
+    });
+
+    // Return task in Working state — client polls tasks/get for completion
+    serde_json::to_value(task)
+        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 
 async fn handle_tasks_get(

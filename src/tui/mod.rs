@@ -36,7 +36,9 @@ use ratatui::{
     },
 };
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 /// Run the TUI
@@ -84,6 +86,33 @@ enum ViewMode {
     SessionPicker,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChatLayoutMode {
+    Classic,
+    Webview,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WorkspaceEntryKind {
+    Directory,
+    File,
+}
+
+#[derive(Debug, Clone)]
+struct WorkspaceEntry {
+    name: String,
+    kind: WorkspaceEntryKind,
+}
+
+#[derive(Debug, Clone, Default)]
+struct WorkspaceSnapshot {
+    root_display: String,
+    git_branch: Option<String>,
+    git_dirty_files: usize,
+    entries: Vec<WorkspaceEntry>,
+    captured_at: String,
+}
+
 /// Application state
 struct App {
     input: String,
@@ -101,6 +130,9 @@ struct App {
     response_rx: Option<mpsc::Receiver<SessionEvent>>,
     // Swarm mode state
     view_mode: ViewMode,
+    chat_layout: ChatLayoutMode,
+    show_inspector: bool,
+    workspace: WorkspaceSnapshot,
     swarm_state: SwarmViewState,
     swarm_rx: Option<mpsc::Receiver<SwarmEvent>>,
     // Session picker state
@@ -132,8 +164,103 @@ impl ChatMessage {
     }
 }
 
+impl WorkspaceSnapshot {
+    fn capture(root: &Path, max_entries: usize) -> Self {
+        let mut entries: Vec<WorkspaceEntry> = Vec::new();
+
+        if let Ok(read_dir) = std::fs::read_dir(root) {
+            for entry in read_dir.flatten() {
+                let file_name = entry.file_name().to_string_lossy().to_string();
+                if should_skip_workspace_entry(&file_name) {
+                    continue;
+                }
+
+                let kind = match entry.file_type() {
+                    Ok(ft) if ft.is_dir() => WorkspaceEntryKind::Directory,
+                    _ => WorkspaceEntryKind::File,
+                };
+
+                entries.push(WorkspaceEntry {
+                    name: file_name,
+                    kind,
+                });
+            }
+        }
+
+        entries.sort_by(|a, b| match (a.kind, b.kind) {
+            (WorkspaceEntryKind::Directory, WorkspaceEntryKind::File) => std::cmp::Ordering::Less,
+            (WorkspaceEntryKind::File, WorkspaceEntryKind::Directory) => {
+                std::cmp::Ordering::Greater
+            }
+            _ => a
+                .name
+                .to_ascii_lowercase()
+                .cmp(&b.name.to_ascii_lowercase()),
+        });
+        entries.truncate(max_entries);
+
+        Self {
+            root_display: root.to_string_lossy().to_string(),
+            git_branch: detect_git_branch(root),
+            git_dirty_files: detect_git_dirty_files(root),
+            entries,
+            captured_at: chrono::Local::now().format("%H:%M:%S").to_string(),
+        }
+    }
+}
+
+fn should_skip_workspace_entry(name: &str) -> bool {
+    matches!(
+        name,
+        ".git" | "node_modules" | "target" | ".next" | "__pycache__" | ".venv"
+    )
+}
+
+fn detect_git_branch(root: &Path) -> Option<String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if branch.is_empty() {
+        None
+    } else {
+        Some(branch)
+    }
+}
+
+fn detect_git_dirty_files(root: &Path) -> usize {
+    let output = match Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["status", "--porcelain"])
+        .output()
+    {
+        Ok(out) => out,
+        Err(_) => return 0,
+    };
+
+    if !output.status.success() {
+        return 0;
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .count()
+}
+
 impl App {
     fn new() -> Self {
+        let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
         Self {
             input: String::new(),
             cursor_position: 0,
@@ -152,10 +279,25 @@ impl App {
             current_tool: None,
             response_rx: None,
             view_mode: ViewMode::Chat,
+            chat_layout: ChatLayoutMode::Webview,
+            show_inspector: true,
+            workspace: WorkspaceSnapshot::capture(&workspace_root, 18),
             swarm_state: SwarmViewState::new(),
             swarm_rx: None,
             session_picker_list: Vec::new(),
             session_picker_selected: 0,
+        }
+    }
+
+    fn refresh_workspace(&mut self) {
+        let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        self.workspace = WorkspaceSnapshot::capture(&workspace_root, 18);
+    }
+
+    fn update_cached_sessions(&mut self, sessions: Vec<SessionSummary>) {
+        self.session_picker_list = sessions.into_iter().take(16).collect();
+        if self.session_picker_selected >= self.session_picker_list.len() {
+            self.session_picker_selected = self.session_picker_list.len().saturating_sub(1);
         }
     }
 
@@ -184,6 +326,50 @@ impl App {
             return;
         }
 
+        if message.trim() == "/webview" {
+            self.chat_layout = ChatLayoutMode::Webview;
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Switched to webview layout. Use /classic to return to single-pane chat.",
+            ));
+            return;
+        }
+
+        if message.trim() == "/classic" {
+            self.chat_layout = ChatLayoutMode::Classic;
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Switched to classic layout. Use /webview for dashboard-style panes.",
+            ));
+            return;
+        }
+
+        if message.trim() == "/inspector" {
+            self.show_inspector = !self.show_inspector;
+            let state = if self.show_inspector { "enabled" } else { "disabled" };
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!("Inspector pane {}. Press F3 to toggle quickly.", state),
+            ));
+            return;
+        }
+
+        if message.trim() == "/refresh" {
+            self.refresh_workspace();
+            match list_sessions().await {
+                Ok(sessions) => self.update_cached_sessions(sessions),
+                Err(err) => self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Workspace refreshed, but failed to refresh sessions: {}", err),
+                )),
+            }
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Workspace and session cache refreshed.",
+            ));
+            return;
+        }
+
         // Check for /view command to toggle views
         if message.trim() == "/view" || message.trim() == "/swarm" {
             self.view_mode = match self.view_mode {
@@ -200,7 +386,7 @@ impl App {
                     if sessions.is_empty() {
                         self.messages.push(ChatMessage::new("system", "No saved sessions found."));
                     } else {
-                        self.session_picker_list = sessions.into_iter().take(10).collect();
+                        self.update_cached_sessions(sessions);
                         self.session_picker_selected = 0;
                         self.view_mode = ViewMode::SessionPicker;
                     }
@@ -612,6 +798,9 @@ impl App {
 
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     let mut app = App::new();
+    if let Ok(sessions) = list_sessions().await {
+        app.update_cached_sessions(sessions);
+    }
 
     // Load configuration and theme
     let mut config = Config::load().await?;
@@ -626,11 +815,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let _global_config_path = directories::ProjectDirs::from("com", "codetether", "codetether")
         .map(|dirs| dirs.config_dir().join("config.toml"));
 
-    let mut last_check = std::time::Instant::now();
+    let mut last_check = Instant::now();
+    let mut last_session_refresh = Instant::now();
 
     loop {
         // Check for theme changes if hot-reload is enabled
-        if config.ui.hot_reload && last_check.elapsed() > std::time::Duration::from_secs(2) {
+        if config.ui.hot_reload && last_check.elapsed() > Duration::from_secs(2) {
             if let Ok(new_config) = Config::load().await {
                 if new_config.ui.theme != config.ui.theme
                     || new_config.ui.custom_theme != config.ui.custom_theme
@@ -639,7 +829,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     config = new_config;
                 }
             }
-            last_check = std::time::Instant::now();
+            last_check = Instant::now();
+        }
+
+        if last_session_refresh.elapsed() > Duration::from_secs(5) {
+            if let Ok(sessions) = list_sessions().await {
+                app.update_cached_sessions(sessions);
+            }
+            last_session_refresh = Instant::now();
         }
 
         terminal.draw(|f| ui(f, &app, &theme))?;
@@ -769,6 +966,19 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.view_mode = match app.view_mode {
                             ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
                             ViewMode::Swarm => ViewMode::Chat,
+                        };
+                    }
+
+                    // Toggle inspector pane in webview layout
+                    KeyCode::F(3) => {
+                        app.show_inspector = !app.show_inspector;
+                    }
+
+                    // Toggle chat layout (Ctrl+B)
+                    KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.chat_layout = match app.chat_layout {
+                            ChatLayoutMode::Classic => ChatLayoutMode::Webview,
+                            ChatLayoutMode::Webview => ChatLayoutMode::Classic,
                         };
                     }
 
@@ -1011,6 +1221,13 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
         return;
     }
 
+    if app.chat_layout == ChatLayoutMode::Webview {
+        if render_webview_chat(f, app, theme) {
+            render_help_overlay_if_needed(f, app, theme);
+            return;
+        }
+    }
+
     // Chat view (default)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -1028,120 +1245,8 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
         .title(format!(" CodeTether Agent [{}] ", app.current_agent))
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
-    // Create scrollable message content
-    let mut message_lines = Vec::new();
     let max_width = messages_area.width.saturating_sub(4) as usize;
-
-    for message in &app.messages {
-        // Message header with theme-based styling
-        let role_style = theme.get_role_style(&message.role);
-
-        let header_line = Line::from(vec![
-            Span::styled(
-                format!("[{}] ", message.timestamp),
-                Style::default()
-                    .fg(theme.timestamp_color.to_color())
-                    .add_modifier(Modifier::DIM),
-            ),
-            Span::styled(&message.role, role_style),
-        ]);
-        message_lines.push(header_line);
-
-        // Format message content based on message type
-        match &message.message_type {
-            MessageType::ToolCall { name, arguments } => {
-                // Tool call display with distinct styling
-                let tool_header = Line::from(vec![
-                    Span::styled("  🔧 ", Style::default().fg(Color::Yellow)),
-                    Span::styled(format!("Tool: {}", name), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                ]);
-                message_lines.push(tool_header);
-                
-                // Arguments (truncated if too long)
-                let args_str = if arguments.len() > 200 {
-                    format!("{}...", &arguments[..197])
-                } else {
-                    arguments.clone()
-                };
-                let args_line = Line::from(vec![
-                    Span::styled("     ", Style::default()),
-                    Span::styled(args_str, Style::default().fg(Color::DarkGray)),
-                ]);
-                message_lines.push(args_line);
-            }
-            MessageType::ToolResult { name, output } => {
-                // Tool result display
-                let result_header = Line::from(vec![
-                    Span::styled("  ✅ ", Style::default().fg(Color::Green)),
-                    Span::styled(format!("Result from {}", name), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                ]);
-                message_lines.push(result_header);
-                
-                // Output (truncated if too long)
-                let output_str = if output.len() > 300 {
-                    format!("{}... (truncated)", &output[..297])
-                } else {
-                    output.clone()
-                };
-                let output_lines: Vec<&str> = output_str.lines().collect();
-                for line in output_lines.iter().take(5) {
-                    let output_line = Line::from(vec![
-                        Span::styled("     ", Style::default()),
-                        Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
-                    ]);
-                    message_lines.push(output_line);
-                }
-                if output_lines.len() > 5 {
-                    message_lines.push(Line::from(vec![
-                        Span::styled("     ", Style::default()),
-                        Span::styled(format!("... and {} more lines", output_lines.len() - 5), Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
-                    ]));
-                }
-            }
-            MessageType::Text(text) => {
-                // Regular text message - use the stored text content
-                let formatter = MessageFormatter::new(max_width);
-                let formatted_content = formatter.format_content(text, &message.role);
-                message_lines.extend(formatted_content);
-            }
-        }
-
-        // Add spacing between messages
-        message_lines.push(Line::from(""));
-    }
-
-    // Show processing indicator if active
-    if app.is_processing {
-        let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        let spinner_idx = (std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() / 100) as usize % spinner.len();
-        
-        let processing_line = Line::from(vec![
-            Span::styled(
-                format!("[{}] ", chrono::Local::now().format("%H:%M")),
-                Style::default()
-                    .fg(theme.timestamp_color.to_color())
-                    .add_modifier(Modifier::DIM),
-            ),
-            Span::styled("assistant", theme.get_role_style("assistant")),
-        ]);
-        message_lines.push(processing_line);
-        
-        // Show different colors based on state
-        let (status_text, status_color) = if let Some(ref tool) = app.current_tool {
-            (format!("  {} Running: {}", spinner[spinner_idx], tool), Color::Cyan)
-        } else {
-            (format!("  {} {}", spinner[spinner_idx], app.processing_message.as_deref().unwrap_or("Thinking...")), Color::Yellow)
-        };
-        
-        let indicator_line = Line::from(vec![
-            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
-        ]);
-        message_lines.push(indicator_line);
-        message_lines.push(Line::from(""));
-    }
+    let message_lines = build_message_lines(app, theme, max_width);
 
     // Calculate scroll position
     let total_lines = message_lines.len();
@@ -1213,67 +1318,552 @@ fn ui(f: &mut Frame, app: &App, theme: &Theme) {
     let status = Paragraph::new(token_display.create_status_bar(theme));
     f.render_widget(status, chunks[2]);
 
-    // Help overlay
-    if app.show_help {
-        let area = centered_rect(60, 60, f.area());
-        f.render_widget(Clear, area);
+    render_help_overlay_if_needed(f, app, theme);
+}
 
-        // Enhanced token usage details
-        let token_display = TokenDisplay::new();
-        let token_info = token_display.create_detailed_display();
-
-        let help_text: Vec<String> = vec![
-            "".to_string(),
-            "  KEYBOARD SHORTCUTS".to_string(),
-            "  ==================".to_string(),
-            "".to_string(),
-            "  Enter        Send message".to_string(),
-            "  Tab          Switch between build/plan agents".to_string(),
-            "  Ctrl+S       Toggle swarm view".to_string(),
-            "  Ctrl+C       Quit".to_string(),
-            "  ?            Toggle this help".to_string(),
-            "".to_string(),
-            "  SLASH COMMANDS".to_string(),
-            "  /swarm <task>   Run task in parallel swarm mode".to_string(),
-            "  /sessions       Open session picker to resume".to_string(),
-            "  /resume         Resume most recent session".to_string(),
-            "  /resume <id>    Resume specific session by ID".to_string(),
-            "  /new            Start a fresh session".to_string(),
-            "  /view           Toggle swarm view".to_string(),
-            "".to_string(),
-            "  VIM-STYLE NAVIGATION".to_string(),
-            "  Alt+j        Scroll down".to_string(),
-            "  Alt+k        Scroll up".to_string(),
-            "  Ctrl+g       Go to top".to_string(),
-            "  Ctrl+G       Go to bottom".to_string(),
-            "".to_string(),
-            "  SCROLLING".to_string(),
-            "  Up/Down      Scroll messages".to_string(),
-            "  PageUp/Dn    Scroll one page".to_string(),
-            "  Alt+u/d      Scroll half page".to_string(),
-            "".to_string(),
-            "  COMMAND HISTORY".to_string(),
-            "  Ctrl+R       Search history".to_string(),
-            "  Ctrl+Up/Dn   Navigate history".to_string(),
-            "".to_string(),
-            "  Press ? or Esc to close".to_string(),
-            "".to_string(),
-        ];
-
-        let mut combined_text = token_info;
-        combined_text.extend(help_text);
-
-        let help = Paragraph::new(combined_text.join("\n"))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Help ")
-                    .border_style(Style::default().fg(theme.help_border_color.to_color())),
-            )
-            .wrap(Wrap { trim: false });
-
-        f.render_widget(help, area);
+fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
+    let area = f.area();
+    if area.width < 90 || area.height < 18 {
+        return false;
     }
+
+    let main_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header
+            Constraint::Min(1),    // Body
+            Constraint::Length(3), // Input
+            Constraint::Length(1), // Status
+        ])
+        .split(area);
+
+    render_webview_header(f, app, theme, main_chunks[0]);
+
+    let body_constraints = if app.show_inspector {
+        vec![
+            Constraint::Length(26),
+            Constraint::Min(40),
+            Constraint::Length(30),
+        ]
+    } else {
+        vec![Constraint::Length(26), Constraint::Min(40)]
+    };
+
+    let body_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(body_constraints)
+        .split(main_chunks[1]);
+
+    render_webview_sidebar(f, app, theme, body_chunks[0]);
+    render_webview_chat_center(f, app, theme, body_chunks[1]);
+    if app.show_inspector && body_chunks.len() > 2 {
+        render_webview_inspector(f, app, theme, body_chunks[2]);
+    }
+
+    render_webview_input(f, app, theme, main_chunks[2]);
+
+    let token_display = TokenDisplay::new();
+    let status = Paragraph::new(token_display.create_status_bar(theme));
+    f.render_widget(status, main_chunks[3]);
+
+    true
+}
+
+fn render_webview_header(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let session_title = app
+        .session
+        .as_ref()
+        .and_then(|s| s.title.clone())
+        .unwrap_or_else(|| "Workspace Chat".to_string());
+    let session_id = app
+        .session
+        .as_ref()
+        .map(|s| s.id.chars().take(8).collect::<String>())
+        .unwrap_or_else(|| "new".to_string());
+    let model_label = app
+        .session
+        .as_ref()
+        .and_then(|s| s.metadata.model.clone())
+        .unwrap_or_else(|| "auto".to_string());
+    let workspace_label = app.workspace.root_display.clone();
+    let branch_label = app
+        .workspace
+        .git_branch
+        .clone()
+        .unwrap_or_else(|| "no-git".to_string());
+    let dirty_label = if app.workspace.git_dirty_files > 0 {
+        format!("{} dirty", app.workspace.git_dirty_files)
+    } else {
+        "clean".to_string()
+    };
+
+    let header_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" CodeTether Webview ")
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let header_lines = vec![
+        Line::from(vec![
+            Span::styled(session_title, Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(" "),
+            Span::styled(
+                format!("#{}", session_id),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Workspace ", Style::default().fg(theme.timestamp_color.to_color())),
+            Span::styled(workspace_label, Style::default()),
+            Span::raw("  "),
+            Span::styled("Branch ", Style::default().fg(theme.timestamp_color.to_color())),
+            Span::styled(
+                branch_label,
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("  "),
+            Span::styled(
+                dirty_label,
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("  "),
+            Span::styled("Model ", Style::default().fg(theme.timestamp_color.to_color())),
+            Span::styled(model_label, Style::default().fg(Color::Green)),
+        ]),
+    ];
+
+    let header = Paragraph::new(header_lines)
+        .block(header_block)
+        .wrap(Wrap { trim: true });
+    f.render_widget(header, area);
+}
+
+fn render_webview_sidebar(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let sidebar_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(8), Constraint::Min(6)])
+        .split(area);
+
+    let workspace_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Workspace ")
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let mut workspace_lines = Vec::new();
+    workspace_lines.push(Line::from(vec![
+        Span::styled("Updated ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            app.workspace.captured_at.clone(),
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
+    ]));
+    workspace_lines.push(Line::from(""));
+
+    if app.workspace.entries.is_empty() {
+        workspace_lines.push(Line::styled(
+            "No entries found",
+            Style::default().fg(Color::DarkGray),
+        ));
+    } else {
+        for entry in app.workspace.entries.iter().take(12) {
+            let icon = match entry.kind {
+                WorkspaceEntryKind::Directory => "📁",
+                WorkspaceEntryKind::File => "📄",
+            };
+            workspace_lines.push(Line::from(vec![
+                Span::styled(icon, Style::default().fg(Color::Cyan)),
+                Span::raw(" "),
+                Span::styled(entry.name.clone(), Style::default()),
+            ]));
+        }
+    }
+
+    workspace_lines.push(Line::from(""));
+    workspace_lines.push(Line::styled(
+        "Use /refresh to rescan",
+        Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+    ));
+
+    let workspace_panel = Paragraph::new(workspace_lines)
+        .block(workspace_block)
+        .wrap(Wrap { trim: true });
+    f.render_widget(workspace_panel, sidebar_chunks[0]);
+
+    let sessions_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Recent Sessions ")
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let mut session_lines = Vec::new();
+    if app.session_picker_list.is_empty() {
+        session_lines.push(Line::styled(
+            "No sessions yet",
+            Style::default().fg(Color::DarkGray),
+        ));
+    } else {
+        for session in app.session_picker_list.iter().take(6) {
+            let is_active = app
+                .session
+                .as_ref()
+                .map(|s| s.id == session.id)
+                .unwrap_or(false);
+            let title = session.title.as_deref().unwrap_or("(untitled)");
+            let indicator = if is_active { "●" } else { "○" };
+            let line_style = if is_active {
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            session_lines.push(Line::from(vec![
+                Span::styled(indicator, line_style),
+                Span::raw(" "),
+                Span::styled(title, line_style),
+            ]));
+            session_lines.push(Line::styled(
+                format!(
+                    "  {} msgs • {}",
+                    session.message_count,
+                    session.updated_at.format("%m-%d %H:%M")
+                ),
+                Style::default().fg(Color::DarkGray),
+            ));
+        }
+    }
+
+    let sessions_panel = Paragraph::new(session_lines)
+        .block(sessions_block)
+        .wrap(Wrap { trim: true });
+    f.render_widget(sessions_panel, sidebar_chunks[1]);
+}
+
+fn render_webview_chat_center(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let messages_area = area;
+    let messages_block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" Chat [{}] ", app.current_agent))
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let max_width = messages_area.width.saturating_sub(4) as usize;
+    let message_lines = build_message_lines(app, theme, max_width);
+
+    let total_lines = message_lines.len();
+    let visible_lines = messages_area.height.saturating_sub(2) as usize;
+    let max_scroll = total_lines.saturating_sub(visible_lines);
+    let scroll = if app.scroll >= SCROLL_BOTTOM {
+        max_scroll
+    } else {
+        app.scroll.min(max_scroll)
+    };
+
+    let messages_paragraph = Paragraph::new(
+        message_lines[scroll..(scroll + visible_lines.min(total_lines)).min(total_lines)].to_vec(),
+    )
+    .block(messages_block.clone())
+    .wrap(Wrap { trim: false });
+
+    f.render_widget(messages_paragraph, messages_area);
+
+    if total_lines > visible_lines {
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .symbols(ratatui::symbols::scrollbar::VERTICAL)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"));
+
+        let mut scrollbar_state = ScrollbarState::new(total_lines).position(scroll);
+
+        let scrollbar_area = Rect::new(
+            messages_area.right() - 1,
+            messages_area.top() + 1,
+            1,
+            messages_area.height - 2,
+        );
+
+        f.render_stateful_widget(scrollbar, scrollbar_area, &mut scrollbar_state);
+    }
+}
+
+fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Inspector ")
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let status_label = if app.is_processing {
+        "Processing"
+    } else {
+        "Idle"
+    };
+    let status_style = if app.is_processing {
+        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::Green)
+    };
+    let tool_label = app
+        .current_tool
+        .clone()
+        .unwrap_or_else(|| "none".to_string());
+    let message_count = app.messages.len();
+    let session_id = app
+        .session
+        .as_ref()
+        .map(|s| s.id.chars().take(8).collect::<String>())
+        .unwrap_or_else(|| "new".to_string());
+
+    let mut lines = Vec::new();
+    lines.push(Line::from(vec![
+        Span::styled("Status: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(status_label, status_style),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Tool: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(tool_label, Style::default()),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Session: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(format!("#{}", session_id), Style::default().fg(Color::Cyan)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Messages: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(message_count.to_string(), Style::default()),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Agent: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(app.current_agent.clone(), Style::default()),
+    ]));
+    lines.push(Line::from(""));
+    lines.push(Line::styled(
+        "Shortcuts:",
+        Style::default().add_modifier(Modifier::BOLD),
+    ));
+    lines.push(Line::styled("F3  Toggle inspector", Style::default().fg(Color::DarkGray)));
+    lines.push(Line::styled("Ctrl+B Toggle layout", Style::default().fg(Color::DarkGray)));
+    lines.push(Line::styled("Ctrl+S Swarm view", Style::default().fg(Color::DarkGray)));
+
+    let panel = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: true });
+    f.render_widget(panel, area);
+}
+
+fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let input_block = Block::default()
+        .borders(Borders::ALL)
+        .title(if app.is_processing {
+            " Message (Processing...) "
+        } else {
+            " Message (Enter to send) "
+        })
+        .border_style(Style::default().fg(if app.is_processing {
+            Color::Yellow
+        } else {
+            theme.input_border_color.to_color()
+        }));
+
+    let input = Paragraph::new(app.input.as_str())
+        .block(input_block)
+        .wrap(Wrap { trim: false });
+    f.render_widget(input, area);
+
+    f.set_cursor_position((area.x + app.cursor_position as u16 + 1, area.y + 1));
+}
+
+fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'static>> {
+    let mut message_lines = Vec::new();
+
+    for message in &app.messages {
+        let role_style = theme.get_role_style(&message.role);
+
+        let header_line = Line::from(vec![
+            Span::styled(
+                format!("[{}] ", message.timestamp),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::styled(message.role.clone(), role_style),
+        ]);
+        message_lines.push(header_line);
+
+        match &message.message_type {
+            MessageType::ToolCall { name, arguments } => {
+                let tool_header = Line::from(vec![
+                    Span::styled("  🔧 ", Style::default().fg(Color::Yellow)),
+                    Span::styled(
+                        format!("Tool: {}", name),
+                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                    ),
+                ]);
+                message_lines.push(tool_header);
+
+                let args_str = if arguments.len() > 200 {
+                    format!("{}...", &arguments[..197])
+                } else {
+                    arguments.clone()
+                };
+                let args_line = Line::from(vec![
+                    Span::styled("     ", Style::default()),
+                    Span::styled(args_str, Style::default().fg(Color::DarkGray)),
+                ]);
+                message_lines.push(args_line);
+            }
+            MessageType::ToolResult { name, output } => {
+                let result_header = Line::from(vec![
+                    Span::styled("  ✅ ", Style::default().fg(Color::Green)),
+                    Span::styled(
+                        format!("Result from {}", name),
+                        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                    ),
+                ]);
+                message_lines.push(result_header);
+
+                let output_str = if output.len() > 300 {
+                    format!("{}... (truncated)", &output[..297])
+                } else {
+                    output.clone()
+                };
+                let output_lines: Vec<&str> = output_str.lines().collect();
+                for line in output_lines.iter().take(5) {
+                    let output_line = Line::from(vec![
+                        Span::styled("     ", Style::default()),
+                        Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
+                    ]);
+                    message_lines.push(output_line);
+                }
+                if output_lines.len() > 5 {
+                    message_lines.push(Line::from(vec![
+                        Span::styled("     ", Style::default()),
+                        Span::styled(
+                            format!("... and {} more lines", output_lines.len() - 5),
+                            Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+                        ),
+                    ]));
+                }
+            }
+            MessageType::Text(text) => {
+                let formatter = MessageFormatter::new(max_width);
+                let formatted_content = formatter.format_content(text, &message.role);
+                message_lines.extend(formatted_content);
+            }
+        }
+
+        message_lines.push(Line::from(""));
+    }
+
+    if app.is_processing {
+        let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let spinner_idx = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+            / 100) as usize
+            % spinner.len();
+
+        let processing_line = Line::from(vec![
+            Span::styled(
+                format!("[{}] ", chrono::Local::now().format("%H:%M")),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::styled("assistant", theme.get_role_style("assistant")),
+        ]);
+        message_lines.push(processing_line);
+
+        let (status_text, status_color) = if let Some(ref tool) = app.current_tool {
+            (format!("  {} Running: {}", spinner[spinner_idx], tool), Color::Cyan)
+        } else {
+            (
+                format!(
+                    "  {} {}",
+                    spinner[spinner_idx],
+                    app.processing_message
+                        .as_deref()
+                        .unwrap_or("Thinking...")
+                ),
+                Color::Yellow,
+            )
+        };
+
+        let indicator_line = Line::from(vec![
+            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
+        ]);
+        message_lines.push(indicator_line);
+        message_lines.push(Line::from(""));
+    }
+
+    message_lines
+}
+
+fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
+    if !app.show_help {
+        return;
+    }
+
+    let area = centered_rect(60, 60, f.area());
+    f.render_widget(Clear, area);
+
+    let token_display = TokenDisplay::new();
+    let token_info = token_display.create_detailed_display();
+
+    let help_text: Vec<String> = vec![
+        "".to_string(),
+        "  KEYBOARD SHORTCUTS".to_string(),
+        "  ==================".to_string(),
+        "".to_string(),
+        "  Enter        Send message".to_string(),
+        "  Tab          Switch between build/plan agents".to_string(),
+        "  Ctrl+S       Toggle swarm view".to_string(),
+        "  Ctrl+B       Toggle webview layout".to_string(),
+        "  F3           Toggle inspector pane".to_string(),
+        "  Ctrl+C       Quit".to_string(),
+        "  ?            Toggle this help".to_string(),
+        "".to_string(),
+        "  SLASH COMMANDS".to_string(),
+        "  /swarm <task>   Run task in parallel swarm mode".to_string(),
+        "  /sessions       Open session picker to resume".to_string(),
+        "  /resume         Resume most recent session".to_string(),
+        "  /resume <id>    Resume specific session by ID".to_string(),
+        "  /new            Start a fresh session".to_string(),
+        "  /view           Toggle swarm view".to_string(),
+        "  /webview        Web dashboard layout".to_string(),
+        "  /classic        Single-pane layout".to_string(),
+        "  /inspector      Toggle inspector pane".to_string(),
+        "  /refresh        Refresh workspace and sessions".to_string(),
+        "".to_string(),
+        "  VIM-STYLE NAVIGATION".to_string(),
+        "  Alt+j        Scroll down".to_string(),
+        "  Alt+k        Scroll up".to_string(),
+        "  Ctrl+g       Go to top".to_string(),
+        "  Ctrl+G       Go to bottom".to_string(),
+        "".to_string(),
+        "  SCROLLING".to_string(),
+        "  Up/Down      Scroll messages".to_string(),
+        "  PageUp/Dn    Scroll one page".to_string(),
+        "  Alt+u/d      Scroll half page".to_string(),
+        "".to_string(),
+        "  COMMAND HISTORY".to_string(),
+        "  Ctrl+R       Search history".to_string(),
+        "  Ctrl+Up/Dn   Navigate history".to_string(),
+        "".to_string(),
+        "  Press ? or Esc to close".to_string(),
+        "".to_string(),
+    ];
+
+    let mut combined_text = token_info;
+    combined_text.extend(help_text);
+
+    let help = Paragraph::new(combined_text.join("\n"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Help ")
+                .border_style(Style::default().fg(theme.help_border_color.to_color())),
+        )
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(help, area);
 }
 
 /// Helper to create a centered rect
