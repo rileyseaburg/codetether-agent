@@ -13,10 +13,10 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
-use crate::session::{list_sessions, Session, SessionEvent, SessionSummary};
+use crate::session::{Session, SessionEvent, SessionSummary, list_sessions};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::message_formatter::MessageFormatter;
-use crate::tui::swarm_view::{render_swarm_view, SwarmEvent, SwarmViewState};
+use crate::tui::swarm_view::{SwarmEvent, SwarmViewState, render_swarm_view};
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
@@ -82,6 +82,7 @@ enum ViewMode {
     Chat,
     Swarm,
     SessionPicker,
+    ModelPicker,
 }
 
 /// Application state
@@ -106,6 +107,11 @@ struct App {
     // Session picker state
     session_picker_list: Vec<SessionSummary>,
     session_picker_selected: usize,
+    // Model picker state
+    model_picker_list: Vec<(String, String)>, // (display label, provider/model value)
+    model_picker_selected: usize,
+    model_picker_filter: String,
+    active_model: Option<String>,
     // Cached max scroll for key handlers
     last_max_scroll: usize,
 }
@@ -142,7 +148,10 @@ impl App {
             cursor_position: 0,
             messages: vec![
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
-                ChatMessage::new("assistant", "Quick start:\n• Type a message to chat with the AI\n• /swarm <task> - parallel execution\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help"),
+                ChatMessage::new(
+                    "assistant",
+                    "Quick start:\n• Type a message to chat with the AI\n• /swarm <task> - parallel execution\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                ),
             ],
             current_agent: "build".to_string(),
             scroll: 0,
@@ -159,6 +168,10 @@ impl App {
             swarm_rx: None,
             session_picker_list: Vec::new(),
             session_picker_selected: 0,
+            model_picker_list: Vec::new(),
+            model_picker_selected: 0,
+            model_picker_filter: String::new(),
+            active_model: None,
             last_max_scroll: 0,
         }
     }
@@ -179,9 +192,16 @@ impl App {
 
         // Check for /swarm command
         if message.trim().starts_with("/swarm ") {
-            let task = message.trim().strip_prefix("/swarm ").unwrap_or("").to_string();
+            let task = message
+                .trim()
+                .strip_prefix("/swarm ")
+                .unwrap_or("")
+                .to_string();
             if task.is_empty() {
-                self.messages.push(ChatMessage::new("system", "Usage: /swarm <task description>"));
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "Usage: /swarm <task description>",
+                ));
                 return;
             }
             self.start_swarm_execution(task, config).await;
@@ -191,7 +211,7 @@ impl App {
         // Check for /view command to toggle views
         if message.trim() == "/view" || message.trim() == "/swarm" {
             self.view_mode = match self.view_mode {
-                ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
+                ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
                 ViewMode::Swarm => ViewMode::Chat,
             };
             return;
@@ -202,7 +222,8 @@ impl App {
             match list_sessions().await {
                 Ok(sessions) => {
                     if sessions.is_empty() {
-                        self.messages.push(ChatMessage::new("system", "No saved sessions found."));
+                        self.messages
+                            .push(ChatMessage::new("system", "No saved sessions found."));
                     } else {
                         self.session_picker_list = sessions.into_iter().take(10).collect();
                         self.session_picker_selected = 0;
@@ -210,7 +231,10 @@ impl App {
                     }
                 }
                 Err(e) => {
-                    self.messages.push(ChatMessage::new("system", format!("Failed to list sessions: {}", e)));
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed to list sessions: {}", e),
+                    ));
                 }
             }
             return;
@@ -218,7 +242,11 @@ impl App {
 
         // Check for /resume command to load a session
         if message.trim() == "/resume" || message.trim().starts_with("/resume ") {
-            let session_id = message.trim().strip_prefix("/resume").map(|s| s.trim()).filter(|s| !s.is_empty());
+            let session_id = message
+                .trim()
+                .strip_prefix("/resume")
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty());
             let loaded = if let Some(id) = session_id {
                 Session::load(id).await
             } else {
@@ -229,12 +257,15 @@ impl App {
                 Ok(session) => {
                     // Convert session messages to chat messages
                     self.messages.clear();
-                    self.messages.push(ChatMessage::new("system", format!(
-                        "Resumed session: {}\nCreated: {}\n{} messages loaded",
-                        session.title.as_deref().unwrap_or("(untitled)"),
-                        session.created_at.format("%Y-%m-%d %H:%M"),
-                        session.messages.len()
-                    )));
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!(
+                            "Resumed session: {}\nCreated: {}\n{} messages loaded",
+                            session.title.as_deref().unwrap_or("(untitled)"),
+                            session.created_at.format("%Y-%m-%d %H:%M"),
+                            session.messages.len()
+                        ),
+                    ));
 
                     for msg in &session.messages {
                         let role_str = match msg.role {
@@ -245,12 +276,14 @@ impl App {
                         };
 
                         // Extract text content
-                        let content: String = msg.content.iter()
+                        let content: String = msg
+                            .content
+                            .iter()
                             .filter_map(|part| match part {
                                 ContentPart::Text { text } => Some(text.clone()),
-                                ContentPart::ToolCall { name, arguments, .. } => {
-                                    Some(format!("[Tool: {}]\n{}", name, arguments))
-                                }
+                                ContentPart::ToolCall {
+                                    name, arguments, ..
+                                } => Some(format!("[Tool: {}]\n{}", name, arguments)),
                                 ContentPart::ToolResult { content, .. } => {
                                     let truncated = if content.len() > 500 {
                                         format!("{}...", &content[..497])
@@ -274,8 +307,36 @@ impl App {
                     self.scroll = SCROLL_BOTTOM;
                 }
                 Err(e) => {
-                    self.messages.push(ChatMessage::new("system", format!("Failed to load session: {}", e)));
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed to load session: {}", e),
+                    ));
                 }
+            }
+            return;
+        }
+
+        // Check for /model command - open model picker
+        if message.trim() == "/model" || message.trim().starts_with("/model ") {
+            let direct_model = message
+                .trim()
+                .strip_prefix("/model")
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty());
+
+            if let Some(model_str) = direct_model {
+                // Direct set: /model provider/model-name
+                self.active_model = Some(model_str.to_string());
+                if let Some(session) = self.session.as_mut() {
+                    session.metadata.model = Some(model_str.to_string());
+                }
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Model set to: {}", model_str),
+                ));
+            } else {
+                // Open model picker
+                self.open_model_picker(config).await;
             }
             return;
         }
@@ -284,24 +345,32 @@ impl App {
         if message.trim() == "/new" {
             self.session = None;
             self.messages.clear();
-            self.messages.push(ChatMessage::new("system", "Started a new session. Previous session was saved."));
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Started a new session. Previous session was saved.",
+            ));
             return;
         }
 
         // Add user message
-        self.messages.push(ChatMessage::new("user", message.clone()));
+        self.messages
+            .push(ChatMessage::new("user", message.clone()));
 
         // Auto-scroll to bottom when user sends a message
         self.scroll = SCROLL_BOTTOM;
 
         let current_agent = self.current_agent.clone();
-        let model = config
-            .agents
-            .get(&current_agent)
-            .and_then(|agent| agent.model.clone())
+        let model = self
+            .active_model
+            .clone()
+            .or_else(|| {
+                config
+                    .agents
+                    .get(&current_agent)
+                    .and_then(|agent| agent.model.clone())
+            })
             .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
-            .or_else(|| config.default_model.clone())
-            .or_else(|| Some("zhipuai/glm-4.7".to_string()));
+            .or_else(|| config.default_model.clone());
 
         // Initialize session if needed
         if self.session.is_none() {
@@ -311,7 +380,8 @@ impl App {
                 }
                 Err(err) => {
                     tracing::error!(error = %err, "Failed to create session");
-                    self.messages.push(ChatMessage::new("assistant", format!("Error: {err}")));
+                    self.messages
+                        .push(ChatMessage::new("assistant", format!("Error: {err}")));
                     return;
                 }
             }
@@ -320,7 +390,10 @@ impl App {
         let session = match self.session.as_mut() {
             Some(session) => session,
             None => {
-                self.messages.push(ChatMessage::new("assistant", "Error: session not initialized"));
+                self.messages.push(ChatMessage::new(
+                    "assistant",
+                    "Error: session not initialized",
+                ));
                 return;
             }
         };
@@ -372,7 +445,11 @@ impl App {
                         .with_message_type(MessageType::ToolCall { name, arguments }),
                 );
             }
-            SessionEvent::ToolCallComplete { name, output, success } => {
+            SessionEvent::ToolCallComplete {
+                name,
+                output,
+                success,
+            } => {
                 let icon = if success { "✓" } else { "✗" };
                 self.messages.push(
                     ChatMessage::new("tool", format!("{} {}", icon, name))
@@ -390,7 +467,8 @@ impl App {
                 }
             }
             SessionEvent::Error(err) => {
-                self.messages.push(ChatMessage::new("assistant", format!("Error: {}", err)));
+                self.messages
+                    .push(ChatMessage::new("assistant", format!("Error: {}", err)));
             }
             SessionEvent::Done => {
                 self.is_processing = false;
@@ -433,14 +511,16 @@ impl App {
         }
 
         if let SwarmEvent::Error(ref err) = event {
-            self.messages.push(ChatMessage::new("system", &format!("Swarm error: {}", err)));
+            self.messages
+                .push(ChatMessage::new("system", &format!("Swarm error: {}", err)));
         }
     }
 
     /// Start swarm execution for a task
     async fn start_swarm_execution(&mut self, task: String, config: &Config) {
         // Add user message
-        self.messages.push(ChatMessage::new("user", format!("/swarm {}", task)));
+        self.messages
+            .push(ChatMessage::new("user", format!("/swarm {}", task)));
 
         // Get model from config
         let model = config
@@ -455,9 +535,11 @@ impl App {
             max_steps_per_subagent: 50,
             worktree_enabled: true,
             worktree_auto_merge: true,
-            working_dir: Some(std::env::current_dir()
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| ".".to_string())),
+            working_dir: Some(
+                std::env::current_dir()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|_| ".".to_string()),
+            ),
             ..Default::default()
         };
 
@@ -470,30 +552,111 @@ impl App {
         self.swarm_state = SwarmViewState::new();
 
         // Send initial event
-        let _ = tx.send(SwarmEvent::Started {
-            task: task.clone(),
-            total_subtasks: 0,
-        }).await;
+        let _ = tx
+            .send(SwarmEvent::Started {
+                task: task.clone(),
+                total_subtasks: 0,
+            })
+            .await;
 
         // Spawn swarm execution — executor emits all events via event_tx
         let task_clone = task;
         tokio::spawn(async move {
             // Create executor with event channel — it handles decomposition + execution
             let executor = SwarmExecutor::new(swarm_config).with_event_tx(tx.clone());
-            let result = executor.execute(&task_clone, DecompositionStrategy::Automatic).await;
+            let result = executor
+                .execute(&task_clone, DecompositionStrategy::Automatic)
+                .await;
 
             match result {
                 Ok(swarm_result) => {
-                    let _ = tx.send(SwarmEvent::Complete {
-                        success: swarm_result.success,
-                        stats: swarm_result.stats,
-                    }).await;
+                    let _ = tx
+                        .send(SwarmEvent::Complete {
+                            success: swarm_result.success,
+                            stats: swarm_result.stats,
+                        })
+                        .await;
                 }
                 Err(e) => {
                     let _ = tx.send(SwarmEvent::Error(e.to_string())).await;
                 }
             }
         });
+    }
+
+    /// Populate and open the model picker overlay
+    async fn open_model_picker(&mut self, config: &Config) {
+        let mut models: Vec<(String, String)> = Vec::new();
+
+        // Try to build provider registry and list models
+        match crate::provider::ProviderRegistry::from_vault().await {
+            Ok(registry) => {
+                for provider_name in registry.list() {
+                    if let Some(provider) = registry.get(provider_name) {
+                        match provider.list_models().await {
+                            Ok(model_list) => {
+                                for m in model_list {
+                                    let label = format!("{}/{}", provider_name, m.id);
+                                    let value = format!("{}/{}", provider_name, m.id);
+                                    models.push((label, value));
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to list models for {}: {}", provider_name, e);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to load provider registry: {}", e);
+            }
+        }
+
+        // Fallback: also try from config
+        if models.is_empty() {
+            if let Ok(registry) = crate::provider::ProviderRegistry::from_config(config).await {
+                for provider_name in registry.list() {
+                    if let Some(provider) = registry.get(provider_name) {
+                        if let Ok(model_list) = provider.list_models().await {
+                            for m in model_list {
+                                let label = format!("{}/{}", provider_name, m.id);
+                                let value = format!("{}/{}", provider_name, m.id);
+                                models.push((label, value));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if models.is_empty() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "No models found. Check provider configuration (Vault or config).",
+            ));
+        } else {
+            // Sort models by provider then name
+            models.sort_by(|a, b| a.0.cmp(&b.0));
+            self.model_picker_list = models;
+            self.model_picker_selected = 0;
+            self.model_picker_filter.clear();
+            self.view_mode = ViewMode::ModelPicker;
+        }
+    }
+
+    /// Get filtered model list
+    fn filtered_models(&self) -> Vec<(usize, &(String, String))> {
+        if self.model_picker_filter.is_empty() {
+            self.model_picker_list.iter().enumerate().collect()
+        } else {
+            let filter = self.model_picker_filter.to_lowercase();
+            self.model_picker_list
+                .iter()
+                .enumerate()
+                .filter(|(_, (label, _))| label.to_lowercase().contains(&filter))
+                .collect()
+        }
     }
 
     fn navigate_history(&mut self, direction: isize) {
@@ -638,6 +801,58 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     continue;
                 }
 
+                // Model picker overlay
+                if app.view_mode == ViewMode::ModelPicker {
+                    match key.code {
+                        KeyCode::Esc => {
+                            app.view_mode = ViewMode::Chat;
+                        }
+                        KeyCode::Up | KeyCode::Char('k') if !key.modifiers.contains(KeyModifiers::ALT) => {
+                            if app.model_picker_selected > 0 {
+                                app.model_picker_selected -= 1;
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') if !key.modifiers.contains(KeyModifiers::ALT) => {
+                            let filtered = app.filtered_models();
+                            if app.model_picker_selected < filtered.len().saturating_sub(1) {
+                                app.model_picker_selected += 1;
+                            }
+                        }
+                        KeyCode::Enter => {
+                            let filtered = app.filtered_models();
+                            if let Some((_, (label, value))) = filtered.get(app.model_picker_selected) {
+                                let label = label.clone();
+                                let value = value.clone();
+                                app.active_model = Some(value.clone());
+                                if let Some(session) = app.session.as_mut() {
+                                    session.metadata.model = Some(value.clone());
+                                }
+                                app.messages.push(ChatMessage::new(
+                                    "system",
+                                    format!("Model set to: {}", label),
+                                ));
+                                app.view_mode = ViewMode::Chat;
+                            }
+                        }
+                        KeyCode::Backspace => {
+                            app.model_picker_filter.pop();
+                            app.model_picker_selected = 0;
+                        }
+                        KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) && !key.modifiers.contains(KeyModifiers::ALT) => {
+                            app.model_picker_filter.push(c);
+                            app.model_picker_selected = 0;
+                        }
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
                 // Session picker overlay - handle specially
                 if app.view_mode == ViewMode::SessionPicker {
                     match key.code {
@@ -650,12 +865,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             }
                         }
                         KeyCode::Down | KeyCode::Char('j') => {
-                            if app.session_picker_selected < app.session_picker_list.len().saturating_sub(1) {
+                            if app.session_picker_selected
+                                < app.session_picker_list.len().saturating_sub(1)
+                            {
                                 app.session_picker_selected += 1;
                             }
                         }
                         KeyCode::Enter => {
-                            if let Some(session_summary) = app.session_picker_list.get(app.session_picker_selected) {
+                            if let Some(session_summary) =
+                                app.session_picker_list.get(app.session_picker_selected)
+                            {
                                 let session_id = session_summary.id.clone();
                                 match Session::load(&session_id).await {
                                     Ok(session) => {
@@ -675,7 +894,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                                 Role::Tool => "tool",
                                             };
 
-                                            let text = msg.content.iter()
+                                            let text = msg
+                                                .content
+                                                .iter()
                                                 .filter_map(|part| {
                                                     if let ContentPart::Text { text } = part {
                                                         Some(text.as_str())
@@ -697,7 +918,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         app.view_mode = ViewMode::Chat;
                                     }
                                     Err(e) => {
-                                        app.messages.push(ChatMessage::new("system", format!("Failed to load session: {}", e)));
+                                        app.messages.push(ChatMessage::new(
+                                            "system",
+                                            format!("Failed to load session: {}", e),
+                                        ));
                                         app.view_mode = ViewMode::Chat;
                                     }
                                 }
@@ -791,22 +1015,30 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Toggle view mode (F2 or Ctrl+S)
                     KeyCode::F(2) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
+                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
                             ViewMode::Swarm => ViewMode::Chat,
                         };
                     }
                     KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker => ViewMode::Swarm,
+                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
                             ViewMode::Swarm => ViewMode::Chat,
                         };
                     }
 
                     // Escape - return to chat from swarm/picker view
                     KeyCode::Esc => {
-                        if app.view_mode == ViewMode::Swarm || app.view_mode == ViewMode::SessionPicker {
+                        if app.view_mode == ViewMode::Swarm
+                            || app.view_mode == ViewMode::SessionPicker
+                            || app.view_mode == ViewMode::ModelPicker
+                        {
                             app.view_mode = ViewMode::Chat;
                         }
+                    }
+
+                    // Model picker (Ctrl+M)
+                    KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.open_model_picker(&config).await;
                     }
 
                     // Switch agent
@@ -963,7 +1195,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         // Status bar
         let status_line = if app.swarm_state.detail_mode {
             Line::from(vec![
-                Span::styled(" AGENT DETAIL ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+                Span::styled(
+                    " AGENT DETAIL ",
+                    Style::default().fg(Color::Black).bg(Color::Cyan),
+                ),
                 Span::raw(" | "),
                 Span::styled("Esc", Style::default().fg(Color::Yellow)),
                 Span::raw(": Back to list | "),
@@ -974,7 +1209,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             ])
         } else {
             Line::from(vec![
-                Span::styled(" SWARM MODE ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+                Span::styled(
+                    " SWARM MODE ",
+                    Style::default().fg(Color::Black).bg(Color::Cyan),
+                ),
                 Span::raw(" | "),
                 Span::styled("↑↓", Style::default().fg(Color::Yellow)),
                 Span::raw(": Select | "),
@@ -988,6 +1226,82 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         };
         let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
+        return;
+    }
+
+    // Model picker view
+    if app.view_mode == ViewMode::ModelPicker {
+        let area = centered_rect(70, 70, f.area());
+        f.render_widget(Clear, area);
+
+        let filter_display = if app.model_picker_filter.is_empty() {
+            "type to filter".to_string()
+        } else {
+            format!("filter: {}", app.model_picker_filter)
+        };
+
+        let picker_block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(" Select Model (↑↓ navigate, Enter select, Esc cancel) [{}] ", filter_display))
+            .border_style(Style::default().fg(Color::Magenta));
+
+        let filtered = app.filtered_models();
+        let mut list_lines: Vec<Line> = Vec::new();
+        list_lines.push(Line::from(""));
+
+        if let Some(ref active) = app.active_model {
+            list_lines.push(Line::styled(
+                format!("  Current: {}", active),
+                Style::default().fg(Color::Green).add_modifier(Modifier::DIM),
+            ));
+            list_lines.push(Line::from(""));
+        }
+
+        if filtered.is_empty() {
+            list_lines.push(Line::styled(
+                "  No models match filter",
+                Style::default().fg(Color::DarkGray),
+            ));
+        } else {
+            let mut current_provider = String::new();
+            for (display_idx, (_, (label, _))) in filtered.iter().enumerate() {
+                let provider = label.split('/').next().unwrap_or("");
+                if provider != current_provider {
+                    if !current_provider.is_empty() {
+                        list_lines.push(Line::from(""));
+                    }
+                    list_lines.push(Line::styled(
+                        format!("  ─── {} ───", provider),
+                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                    ));
+                    current_provider = provider.to_string();
+                }
+
+                let is_selected = display_idx == app.model_picker_selected;
+                let is_active = app.active_model.as_deref() == Some(label.as_str());
+                let marker = if is_selected { "▶" } else { " " };
+                let active_marker = if is_active { " ✓" } else { "" };
+                let model_name = label.split('/').skip(1).collect::<Vec<_>>().join("/");
+
+                let style = if is_selected {
+                    Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)
+                } else if is_active {
+                    Style::default().fg(Color::Green)
+                } else {
+                    Style::default()
+                };
+
+                list_lines.push(Line::styled(
+                    format!("  {} {}{}", marker, model_name, active_marker),
+                    style,
+                ));
+            }
+        }
+
+        let list = Paragraph::new(list_lines)
+            .block(picker_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(list, area);
         return;
     }
 
@@ -1023,7 +1337,9 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             );
 
             let style = if is_selected {
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -1046,7 +1362,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
 
         // Status bar
         let status = Paragraph::new(Line::from(vec![
-            Span::styled(" SESSION PICKER ", Style::default().fg(Color::Black).bg(Color::Cyan)),
+            Span::styled(
+                " SESSION PICKER ",
+                Style::default().fg(Color::Black).bg(Color::Cyan),
+            ),
             Span::raw(" | "),
             Span::styled("↑↓/jk", Style::default().fg(Color::Yellow)),
             Span::raw(": Navigate | "),
@@ -1071,9 +1390,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
 
     // Messages area with theme-based styling
     let messages_area = chunks[0];
+    let model_label = app.active_model.as_deref().unwrap_or("auto");
     let messages_block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" CodeTether Agent [{}] ", app.current_agent))
+        .title(format!(" CodeTether Agent [{}] model:{} ", app.current_agent, model_label))
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
     // Create scrollable message content
@@ -1101,10 +1421,15 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 // Tool call display with distinct styling
                 let tool_header = Line::from(vec![
                     Span::styled("  🔧 ", Style::default().fg(Color::Yellow)),
-                    Span::styled(format!("Tool: {}", name), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        format!("Tool: {}", name),
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                 ]);
                 message_lines.push(tool_header);
-                
+
                 // Arguments (truncated if too long)
                 let args_str = if arguments.len() > 200 {
                     format!("{}...", &arguments[..197])
@@ -1121,10 +1446,15 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 // Tool result display
                 let result_header = Line::from(vec![
                     Span::styled("  ✅ ", Style::default().fg(Color::Green)),
-                    Span::styled(format!("Result from {}", name), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        format!("Result from {}", name),
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ),
                 ]);
                 message_lines.push(result_header);
-                
+
                 // Output (truncated if too long)
                 let output_str = if output.len() > 300 {
                     format!("{}... (truncated)", &output[..297])
@@ -1142,7 +1472,12 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 if output_lines.len() > 5 {
                     message_lines.push(Line::from(vec![
                         Span::styled("     ", Style::default()),
-                        Span::styled(format!("... and {} more lines", output_lines.len() - 5), Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
+                        Span::styled(
+                            format!("... and {} more lines", output_lines.len() - 5),
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
+                        ),
                     ]));
                 }
             }
@@ -1164,8 +1499,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         let spinner_idx = (std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
-            .as_millis() / 100) as usize % spinner.len();
-        
+            .as_millis()
+            / 100) as usize
+            % spinner.len();
+
         let processing_line = Line::from(vec![
             Span::styled(
                 format!("[{}] ", chrono::Local::now().format("%H:%M")),
@@ -1176,17 +1513,30 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             Span::styled("assistant", theme.get_role_style("assistant")),
         ]);
         message_lines.push(processing_line);
-        
+
         // Show different colors based on state
         let (status_text, status_color) = if let Some(ref tool) = app.current_tool {
-            (format!("  {} Running: {}", spinner[spinner_idx], tool), Color::Cyan)
+            (
+                format!("  {} Running: {}", spinner[spinner_idx], tool),
+                Color::Cyan,
+            )
         } else {
-            (format!("  {} {}", spinner[spinner_idx], app.processing_message.as_deref().unwrap_or("Thinking...")), Color::Yellow)
+            (
+                format!(
+                    "  {} {}",
+                    spinner[spinner_idx],
+                    app.processing_message.as_deref().unwrap_or("Thinking...")
+                ),
+                Color::Yellow,
+            )
         };
-        
-        let indicator_line = Line::from(vec![
-            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
-        ]);
+
+        let indicator_line = Line::from(vec![Span::styled(
+            status_text,
+            Style::default()
+                .fg(status_color)
+                .add_modifier(Modifier::BOLD),
+        )]);
         message_lines.push(indicator_line);
         message_lines.push(Line::from(""));
     }
@@ -1278,6 +1628,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             "  Enter        Send message".to_string(),
             "  Tab          Switch between build/plan agents".to_string(),
             "  Ctrl+S       Toggle swarm view".to_string(),
+            "  Ctrl+M       Open model picker".to_string(),
             "  Ctrl+C       Quit".to_string(),
             "  ?            Toggle this help".to_string(),
             "".to_string(),
@@ -1287,6 +1638,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             "  /resume         Resume most recent session".to_string(),
             "  /resume <id>    Resume specific session by ID".to_string(),
             "  /new            Start a fresh session".to_string(),
+            "  /model          Open model picker (or /model <name>)".to_string(),
             "  /view           Toggle swarm view".to_string(),
             "".to_string(),
             "  VIM-STYLE NAVIGATION".to_string(),
