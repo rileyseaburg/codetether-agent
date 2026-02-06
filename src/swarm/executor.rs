@@ -6,7 +6,7 @@
 use super::{
     DecompositionStrategy, StageStats, SwarmConfig, SwarmResult,
     orchestrator::Orchestrator,
-    subtask::{SubTask, SubTaskResult},
+    subtask::{SubTask, SubTaskResult, SubTaskStatus},
 };
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
@@ -255,6 +255,13 @@ const RLM_THRESHOLD_CHARS: usize = 50_000;
 /// Max chars for simple truncation (below RLM threshold)
 const SIMPLE_TRUNCATE_CHARS: usize = 6000;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentLoopExit {
+    Completed,
+    MaxStepsReached,
+    TimedOut,
+}
+
 /// Process a large tool result using RLM to intelligently summarize it
 async fn process_large_result_with_rlm(
     content: &str,
@@ -378,6 +385,7 @@ impl SwarmExecutor {
         let subtasks = orchestrator.decompose(task, strategy).await?;
 
         if subtasks.is_empty() {
+            self.try_send_event(SwarmEvent::Error("No subtasks generated".to_string()));
             return Ok(SwarmResult {
                 success: false,
                 result: String::new(),
@@ -390,6 +398,11 @@ impl SwarmExecutor {
 
         tracing::info!(provider_name = %orchestrator.provider(), "Task decomposed into {} subtasks", subtasks.len());
 
+        self.try_send_event(SwarmEvent::Started {
+            task: task.to_string(),
+            total_subtasks: subtasks.len(),
+        });
+
         // Emit decomposition event for TUI
         self.try_send_event(SwarmEvent::Decomposed {
             subtasks: subtasks
@@ -397,7 +410,7 @@ impl SwarmExecutor {
                 .map(|s| SubTaskInfo {
                     id: s.id.clone(),
                     name: s.name.clone(),
-                    status: crate::swarm::SubTaskStatus::Pending,
+                    status: SubTaskStatus::Pending,
                     stage: s.stage,
                     dependencies: s.dependencies.clone(),
                     agent_name: s.specialty.clone(),
@@ -512,11 +525,17 @@ impl SwarmExecutor {
             stats.speedup_factor
         );
 
+        let final_stats = orchestrator.stats().clone();
+        self.try_send_event(SwarmEvent::Complete {
+            success,
+            stats: final_stats.clone(),
+        });
+
         Ok(SwarmResult {
             success,
             result,
             subtask_results: all_results,
-            stats: orchestrator.stats().clone(),
+            stats: final_stats,
             artifacts,
             error: None,
         })
@@ -529,9 +548,10 @@ impl SwarmExecutor {
         subtasks: Vec<SubTask>,
         completed_results: Arc<RwLock<HashMap<String, String>>>,
     ) -> Result<Vec<SubTaskResult>> {
-        let mut handles: Vec<
+        let mut handles: Vec<(
+            String,
             tokio::task::JoinHandle<Result<(SubTaskResult, Option<WorktreeInfo>), anyhow::Error>>,
-        > = Vec::new();
+        )> = Vec::new();
 
         // Rate limiting: semaphore for max concurrent requests
         let semaphore = Arc::new(tokio::sync::Semaphore::new(
@@ -607,8 +627,10 @@ impl SwarmExecutor {
             };
 
             let instruction = subtask.instruction.clone();
+            let subtask_name = subtask.name.clone();
             let specialty = subtask.specialty.clone().unwrap_or_default();
             let subtask_id = subtask.id.clone();
+            let subtask_id_for_handle = subtask_id.clone();
             let max_steps = self.config.max_steps_per_subagent;
             let timeout_secs = self.config.subagent_timeout_secs;
 
@@ -725,6 +747,12 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
 
                 // Emit AgentStarted event
                 if let Some(ref tx) = event_tx {
+                    let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
+                        id: subtask_id.clone(),
+                        name: subtask_name.clone(),
+                        status: SubTaskStatus::Running,
+                        agent_name: Some(format!("agent-{}", subtask_id)),
+                    });
                     let _ = tx.try_send(SwarmEvent::AgentStarted {
                         subtask_id: subtask_id.clone(),
                         agent_name: format!("agent-{}", subtask_id),
@@ -748,16 +776,42 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 .await;
 
                 match result {
-                    Ok((output, steps, tool_calls)) => {
+                    Ok((output, steps, tool_calls, exit_reason)) => {
+                        let (success, status, error) = match exit_reason {
+                            AgentLoopExit::Completed => (true, SubTaskStatus::Completed, None),
+                            AgentLoopExit::MaxStepsReached => (
+                                false,
+                                SubTaskStatus::Failed,
+                                Some(format!("Sub-agent hit max steps ({max_steps})")),
+                            ),
+                            AgentLoopExit::TimedOut => (
+                                false,
+                                SubTaskStatus::TimedOut,
+                                Some(format!("Sub-agent timed out after {timeout_secs}s")),
+                            ),
+                        };
+
                         // Emit completion events
                         if let Some(ref tx) = event_tx {
+                            let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
+                                id: subtask_id.clone(),
+                                name: subtask_name.clone(),
+                                status,
+                                agent_name: Some(format!("agent-{}", subtask_id)),
+                            });
+                            if let Some(ref message) = error {
+                                let _ = tx.try_send(SwarmEvent::AgentError {
+                                    subtask_id: subtask_id.clone(),
+                                    error: message.clone(),
+                                });
+                            }
                             let _ = tx.try_send(SwarmEvent::AgentOutput {
                                 subtask_id: subtask_id.clone(),
                                 output: output.clone(),
                             });
                             let _ = tx.try_send(SwarmEvent::AgentComplete {
                                 subtask_id: subtask_id.clone(),
-                                success: true,
+                                success,
                                 steps,
                             });
                         }
@@ -765,12 +819,12 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             SubTaskResult {
                                 subtask_id: subtask_id.clone(),
                                 subagent_id: format!("agent-{}", subtask_id),
-                                success: true,
+                                success,
                                 result: output,
                                 steps,
                                 tool_calls,
                                 execution_time_ms: start.elapsed().as_millis() as u64,
-                                error: None,
+                                error,
                                 artifacts: Vec::new(),
                             },
                             worktree_info,
@@ -779,6 +833,12 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     Err(e) => {
                         // Emit error events
                         if let Some(ref tx) = event_tx {
+                            let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
+                                id: subtask_id.clone(),
+                                name: subtask_name.clone(),
+                                status: SubTaskStatus::Failed,
+                                agent_name: Some(format!("agent-{}", subtask_id)),
+                            });
                             let _ = tx.try_send(SwarmEvent::AgentError {
                                 subtask_id: subtask_id.clone(),
                                 error: e.to_string(),
@@ -807,14 +867,14 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 }
             });
 
-            handles.push(handle);
+            handles.push((subtask_id_for_handle, handle));
         }
 
         // Wait for all handles and handle worktree merging
         let mut results = Vec::new();
         let auto_merge = self.config.worktree_auto_merge;
 
-        for handle in handles {
+        for (subtask_id, handle) in handles {
             match handle.await {
                 Ok(Ok((mut result, worktree_info))) => {
                     // Handle worktree merge if applicable
@@ -887,9 +947,65 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 }
                 Ok(Err(e)) => {
                     tracing::error!(provider_name = %provider_name, "Subtask error: {}", e);
+                    if let Some(ref tx) = self.event_tx {
+                        let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
+                            id: subtask_id.clone(),
+                            name: subtask_id.clone(),
+                            status: SubTaskStatus::Failed,
+                            agent_name: Some(format!("agent-{}", subtask_id)),
+                        });
+                        let _ = tx.try_send(SwarmEvent::AgentError {
+                            subtask_id: subtask_id.clone(),
+                            error: e.to_string(),
+                        });
+                        let _ = tx.try_send(SwarmEvent::AgentComplete {
+                            subtask_id: subtask_id.clone(),
+                            success: false,
+                            steps: 0,
+                        });
+                    }
+                    results.push(SubTaskResult {
+                        subtask_id: subtask_id.clone(),
+                        subagent_id: format!("agent-{}", subtask_id),
+                        success: false,
+                        result: String::new(),
+                        steps: 0,
+                        tool_calls: 0,
+                        execution_time_ms: 0,
+                        error: Some(e.to_string()),
+                        artifacts: Vec::new(),
+                    });
                 }
                 Err(e) => {
                     tracing::error!(provider_name = %provider_name, "Task join error: {}", e);
+                    if let Some(ref tx) = self.event_tx {
+                        let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
+                            id: subtask_id.clone(),
+                            name: subtask_id.clone(),
+                            status: SubTaskStatus::Failed,
+                            agent_name: Some(format!("agent-{}", subtask_id)),
+                        });
+                        let _ = tx.try_send(SwarmEvent::AgentError {
+                            subtask_id: subtask_id.clone(),
+                            error: format!("Task join error: {}", e),
+                        });
+                        let _ = tx.try_send(SwarmEvent::AgentComplete {
+                            subtask_id: subtask_id.clone(),
+                            success: false,
+                            steps: 0,
+                        });
+                    }
+                    results.push(SubTaskResult {
+                        subtask_id: subtask_id.clone(),
+                        subagent_id: format!("agent-{}", subtask_id),
+                        success: false,
+                        result: String::new(),
+                        steps: 0,
+                        tool_calls: 0,
+                        execution_time_ms: 0,
+                        error: Some(format!("Task join error: {}", e)),
+                        artifacts: Vec::new(),
+                    });
                 }
             }
         }
@@ -984,7 +1100,7 @@ pub async fn run_agent_loop(
     timeout_secs: u64,
     event_tx: Option<mpsc::Sender<SwarmEvent>>,
     subtask_id: String,
-) -> Result<(String, usize, usize)> {
+) -> Result<(String, usize, usize, AgentLoopExit)> {
     // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
     let temperature = 0.7;
 
@@ -1019,15 +1135,15 @@ pub async fn run_agent_loop(
 
     let mut deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
-    loop {
+    let exit_reason = loop {
         if steps >= max_steps {
             tracing::warn!(max_steps = max_steps, "Sub-agent reached max steps limit");
-            break;
+            break AgentLoopExit::MaxStepsReached;
         }
 
         if Instant::now() > deadline {
             tracing::warn!(timeout_secs = timeout_secs, "Sub-agent timed out");
-            break;
+            break AgentLoopExit::TimedOut;
         }
 
         steps += 1;
@@ -1131,7 +1247,7 @@ pub async fn run_agent_loop(
                 total_tool_calls = total_tool_calls,
                 "Sub-agent finished"
             );
-            break;
+            break AgentLoopExit::Completed;
         }
 
         // Execute tool calls
@@ -1269,7 +1385,7 @@ pub async fn run_agent_loop(
 
         // Reset deadline after each successful step — agent is making progress
         deadline = Instant::now() + Duration::from_secs(timeout_secs);
-    }
+    };
 
-    Ok((final_output, steps, total_tool_calls))
+    Ok((final_output, steps, total_tool_calls, exit_reason))
 }

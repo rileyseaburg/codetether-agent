@@ -838,7 +838,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         );
 
         // Run the agentic loop with tools
-        let (output, steps, tool_calls) = run_agent_loop(
+        let (output, steps, tool_calls, _exit_reason) = run_agent_loop(
             Arc::clone(provider),
             model,
             &system_prompt,
@@ -951,7 +951,7 @@ Working directory: {}
         );
 
         // Run the resolver with smaller limits (conflicts should be quick to resolve)
-        let (output, steps, tool_calls) = run_agent_loop(
+        let (output, steps, tool_calls, _exit_reason) = run_agent_loop(
             Arc::clone(provider),
             model,
             &system_prompt,
@@ -1158,7 +1158,7 @@ Respond with the implementation and any shell commands needed.
         };
 
         // Run the agentic loop with tools
-        let (output, steps, tool_calls) = run_agent_loop(
+        let (output, steps, tool_calls, _exit_reason) = run_agent_loop(
             Arc::clone(&self.provider),
             &self.model,
             &system_prompt,

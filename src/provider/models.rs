@@ -241,6 +241,11 @@ impl ModelCatalog {
         self.providers.keys().map(|s| s.as_str()).collect()
     }
 
+    /// Get iterator over all providers and their info (unfiltered, no API key check)
+    pub fn all_providers(&self) -> &HashMap<String, ProviderInfo> {
+        &self.providers
+    }
+
     /// List models for a provider (only if API key available)
     pub fn models_for_provider(&self, provider_id: &str) -> Vec<&ApiModelInfo> {
         if !self.provider_has_api_key(provider_id) {

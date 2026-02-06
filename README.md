@@ -92,10 +92,13 @@ vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https:/
 
 ```bash
 # Connect as a worker to the CodeTether A2A server
-codetether --server https://api.codetether.run
+codetether worker --server https://api.codetether.run --codebases /path/to/project
 
 # Or with authentication
-codetether --server https://api.codetether.run --token your-worker-token
+codetether worker --server https://api.codetether.run --codebases /path/to/project --token your-worker-token
+
+# Or use the one-command deploy script (from repo root)
+./deploy-worker.sh --codebases /path/to/project
 ```
 
 ### 3. Or Use Interactive Mode
@@ -566,7 +569,7 @@ Using `ralph` and `swarm`, the agent autonomously implemented:
 | **opencode + subagents** | 100 min | ~$11.25 | Bun runtime, Kimi K2.5 (same model) |
 | **codetether swarm** | 29.5 min | $3.75 | Native Rust, Kimi K2.5 |
 
-**vs Manual**: 163x faster, 2133x cheaper  
+**vs Manual**: 163x faster, 2133x cheaper
 **vs opencode**: 3.4x faster, ~3x cheaper (same Kimi K2.5 model)
 
 Key advantages over opencode subagents (model parity):

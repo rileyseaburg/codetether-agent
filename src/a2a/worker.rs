@@ -3,13 +3,15 @@
 use crate::cli::A2aArgs;
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
+use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
+use crate::tui::swarm_view::SwarmEvent;
 use anyhow::Result;
 use futures::StreamExt;
 use reqwest::Client;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 
 /// Worker status for heartbeat
@@ -263,6 +265,202 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
     }
 }
 
+fn is_swarm_agent(agent_type: &str) -> bool {
+    matches!(
+        agent_type.trim().to_ascii_lowercase().as_str(),
+        "swarm" | "parallel" | "multi-agent"
+    )
+}
+
+fn metadata_lookup<'a>(
+    metadata: &'a serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Option<&'a serde_json::Value> {
+    metadata.get(key).or_else(|| {
+        metadata
+            .get("routing")
+            .and_then(|v| v.as_object())
+            .and_then(|obj| obj.get(key))
+    }).or_else(|| {
+        metadata
+            .get("swarm")
+            .and_then(|v| v.as_object())
+            .and_then(|obj| obj.get(key))
+    })
+}
+
+fn metadata_str(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<String> {
+    for key in keys {
+        if let Some(value) = metadata_lookup(metadata, key).and_then(|v| v.as_str()) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn metadata_usize(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<usize> {
+    for key in keys {
+        if let Some(value) = metadata_lookup(metadata, key) {
+            if let Some(v) = value.as_u64() {
+                return usize::try_from(v).ok();
+            }
+            if let Some(v) = value.as_i64() {
+                if v >= 0 {
+                    return usize::try_from(v as u64).ok();
+                }
+            }
+            if let Some(v) = value.as_str() {
+                if let Ok(parsed) = v.trim().parse::<usize>() {
+                    return Some(parsed);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn metadata_u64(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<u64> {
+    for key in keys {
+        if let Some(value) = metadata_lookup(metadata, key) {
+            if let Some(v) = value.as_u64() {
+                return Some(v);
+            }
+            if let Some(v) = value.as_i64() {
+                if v >= 0 {
+                    return Some(v as u64);
+                }
+            }
+            if let Some(v) = value.as_str() {
+                if let Ok(parsed) = v.trim().parse::<u64>() {
+                    return Some(parsed);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn metadata_bool(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<bool> {
+    for key in keys {
+        if let Some(value) = metadata_lookup(metadata, key) {
+            if let Some(v) = value.as_bool() {
+                return Some(v);
+            }
+            if let Some(v) = value.as_str() {
+                match v.trim().to_ascii_lowercase().as_str() {
+                    "1" | "true" | "yes" | "on" => return Some(true),
+                    "0" | "false" | "no" | "off" => return Some(false),
+                    _ => {}
+                }
+            }
+        }
+    }
+    None
+}
+
+fn parse_swarm_strategy(metadata: &serde_json::Map<String, serde_json::Value>) -> DecompositionStrategy {
+    match metadata_str(
+        metadata,
+        &[
+            "decomposition_strategy",
+            "swarm_strategy",
+            "strategy",
+            "swarm_decomposition",
+        ],
+    )
+    .as_deref()
+    .map(|s| s.to_ascii_lowercase())
+    .as_deref()
+    {
+        Some("none") | Some("single") => DecompositionStrategy::None,
+        Some("domain") | Some("by_domain") => DecompositionStrategy::ByDomain,
+        Some("data") | Some("by_data") => DecompositionStrategy::ByData,
+        Some("stage") | Some("by_stage") => DecompositionStrategy::ByStage,
+        _ => DecompositionStrategy::Automatic,
+    }
+}
+
+async fn resolve_swarm_model(
+    explicit_model: Option<String>,
+    model_tier: Option<&str>,
+) -> Option<String> {
+    if let Some(model) = explicit_model {
+        if !model.trim().is_empty() {
+            return Some(model);
+        }
+    }
+
+    let registry = ProviderRegistry::from_vault().await.ok()?;
+    let providers = registry.list();
+    if providers.is_empty() {
+        return None;
+    }
+    let provider = choose_provider_for_tier(providers.as_slice(), model_tier);
+    let model = default_model_for_provider(provider, model_tier);
+    Some(format!("{}/{}", provider, model))
+}
+
+fn format_swarm_event_for_output(event: &SwarmEvent) -> Option<String> {
+    match event {
+        SwarmEvent::Started {
+            task,
+            total_subtasks,
+        } => Some(format!(
+            "[swarm] started task={} planned_subtasks={}",
+            task, total_subtasks
+        )),
+        SwarmEvent::StageComplete {
+            stage,
+            completed,
+            failed,
+        } => Some(format!(
+            "[swarm] stage={} completed={} failed={}",
+            stage, completed, failed
+        )),
+        SwarmEvent::SubTaskUpdate { id, status, .. } => Some(format!(
+            "[swarm] subtask id={} status={}",
+            &id.chars().take(8).collect::<String>(),
+            format!("{status:?}").to_ascii_lowercase()
+        )),
+        SwarmEvent::AgentToolCall {
+            subtask_id,
+            tool_name,
+        } => Some(format!(
+            "[swarm] subtask id={} tool={}",
+            &subtask_id.chars().take(8).collect::<String>(),
+            tool_name
+        )),
+        SwarmEvent::AgentError { subtask_id, error } => Some(format!(
+            "[swarm] subtask id={} error={}",
+            &subtask_id.chars().take(8).collect::<String>(),
+            error
+        )),
+        SwarmEvent::Complete { success, stats } => Some(format!(
+            "[swarm] complete success={} subtasks={} speedup={:.2}",
+            success,
+            stats.subagents_completed + stats.subagents_failed,
+            stats.speedup_factor
+        )),
+        SwarmEvent::Error(err) => Some(format!("[swarm] error message={}", err)),
+        _ => None,
+    }
+}
+
 async fn register_worker(
     client: &Client,
     server: &str,
@@ -280,19 +478,43 @@ async fn register_worker(
         }
     };
 
-    let mut req = client.put(format!("{}/v1/worker/codebases", server));
+    // Register via the workers/register endpoint
+    let mut req = client.post(format!("{}/v1/agent/workers/register", server));
 
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
 
+    // Flatten models HashMap into array of {id, name, provider, provider_id} objects
+    // matching the format expected by the A2A server's /models and /workers endpoints
+    let models_array: Vec<serde_json::Value> = models.iter()
+        .flat_map(|(provider, model_ids)| {
+            model_ids.iter().map(move |model_id| {
+                serde_json::json!({
+                    "id": format!("{}/{}", provider, model_id),
+                    "name": model_id,
+                    "provider": provider,
+                    "provider_id": provider,
+                })
+            })
+        })
+        .collect();
+
+    tracing::info!("Registering worker with {} models from {} providers",
+        models_array.len(), models.len());
+
+    let hostname = std::env::var("HOSTNAME")
+        .or_else(|_| std::env::var("COMPUTERNAME"))
+        .unwrap_or_else(|_| "unknown".to_string());
+
     let res = req
         .json(&serde_json::json!({
-            "codebases": codebases,
             "worker_id": worker_id,
-            "agent_name": name,
-            "models": models,
+            "name": name,
             "capabilities": WORKER_CAPABILITIES,
+            "hostname": hostname,
+            "models": models_array,
+            "codebases": codebases,
         }))
         .send()
         .await?;
@@ -306,9 +528,25 @@ async fn register_worker(
     Ok(())
 }
 
-/// Load ProviderRegistry and collect all available models grouped by provider
+/// Load ProviderRegistry and collect all available models grouped by provider.
+/// Tries Vault first, then falls back to config/env vars if Vault is unreachable.
 async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
-    let registry = ProviderRegistry::from_vault().await?;
+    // Try Vault first
+    let registry = match ProviderRegistry::from_vault().await {
+        Ok(r) if !r.list().is_empty() => {
+            tracing::info!("Loaded {} providers from Vault", r.list().len());
+            r
+        }
+        Ok(_) => {
+            tracing::warn!("Vault returned 0 providers, falling back to config/env vars");
+            fallback_registry().await?
+        }
+        Err(e) => {
+            tracing::warn!("Vault unreachable ({}), falling back to config/env vars", e);
+            fallback_registry().await?
+        }
+    };
+
     let mut models_by_provider: HashMap<String, Vec<String>> = HashMap::new();
 
     for provider_name in registry.list() {
@@ -317,6 +555,7 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
                 Ok(models) => {
                     let model_ids: Vec<String> = models.into_iter().map(|m| m.id).collect();
                     if !model_ids.is_empty() {
+                        tracing::debug!("Provider {}: {} models", provider_name, model_ids.len());
                         models_by_provider.insert(provider_name.to_string(), model_ids);
                     }
                 }
@@ -327,7 +566,38 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
         }
     }
 
+    // If we still have 0, try the models.dev catalog as last resort
+    // NOTE: We list ALL models from the catalog (not just ones with verified API keys)
+    // because the worker should advertise what it can handle. The server handles routing.
+    if models_by_provider.is_empty() {
+        tracing::info!("No authenticated providers found, fetching models.dev catalog (all providers)");
+        if let Ok(catalog) = crate::provider::models::ModelCatalog::fetch().await {
+            // Use all_providers_with_models() to get every provider+model from catalog
+            // regardless of API key availability (Vault may be down)
+            for (provider_id, provider_info) in catalog.all_providers() {
+                let model_ids: Vec<String> = provider_info
+                    .models
+                    .values()
+                    .map(|m| m.id.clone())
+                    .collect();
+                if !model_ids.is_empty() {
+                    tracing::debug!("Catalog provider {}: {} models", provider_id, model_ids.len());
+                    models_by_provider.insert(provider_id.clone(), model_ids);
+                }
+            }
+            tracing::info!("Loaded {} providers with {} total models from catalog",
+                models_by_provider.len(),
+                models_by_provider.values().map(|v| v.len()).sum::<usize>());
+        }
+    }
+
     Ok(models_by_provider)
+}
+
+/// Fallback: build a ProviderRegistry from config file + environment variables
+async fn fallback_registry() -> Result<ProviderRegistry> {
+    let config = crate::config::Config::load().await.unwrap_or_default();
+    ProviderRegistry::from_config(&config).await
 }
 
 async fn fetch_pending_tasks(
@@ -523,20 +793,27 @@ async fn handle_task(
         .and_then(|v| v.as_str())
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
-    let model_tier = metadata
-        .get("model_tier")
-        .and_then(|v| v.as_str())
+    let complexity_hint = metadata_str(&metadata, &["complexity"]);
+    let model_tier = metadata_str(&metadata, &["model_tier", "tier"])
+        .map(|s| s.to_ascii_lowercase())
         .or_else(|| {
-            metadata
-                .get("routing")
-                .and_then(|r| r.get("model_tier"))
-                .and_then(|v| v.as_str())
-        })
-        .map(|s| s.trim().to_ascii_lowercase());
+            complexity_hint.as_ref().map(|complexity| {
+                match complexity.to_ascii_lowercase().as_str() {
+                    "quick" => "fast".to_string(),
+                    "deep" => "heavy".to_string(),
+                    _ => "balanced".to_string(),
+                }
+            })
+        });
+    let worker_personality = metadata_str(
+        &metadata,
+        &["worker_personality", "personality", "agent_personality"],
+    );
+    let target_agent_name = metadata_str(&metadata, &["target_agent_name", "agent_name"]);
     let raw_model = task_str(task, "model_ref")
-        .or_else(|| metadata.get("model_ref").and_then(|v| v.as_str()))
+        .or_else(|| metadata_lookup(&metadata, "model_ref").and_then(|v| v.as_str()))
         .or_else(|| task_str(task, "model"))
-        .or_else(|| metadata.get("model").and_then(|v| v.as_str()));
+        .or_else(|| metadata_lookup(&metadata, "model").and_then(|v| v.as_str()));
     let selected_model = raw_model.map(model_ref_to_provider_model);
 
     // Resume existing session when requested; fall back to a fresh session if missing.
@@ -560,10 +837,12 @@ async fn handle_task(
         Session::new().await?
     };
 
-    if let Some(agent) = task_str(task, "agent_type") {
-        session.agent = agent.to_string();
-    }
-    if let Some(model) = selected_model {
+    let agent_type = task_str(task, "agent_type")
+        .or_else(|| task_str(task, "agent"))
+        .unwrap_or("build");
+    session.agent = agent_type.to_string();
+
+    if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
     }
 
@@ -603,23 +882,70 @@ async fn handle_task(
         });
     };
 
-    // Execute the session with the appropriate auto-approve policy and stream output
-    let (status, result, error, session_id) = match execute_session_with_policy(
-        &mut session,
-        prompt,
-        auto_approve,
-        model_tier.as_deref(),
-        Some(&output_callback),
-    )
-    .await
-    {
-        Ok(session_result) => {
-            tracing::info!("Task completed successfully: {}", task_id);
-            ("completed", Some(session_result.text), None, Some(session_result.session_id))
+    // Execute swarm tasks via SwarmExecutor; all other agents use the standard session loop.
+    let (status, result, error, session_id) = if is_swarm_agent(agent_type) {
+        match execute_swarm_with_policy(
+            &mut session,
+            prompt,
+            model_tier.as_deref(),
+            selected_model,
+            &metadata,
+            complexity_hint.as_deref(),
+            worker_personality.as_deref(),
+            target_agent_name.as_deref(),
+            Some(&output_callback),
+        )
+        .await
+        {
+            Ok((session_result, true)) => {
+                tracing::info!("Swarm task completed successfully: {}", task_id);
+                (
+                    "completed",
+                    Some(session_result.text),
+                    None,
+                    Some(session_result.session_id),
+                )
+            }
+            Ok((session_result, false)) => {
+                tracing::warn!(
+                    "Swarm task completed with failures: {}",
+                    task_id
+                );
+                (
+                    "failed",
+                    Some(session_result.text),
+                    Some("Swarm execution completed with failures".to_string()),
+                    Some(session_result.session_id),
+                )
+            }
+            Err(e) => {
+                tracing::error!("Swarm task failed: {} - {}", task_id, e);
+                ("failed", None, Some(format!("Error: {}", e)), None)
+            }
         }
-        Err(e) => {
-            tracing::error!("Task failed: {} - {}", task_id, e);
-            ("failed", None, Some(format!("Error: {}", e)), None)
+    } else {
+        match execute_session_with_policy(
+            &mut session,
+            prompt,
+            auto_approve,
+            model_tier.as_deref(),
+            Some(&output_callback),
+        )
+        .await
+        {
+            Ok(session_result) => {
+                tracing::info!("Task completed successfully: {}", task_id);
+                (
+                    "completed",
+                    Some(session_result.text),
+                    None,
+                    Some(session_result.session_id),
+                )
+            }
+            Err(e) => {
+                tracing::error!("Task failed: {} - {}", task_id, e);
+                ("failed", None, Some(format!("Error: {}", e)), None)
+            }
         }
     };
 
@@ -645,6 +971,168 @@ async fn handle_task(
     Ok(())
 }
 
+async fn execute_swarm_with_policy<F>(
+    session: &mut Session,
+    prompt: &str,
+    model_tier: Option<&str>,
+    explicit_model: Option<String>,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    complexity_hint: Option<&str>,
+    worker_personality: Option<&str>,
+    target_agent_name: Option<&str>,
+    output_callback: Option<&F>,
+) -> Result<(crate::session::SessionResult, bool)>
+where
+    F: Fn(String),
+{
+    use crate::provider::{ContentPart, Message, Role};
+
+    session.add_message(Message {
+        role: Role::User,
+        content: vec![ContentPart::Text {
+            text: prompt.to_string(),
+        }],
+    });
+
+    if session.title.is_none() {
+        session.generate_title().await?;
+    }
+
+    let strategy = parse_swarm_strategy(metadata);
+    let max_subagents = metadata_usize(
+        metadata,
+        &["swarm_max_subagents", "max_subagents", "subagents"],
+    )
+    .unwrap_or(10)
+    .clamp(1, 100);
+    let max_steps_per_subagent = metadata_usize(
+        metadata,
+        &[
+            "swarm_max_steps_per_subagent",
+            "max_steps_per_subagent",
+            "max_steps",
+        ],
+    )
+    .unwrap_or(50)
+    .clamp(1, 200);
+    let timeout_secs = metadata_u64(
+        metadata,
+        &["swarm_timeout_secs", "timeout_secs", "timeout"],
+    )
+    .unwrap_or(600)
+    .clamp(30, 3600);
+    let parallel_enabled = metadata_bool(
+        metadata,
+        &["swarm_parallel_enabled", "parallel_enabled"],
+    )
+    .unwrap_or(true);
+
+    let model = resolve_swarm_model(explicit_model, model_tier).await;
+    if let Some(ref selected_model) = model {
+        session.metadata.model = Some(selected_model.clone());
+    }
+
+    if let Some(cb) = output_callback {
+        cb(format!(
+            "[swarm] routing complexity={} tier={} personality={} target_agent={}",
+            complexity_hint.unwrap_or("standard"),
+            model_tier.unwrap_or("balanced"),
+            worker_personality.unwrap_or("auto"),
+            target_agent_name.unwrap_or("auto")
+        ));
+        cb(format!(
+            "[swarm] config strategy={:?} max_subagents={} max_steps={} timeout={}s tier={}",
+            strategy,
+            max_subagents,
+            max_steps_per_subagent,
+            timeout_secs,
+            model_tier.unwrap_or("balanced")
+        ));
+    }
+
+    let swarm_config = SwarmConfig {
+        max_subagents,
+        max_steps_per_subagent,
+        subagent_timeout_secs: timeout_secs,
+        parallel_enabled,
+        model,
+        working_dir: session
+            .metadata
+            .directory
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string()),
+        ..Default::default()
+    };
+
+    let swarm_result = if output_callback.is_some() {
+        let (event_tx, mut event_rx) = mpsc::channel(256);
+        let executor = SwarmExecutor::new(swarm_config).with_event_tx(event_tx);
+        let prompt_owned = prompt.to_string();
+        let mut exec_handle =
+            tokio::spawn(async move { executor.execute(&prompt_owned, strategy).await });
+
+        let mut final_result: Option<crate::swarm::SwarmResult> = None;
+
+        while final_result.is_none() {
+            tokio::select! {
+                maybe_event = event_rx.recv() => {
+                    if let Some(event) = maybe_event {
+                        if let Some(cb) = output_callback {
+                            if let Some(line) = format_swarm_event_for_output(&event) {
+                                cb(line);
+                            }
+                        }
+                    }
+                }
+                join_result = &mut exec_handle => {
+                    let joined = join_result.map_err(|e| anyhow::anyhow!("Swarm join failure: {}", e))?;
+                    final_result = Some(joined?);
+                }
+            }
+        }
+
+        while let Ok(event) = event_rx.try_recv() {
+            if let Some(cb) = output_callback {
+                if let Some(line) = format_swarm_event_for_output(&event) {
+                    cb(line);
+                }
+            }
+        }
+
+        final_result.ok_or_else(|| anyhow::anyhow!("Swarm execution returned no result"))?
+    } else {
+        SwarmExecutor::new(swarm_config)
+            .execute(prompt, strategy)
+            .await?
+    };
+
+    let final_text = if swarm_result.result.trim().is_empty() {
+        if swarm_result.success {
+            "Swarm completed without textual output.".to_string()
+        } else {
+            "Swarm finished with failures and no textual output.".to_string()
+        }
+    } else {
+        swarm_result.result.clone()
+    };
+
+    session.add_message(Message {
+        role: Role::Assistant,
+        content: vec![ContentPart::Text {
+            text: final_text.clone(),
+        }],
+    });
+    session.save().await?;
+
+    Ok((
+        crate::session::SessionResult {
+            text: final_text,
+            session_id: session.id.clone(),
+        },
+        swarm_result.success,
+    ))
+}
+
 /// Execute a session with the given auto-approve policy
 /// Optionally streams output chunks via the callback
 async fn execute_session_with_policy<F>(
@@ -660,7 +1148,6 @@ where
     use crate::provider::{
         CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
     };
-    use crate::tool::ToolRegistry;
     use std::sync::Arc;
 
     // Load provider registry from Vault

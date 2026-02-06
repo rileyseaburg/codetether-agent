@@ -176,13 +176,14 @@ impl Session {
         let selected_provider = provider_name
             .as_deref()
             .filter(|p| providers.contains(p))
-            .unwrap_or_else(|| {
+            .or_else(|| {
                 if providers.contains(&"zhipuai") {
-                    "zhipuai"
+                    Some("zhipuai")
                 } else {
-                    providers[0]
+                    providers.first().copied()
                 }
-            });
+            })
+            .ok_or_else(|| anyhow::anyhow!("No providers available"))?;
 
         let provider = registry
             .get(selected_provider)
@@ -371,6 +372,11 @@ impl Session {
         // Load provider registry from Vault
         let registry = ProviderRegistry::from_vault().await?;
         let providers = registry.list();
+        if providers.is_empty() {
+            anyhow::bail!(
+                "No providers available. Configure API keys in HashiCorp Vault (for Copilot use `codetether auth copilot`)."
+            );
+        }
         tracing::info!("Available providers: {:?}", providers);
 
         // Parse model string (format: "provider/model", "provider", or just "model")
@@ -391,13 +397,14 @@ impl Session {
         let selected_provider = provider_name
             .as_deref()
             .filter(|p| providers.contains(p))
-            .unwrap_or_else(|| {
+            .or_else(|| {
                 if providers.contains(&"zhipuai") {
-                    "zhipuai"
+                    Some("zhipuai")
                 } else {
-                    providers[0]
+                    providers.first().copied()
                 }
-            });
+            })
+            .ok_or_else(|| anyhow::anyhow!("No providers available"))?;
 
         let provider = registry
             .get(selected_provider)
