@@ -107,9 +107,11 @@ jobs:
           fi
 
       - name: Install cargo-edit
+        if: ${{ steps.version.outputs.current != steps.version.outputs.next }}
         run: cargo install cargo-edit --locked
 
       - name: Bump Cargo package version
+        if: ${{ steps.version.outputs.current != steps.version.outputs.next }}
         run: |
           set -euo pipefail
           cargo set-version "${{ steps.version.outputs.next }}"
@@ -127,10 +129,10 @@ jobs:
             git add Cargo.lock
           fi
           if git diff --cached --quiet; then
-            echo "No version changes staged for commit." >&2
-            exit 1
+            echo "No Cargo version changes staged; continuing with tag from current HEAD."
+          else
+            git commit -m "chore(release): v${{ steps.version.outputs.next }}"
           fi
-          git commit -m "chore(release): v${{ steps.version.outputs.next }}"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
 
       - name: Push commit and tag
