@@ -39,7 +39,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let config = Config::load().await?;
     let cognition = Arc::new(CognitionRuntime::new_from_env());
 
-    if cognition.is_enabled() && env_bool("CODETETHER_COGNITION_AUTO_START", false) {
+    if cognition.is_enabled() && env_bool("CODETETHER_COGNITION_AUTO_START", true) {
         if let Err(error) = cognition.start(None).await {
             tracing::warn!(%error, "Failed to auto-start cognition loop");
         } else {
