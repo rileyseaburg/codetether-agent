@@ -12,6 +12,7 @@
 mod a2a;
 mod agent;
 mod cli;
+mod cognition;
 mod config;
 pub mod mcp;
 mod provider;
