@@ -6,7 +6,6 @@
 pub mod a2a;
 pub mod agent;
 pub mod cli;
-pub mod cognition;
 pub mod config;
 pub mod mcp;
 pub mod provider;

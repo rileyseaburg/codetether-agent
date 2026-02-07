@@ -4,25 +4,16 @@
 
 use crate::a2a;
 use crate::cli::ServeArgs;
-use crate::cognition::{
-    CognitionRuntime, CognitionStatus, CreatePersonaRequest, LineageGraph, MemorySnapshot,
-    ReapPersonaRequest, ReapPersonaResponse, SpawnPersonaRequest, StartCognitionRequest,
-    StopCognitionRequest,
-};
 use crate::config::Config;
 use anyhow::Result;
 use axum::{
     Router,
-    extract::Path,
     extract::{Query, State},
     http::StatusCode,
     response::Json,
-    response::sse::{Event, KeepAlive, Sse},
     routing::{get, post},
 };
-use futures::stream;
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -31,25 +22,13 @@ use tower_http::trace::TraceLayer;
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub cognition: Arc<CognitionRuntime>,
 }
 
 /// Start the HTTP server
 pub async fn serve(args: ServeArgs) -> Result<()> {
     let config = Config::load().await?;
-    let cognition = Arc::new(CognitionRuntime::new_from_env());
-
-    if cognition.is_enabled() && env_bool("CODETETHER_COGNITION_AUTO_START", false) {
-        if let Err(error) = cognition.start(None).await {
-            tracing::warn!(%error, "Failed to auto-start cognition loop");
-        } else {
-            tracing::info!("Perpetual cognition auto-started");
-        }
-    }
-
     let state = AppState {
         config: Arc::new(config),
-        cognition,
     };
 
     let addr = format!("{}:{}", args.hostname, args.port);
@@ -67,22 +46,11 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // API routes
         .route("/api/version", get(get_version))
         .route("/api/session", get(list_sessions).post(create_session))
-        .route("/api/session/{id}", get(get_session))
-        .route("/api/session/{id}/prompt", post(prompt_session))
+        .route("/api/session/:id", get(get_session))
+        .route("/api/session/:id/prompt", post(prompt_session))
         .route("/api/config", get(get_config))
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
-        // Perpetual cognition APIs
-        .route("/v1/cognition/start", post(start_cognition))
-        .route("/v1/cognition/stop", post(stop_cognition))
-        .route("/v1/cognition/status", get(get_cognition_status))
-        .route("/v1/cognition/stream", get(stream_cognition))
-        .route("/v1/cognition/snapshots/latest", get(get_latest_snapshot))
-        // Swarm persona lifecycle APIs
-        .route("/v1/swarm/personas", post(create_persona))
-        .route("/v1/swarm/personas/{id}/spawn", post(spawn_persona))
-        .route("/v1/swarm/personas/{id}/reap", post(reap_persona))
-        .route("/v1/swarm/lineage", get(get_swarm_lineage))
         .with_state(state)
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
@@ -227,142 +195,4 @@ async fn list_providers() -> Json<Vec<String>> {
 async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
     let registry = crate::agent::AgentRegistry::with_builtins();
     Json(registry.list().into_iter().cloned().collect())
-}
-
-async fn start_cognition(
-    State(state): State<AppState>,
-    payload: Option<Json<StartCognitionRequest>>,
-) -> Result<Json<CognitionStatus>, (StatusCode, String)> {
-    state
-        .cognition
-        .start(payload.map(|Json(body)| body))
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn stop_cognition(
-    State(state): State<AppState>,
-    payload: Option<Json<StopCognitionRequest>>,
-) -> Result<Json<CognitionStatus>, (StatusCode, String)> {
-    let reason = payload.and_then(|Json(body)| body.reason);
-    state
-        .cognition
-        .stop(reason)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn get_cognition_status(
-    State(state): State<AppState>,
-) -> Result<Json<CognitionStatus>, (StatusCode, String)> {
-    Ok(Json(state.cognition.status().await))
-}
-
-async fn stream_cognition(
-    State(state): State<AppState>,
-) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
-    let rx = state.cognition.subscribe_events();
-
-    let event_stream = stream::unfold(rx, |mut rx| async move {
-        match rx.recv().await {
-            Ok(event) => {
-                let payload = serde_json::to_string(&event).unwrap_or_else(|_| "{}".to_string());
-                let sse_event = Event::default().event("cognition").data(payload);
-                Some((Ok(sse_event), rx))
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                let lag_event = Event::default()
-                    .event("lag")
-                    .data(format!("skipped {}", skipped));
-                Some((Ok(lag_event), rx))
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => None,
-        }
-    });
-
-    Sse::new(event_stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
-}
-
-async fn get_latest_snapshot(
-    State(state): State<AppState>,
-) -> Result<Json<MemorySnapshot>, (StatusCode, String)> {
-    match state.cognition.latest_snapshot().await {
-        Some(snapshot) => Ok(Json(snapshot)),
-        None => Err((StatusCode::NOT_FOUND, "No snapshots available".to_string())),
-    }
-}
-
-async fn create_persona(
-    State(state): State<AppState>,
-    Json(req): Json<CreatePersonaRequest>,
-) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    state
-        .cognition
-        .create_persona(req)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn spawn_persona(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    Json(req): Json<SpawnPersonaRequest>,
-) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    state
-        .cognition
-        .spawn_child(&id, req)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn reap_persona(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    payload: Option<Json<ReapPersonaRequest>>,
-) -> Result<Json<ReapPersonaResponse>, (StatusCode, String)> {
-    let req = payload
-        .map(|Json(body)| body)
-        .unwrap_or(ReapPersonaRequest {
-            cascade: Some(false),
-            reason: None,
-        });
-
-    state
-        .cognition
-        .reap_persona(&id, req)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn get_swarm_lineage(
-    State(state): State<AppState>,
-) -> Result<Json<LineageGraph>, (StatusCode, String)> {
-    Ok(Json(state.cognition.lineage_graph().await))
-}
-
-fn internal_error(error: anyhow::Error) -> (StatusCode, String) {
-    let message = error.to_string();
-    if message.contains("not found") {
-        return (StatusCode::NOT_FOUND, message);
-    }
-    if message.contains("disabled") || message.contains("exceeds") || message.contains("limit") {
-        return (StatusCode::BAD_REQUEST, message);
-    }
-    (StatusCode::INTERNAL_SERVER_ERROR, message)
-}
-
-fn env_bool(name: &str, default: bool) -> bool {
-    std::env::var(name)
-        .ok()
-        .and_then(|v| match v.to_ascii_lowercase().as_str() {
-            "1" | "true" | "yes" | "on" => Some(true),
-            "0" | "false" | "no" | "off" => Some(false),
-            _ => None,
-        })
-        .unwrap_or(default)
 }
