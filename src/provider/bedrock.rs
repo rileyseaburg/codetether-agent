@@ -2,6 +2,8 @@
 //!
 //! Supports all Bedrock foundation models via API Key bearer token auth.
 //! Uses the native Bedrock Converse API format.
+//! Dynamically discovers available models via the Bedrock ListFoundationModels
+//! and ListInferenceProfiles APIs.
 //! Reference: https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html
 
 use super::{
@@ -13,6 +15,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 
 const DEFAULT_REGION: &str = "us-east-1";
 
@@ -61,33 +64,408 @@ impl BedrockProvider {
         format!("https://bedrock-runtime.{}.amazonaws.com", self.region)
     }
 
+    /// Management API URL (for listing models, not inference)
+    fn management_url(&self) -> String {
+        format!("https://bedrock.{}.amazonaws.com", self.region)
+    }
+
     /// Resolve a short model alias to the full Bedrock model ID.
     /// Allows users to specify e.g. "claude-sonnet-4" instead of
-    /// "anthropic.claude-sonnet-4-20250514-v1:0".
+    /// "us.anthropic.claude-sonnet-4-20250514-v1:0".
     fn resolve_model_id(model: &str) -> &str {
         match model {
-            // Anthropic Claude models (cross-region inference profiles)
+            // --- Anthropic Claude ---
             "claude-sonnet-4" | "claude-4-sonnet" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
+            "claude-3.7-sonnet" | "claude-sonnet-3.7" => {
+                "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+            }
             "claude-3.5-haiku" | "claude-haiku-3.5" => {
                 "us.anthropic.claude-3-5-haiku-20241022-v1:0"
             }
             "claude-3.5-sonnet" | "claude-sonnet-3.5" => {
-                "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+                "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
             }
-            // Amazon Nova models (on-demand)
+            "claude-3-opus" | "claude-opus-3" => "us.anthropic.claude-3-opus-20240229-v1:0",
+            "claude-3-haiku" | "claude-haiku-3" => "us.anthropic.claude-3-haiku-20240307-v1:0",
+            "claude-3-sonnet" | "claude-sonnet-3" => "us.anthropic.claude-3-sonnet-20240229-v1:0",
+
+            // --- Amazon Nova ---
             "nova-pro" => "amazon.nova-pro-v1:0",
             "nova-lite" => "amazon.nova-lite-v1:0",
             "nova-micro" => "amazon.nova-micro-v1:0",
-            "nova-premier" => "amazon.nova-premier-v1:0",
-            // Meta Llama models (cross-region inference profiles)
-            "llama-3.1-8b" => "us.meta.llama3-1-8b-instruct-v1:0",
-            "llama-3.1-70b" => "us.meta.llama3-1-70b-instruct-v1:0",
-            "llama-3.1-405b" => "us.meta.llama3-1-405b-instruct-v1:0",
-            // Mistral models (cross-region inference profiles)
-            "mistral-large" => "us.mistral.mistral-large-2407-v1:0",
+            "nova-premier" => "us.amazon.nova-premier-v1:0",
+
+            // --- Meta Llama ---
+            "llama-4-maverick" | "llama4-maverick" => {
+                "us.meta.llama4-maverick-17b-instruct-v1:0"
+            }
+            "llama-4-scout" | "llama4-scout" => "us.meta.llama4-scout-17b-instruct-v1:0",
+            "llama-3.3-70b" | "llama3.3-70b" => "us.meta.llama3-3-70b-instruct-v1:0",
+            "llama-3.2-90b" | "llama3.2-90b" => "us.meta.llama3-2-90b-instruct-v1:0",
+            "llama-3.2-11b" | "llama3.2-11b" => "us.meta.llama3-2-11b-instruct-v1:0",
+            "llama-3.2-3b" | "llama3.2-3b" => "us.meta.llama3-2-3b-instruct-v1:0",
+            "llama-3.2-1b" | "llama3.2-1b" => "us.meta.llama3-2-1b-instruct-v1:0",
+            "llama-3.1-70b" | "llama3.1-70b" => "us.meta.llama3-1-70b-instruct-v1:0",
+            "llama-3.1-8b" | "llama3.1-8b" => "us.meta.llama3-1-8b-instruct-v1:0",
+            "llama-3-70b" | "llama3-70b" => "us.meta.llama3-70b-instruct-v1:0",
+            "llama-3-8b" | "llama3-8b" => "us.meta.llama3-8b-instruct-v1:0",
+
+            // --- Mistral ---
+            "mistral-large-3" | "mistral-large" => "us.mistral.mistral-large-3-675b-instruct",
+            "mistral-large-2402" => "us.mistral.mistral-large-2402-v1:0",
+            "mistral-small" => "us.mistral.mistral-small-2402-v1:0",
+            "mixtral-8x7b" => "us.mistral.mixtral-8x7b-instruct-v0:1",
+            "pixtral-large" => "us.mistral.pixtral-large-2502-v1:0",
+            "magistral-small" => "us.mistral.magistral-small-2509",
+
+            // --- DeepSeek ---
+            "deepseek-r1" => "us.deepseek.r1-v1:0",
+            "deepseek-v3" | "deepseek-v3.2" => "us.deepseek.v3.2",
+
+            // --- Cohere ---
+            "command-r" => "us.cohere.command-r-v1:0",
+            "command-r-plus" => "us.cohere.command-r-plus-v1:0",
+
+            // --- Qwen ---
+            "qwen3-32b" => "us.qwen.qwen3-32b-v1:0",
+            "qwen3-coder" | "qwen3-coder-next" => "us.qwen.qwen3-coder-next",
+            "qwen3-coder-30b" => "us.qwen.qwen3-coder-30b-a3b-v1:0",
+
+            // --- Google Gemma ---
+            "gemma-3-27b" => "us.google.gemma-3-27b-it",
+            "gemma-3-12b" => "us.google.gemma-3-12b-it",
+            "gemma-3-4b" => "us.google.gemma-3-4b-it",
+
+            // --- Moonshot / Kimi ---
+            "kimi-k2" | "kimi-k2-thinking" => "us.moonshot.kimi-k2-thinking",
+            "kimi-k2.5" => "us.moonshotai.kimi-k2.5",
+
+            // --- AI21 Jamba ---
+            "jamba-1.5-large" => "us.ai21.jamba-1-5-large-v1:0",
+            "jamba-1.5-mini" => "us.ai21.jamba-1-5-mini-v1:0",
+
+            // --- MiniMax ---
+            "minimax-m2" => "us.minimax.minimax-m2",
+            "minimax-m2.1" => "us.minimax.minimax-m2.1",
+
+            // --- NVIDIA ---
+            "nemotron-nano-30b" => "us.nvidia.nemotron-nano-3-30b",
+            "nemotron-nano-12b" => "us.nvidia.nemotron-nano-12b-v2",
+            "nemotron-nano-9b" => "us.nvidia.nemotron-nano-9b-v2",
+
+            // --- Z.AI / GLM ---
+            "glm-4.7" => "us.zai.glm-4.7",
+            "glm-4.7-flash" => "us.zai.glm-4.7-flash",
+
             // Pass through full model IDs unchanged
             other => other,
+        }
+    }
+
+    /// Dynamically discover available models from the Bedrock API.
+    /// Merges foundation models with cross-region inference profiles.
+    async fn discover_models(&self) -> Result<Vec<ModelInfo>> {
+        let mut models: HashMap<String, ModelInfo> = HashMap::new();
+
+        // 1) Fetch foundation models
+        let fm_url = format!("{}/foundation-models", self.management_url());
+        let fm_resp = self
+            .client
+            .get(&fm_url)
+            .bearer_auth(&self.api_key)
+            .send()
+            .await;
+
+        if let Ok(resp) = fm_resp {
+            if resp.status().is_success() {
+                if let Ok(data) = resp.json::<Value>().await {
+                    if let Some(summaries) = data.get("modelSummaries").and_then(|v| v.as_array()) {
+                        for m in summaries {
+                            let model_id = m.get("modelId").and_then(|v| v.as_str()).unwrap_or("");
+                            let model_name =
+                                m.get("modelName").and_then(|v| v.as_str()).unwrap_or("");
+                            let provider_name =
+                                m.get("providerName").and_then(|v| v.as_str()).unwrap_or("");
+
+                            let output_modalities: Vec<&str> = m
+                                .get("outputModalities")
+                                .and_then(|v| v.as_array())
+                                .map(|a| {
+                                    a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            let input_modalities: Vec<&str> = m
+                                .get("inputModalities")
+                                .and_then(|v| v.as_array())
+                                .map(|a| {
+                                    a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            let inference_types: Vec<&str> = m
+                                .get("inferenceTypesSupported")
+                                .and_then(|v| v.as_array())
+                                .map(|a| {
+                                    a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+
+                            // Only include TEXT output models with ON_DEMAND inference
+                            if !output_modalities.contains(&"TEXT")
+                                || !inference_types.contains(&"ON_DEMAND")
+                            {
+                                continue;
+                            }
+
+                            // Skip non-chat models
+                            let name_lower = model_name.to_lowercase();
+                            if name_lower.contains("rerank")
+                                || name_lower.contains("embed")
+                                || name_lower.contains("safeguard")
+                                || name_lower.contains("sonic")
+                                || name_lower.contains("pegasus")
+                            {
+                                continue;
+                            }
+
+                            let streaming = m
+                                .get("responseStreamingSupported")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false);
+                            let vision = input_modalities.contains(&"IMAGE");
+
+                            // Non-Amazon models need us. cross-region prefix
+                            let actual_id = if model_id.starts_with("amazon.") {
+                                model_id.to_string()
+                            } else {
+                                format!("us.{}", model_id)
+                            };
+
+                            let display_name = format!("{} (Bedrock)", model_name);
+
+                            models.insert(
+                                actual_id.clone(),
+                                ModelInfo {
+                                    id: actual_id,
+                                    name: display_name,
+                                    provider: "bedrock".to_string(),
+                                    context_window: Self::estimate_context_window(
+                                        model_id,
+                                        provider_name,
+                                    ),
+                                    max_output_tokens: Some(Self::estimate_max_output(
+                                        model_id,
+                                        provider_name,
+                                    )),
+                                    supports_vision: vision,
+                                    supports_tools: true,
+                                    supports_streaming: streaming,
+                                    input_cost_per_million: None,
+                                    output_cost_per_million: None,
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2) Fetch cross-region inference profiles (adds models like Claude Sonnet 4,
+        //    Llama 3.1/3.2/3.3/4, DeepSeek R1, etc. that aren't in foundation models)
+        let ip_url = format!(
+            "{}/inference-profiles?typeEquals=SYSTEM_DEFINED&maxResults=200",
+            self.management_url()
+        );
+        let ip_resp = self
+            .client
+            .get(&ip_url)
+            .bearer_auth(&self.api_key)
+            .send()
+            .await;
+
+        if let Ok(resp) = ip_resp {
+            if resp.status().is_success() {
+                if let Ok(data) = resp.json::<Value>().await {
+                    if let Some(profiles) = data
+                        .get("inferenceProfileSummaries")
+                        .and_then(|v| v.as_array())
+                    {
+                        for p in profiles {
+                            let pid = p
+                                .get("inferenceProfileId")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+                            let pname = p
+                                .get("inferenceProfileName")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+
+                            // Only US cross-region profiles
+                            if !pid.starts_with("us.") {
+                                continue;
+                            }
+
+                            // Skip already-discovered models
+                            if models.contains_key(pid) {
+                                continue;
+                            }
+
+                            // Skip non-text models
+                            let name_lower = pname.to_lowercase();
+                            if name_lower.contains("image")
+                                || name_lower.contains("stable ")
+                                || name_lower.contains("upscale")
+                                || name_lower.contains("embed")
+                                || name_lower.contains("marengo")
+                                || name_lower.contains("outpaint")
+                                || name_lower.contains("inpaint")
+                                || name_lower.contains("erase")
+                                || name_lower.contains("recolor")
+                                || name_lower.contains("replace")
+                                || name_lower.contains("style ")
+                                || name_lower.contains("background")
+                                || name_lower.contains("sketch")
+                                || name_lower.contains("control")
+                                || name_lower.contains("transfer")
+                                || name_lower.contains("sonic")
+                                || name_lower.contains("pegasus")
+                                || name_lower.contains("rerank")
+                            {
+                                continue;
+                            }
+
+                            // Guess vision from known model families
+                            let vision = pid.contains("llama3-2-11b")
+                                || pid.contains("llama3-2-90b")
+                                || pid.contains("pixtral")
+                                || pid.contains("claude-3")
+                                || pid.contains("claude-sonnet-4")
+                                || pid.contains("claude-opus-4");
+
+                            let display_name = pname.replace("US ", "");
+                            let display_name = format!("{} (Bedrock)", display_name.trim());
+
+                            // Extract provider hint from model ID
+                            let provider_hint = pid
+                                .strip_prefix("us.")
+                                .unwrap_or(pid)
+                                .split('.')
+                                .next()
+                                .unwrap_or("");
+
+                            models.insert(
+                                pid.to_string(),
+                                ModelInfo {
+                                    id: pid.to_string(),
+                                    name: display_name,
+                                    provider: "bedrock".to_string(),
+                                    context_window: Self::estimate_context_window(
+                                        pid,
+                                        provider_hint,
+                                    ),
+                                    max_output_tokens: Some(Self::estimate_max_output(
+                                        pid,
+                                        provider_hint,
+                                    )),
+                                    supports_vision: vision,
+                                    supports_tools: true,
+                                    supports_streaming: true,
+                                    input_cost_per_million: None,
+                                    output_cost_per_million: None,
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut result: Vec<ModelInfo> = models.into_values().collect();
+        result.sort_by(|a, b| a.id.cmp(&b.id));
+
+        tracing::info!(
+            provider = "bedrock",
+            model_count = result.len(),
+            "Discovered Bedrock models dynamically"
+        );
+
+        Ok(result)
+    }
+
+    /// Estimate context window size based on model family
+    fn estimate_context_window(model_id: &str, provider: &str) -> usize {
+        let id = model_id.to_lowercase();
+        if id.contains("anthropic") || id.contains("claude") {
+            200_000
+        } else if id.contains("nova-pro") || id.contains("nova-lite") || id.contains("nova-premier")
+        {
+            300_000
+        } else if id.contains("nova-micro") || id.contains("nova-2") {
+            128_000
+        } else if id.contains("deepseek") {
+            128_000
+        } else if id.contains("llama4") {
+            256_000
+        } else if id.contains("llama3") {
+            128_000
+        } else if id.contains("mistral-large-3") || id.contains("magistral") {
+            128_000
+        } else if id.contains("mistral") {
+            32_000
+        } else if id.contains("qwen") {
+            128_000
+        } else if id.contains("kimi") {
+            128_000
+        } else if id.contains("jamba") {
+            256_000
+        } else if id.contains("glm") {
+            128_000
+        } else if id.contains("minimax") {
+            128_000
+        } else if id.contains("gemma") {
+            128_000
+        } else if id.contains("cohere") || id.contains("command") {
+            128_000
+        } else if id.contains("nemotron") {
+            128_000
+        } else if provider.to_lowercase().contains("amazon") {
+            128_000
+        } else {
+            32_000
+        }
+    }
+
+    /// Estimate max output tokens based on model family
+    fn estimate_max_output(model_id: &str, _provider: &str) -> usize {
+        let id = model_id.to_lowercase();
+        if id.contains("claude-sonnet-4") || id.contains("claude-3-7") {
+            64_000
+        } else if id.contains("claude-opus-4") {
+            32_000
+        } else if id.contains("claude") {
+            8_192
+        } else if id.contains("nova") {
+            5_000
+        } else if id.contains("deepseek") {
+            16_384
+        } else if id.contains("llama4") {
+            16_384
+        } else if id.contains("llama") {
+            4_096
+        } else if id.contains("mistral-large-3") {
+            16_384
+        } else if id.contains("mistral") || id.contains("mixtral") {
+            8_192
+        } else if id.contains("qwen") {
+            8_192
+        } else if id.contains("kimi") {
+            8_192
+        } else if id.contains("jamba") {
+            4_096
+        } else {
+            4_096
         }
     }
 
@@ -287,133 +665,7 @@ impl Provider for BedrockProvider {
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         self.validate_api_key()?;
-
-        Ok(vec![
-            // Anthropic Claude via Bedrock (best price/performance)
-            ModelInfo {
-                id: "us.anthropic.claude-sonnet-4-20250514-v1:0".to_string(),
-                name: "Claude Sonnet 4 (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(64_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(3.0),
-                output_cost_per_million: Some(15.0),
-            },
-            ModelInfo {
-                id: "us.anthropic.claude-opus-4-20250514-v1:0".to_string(),
-                name: "Claude Opus 4 (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(32_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(15.0),
-                output_cost_per_million: Some(75.0),
-            },
-            ModelInfo {
-                id: "us.anthropic.claude-3-5-haiku-20241022-v1:0".to_string(),
-                name: "Claude 3.5 Haiku (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(8_192),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.80),
-                output_cost_per_million: Some(4.0),
-            },
-            ModelInfo {
-                id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0".to_string(),
-                name: "Claude 3.5 Sonnet v2 (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(8_192),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(3.0),
-                output_cost_per_million: Some(15.0),
-            },
-            // Amazon Nova models
-            ModelInfo {
-                id: "amazon.nova-pro-v1:0".to_string(),
-                name: "Amazon Nova Pro".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 300_000,
-                max_output_tokens: Some(5_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.80),
-                output_cost_per_million: Some(3.20),
-            },
-            ModelInfo {
-                id: "amazon.nova-lite-v1:0".to_string(),
-                name: "Amazon Nova Lite".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 300_000,
-                max_output_tokens: Some(5_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.06),
-                output_cost_per_million: Some(0.24),
-            },
-            ModelInfo {
-                id: "amazon.nova-micro-v1:0".to_string(),
-                name: "Amazon Nova Micro".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(5_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.035),
-                output_cost_per_million: Some(0.14),
-            },
-            // Meta Llama models
-            ModelInfo {
-                id: "us.meta.llama3-1-70b-instruct-v1:0".to_string(),
-                name: "Llama 3.1 70B (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(2_048),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.72),
-                output_cost_per_million: Some(0.72),
-            },
-            ModelInfo {
-                id: "us.meta.llama3-1-8b-instruct-v1:0".to_string(),
-                name: "Llama 3.1 8B (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(2_048),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.22),
-                output_cost_per_million: Some(0.22),
-            },
-            // Mistral
-            ModelInfo {
-                id: "us.mistral.mistral-large-2407-v1:0".to_string(),
-                name: "Mistral Large (Bedrock)".to_string(),
-                provider: "bedrock".to_string(),
-                context_window: 128_000,
-                max_output_tokens: Some(8_192),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(2.0),
-                output_cost_per_million: Some(6.0),
-            },
-        ])
+        self.discover_models().await
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
