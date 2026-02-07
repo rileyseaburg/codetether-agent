@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
+**Linux binary (v0.1.5):** [direct](https://github.com/rileyseaburg/codetether-agent/releases/download/v0.1.5/codetether-v0.1.5-x86_64-unknown-linux-gnu) | [tar.gz](https://github.com/rileyseaburg/codetether-agent/releases/download/v0.1.5/codetether-v0.1.5-x86_64-unknown-linux-gnu.tar.gz) | [SHA256SUMS](https://github.com/rileyseaburg/codetether-agent/releases/download/v0.1.5/SHA256SUMS-v0.1.5.txt)
+
 A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protocol support, written in Rust. Features a rich terminal UI with dedicated views for swarm orchestration and autonomous PRD-driven development. Part of the CodeTether ecosystem.
 
 ![CodeTether TUI](docs/tui-screenshot.png)
