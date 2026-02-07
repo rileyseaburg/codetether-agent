@@ -183,7 +183,10 @@ fn task_metadata(task: &serde_json::Value) -> serde_json::Map<String, serde_json
 }
 
 fn model_ref_to_provider_model(model: &str) -> String {
-    if model.contains(':') {
+    // Convert "provider:model" to "provider/model" format, but only if
+    // there is no '/' already present. Model IDs like "amazon.nova-micro-v1:0"
+    // contain colons as version separators and must NOT be converted.
+    if !model.contains('/') && model.contains(':') {
         model.replacen(':', "/", 1)
     } else {
         model.to_string()
@@ -491,7 +494,7 @@ async fn register_worker(
     };
 
     // Register via the workers/register endpoint
-    let mut req = client.post(format!("{}/v1/agent/workers/register", server));
+    let mut req = client.post(format!("{}/v1/opencode/workers/register", server));
 
     if let Some(t) = token {
         req = req.bearer_auth(t);
@@ -634,7 +637,7 @@ async fn fetch_pending_tasks(
 ) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
-    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
+    let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
@@ -821,7 +824,7 @@ async fn poll_pending_tasks(
     processing: &Arc<Mutex<HashSet<String>>>,
     auto_approve: &AutoApprove,
 ) -> Result<()> {
-    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
+    let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
@@ -972,7 +975,7 @@ async fn handle_task(
         let tid = stream_task_id.clone();
         tokio::spawn(async move {
             let mut req = c
-                .post(format!("{}/v1/agent/tasks/{}/output", s, tid))
+                .post(format!("{}/v1/opencode/tasks/{}/output", s, tid))
                 .header("X-Worker-ID", &w);
             if let Some(tok) = &t {
                 req = req.bearer_auth(tok);
@@ -1596,7 +1599,7 @@ fn start_heartbeat(
 
             // Send heartbeat
             let url = format!(
-                "{}/v1/agent/workers/{}/heartbeat",
+                "{}/v1/opencode/workers/{}/heartbeat",
                 server, heartbeat_state.worker_id
             );
             let mut req = client.post(&url);

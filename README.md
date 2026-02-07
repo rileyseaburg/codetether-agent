@@ -10,12 +10,11 @@ A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protoco
 
 ## What's New in v0.1.5
 
-- **Ralph TUI View** — Dedicated real-time view for autonomous PRD loops (`/ralph`). Per-story progress, quality gates, tool calls, and sub-agent messages with magenta theme.
-- **Swarm Detail View** — Full per-agent detail in swarm mode. Arrow keys to navigate subtasks, Enter for tool call history and messages per sub-agent.
-- **Interactive Model Selector** — `/model` command and `Ctrl+M` to browse and pick LLM models at runtime.
-- **Webview Chat Layout** — Dashboard-style TUI with sidebar, inspector pane, and multi-panel chat (`/webview`, `Ctrl+B`).
-- **A2A Worker Enhancements** — Heartbeat loop, robust error recovery, improved registration flow.
-- **Copilot Provider** — GitHub Copilot integration with known-models fallback for the full model catalog.
+- **Perpetual Persona Swarms (Phase 0)** — Always-on cognition runtime with persona lineage, SSE event stream, and control APIs.
+- **Bedrock Provider** — Native Amazon Bedrock Converse API support (including region-aware configuration).
+- **Provider Model Discovery** — Added default model catalogs for OpenAI-compatible providers (`cerebras`, `novita`, `minimax`).
+- **Worker API Alignment** — Updated worker registration, task, and heartbeat paths to the `/v1/opencode/*` namespace.
+- **Model ID Translation Fix** — Preserves model IDs that use `:` for version suffixes (for example `amazon.nova-micro-v1:0`).
 
 See [full release notes](https://github.com/rileyseaburg/codetether-agent/releases/tag/v0.1.5).
 
