@@ -91,6 +91,34 @@ vault kv put secret/codetether/providers/stepfun api_key="..."
 vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https://api.z.ai/api/paas/v4"
 ```
 
+### If You See "No providers available"
+
+This means CodeTether can run, but it cannot find any API keys in Vault.
+
+Use this copy/paste checklist:
+
+```bash
+# 1) Set Vault connection details (replace with your real values)
+export VAULT_ADDR="https://vault.example.com:8200"
+export VAULT_TOKEN="hvs.your-token"
+export VAULT_MOUNT="secret"
+export VAULT_SECRETS_PATH="codetether/providers"
+
+# 2) Add one provider key (example: OpenRouter)
+vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
+
+# 3) Verify the key exists
+vault kv list secret/codetether/providers
+vault kv get secret/codetether/providers/openrouter
+
+# 4) Test CodeTether
+codetether run --model openrouter/stepfun/step-3.5-flash:free "hello"
+```
+
+If you are logged in as `root`, do not use `sudo` in install commands.
+
+For worker/service setups, make sure the same `VAULT_*` variables are present in your service environment (for example `/etc/default/codetether-agent`) before restarting.
+
 ### Supported Providers
 
 | Provider | Default Model | Notes |
