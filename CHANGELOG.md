@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-02-07
+
 ### Added
 
 - **Perpetual Persona Swarms (Phase 0)**: Initial always-on cognition runtime in `codetether-agent`
@@ -24,6 +26,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `GET /v1/swarm/lineage`
   - Feature flags for runtime enablement, auto-start, loop interval, and cognition budgets
   - Documentation added in `docs/perpetual_persona_swarms.md`
+- **Amazon Bedrock Provider**:
+  - New provider module using Bedrock Converse API with bearer-token auth
+  - Registered provider aliases: `bedrock` and `aws-bedrock`
+  - Supports configurable AWS region from Vault provider secret metadata (`region`)
+- **OpenAI-Compatible Model Catalog Defaults**:
+  - Added known-model fallback listings for `cerebras`, `novita`, and `minimax`
+
+### Changed
+
+- **A2A Worker Server Paths**:
+  - Updated worker registration, task polling/output, and heartbeat endpoints to `/v1/opencode/*`
+
+### Fixed
+
+- **Model Reference Translation**:
+  - Prevented `provider:model` conversion when model IDs already contain `/`
+  - Avoids corrupting model IDs that use `:` for versions (for example `amazon.nova-micro-v1:0`)
 
 ## [0.1.2] - 2026-02-05
 

@@ -65,6 +65,45 @@ impl OpenAIProvider {
         })
     }
 
+    /// Return known models for specific OpenAI-compatible providers
+    fn provider_default_models(&self) -> Vec<ModelInfo> {
+        let models: Vec<(&str, &str)> = match self.provider_name.as_str() {
+            "cerebras" => vec![
+                ("llama3.1-8b", "Llama 3.1 8B"),
+                ("llama-3.3-70b", "Llama 3.3 70B"),
+                ("qwen-3-32b", "Qwen 3 32B"),
+                ("gpt-oss-120b", "GPT-OSS 120B"),
+            ],
+            "novita" => vec![
+                ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
+                ("meta-llama/llama-3.1-70b-instruct", "Llama 3.1 70B"),
+                ("deepseek/deepseek-v3-0324", "DeepSeek V3"),
+                ("qwen/qwen-2.5-72b-instruct", "Qwen 2.5 72B"),
+            ],
+            "minimax" => vec![
+                ("MiniMax-M1-80k", "MiniMax M1 80k"),
+                ("MiniMax-Text-01", "MiniMax Text 01"),
+            ],
+            _ => vec![],
+        };
+
+        models
+            .into_iter()
+            .map(|(id, name)| ModelInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                provider: self.provider_name.clone(),
+                context_window: 128_000,
+                max_output_tokens: Some(16_384),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            })
+            .collect()
+    }
+
     fn convert_messages(messages: &[Message]) -> Result<Vec<ChatCompletionRequestMessage>> {
         let mut result = Vec::new();
 
@@ -172,7 +211,14 @@ impl Provider for OpenAIProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        // Return commonly used models
+        // For non-OpenAI providers, return provider-specific model defaults.
+        // Note: async-openai 0.32 does not expose a stable models list API across
+        // all OpenAI-compatible endpoints.
+        if self.provider_name != "openai" {
+            return Ok(self.provider_default_models());
+        }
+
+        // OpenAI default models
         Ok(vec![
             ModelInfo {
                 id: "gpt-4o".to_string(),

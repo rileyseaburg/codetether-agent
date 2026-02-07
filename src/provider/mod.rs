@@ -3,6 +3,7 @@
 //! Unified interface for multiple AI providers (OpenAI, Anthropic, Google, StepFun, etc.)
 
 pub mod anthropic;
+pub mod bedrock;
 pub mod copilot;
 pub mod google;
 pub mod models;
@@ -263,6 +264,19 @@ impl ProviderRegistry {
 
                 // Determine which provider implementation to use
                 match provider_id.as_str() {
+                    // Amazon Bedrock - native Converse API with bearer token
+                    "bedrock" | "aws-bedrock" => {
+                        let region = secrets
+                            .extra
+                            .get("region")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("us-east-1")
+                            .to_string();
+                        match bedrock::BedrockProvider::with_region(api_key, region) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                        }
+                    }
                     // Native providers
                     "anthropic" | "anthropic-eu" | "anthropic-asia" => {
                         match anthropic::AnthropicProvider::new(api_key) {
