@@ -351,6 +351,28 @@ impl ProviderRegistry {
                             Err(e) => tracing::warn!("Failed to init zhipuai: {}", e),
                         }
                     }
+                    // Cerebras - OpenAI-compatible fast inference
+                    "cerebras" => {
+                        let base_url = secrets
+                            .base_url
+                            .clone()
+                            .unwrap_or_else(|| "https://api.cerebras.ai/v1".to_string());
+                        match openai::OpenAIProvider::with_base_url(api_key, base_url, "cerebras") {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init cerebras: {}", e),
+                        }
+                    }
+                    // MiniMax - OpenAI-compatible API
+                    "minimax" => {
+                        let base_url = secrets
+                            .base_url
+                            .clone()
+                            .unwrap_or_else(|| "https://api.minimax.chat/v1".to_string());
+                        match openai::OpenAIProvider::with_base_url(api_key, base_url, "minimax") {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init minimax: {}", e),
+                        }
+                    }
                     // OpenAI-compatible providers (with custom base_url)
                     "deepseek" | "groq" | "togetherai" | "fireworks-ai" | "mistral" | "nvidia"
                     | "alibaba" | "openai" | "azure" | "novita" => {
