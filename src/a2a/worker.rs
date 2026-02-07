@@ -104,7 +104,9 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     // Connect to SSE stream
     loop {
         // Re-register worker on each reconnection to report updated models/capabilities
-        if let Err(e) = register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await {
+        if let Err(e) =
+            register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await
+        {
             tracing::warn!("Failed to re-register worker on reconnection: {}", e);
         }
 
@@ -164,7 +166,9 @@ enum AutoApprove {
 const WORKER_CAPABILITIES: &[&str] = &["ralph", "swarm", "rlm", "a2a", "mcp"];
 
 fn task_value<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
-    task.get("task").and_then(|t| t.get(key)).or_else(|| task.get(key))
+    task.get("task")
+        .and_then(|t| t.get(key))
+        .or_else(|| task.get(key))
 }
 
 fn task_str<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a str> {
@@ -276,17 +280,20 @@ fn metadata_lookup<'a>(
     metadata: &'a serde_json::Map<String, serde_json::Value>,
     key: &str,
 ) -> Option<&'a serde_json::Value> {
-    metadata.get(key).or_else(|| {
-        metadata
-            .get("routing")
-            .and_then(|v| v.as_object())
-            .and_then(|obj| obj.get(key))
-    }).or_else(|| {
-        metadata
-            .get("swarm")
-            .and_then(|v| v.as_object())
-            .and_then(|obj| obj.get(key))
-    })
+    metadata
+        .get(key)
+        .or_else(|| {
+            metadata
+                .get("routing")
+                .and_then(|v| v.as_object())
+                .and_then(|obj| obj.get(key))
+        })
+        .or_else(|| {
+            metadata
+                .get("swarm")
+                .and_then(|v| v.as_object())
+                .and_then(|obj| obj.get(key))
+        })
 }
 
 fn metadata_str(
@@ -373,7 +380,9 @@ fn metadata_bool(
     None
 }
 
-fn parse_swarm_strategy(metadata: &serde_json::Map<String, serde_json::Value>) -> DecompositionStrategy {
+fn parse_swarm_strategy(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> DecompositionStrategy {
     match metadata_str(
         metadata,
         &[
@@ -473,7 +482,10 @@ async fn register_worker(
     let models = match load_provider_models().await {
         Ok(m) => m,
         Err(e) => {
-            tracing::warn!("Failed to load provider models: {}, proceeding without model info", e);
+            tracing::warn!(
+                "Failed to load provider models: {}, proceeding without model info",
+                e
+            );
             HashMap::new()
         }
     };
@@ -487,7 +499,8 @@ async fn register_worker(
 
     // Flatten models HashMap into array of {id, name, provider, provider_id} objects
     // matching the format expected by the A2A server's /models and /workers endpoints
-    let models_array: Vec<serde_json::Value> = models.iter()
+    let models_array: Vec<serde_json::Value> = models
+        .iter()
         .flat_map(|(provider, model_ids)| {
             model_ids.iter().map(move |model_id| {
                 serde_json::json!({
@@ -500,8 +513,11 @@ async fn register_worker(
         })
         .collect();
 
-    tracing::info!("Registering worker with {} models from {} providers",
-        models_array.len(), models.len());
+    tracing::info!(
+        "Registering worker with {} models from {} providers",
+        models_array.len(),
+        models.len()
+    );
 
     let hostname = std::env::var("HOSTNAME")
         .or_else(|_| std::env::var("COMPUTERNAME"))
@@ -570,7 +586,9 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
     // NOTE: We list ALL models from the catalog (not just ones with verified API keys)
     // because the worker should advertise what it can handle. The server handles routing.
     if models_by_provider.is_empty() {
-        tracing::info!("No authenticated providers found, fetching models.dev catalog (all providers)");
+        tracing::info!(
+            "No authenticated providers found, fetching models.dev catalog (all providers)"
+        );
         if let Ok(catalog) = crate::provider::models::ModelCatalog::fetch().await {
             // Use all_providers_with_models() to get every provider+model from catalog
             // regardless of API key availability (Vault may be down)
@@ -581,13 +599,19 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
                     .map(|m| m.id.clone())
                     .collect();
                 if !model_ids.is_empty() {
-                    tracing::debug!("Catalog provider {}: {} models", provider_id, model_ids.len());
+                    tracing::debug!(
+                        "Catalog provider {}: {} models",
+                        provider_id,
+                        model_ids.len()
+                    );
                     models_by_provider.insert(provider_id.clone(), model_ids);
                 }
             }
-            tracing::info!("Loaded {} providers with {} total models from catalog",
+            tracing::info!(
+                "Loaded {} providers with {} total models from catalog",
                 models_by_provider.len(),
-                models_by_provider.values().map(|v| v.len()).sum::<usize>());
+                models_by_provider.values().map(|v| v.len()).sum::<usize>()
+            );
         }
     }
 
@@ -621,7 +645,12 @@ async fn fetch_pending_tasks(
     }
 
     let data: serde_json::Value = res.json().await?;
-    let tasks = data["tasks"].as_array().cloned().unwrap_or_default();
+    // Handle both plain array response and {tasks: [...]} wrapper
+    let tasks = if let Some(arr) = data.as_array() {
+        arr.clone()
+    } else {
+        data["tasks"].as_array().cloned().unwrap_or_default()
+    };
 
     tracing::info!("Found {} pending task(s)", tasks.len());
 
@@ -693,61 +722,137 @@ async fn connect_stream(
 
     let mut stream = res.bytes_stream();
     let mut buffer = String::new();
+    let mut poll_interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+    poll_interval.tick().await; // consume the initial immediate tick
 
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+    loop {
+        tokio::select! {
+            chunk = stream.next() => {
+                match chunk {
+                    Some(Ok(chunk)) => {
+                        buffer.push_str(&String::from_utf8_lossy(&chunk));
 
-        // Process SSE events
-        while let Some(pos) = buffer.find("\n\n") {
-            let event_str = buffer[..pos].to_string();
-            buffer = buffer[pos + 2..].to_string();
+                        // Process SSE events
+                        while let Some(pos) = buffer.find("\n\n") {
+                            let event_str = buffer[..pos].to_string();
+                            buffer = buffer[pos + 2..].to_string();
 
-            if let Some(data_line) = event_str.lines().find(|l| l.starts_with("data:")) {
-                let data = data_line.trim_start_matches("data:").trim();
-                if data == "[DONE]" || data.is_empty() {
-                    continue;
-                }
-
-                if let Ok(task) = serde_json::from_str::<serde_json::Value>(data) {
-                    if let Some(id) = task
-                        .get("task")
-                        .and_then(|t| t["id"].as_str())
-                        .or_else(|| task["id"].as_str())
-                    {
-                        let mut proc = processing.lock().await;
-                        if !proc.contains(id) {
-                            proc.insert(id.to_string());
-                            drop(proc);
-
-                            let task_id = id.to_string();
-                            let client = client.clone();
-                            let server = server.to_string();
-                            let token = token.clone();
-                            let worker_id = worker_id.to_string();
-                            let auto_approve = *auto_approve;
-                            let processing_clone = processing.clone();
-
-                            tokio::spawn(async move {
-                                if let Err(e) = handle_task(
-                                    &client,
-                                    &server,
-                                    &token,
-                                    &worker_id,
-                                    &task,
-                                    auto_approve,
-                                )
-                                .await
-                                {
-                                    tracing::error!("Task {} failed: {}", task_id, e);
+                            if let Some(data_line) = event_str.lines().find(|l| l.starts_with("data:")) {
+                                let data = data_line.trim_start_matches("data:").trim();
+                                if data == "[DONE]" || data.is_empty() {
+                                    continue;
                                 }
-                                processing_clone.lock().await.remove(&task_id);
-                            });
+
+                                if let Ok(task) = serde_json::from_str::<serde_json::Value>(data) {
+                                    spawn_task_handler(
+                                        &task, client, server, token, worker_id,
+                                        processing, auto_approve,
+                                    ).await;
+                                }
+                            }
                         }
+                    }
+                    Some(Err(e)) => {
+                        return Err(e.into());
+                    }
+                    None => {
+                        // Stream ended
+                        return Ok(());
                     }
                 }
             }
+            _ = poll_interval.tick() => {
+                // Periodic poll for pending tasks the SSE stream may have missed
+                if let Err(e) = poll_pending_tasks(
+                    client, server, token, worker_id, processing, auto_approve,
+                ).await {
+                    tracing::warn!("Periodic task poll failed: {}", e);
+                }
+            }
         }
+    }
+}
+
+async fn spawn_task_handler(
+    task: &serde_json::Value,
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    processing: &Arc<Mutex<HashSet<String>>>,
+    auto_approve: &AutoApprove,
+) {
+    if let Some(id) = task
+        .get("task")
+        .and_then(|t| t["id"].as_str())
+        .or_else(|| task["id"].as_str())
+    {
+        let mut proc = processing.lock().await;
+        if !proc.contains(id) {
+            proc.insert(id.to_string());
+            drop(proc);
+
+            let task_id = id.to_string();
+            let task = task.clone();
+            let client = client.clone();
+            let server = server.to_string();
+            let token = token.clone();
+            let worker_id = worker_id.to_string();
+            let auto_approve = *auto_approve;
+            let processing_clone = processing.clone();
+
+            tokio::spawn(async move {
+                if let Err(e) =
+                    handle_task(&client, &server, &token, &worker_id, &task, auto_approve).await
+                {
+                    tracing::error!("Task {} failed: {}", task_id, e);
+                }
+                processing_clone.lock().await.remove(&task_id);
+            });
+        }
+    }
+}
+
+async fn poll_pending_tasks(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    processing: &Arc<Mutex<HashSet<String>>>,
+    auto_approve: &AutoApprove,
+) -> Result<()> {
+    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
+    if let Some(t) = token {
+        req = req.bearer_auth(t);
+    }
+
+    let res = req.send().await?;
+    if !res.status().is_success() {
+        return Ok(());
+    }
+
+    let data: serde_json::Value = res.json().await?;
+    let tasks = if let Some(arr) = data.as_array() {
+        arr.clone()
+    } else {
+        data["tasks"].as_array().cloned().unwrap_or_default()
+    };
+
+    if !tasks.is_empty() {
+        tracing::debug!("Poll found {} pending task(s)", tasks.len());
+    }
+
+    for task in &tasks {
+        spawn_task_handler(
+            task,
+            client,
+            server,
+            token,
+            worker_id,
+            processing,
+            auto_approve,
+        )
+        .await;
     }
 
     Ok(())
@@ -907,10 +1012,7 @@ async fn handle_task(
                 )
             }
             Ok((session_result, false)) => {
-                tracing::warn!(
-                    "Swarm task completed with failures: {}",
-                    task_id
-                );
+                tracing::warn!("Swarm task completed with failures: {}", task_id);
                 (
                     "failed",
                     Some(session_result.text),
@@ -1015,17 +1117,11 @@ where
     )
     .unwrap_or(50)
     .clamp(1, 200);
-    let timeout_secs = metadata_u64(
-        metadata,
-        &["swarm_timeout_secs", "timeout_secs", "timeout"],
-    )
-    .unwrap_or(600)
-    .clamp(30, 3600);
-    let parallel_enabled = metadata_bool(
-        metadata,
-        &["swarm_parallel_enabled", "parallel_enabled"],
-    )
-    .unwrap_or(true);
+    let timeout_secs = metadata_u64(metadata, &["swarm_timeout_secs", "timeout_secs", "timeout"])
+        .unwrap_or(600)
+        .clamp(30, 3600);
+    let parallel_enabled =
+        metadata_bool(metadata, &["swarm_parallel_enabled", "parallel_enabled"]).unwrap_or(true);
 
     let model = resolve_swarm_model(explicit_model, model_tier).await;
     if let Some(ref selected_model) = model {
@@ -1211,7 +1307,8 @@ where
     };
 
     // Create tool registry with filtering based on auto-approve policy
-    let tool_registry = create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve);
+    let tool_registry =
+        create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve);
     let tool_definitions = tool_registry.definitions();
 
     let temperature = if model.starts_with("kimi-k2") {
@@ -1226,7 +1323,11 @@ where
         selected_provider,
         model_tier
     );
-    tracing::info!("Available tools: {} (auto_approve: {:?})", tool_definitions.len(), auto_approve);
+    tracing::info!(
+        "Available tools: {} (auto_approve: {:?})",
+        tool_definitions.len(),
+        auto_approve
+    );
 
     // Build system prompt
     let cwd = std::env::var("PWD")
@@ -1273,7 +1374,12 @@ where
             .content
             .iter()
             .filter_map(|part| {
-                if let ContentPart::ToolCall { id, name, arguments } = part {
+                if let ContentPart::ToolCall {
+                    id,
+                    name,
+                    arguments,
+                } = part
+                {
                     let args: serde_json::Value =
                         serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
                     Some((id.clone(), name.clone(), args))
@@ -1321,7 +1427,10 @@ where
 
             // Check if tool is allowed based on auto-approve policy
             if !is_tool_allowed(&tool_name, auto_approve) {
-                let msg = format!("Tool '{}' requires approval but auto-approve policy is {:?}", tool_name, auto_approve);
+                let msg = format!(
+                    "Tool '{}' requires approval but auto-approve policy is {:?}",
+                    tool_name, auto_approve
+                );
                 tracing::warn!(tool = %tool_name, "Tool blocked by auto-approve policy");
                 session.add_message(Message {
                     role: Role::Tool,
@@ -1334,13 +1443,19 @@ where
             }
 
             let content = if let Some(tool) = tool_registry.get(&tool_name) {
-                let exec_result: Result<crate::tool::ToolResult> = tool.execute(tool_input.clone()).await;
+                let exec_result: Result<crate::tool::ToolResult> =
+                    tool.execute(tool_input.clone()).await;
                 match exec_result {
                     Ok(result) => {
                         tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
                         if let Some(cb) = output_callback {
                             let status = if result.success { "ok" } else { "err" };
-                            cb(format!("[tool:{}:{}] {}", tool_name, status, &result.output[..result.output.len().min(500)]));
+                            cb(format!(
+                                "[tool:{}:{}] {}",
+                                tool_name,
+                                status,
+                                &result.output[..result.output.len().min(500)]
+                            ));
                         }
                         result.output
                     }
@@ -1460,7 +1575,8 @@ fn start_heartbeat(
         const MAX_FAILURES: u32 = 3;
         const HEARTBEAT_INTERVAL_SECS: u64 = 30;
 
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
         loop {
@@ -1479,7 +1595,10 @@ fn start_heartbeat(
             heartbeat_state.set_status(status).await;
 
             // Send heartbeat
-            let url = format!("{}/v1/agent/workers/{}/heartbeat", server, heartbeat_state.worker_id);
+            let url = format!(
+                "{}/v1/agent/workers/{}/heartbeat",
+                server, heartbeat_state.worker_id
+            );
             let mut req = client.post(&url);
 
             if let Some(ref t) = token {
