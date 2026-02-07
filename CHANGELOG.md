@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Perpetual Persona Swarms (Phase 0)**: Initial always-on cognition runtime in `codetether-agent`
+  - New cognition contracts for persona identity/policy/state, thought events, proposals, snapshots, and lineage graph
+  - In-memory perpetual loop with bounded buffers and guarded recursion limits (spawn depth + branching factor)
+  - New server APIs for cognition control and swarm lifecycle:
+    - `POST /v1/cognition/start`
+    - `POST /v1/cognition/stop`
+    - `GET /v1/cognition/status`
+    - `GET /v1/cognition/stream` (SSE)
+    - `GET /v1/cognition/snapshots/latest`
+    - `POST /v1/swarm/personas`
+    - `POST /v1/swarm/personas/{id}/spawn`
+    - `POST /v1/swarm/personas/{id}/reap`
+    - `GET /v1/swarm/lineage`
+  - Feature flags for runtime enablement, auto-start, loop interval, and cognition budgets
+  - Documentation added in `docs/perpetual_persona_swarms.md`
+
 ## [0.1.2] - 2026-02-05
 
 ### Added
