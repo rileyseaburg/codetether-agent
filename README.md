@@ -294,13 +294,6 @@ secret/codetether/providers/
 | `CODETETHER_SERVER` | A2A server URL |
 | `CODETETHER_TOKEN` | Authentication token |
 | `CODETETHER_WORKER_NAME` | Worker name |
-| `CODETETHER_COGNITION_ENABLED` | Enable perpetual cognition runtime (`true`/`false`, default: `false`) |
-| `CODETETHER_COGNITION_AUTO_START` | Auto-start cognition loop on `serve` startup (default: `false`) |
-| `CODETETHER_COGNITION_LOOP_INTERVAL_MS` | Loop interval in milliseconds (default: `2000`) |
-| `CODETETHER_COGNITION_MAX_SPAWN_DEPTH` | Max persona lineage depth (default: `4`) |
-| `CODETETHER_COGNITION_MAX_BRANCHING_FACTOR` | Max active children per persona (default: `4`) |
-| `CODETETHER_COGNITION_MAX_EVENTS` | In-memory event buffer size (default: `2000`) |
-| `CODETETHER_COGNITION_MAX_SNAPSHOTS` | In-memory snapshot buffer size (default: `128`) |
 
 ### Using Vault Agent
 
@@ -412,24 +405,6 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
   ]
 }
 ```
-
-### Perpetual Persona Swarms API (Phase 0)
-
-When running `codetether serve`, the agent also exposes cognition + swarm control APIs:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/cognition/start` | Start perpetual cognition loop |
-| `POST` | `/v1/cognition/stop` | Stop cognition loop |
-| `GET` | `/v1/cognition/status` | Runtime status and buffer metrics |
-| `GET` | `/v1/cognition/stream` | SSE stream of thought events |
-| `GET` | `/v1/cognition/snapshots/latest` | Latest compressed memory snapshot |
-| `POST` | `/v1/swarm/personas` | Create a root persona |
-| `POST` | `/v1/swarm/personas/{id}/spawn` | Spawn child persona |
-| `POST` | `/v1/swarm/personas/{id}/reap` | Reap a persona (optional cascade) |
-| `GET` | `/v1/swarm/lineage` | Current persona lineage graph |
-
-See `docs/perpetual_persona_swarms.md` for request/response contracts.
 
 ## Architecture
 
