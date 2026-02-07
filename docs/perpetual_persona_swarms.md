@@ -10,6 +10,7 @@ Phase 0 includes:
 - Contract schemas for personas, thought events, proposals, and memory snapshots
 - In-memory runtime manager with bounded buffers
 - Feature-flagged perpetual loop (`observe -> reflect -> test -> compress`)
+- Model-backed thinker integration via OpenAI-compatible chat completions
 - Server endpoints for cognition control and swarm persona lifecycle
 
 Phase 0 does **not** include external side-effect execution from cognition output.
@@ -19,12 +20,33 @@ Phase 0 does **not** include external side-effect execution from cognition outpu
 Set these when running `codetether serve`:
 
 - `CODETETHER_COGNITION_ENABLED=true`
-- `CODETETHER_COGNITION_AUTO_START=true` (optional)
+- `CODETETHER_COGNITION_AUTO_START=true`
 - `CODETETHER_COGNITION_LOOP_INTERVAL_MS=2000`
 - `CODETETHER_COGNITION_MAX_SPAWN_DEPTH=4`
 - `CODETETHER_COGNITION_MAX_BRANCHING_FACTOR=4`
 - `CODETETHER_COGNITION_MAX_EVENTS=2000`
 - `CODETETHER_COGNITION_MAX_SNAPSHOTS=128`
+- `CODETETHER_COGNITION_THINKER_ENABLED=true`
+- `CODETETHER_COGNITION_THINKER_BACKEND=openai_compat` (`candle` for in-process inference)
+- `CODETETHER_COGNITION_THINKER_BASE_URL=http://127.0.0.1:11434/v1`
+- `CODETETHER_COGNITION_THINKER_MODEL=qwen2.5:3b-instruct`
+- `CODETETHER_COGNITION_THINKER_API_KEY=` (optional)
+- `CODETETHER_COGNITION_THINKER_TEMPERATURE=0.2`
+- `CODETETHER_COGNITION_THINKER_MAX_TOKENS=256`
+- `CODETETHER_COGNITION_THINKER_TIMEOUT_MS=12000`
+- `CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH=/models/model.gguf` (required for `candle`)
+- `CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH=/models/tokenizer.json` (required for `candle`)
+- `CODETETHER_COGNITION_THINKER_CANDLE_ARCH=qwen2` (`llama` and `qwen2` supported)
+- `CODETETHER_COGNITION_THINKER_CANDLE_DEVICE=auto` (`auto`, `cpu`, `cuda`)
+- `CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL=0`
+
+If no persona exists at start time, cognition auto-seeds a default `root-thinker` persona unless `seed_persona` is supplied in `POST /v1/cognition/start`.
+CUDA execution requires building with `--features candle-cuda` (or `candle-cudnn`).
+
+Convenience targets in `codetether-agent/Makefile`:
+- `make build-cuda`
+- `make deploy-spike2-cuda`
+- `make status-spike2-cuda`
 
 ## Endpoints
 
@@ -106,3 +128,4 @@ Reap with cascade:
 - Persona recursion is bounded by depth and branching limits.
 - Cognition loop emits proposals/events only.
 - No unrestricted external actuation path is included in this phase.
+- When thinker inference fails, runtime falls back to deterministic thought payloads and records the error in event metadata.

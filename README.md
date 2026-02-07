@@ -294,13 +294,32 @@ secret/codetether/providers/
 | `CODETETHER_SERVER` | A2A server URL |
 | `CODETETHER_TOKEN` | Authentication token |
 | `CODETETHER_WORKER_NAME` | Worker name |
-| `CODETETHER_COGNITION_ENABLED` | Enable perpetual cognition runtime (`true`/`false`, default: `false`) |
-| `CODETETHER_COGNITION_AUTO_START` | Auto-start cognition loop on `serve` startup (default: `false`) |
+| `CODETETHER_COGNITION_ENABLED` | Enable perpetual cognition runtime (`true`/`false`, default: `true`) |
+| `CODETETHER_COGNITION_AUTO_START` | Auto-start cognition loop on `serve` startup (default: `true`) |
 | `CODETETHER_COGNITION_LOOP_INTERVAL_MS` | Loop interval in milliseconds (default: `2000`) |
 | `CODETETHER_COGNITION_MAX_SPAWN_DEPTH` | Max persona lineage depth (default: `4`) |
 | `CODETETHER_COGNITION_MAX_BRANCHING_FACTOR` | Max active children per persona (default: `4`) |
 | `CODETETHER_COGNITION_MAX_EVENTS` | In-memory event buffer size (default: `2000`) |
 | `CODETETHER_COGNITION_MAX_SNAPSHOTS` | In-memory snapshot buffer size (default: `128`) |
+| `CODETETHER_COGNITION_THINKER_ENABLED` | Enable model-backed thought generation (`true`/`false`, default: `true`) |
+| `CODETETHER_COGNITION_THINKER_BACKEND` | Thinker backend: `openai_compat` or `candle` (default: `openai_compat`) |
+| `CODETETHER_COGNITION_THINKER_BASE_URL` | OpenAI-compatible base URL for thinker model (default: `http://127.0.0.1:11434/v1`) |
+| `CODETETHER_COGNITION_THINKER_MODEL` | Model id for thought generation (default: `qwen2.5:3b-instruct`) |
+| `CODETETHER_COGNITION_THINKER_API_KEY` | Optional API key for thinker endpoint |
+| `CODETETHER_COGNITION_THINKER_TEMPERATURE` | Thinker temperature (default: `0.2`) |
+| `CODETETHER_COGNITION_THINKER_TOP_P` | Optional thinker top-p |
+| `CODETETHER_COGNITION_THINKER_MAX_TOKENS` | Max generated tokens per thought step (default: `256`) |
+| `CODETETHER_COGNITION_THINKER_TIMEOUT_MS` | Thinker request timeout in ms (default: `12000`) |
+| `CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH` | GGUF model path for in-process Candle inference |
+| `CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH` | `tokenizer.json` path used by Candle backend |
+| `CODETETHER_COGNITION_THINKER_CANDLE_ARCH` | Candle model architecture (`llama` or `qwen2`, default: auto from GGUF metadata) |
+| `CODETETHER_COGNITION_THINKER_CANDLE_DEVICE` | Candle device selection: `auto`, `cpu`, or `cuda` (default: `auto`) |
+| `CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL` | CUDA device ordinal when using `cuda` (default: `0`) |
+| `CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_PENALTY` | Candle repetition penalty (default: `1.1`) |
+| `CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_LAST_N` | Token window for repetition penalty (default: `64`) |
+| `CODETETHER_COGNITION_THINKER_CANDLE_SEED` | Base sampling seed for Candle thinker (default: `42`) |
+
+GPU execution requires building with `--features candle-cuda` (or `candle-cudnn`).
 
 ### Using Vault Agent
 
@@ -429,7 +448,17 @@ When running `codetether serve`, the agent also exposes cognition + swarm contro
 | `POST` | `/v1/swarm/personas/{id}/reap` | Reap a persona (optional cascade) |
 | `GET` | `/v1/swarm/lineage` | Current persona lineage graph |
 
+`/v1/cognition/start` auto-seeds a default `root-thinker` persona when no personas exist, unless a `seed_persona` is provided.
+
 See `docs/perpetual_persona_swarms.md` for request/response contracts.
+
+### CUDA Build/Deploy Helpers
+
+From `codetether-agent/`:
+
+- `make build-cuda` - Build a CUDA-enabled binary locally.
+- `make deploy-spike2-cuda` - Sync source to `spike2`, build with `--features candle-cuda`, install, and restart service.
+- `make status-spike2-cuda` - Check service status, active Candle device config, and GPU usage on `spike2`.
 
 ## Architecture
 

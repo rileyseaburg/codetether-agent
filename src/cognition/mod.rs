@@ -5,6 +5,8 @@
 //! - In-memory runtime manager for lifecycle + lineage
 //! - Feature-flagged perpetual loop (no external execution side effects)
 
+mod thinker;
+
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -15,6 +17,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::{Mutex, RwLock, broadcast};
 use tokio::task::JoinHandle;
+use tokio::time::Instant;
+use thinker::{ThinkerClient, ThinkerConfig};
 use uuid::Uuid;
 
 /// Persona execution status.
@@ -125,6 +129,24 @@ pub enum ThoughtEventType {
     SnapshotCompressed,
 }
 
+impl ThoughtEventType {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::ThoughtGenerated => "thought_generated",
+            Self::HypothesisRaised => "hypothesis_raised",
+            Self::CheckRequested => "check_requested",
+            Self::CheckResult => "check_result",
+            Self::ProposalCreated => "proposal_created",
+            Self::ProposalVerified => "proposal_verified",
+            Self::ProposalRejected => "proposal_rejected",
+            Self::ActionExecuted => "action_executed",
+            Self::PersonaSpawned => "persona_spawned",
+            Self::PersonaReaped => "persona_reaped",
+            Self::SnapshotCompressed => "snapshot_compressed",
+        }
+    }
+}
+
 /// Streamable thought event contract.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThoughtEvent {
@@ -232,6 +254,67 @@ pub struct LineageGraph {
     pub total_edges: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ThoughtPhase {
+    Observe,
+    Reflect,
+    Test,
+    Compress,
+}
+
+impl ThoughtPhase {
+    fn from_thought_count(thought_count: u64) -> Self {
+        match thought_count % 4 {
+            1 => Self::Observe,
+            2 => Self::Reflect,
+            3 => Self::Test,
+            _ => Self::Compress,
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Observe => "observe",
+            Self::Reflect => "reflect",
+            Self::Test => "test",
+            Self::Compress => "compress",
+        }
+    }
+
+    fn event_type(&self) -> ThoughtEventType {
+        match self {
+            Self::Observe => ThoughtEventType::ThoughtGenerated,
+            Self::Reflect => ThoughtEventType::HypothesisRaised,
+            Self::Test => ThoughtEventType::CheckRequested,
+            Self::Compress => ThoughtEventType::SnapshotCompressed,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ThoughtWorkItem {
+    persona_id: String,
+    persona_name: String,
+    role: String,
+    charter: String,
+    swarm_id: Option<String>,
+    thought_count: u64,
+    phase: ThoughtPhase,
+}
+
+#[derive(Debug, Clone)]
+struct ThoughtResult {
+    source: &'static str,
+    model: Option<String>,
+    finish_reason: Option<String>,
+    thinking: String,
+    prompt_tokens: Option<u32>,
+    completion_tokens: Option<u32>,
+    total_tokens: Option<u32>,
+    latency_ms: u128,
+    error: Option<String>,
+}
+
 /// Runtime options for cognition manager.
 #[derive(Debug, Clone)]
 pub struct CognitionRuntimeOptions {
@@ -271,13 +354,14 @@ pub struct CognitionRuntime {
     snapshots: Arc<RwLock<VecDeque<MemorySnapshot>>>,
     loop_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     event_tx: broadcast::Sender<ThoughtEvent>,
+    thinker: Option<Arc<ThinkerClient>>,
 }
 
 impl CognitionRuntime {
     /// Build runtime from environment feature flags.
     pub fn new_from_env() -> Self {
         let mut options = CognitionRuntimeOptions::default();
-        options.enabled = env_bool("CODETETHER_COGNITION_ENABLED", false);
+        options.enabled = env_bool("CODETETHER_COGNITION_ENABLED", true);
         options.loop_interval_ms = env_u64("CODETETHER_COGNITION_LOOP_INTERVAL_MS", 2_000);
         options.max_events = env_usize("CODETETHER_COGNITION_MAX_EVENTS", 2_000);
         options.max_snapshots = env_usize("CODETETHER_COGNITION_MAX_SNAPSHOTS", 128);
@@ -294,12 +378,85 @@ impl CognitionRuntime {
             share_memory: env_bool("CODETETHER_COGNITION_SHARE_MEMORY", false),
         };
 
-        Self::new_with_options(options)
+        let thinker_config = ThinkerConfig {
+            enabled: env_bool("CODETETHER_COGNITION_THINKER_ENABLED", true),
+            backend: thinker::ThinkerBackend::from_env(
+                &std::env::var("CODETETHER_COGNITION_THINKER_BACKEND")
+                    .unwrap_or_else(|_| "openai_compat".to_string()),
+            ),
+            endpoint: normalize_thinker_endpoint(&std::env::var(
+                "CODETETHER_COGNITION_THINKER_BASE_URL",
+            )
+            .unwrap_or_else(|_| "http://127.0.0.1:11434/v1".to_string())),
+            model: std::env::var("CODETETHER_COGNITION_THINKER_MODEL")
+                .unwrap_or_else(|_| "qwen2.5:3b-instruct".to_string()),
+            api_key: std::env::var("CODETETHER_COGNITION_THINKER_API_KEY").ok(),
+            temperature: env_f32("CODETETHER_COGNITION_THINKER_TEMPERATURE", 0.2),
+            top_p: std::env::var("CODETETHER_COGNITION_THINKER_TOP_P")
+                .ok()
+                .and_then(|v| v.parse::<f32>().ok()),
+            max_tokens: env_usize("CODETETHER_COGNITION_THINKER_MAX_TOKENS", 256),
+            timeout_ms: env_u64("CODETETHER_COGNITION_THINKER_TIMEOUT_MS", 12_000),
+            candle_model_path: std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH")
+                .ok(),
+            candle_tokenizer_path: std::env::var(
+                "CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH",
+            )
+            .ok(),
+            candle_arch: std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_ARCH").ok(),
+            candle_device: thinker::CandleDevicePreference::from_env(
+                &std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_DEVICE")
+                    .unwrap_or_else(|_| "auto".to_string()),
+            ),
+            candle_cuda_ordinal: env_usize(
+                "CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL",
+                0,
+            ),
+            candle_repeat_penalty: env_f32(
+                "CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_PENALTY",
+                1.1,
+            ),
+            candle_repeat_last_n: env_usize(
+                "CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_LAST_N",
+                64,
+            ),
+            candle_seed: env_u64("CODETETHER_COGNITION_THINKER_CANDLE_SEED", 42),
+        };
+
+        Self::new_with_options_and_thinker(options, Some(thinker_config))
     }
 
     /// Build runtime from explicit options.
     pub fn new_with_options(options: CognitionRuntimeOptions) -> Self {
+        Self::new_with_options_and_thinker(options, None)
+    }
+
+    fn new_with_options_and_thinker(
+        options: CognitionRuntimeOptions,
+        thinker_config: Option<ThinkerConfig>,
+    ) -> Self {
         let (event_tx, _) = broadcast::channel(options.max_events.max(16));
+        let thinker = thinker_config.and_then(|cfg| {
+            if !cfg.enabled {
+                return None;
+            }
+            match ThinkerClient::new(cfg) {
+                Ok(client) => {
+                    tracing::info!(
+                        backend = ?client.config().backend,
+                        endpoint = %client.config().endpoint,
+                        model = %client.config().model,
+                        "Cognition thinker initialized"
+                    );
+                    Some(Arc::new(client))
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "Failed to initialize cognition thinker; using fallback thoughts");
+                    None
+                }
+            }
+        });
+
         Self {
             enabled: options.enabled,
             max_events: options.max_events.max(32),
@@ -315,6 +472,7 @@ impl CognitionRuntime {
             snapshots: Arc::new(RwLock::new(VecDeque::new())),
             loop_handle: Arc::new(Mutex::new(None)),
             event_tx,
+            thinker,
         }
     }
 
@@ -336,17 +494,19 @@ impl CognitionRuntime {
             ));
         }
 
-        if let Some(request) = req.clone() {
+        let mut requested_seed_persona: Option<CreatePersonaRequest> = None;
+        if let Some(request) = req {
             if let Some(interval) = request.loop_interval_ms {
                 let mut lock = self.loop_interval_ms.write().await;
                 *lock = interval.max(100);
             }
-            if let Some(seed) = request.seed_persona {
-                let has_personas = !self.personas.read().await.is_empty();
-                if !has_personas {
-                    let _ = self.create_persona(seed).await?;
-                }
-            }
+            requested_seed_persona = request.seed_persona;
+        }
+
+        let has_personas = !self.personas.read().await.is_empty();
+        if !has_personas {
+            let seed = requested_seed_persona.unwrap_or_else(default_seed_persona);
+            let _ = self.create_persona(seed).await?;
         }
 
         if self.running.load(Ordering::SeqCst) {
@@ -369,9 +529,19 @@ impl CognitionRuntime {
         let max_events = self.max_events;
         let max_snapshots = self.max_snapshots;
         let event_tx = self.event_tx.clone();
+        let thinker = self.thinker.clone();
 
         let handle = tokio::spawn(async move {
+            let mut next_tick = Instant::now();
             while running.load(Ordering::SeqCst) {
+                let now_instant = Instant::now();
+                if now_instant < next_tick {
+                    tokio::time::sleep_until(next_tick).await;
+                }
+                if !running.load(Ordering::SeqCst) {
+                    break;
+                }
+
                 let now = Utc::now();
                 {
                     let mut lock = last_tick_at.write().await;
@@ -382,8 +552,9 @@ impl CognitionRuntime {
                 let mut new_snapshots = Vec::new();
                 let mut new_proposals = Vec::new();
 
-                {
+                let work_items: Vec<ThoughtWorkItem> = {
                     let mut map = personas.write().await;
+                    let mut items = Vec::new();
                     for persona in map.values_mut() {
                         if persona.status != PersonaStatus::Active {
                             continue;
@@ -392,89 +563,142 @@ impl CognitionRuntime {
                         persona.thought_count = persona.thought_count.saturating_add(1);
                         persona.last_tick_at = Some(now);
                         persona.updated_at = now;
+                        items.push(ThoughtWorkItem {
+                            persona_id: persona.identity.id.clone(),
+                            persona_name: persona.identity.name.clone(),
+                            role: persona.identity.role.clone(),
+                            charter: persona.identity.charter.clone(),
+                            swarm_id: persona.identity.swarm_id.clone(),
+                            thought_count: persona.thought_count,
+                            phase: ThoughtPhase::from_thought_count(persona.thought_count),
+                        });
+                    }
+                    items
+                };
 
-                        let phase = match persona.thought_count % 4 {
-                            1 => "observe",
-                            2 => "reflect",
-                            3 => "test",
-                            _ => "compress",
-                        };
+                for work in work_items {
+                    let context = recent_persona_context(&events, &work.persona_id, 8).await;
+                    let thought = generate_phase_thought(thinker.as_deref(), &work, &context).await;
 
-                        let event_type = match phase {
-                            "observe" => ThoughtEventType::ThoughtGenerated,
-                            "reflect" => ThoughtEventType::HypothesisRaised,
-                            "test" => ThoughtEventType::CheckRequested,
-                            _ => ThoughtEventType::SnapshotCompressed,
+                    let event_timestamp = Utc::now();
+                    new_events.push(ThoughtEvent {
+                        id: Uuid::new_v4().to_string(),
+                        event_type: work.phase.event_type(),
+                        persona_id: Some(work.persona_id.clone()),
+                        swarm_id: work.swarm_id.clone(),
+                        timestamp: event_timestamp,
+                        payload: json!({
+                            "phase": work.phase.as_str(),
+                            "thought_count": work.thought_count,
+                            "persona": {
+                                "id": work.persona_id.clone(),
+                                "name": work.persona_name.clone(),
+                                "role": work.role.clone(),
+                            },
+                            "context_event_count": context.len(),
+                            "thinking": thought.thinking.clone(),
+                            "source": thought.source,
+                            "model": thought.model.clone(),
+                            "finish_reason": thought.finish_reason.clone(),
+                            "usage": {
+                                "prompt_tokens": thought.prompt_tokens,
+                                "completion_tokens": thought.completion_tokens,
+                                "total_tokens": thought.total_tokens,
+                            },
+                            "latency_ms": thought.latency_ms,
+                            "error": thought.error.clone(),
+                        }),
+                    });
+
+                    if work.phase == ThoughtPhase::Test {
+                        new_events.push(ThoughtEvent {
+                            id: Uuid::new_v4().to_string(),
+                            event_type: ThoughtEventType::CheckResult,
+                            persona_id: Some(work.persona_id.clone()),
+                            swarm_id: work.swarm_id.clone(),
+                            timestamp: Utc::now(),
+                            payload: json!({
+                                "phase": work.phase.as_str(),
+                                "thought_count": work.thought_count,
+                                "result_excerpt": trim_for_storage(&thought.thinking, 280),
+                                "source": thought.source,
+                                "model": thought.model,
+                            }),
+                        });
+                    }
+
+                    if work.phase == ThoughtPhase::Reflect && work.thought_count % 8 == 2 {
+                        let proposal = Proposal {
+                            id: Uuid::new_v4().to_string(),
+                            persona_id: work.persona_id.clone(),
+                            title: proposal_title_from_thought(&thought.thinking, work.thought_count),
+                            rationale: trim_for_storage(&thought.thinking, 900),
+                            evidence_refs: vec!["internal.thought_stream".to_string()],
+                            risk: ProposalRisk::Low,
+                            status: ProposalStatus::Created,
+                            created_at: Utc::now(),
                         };
 
                         new_events.push(ThoughtEvent {
                             id: Uuid::new_v4().to_string(),
-                            event_type,
-                            persona_id: Some(persona.identity.id.clone()),
-                            swarm_id: persona.identity.swarm_id.clone(),
-                            timestamp: now,
+                            event_type: ThoughtEventType::ProposalCreated,
+                            persona_id: Some(work.persona_id.clone()),
+                            swarm_id: work.swarm_id.clone(),
+                            timestamp: Utc::now(),
                             payload: json!({
-                                "phase": phase,
-                                "thought_count": persona.thought_count,
-                                "role": persona.identity.role,
+                                "proposal_id": proposal.id,
+                                "title": proposal.title,
+                                "rationale_excerpt": trim_for_storage(&proposal.rationale, 220),
+                                "source": thought.source,
+                                "model": thought.model,
                             }),
                         });
 
-                        if phase == "reflect" && persona.thought_count % 8 == 2 {
-                            let proposal = Proposal {
-                                id: Uuid::new_v4().to_string(),
-                                persona_id: persona.identity.id.clone(),
-                                title: format!("proposal-{}", persona.thought_count),
-                                rationale: format!(
-                                    "Generated from reflective loop in persona {}",
-                                    persona.identity.id
+                        new_proposals.push(proposal);
+                    }
+
+                    if work.phase == ThoughtPhase::Compress {
+                        new_snapshots.push(MemorySnapshot {
+                            id: Uuid::new_v4().to_string(),
+                            generated_at: Utc::now(),
+                            swarm_id: work.swarm_id.clone(),
+                            persona_scope: vec![work.persona_id.clone()],
+                            summary: trim_for_storage(&thought.thinking, 1_500),
+                            hot_event_count: context.len(),
+                            warm_fact_count: estimate_fact_count(&thought.thinking),
+                            cold_snapshot_count: 1,
+                            metadata: HashMap::from([
+                                (
+                                    "phase".to_string(),
+                                    serde_json::Value::String(work.phase.as_str().to_string()),
                                 ),
-                                evidence_refs: vec!["internal.thought_stream".to_string()],
-                                risk: ProposalRisk::Low,
-                                status: ProposalStatus::Created,
-                                created_at: now,
-                            };
-
-                            new_events.push(ThoughtEvent {
-                                id: Uuid::new_v4().to_string(),
-                                event_type: ThoughtEventType::ProposalCreated,
-                                persona_id: Some(persona.identity.id.clone()),
-                                swarm_id: persona.identity.swarm_id.clone(),
-                                timestamp: now,
-                                payload: json!({
-                                    "proposal_id": proposal.id,
-                                    "title": proposal.title,
-                                }),
-                            });
-
-                            new_proposals.push(proposal);
-                        }
-
-                        if phase == "compress" {
-                            new_snapshots.push(MemorySnapshot {
-                                id: Uuid::new_v4().to_string(),
-                                generated_at: now,
-                                swarm_id: persona.identity.swarm_id.clone(),
-                                persona_scope: vec![persona.identity.id.clone()],
-                                summary: format!(
-                                    "Compressed cognition state for persona {} at thought {}",
-                                    persona.identity.id, persona.thought_count
+                                (
+                                    "role".to_string(),
+                                    serde_json::Value::String(work.role.clone()),
                                 ),
-                                hot_event_count: 1,
-                                warm_fact_count: 1,
-                                cold_snapshot_count: 1,
-                                metadata: HashMap::from([
-                                    (
-                                        "phase".to_string(),
-                                        serde_json::Value::String("compress".to_string()),
+                                (
+                                    "source".to_string(),
+                                    serde_json::Value::String(thought.source.to_string()),
+                                ),
+                                (
+                                    "model".to_string(),
+                                    serde_json::Value::String(
+                                        thought
+                                            .model
+                                            .clone()
+                                            .unwrap_or_else(|| "fallback".to_string()),
                                     ),
-                                    (
-                                        "role".to_string(),
-                                        serde_json::Value::String(persona.identity.role.clone()),
+                                ),
+                                (
+                                    "completion_tokens".to_string(),
+                                    serde_json::Value::Number(
+                                        serde_json::Number::from(
+                                            thought.completion_tokens.unwrap_or(0) as u64
+                                        ),
                                     ),
-                                ]),
-                            });
-                        }
+                                ),
+                            ]),
+                        });
                     }
                 }
 
@@ -492,8 +716,12 @@ impl CognitionRuntime {
                     push_snapshot_internal(&snapshots, max_snapshots, snapshot).await;
                 }
 
-                let interval = *loop_interval_ms.read().await;
-                tokio::time::sleep(Duration::from_millis(interval.max(100))).await;
+                let interval = Duration::from_millis((*loop_interval_ms.read().await).max(100));
+                next_tick += interval;
+                let tick_completed = Instant::now();
+                if tick_completed > next_tick {
+                    next_tick = tick_completed;
+                }
             }
         });
 
@@ -826,6 +1054,210 @@ async fn push_snapshot_internal(
     }
 }
 
+async fn recent_persona_context(
+    events: &Arc<RwLock<VecDeque<ThoughtEvent>>>,
+    persona_id: &str,
+    limit: usize,
+) -> Vec<ThoughtEvent> {
+    let lock = events.read().await;
+    let mut selected: Vec<ThoughtEvent> = lock
+        .iter()
+        .rev()
+        .filter(|event| {
+            event.persona_id.as_deref() == Some(persona_id)
+                || (event.persona_id.is_none()
+                    && matches!(
+                        event.event_type,
+                        ThoughtEventType::CheckResult
+                            | ThoughtEventType::ProposalCreated
+                            | ThoughtEventType::SnapshotCompressed
+                    ))
+        })
+        .take(limit)
+        .cloned()
+        .collect();
+    selected.reverse();
+    selected
+}
+
+async fn generate_phase_thought(
+    thinker: Option<&ThinkerClient>,
+    work: &ThoughtWorkItem,
+    context: &[ThoughtEvent],
+) -> ThoughtResult {
+    let started_at = Instant::now();
+    if let Some(client) = thinker {
+        let (system_prompt, user_prompt) = build_phase_prompts(work, context);
+        match client.think(&system_prompt, &user_prompt).await {
+            Ok(output) => {
+                let thinking = trim_for_storage(&output.text, 2_000);
+                if !thinking.is_empty() {
+                    return ThoughtResult {
+                        source: "model",
+                        model: Some(output.model),
+                        finish_reason: output.finish_reason,
+                        thinking,
+                        prompt_tokens: output.prompt_tokens,
+                        completion_tokens: output.completion_tokens,
+                        total_tokens: output.total_tokens,
+                        latency_ms: started_at.elapsed().as_millis(),
+                        error: None,
+                    };
+                }
+            }
+            Err(error) => {
+                return ThoughtResult {
+                    source: "fallback",
+                    model: None,
+                    finish_reason: None,
+                    thinking: fallback_phase_text(work, context),
+                    prompt_tokens: None,
+                    completion_tokens: None,
+                    total_tokens: None,
+                    latency_ms: started_at.elapsed().as_millis(),
+                    error: Some(error.to_string()),
+                };
+            }
+        }
+    }
+
+    ThoughtResult {
+        source: "fallback",
+        model: None,
+        finish_reason: None,
+        thinking: fallback_phase_text(work, context),
+        prompt_tokens: None,
+        completion_tokens: None,
+        total_tokens: None,
+        latency_ms: started_at.elapsed().as_millis(),
+        error: None,
+    }
+}
+
+fn build_phase_prompts(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> (String, String) {
+    let system_prompt = "You are the internal cognition engine for a persistent autonomous persona. \
+Respond with concise plain text only. Do not include markdown, XML, or code fences. \
+Focus on reasoning quality, uncertainty, and actionable checks."
+        .to_string();
+
+    let context_lines = if context.is_empty() {
+        "none".to_string()
+    } else {
+        context
+            .iter()
+            .map(format_context_event)
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    let phase_instruction = match work.phase {
+        ThoughtPhase::Observe => {
+            "Observe current state. Identify 1-3 concrete signals and one uncertainty."
+        }
+        ThoughtPhase::Reflect => {
+            "Reflect on observed signals. Produce one hypothesis, rationale, and risk note."
+        }
+        ThoughtPhase::Test => {
+            "Design and evaluate one check. Include expected result and evidence quality."
+        }
+        ThoughtPhase::Compress => {
+            "Compress the latest cognition into a short state summary and retained facts."
+        }
+    };
+
+    let user_prompt = format!(
+        "phase: {phase}\npersona_id: {persona_id}\npersona_name: {persona_name}\nrole: {role}\ncharter: {charter}\nthought_count: {thought_count}\nrecent_context:\n{context}\n\ninstruction:\n{instruction}",
+        phase = work.phase.as_str(),
+        persona_id = work.persona_id,
+        persona_name = work.persona_name,
+        role = work.role,
+        charter = work.charter,
+        thought_count = work.thought_count,
+        context = context_lines,
+        instruction = phase_instruction
+    );
+
+    (system_prompt, user_prompt)
+}
+
+fn format_context_event(event: &ThoughtEvent) -> String {
+    let payload = serde_json::to_string(&event.payload).unwrap_or_else(|_| "{}".to_string());
+    format!(
+        "{} {} {}",
+        event.event_type.as_str(),
+        event.timestamp.to_rfc3339(),
+        trim_for_storage(&payload, 220)
+    )
+}
+
+fn fallback_phase_text(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> String {
+    let phase = work.phase.as_str();
+    let context_count = context.len();
+    format!(
+        "phase={} persona={} role={} context_events={} thought_count={} synthesized_fallback=1",
+        phase, work.persona_id, work.role, context_count, work.thought_count
+    )
+}
+
+fn trim_for_storage(input: &str, max_chars: usize) -> String {
+    if input.chars().count() <= max_chars {
+        return input.trim().to_string();
+    }
+    let mut trimmed = String::with_capacity(max_chars + 8);
+    for ch in input.chars().take(max_chars) {
+        trimmed.push(ch);
+    }
+    trimmed.push_str("...");
+    trimmed.trim().to_string()
+}
+
+fn estimate_fact_count(text: &str) -> usize {
+    let sentence_count = text.matches('.').count() + text.matches('!').count() + text.matches('?').count();
+    sentence_count.clamp(1, 12)
+}
+
+fn proposal_title_from_thought(thought: &str, thought_count: u64) -> String {
+    let first_line = thought
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or("proposal");
+    let compact = first_line
+        .replace(['\t', '\r', '\n'], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let trimmed = trim_for_storage(&compact, 72);
+    if trimmed.is_empty() {
+        format!("proposal-{}", thought_count)
+    } else {
+        trimmed
+    }
+}
+
+fn default_seed_persona() -> CreatePersonaRequest {
+    CreatePersonaRequest {
+        persona_id: Some("root-thinker".to_string()),
+        name: "root-thinker".to_string(),
+        role: "orchestrator".to_string(),
+        charter: "Continuously observe, reflect, test hypotheses, and compress useful insights."
+            .to_string(),
+        swarm_id: Some("swarm-core".to_string()),
+        parent_id: None,
+        policy: None,
+    }
+}
+
+fn normalize_thinker_endpoint(base_url: &str) -> String {
+    let trimmed = base_url.trim().trim_end_matches('/');
+    if trimmed.ends_with("/chat/completions") {
+        return trimmed.to_string();
+    }
+    if trimmed.is_empty() {
+        return "http://127.0.0.1:11434/v1/chat/completions".to_string();
+    }
+    format!("{}/chat/completions", trimmed)
+}
+
 fn env_bool(name: &str, default: bool) -> bool {
     std::env::var(name)
         .ok()
@@ -834,6 +1266,13 @@ fn env_bool(name: &str, default: bool) -> bool {
             "0" | "false" | "no" | "off" => Some(false),
             _ => None,
         })
+        .unwrap_or(default)
+}
+
+fn env_f32(name: &str, default: f32) -> f32 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
         .unwrap_or(default)
 }
 
