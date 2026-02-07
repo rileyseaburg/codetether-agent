@@ -74,15 +74,22 @@ impl OpenAIProvider {
                 ("qwen-3-32b", "Qwen 3 32B"),
                 ("gpt-oss-120b", "GPT-OSS 120B"),
             ],
-            "novita" => vec![
-                ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
-                ("meta-llama/llama-3.1-70b-instruct", "Llama 3.1 70B"),
-                ("deepseek/deepseek-v3-0324", "DeepSeek V3"),
-                ("qwen/qwen-2.5-72b-instruct", "Qwen 2.5 72B"),
-            ],
+
             "minimax" => vec![
                 ("MiniMax-M1-80k", "MiniMax M1 80k"),
                 ("MiniMax-Text-01", "MiniMax Text 01"),
+            ],
+            "zhipuai" => vec![
+                ("glm-4.7", "GLM-4.7"),
+                ("glm-4-plus", "GLM-4 Plus"),
+                ("glm-4-flash", "GLM-4 Flash"),
+                ("glm-4-long", "GLM-4 Long"),
+            ],
+            "novita" => vec![
+                ("qwen/qwen3-coder-next", "Qwen 3 Coder Next"),
+                ("deepseek/deepseek-v3-0324", "DeepSeek V3"),
+                ("meta-llama/llama-3.1-70b-instruct", "Llama 3.1 70B"),
+                ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
             ],
             _ => vec![],
         };
