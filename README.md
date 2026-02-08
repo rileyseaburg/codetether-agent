@@ -35,7 +35,15 @@ See [full release notes](https://github.com/rileyseaburg/codetether-agent/releas
 
 ## Installation
 
-### From crates.io (Recommended)
+### One-Click Install (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+```
+
+No Rust toolchain required. Downloads the latest pre-built binary and installs to `/usr/local/bin` (or `~/.local/bin`).
+
+### From crates.io
 
 ```bash
 cargo install codetether-agent
