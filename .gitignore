@@ -26,3 +26,5 @@ Thumbs.db
 .env
 .env.*
 progress.txt
+.env.sccache
+jenkins-quantum-forge*.pem
