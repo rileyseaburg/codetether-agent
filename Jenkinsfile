@@ -42,7 +42,7 @@ pipeline {
                         rustc --version
                         sccache --start-server 2>/dev/null || true
                         sccache --show-stats 2>&1 | grep "Cache location" || true
-                        cargo build --release
+                        cargo build --release --features functiongemma
                         echo "=== sccache stats ==="
                         sccache --show-stats || true
                     '''
@@ -101,7 +101,7 @@ pipeline {
                 ]) {
                     sh '''
                         echo "Publishing ${TAG_NAME} to crates.io ..."
-                        cargo publish --allow-dirty
+                        cargo publish --allow-dirty --features functiongemma
                     '''
                 }
             }

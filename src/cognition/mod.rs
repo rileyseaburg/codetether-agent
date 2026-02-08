@@ -7,6 +7,9 @@
 
 mod thinker;
 
+#[cfg(feature = "functiongemma")]
+pub mod tool_router;
+
 pub use thinker::{CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig, ThinkerOutput};
 
 use anyhow::{Result, anyhow};

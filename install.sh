@@ -3,7 +3,12 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 #
 # Installs the latest release of codetether to /usr/local/bin (or ~/.local/bin if no sudo).
+# By default, also downloads the FunctionGemma model for local tool-call routing.
 # No Rust toolchain required.
+#
+# Options:
+#   --no-functiongemma   Skip FunctionGemma model download
+#   --functiongemma-only Only download the FunctionGemma model (skip binary install)
 
 set -e
 
@@ -11,6 +16,15 @@ REPO="rileyseaburg/codetether-agent"
 BINARY_NAME="codetether"
 INSTALL_DIR="/usr/local/bin"
 USE_SUDO="true"
+INSTALL_FUNCTIONGEMMA="true"
+FUNCTIONGEMMA_ONLY="false"
+
+# FunctionGemma model configuration
+FUNCTIONGEMMA_MODEL_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/codetether/models/functiongemma"
+FUNCTIONGEMMA_MODEL_URL="https://huggingface.co/unsloth/functiongemma-270m-it-GGUF/resolve/main/functiongemma-270m-it-Q8_0.gguf"
+FUNCTIONGEMMA_MODEL_FILE="functiongemma-270m-it-Q8_0.gguf"
+FUNCTIONGEMMA_TOKENIZER_URL="https://huggingface.co/google/functiongemma-270m-it/resolve/main/tokenizer.json"
+FUNCTIONGEMMA_TOKENIZER_FILE="tokenizer.json"
 
 # Colors (if terminal supports them)
 if [ -t 1 ]; then
@@ -91,7 +105,81 @@ download() {
     fi
 }
 
+install_functiongemma() {
+    printf "\n${BOLD}FunctionGemma Model Setup${NC}\n\n"
+    info "model directory: ${FUNCTIONGEMMA_MODEL_DIR}"
+
+    mkdir -p "$FUNCTIONGEMMA_MODEL_DIR"
+
+    # Download GGUF model
+    local model_path="${FUNCTIONGEMMA_MODEL_DIR}/${FUNCTIONGEMMA_MODEL_FILE}"
+    if [ -f "$model_path" ]; then
+        ok "model already exists: ${model_path}"
+    else
+        info "downloading FunctionGemma GGUF model (~292 MB)..."
+        download "$FUNCTIONGEMMA_MODEL_URL" "$model_path"
+        if [ -f "$model_path" ]; then
+            ok "model downloaded: ${model_path}"
+        else
+            error "failed to download FunctionGemma model"
+            warn "you can retry later: $0 --functiongemma-only"
+            return 1
+        fi
+    fi
+
+    # Download tokenizer
+    local tokenizer_path="${FUNCTIONGEMMA_MODEL_DIR}/${FUNCTIONGEMMA_TOKENIZER_FILE}"
+    if [ -f "$tokenizer_path" ]; then
+        ok "tokenizer already exists: ${tokenizer_path}"
+    else
+        info "downloading tokenizer..."
+        download "$FUNCTIONGEMMA_TOKENIZER_URL" "$tokenizer_path"
+        if [ -f "$tokenizer_path" ]; then
+            ok "tokenizer downloaded: ${tokenizer_path}"
+        else
+            error "failed to download tokenizer"
+            warn "you can retry later: $0 --functiongemma-only"
+            return 1
+        fi
+    fi
+
+    ok "FunctionGemma installed to ${FUNCTIONGEMMA_MODEL_DIR}"
+
+    # Print activation instructions
+    printf "\n${BOLD}To enable the FunctionGemma tool-call router:${NC}\n"
+    printf "  ${CYAN}export CODETETHER_TOOL_ROUTER_ENABLED=true${NC}\n"
+    printf "  ${CYAN}export CODETETHER_TOOL_ROUTER_MODEL_PATH=\"${model_path}\"${NC}\n"
+    printf "  ${CYAN}export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH=\"${tokenizer_path}\"${NC}\n\n"
+    info "add these to your shell profile for persistent activation"
+}
+
 main() {
+    # Parse arguments
+    for arg in "$@"; do
+        case "$arg" in
+            --no-functiongemma)
+                INSTALL_FUNCTIONGEMMA="false"
+                ;;
+            --functiongemma-only)
+                FUNCTIONGEMMA_ONLY="true"
+                ;;
+            --help|-h)
+                printf "Usage: $0 [OPTIONS]\n\n"
+                printf "Options:\n"
+                printf "  --no-functiongemma    Skip FunctionGemma model download\n"
+                printf "  --functiongemma-only  Only download the FunctionGemma model\n"
+                printf "  --help, -h            Show this help message\n"
+                exit 0
+                ;;
+        esac
+    done
+
+    # If --functiongemma-only, skip binary install entirely
+    if [ "$FUNCTIONGEMMA_ONLY" = "true" ]; then
+        install_functiongemma
+        exit $?
+    fi
+
     printf "\n${BOLD}CodeTether Agent Installer${NC}\n\n"
 
     # Check basic dependencies
@@ -192,6 +280,14 @@ main() {
     printf "  ${CYAN}codetether tui${NC}       — interactive TUI\n"
     printf "  ${CYAN}codetether run \"...\"${NC} — single prompt\n"
     printf "  ${CYAN}codetether --help${NC}    — all commands\n\n"
+
+    # Install FunctionGemma model (default: on)
+    if [ "$INSTALL_FUNCTIONGEMMA" = "true" ]; then
+        install_functiongemma
+    else
+        info "skipping FunctionGemma model download (--no-functiongemma)"
+        info "you can install it later: $0 --functiongemma-only"
+    fi
 }
 
 main "$@"
