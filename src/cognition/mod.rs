@@ -7,6 +7,8 @@
 
 mod thinker;
 
+pub use thinker::{CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig, ThinkerOutput};
+
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -18,7 +20,6 @@ use std::time::Duration;
 use tokio::sync::{Mutex, RwLock, broadcast};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
-use thinker::{ThinkerClient, ThinkerConfig};
 use uuid::Uuid;
 
 /// Persona execution status.
@@ -1191,12 +1192,89 @@ fn format_context_event(event: &ThoughtEvent) -> String {
 }
 
 fn fallback_phase_text(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> String {
-    let phase = work.phase.as_str();
-    let context_count = context.len();
-    format!(
-        "phase={} persona={} role={} context_events={} thought_count={} synthesized_fallback=1",
-        phase, work.persona_id, work.role, context_count, work.thought_count
-    )
+    let charter = trim_for_storage(&work.charter, 180);
+    let context_summary = fallback_context_summary(context);
+    let thought = match work.phase {
+        ThoughtPhase::Observe => format!(
+            "Observation {}: I am monitoring this codebase with a business-first reliability lens. \
+Role: {}. Charter focus: {}. {} Next focus: identify customer-impacting incidents, degraded flows, \
+and recent operational regressions before they become outages.",
+            work.thought_count, work.role, charter, context_summary
+        ),
+        ThoughtPhase::Reflect => format!(
+            "Reflection {}: Based on current signals, the most plausible risk areas are runtime stability, \
+deployment safety, and dependency/provider availability. {} Business impact if unresolved: service downtime, \
+SLA breaches, and loss of customer trust. Confidence: low-to-medium until additional checks are gathered.",
+            work.thought_count, context_summary
+        ),
+        ThoughtPhase::Test => format!(
+            "Check plan {}: run targeted verification on service health, recent errors, and change history. \
+{} Expected evidence: clear pass/fail indicators for each suspected fault domain. Decision rule: escalate \
+immediately on repeated failures in customer-facing paths.",
+            work.thought_count, context_summary
+        ),
+        ThoughtPhase::Compress => format!(
+            "Operational summary {}: system remains under active reliability monitoring with business-priority focus. \
+{} Immediate next actions: keep triage tight, capture repeatable diagnostics, and convert confirmed findings into \
+concrete remediation steps for engineering and operations.",
+            work.thought_count, context_summary
+        ),
+    };
+    trim_for_storage(&thought, 1_200)
+}
+
+fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
+    if context.is_empty() {
+        return "No prior events recorded yet.".to_string();
+    }
+
+    let mut latest_error: Option<String> = None;
+    let mut latest_proposal: Option<String> = None;
+    let mut latest_check: Option<String> = None;
+
+    for event in context.iter().rev() {
+        if latest_error.is_none()
+            && let Some(error) = event.payload.get("error").and_then(serde_json::Value::as_str)
+            && !error.trim().is_empty()
+        {
+            latest_error = Some(trim_for_storage(error, 140));
+        }
+
+        if latest_proposal.is_none()
+            && event.event_type == ThoughtEventType::ProposalCreated
+            && let Some(title) = event.payload.get("title").and_then(serde_json::Value::as_str)
+            && !title.trim().is_empty()
+        {
+            latest_proposal = Some(trim_for_storage(title, 120));
+        }
+
+        if latest_check.is_none()
+            && event.event_type == ThoughtEventType::CheckResult
+            && let Some(result) = event
+                .payload
+                .get("result_excerpt")
+                .and_then(serde_json::Value::as_str)
+            && !result.trim().is_empty()
+        {
+            latest_check = Some(trim_for_storage(result, 140));
+        }
+
+        if latest_error.is_some() && latest_proposal.is_some() && latest_check.is_some() {
+            break;
+        }
+    }
+
+    let mut lines = vec![format!("{} recent cognition events are available.", context.len())];
+    if let Some(error) = latest_error {
+        lines.push(format!("Latest error signal: {}.", error));
+    }
+    if let Some(proposal) = latest_proposal {
+        lines.push(format!("Recent proposal: {}.", proposal));
+    }
+    if let Some(check) = latest_check {
+        lines.push(format!("Recent check: {}.", check));
+    }
+    lines.join(" ")
 }
 
 fn trim_for_storage(input: &str, max_chars: usize) -> String {

@@ -502,6 +502,12 @@ impl BedrockProvider {
     /// - messages with "role" and "content" array
     /// - tool_use blocks in assistant content
     /// - toolResult blocks in user content
+    ///
+    /// IMPORTANT: Bedrock requires strict role alternation (user/assistant).
+    /// Consecutive Role::Tool messages must be merged into a single "user"
+    /// message so all toolResult blocks for a given assistant turn appear
+    /// together. Consecutive same-role messages are also merged to prevent
+    /// validation errors.
     fn convert_messages(messages: &[Message]) -> (Vec<Value>, Vec<Value>) {
         let mut system_parts: Vec<Value> = Vec::new();
         let mut api_messages: Vec<Value> = Vec::new();
@@ -533,6 +539,15 @@ impl BedrockProvider {
                         }
                     }
                     if !content_parts.is_empty() {
+                        // Merge into previous user message if the last message is also "user"
+                        if let Some(last) = api_messages.last_mut() {
+                            if last.get("role").and_then(|r| r.as_str()) == Some("user") {
+                                if let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut()) {
+                                    arr.extend(content_parts);
+                                    continue;
+                                }
+                            }
+                        }
                         api_messages.push(json!({
                             "role": "user",
                             "content": content_parts
@@ -569,13 +584,24 @@ impl BedrockProvider {
                     if content_parts.is_empty() {
                         content_parts.push(json!({"text": ""}));
                     }
+                    // Merge into previous assistant message if consecutive
+                    if let Some(last) = api_messages.last_mut() {
+                        if last.get("role").and_then(|r| r.as_str()) == Some("assistant") {
+                            if let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut()) {
+                                arr.extend(content_parts);
+                                continue;
+                            }
+                        }
+                    }
                     api_messages.push(json!({
                         "role": "assistant",
                         "content": content_parts
                     }));
                 }
                 Role::Tool => {
-                    // Tool results go into a user message with toolResult blocks
+                    // Tool results must be in a "user" message with toolResult blocks.
+                    // Merge into the previous user message if one exists (handles
+                    // consecutive Tool messages being collapsed into one user turn).
                     let mut content_parts: Vec<Value> = Vec::new();
                     for part in &msg.content {
                         if let ContentPart::ToolResult {
@@ -593,6 +619,15 @@ impl BedrockProvider {
                         }
                     }
                     if !content_parts.is_empty() {
+                        // Merge into previous user message (from earlier Tool messages)
+                        if let Some(last) = api_messages.last_mut() {
+                            if last.get("role").and_then(|r| r.as_str()) == Some("user") {
+                                if let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut()) {
+                                    arr.extend(content_parts);
+                                    continue;
+                                }
+                            }
+                        }
                         api_messages.push(json!({
                             "role": "user",
                             "content": content_parts
