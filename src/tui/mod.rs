@@ -15,7 +15,7 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
-use crate::session::{Session, SessionEvent, SessionSummary, list_sessions};
+use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_for_directory};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::ralph_view::{RalphEvent, RalphViewState, render_ralph_view};
@@ -133,6 +133,8 @@ struct App {
     processing_message: Option<String>,
     current_tool: Option<String>,
     response_rx: Option<mpsc::Receiver<SessionEvent>>,
+    /// Working directory for workspace-scoped session filtering
+    workspace_dir: PathBuf,
     // Swarm mode state
     view_mode: ViewMode,
     chat_layout: ChatLayoutMode,
@@ -297,6 +299,7 @@ impl App {
             processing_message: None,
             current_tool: None,
             response_rx: None,
+            workspace_dir: workspace_root.clone(),
             view_mode: ViewMode::Chat,
             chat_layout: ChatLayoutMode::Webview,
             show_inspector: true,
@@ -402,7 +405,7 @@ impl App {
 
         if message.trim() == "/refresh" {
             self.refresh_workspace();
-            match list_sessions().await {
+            match list_sessions_for_directory(&self.workspace_dir).await {
                 Ok(sessions) => self.update_cached_sessions(sessions),
                 Err(err) => self.messages.push(ChatMessage::new(
                     "system",
@@ -427,7 +430,7 @@ impl App {
 
         // Check for /sessions command - open session picker
         if message.trim() == "/sessions" {
-            match list_sessions().await {
+            match list_sessions_for_directory(&self.workspace_dir).await {
                 Ok(sessions) => {
                     if sessions.is_empty() {
                         self.messages
@@ -458,7 +461,7 @@ impl App {
             let loaded = if let Some(id) = session_id {
                 Session::load(id).await
             } else {
-                Session::last().await
+                Session::last_for_directory(Some(&self.workspace_dir)).await
             };
 
             match loaded {
@@ -1093,7 +1096,7 @@ impl App {
 
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     let mut app = App::new();
-    if let Ok(sessions) = list_sessions().await {
+    if let Ok(sessions) = list_sessions_for_directory(&app.workspace_dir).await {
         app.update_cached_sessions(sessions);
     }
 
@@ -1128,7 +1131,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         }
 
         if last_session_refresh.elapsed() > Duration::from_secs(5) {
-            if let Ok(sessions) = list_sessions().await {
+            if let Ok(sessions) = list_sessions_for_directory(&app.workspace_dir).await {
                 app.update_cached_sessions(sessions);
             }
             last_session_refresh = Instant::now();
