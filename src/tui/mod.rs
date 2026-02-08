@@ -491,7 +491,11 @@ impl App {
                                 ContentPart::Text { text } => Some(text.clone()),
                                 ContentPart::ToolCall {
                                     name, arguments, ..
-                                } => Some(format!("[Tool: {}]\n{}", name, arguments)),
+                                } => Some(format!(
+                                    "[Tool: {}]\n{}",
+                                    name,
+                                    format_tool_call_arguments(name, arguments)
+                                )),
                                 ContentPart::ToolResult { content, .. } => {
                                     let truncated = if content.len() > 500 {
                                         format!("{}...", &content[..497])
@@ -2363,16 +2367,30 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 ]);
                 message_lines.push(tool_header);
 
-                let args_str = if arguments.len() > 200 {
-                    format!("{}...", &arguments[..197])
-                } else {
-                    arguments.clone()
-                };
-                let args_line = Line::from(vec![
-                    Span::styled("     ", Style::default()),
-                    Span::styled(args_str, Style::default().fg(Color::DarkGray)),
-                ]);
-                message_lines.push(args_line);
+                let mut formatted_args = format_tool_call_arguments(name, arguments);
+                let mut truncated = false;
+                if formatted_args.chars().count() > 900 {
+                    formatted_args = format!("{}...", formatted_args.chars().take(897).collect::<String>());
+                    truncated = true;
+                }
+
+                let arg_lines: Vec<&str> = formatted_args.lines().collect();
+                for line in arg_lines.iter().take(10) {
+                    let args_line = Line::from(vec![
+                        Span::styled("     ", Style::default()),
+                        Span::styled((*line).to_string(), Style::default().fg(Color::DarkGray)),
+                    ]);
+                    message_lines.push(args_line);
+                }
+                if arg_lines.len() > 10 || truncated {
+                    message_lines.push(Line::from(vec![
+                        Span::styled("     ", Style::default()),
+                        Span::styled(
+                            "... (truncated)",
+                            Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+                        ),
+                    ]));
+                }
             }
             MessageType::ToolResult { name, output } => {
                 let result_header = Line::from(vec![
@@ -2460,6 +2478,21 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
     }
 
     message_lines
+}
+
+fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
+    let parsed = match serde_json::from_str::<serde_json::Value>(arguments) {
+        Ok(value) => value,
+        Err(_) => return arguments.to_string(),
+    };
+
+    if name == "question"
+        && let Some(question) = parsed.get("question").and_then(serde_json::Value::as_str)
+    {
+        return question.to_string();
+    }
+
+    serde_json::to_string_pretty(&parsed).unwrap_or_else(|_| arguments.to_string())
 }
 
 fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {

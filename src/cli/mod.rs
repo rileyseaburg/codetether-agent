@@ -81,6 +81,9 @@ pub enum Command {
 
     /// Clean up orphaned worktrees and branches from failed Ralph runs
     Cleanup(CleanupArgs),
+
+    /// List available models from all configured providers
+    Models(ModelsArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -365,6 +368,17 @@ pub struct CleanupArgs {
     /// Clean up worktrees only (not branches)
     #[arg(long)]
     pub worktrees_only: bool,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct ModelsArgs {
+    /// Filter by provider name
+    #[arg(short, long)]
+    pub provider: Option<String>,
 
     /// Output as JSON
     #[arg(long)]
