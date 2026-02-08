@@ -83,8 +83,11 @@ impl Session {
         Ok(session)
     }
 
-    /// Load the last session
-    pub async fn last() -> Result<Self> {
+    /// Load the last session, optionally scoped to a workspace directory
+    ///
+    /// When `workspace` is Some, only considers sessions created in that directory.
+    /// When None, returns the most recent session globally (legacy behavior).
+    pub async fn last_for_directory(workspace: Option<&std::path::Path>) -> Result<Self> {
         let sessions_dir = Self::sessions_dir()?;
 
         if !sessions_dir.exists() {
@@ -112,13 +115,31 @@ impl Session {
             )
         });
 
-        if let Some(entry) = entries.first() {
+        let canonical_workspace = workspace.map(|w| w.canonicalize().unwrap_or_else(|_| w.to_path_buf()));
+
+        for entry in &entries {
             let content: String = fs::read_to_string(entry.path()).await?;
-            let session: Session = serde_json::from_str(&content)?;
-            return Ok(session);
+            if let Ok(session) = serde_json::from_str::<Session>(&content) {
+                // If workspace scoping requested, filter by directory
+                if let Some(ref ws) = canonical_workspace {
+                    if let Some(ref dir) = session.metadata.directory {
+                        let canonical_dir = dir.canonicalize().unwrap_or_else(|_| dir.clone());
+                        if &canonical_dir == ws {
+                            return Ok(session);
+                        }
+                    }
+                    continue;
+                }
+                return Ok(session);
+            }
         }
 
         anyhow::bail!("No sessions found")
+    }
+
+    /// Load the last session (global, unscoped — legacy compatibility)
+    pub async fn last() -> Result<Self> {
+        Self::last_for_directory(None).await
     }
 
     /// Save the session to disk
@@ -781,6 +802,7 @@ pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
                         updated_at: session.updated_at,
                         message_count: session.messages.len(),
                         agent: session.agent,
+                        directory: session.metadata.directory,
                     });
                 }
             }
@@ -789,6 +811,24 @@ pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
 
     summaries.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(summaries)
+}
+
+/// List sessions scoped to a specific directory (workspace)
+///
+/// Only returns sessions whose `metadata.directory` matches the given path.
+/// This prevents sessions from other workspaces "leaking" into the TUI.
+pub async fn list_sessions_for_directory(dir: &std::path::Path) -> Result<Vec<SessionSummary>> {
+    let all = list_sessions().await?;
+    let canonical = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+    Ok(all
+        .into_iter()
+        .filter(|s| {
+            s.directory
+                .as_ref()
+                .map(|d| d.canonicalize().unwrap_or_else(|_| d.clone()) == canonical)
+                .unwrap_or(false)
+        })
+        .collect())
 }
 
 /// Summary of a session for listing
@@ -800,6 +840,9 @@ pub struct SessionSummary {
     pub updated_at: DateTime<Utc>,
     pub message_count: usize,
     pub agent: String,
+    /// The working directory this session was created in
+    #[serde(default)]
+    pub directory: Option<PathBuf>,
 }
 
 fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {

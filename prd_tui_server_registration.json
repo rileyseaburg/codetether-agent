@@ -1,0 +1,141 @@
+{
+  "id": "d54725f3-9a50-4730-8b6a-a6db4725d290",
+  "project": "codetether-agent",
+  "feature": "TUI Auto-Registration with codetether.run API",
+  "description": "The TUI (codetether tui / default mode) currently operates in complete isolation — it loads providers from Vault, manages sessions locally, and has zero awareness of the codetether.run API. Meanwhile, the worker mode (codetether worker) has a full registration lifecycle: register, heartbeat, SSE task stream, claim/release. The TUI should register itself as a lightweight interactive worker on startup so that the codetether.run dashboard knows about connected instances, their available models, and online/offline status. This bridges the gap between the TUI being a local-only tool and the platform's fleet visibility.",
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "lint": "cargo clippy --all-features",
+    "test": "cargo test",
+    "build": "cargo build --release"
+  },
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Default server URL constant",
+      "description": "Add a constant DEFAULT_A2A_SERVER_URL = 'https://api.codetether.run' and use it as the fallback when config.a2a.server_url is None. This means every TUI instance auto-targets the production API unless overridden. The constant should live in src/a2a/mod.rs or a shared constants location and be referenceable by both the worker and TUI code paths.",
+      "acceptance_criteria": [
+        "A constant DEFAULT_A2A_SERVER_URL exists with value 'https://api.codetether.run'",
+        "Config::load() resolves a2a.server_url with this default when no config or env var is set",
+        "The worker CLI falls back to this default when --server is not provided",
+        "CODETETHER_A2A_SERVER env var still overrides the default",
+        "a2a.server_url in config.toml still overrides the default"
+      ],
+      "priority": 1,
+      "depends_on": [],
+      "passes": false
+    },
+    {
+      "id": "US-002",
+      "title": "Extract reusable registration client",
+      "description": "The worker (src/a2a/worker.rs) builds registration, heartbeat, and model-list payloads inline with serde_json::json!() macros. Extract a reusable ApiRegistrationClient struct (or similar) into src/a2a/registration.rs that encapsulates: (1) register_worker() → POST /v1/opencode/workers/register, (2) send_heartbeat() → POST /v1/opencode/workers/{id}/heartbeat, (3) deregister_worker() → POST /v1/opencode/workers/{id}/deregister (or DELETE). Define proper Rust structs for the request/response types instead of inline JSON. The worker should be migrated to use this client. The TUI will also use it.",
+      "acceptance_criteria": [
+        "ApiRegistrationClient struct exists in src/a2a/registration.rs",
+        "WorkerRegistrationRequest, HeartbeatRequest, and DeregisterRequest structs are defined with serde Serialize/Deserialize",
+        "register(), heartbeat(), deregister() methods exist on ApiRegistrationClient",
+        "The existing worker (src/a2a/worker.rs) is refactored to use ApiRegistrationClient instead of inline JSON",
+        "All existing worker tests still pass",
+        "No behavior change in worker mode"
+      ],
+      "priority": 1,
+      "depends_on": [],
+      "passes": false
+    },
+    {
+      "id": "US-003",
+      "title": "TUI registers on startup",
+      "description": "When the TUI starts (in run_app()), after loading providers and config, spawn a background tokio task that calls ApiRegistrationClient::register(). The registration payload should include: worker_id (generated with 'tui_' prefix to distinguish from headless workers), name (hostname or config.a2a.worker_name), capabilities ['interactive', 'tui'], hostname, available models (from loaded providers), and codebases (current working directory). Registration should be fire-and-forget — if the server is unreachable, log a debug warning and continue. The TUI must remain fully functional offline.",
+      "acceptance_criteria": [
+        "TUI calls register on startup as a background tokio::spawn task",
+        "Worker ID uses 'tui_' prefix format: tui_{timestamp}_{random_hex}",
+        "Capabilities list is ['interactive', 'tui'] (not the worker's ['ralph', 'swarm', 'rlm', 'a2a', 'mcp'])",
+        "Available models from all loaded providers are included in registration",
+        "Current working directory is sent as the codebase",
+        "Registration failure does not block or crash the TUI",
+        "A debug-level log is emitted on registration success or failure",
+        "TUI works identically when api.codetether.run is unreachable"
+      ],
+      "priority": 2,
+      "depends_on": ["US-001", "US-002"],
+      "passes": false
+    },
+    {
+      "id": "US-004",
+      "title": "TUI sends periodic heartbeats",
+      "description": "After successful registration, spawn a background heartbeat task that sends POST /v1/opencode/workers/{worker_id}/heartbeat every 30 seconds (matching the worker interval). The heartbeat payload should include status ('idle' when waiting for input, 'processing' when an LLM call is in-flight) and active_task_count. Use a shared Arc<AtomicBool> or similar to track is_processing state from the main event loop. If 3 consecutive heartbeats fail, log a warning and stop sending (don't retry forever). The heartbeat task must be cancellable on TUI exit.",
+      "acceptance_criteria": [
+        "Heartbeat task runs every 30 seconds after successful registration",
+        "Status reflects 'idle' vs 'processing' based on TUI's is_processing flag",
+        "active_task_count is 0 when idle, 1 when processing a prompt",
+        "Heartbeat stops after 3 consecutive failures with a warning log",
+        "Heartbeat task is aborted cleanly on TUI exit (Ctrl+C / Ctrl+Q)",
+        "No heartbeat task is spawned if registration failed"
+      ],
+      "priority": 2,
+      "depends_on": ["US-003"],
+      "passes": false
+    },
+    {
+      "id": "US-005",
+      "title": "TUI deregisters on exit",
+      "description": "When the TUI exits (Ctrl+C, Ctrl+Q, or clean shutdown), call ApiRegistrationClient::deregister() to notify the server that this instance is going offline. This should be a best-effort call with a short timeout (2 seconds). If the server is unreachable, exit immediately without blocking. Also abort the heartbeat task. Implement this in the cleanup path after the main event loop exits.",
+      "acceptance_criteria": [
+        "Deregister is called on clean TUI exit",
+        "Deregister has a 2-second timeout and does not block shutdown",
+        "Heartbeat task is aborted before deregistration",
+        "If deregister fails, TUI exits normally without error to user",
+        "Works correctly on Ctrl+C signal handling"
+      ],
+      "priority": 3,
+      "depends_on": ["US-003", "US-004"],
+      "passes": false
+    },
+    {
+      "id": "US-006",
+      "title": "Status bar shows connection state",
+      "description": "Add a small connection indicator to the TUI status bar showing the codetether.run connection state. States: '●' green when registered and heartbeating, '○' dim when not connected or registration failed, '◌' yellow when reconnecting. This gives the user visual feedback about their fleet visibility. The indicator should be in the bottom status bar, left of the model name. Use an Arc<AtomicU8> or enum shared between the registration task and the UI render loop.",
+      "acceptance_criteria": [
+        "Status bar shows a connection indicator dot",
+        "Green dot when registered and heartbeat is active",
+        "Dim/gray dot when not connected (server unreachable or no server configured)",
+        "Yellow dot during initial registration attempt",
+        "Indicator updates reactively (not on next keypress)",
+        "Indicator is positioned in the status bar near the model display",
+        "No visual change when a2a.server_url is explicitly set to empty/none (indicator hidden)"
+      ],
+      "priority": 3,
+      "depends_on": ["US-003", "US-004"],
+      "passes": false
+    },
+    {
+      "id": "US-007",
+      "title": "TUI /server command for manual control",
+      "description": "Add a /server slash command to the TUI that shows connection status and allows manual control. '/server' with no args shows: server URL, worker_id, connection state, last heartbeat time. '/server connect' forces a re-registration. '/server disconnect' deregisters and stops heartbeats. '/server url <url>' changes the server URL for this session. This gives power users control without restarting the TUI.",
+      "acceptance_criteria": [
+        "/server with no args displays current connection info",
+        "/server connect triggers registration (or re-registration)",
+        "/server disconnect deregisters and stops heartbeats",
+        "/server url <url> updates the target server URL",
+        "All subcommands provide user-visible feedback in the chat area",
+        "Invalid subcommands show usage help"
+      ],
+      "priority": 4,
+      "depends_on": ["US-003", "US-004", "US-005"],
+      "passes": false
+    },
+    {
+      "id": "US-008",
+      "title": "Model change triggers re-registration",
+      "description": "When the user switches models via the model picker or /model command, send an updated registration (or a lightweight model-update endpoint if available) so the server knows the TUI's active model. This ensures the dashboard reflects what model each connected instance is actually using, not just what's available.",
+      "acceptance_criteria": [
+        "Model switch via picker triggers a re-registration with updated active_model field",
+        "Model switch via /model command triggers the same update",
+        "Re-registration is fire-and-forget (does not block model switch)",
+        "If not currently registered, model change does not attempt server communication"
+      ],
+      "priority": 4,
+      "depends_on": ["US-003"],
+      "passes": false
+    }
+  ]
+}
