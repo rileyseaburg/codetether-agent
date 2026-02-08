@@ -4,65 +4,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
-**Linux binary (v0.1.5):** [direct](https://github.com/rileyseaburg/codetether-agent/releases/download/v0.1.5/codetether-v0.1.5-x86_64-unknown-linux-gnu) | [tar.gz](https://github.com/rileyseaburg/codetether-agent/releases/download/v0.1.5/codetether-v0.1.5-x86_64-unknown-linux-gnu.tar.gz) | [SHA256SUMS](https://github.com/rileyseaburg/codetether-agent/releases/download/v0.1.5/SHA256SUMS-v0.1.5.txt)
+A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
 
-A high-performance AI coding agent with first-class A2A (Agent-to-Agent) protocol support, written in Rust. Features a rich terminal UI with dedicated views for swarm orchestration and autonomous PRD-driven development. Part of the CodeTether ecosystem.
+## v1.0.0
 
-![CodeTether TUI](docs/tui-screenshot.png)
+This major release brings together the full CodeTether agent experience:
 
-## What's New in v0.1.5
+- **FunctionGemma Tool Router** — A local 270M-param model that converts text-only LLM responses into structured tool calls. Your primary LLM reasons; FunctionGemma formats. Provider-agnostic, zero-cost passthrough when not needed, safe degradation on failure.
+- **RLM + FunctionGemma Integration** — The Recursive Language Model now uses structured tool dispatch instead of regex-parsed DSL. `rlm_head`, `rlm_tail`, `rlm_grep`, `rlm_count`, `rlm_slice`, `rlm_llm_query`, and `rlm_final` are proper tool definitions.
+- **Marketing Theme** — New default TUI theme with cyan accents on a near-black background, matching the CodeTether site.
+- **Swarm Improvements** — Validation, caching, rate limiting, and result storage modules for parallel sub-agent execution.
+- **Image Tool** — New tool for image input handling.
+- **27+ Built-in Tools** — File ops, LSP, code search, web fetch, shell execution, agent orchestration.
 
-- **Perpetual Persona Swarms (Phase 0)** — Always-on cognition runtime with persona lineage, SSE event stream, and control APIs.
-- **Bedrock Provider** — Native Amazon Bedrock Converse API support (including region-aware configuration).
-- **Provider Model Discovery** — Added default model catalogs for OpenAI-compatible providers (`cerebras`, `novita`, `minimax`).
-- **Worker API Alignment** — Updated worker registration, task, and heartbeat paths to the `/v1/opencode/*` namespace.
-- **Model ID Translation Fix** — Preserves model IDs that use `:` for version suffixes (for example `amazon.nova-micro-v1:0`).
-
-See [full release notes](https://github.com/rileyseaburg/codetether-agent/releases/tag/v0.1.5).
-
-## Features
-
-- **A2A-Native**: Built from the ground up for the A2A protocol - works as a worker agent for the CodeTether platform
-- **AI-Powered Coding**: Intelligent code assistance using multiple AI providers (OpenAI, Anthropic, Google, Moonshot, GitHub Copilot, etc.)
-- **Swarm Execution**: Parallel sub-agent execution with real-time per-agent event streaming and dedicated TUI detail view
-- **Ralph Loop**: Autonomous PRD-driven development with dedicated TUI view — give it a spec, watch it work story by story
-- **Interactive TUI**: Rich terminal interface with webview layout, model selector, session picker, swarm view, and Ralph view
-- **RLM Processing**: Handle context larger than model windows via recursive language model approach
-- **Secure Secrets**: All API keys loaded exclusively from HashiCorp Vault - no environment variable secrets
-- **FunctionGemma Tool Router**: Separates *reasoning* from *tool-call formatting* — a tiny local model handles structured output so your primary LLM can focus on thinking (see [why this matters](#functiongemma-tool-call-router))
-- **27+ Tools**: Comprehensive tool system for file ops, LSP, code search, web fetch, and more
-- **Session Management**: Persistent session history with git-aware storage
-- **High Performance**: Written in Rust — 13ms startup, <20MB idle memory, true parallelism via tokio
-
-## Installation
-
-### One-Click Install (Recommended)
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
 
-No Rust toolchain required. Downloads the latest pre-built binary and installs to `/usr/local/bin` (or `~/.local/bin`). Also downloads the FunctionGemma model (~292 MB) for local tool-call routing.
+Downloads the binary to `/usr/local/bin` (or `~/.local/bin`) and the FunctionGemma model (~292 MB) for local tool-call routing. No Rust toolchain required.
 
 ```bash
-# Skip FunctionGemma model download
+# Skip FunctionGemma model
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --no-functiongemma
-
-# Download only the FunctionGemma model (existing install)
-curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --functiongemma-only
 ```
-
-### From crates.io
-
-```bash
-cargo install codetether-agent
-```
-
-This installs the `codetether` binary to `~/.cargo/bin/`.
-
-### From GitHub Releases
-
-Download pre-built binaries from [GitHub Releases](https://github.com/rileyseaburg/codetether-agent/releases).
 
 ### From Source
 
@@ -72,47 +38,66 @@ cd codetether-agent
 cargo build --release
 # Binary at target/release/codetether
 
-# Build without FunctionGemma (smaller binary)
+# Without FunctionGemma (smaller binary)
 cargo build --release --no-default-features
 ```
 
-## FunctionGemma Tool-Call Router
+### From crates.io
 
-### The Problem
+```bash
+cargo install codetether-agent
+```
 
-Modern LLMs can call tools. But they're doing **two fundamentally different jobs at once**: figuring out *what* to do (reasoning) and formatting *how* to express it (structured JSON tool calls). These are very different skills, and coupling them has real costs:
+## Quick Start
 
-- **You pay frontier prices for formatting.** A $15/M-token model spends tokens producing `{"name": "read_file", "arguments": {"path": "src/main.rs"}}` — the same structured output a 270M-parameter model produces perfectly.
-- **Tool-call quality varies wildly.** Even models that "support" tool calling often hallucinate tool names, malform arguments, or choose the wrong tool. The reasoning is good, but the formatting is unreliable.
-- **You're locked to one model's quirks.** Switch from Claude to Gemini and tool-call behavior changes. Every provider implements it slightly differently. Your agent has to handle all of them.
-- **Retries are expensive.** When a tool call is malformed, you burn another full cloud round-trip to fix it.
+### 1. Configure Vault
 
-### The Solution
+All API keys live in HashiCorp Vault — never in config files or env vars.
 
-CodeTether **separates the two jobs**. Your primary LLM does what it's best at — reasoning, planning, understanding code. A tiny local model ([FunctionGemma](https://huggingface.co/google/functiongemma-270m-it), 270M params by Google) runs on your CPU and handles the structured output formatting. It reads what the LLM *said* it wants to do and produces clean, reliable tool calls.
+```bash
+export VAULT_ADDR="https://vault.example.com:8200"
+export VAULT_TOKEN="hvs.your-token"
 
-This is the same principle behind compiler design (parsing vs. code generation), microservices (single responsibility), and even how teams work (the architect decides *what* to build, the engineer handles *how* to express it in code).
+# Add a provider
+vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
+```
 
-### Why This Is Novel
+### 2. Launch the TUI
 
-- **No other coding agent separates these concerns.** Cursor, Continue, Aider, and opencode all require the primary LLM to handle both reasoning and tool-call formatting in a single pass. That works until it doesn't.
-- **Provider-agnostic tool calling.** Switch models freely — Claude, GPT-4o, Llama, Qwen, Kimi, a self-hosted fine-tune — and tool-call behavior stays consistent because the formatting layer is local and deterministic.
-- **Cheaper at scale.** The reasoning model doesn't waste tokens on JSON syntax. The formatting model runs locally for free. At 1000 tool calls/day, this adds up fast.
-- **More reliable.** A dedicated 270M model trained *specifically* for function calling is more consistent at structured output than a 400B generalist model doing it as a side task.
-- **Zero overhead when unnecessary.** If your LLM already returns structured tool calls, FunctionGemma is never invoked — pure passthrough, zero latency added.
-- **Safe degradation.** If FunctionGemma fails, the original response is returned unchanged. It never breaks anything.
+```bash
+codetether tui
+```
 
-### How It Works
+### 3. Or Run a Single Prompt
 
-1. Your primary LLM (Claude, GPT-4o, Kimi, Llama, etc.) returns a response
-2. Response already has structured tool calls? → **passthrough** (zero cost)
-3. Response is text-only? → FunctionGemma translates it into `<tool_call>` blocks locally (~5-50ms on CPU)
-4. The agent processes the structured calls as normal
-5. Any error? → original response returned unchanged
+```bash
+codetether run "explain this codebase"
+```
 
-### Setup
+## CLI
 
-The installer downloads the model by default. To enable the router, set these environment variables:
+```bash
+codetether tui                           # Interactive terminal UI
+codetether run "prompt"                  # Single prompt (chat, no tools)
+codetether swarm "complex task"          # Parallel sub-agent execution
+codetether ralph run --prd prd.json      # Autonomous PRD-driven development
+codetether ralph create-prd --feature X  # Generate a PRD template
+codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
+codetether worker --server URL           # A2A worker mode
+codetether config --show                 # Show config
+```
+
+## Features
+
+### FunctionGemma Tool Router
+
+Modern LLMs can call tools — but they're doing two jobs at once: *reasoning* about what to do, and *formatting* the structured JSON to express it. CodeTether separates these concerns.
+
+Your primary LLM (Claude, GPT-4o, Kimi, Llama, etc.) focuses on reasoning. A tiny local model ([FunctionGemma](https://huggingface.co/google/functiongemma-270m-it), 270M params by Google) handles structured output formatting via Candle inference (~5-50ms on CPU).
+
+- **Provider-agnostic** — Switch models freely; tool-call behavior stays consistent.
+- **Zero overhead** — If the LLM already returns tool calls, FunctionGemma is never invoked.
+- **Safe degradation** — On any error, the original response is returned unchanged.
 
 ```bash
 export CODETETHER_TOOL_ROUTER_ENABLED=true
@@ -120,447 +105,132 @@ export CODETETHER_TOOL_ROUTER_MODEL_PATH="$HOME/.local/share/codetether/models/f
 export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH="$HOME/.local/share/codetether/models/functiongemma/tokenizer.json"
 ```
 
-### Configuration
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CODETETHER_TOOL_ROUTER_ENABLED` | `false` | `true` / `1` to activate the router |
-| `CODETETHER_TOOL_ROUTER_MODEL_PATH` | — | Path to the FunctionGemma `.gguf` model |
+| `CODETETHER_TOOL_ROUTER_ENABLED` | `false` | Activate the router |
+| `CODETETHER_TOOL_ROUTER_MODEL_PATH` | — | Path to `.gguf` model |
 | `CODETETHER_TOOL_ROUTER_TOKENIZER_PATH` | — | Path to `tokenizer.json` |
 | `CODETETHER_TOOL_ROUTER_ARCH` | `gemma3` | Architecture hint |
 | `CODETETHER_TOOL_ROUTER_DEVICE` | `auto` | `auto` / `cpu` / `cuda` |
 | `CODETETHER_TOOL_ROUTER_MAX_TOKENS` | `512` | Max decode tokens |
 | `CODETETHER_TOOL_ROUTER_TEMPERATURE` | `0.1` | Sampling temperature |
 
-### Opting Out
+### RLM: Recursive Language Model
 
-- **At install time**: `--no-functiongemma` flag skips the model download
-- **At build time**: `cargo build --release --no-default-features` excludes the feature
-- **At runtime**: Simply don't set `CODETETHER_TOOL_ROUTER_ENABLED` (disabled by default)
+Handles content that exceeds model context windows. Loads context into a REPL, lets the LLM explore it with structured tool calls (`rlm_head`, `rlm_tail`, `rlm_grep`, `rlm_count`, `rlm_slice`, `rlm_llm_query`), and returns a synthesized answer via `rlm_final`.
 
-## Crash Reporting (Opt-In)
-
-CodeTether can automatically capture catastrophic crashes (panic message, location, stack trace, version, OS/arch, and command) and send them to a remote endpoint on next startup.
-
-- Disabled by default.
-- On first interactive TUI run, CodeTether asks for explicit consent.
-- No source files or API keys are included.
-- Reports are queued locally in the data directory under `crash-reports/` before upload.
-- Uploads use a versioned schema envelope (`codetether.crash.v1`) with legacy fallback for older endpoints.
-
-Enable:
+When FunctionGemma is enabled, RLM uses structured tool dispatch instead of regex-parsed DSL — the same separation-of-concerns pattern applied to RLM's analysis loop.
 
 ```bash
-codetether config --set telemetry.crash_reporting=true
+codetether rlm "What are the main functions?" -f src/large_file.rs
+cat logs/*.log | codetether rlm "Summarize the errors" --content -
 ```
 
-Disable:
+#### Content Types
+
+RLM auto-detects content type for optimized processing:
+
+| Type | Detection | Optimization |
+|------|-----------|--------------|
+| `code` | Function definitions, imports | Semantic chunking by symbols |
+| `logs` | Timestamps, log levels | Time-based chunking |
+| `conversation` | Chat markers, turns | Turn-based chunking |
+| `documents` | Markdown headers, paragraphs | Section-based chunking |
+
+#### Example Output
 
 ```bash
-codetether config --set telemetry.crash_reporting=false
+$ codetether rlm "What are the 3 main functions?" -f src/chunker.rs --json
+{
+  "answer": "The 3 main functions are: 1) chunk_content() - splits content...",
+  "iterations": 1,
+  "sub_queries": 0,
+  "stats": {
+    "input_tokens": 322,
+    "output_tokens": 235,
+    "elapsed_ms": 10982
+  }
+}
 ```
 
-Set a custom endpoint:
+### Swarm: Parallel Sub-Agent Execution
+
+Decomposes complex tasks into subtasks and executes them concurrently with real-time progress in the TUI.
 
 ```bash
-codetether config --set telemetry.crash_report_endpoint=https://your-endpoint.example.com/crashes
+codetether swarm "Implement user auth with tests and docs"
+codetether swarm "Refactor the API layer" --strategy domain --max-subagents 8
 ```
 
-If your crash endpoint requires authentication, set one of these environment variables:
+Strategies: `auto` (default), `domain`, `data`, `stage`, `none`.
+
+### Ralph: Autonomous PRD-Driven Development
+
+Give it a spec, watch it work story by story. Each iteration is a fresh agent with full tool access. Memory persists via git history, `progress.txt`, and the PRD file.
 
 ```bash
-export CODETETHER_CRASH_REPORT_AUTH_TOKEN="your-bearer-token"
-# or
-export CODETETHER_CRASH_REPORT_API_KEY="your-api-key"
+codetether ralph create-prd --feature "User Auth" --project-name my-app
+codetether ralph run --prd prd.json --max-iterations 10
 ```
 
-## Quick Start
+### TUI
 
-### 1. Configure HashiCorp Vault
+The terminal UI includes a webview layout, model selector, session picker, swarm view with per-agent detail, Ralph view with per-story progress, and theme support with hot-reload.
 
-All API keys are stored in HashiCorp Vault for security. Set up your Vault connection:
+**Slash Commands**: `/swarm`, `/ralph`, `/model`, `/sessions`, `/resume`, `/new`, `/webview`, `/classic`, `/inspector`, `/refresh`, `/view`
 
-```bash
-export VAULT_ADDR="https://vault.example.com:8200"
-export VAULT_TOKEN="hvs.your-token"
-```
+**Keyboard**: `Ctrl+M` model selector, `Ctrl+B` toggle layout, `Ctrl+S`/`F2` swarm view, `Tab` switch agents, `Alt+j/k` scroll, `?` help
 
-Store your provider API keys in Vault:
-
-```bash
-# Moonshot AI (default provider)
-vault kv put secret/codetether/providers/moonshotai api_key="sk-..."
-
-# OpenRouter (access to many models)
-vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
-
-# Google AI
-vault kv put secret/codetether/providers/google api_key="AIza..."
-
-# Anthropic (or via Azure)
-vault kv put secret/codetether/providers/anthropic api_key="sk-ant-..." base_url="https://api.anthropic.com"
-
-# Azure Anthropic
-vault kv put secret/codetether/providers/anthropic api_key="..." base_url="https://your-endpoint.azure.com/anthropic/v1"
-
-# StepFun
-vault kv put secret/codetether/providers/stepfun api_key="..."
-
-vault kv put secret/codetether/providers/zhipuai api_key="..." base_url="https://api.z.ai/api/paas/v4"
-```
-
-### If You See "No providers available"
-
-This means CodeTether can run, but it cannot find any API keys in Vault.
-
-Use this copy/paste checklist:
-
-```bash
-# 1) Set Vault connection details (replace with your real values)
-export VAULT_ADDR="https://vault.example.com:8200"
-export VAULT_TOKEN="hvs.your-token"
-export VAULT_MOUNT="secret"
-export VAULT_SECRETS_PATH="codetether/providers"
-
-# 2) Add one provider key (example: OpenRouter)
-vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
-
-# 3) Verify the key exists
-vault kv list secret/codetether/providers
-vault kv get secret/codetether/providers/openrouter
-
-# 4) Test CodeTether
-codetether run --model openrouter/stepfun/step-3.5-flash:free "hello"
-```
-
-If you are logged in as `root`, do not use `sudo` in install commands.
-
-For worker/service setups, make sure the same `VAULT_*` variables are present in your service environment (for example `/etc/default/codetether-agent`) before restarting.
-
-### Supported Providers
+## Providers
 
 | Provider | Default Model | Notes |
 |----------|---------------|-------|
-| `moonshotai` | `kimi-k2.5` | **Default** - excellent for coding |
-| `github-copilot` | `claude-opus-4` | GitHub Copilot models (Claude, GPT, Gemini) |
+| `moonshotai` | `kimi-k2.5` | Default — excellent for coding |
+| `github-copilot` | `claude-opus-4` | GitHub Copilot models |
 | `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
 | `google` | `gemini-2.5-pro` | Google AI |
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |
+| `bedrock` | — | Amazon Bedrock Converse API |
 
-### 2. Connect to CodeTether Platform
-
-```bash
-# Connect as a worker to the CodeTether A2A server
-codetether worker --server https://api.codetether.run --codebases /path/to/project
-
-# Or with authentication
-codetether worker --server https://api.codetether.run --codebases /path/to/project --token your-worker-token
-
-# Or use the one-command deploy script (from repo root)
-./deploy-worker.sh --codebases /path/to/project
-```
-
-### 3. Or Use Interactive Mode
-
-```bash
-# Start the TUI in current directory
-codetether tui
-
-# Start in a specific project
-codetether tui /path/to/project
-```
-
-## CLI Quick Reference
-
-```bash
-# Interactive TUI (like opencode)
-codetether tui
-
-# Chat mode (no tools)
-codetether run "explain this code"
-
-# Swarm mode - parallel sub-agents for complex tasks
-codetether swarm "implement feature X with tests"
-
-# Ralph - autonomous PRD-driven development
-codetether ralph run --prd prd.json
-
-# Generate a PRD template
-codetether ralph create-prd --feature "My Feature" --project-name "my-app"
-
-# Start HTTP server
-codetether serve --port 4096
-
-# Show config
-codetether config --show
-```
-
-## Usage
-
-### Default Mode: A2A Worker
-
-By default, `codetether` runs as an A2A worker that connects to the CodeTether platform:
-
-```bash
-# Connect to CodeTether platform
-codetether --server https://api.codetether.run
-
-# With custom worker name
-codetether --server https://api.codetether.run --name "my-dev-machine"
-```
-
-Environment variables:
-- `CODETETHER_SERVER` - A2A server URL
-- `CODETETHER_TOKEN` - Authentication token
-- `CODETETHER_WORKER_NAME` - Worker name
-
-### Interactive TUI
-
-```bash
-codetether tui
-```
-
-![CodeTether TUI](docs/tui-screenshot.png)
-
-The TUI provides:
-- **Webview layout**: Dashboard with sidebar, chat, and inspector (`/webview` or `Ctrl+B`)
-- **Model selector**: Browse and pick models at runtime (`/model` or `Ctrl+M`)
-- **Swarm view**: `/swarm <task>` with real-time per-agent progress, tool calls, and detail view (`Enter` on a subtask)
-- **Ralph view**: `/ralph [prd.json]` with per-story progress, quality gates, and sub-agent activity
-- **Session management**: `/sessions` picker, `/resume`, `/new`
-- **Real-time tool streaming**: See tool calls as they execute
-- **Theme support**: Customizable colors via config with hot-reload
-
-### TUI Slash Commands
-
-| Command | Description |
-|---------|-------------|
-| `/swarm <task>` | Run task in parallel swarm mode |
-| `/ralph [path]` | Start autonomous PRD loop (default: `prd.json`) |
-| `/model [name]` | Open model picker or set model directly |
-| `/sessions` | Open session picker to resume a previous session |
-| `/resume [id]` | Resume most recent or specific session |
-| `/new` | Start a fresh session |
-| `/webview` | Switch to dashboard layout |
-| `/classic` | Switch to single-pane layout |
-| `/inspector` | Toggle inspector pane |
-| `/refresh` | Refresh workspace and session cache |
-| `/view` | Toggle swarm view |
-
-### TUI Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `Ctrl+M` | Open model selector |
-| `Ctrl+B` | Toggle webview/classic layout |
-| `Ctrl+S` / `F2` | Toggle swarm view |
-| `F3` | Toggle inspector pane |
-| `Tab` | Switch between build/plan agents |
-| `Alt+j/k` | Scroll down/up |
-| `Alt+u/d` | Half-page scroll |
-| `Ctrl+R` | Search command history |
-| `?` | Toggle help overlay |
-
-### Non-Interactive Mode (Chat - No Tools)
-
-```bash
-# Run a single prompt (chat only, no file editing tools)
-codetether run "explain how this codebase works"
-
-# Continue from last session
-codetether run --continue "add tests for the new feature"
-
-# Use a specific model
-codetether run --model openrouter/stepfun/step-3.5-flash:free "explain this code"
-```
-
-**Note:** `codetether run` is chat-only mode without tools. For coding tasks, use `swarm` or `ralph`.
-
-### HTTP Server
-
-```bash
-# Start the API server
-codetether serve --port 4096
-```
-
-### Configuration Management
-
-```bash
-# Show current config
-codetether config --show
-
-# Initialize default config
-codetether config --init
-```
-
-## Configuration
-
-Configuration is stored in `~/.config/codetether-agent/config.toml`:
-
-```toml
-[default]
-provider = "anthropic"
-model = "claude-sonnet-4-20250514"
-
-[a2a]
-enabled = true
-auto_connect = true
-
-[ui]
-theme = "dark"
-
-[session]
-auto_save = true
-```
-
-**Note:** API keys are NOT stored in config files. They must be stored in HashiCorp Vault.
-
-## HashiCorp Vault Setup
-
-### Vault Secret Structure
-
-```
-secret/codetether/providers/
-├── openai       → { "api_key": "sk-...", "organization": "org-..." }
-├── anthropic    → { "api_key": "sk-ant-..." }
-├── google       → { "api_key": "AIza..." }
-├── deepseek     → { "api_key": "..." }
-└── ...
-```
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `VAULT_ADDR` | Vault server address (e.g., `https://vault.example.com:8200`) |
-| `VAULT_TOKEN` | Vault authentication token |
-| `VAULT_MOUNT` | KV secrets engine mount path (default: `secret`) |
-| `VAULT_SECRETS_PATH` | Path prefix for provider secrets (default: `codetether/providers`) |
-| `CODETETHER_DEFAULT_MODEL` | Default model to use (e.g., `moonshotai/kimi-k2.5`) |
-| `CODETETHER_SERVER` | A2A server URL |
-| `CODETETHER_TOKEN` | Authentication token |
-| `CODETETHER_WORKER_NAME` | Worker name |
-| `CODETETHER_COGNITION_ENABLED` | Enable perpetual cognition runtime (`true`/`false`, default: `true`) |
-| `CODETETHER_COGNITION_AUTO_START` | Auto-start cognition loop on `serve` startup (default: `true`) |
-| `CODETETHER_COGNITION_LOOP_INTERVAL_MS` | Loop interval in milliseconds (default: `2000`) |
-| `CODETETHER_COGNITION_MAX_SPAWN_DEPTH` | Max persona lineage depth (default: `4`) |
-| `CODETETHER_COGNITION_MAX_BRANCHING_FACTOR` | Max active children per persona (default: `4`) |
-| `CODETETHER_COGNITION_MAX_EVENTS` | In-memory event buffer size (default: `2000`) |
-| `CODETETHER_COGNITION_MAX_SNAPSHOTS` | In-memory snapshot buffer size (default: `128`) |
-| `CODETETHER_COGNITION_THINKER_ENABLED` | Enable model-backed thought generation (`true`/`false`, default: `true`) |
-| `CODETETHER_COGNITION_THINKER_BACKEND` | Thinker backend: `openai_compat` or `candle` (default: `openai_compat`) |
-| `CODETETHER_COGNITION_THINKER_BASE_URL` | OpenAI-compatible base URL for thinker model (default: `http://127.0.0.1:11434/v1`) |
-| `CODETETHER_COGNITION_THINKER_MODEL` | Model id for thought generation (default: `qwen2.5:3b-instruct`) |
-| `CODETETHER_COGNITION_THINKER_API_KEY` | Optional API key for thinker endpoint |
-| `CODETETHER_COGNITION_THINKER_TEMPERATURE` | Thinker temperature (default: `0.2`) |
-| `CODETETHER_COGNITION_THINKER_TOP_P` | Optional thinker top-p |
-| `CODETETHER_COGNITION_THINKER_MAX_TOKENS` | Max generated tokens per thought step (default: `256`) |
-| `CODETETHER_COGNITION_THINKER_TIMEOUT_MS` | Thinker request timeout in ms (default: `12000`) |
-| `CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH` | GGUF model path for in-process Candle inference |
-| `CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH` | `tokenizer.json` path used by Candle backend |
-| `CODETETHER_COGNITION_THINKER_CANDLE_ARCH` | Candle model architecture (`llama` or `qwen2`, default: auto from GGUF metadata) |
-| `CODETETHER_COGNITION_THINKER_CANDLE_DEVICE` | Candle device selection: `auto`, `cpu`, or `cuda` (default: `auto`) |
-| `CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL` | CUDA device ordinal when using `cuda` (default: `0`) |
-| `CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_PENALTY` | Candle repetition penalty (default: `1.1`) |
-| `CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_LAST_N` | Token window for repetition penalty (default: `64`) |
-| `CODETETHER_COGNITION_THINKER_CANDLE_SEED` | Base sampling seed for Candle thinker (default: `42`) |
-
-GPU execution requires building with `--features candle-cuda` (or `candle-cudnn`).
-
-### Using Vault Agent
-
-For production, use Vault Agent for automatic token renewal:
-
-```hcl
-# vault-agent.hcl
-vault {
-  address = "https://vault.example.com:8200"
-}
-
-auto_auth {
-  method "kubernetes" {
-    mount_path = "auth/kubernetes"
-    config = {
-      role = "codetether-agent"
-    }
-  }
-
-  sink "file" {
-    config = {
-      path = "/tmp/vault-token"
-    }
-  }
-}
-```
-
-## Agents
-
-### Build Agent
-
-Full access to development tools. Can read, write, edit files and execute commands.
-
-### Plan Agent
-
-Read-only access for analysis and exploration. Perfect for understanding codebases before making changes.
-
-### Explore Agent
-
-Specialized for code navigation and discovery.
+All keys stored in Vault at `secret/codetether/providers/<name>`.
 
 ## Tools
 
-CodeTether Agent includes 27+ tools for comprehensive development automation:
+27+ tools across file operations (`read_file`, `write_file`, `edit`, `multiedit`, `apply_patch`, `glob`, `list_dir`), code intelligence (`lsp`, `grep`, `codesearch`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), and agent orchestration (`ralph`, `rlm`, `prd`, `swarm`, `todo_read`, `todo_write`, `question`, `skill`, `plan_enter`, `plan_exit`).
 
-### File Operations
-| Tool | Description |
-|------|-------------|
-| `read_file` | Read file contents |
-| `write_file` | Write content to files |
-| `list_dir` | List directory contents |
-| `glob` | Find files by pattern |
-| `edit` | Apply search/replace patches |
-| `multiedit` | Batch edits across multiple files |
-| `apply_patch` | Apply unified diff patches |
+## Architecture
 
-### Code Intelligence
-| Tool | Description |
-|------|-------------|
-| `lsp` | Language Server Protocol operations (definition, references, hover, completion) |
-| `grep` | Search file contents with regex |
-| `codesearch` | Semantic code search |
-
-### Execution
-| Tool | Description |
-|------|-------------|
-| `bash` | Execute shell commands |
-| `batch` | Run multiple tool calls in parallel |
-| `task` | Background task execution |
-
-### Web & External
-| Tool | Description |
-|------|-------------|
-| `webfetch` | Fetch web pages with smart extraction |
-| `websearch` | Search the web for information |
-
-### Agent Orchestration
-| Tool | Description |
-|------|-------------|
-| `ralph` | Autonomous PRD-driven agent loop |
-| `rlm` | Recursive Language Model for large contexts |
-| `prd` | Generate and manage PRD documents |
-| `plan_enter`/`plan_exit` | Switch to planning mode |
-| `question` | Ask clarifying questions |
-| `skill` | Execute learned skills |
-| `todo_read`/`todo_write` | Track task progress |
+```
+┌─────────────────────────────────────────────────────────┐
+│                   CodeTether Platform                   │
+│                  (A2A Server at api.codetether.run)     │
+└────────────────────────┬────────────────────────────────┘
+                         │ SSE/JSON-RPC
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   codetether-agent                      │
+│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
+│   │ A2A     │  │ Agent   │  │ Tool    │  │ Provider│  │
+│   │ Worker  │  │ System  │  │ System  │  │ Layer   │  │
+│   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  │
+│        │            │            │            │        │
+│        └────────────┴────────────┴────────────┘        │
+│                          │                             │
+│   ┌──────────────────────┴──────────────────────────┐  │
+│   │              HashiCorp Vault                    │  │
+│   │         (API Keys & Secrets)                    │  │
+│   └─────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
 
 ## A2A Protocol
 
-CodeTether Agent is built for the A2A (Agent-to-Agent) protocol:
+Built for Agent-to-Agent communication:
 
-- **Worker Mode** (default): Connect to the CodeTether platform and process tasks
-- **Server Mode**: Accept tasks from other agents (`codetether serve`)
-- **Client Mode**: Dispatch tasks to other A2A agents
+- **Worker mode** — Connect to the CodeTether platform and process tasks
+- **Server mode** — Accept tasks from other agents (`codetether serve`)
+- **Cognition APIs** — Perpetual persona swarms with SSE event stream, spawn/reap control, and lineage graph
 
 ### AgentCard
 
@@ -570,7 +240,7 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
 {
   "name": "CodeTether Agent",
   "description": "A2A-native AI coding agent",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "skills": [
     { "id": "code-generation", "name": "Code Generation" },
     { "id": "code-review", "name": "Code Review" },
@@ -601,172 +271,13 @@ See `docs/perpetual_persona_swarms.md` for request/response contracts.
 
 ### CUDA Build/Deploy Helpers
 
-From `codetether-agent/`:
-
-- `make build-cuda` - Build a CUDA-enabled binary locally.
-- `make deploy-spike2-cuda` - Sync source to `spike2`, build with `--features candle-cuda`, install, and restart service.
-- `make status-spike2-cuda` - Check service status, active Candle device config, and GPU usage on `spike2`.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   CodeTether Platform                   │
-│                  (A2A Server at api.codetether.run)     │
-└────────────────────────┬────────────────────────────────┘
-                         │ SSE/JSON-RPC
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                   codetether-agent                      │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐    │
-│   │ A2A     │  │ Agent   │  │ Tool    │  │ Provider│    │
-│   │ Worker  │  │ System  │  │ System  │  │ Layer   │    │
-│   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘    │
-│        │            │            │            │         │
-│        └────────────┴────────────┴────────────┘         │
-│                          │                              │
-│   ┌──────────────────────┴──────────────────────────┐   │
-│   │              HashiCorp Vault                    │   │
-│   │         (API Keys & Secrets)                    │   │
-│   └─────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Swarm: Parallel Sub-Agent Execution
-
-The `swarm` command decomposes complex tasks into parallelizable subtasks and executes them concurrently:
-
-```bash
-# Execute a complex task with parallel sub-agents (uses CODETETHER_DEFAULT_MODEL or defaults to moonshotai/kimi-k2.5)
-codetether swarm "Implement user authentication with tests and documentation"
-
-# Specify a model explicitly
-codetether swarm "Implement feature X" --model moonshotai/kimi-k2.5
-
-# Control parallelism and strategy
-codetether swarm "Refactor the API layer" --strategy domain --max-subagents 8
-
-# Generate JSON output
-codetether swarm "Analyze codebase" --json
-```
-
-### Decomposition Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| `auto` | LLM-driven automatic decomposition (default) |
-| `domain` | Split by domain expertise (frontend, backend, etc.) |
-| `data` | Split by data partitions |
-| `stage` | Split by pipeline stages (analyze → implement → test) |
-| `none` | Execute as single task |
-
-## RLM: Recursive Language Model Processing
-
-The `rlm` command handles large contexts that exceed model context windows using the Recursive Language Model approach:
-
-```bash
-# Analyze a large source file
-codetether rlm "What are the main functions?" -f src/large_file.rs
-
-# Analyze multiple files
-codetether rlm "Find all error handling patterns" -f src/*.rs
-
-# Analyze stdin content
-cat logs/*.log | codetether rlm "Summarize the errors" --content -
-
-# JSON output for programmatic use
-codetether rlm "List all TODO comments" -f src/**/*.rs --json
-```
-
-### How RLM Works
-
-Based on the "Recursive Language Model" paper approach:
-
-1. **Context Loading**: Large content is loaded into a REPL-like environment
-2. **LLM Analysis**: The LLM writes code to explore the context (head, tail, grep, etc.)
-3. **Sub-LM Calls**: The LLM can call `llm_query()` for semantic sub-questions
-4. **FINAL Answer**: After 1-5 iterations, the LLM returns a synthesized answer
-
-### RLM Commands (Internal REPL)
-
-| Command | Description |
-|---------|-------------|
-| `head(n)` | First n lines of context |
-| `tail(n)` | Last n lines of context |
-| `grep("pattern")` | Search for regex pattern |
-| `count("pattern")` | Count pattern occurrences |
-| `llm_query("question")` | Ask semantic sub-question |
-| `FINAL("answer")` | Return final answer |
-
-## Ralph: Autonomous PRD-Driven Agent Loop
-
-Ralph is an autonomous agent loop that implements features from a structured PRD (Product Requirements Document). Each iteration is a fresh agent instance with clean context, while memory persists via git history, progress.txt, and the PRD itself.
-
-```bash
-# Create a new PRD template
-codetether ralph create-prd --feature "User Authentication" --project-name "my-app"
-
-# Run Ralph to implement the PRD (note: -p or --prd is required for custom PRD path)
-codetether ralph run --prd prd.json --model "moonshotai/kimi-k2.5" --max-iterations 10
-
-# Or using short flags
-codetether ralph run -p my-feature-prd.json -m "moonshotai/kimi-k2.5"
-
-# Check status
-codetether ralph status --prd prd.json
-```
-
-### How Ralph Works
-
-1. **Load PRD**: Read user stories with acceptance criteria, priorities, and dependencies
-2. **Select Story**: Pick the highest-priority incomplete story with satisfied dependencies
-3. **Implement**: The AI agent has full tool access to read, write, edit, and execute
-4. **Quality Check**: Run all quality checks (cargo check, clippy, test, build)
-5. **Mark Complete**: Update PRD with pass/fail status
-6. **Repeat**: Continue until all stories pass or max iterations reached
-
-### PRD Structure
-
-```json
-{
-  "project": "my-app",
-  "feature": "User Authentication",
-  "branch": "feature/user-auth",
-  "quality_checks": {
-    "typecheck": "cargo check",
-    "lint": "cargo clippy",
-    "test": "cargo test",
-    "build": "cargo build --release"
-  },
-  "user_stories": [
-    {
-      "id": "US-001",
-      "title": "Login endpoint",
-      "description": "Implement POST /auth/login",
-      "acceptance_criteria": ["Returns JWT on success", "Returns 401 on failure"],
-      "priority": 1,
-      "complexity": 2,
-      "depends_on": [],
-      "passes": false
-    }
-  ]
-}
-```
-
-### Memory Across Iterations
-
-Ralph maintains memory across iterations without context window bloat:
-
-| Memory Source | Purpose |
-|---------------|---------|
-| **Git history** | Commits from previous iterations show what changed |
-| **progress.txt** | Agent writes learnings, blockers, and context |
-| **prd.json** | Tracks which stories pass/fail |
-| **Quality checks** | Error output guides next iteration |
+- `make build-cuda` — Build a CUDA-enabled binary locally
+- `make deploy-spike2-cuda` — Sync source to `spike2`, build with `--features candle-cuda`, install, and restart service
+- `make status-spike2-cuda` — Check service status, active Candle device config, and GPU usage on `spike2`
 
 ## Dogfooding: Self-Implementing Agent
 
-This project demonstrates true **dogfooding**—using the agent to build its own features.
+CodeTether implemented its own features using `ralph` and `swarm`.
 
 ### What We Accomplished
 
@@ -869,33 +380,6 @@ codetether ralph run -p prd.json -m "kimi-k2.5" --max-iterations 10
 4. **Reproducible Process**: PRD-driven development is structured and repeatable
 5. **Self-Improvement**: The agent literally improved itself
 
-### Content Types
-
-RLM auto-detects content type for optimized processing:
-
-| Type | Detection | Optimization |
-|------|-----------|--------------|
-| `code` | Function definitions, imports | Semantic chunking by symbols |
-| `logs` | Timestamps, log levels | Time-based chunking |
-| `conversation` | Chat markers, turns | Turn-based chunking |
-| `documents` | Markdown headers, paragraphs | Section-based chunking |
-
-### Example Output
-
-```bash
-$ codetether rlm "What are the 3 main functions?" -f src/chunker.rs --json
-{
-  "answer": "The 3 main functions are: 1) chunk_content() - splits content...",
-  "iterations": 1,
-  "sub_queries": 0,
-  "stats": {
-    "input_tokens": 322,
-    "output_tokens": 235,
-    "elapsed_ms": 10982
-  }
-}
-```
-
 ## Performance: Why Rust Over Bun/TypeScript
 
 CodeTether Agent is written in Rust for measurable performance advantages over JavaScript/TypeScript runtimes like Bun:
@@ -914,13 +398,9 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 ### Why This Matters for Sub-Agents
 
 1. **Lower Memory Per Agent**: With 3-5x less memory per agent, you can run more concurrent sub-agents on the same hardware. A 4GB container can run ~80 Rust sub-agents vs ~15-20 Bun sub-agents.
-
 2. **Faster Spawn Time**: Sub-agents spawn in 1.5ms vs 5-10ms. For a swarm of 100 agents, that's 150ms vs 500-1000ms just in spawn overhead.
-
 3. **No GC Pauses**: Rust has no garbage collector. JavaScript/Bun has GC pauses that can add latency spikes of 10-50ms during high-memory operations.
-
 4. **True Parallelism**: Rust's tokio runtime uses OS threads with work-stealing. Bun uses a single-threaded event loop that can bottleneck on CPU-bound decomposition.
-
 5. **Smaller Attack Surface**: Smaller binary = fewer dependencies = smaller CVE surface. Critical for agents with shell access.
 
 ### Resource Efficiency for Swarm Workloads
@@ -938,7 +418,7 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 │      50           180 MB                 1200 MB                │
 │     100           330 MB                 2400 MB                │
 │                                                                 │
-│  At 100 sub-agents: Rust uses 7.3x less memory                  │
+│  At 100 sub-agents: Rust uses 7.3x less memory                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -968,8 +448,8 @@ Actual resource usage from implementing 20 user stories autonomously:
 │  Total Time          29.5 min             100 min (3.4x slower) │
 │  Wall Clock          1,770 sec            6,000 sec             │
 │  Iterations          20                   20                    │
-│  Spawn Overhead      20 × 1.5ms = 30ms    20 × 7.5ms = 150ms    │
-│  Startup Overhead    20 × 13ms = 260ms    20 × 37ms = 740ms     │
+│  Spawn Overhead      20 × 1.5ms = 30ms   20 × 7.5ms = 150ms   │
+│  Startup Overhead    20 × 13ms = 260ms   20 × 37ms = 740ms    │
 │  Peak Memory         ~55 MB               ~280 MB               │
 │  Tokens Used         500K                 ~1.5M (subagent init) │
 │  Token Cost          $3.75                ~$11.25               │
@@ -1003,20 +483,60 @@ Benchmarks performed on:
 - Rust 1.85, Bun 1.x
 - HashiCorp Vault for secrets
 
+## Configuration
+
+`~/.config/codetether-agent/config.toml`:
+
+```toml
+[default]
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+
+[ui]
+theme = "marketing"   # marketing (default), dark, light, solarized-dark, solarized-light
+
+[session]
+auto_save = true
+```
+
+### Vault Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `VAULT_ADDR` | Vault server address |
+| `VAULT_TOKEN` | Authentication token |
+| `VAULT_MOUNT` | KV mount path (default: `secret`) |
+| `VAULT_SECRETS_PATH` | Provider secrets prefix (default: `codetether/providers`) |
+
+## Crash Reporting (Opt-In)
+
+Disabled by default. Captures panic info on next startup — no source files or API keys included.
+
+```bash
+codetether config --set telemetry.crash_reporting=true
+codetether config --set telemetry.crash_reporting=false
+```
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| **Startup** | 13ms |
+| **Memory (idle)** | ~15 MB |
+| **Memory (10-agent swarm)** | ~55 MB |
+| **Binary size** | ~12.5 MB |
+
+Written in Rust with tokio — true parallelism, no GC pauses, native performance.
+
 ## Development
 
 ```bash
-# Run in development mode
-cargo run -- --server http://localhost:8080
-
-# Run tests
-cargo test
-
-# Build release binary
-cargo build --release
-
-# Run benchmarks
-./script/benchmark.sh
+cargo build                  # Debug build
+cargo build --release        # Release build
+cargo test                   # Run tests
+cargo clippy --all-features  # Lint
+cargo fmt                    # Format
+./script/benchmark.sh        # Run benchmarks
 ```
 
 ## License
