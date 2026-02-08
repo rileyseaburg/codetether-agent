@@ -70,21 +70,20 @@ pipeline {
 
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh """
-                        if gh release view ${env.TAG_NAME} --repo ${REPO} > /dev/null 2>&1; then
-                            gh release upload ${env.TAG_NAME} \
-                                dist/${env.ARTIFACT}.tar.gz \
-                                dist/${env.ARTIFACT} \
-                                dist/SHA256SUMS-${env.VERSION}.txt \
-                                --repo ${REPO} --clobber
-                        else
-                            gh release create ${env.TAG_NAME} \
-                                dist/${env.ARTIFACT}.tar.gz \
-                                dist/${env.ARTIFACT} \
-                                dist/SHA256SUMS-${env.VERSION}.txt \
-                                --repo ${REPO} \
-                                --title "${env.TAG_NAME} - CodeTether Agent" \
-                                --generate-notes
-                        fi
+                        gh release create ${env.TAG_NAME} \
+                            dist/${env.ARTIFACT}.tar.gz \
+                            dist/${env.ARTIFACT} \
+                            dist/SHA256SUMS-${env.VERSION}.txt \
+                            --repo ${REPO} \
+                            --title "${env.TAG_NAME} - CodeTether Agent" \
+                            --generate-notes \
+                            --latest \
+                            --verify-tag || \
+                        gh release upload ${env.TAG_NAME} \
+                            dist/${env.ARTIFACT}.tar.gz \
+                            dist/${env.ARTIFACT} \
+                            dist/SHA256SUMS-${env.VERSION}.txt \
+                            --repo ${REPO} --clobber
                     """
                 }
             }
