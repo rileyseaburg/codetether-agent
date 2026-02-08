@@ -13,6 +13,10 @@ use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
+fn is_interactive_tool(tool_name: &str) -> bool {
+    matches!(tool_name, "question")
+}
+
 /// A conversation session
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
@@ -211,7 +215,11 @@ impl Session {
 
         // Create tool registry with all available tools
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-        let tool_definitions = tool_registry.definitions();
+        let tool_definitions: Vec<_> = tool_registry
+            .definitions()
+            .into_iter()
+            .filter(|tool| !is_interactive_tool(&tool.name))
+            .collect();
 
         // Kimi K2.5 requires temperature=1.0
         let temperature = if model.starts_with("kimi-k2") {
@@ -318,6 +326,18 @@ impl Session {
             // Execute each tool call
             for (tool_id, tool_name, tool_input) in tool_calls {
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+
+                if is_interactive_tool(&tool_name) {
+                    tracing::warn!(tool = %tool_name, "Blocking interactive tool in session loop");
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id,
+                            content: "Error: Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".to_string(),
+                        }],
+                    });
+                    continue;
+                }
 
                 // Get and execute the tool
                 let content = if let Some(tool) = tool_registry.get(&tool_name) {
@@ -432,7 +452,11 @@ impl Session {
 
         // Create tool registry
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-        let tool_definitions = tool_registry.definitions();
+        let tool_definitions: Vec<_> = tool_registry
+            .definitions()
+            .into_iter()
+            .filter(|tool| !is_interactive_tool(&tool.name))
+            .collect();
 
         let temperature = if model.starts_with("kimi-k2") {
             Some(1.0)
@@ -539,6 +563,26 @@ impl Session {
                     .await;
 
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+
+                if is_interactive_tool(&tool_name) {
+                    tracing::warn!(tool = %tool_name, "Blocking interactive tool in session loop");
+                    let content = "Error: Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".to_string();
+                    let _ = event_tx
+                        .send(SessionEvent::ToolCallComplete {
+                            name: tool_name.clone(),
+                            output: content.clone(),
+                            success: false,
+                        })
+                        .await;
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id,
+                            content,
+                        }],
+                    });
+                    continue;
+                }
 
                 let (content, success) = if let Some(tool) = tool_registry.get(&tool_name) {
                     match tool.execute(tool_input.clone()).await {

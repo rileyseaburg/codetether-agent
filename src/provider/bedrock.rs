@@ -74,11 +74,27 @@ impl BedrockProvider {
     /// "us.anthropic.claude-sonnet-4-20250514-v1:0".
     fn resolve_model_id(model: &str) -> &str {
         match model {
-            // --- Anthropic Claude ---
-            "claude-sonnet-4" | "claude-4-sonnet" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            // --- Anthropic Claude (verified via AWS CLI) ---
+            "claude-opus-4.6" | "claude-4.6-opus" => "us.anthropic.claude-opus-4-6-v1",
+            "claude-opus-4.5" | "claude-4.5-opus" => {
+                "us.anthropic.claude-opus-4-5-20251101-v1:0"
+            }
+            "claude-opus-4.1" | "claude-4.1-opus" => {
+                "us.anthropic.claude-opus-4-1-20250805-v1:0"
+            }
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
+            "claude-sonnet-4.5" | "claude-4.5-sonnet" => {
+                "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+            }
+            "claude-sonnet-4" | "claude-4-sonnet" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "claude-haiku-4.5" | "claude-4.5-haiku" => {
+                "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+            }
             "claude-3.7-sonnet" | "claude-sonnet-3.7" => {
                 "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+            }
+            "claude-3.5-sonnet-v2" | "claude-sonnet-3.5-v2" => {
+                "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
             }
             "claude-3.5-haiku" | "claude-haiku-3.5" => {
                 "us.anthropic.claude-3-5-haiku-20241022-v1:0"
@@ -212,9 +228,10 @@ impl BedrockProvider {
                                 })
                                 .unwrap_or_default();
 
-                            // Only include TEXT output models with ON_DEMAND inference
+                            // Only include TEXT output models with ON_DEMAND or INFERENCE_PROFILE inference
                             if !output_modalities.contains(&"TEXT")
-                                || !inference_types.contains(&"ON_DEMAND")
+                                || (!inference_types.contains(&"ON_DEMAND")
+                                    && !inference_types.contains(&"INFERENCE_PROFILE"))
                             {
                                 continue;
                             }
@@ -342,7 +359,8 @@ impl BedrockProvider {
                                 || pid.contains("pixtral")
                                 || pid.contains("claude-3")
                                 || pid.contains("claude-sonnet-4")
-                                || pid.contains("claude-opus-4");
+                                || pid.contains("claude-opus-4")
+                                || pid.contains("claude-haiku-4");
 
                             let display_name = pname.replace("US ", "");
                             let display_name = format!("{} (Bedrock)", display_name.trim());
@@ -440,8 +458,16 @@ impl BedrockProvider {
     /// Estimate max output tokens based on model family
     fn estimate_max_output(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
-        if id.contains("claude-sonnet-4") || id.contains("claude-3-7") {
+        if id.contains("claude-opus-4-6") {
+            32_000
+        } else if id.contains("claude-opus-4-5") {
+            32_000
+        } else if id.contains("claude-opus-4-1") {
+            32_000
+        } else if id.contains("claude-sonnet-4-5") || id.contains("claude-sonnet-4") || id.contains("claude-3-7") {
             64_000
+        } else if id.contains("claude-haiku-4-5") {
+            16_384
         } else if id.contains("claude-opus-4") {
             32_000
         } else if id.contains("claude") {
