@@ -46,6 +46,10 @@ pub struct Config {
     /// Session settings
     #[serde(default)]
     pub session: SessionConfig,
+
+    /// Telemetry and crash reporting settings
+    #[serde(default)]
+    pub telemetry: TelemetryConfig,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
@@ -241,6 +245,34 @@ fn default_max_tokens() -> usize {
     100_000
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TelemetryConfig {
+    /// Opt-in crash reporting. Disabled by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crash_reporting: Option<bool>,
+
+    /// Endpoint for crash report ingestion.
+    /// Defaults to the CodeTether telemetry endpoint when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crash_report_endpoint: Option<String>,
+}
+
+impl TelemetryConfig {
+    pub fn crash_reporting_enabled(&self) -> bool {
+        self.crash_reporting.unwrap_or(false)
+    }
+
+    pub fn crash_report_endpoint(&self) -> String {
+        self.crash_report_endpoint
+            .clone()
+            .unwrap_or_else(default_crash_report_endpoint)
+    }
+}
+
+fn default_crash_report_endpoint() -> String {
+    "https://telemetry.codetether.ai/v1/crash-reports".to_string()
+}
+
 impl Config {
     /// Load configuration from all sources (global, project, env)
     pub async fn load() -> Result<Self> {
@@ -308,6 +340,12 @@ impl Config {
             "a2a.server_url" => config.a2a.server_url = Some(value.to_string()),
             "a2a.worker_name" => config.a2a.worker_name = Some(value.to_string()),
             "ui.theme" => config.ui.theme = value.to_string(),
+            "telemetry.crash_reporting" => {
+                config.telemetry.crash_reporting = Some(parse_bool(value)?)
+            }
+            "telemetry.crash_report_endpoint" => {
+                config.telemetry.crash_report_endpoint = Some(value.to_string())
+            }
             _ => anyhow::bail!("Unknown config key: {}", key),
         }
 
@@ -335,6 +373,12 @@ impl Config {
         self.permissions.paths.extend(other.permissions.paths);
         if other.a2a.server_url.is_some() {
             self.a2a = other.a2a;
+        }
+        if other.telemetry.crash_reporting.is_some() {
+            self.telemetry.crash_reporting = other.telemetry.crash_reporting;
+        }
+        if other.telemetry.crash_report_endpoint.is_some() {
+            self.telemetry.crash_report_endpoint = other.telemetry.crash_report_endpoint;
         }
         self
     }
@@ -389,5 +433,26 @@ impl Config {
         if let Ok(val) = std::env::var("CODETETHER_A2A_SERVER") {
             self.a2a.server_url = Some(val);
         }
+        if let Ok(val) = std::env::var("CODETETHER_CRASH_REPORTING") {
+            match parse_bool(&val) {
+                Ok(enabled) => self.telemetry.crash_reporting = Some(enabled),
+                Err(_) => tracing::warn!(
+                    value = %val,
+                    "Invalid CODETETHER_CRASH_REPORTING value; expected true/false"
+                ),
+            }
+        }
+        if let Ok(val) = std::env::var("CODETETHER_CRASH_REPORT_ENDPOINT") {
+            self.telemetry.crash_report_endpoint = Some(val);
+        }
+    }
+}
+
+fn parse_bool(value: &str) -> Result<bool> {
+    let normalized = value.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "1" | "true" | "yes" | "on" => Ok(true),
+        "0" | "false" | "no" | "off" => Ok(false),
+        _ => anyhow::bail!("Invalid boolean value: {}", value),
     }
 }

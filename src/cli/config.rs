@@ -24,6 +24,21 @@ pub async fn execute(args: ConfigArgs) -> Result<()> {
         }
         Config::set(parts[0], parts[1]).await?;
         println!("Set {} = {}", parts[0], parts[1]);
+        if parts[0] == "telemetry.crash_reporting" {
+            if matches!(
+                parts[1].trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            ) {
+                println!(
+                    "Crash reporting enabled (opt-in). Panic reports include stack traces and runtime metadata. Disable with: codetether config --set telemetry.crash_reporting=false"
+                );
+            } else if matches!(
+                parts[1].trim().to_ascii_lowercase().as_str(),
+                "0" | "false" | "no" | "off"
+            ) {
+                println!("Crash reporting disabled.");
+            }
+        }
         return Ok(());
     }
 

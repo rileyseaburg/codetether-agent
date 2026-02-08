@@ -56,6 +56,32 @@ cargo build --release
 # Binary at target/release/codetether
 ```
 
+## Crash Reporting (Opt-In)
+
+CodeTether can automatically capture catastrophic crashes (panic message, location, stack trace, version, OS/arch, and command) and send them to a remote endpoint on next startup.
+
+- Disabled by default.
+- No source files or API keys are included.
+- Reports are queued locally in the data directory under `crash-reports/` before upload.
+
+Enable:
+
+```bash
+codetether config --set telemetry.crash_reporting=true
+```
+
+Disable:
+
+```bash
+codetether config --set telemetry.crash_reporting=false
+```
+
+Set a custom endpoint:
+
+```bash
+codetether config --set telemetry.crash_report_endpoint=https://your-endpoint.example.com/crashes
+```
+
 ## Quick Start
 
 ### 1. Configure HashiCorp Vault
