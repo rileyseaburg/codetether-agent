@@ -127,18 +127,41 @@ install_functiongemma() {
         fi
     fi
 
-    # Download tokenizer
+    # Download tokenizer (gated model — requires HuggingFace API token)
     local tokenizer_path="${FUNCTIONGEMMA_MODEL_DIR}/${FUNCTIONGEMMA_TOKENIZER_FILE}"
     if [ -f "$tokenizer_path" ]; then
         ok "tokenizer already exists: ${tokenizer_path}"
     else
-        info "downloading tokenizer..."
-        download "$FUNCTIONGEMMA_TOKENIZER_URL" "$tokenizer_path"
-        if [ -f "$tokenizer_path" ]; then
+        # Check for HF token in env, then prompt
+        local hf_token="${HF_TOKEN:-${HUGGING_FACE_HUB_TOKEN:-}}"
+        if [ -z "$hf_token" ]; then
+            printf "\n${YELLOW}The FunctionGemma tokenizer requires a HuggingFace API token.${NC}\n"
+            printf "  1. Go to ${CYAN}https://huggingface.co/settings/tokens${NC}\n"
+            printf "  2. Create a token with ${BOLD}read${NC} access\n"
+            printf "  3. Accept the model license at ${CYAN}https://huggingface.co/google/functiongemma-270m-it${NC}\n\n"
+            printf "HuggingFace API token (or press Enter to skip): "
+            read -r hf_token
+        fi
+
+        if [ -z "$hf_token" ]; then
+            warn "skipping tokenizer download (no API token provided)"
+            warn "set HF_TOKEN and re-run: HF_TOKEN=hf_... $0 --functiongemma-only"
+            return 0
+        fi
+
+        info "downloading tokenizer (authenticated)..."
+        if command -v curl > /dev/null 2>&1; then
+            curl -fsSL -H "Authorization: Bearer ${hf_token}" "$FUNCTIONGEMMA_TOKENIZER_URL" -o "$tokenizer_path"
+        elif command -v wget > /dev/null 2>&1; then
+            wget -qO "$tokenizer_path" --header="Authorization: Bearer ${hf_token}" "$FUNCTIONGEMMA_TOKENIZER_URL"
+        fi
+
+        if [ -f "$tokenizer_path" ] && [ -s "$tokenizer_path" ]; then
             ok "tokenizer downloaded: ${tokenizer_path}"
         else
-            error "failed to download tokenizer"
-            warn "you can retry later: $0 --functiongemma-only"
+            rm -f "$tokenizer_path"
+            error "failed to download tokenizer (check token and model access)"
+            warn "set HF_TOKEN and re-run: HF_TOKEN=hf_... $0 --functiongemma-only"
             return 1
         fi
     fi
