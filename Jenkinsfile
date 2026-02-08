@@ -93,7 +93,11 @@ pipeline {
                 buildingTag()
             }
             steps {
-                withCredentials([string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN')]) {
+                withCredentials([
+                    string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN'),
+                    string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
                     sh '''
                         echo "Publishing ${TAG_NAME} to crates.io ..."
                         cargo publish --allow-dirty
