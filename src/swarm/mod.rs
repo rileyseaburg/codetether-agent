@@ -11,10 +11,12 @@
 
 pub mod executor;
 pub mod orchestrator;
+pub mod rate_limiter;
 pub mod subtask;
 
 pub use executor::{SwarmExecutor, run_agent_loop};
 pub use orchestrator::Orchestrator;
+pub use rate_limiter::{AdaptiveRateLimiter, RateLimitInfo, RateLimitStats};
 pub use subtask::{SubAgent, SubTask, SubTaskContext, SubTaskResult, SubTaskStatus};
 
 use anyhow::Result;
@@ -208,6 +210,9 @@ pub struct SwarmStats {
 
     /// Per-stage statistics
     pub stages: Vec<StageStats>,
+
+    /// Rate limiting statistics
+    pub rate_limit_stats: RateLimitStats,
 }
 
 /// Statistics for a single execution stage

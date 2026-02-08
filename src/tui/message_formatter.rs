@@ -91,6 +91,28 @@ impl MessageFormatter {
         lines
     }
 
+    /// Format an image as a simple placeholder line
+    pub fn format_image(&self, url: &str, _mime_type: Option<&str>) -> Line<'static> {
+        // Extract filename from URL for display
+        let filename = url
+            .split('/')
+            .last()
+            .unwrap_or("image")
+            .split('?')
+            .next()
+            .unwrap_or("image");
+
+        Line::from(vec![
+            Span::styled("  🖼️  ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                format!("[Image: {}]", filename),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::ITALIC),
+            ),
+        ])
+    }
+
     /// Render a code block with syntax highlighting and styling
     fn render_code_block(&self, lines: &[String], language: &str) -> Vec<Line<'static>> {
         let mut result = Vec::new();

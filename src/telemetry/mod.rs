@@ -1049,3 +1049,104 @@ pub fn record_persistent(exec: ToolExecution) {
 pub fn get_persistent_stats() -> TelemetryData {
     PERSISTENT_TELEMETRY.read().clone()
 }
+
+// ============================================================================
+// Swarm Telemetry (for executor.rs)
+// ============================================================================
+
+/// Unique identifier for a swarm execution
+pub type SwarmExecId = String;
+
+/// Unique identifier for a sub-agent execution
+pub type SubAgentExecId = u64;
+
+/// Privacy level for telemetry data
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PrivacyLevel {
+    /// Full telemetry (all data)
+    Full,
+    /// Reduced telemetry (metadata only, no content)
+    #[default]
+    Reduced,
+    /// Minimal telemetry (counts only)
+    Minimal,
+    /// No telemetry
+    None,
+}
+
+/// Metrics collected during swarm execution
+#[derive(Debug, Clone, Default)]
+pub struct SwarmTelemetryMetrics {
+    /// Swarm execution ID
+    pub swarm_id: SwarmExecId,
+    /// Number of subtasks
+    pub subtask_count: usize,
+    /// Execution strategy used
+    pub strategy: String,
+    /// Whether execution succeeded
+    pub success: bool,
+    /// Total execution time
+    pub total_duration_ms: u64,
+    /// Stage-level metrics
+    pub stage_metrics: Vec<StageTelemetry>,
+}
+
+/// Per-stage telemetry
+#[derive(Debug, Clone, Default)]
+pub struct StageTelemetry {
+    /// Stage number
+    pub stage: usize,
+    /// Number of subagents in stage
+    pub subagent_count: usize,
+    /// Successful completions
+    pub completed: usize,
+    /// Failures
+    pub failed: usize,
+    /// Stage duration
+    pub duration_ms: u64,
+}
+
+/// Telemetry collector for swarm operations
+#[derive(Debug, Default)]
+pub struct SwarmTelemetryCollector {
+    /// Current swarm ID
+    swarm_id: Option<SwarmExecId>,
+    /// Start time
+    start_time: Option<std::time::Instant>,
+    /// Collected metrics
+    metrics: Option<SwarmTelemetryMetrics>,
+}
+
+impl SwarmTelemetryCollector {
+    /// Create a new telemetry collector
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Start tracking a swarm execution
+    pub fn start_swarm(&mut self, swarm_id: SwarmExecId, subtask_count: usize, strategy: &str) {
+        self.swarm_id = Some(swarm_id.clone());
+        self.start_time = Some(std::time::Instant::now());
+        self.metrics = Some(SwarmTelemetryMetrics {
+            swarm_id,
+            subtask_count,
+            strategy: strategy.to_string(),
+            ..Default::default()
+        });
+    }
+
+    /// Record latency for a specific operation
+    pub fn record_swarm_latency(&self, _operation: &str, _duration: std::time::Duration) {
+        // Placeholder for latency tracking
+    }
+
+    /// Complete swarm tracking and return metrics
+    pub fn complete_swarm(&mut self, success: bool) -> SwarmTelemetryMetrics {
+        let mut metrics = self.metrics.take().unwrap_or_default();
+        metrics.success = success;
+        if let Some(start) = self.start_time {
+            metrics.total_duration_ms = start.elapsed().as_millis() as u64;
+        }
+        metrics
+    }
+}

@@ -300,7 +300,7 @@ impl ModelCatalog {
             "gemini-2.5-pro",
             "deepseek-v3.2",
             "step-3.5-flash",
-            "stepfun/step-3.5-flash:free",
+            "z-ai/glm-4.7",
         ];
 
         let mut result = Vec::new();

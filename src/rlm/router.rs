@@ -2,6 +2,10 @@
 //!
 //! Routes large tool outputs through RLM when they would exceed
 //! the model's context window threshold.
+//!
+//! When the `functiongemma` feature is active the router passes RLM tool
+//! definitions alongside the analysis prompt so FunctionGemma can convert
+//! text-only LLM responses into structured tool calls.
 
 use super::{RlmChunker, RlmConfig, RlmResult, RlmStats};
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
@@ -11,6 +15,11 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 use tracing::{info, warn};
+
+#[cfg(feature = "functiongemma")]
+use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
+
+use super::tools::rlm_tool_definitions;
 
 /// Tools eligible for RLM routing
 fn rlm_eligible_tools() -> HashSet<&'static str> {
@@ -224,6 +233,10 @@ impl RlmRouter {
     /// Based on "Recursive Language Models" (Zhang et al. 2025):
     /// - Context is loaded as a variable in a REPL-like environment
     /// - LLM writes code/queries to analyze, decompose, and recursively sub-call itself
+    ///
+    /// When FunctionGemma is enabled, the router sends RLM tool definitions
+    /// alongside the analysis prompt and dispatches structured tool calls
+    /// returned by the model (or reformatted by FunctionGemma).
     pub async fn auto_process(
         output: &str,
         ctx: AutoProcessContext<'_>,
@@ -239,6 +252,21 @@ impl RlmRouter {
             "RLM: Starting auto-processing"
         );
 
+        // Initialise FunctionGemma router if available
+        #[cfg(feature = "functiongemma")]
+        let tool_router: Option<ToolCallRouter> = {
+            let cfg = ToolRouterConfig::from_env();
+            ToolCallRouter::from_config(&cfg)
+                .inspect_err(|e| {
+                    tracing::debug!(error = %e, "FunctionGemma router unavailable for RLM router");
+                })
+                .ok()
+                .flatten()
+        };
+
+        // Prepare RLM tool definitions
+        let tools = rlm_tool_definitions();
+
         // Detect content type for smarter processing
         let content_type = RlmChunker::detect_content_type(output);
         let content_hints = RlmChunker::get_processing_hints(content_type);
@@ -251,6 +279,10 @@ impl RlmRouter {
         } else {
             output.to_string()
         };
+
+        // Create a REPL for structured tool dispatch
+        let mut repl =
+            super::repl::RlmRepl::new(processed_output.clone(), super::repl::ReplRuntime::Rust);
 
         // Build the query based on tool type
         let base_query = Self::build_query_for_tool(ctx.tool_id, &ctx.tool_args);
@@ -301,10 +333,10 @@ impl RlmRouter {
                 }
             }
 
-            // Build completion request
+            // Build completion request — include tool definitions
             let request = CompletionRequest {
                 messages: conversation.clone(),
-                tools: Vec::new(),
+                tools: tools.clone(),
                 model: ctx.model.clone(),
                 temperature: Some(0.7),
                 top_p: None,
@@ -329,6 +361,83 @@ impl RlmRouter {
                 }
             };
 
+            // Optionally run FunctionGemma to convert text-only response
+            #[cfg(feature = "functiongemma")]
+            let response = if let Some(ref router) = tool_router {
+                router.maybe_reformat(response, &tools).await
+            } else {
+                response
+            };
+
+            // ── Structured tool-call path ────────────────────────────────
+            let tool_calls: Vec<(String, String, String)> = response
+                .message
+                .content
+                .iter()
+                .filter_map(|p| match p {
+                    ContentPart::ToolCall {
+                        id,
+                        name,
+                        arguments,
+                    } => Some((id.clone(), name.clone(), arguments.clone())),
+                    _ => None,
+                })
+                .collect();
+
+            if !tool_calls.is_empty() {
+                info!(
+                    count = tool_calls.len(),
+                    iteration = iterations,
+                    "RLM router: dispatching structured tool calls"
+                );
+
+                conversation.push(Message {
+                    role: Role::Assistant,
+                    content: response.message.content.clone(),
+                });
+
+                let mut tool_results: Vec<ContentPart> = Vec::new();
+
+                for (call_id, name, arguments) in &tool_calls {
+                    match super::tools::dispatch_tool_call(name, arguments, &mut repl) {
+                        Some(super::tools::RlmToolResult::Final(answer)) => {
+                            final_answer = Some(answer);
+                            tool_results.push(ContentPart::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                content: "FINAL received".to_string(),
+                            });
+                            break;
+                        }
+                        Some(super::tools::RlmToolResult::Output(out)) => {
+                            tool_results.push(ContentPart::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                content: out,
+                            });
+                        }
+                        None => {
+                            tool_results.push(ContentPart::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                content: format!("Unknown tool: {name}"),
+                            });
+                        }
+                    }
+                }
+
+                if !tool_results.is_empty() {
+                    conversation.push(Message {
+                        role: Role::Tool,
+                        content: tool_results,
+                    });
+                }
+
+                subcalls += 1;
+                if final_answer.is_some() || subcalls >= max_subcalls {
+                    break;
+                }
+                continue;
+            }
+
+            // ── Legacy text-only path ────────────────────────────────────
             let response_text: String = response
                 .message
                 .content
@@ -343,7 +452,7 @@ impl RlmRouter {
             info!(
                 iteration = iterations,
                 response_len = response_text.len(),
-                "RLM: Model response"
+                "RLM: Model response (text-only fallback)"
             );
 
             // Check for FINAL answer

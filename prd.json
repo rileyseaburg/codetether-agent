@@ -1,167 +1,136 @@
 {
   "project": "codetether-agent",
-  "feature": "Implement Unused Code Features",
-  "branch_name": "feature/implement-unused-code-features",
+  "feature": "Swarm Reliability and Code Quality Improvements",
+  "branch_name": "feature/swarm-reliability-and-code-quality-improvements",
   "version": "1.0",
   "user_stories": [
     {
-      "id": "US-001",
-      "title": "Implement Swarm Real-Time Event Emission",
-      "description": "Emit SwarmEvent variants (SubTaskUpdate, AgentStarted, AgentToolCall, AgentComplete, StageComplete) during swarm execution to provide real-time TUI updates. Modify the SwarmExecutor to send these events through the event channel as sub-agents progress through their tasks.",
+      "id": "SQ-001",
+      "title": "Implement Sub-Agent Retry with Exponential Backoff",
+      "description": "Add automatic retry mechanism for failed sub-agents with exponential backoff. When a sub-agent fails due to transient errors (network, rate limiting, timeout), it should be retried up to a configurable number of times before being marked as failed.",
       "acceptance_criteria": [
-        "SwarmExecutor emits SubTaskUpdate when subtask status changes",
-        "SwarmExecutor emits AgentStarted when a sub-agent begins",
-        "SwarmExecutor emits AgentToolCall when a sub-agent uses a tool",
-        "SwarmExecutor emits AgentComplete when a sub-agent finishes",
-        "SwarmExecutor emits StageComplete when a stage finishes",
-        "TUI receives and displays these events in real-time"
+        "Retry configuration in SwarmConfig (max_retries, base_delay_ms, max_delay_ms)",
+        "Exponential backoff with jitter to avoid thundering herd",
+        "Only retry on transient errors (timeout, rate limit, network)",
+        "Track retry attempts in SubTaskResult",
+        "Update SwarmStats to include retry metrics"
       ],
-      "passes": true,
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "SQ-002",
+      "title": "Implement Sub-Agent Result Sharing",
+      "description": "Enable sub-agents to share intermediate results during execution. This allows dependent sub-agents to access results from completed sub-agents without waiting for the entire swarm to finish.",
+      "acceptance_criteria": [
+        "Shared result store accessible to all sub-agents",
+        "Sub-agents can publish results with a key",
+        "Sub-agents can subscribe to results by key/pattern",
+        "Results are typed and deserialized safely",
+        "Integration with dependency system - auto-trigger when dependency completes"
+      ],
+      "passes": false,
       "priority": 1,
       "depends_on": [],
       "complexity": 4
     },
     {
-      "id": "US-002",
-      "title": "Implement Swarm View Scrolling and Dependencies",
-      "description": "Wire up the scroll field in SwarmViewState for keyboard navigation and visualize task dependencies in the subtask list. Add key handlers for scrolling the subtask list and render dependency information showing which tasks depend on others.",
+      "id": "SQ-003",
+      "title": "Implement Adaptive Rate Limiting",
+      "description": "Enhance rate limiting to adapt based on provider response headers and actual API behavior. Parse rate limit headers and adjust request timing dynamically.",
       "acceptance_criteria": [
-        "Up/Down arrow keys scroll the subtask list",
-        "PageUp/PageDown scroll by larger amounts",
-        "Scroll position is tracked in SwarmViewState.scroll",
-        "Subtask list shows dependency indicators (e.g., 'depends on: task1, task2')",
-        "Visual indication of which tasks are blocking others"
+        "Parse X-RateLimit-Remaining and Retry-After headers",
+        "Track actual request timing vs limits",
+        "Automatically adjust delay between requests",
+        "Expose rate limit status in SwarmStats",
+        "Handle 429 responses with exponential backoff"
       ],
-      "passes": true,
+      "passes": false,
       "priority": 2,
-      "depends_on": [
-        "US-001"
-      ],
-      "complexity": 3
-    },
-    {
-      "id": "US-003",
-      "title": "Implement MultiEdit Structured Results",
-      "description": "Use the EditResult struct to return structured per-file results from MultiEditTool instead of embedding everything in metadata. Each file edit should return its own EditResult with success status and message.",
-      "acceptance_criteria": [
-        "MultiEditTool.execute returns Vec<EditResult>",
-        "Each EditResult contains file path, success bool, and message",
-        "Failed edits are tracked separately from successful ones",
-        "ToolResult output includes summary of all edits with per-file status"
-      ],
-      "passes": true,
-      "priority": 3,
-      "depends_on": [],
-      "complexity": 2
-    },
-    {
-      "id": "US-004",
-      "title": "Implement MessageType::Text Content Storage",
-      "description": "Store the actual text content in MessageType::Text variant and use it for message display. Currently the field exists but is never read or populated properly.",
-      "acceptance_criteria": [
-        "MessageType::Text stores the actual message content",
-        "ChatMessage::new populates the Text variant with content",
-        "Message display uses the stored content instead of recalculating",
-        "Empty string default is removed or properly handled"
-      ],
-      "passes": true,
-      "priority": 3,
-      "depends_on": [],
-      "complexity": 2
-    },
-    {
-      "id": "US-005",
-      "title": "Implement Monochrome Theme",
-      "description": "Add a monochrome theme option to the Theme system. The Monochrome variant should use only grayscale colors (black, white, and grays) for accessibility and terminal compatibility.",
-      "acceptance_criteria": [
-        "Theme::monochrome() method exists and returns grayscale theme",
-        "Monochrome theme uses only black, white, darkgray, gray, lightgray colors",
-        "Theme can be selected via config file",
-        "TUI renders correctly with monochrome theme"
-      ],
-      "passes": true,
-      "priority": 4,
-      "depends_on": [],
-      "complexity": 2
-    },
-    {
-      "id": "US-006",
-      "title": "Implement Worktree Merge Conflict Detection",
-      "description": "Use the is_merging method and aborted field for merge conflict detection and handling. Check for merge state before operations and handle aborted merges appropriately in the UI.",
-      "acceptance_criteria": [
-        "is_merging() is called before merge operations to detect state",
-        "MergeResult.aborted is checked and handled",
-        "UI shows warning when merge is in progress",
-        "Cleanup handles aborted merges correctly"
-      ],
-      "passes": true,
-      "priority": 3,
       "depends_on": [],
       "complexity": 3
     },
     {
-      "id": "US-007",
-      "title": "Integrate Telemetry Tracking",
-      "description": "Integrate TOOL_EXECUTIONS and TokenCounts telemetry into the main execution flow. Track tool executions, token usage, and file changes throughout the session.",
+      "id": "SQ-004",
+      "title": "Integrate Telemetry Collection",
+      "description": "Implement comprehensive telemetry collection for swarm execution including token usage, latency metrics, success rates, and export capabilities.",
       "acceptance_criteria": [
-        "TOOL_EXECUTIONS is used to track tool calls in session",
-        "TokenCounts recorded for each LLM request",
-        "File changes tracked via FileChange structs",
-        "Telemetry data persisted to disk",
-        "TUI displays telemetry summary in status bar"
+        "Track token usage per sub-agent and aggregate",
+        "Record latency histograms for each operation",
+        "Calculate and store pass rate counters",
+        "Support Prometheus/OpenTelemetry export",
+        "Privacy-preserving options (no content logging)",
+        "Telemetry data persisted to disk for analysis"
       ],
-      "passes": true,
-      "priority": 2,
+      "passes": false,
+      "priority": 1,
       "depends_on": [],
       "complexity": 4
     },
     {
-      "id": "US-008",
-      "title": "Implement Config Theme Loading",
-      "description": "Use the Theme import in config to load and validate theme configuration from config files. Support theme names (dark, light, solarized_dark, solarized_light, monochrome) and custom theme definitions.",
+      "id": "SQ-005",
+      "title": "Fix Dead Code Warnings",
+      "description": "Address all dead_code warnings across the codebase by either using the code, marking it with #[allow(dead_code)] with justification, or removing it.",
       "acceptance_criteria": [
-        "Config loads theme by name from config file",
-        "Custom theme colors can be defined in config",
-        "Invalid theme names fallback to default",
-        "Theme hot-reloading works when config changes"
+        "Fix provider/copilot.rs unused fields",
+        "Fix a2a/types.rs unused constants",
+        "Fix tool/* modules unused methods",
+        "Fix rlm/repl.rs unused variant",
+        "All dead_code warnings resolved or justified"
       ],
-      "passes": true,
-      "priority": 3,
-      "depends_on": [
-        "US-005"
-      ],
-      "complexity": 3
-    },
-    {
-      "id": "US-009",
-      "title": "Implement Message Text Wrapping",
-      "description": "Implement proper text wrapping in MessageFormatter.wrap_line using the width parameter. Wrap text at word boundaries to fit within the specified width.",
-      "acceptance_criteria": [
-        "Text wraps at word boundaries",
-        "Lines don't exceed specified width",
-        "Wrapped lines maintain proper formatting",
-        "Long messages display correctly in TUI"
-      ],
-      "passes": true,
-      "priority": 4,
+      "passes": false,
+      "priority": 2,
       "depends_on": [],
       "complexity": 2
     },
     {
-      "id": "US-010",
-      "title": "Implement Token Display Visualization",
-      "description": "Use the Frame, Paragraph, and Wrap imports in token_display.rs to create visual token usage displays. Show token counts, costs, and context limits in the TUI.",
+      "id": "SQ-006",
+      "title": "Fix Clippy Warnings",
+      "description": "Resolve all clippy warnings to improve code quality and maintainability.",
       "acceptance_criteria": [
-        "TokenDisplay uses Frame for rendering",
-        "Token usage shown as progress bars or gauges",
-        "Context limit warnings displayed with colors",
-        "Cost estimates shown in status bar"
+        "Fix too_many_arguments warnings (a2a/worker.rs, swarm/executor.rs)",
+        "Fix match_like_matches_macro warning (secrets/mod.rs)",
+        "Fix manual_strip warnings (tool/patch.rs)",
+        "Fix large_enum_variant warning (swarm/orchestrator.rs)",
+        "All clippy warnings resolved"
       ],
-      "passes": true,
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "SQ-007",
+      "title": "Implement Swarm Pre-flight Validation",
+      "description": "Add validation before swarm execution to catch common issues early and provide helpful error messages.",
+      "acceptance_criteria": [
+        "Validate provider availability and credentials",
+        "Check workspace/git state",
+        "Estimate token usage and warn if excessive",
+        "Validate subtask dependencies for cycles",
+        "Return detailed validation report"
+      ],
+      "passes": false,
       "priority": 3,
-      "depends_on": [
-        "US-007"
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "SQ-008",
+      "title": "Implement Swarm Result Caching",
+      "description": "Cache swarm results to avoid re-executing identical tasks. Use content-based hashing to identify duplicate tasks.",
+      "acceptance_criteria": [
+        "Hash task content to generate cache key",
+        "Cache successful results to disk",
+        "Configurable cache TTL and size limits",
+        "Cache hit/miss metrics in SwarmStats",
+        "Option to bypass cache per execution"
       ],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [],
       "complexity": 3
     }
   ],
@@ -172,6 +141,6 @@
     "lint": "cargo clippy --all-features",
     "build": "cargo build --release"
   },
-  "created_at": "2026-02-05T09:18:21.880796002+00:00",
-  "updated_at": "2026-02-05T09:18:21.880798522+00:00"
+  "created_at": "2026-02-08T09:49:59.203167397+00:00",
+  "updated_at": "2026-02-08T09:49:59.203169218+00:00"
 }

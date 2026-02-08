@@ -1,10 +1,10 @@
 use anyhow::{Context, Result, anyhow};
-use candle_core::{Device, Tensor};
 use candle_core::quantized::gguf_file;
+use candle_core::{Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
-use candle_transformers::models::{quantized_llama, quantized_qwen2};
 #[cfg(feature = "functiongemma")]
 use candle_transformers::models::quantized_gemma3;
+use candle_transformers::models::{quantized_llama, quantized_qwen2};
 use candle_transformers::utils::apply_repeat_penalty;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -152,7 +152,8 @@ impl ThinkerClient {
     pub async fn think(&self, system_prompt: &str, user_prompt: &str) -> Result<ThinkerOutput> {
         match &self.backend {
             ThinkerClientBackend::OpenAICompat { http } => {
-                self.think_openai_compat(http, system_prompt, user_prompt).await
+                self.think_openai_compat(http, system_prompt, user_prompt)
+                    .await
             }
             ThinkerClientBackend::Candle { runtime } => {
                 let runtime = Arc::clone(runtime);
@@ -205,7 +206,10 @@ impl ThinkerClient {
             .context("thinker request failed to send")?;
         if !response.status().is_success() {
             let status = response.status();
-            let body_text = response.text().await.unwrap_or_else(|_| "<empty>".to_string());
+            let body_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "<empty>".to_string());
             return Err(anyhow!(
                 "thinker request failed with status {}: {}",
                 status,
@@ -221,7 +225,7 @@ impl ThinkerClient {
             .choices
             .first()
             .ok_or_else(|| anyhow!("thinker response did not include choices"))?;
-        let text = choice.message.content.clone().unwrap_or_default();
+        let text = choice.message.extract_text();
         let usage = payload.usage.unwrap_or_default();
 
         Ok(ThinkerOutput {
@@ -271,10 +275,9 @@ impl CandleModel {
 
 impl CandleThinker {
     pub(crate) fn new(config: &ThinkerConfig) -> Result<Self> {
-        let model_path = config
-            .candle_model_path
-            .as_ref()
-            .ok_or_else(|| anyhow!("candle backend requires CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH"))?;
+        let model_path = config.candle_model_path.as_ref().ok_or_else(|| {
+            anyhow!("candle backend requires CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH")
+        })?;
         let tokenizer_path = config.candle_tokenizer_path.as_ref().ok_or_else(|| {
             anyhow!("candle backend requires CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH")
         })?;
@@ -284,12 +287,8 @@ impl CandleThinker {
             File::open(model_path)
                 .with_context(|| format!("failed to open candle model file at {}", model_path))?,
         );
-        let content = gguf_file::Content::read(&mut reader).with_context(|| {
-            format!(
-                "failed to parse gguf model metadata from {}",
-                model_path
-            )
-        })?;
+        let content = gguf_file::Content::read(&mut reader)
+            .with_context(|| format!("failed to parse gguf model metadata from {}", model_path))?;
 
         let architecture = config
             .candle_arch
@@ -332,22 +331,23 @@ impl CandleThinker {
                 return Err(anyhow!(
                     "unsupported candle architecture '{}' (supported: llama, qwen2{})",
                     other,
-                    if cfg!(feature = "functiongemma") { ", gemma/gemma2/gemma3" } else { "" }
+                    if cfg!(feature = "functiongemma") {
+                        ", gemma/gemma2/gemma3"
+                    } else {
+                        ""
+                    }
                 ));
             }
         };
 
-        let tokenizer = Tokenizer::from_file(tokenizer_path).map_err(|e| {
-            anyhow!(
-                "failed to load tokenizer from {}: {}",
-                tokenizer_path,
-                e
-            )
-        })?;
+        let tokenizer = Tokenizer::from_file(tokenizer_path)
+            .map_err(|e| anyhow!("failed to load tokenizer from {}: {}", tokenizer_path, e))?;
 
         let eos_token_ids = collect_eos_token_ids(&tokenizer);
         if eos_token_ids.is_empty() {
-            tracing::warn!("No EOS tokens found in tokenizer; generation will stop on max token limit");
+            tracing::warn!(
+                "No EOS tokens found in tokenizer; generation will stop on max token limit"
+            );
         }
 
         Ok(Self {
@@ -367,7 +367,11 @@ impl CandleThinker {
         })
     }
 
-    pub(crate) fn think(&mut self, system_prompt: &str, user_prompt: &str) -> Result<ThinkerOutput> {
+    pub(crate) fn think(
+        &mut self,
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> Result<ThinkerOutput> {
         let started_at = Instant::now();
         let prompt = format!(
             "System:\n{}\n\nUser:\n{}\n\nAssistant:\n",
@@ -584,7 +588,12 @@ struct OpenAIChatChoice {
 
 #[derive(Debug, Deserialize)]
 struct OpenAIChatChoiceMessage {
-    content: Option<String>,
+    #[serde(default)]
+    content: Option<OpenAIChatContent>,
+    #[serde(default)]
+    reasoning: Option<String>,
+    #[serde(default)]
+    reasoning_content: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -592,4 +601,81 @@ struct OpenAIUsage {
     prompt_tokens: Option<u32>,
     completion_tokens: Option<u32>,
     total_tokens: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum OpenAIChatContent {
+    Text(String),
+    Parts(Vec<OpenAIChatContentPart>),
+    Part(OpenAIChatContentPart),
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIChatContentPart {
+    #[serde(rename = "type")]
+    kind: Option<String>,
+    #[serde(default)]
+    text: Option<String>,
+    #[serde(default)]
+    content: Option<String>,
+}
+
+impl OpenAIChatChoiceMessage {
+    fn extract_text(&self) -> String {
+        let content_text = self
+            .content
+            .as_ref()
+            .map(OpenAIChatContent::to_text)
+            .unwrap_or_default();
+        if !content_text.trim().is_empty() {
+            return content_text;
+        }
+
+        if let Some(reasoning) = self
+            .reasoning
+            .as_deref()
+            .filter(|text| !text.trim().is_empty())
+        {
+            return reasoning.to_string();
+        }
+
+        self.reasoning_content
+            .as_deref()
+            .filter(|text| !text.trim().is_empty())
+            .unwrap_or_default()
+            .to_string()
+    }
+}
+
+impl OpenAIChatContent {
+    fn to_text(&self) -> String {
+        match self {
+            Self::Text(text) => text.clone(),
+            Self::Parts(parts) => parts
+                .iter()
+                .filter_map(OpenAIChatContentPart::text_fragment)
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Self::Part(part) => part.text_fragment().unwrap_or_default(),
+        }
+    }
+}
+
+impl OpenAIChatContentPart {
+    fn text_fragment(&self) -> Option<String> {
+        if let Some(kind) = self.kind.as_deref()
+            && !kind.eq_ignore_ascii_case("text")
+            && !kind.eq_ignore_ascii_case("output_text")
+        {
+            return None;
+        }
+
+        self.text
+            .as_deref()
+            .or(self.content.as_deref())
+            .map(str::trim)
+            .filter(|text| !text.is_empty())
+            .map(ToString::to_string)
+    }
 }

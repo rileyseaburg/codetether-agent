@@ -171,7 +171,7 @@ pub enum AutoApprovePolicy {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiConfig {
-    /// Theme name ("default", "dark", "light", "solarized-dark", "solarized-light", or custom)
+    /// Theme name ("default", "marketing", "dark", "light", "solarized-dark", "solarized-light", or custom)
     #[serde(default = "default_theme")]
     pub theme: String,
 
@@ -205,7 +205,7 @@ impl Default for UiConfig {
 }
 
 fn default_theme() -> String {
-    "default".to_string()
+    "marketing".to_string()
 }
 
 fn default_true() -> bool {
@@ -406,14 +406,15 @@ impl Config {
 
         // Use preset theme
         match self.ui.theme.as_str() {
-            "dark" | "default" => crate::tui::theme::Theme::dark(),
+            "marketing" | "default" => crate::tui::theme::Theme::marketing(),
+            "dark" => crate::tui::theme::Theme::dark(),
             "light" => crate::tui::theme::Theme::light(),
             "solarized-dark" => crate::tui::theme::Theme::solarized_dark(),
             "solarized-light" => crate::tui::theme::Theme::solarized_light(),
             _ => {
-                // Log warning and fallback to dark theme
-                tracing::warn!(theme = %self.ui.theme, "Unknown theme name, falling back to dark");
-                crate::tui::theme::Theme::dark()
+                // Log warning and fallback to marketing theme
+                tracing::warn!(theme = %self.ui.theme, "Unknown theme name, falling back to marketing");
+                crate::tui::theme::Theme::marketing()
             }
         }
     }

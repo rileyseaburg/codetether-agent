@@ -4,6 +4,11 @@
 //! and the LLM can execute code to analyze it.
 //!
 //! Key feature: llm_query() function for recursive sub-LM calls.
+//!
+//! When the `functiongemma` feature is active the executor sends RLM tool
+//! definitions alongside the analysis prompt.  Responses containing structured
+//! `ContentPart::ToolCall` entries are dispatched directly instead of being
+//! regex-parsed from code blocks (the legacy DSL path is kept as a fallback).
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -16,6 +21,11 @@ use tokio::process::{Child, Command};
 use tokio::time::timeout;
 
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
+
+#[cfg(feature = "functiongemma")]
+use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
+
+use super::tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
 
 /// REPL runtime options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -425,6 +435,10 @@ pub enum DslResult {
 /// 2. Lets the LLM write analysis code
 /// 3. Executes the code and provides llm_query() for semantic sub-calls
 /// 4. Iterates until the LLM returns a FINAL answer
+///
+/// When FunctionGemma is enabled, the executor passes RLM tool definitions to
+/// the provider and dispatches structured tool calls instead of regex-parsing
+/// DSL from code blocks.
 pub struct RlmExecutor {
     repl: RlmRepl,
     provider: Arc<dyn Provider>,
@@ -432,6 +446,8 @@ pub struct RlmExecutor {
     max_iterations: usize,
     sub_queries: Vec<SubQuery>,
     verbose: bool,
+    #[cfg(feature = "functiongemma")]
+    tool_router: Option<ToolCallRouter>,
 }
 
 /// Record of a sub-LM call
@@ -446,6 +462,17 @@ pub struct SubQuery {
 impl RlmExecutor {
     /// Create a new RLM executor
     pub fn new(context: String, provider: Arc<dyn Provider>, model: String) -> Self {
+        #[cfg(feature = "functiongemma")]
+        let tool_router = {
+            let cfg = ToolRouterConfig::from_env();
+            ToolCallRouter::from_config(&cfg)
+                .inspect_err(|e| {
+                    tracing::debug!(error = %e, "FunctionGemma router unavailable for RLM");
+                })
+                .ok()
+                .flatten()
+        };
+
         Self {
             repl: RlmRepl::new(context, ReplRuntime::Rust),
             provider,
@@ -453,6 +480,8 @@ impl RlmExecutor {
             max_iterations: 5, // Keep iterations limited for speed
             sub_queries: Vec::new(),
             verbose: false,
+            #[cfg(feature = "functiongemma")]
+            tool_router,
         }
     }
 
@@ -477,6 +506,9 @@ impl RlmExecutor {
         let mut iterations = 0;
         let mut total_input_tokens = 0;
         let mut total_output_tokens = 0;
+
+        // Prepare RLM tool definitions for structured dispatch
+        let tools = rlm_tool_definitions();
 
         // Build and optionally display context summary
         let context_summary = format!(
@@ -549,7 +581,7 @@ impl RlmExecutor {
                 std::time::Duration::from_secs(60),
                 self.provider.complete(CompletionRequest {
                     messages: messages.clone(),
-                    tools: vec![],
+                    tools: tools.clone(),
                     model: self.model.clone(),
                     temperature: Some(0.3),
                     top_p: None,
@@ -567,10 +599,124 @@ impl RlmExecutor {
                 Err(_) => return Err(anyhow::anyhow!("LLM request timed out after 60 seconds")),
             };
 
+            // Optionally run FunctionGemma to convert text-only responses into
+            // structured tool calls.
+            #[cfg(feature = "functiongemma")]
+            let response = if let Some(ref router) = self.tool_router {
+                router.maybe_reformat(response, &tools).await
+            } else {
+                response
+            };
+
             total_input_tokens += response.usage.prompt_tokens;
             total_output_tokens += response.usage.completion_tokens;
 
-            // Extract code from response
+            // ── Structured tool-call path ────────────────────────────────
+            // If the response (or FunctionGemma rewrite) contains ToolCall
+            // entries, dispatch them directly against the REPL.
+            let tool_calls: Vec<(String, String, String)> = response
+                .message
+                .content
+                .iter()
+                .filter_map(|p| match p {
+                    ContentPart::ToolCall {
+                        id,
+                        name,
+                        arguments,
+                    } => Some((id.clone(), name.clone(), arguments.clone())),
+                    _ => None,
+                })
+                .collect();
+
+            if !tool_calls.is_empty() {
+                tracing::info!(
+                    count = tool_calls.len(),
+                    "RLM: dispatching structured tool calls"
+                );
+
+                // Keep the assistant message (including tool call parts) in history
+                messages.push(Message {
+                    role: Role::Assistant,
+                    content: response.message.content.clone(),
+                });
+
+                let mut tool_results: Vec<ContentPart> = Vec::new();
+
+                for (call_id, name, arguments) in &tool_calls {
+                    match dispatch_tool_call(name, arguments, &mut self.repl) {
+                        Some(RlmToolResult::Final(answer)) => {
+                            if self.verbose {
+                                println!("[RLM] Final answer received via tool call");
+                            }
+                            final_answer = Some(answer.clone());
+                            tool_results.push(ContentPart::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                content: format!("FINAL: {answer}"),
+                            });
+                            break;
+                        }
+                        Some(RlmToolResult::Output(output)) => {
+                            // Check for the llm_query sentinel
+                            if let Ok(sentinel) = serde_json::from_str::<serde_json::Value>(&output)
+                            {
+                                if sentinel
+                                    .get("__rlm_llm_query")
+                                    .and_then(|v| v.as_bool())
+                                    .unwrap_or(false)
+                                {
+                                    let q = sentinel
+                                        .get("query")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("");
+                                    let ctx_slice = sentinel
+                                        .get("context_slice")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
+                                    let llm_result =
+                                        self.handle_llm_query_direct(q, ctx_slice).await?;
+                                    tool_results.push(ContentPart::ToolResult {
+                                        tool_call_id: call_id.clone(),
+                                        content: llm_result,
+                                    });
+                                    continue;
+                                }
+                            }
+                            // Normal REPL output
+                            if self.verbose {
+                                let preview = truncate_with_ellipsis(&output, 200);
+                                println!("[RLM] Tool {name} → {}", preview);
+                            }
+                            tool_results.push(ContentPart::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                content: output,
+                            });
+                        }
+                        None => {
+                            tool_results.push(ContentPart::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                content: format!("Unknown tool: {name}"),
+                            });
+                        }
+                    }
+                }
+
+                // Send tool results back as a Role::Tool message
+                if !tool_results.is_empty() {
+                    messages.push(Message {
+                        role: Role::Tool,
+                        content: tool_results,
+                    });
+                }
+
+                if final_answer.is_some() {
+                    break;
+                }
+                continue;
+            }
+
+            // ── Legacy DSL path (fallback) ───────────────────────────────
+            // If no structured tool calls were produced, fall back to the
+            // original regex-parsed code-block execution.
             let assistant_text = response
                 .message
                 .content
@@ -788,6 +934,79 @@ impl RlmExecutor {
         // Record the sub-query
         self.sub_queries.push(SubQuery {
             query: query.clone(),
+            context_slice,
+            response: answer.clone(),
+            tokens_used: response.usage.total_tokens,
+        });
+
+        Ok(format!("llm_query result: {}", answer))
+    }
+
+    /// Handle an `rlm_llm_query` tool call from the structured path.
+    ///
+    /// This is the equivalent of `handle_llm_query` but takes pre-parsed
+    /// parameters instead of a raw DSL line.
+    async fn handle_llm_query_direct(
+        &mut self,
+        query: &str,
+        context_slice: Option<String>,
+    ) -> Result<String> {
+        let context_to_analyze = context_slice
+            .clone()
+            .unwrap_or_else(|| self.repl.context().to_string());
+
+        let context_chars = context_to_analyze.chars().count();
+        let truncated_context = if context_chars > 8000 {
+            format!(
+                "{}\n[truncated, {} chars total]",
+                truncate_with_ellipsis(&context_to_analyze, 7500),
+                context_chars
+            )
+        } else {
+            context_to_analyze.clone()
+        };
+
+        let messages = vec![
+            Message {
+                role: Role::System,
+                content: vec![ContentPart::Text {
+                    text: "You are a focused analysis assistant. Answer the question based on the provided context. Be concise.".to_string(),
+                }],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: format!("Context:\n{}\n\nQuestion: {}", truncated_context, query),
+                }],
+            },
+        ];
+
+        let response = self
+            .provider
+            .complete(CompletionRequest {
+                messages,
+                tools: vec![],
+                model: self.model.clone(),
+                temperature: Some(0.3),
+                top_p: None,
+                max_tokens: Some(500),
+                stop: vec![],
+            })
+            .await?;
+
+        let answer = response
+            .message
+            .content
+            .iter()
+            .filter_map(|p| match p {
+                ContentPart::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        self.sub_queries.push(SubQuery {
+            query: query.to_string(),
             context_slice,
             response: answer.clone(),
             tokens_used: response.usage.total_tokens,
