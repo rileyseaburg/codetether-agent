@@ -14,6 +14,7 @@ mod agent;
 mod cli;
 mod cognition;
 mod config;
+mod crash;
 pub mod mcp;
 mod provider;
 pub mod ralph;
@@ -67,6 +68,18 @@ async fn main() -> anyhow::Result<()> {
             .with(tracing_subscriber::fmt::layer())
             .init();
     }
+
+    let app_config = match config::Config::load().await {
+        Ok(cfg) => cfg,
+        Err(err) => {
+            tracing::warn!(
+                error = %err,
+                "Failed to load config for crash reporter; using defaults"
+            );
+            config::Config::default()
+        }
+    };
+    crash::initialize(&app_config).await;
 
     // Initialize HashiCorp Vault connection for secrets
     if let Ok(secrets_manager) = secrets::SecretsManager::from_env().await {

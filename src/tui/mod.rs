@@ -497,11 +497,7 @@ impl App {
                                     format_tool_call_arguments(name, arguments)
                                 )),
                                 ContentPart::ToolResult { content, .. } => {
-                                    let truncated = if content.len() > 500 {
-                                        format!("{}...", &content[..497])
-                                    } else {
-                                        content.clone()
-                                    };
+                                    let truncated = truncate_with_ellipsis(content, 500);
                                     Some(format!("[Result]\n{}", truncated))
                                 }
                                 _ => None,
@@ -2402,11 +2398,7 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 ]);
                 message_lines.push(result_header);
 
-                let output_str = if output.len() > 300 {
-                    format!("{}... (truncated)", &output[..297])
-                } else {
-                    output.clone()
-                };
+                let output_str = truncate_with_ellipsis(output, 300);
                 let output_lines: Vec<&str> = output_str.lines().collect();
                 for line in output_lines.iter().take(5) {
                     let output_line = Line::from(vec![
@@ -2493,6 +2485,28 @@ fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
     }
 
     serde_json::to_string_pretty(&parsed).unwrap_or_else(|_| arguments.to_string())
+}
+
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut chars = value.chars();
+    let mut output = String::new();
+    for _ in 0..max_chars {
+        if let Some(ch) = chars.next() {
+            output.push(ch);
+        } else {
+            return value.to_string();
+        }
+    }
+
+    if chars.next().is_some() {
+        format!("{output}...")
+    } else {
+        output
+    }
 }
 
 fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
