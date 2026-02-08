@@ -27,6 +27,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                // Clean stale .cargo from workspace (CARGO_HOME is now $HOME/.cargo)
+                sh 'rm -rf "${WORKSPACE}/.cargo"'
             }
         }
 
