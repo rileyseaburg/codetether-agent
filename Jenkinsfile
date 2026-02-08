@@ -2,11 +2,17 @@ pipeline {
     agent any
 
     environment {
-        CARGO_HOME   = "${WORKSPACE}/.cargo"
-        RUSTUP_HOME  = "${env.HOME}/.rustup"
-        PATH         = "${env.HOME}/.cargo/bin:${env.PATH}"
-        REPO         = 'rileyseaburg/codetether-agent'
-        BINARY_NAME  = 'codetether'
+        CARGO_HOME          = "${WORKSPACE}/.cargo"
+        RUSTUP_HOME         = "${env.HOME}/.rustup"
+        PATH                = "${env.HOME}/.cargo/bin:${env.PATH}"
+        REPO                = 'rileyseaburg/codetether-agent'
+        BINARY_NAME         = 'codetether'
+        RUSTC_WRAPPER       = '/var/lib/jenkins/sccache'
+        SCCACHE_BUCKET      = 'sccache'
+        SCCACHE_REGION      = 'us-east-1'
+        SCCACHE_ENDPOINT    = 'http://192.168.50.223:9000'
+        SCCACHE_S3_USE_SSL  = 'off'
+        SCCACHE_S3_KEY_PREFIX = 'rust/'
     }
 
     options {
@@ -24,10 +30,18 @@ pipeline {
 
         stage('Build Release') {
             steps {
-                sh '''
-                    rustc --version
-                    cargo build --release
-                '''
+                withCredentials([
+                    string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                        rustc --version
+                        /var/lib/jenkins/sccache --start-server || true
+                        cargo build --release
+                        echo "=== sccache stats ==="
+                        /var/lib/jenkins/sccache --show-stats || true
+                    '''
+                }
             }
         }
 

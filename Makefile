@@ -3,13 +3,29 @@ SHELL := /bin/bash
 SPIKE2_HOST ?= spike2
 SPIKE2_BUILD_DIR ?= /tmp/codetether-agent-build
 
-.PHONY: build-cuda build-release deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
+# sccache with MinIO S3 backend
+export SCCACHE_BUCKET      ?= sccache
+export SCCACHE_REGION      ?= us-east-1
+export SCCACHE_ENDPOINT    ?= http://192.168.50.223:9000
+export SCCACHE_S3_USE_SSL  ?= off
+export SCCACHE_S3_KEY_PREFIX ?= rust/
+export AWS_ACCESS_KEY_ID   ?= sccacheadmin
+export AWS_SECRET_ACCESS_KEY ?= hZz3CXz2EqTTA503mvgsaFWQLGfCucGS
+
+.PHONY: build-cuda build-release build-cached sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
 
 build-cuda:
 	cargo build --release --features candle-cuda
 
 build-release:
 	cargo build --release
+
+# Build with sccache pushing to MinIO (local dev writes the cache that Jenkins reads)
+build-cached:
+	RUSTC_WRAPPER=sccache cargo build --release
+
+sccache-stats:
+	sccache --show-stats
 
 deploy-spike2-cuda:
 	rsync -az --delete --exclude target --exclude .git ./ $(SPIKE2_HOST):$(SPIKE2_BUILD_DIR)/
