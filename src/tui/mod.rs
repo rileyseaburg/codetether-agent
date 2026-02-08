@@ -77,6 +77,7 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
 #[derive(Debug, Clone)]
 enum MessageType {
     Text(String),
+    Image { url: String, mime_type: Option<String> },
     ToolCall { name: String, arguments: String },
     ToolResult { name: String, output: String },
 }
@@ -486,30 +487,44 @@ impl App {
                             Role::Tool => "tool",
                         };
 
-                        // Extract text content
-                        let content: String = msg
-                            .content
-                            .iter()
-                            .filter_map(|part| match part {
-                                ContentPart::Text { text } => Some(text.clone()),
-                                ContentPart::ToolCall {
-                                    name, arguments, ..
-                                } => Some(format!(
-                                    "[Tool: {}]\n{}",
-                                    name,
-                                    format_tool_call_arguments(name, arguments)
-                                )),
+                        // Process each content part separately
+                        for part in &msg.content {
+                            match part {
+                                ContentPart::Text { text } => {
+                                    if !text.is_empty() {
+                                        self.messages.push(ChatMessage::new(role_str, text.clone()));
+                                    }
+                                }
+                                ContentPart::Image { url, mime_type } => {
+                                    self.messages.push(
+                                        ChatMessage::new(role_str, "")
+                                            .with_message_type(MessageType::Image {
+                                                url: url.clone(),
+                                                mime_type: mime_type.clone(),
+                                            }),
+                                    );
+                                }
+                                ContentPart::ToolCall { name, arguments, .. } => {
+                                    self.messages.push(
+                                        ChatMessage::new(role_str, format!("🔧 {name}"))
+                                            .with_message_type(MessageType::ToolCall {
+                                                name: name.clone(),
+                                                arguments: arguments.clone(),
+                                            }),
+                                    );
+                                }
                                 ContentPart::ToolResult { content, .. } => {
                                     let truncated = truncate_with_ellipsis(content, 500);
-                                    Some(format!("[Result]\n{}", truncated))
+                                    self.messages.push(
+                                        ChatMessage::new(role_str, format!("✅ Result\n{truncated}"))
+                                            .with_message_type(MessageType::ToolResult {
+                                                name: "tool".to_string(),
+                                                output: content.clone(),
+                                            }),
+                                    );
                                 }
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n");
-
-                        if !content.is_empty() {
-                            self.messages.push(ChatMessage::new(role_str, content));
+                                _ => {}
+                            }
                         }
                     }
 
@@ -2424,6 +2439,11 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let formatter = MessageFormatter::new(max_width);
                 let formatted_content = formatter.format_content(text, &message.role);
                 message_lines.extend(formatted_content);
+            }
+            MessageType::Image { url, mime_type } => {
+                let formatter = MessageFormatter::new(max_width);
+                let image_line = formatter.format_image(url, mime_type.as_deref());
+                message_lines.push(image_line);
             }
         }
 

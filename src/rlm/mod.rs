@@ -10,10 +10,12 @@
 pub mod chunker;
 pub mod repl;
 pub mod router;
+pub mod tools;
 
 pub use chunker::{Chunk, ChunkOptions, ContentType, RlmChunker};
 pub use repl::{ReplRuntime, RlmAnalysisResult, RlmExecutor, RlmRepl, SubQuery};
 pub use router::{RlmRouter, RoutingContext, RoutingResult};
+pub use tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
 
 use serde::{Deserialize, Serialize};
 
