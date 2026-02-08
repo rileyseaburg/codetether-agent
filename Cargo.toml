@@ -136,9 +136,15 @@ tempfile = "3"
 insta = "1"
 
 [profile.release]
-lto = true
+lto = "thin"
 codegen-units = 1
 strip = true
+
+# CI profile: sccache-friendly (no LTO, parallel codegen)
+[profile.ci]
+inherits = "release"
+lto = false
+codegen-units = 16
 
 [patch.crates-io]
 candle-kernels = { path = "vendor/candle-kernels" }
