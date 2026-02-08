@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        CARGO_HOME            = "${WORKSPACE}/.cargo"
+        CARGO_HOME            = "${env.HOME}/.cargo"
         RUSTUP_HOME           = "${env.HOME}/.rustup"
         PATH                  = "/usr/local/bin:${env.HOME}/.cargo/bin:${env.PATH}"
         REPO                  = 'rileyseaburg/codetether-agent'
@@ -95,8 +95,8 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN')]) {
                     sh '''
-                        echo "Publishing v${TAG_NAME} to crates.io ..."
-                        cargo publish --locked
+                        echo "Publishing ${TAG_NAME} to crates.io ..."
+                        cargo publish --allow-dirty
                     '''
                 }
             }
