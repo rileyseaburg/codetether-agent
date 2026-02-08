@@ -398,11 +398,7 @@ fn render_header(f: &mut Frame, state: &SwarmViewState, area: Rect) {
     let status_line = Line::from(vec![
         Span::styled("Task: ", Style::default().fg(Color::DarkGray)),
         Span::styled(
-            if state.task.len() > 50 {
-                format!("{}...", &state.task[..47])
-            } else {
-                state.task.clone()
-            },
+            truncate_str(&state.task, 47),
             Style::default().fg(Color::White),
         ),
         Span::raw("  "),

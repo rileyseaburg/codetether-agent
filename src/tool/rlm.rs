@@ -121,6 +121,10 @@ impl Tool for RlmTool {
                 // For now, return a chunked analysis placeholder
                 // Full implementation would invoke the RLM subsystem
                 let chunks = self.chunk_content(&all_content);
+                let first_chunk_preview = chunks
+                    .first()
+                    .map(|chunk| truncate_with_ellipsis(chunk, 500))
+                    .unwrap_or_default();
                 let output = format!(
                     "RLM Analysis\n\
                     Query: {}\n\
@@ -135,10 +139,7 @@ impl Tool for RlmTool {
                     all_content.len(),
                     chunks.len(),
                     max_depth,
-                    chunks
-                        .first()
-                        .map(|c| if c.len() > 500 { &c[..500] } else { c })
-                        .unwrap_or("")
+                    first_chunk_preview
                 );
 
                 Ok(ToolResult::success(output))
@@ -222,5 +223,27 @@ impl RlmTool {
         }
 
         chunks
+    }
+}
+
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut chars = value.chars();
+    let mut output = String::new();
+    for _ in 0..max_chars {
+        if let Some(ch) = chars.next() {
+            output.push(ch);
+        } else {
+            return value.to_string();
+        }
+    }
+
+    if chars.next().is_some() {
+        format!("{output}...")
+    } else {
+        output
     }
 }

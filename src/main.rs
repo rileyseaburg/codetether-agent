@@ -30,6 +30,7 @@ mod worktree;
 
 use clap::Parser;
 use cli::{Cli, Command};
+use std::io::IsTerminal;
 use swarm::{DecompositionStrategy, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
@@ -79,6 +80,9 @@ async fn main() -> anyhow::Result<()> {
             config::Config::default()
         }
     };
+    let allow_crash_prompt =
+        is_tui && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
+    let app_config = crash::maybe_prompt_for_consent(&app_config, allow_crash_prompt).await;
     crash::initialize(&app_config).await;
 
     // Initialize HashiCorp Vault connection for secrets
@@ -115,7 +119,10 @@ async fn main() -> anyhow::Result<()> {
                 if let Some(p) = registry.get(provider_name) {
                     match p.list_models().await {
                         Ok(models) => all_models.extend(models),
-                        Err(e) => eprintln!("Warning: failed to list models for {}: {}", provider_name, e),
+                        Err(e) => eprintln!(
+                            "Warning: failed to list models for {}: {}",
+                            provider_name, e
+                        ),
                     }
                 }
             }
@@ -135,14 +142,22 @@ async fn main() -> anyhow::Result<()> {
                         current_provider = m.provider.clone();
                     }
                     let ctx = m.context_window / 1000;
-                    let out = m.max_output_tokens.map(|t| format!("{}k", t / 1000)).unwrap_or_else(|| "-".to_string());
+                    let out = m
+                        .max_output_tokens
+                        .map(|t| format!("{}k", t / 1000))
+                        .unwrap_or_else(|| "-".to_string());
                     println!("  {:<45} {:>5}k ctx  {:>5} out", m.id, ctx, out);
                 }
-                println!("\n\x1b[2m{} models from {} providers\x1b[0m", all_models.len(), {
-                    let mut providers: Vec<&str> = all_models.iter().map(|m| m.provider.as_str()).collect();
-                    providers.dedup();
-                    providers.len()
-                });
+                println!(
+                    "\n\x1b[2m{} models from {} providers\x1b[0m",
+                    all_models.len(),
+                    {
+                        let mut providers: Vec<&str> =
+                            all_models.iter().map(|m| m.provider.as_str()).collect();
+                        providers.dedup();
+                        providers.len()
+                    }
+                );
             }
             Ok(())
         }

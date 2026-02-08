@@ -69,8 +69,10 @@ cargo build --release
 CodeTether can automatically capture catastrophic crashes (panic message, location, stack trace, version, OS/arch, and command) and send them to a remote endpoint on next startup.
 
 - Disabled by default.
+- On first interactive TUI run, CodeTether asks for explicit consent.
 - No source files or API keys are included.
 - Reports are queued locally in the data directory under `crash-reports/` before upload.
+- Uploads use a versioned schema envelope (`codetether.crash.v1`) with legacy fallback for older endpoints.
 
 Enable:
 
@@ -88,6 +90,14 @@ Set a custom endpoint:
 
 ```bash
 codetether config --set telemetry.crash_report_endpoint=https://your-endpoint.example.com/crashes
+```
+
+If your crash endpoint requires authentication, set one of these environment variables:
+
+```bash
+export CODETETHER_CRASH_REPORT_AUTH_TOKEN="your-bearer-token"
+# or
+export CODETETHER_CRASH_REPORT_API_KEY="your-api-key"
 ```
 
 ## Quick Start

@@ -251,6 +251,10 @@ pub struct TelemetryConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crash_reporting: Option<bool>,
 
+    /// Whether we have already prompted the user about crash reporting consent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crash_reporting_prompted: Option<bool>,
+
     /// Endpoint for crash report ingestion.
     /// Defaults to the CodeTether telemetry endpoint when unset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -260,6 +264,10 @@ pub struct TelemetryConfig {
 impl TelemetryConfig {
     pub fn crash_reporting_enabled(&self) -> bool {
         self.crash_reporting.unwrap_or(false)
+    }
+
+    pub fn crash_reporting_prompted(&self) -> bool {
+        self.crash_reporting_prompted.unwrap_or(false)
     }
 
     pub fn crash_report_endpoint(&self) -> String {
@@ -343,6 +351,9 @@ impl Config {
             "telemetry.crash_reporting" => {
                 config.telemetry.crash_reporting = Some(parse_bool(value)?)
             }
+            "telemetry.crash_reporting_prompted" => {
+                config.telemetry.crash_reporting_prompted = Some(parse_bool(value)?)
+            }
             "telemetry.crash_report_endpoint" => {
                 config.telemetry.crash_report_endpoint = Some(value.to_string())
             }
@@ -376,6 +387,9 @@ impl Config {
         }
         if other.telemetry.crash_reporting.is_some() {
             self.telemetry.crash_reporting = other.telemetry.crash_reporting;
+        }
+        if other.telemetry.crash_reporting_prompted.is_some() {
+            self.telemetry.crash_reporting_prompted = other.telemetry.crash_reporting_prompted;
         }
         if other.telemetry.crash_report_endpoint.is_some() {
             self.telemetry.crash_report_endpoint = other.telemetry.crash_report_endpoint;

@@ -122,9 +122,12 @@ impl RlmRepl {
 
     /// Slice context by character positions
     pub fn slice(&self, start: usize, end: usize) -> &str {
-        let end = end.min(self.context.len());
+        let total_chars = self.context.chars().count();
+        let end = end.min(total_chars);
         let start = start.min(end);
-        &self.context[start..end]
+        let start_byte = char_index_to_byte_index(&self.context, start);
+        let end_byte = char_index_to_byte_index(&self.context, end);
+        &self.context[start_byte..end_byte]
     }
 
     /// Split context into n chunks
@@ -367,7 +370,10 @@ impl RlmRepl {
         if (expr.starts_with('"') && expr.ends_with('"'))
             || (expr.starts_with('\'') && expr.ends_with('\''))
         {
-            return expr[1..expr.len() - 1].to_string();
+            let mut chars = expr.chars();
+            let _ = chars.next();
+            let _ = chars.next_back();
+            return chars.collect();
         }
 
         expr.to_string()
@@ -599,11 +605,7 @@ impl RlmExecutor {
                 if let Some(ref answer) = execution_result.final_answer {
                     println!("[RLM] Final answer received: {}", answer);
                 } else if !execution_result.stdout.is_empty() {
-                    let preview = if execution_result.stdout.len() > 200 {
-                        format!("{}...", &execution_result.stdout[..200])
-                    } else {
-                        execution_result.stdout.clone()
-                    };
+                    let preview = truncate_with_ellipsis(&execution_result.stdout, 200);
                     println!("[RLM] Execution output:\n{}", preview);
                 }
             }
@@ -732,11 +734,12 @@ impl RlmExecutor {
             .unwrap_or_else(|| self.repl.context().to_string());
 
         // Truncate context for sub-query to avoid overwhelming the LLM
-        let truncated_context = if context_to_analyze.len() > 8000 {
+        let context_chars = context_to_analyze.chars().count();
+        let truncated_context = if context_chars > 8000 {
             format!(
-                "{}...\n[truncated, {} chars total]",
-                &context_to_analyze[..7500],
-                context_to_analyze.len()
+                "{}\n[truncated, {} chars total]",
+                truncate_with_ellipsis(&context_to_analyze, 7500),
+                context_chars
             )
         } else {
             context_to_analyze.clone()
@@ -1004,6 +1007,40 @@ rl.on('line', async (line) => {{
     /// Get the runtime type used by this REPL
     pub fn runtime(&self) -> ReplRuntime {
         self.runtime
+    }
+}
+
+fn char_index_to_byte_index(value: &str, char_index: usize) -> usize {
+    if char_index == 0 {
+        return 0;
+    }
+
+    value
+        .char_indices()
+        .nth(char_index)
+        .map(|(idx, _)| idx)
+        .unwrap_or(value.len())
+}
+
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut chars = value.chars();
+    let mut output = String::new();
+    for _ in 0..max_chars {
+        if let Some(ch) = chars.next() {
+            output.push(ch);
+        } else {
+            return value.to_string();
+        }
+    }
+
+    if chars.next().is_some() {
+        format!("{output}...")
+    } else {
+        output
     }
 }
 

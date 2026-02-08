@@ -124,11 +124,7 @@ impl Tool for ConfirmMultiEditTool {
                 return Ok(ToolResult::error(format!(
                     "String not found in {}: {}",
                     edit.file,
-                    if edit.old_string.len() > 50 {
-                        format!("{}...", &edit.old_string[..50])
-                    } else {
-                        edit.old_string.clone()
-                    }
+                    truncate_with_ellipsis(&edit.old_string, 50)
                 )));
             }
 
@@ -237,5 +233,27 @@ impl Tool for ConfirmMultiEditTool {
         } else {
             Ok(ToolResult::success("✗ All changes rejected by user"))
         }
+    }
+}
+
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut chars = value.chars();
+    let mut output = String::new();
+    for _ in 0..max_chars {
+        if let Some(ch) = chars.next() {
+            output.push(ch);
+        } else {
+            return value.to_string();
+        }
+    }
+
+    if chars.next().is_some() {
+        format!("{output}...")
+    } else {
+        output
     }
 }
