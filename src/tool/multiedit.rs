@@ -151,11 +151,7 @@ impl Tool for MultiEditTool {
             let matches: Vec<_> = content.match_indices(&edit.old_string).collect();
 
             if matches.is_empty() {
-                let preview = if edit.old_string.len() > 50 {
-                    format!("{}...", &edit.old_string[..50])
-                } else {
-                    edit.old_string.clone()
-                };
+                let preview = truncate_with_ellipsis(&edit.old_string, 50);
                 edit_results.push(EditResult {
                     file: edit.file.clone(),
                     success: false,
@@ -319,5 +315,27 @@ impl Tool for MultiEditTool {
             success: true,
             metadata,
         })
+    }
+}
+
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut chars = value.chars();
+    let mut output = String::new();
+    for _ in 0..max_chars {
+        if let Some(ch) = chars.next() {
+            output.push(ch);
+        } else {
+            return value.to_string();
+        }
+    }
+
+    if chars.next().is_some() {
+        format!("{output}...")
+    } else {
+        output
     }
 }
