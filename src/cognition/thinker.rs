@@ -3,6 +3,8 @@ use candle_core::{Device, Tensor};
 use candle_core::quantized::gguf_file;
 use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::{quantized_llama, quantized_qwen2};
+#[cfg(feature = "functiongemma")]
+use candle_transformers::models::quantized_gemma3;
 use candle_transformers::utils::apply_repeat_penalty;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -233,7 +235,7 @@ impl ThinkerClient {
     }
 }
 
-struct CandleThinker {
+pub(crate) struct CandleThinker {
     model: CandleModel,
     tokenizer: Tokenizer,
     device: Device,
@@ -252,6 +254,8 @@ struct CandleThinker {
 enum CandleModel {
     Llama(quantized_llama::ModelWeights),
     Qwen2(quantized_qwen2::ModelWeights),
+    #[cfg(feature = "functiongemma")]
+    Gemma3(quantized_gemma3::ModelWeights),
 }
 
 impl CandleModel {
@@ -259,12 +263,14 @@ impl CandleModel {
         match self {
             Self::Llama(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen2(model) => Ok(model.forward(x, index_pos)?),
+            #[cfg(feature = "functiongemma")]
+            Self::Gemma3(model) => Ok(model.forward(x, index_pos)?),
         }
     }
 }
 
 impl CandleThinker {
-    fn new(config: &ThinkerConfig) -> Result<Self> {
+    pub(crate) fn new(config: &ThinkerConfig) -> Result<Self> {
         let model_path = config
             .candle_model_path
             .as_ref()
@@ -310,10 +316,23 @@ impl CandleThinker {
                 quantized_qwen2::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load qwen2 gguf from {}", model_path))?,
             ),
+            #[cfg(feature = "functiongemma")]
+            "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => CandleModel::Gemma3(
+                quantized_gemma3::ModelWeights::from_gguf(content, &mut reader, &device)
+                    .with_context(|| format!("failed to load gemma3 gguf from {}", model_path))?,
+            ),
             other => {
+                #[cfg(not(feature = "functiongemma"))]
+                if matches!(other, "gemma" | "gemma2" | "gemma3" | "gemma-embedding") {
+                    return Err(anyhow!(
+                        "gemma architecture '{}' requires the 'functiongemma' feature; rebuild with --features functiongemma",
+                        other
+                    ));
+                }
                 return Err(anyhow!(
-                    "unsupported candle architecture '{}' (supported: llama, qwen2)",
-                    other
+                    "unsupported candle architecture '{}' (supported: llama, qwen2{})",
+                    other,
+                    if cfg!(feature = "functiongemma") { ", gemma/gemma2/gemma3" } else { "" }
                 ));
             }
         };
@@ -348,7 +367,7 @@ impl CandleThinker {
         })
     }
 
-    fn think(&mut self, system_prompt: &str, user_prompt: &str) -> Result<ThinkerOutput> {
+    pub(crate) fn think(&mut self, system_prompt: &str, user_prompt: &str) -> Result<ThinkerOutput> {
         let started_at = Instant::now();
         let prompt = format!(
             "System:\n{}\n\nUser:\n{}\n\nAssistant:\n",
@@ -492,6 +511,16 @@ fn try_cuda_device(_ordinal: usize) -> Result<Device> {
 fn detect_context_window(content: &gguf_file::Content, architecture: &str) -> Option<usize> {
     let key = match architecture {
         "qwen2" => "qwen2.context_length",
+        "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => {
+            // Try gemma3 first, then fall back to gemma2, gemma
+            for prefix in ["gemma3", "gemma2", "gemma"] {
+                let k = format!("{prefix}.context_length");
+                if let Some(v) = content.metadata.get(&k) {
+                    return v.to_u32().ok().map(|v| v as usize);
+                }
+            }
+            return None;
+        }
         _ => "llama.context_length",
     };
     content
@@ -508,6 +537,7 @@ fn collect_eos_token_ids(tokenizer: &Tokenizer) -> Vec<u32> {
         "<|endoftext|>",
         "</s>",
         "<|end|>",
+        "<end_of_turn>",
     ];
     let mut ids = Vec::new();
     for token in candidates {

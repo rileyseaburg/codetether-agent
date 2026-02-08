@@ -64,9 +64,10 @@ name = "codetether"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["functiongemma"]
 candle-cuda = ["candle-core/cuda", "candle-transformers/cuda"]
 candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+functiongemma = []
 
 [dependencies]
 # Async runtime

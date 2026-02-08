@@ -13,6 +13,9 @@ use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
+#[cfg(feature = "functiongemma")]
+use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
+
 fn is_interactive_tool(tool_name: &str) -> bool {
     matches!(tool_name, "question")
 }
@@ -47,7 +50,7 @@ impl Session {
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
             "zhipuai" => "glm-4.7".to_string(),
-            "openrouter" => "zhipuai/glm-4.7".to_string(),
+            "openrouter" => "z-ai/glm-4.7".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
             _ => "glm-4.7".to_string(),
@@ -264,6 +267,19 @@ impl Session {
         let max_steps = 50;
         let mut final_output = String::new();
 
+        // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
+        #[cfg(feature = "functiongemma")]
+        let tool_router: Option<ToolCallRouter> = {
+            let cfg = ToolRouterConfig::from_env();
+            match ToolCallRouter::from_config(&cfg) {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::warn!(error = %e, "FunctionGemma tool router init failed; disabled");
+                    None
+                }
+            }
+        };
+
         for step in 1..=max_steps {
             tracing::info!(step = step, "Agent step starting");
 
@@ -289,6 +305,15 @@ impl Session {
 
             // Call the provider
             let response = provider.complete(request).await?;
+
+            // Optionally route text-only responses through FunctionGemma to
+            // produce structured tool calls.
+            #[cfg(feature = "functiongemma")]
+            let response = if let Some(ref router) = tool_router {
+                router.maybe_reformat(response, &tool_definitions).await
+            } else {
+                response
+            };
 
             // Record token usage
             crate::telemetry::TOKEN_USAGE.record_model_usage(
@@ -497,6 +522,19 @@ impl Session {
         let mut final_output = String::new();
         let max_steps = 50;
 
+        // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
+        #[cfg(feature = "functiongemma")]
+        let tool_router: Option<ToolCallRouter> = {
+            let cfg = ToolRouterConfig::from_env();
+            match ToolCallRouter::from_config(&cfg) {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::warn!(error = %e, "FunctionGemma tool router init failed; disabled");
+                    None
+                }
+            }
+        };
+
         for step in 1..=max_steps {
             tracing::info!(step = step, "Agent step starting");
             let _ = event_tx.send(SessionEvent::Thinking).await;
@@ -521,6 +559,15 @@ impl Session {
             };
 
             let response = provider.complete(request).await?;
+
+            // Optionally route text-only responses through FunctionGemma to
+            // produce structured tool calls.
+            #[cfg(feature = "functiongemma")]
+            let response = if let Some(ref router) = tool_router {
+                router.maybe_reformat(response, &tool_definitions).await
+            } else {
+                response
+            };
 
             crate::telemetry::TOKEN_USAGE.record_model_usage(
                 &model,

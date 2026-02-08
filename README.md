@@ -29,6 +29,7 @@ See [full release notes](https://github.com/rileyseaburg/codetether-agent/releas
 - **Interactive TUI**: Rich terminal interface with webview layout, model selector, session picker, swarm view, and Ralph view
 - **RLM Processing**: Handle context larger than model windows via recursive language model approach
 - **Secure Secrets**: All API keys loaded exclusively from HashiCorp Vault - no environment variable secrets
+- **FunctionGemma Tool Router**: Separates *reasoning* from *tool-call formatting* — a tiny local model handles structured output so your primary LLM can focus on thinking (see [why this matters](#functiongemma-tool-call-router))
 - **27+ Tools**: Comprehensive tool system for file ops, LSP, code search, web fetch, and more
 - **Session Management**: Persistent session history with git-aware storage
 - **High Performance**: Written in Rust — 13ms startup, <20MB idle memory, true parallelism via tokio
@@ -41,7 +42,15 @@ See [full release notes](https://github.com/rileyseaburg/codetether-agent/releas
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
 
-No Rust toolchain required. Downloads the latest pre-built binary and installs to `/usr/local/bin` (or `~/.local/bin`).
+No Rust toolchain required. Downloads the latest pre-built binary and installs to `/usr/local/bin` (or `~/.local/bin`). Also downloads the FunctionGemma model (~292 MB) for local tool-call routing.
+
+```bash
+# Skip FunctionGemma model download
+curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --no-functiongemma
+
+# Download only the FunctionGemma model (existing install)
+curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --functiongemma-only
+```
 
 ### From crates.io
 
@@ -62,7 +71,72 @@ git clone https://github.com/rileyseaburg/codetether-agent
 cd codetether-agent
 cargo build --release
 # Binary at target/release/codetether
+
+# Build without FunctionGemma (smaller binary)
+cargo build --release --no-default-features
 ```
+
+## FunctionGemma Tool-Call Router
+
+### The Problem
+
+Modern LLMs can call tools. But they're doing **two fundamentally different jobs at once**: figuring out *what* to do (reasoning) and formatting *how* to express it (structured JSON tool calls). These are very different skills, and coupling them has real costs:
+
+- **You pay frontier prices for formatting.** A $15/M-token model spends tokens producing `{"name": "read_file", "arguments": {"path": "src/main.rs"}}` — the same structured output a 270M-parameter model produces perfectly.
+- **Tool-call quality varies wildly.** Even models that "support" tool calling often hallucinate tool names, malform arguments, or choose the wrong tool. The reasoning is good, but the formatting is unreliable.
+- **You're locked to one model's quirks.** Switch from Claude to Gemini and tool-call behavior changes. Every provider implements it slightly differently. Your agent has to handle all of them.
+- **Retries are expensive.** When a tool call is malformed, you burn another full cloud round-trip to fix it.
+
+### The Solution
+
+CodeTether **separates the two jobs**. Your primary LLM does what it's best at — reasoning, planning, understanding code. A tiny local model ([FunctionGemma](https://huggingface.co/google/functiongemma-270m-it), 270M params by Google) runs on your CPU and handles the structured output formatting. It reads what the LLM *said* it wants to do and produces clean, reliable tool calls.
+
+This is the same principle behind compiler design (parsing vs. code generation), microservices (single responsibility), and even how teams work (the architect decides *what* to build, the engineer handles *how* to express it in code).
+
+### Why This Is Novel
+
+- **No other coding agent separates these concerns.** Cursor, Continue, Aider, and opencode all require the primary LLM to handle both reasoning and tool-call formatting in a single pass. That works until it doesn't.
+- **Provider-agnostic tool calling.** Switch models freely — Claude, GPT-4o, Llama, Qwen, Kimi, a self-hosted fine-tune — and tool-call behavior stays consistent because the formatting layer is local and deterministic.
+- **Cheaper at scale.** The reasoning model doesn't waste tokens on JSON syntax. The formatting model runs locally for free. At 1000 tool calls/day, this adds up fast.
+- **More reliable.** A dedicated 270M model trained *specifically* for function calling is more consistent at structured output than a 400B generalist model doing it as a side task.
+- **Zero overhead when unnecessary.** If your LLM already returns structured tool calls, FunctionGemma is never invoked — pure passthrough, zero latency added.
+- **Safe degradation.** If FunctionGemma fails, the original response is returned unchanged. It never breaks anything.
+
+### How It Works
+
+1. Your primary LLM (Claude, GPT-4o, Kimi, Llama, etc.) returns a response
+2. Response already has structured tool calls? → **passthrough** (zero cost)
+3. Response is text-only? → FunctionGemma translates it into `<tool_call>` blocks locally (~5-50ms on CPU)
+4. The agent processes the structured calls as normal
+5. Any error? → original response returned unchanged
+
+### Setup
+
+The installer downloads the model by default. To enable the router, set these environment variables:
+
+```bash
+export CODETETHER_TOOL_ROUTER_ENABLED=true
+export CODETETHER_TOOL_ROUTER_MODEL_PATH="$HOME/.local/share/codetether/models/functiongemma/functiongemma-270m-it-Q8_0.gguf"
+export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH="$HOME/.local/share/codetether/models/functiongemma/tokenizer.json"
+```
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CODETETHER_TOOL_ROUTER_ENABLED` | `false` | `true` / `1` to activate the router |
+| `CODETETHER_TOOL_ROUTER_MODEL_PATH` | — | Path to the FunctionGemma `.gguf` model |
+| `CODETETHER_TOOL_ROUTER_TOKENIZER_PATH` | — | Path to `tokenizer.json` |
+| `CODETETHER_TOOL_ROUTER_ARCH` | `gemma3` | Architecture hint |
+| `CODETETHER_TOOL_ROUTER_DEVICE` | `auto` | `auto` / `cpu` / `cuda` |
+| `CODETETHER_TOOL_ROUTER_MAX_TOKENS` | `512` | Max decode tokens |
+| `CODETETHER_TOOL_ROUTER_TEMPERATURE` | `0.1` | Sampling temperature |
+
+### Opting Out
+
+- **At install time**: `--no-functiongemma` flag skips the model download
+- **At build time**: `cargo build --release --no-default-features` excludes the feature
+- **At runtime**: Simply don't set `CODETETHER_TOOL_ROUTER_ENABLED` (disabled by default)
 
 ## Crash Reporting (Opt-In)
 
