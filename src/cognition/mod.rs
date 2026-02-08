@@ -10,7 +10,9 @@ mod thinker;
 #[cfg(feature = "functiongemma")]
 pub mod tool_router;
 
-pub use thinker::{CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig, ThinkerOutput};
+pub use thinker::{
+    CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig, ThinkerOutput,
+};
 
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
@@ -388,10 +390,10 @@ impl CognitionRuntime {
                 &std::env::var("CODETETHER_COGNITION_THINKER_BACKEND")
                     .unwrap_or_else(|_| "openai_compat".to_string()),
             ),
-            endpoint: normalize_thinker_endpoint(&std::env::var(
-                "CODETETHER_COGNITION_THINKER_BASE_URL",
-            )
-            .unwrap_or_else(|_| "http://127.0.0.1:11434/v1".to_string())),
+            endpoint: normalize_thinker_endpoint(
+                &std::env::var("CODETETHER_COGNITION_THINKER_BASE_URL")
+                    .unwrap_or_else(|_| "http://127.0.0.1:11434/v1".to_string()),
+            ),
             model: std::env::var("CODETETHER_COGNITION_THINKER_MODEL")
                 .unwrap_or_else(|_| "qwen2.5:3b-instruct".to_string()),
             api_key: std::env::var("CODETETHER_COGNITION_THINKER_API_KEY").ok(),
@@ -401,8 +403,7 @@ impl CognitionRuntime {
                 .and_then(|v| v.parse::<f32>().ok()),
             max_tokens: env_usize("CODETETHER_COGNITION_THINKER_MAX_TOKENS", 256),
             timeout_ms: env_u64("CODETETHER_COGNITION_THINKER_TIMEOUT_MS", 12_000),
-            candle_model_path: std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH")
-                .ok(),
+            candle_model_path: std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH").ok(),
             candle_tokenizer_path: std::env::var(
                 "CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH",
             )
@@ -412,10 +413,7 @@ impl CognitionRuntime {
                 &std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_DEVICE")
                     .unwrap_or_else(|_| "auto".to_string()),
             ),
-            candle_cuda_ordinal: env_usize(
-                "CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL",
-                0,
-            ),
+            candle_cuda_ordinal: env_usize("CODETETHER_COGNITION_THINKER_CANDLE_CUDA_ORDINAL", 0),
             candle_repeat_penalty: env_f32(
                 "CODETETHER_COGNITION_THINKER_CANDLE_REPEAT_PENALTY",
                 1.1,
@@ -635,7 +633,10 @@ impl CognitionRuntime {
                         let proposal = Proposal {
                             id: Uuid::new_v4().to_string(),
                             persona_id: work.persona_id.clone(),
-                            title: proposal_title_from_thought(&thought.thinking, work.thought_count),
+                            title: proposal_title_from_thought(
+                                &thought.thinking,
+                                work.thought_count,
+                            ),
                             rationale: trim_for_storage(&thought.thinking, 900),
                             evidence_refs: vec!["internal.thought_stream".to_string()],
                             risk: ProposalRisk::Low,
@@ -695,11 +696,9 @@ impl CognitionRuntime {
                                 ),
                                 (
                                     "completion_tokens".to_string(),
-                                    serde_json::Value::Number(
-                                        serde_json::Number::from(
-                                            thought.completion_tokens.unwrap_or(0) as u64
-                                        ),
-                                    ),
+                                    serde_json::Value::Number(serde_json::Number::from(
+                                        thought.completion_tokens.unwrap_or(0) as u64,
+                                    )),
                                 ),
                             ]),
                         });
@@ -1094,7 +1093,7 @@ async fn generate_phase_thought(
         let (system_prompt, user_prompt) = build_phase_prompts(work, context);
         match client.think(&system_prompt, &user_prompt).await {
             Ok(output) => {
-                let thinking = trim_for_storage(&output.text, 2_000);
+                let thinking = normalize_thought_output(work, context, &output.text);
                 if !thinking.is_empty() {
                     return ThoughtResult {
                         source: "model",
@@ -1141,7 +1140,9 @@ async fn generate_phase_thought(
 fn build_phase_prompts(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> (String, String) {
     let system_prompt = "You are the internal cognition engine for a persistent autonomous persona. \
 Respond with concise plain text only. Do not include markdown, XML, or code fences. \
-Focus on reasoning quality, uncertainty, and actionable checks."
+Write as an operational process update, not meta narration. \
+Do not say phrases like 'I need to', 'we need to', 'I will', or describe your own reasoning process. \
+Output concrete findings, checks, risks, and next actions."
         .to_string();
 
     let context_lines = if context.is_empty() {
@@ -1156,16 +1157,33 @@ Focus on reasoning quality, uncertainty, and actionable checks."
 
     let phase_instruction = match work.phase {
         ThoughtPhase::Observe => {
-            "Observe current state. Identify 1-3 concrete signals and one uncertainty."
+            "Process format (exact line labels): \
+Phase: Observe | Goal: detect current customer/business risk | \
+Signals: <1-3 concrete signals> | \
+Uncertainty: <one unknown that blocks confidence> | \
+Next_Action: <one immediate operational action>."
         }
         ThoughtPhase::Reflect => {
-            "Reflect on observed signals. Produce one hypothesis, rationale, and risk note."
+            "Process format (exact line labels): \
+Phase: Reflect | Hypothesis: <single testable hypothesis> | \
+Rationale: <why this is likely> | \
+Business_Risk: <customer/revenue/SLA impact> | \
+Validation_Next_Action: <one action to confirm or falsify>."
         }
         ThoughtPhase::Test => {
-            "Design and evaluate one check. Include expected result and evidence quality."
+            "Process format (exact line labels): \
+Phase: Test | Check: <single concrete check> | \
+Procedure: <short executable procedure> | \
+Expected_Result: <pass/fail expectation> | \
+Evidence_Quality: <low|medium|high with reason> | \
+Escalation_Trigger: <when to escalate immediately>."
         }
         ThoughtPhase::Compress => {
-            "Compress the latest cognition into a short state summary and retained facts."
+            "Process format (exact line labels): \
+Phase: Compress | State_Summary: <current state in one line> | \
+Retained_Facts: <3 short facts separated by '; '> | \
+Open_Risks: <up to 2 unresolved risks separated by '; '> | \
+Next_Process_Step: <next operational step>."
         }
     };
 
@@ -1199,31 +1217,73 @@ fn fallback_phase_text(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> Stri
     let context_summary = fallback_context_summary(context);
     let thought = match work.phase {
         ThoughtPhase::Observe => format!(
-            "Observation {}: I am monitoring this codebase with a business-first reliability lens. \
-Role: {}. Charter focus: {}. {} Next focus: identify customer-impacting incidents, degraded flows, \
-and recent operational regressions before they become outages.",
-            work.thought_count, work.role, charter, context_summary
+            "Phase: Observe | Goal: detect current customer/business risk | Signals: role={}; charter_focus={}; {} | Uncertainty: live customer-impact telemetry and current incident status are incomplete. | Next_Action: run targeted health/error checks for customer-facing flows and capture failure rate baselines.",
+            work.role, charter, context_summary
         ),
         ThoughtPhase::Reflect => format!(
-            "Reflection {}: Based on current signals, the most plausible risk areas are runtime stability, \
-deployment safety, and dependency/provider availability. {} Business impact if unresolved: service downtime, \
-SLA breaches, and loss of customer trust. Confidence: low-to-medium until additional checks are gathered.",
-            work.thought_count, context_summary
+            "Phase: Reflect | Hypothesis: current instability risk is most likely in runtime reliability and dependency availability. | Rationale: recent context indicates unresolved operational uncertainty. | Business_Risk: outages can cause SLA breach, revenue loss, and trust erosion. | Validation_Next_Action: confirm via service health trend, dependency error distribution, and rollback readiness.",
         ),
         ThoughtPhase::Test => format!(
-            "Check plan {}: run targeted verification on service health, recent errors, and change history. \
-{} Expected evidence: clear pass/fail indicators for each suspected fault domain. Decision rule: escalate \
-immediately on repeated failures in customer-facing paths.",
-            work.thought_count, context_summary
+            "Phase: Test | Check: verify customer-path service health against recent error spikes and release changes. | Procedure: collect latest health status, error counts, and recent deploy diffs; compare against baseline. | Expected_Result: pass if health is stable and error rate within baseline, fail otherwise. | Evidence_Quality: medium (depends on telemetry completeness). | Escalation_Trigger: escalate immediately on repeated customer-path failures or sustained elevated error rate.",
         ),
         ThoughtPhase::Compress => format!(
-            "Operational summary {}: system remains under active reliability monitoring with business-priority focus. \
-{} Immediate next actions: keep triage tight, capture repeatable diagnostics, and convert confirmed findings into \
-concrete remediation steps for engineering and operations.",
-            work.thought_count, context_summary
+            "Phase: Compress | State_Summary: reliability monitoring active with unresolved business-impact uncertainty. | Retained_Facts: role={} ; charter_focus={} ; {} | Open_Risks: potential customer-path instability ; incomplete evidence for confident closure. | Next_Process_Step: convert latest checks into prioritized remediation tasks and verify impact reduction.",
+            work.role, charter, context_summary
         ),
     };
     trim_for_storage(&thought, 1_200)
+}
+
+fn normalize_thought_output(work: &ThoughtWorkItem, context: &[ThoughtEvent], raw: &str) -> String {
+    let trimmed = trim_for_storage(raw, 2_000);
+    if trimmed.trim().is_empty() {
+        return fallback_phase_text(work, context);
+    }
+
+    // Prefer process-labeled content if the model emitted a preamble first.
+    if let Some(idx) = find_process_label_start(&trimmed) {
+        let candidate = trimmed[idx..].trim();
+        if let Some(first_line) = candidate
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+        {
+            if first_line.starts_with("Phase:") && !first_line.contains('<') {
+                return first_line.to_string();
+            }
+        }
+        if !candidate.is_empty() && !candidate.contains('<') && !candidate.contains('\n') {
+            return candidate.to_string();
+        }
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    let looks_meta = lower.starts_with("we need")
+        || lower.starts_with("i need")
+        || lower.contains("we need to")
+        || lower.contains("i need to")
+        || lower.contains("must output")
+        || lower.contains("let's ")
+        || lower.contains("we have to");
+
+    if looks_meta {
+        return fallback_phase_text(work, context);
+    }
+
+    trimmed
+}
+
+fn find_process_label_start(text: &str) -> Option<usize> {
+    [
+        "Phase: Observe",
+        "Phase: Reflect",
+        "Phase: Test",
+        "Phase: Compress",
+        "Phase:",
+    ]
+    .iter()
+    .filter_map(|label| text.find(label))
+    .min()
 }
 
 fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
@@ -1237,7 +1297,10 @@ fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
 
     for event in context.iter().rev() {
         if latest_error.is_none()
-            && let Some(error) = event.payload.get("error").and_then(serde_json::Value::as_str)
+            && let Some(error) = event
+                .payload
+                .get("error")
+                .and_then(serde_json::Value::as_str)
             && !error.trim().is_empty()
         {
             latest_error = Some(trim_for_storage(error, 140));
@@ -1245,7 +1308,10 @@ fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
 
         if latest_proposal.is_none()
             && event.event_type == ThoughtEventType::ProposalCreated
-            && let Some(title) = event.payload.get("title").and_then(serde_json::Value::as_str)
+            && let Some(title) = event
+                .payload
+                .get("title")
+                .and_then(serde_json::Value::as_str)
             && !title.trim().is_empty()
         {
             latest_proposal = Some(trim_for_storage(title, 120));
@@ -1267,7 +1333,10 @@ fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
         }
     }
 
-    let mut lines = vec![format!("{} recent cognition events are available.", context.len())];
+    let mut lines = vec![format!(
+        "{} recent cognition events are available.",
+        context.len()
+    )];
     if let Some(error) = latest_error {
         lines.push(format!("Latest error signal: {}.", error));
     }
@@ -1293,7 +1362,8 @@ fn trim_for_storage(input: &str, max_chars: usize) -> String {
 }
 
 fn estimate_fact_count(text: &str) -> usize {
-    let sentence_count = text.matches('.').count() + text.matches('!').count() + text.matches('?').count();
+    let sentence_count =
+        text.matches('.').count() + text.matches('!').count() + text.matches('?').count();
     sentence_count.clamp(1, 12)
 }
 

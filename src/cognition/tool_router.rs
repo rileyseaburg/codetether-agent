@@ -15,7 +15,7 @@ use anyhow::{Result, anyhow};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-use super::thinker::{CandleThinker, ThinkerConfig, ThinkerBackend};
+use super::thinker::{CandleThinker, ThinkerBackend, ThinkerConfig};
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -96,10 +96,7 @@ impl ToolRouterConfig {
 ///
 /// FunctionGemma expects tools as a JSON list in the system turn, followed by
 /// the user's intent.  The model produces structured JSON function call output.
-fn build_functiongemma_prompt(
-    assistant_text: &str,
-    tools: &[ToolDefinition],
-) -> String {
+fn build_functiongemma_prompt(assistant_text: &str, tools: &[ToolDefinition]) -> String {
     // Build tool descriptions as a JSON array for the system section.
     let tool_defs: Vec<serde_json::Value> = tools
         .iter()
@@ -225,9 +222,7 @@ impl ToolCallRouter {
         }
 
         let model_path = config.model_path.as_ref().ok_or_else(|| {
-            anyhow!(
-                "CODETETHER_TOOL_ROUTER_MODEL_PATH is required when the tool router is enabled"
-            )
+            anyhow!("CODETETHER_TOOL_ROUTER_MODEL_PATH is required when the tool router is enabled")
         })?;
         let tokenizer_path = config.tokenizer_path.as_ref().ok_or_else(|| {
             anyhow!(
