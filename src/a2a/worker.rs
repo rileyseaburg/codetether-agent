@@ -8,11 +8,14 @@ use crate::tui::swarm_view::SwarmEvent;
 use anyhow::Result;
 use futures::StreamExt;
 use reqwest::Client;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
+use tokio::time::Instant;
 
 /// Worker status for heartbeat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,6 +61,56 @@ impl HeartbeatState {
     }
 }
 
+#[derive(Clone, Debug)]
+struct CognitionHeartbeatConfig {
+    enabled: bool,
+    source_base_url: String,
+    include_thought_summary: bool,
+    summary_max_chars: usize,
+    request_timeout_ms: u64,
+}
+
+impl CognitionHeartbeatConfig {
+    fn from_env() -> Self {
+        let source_base_url = std::env::var("CODETETHER_WORKER_COGNITION_SOURCE_URL")
+            .unwrap_or_else(|_| "http://127.0.0.1:4096".to_string())
+            .trim_end_matches('/')
+            .to_string();
+
+        Self {
+            enabled: env_bool("CODETETHER_WORKER_COGNITION_SHARE_ENABLED", true),
+            source_base_url,
+            include_thought_summary: env_bool("CODETETHER_WORKER_COGNITION_INCLUDE_THOUGHTS", true),
+            summary_max_chars: env_usize("CODETETHER_WORKER_COGNITION_THOUGHT_MAX_CHARS", 480)
+                .max(120),
+            request_timeout_ms: env_u64("CODETETHER_WORKER_COGNITION_TIMEOUT_MS", 2_500).max(250),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct CognitionStatusSnapshot {
+    running: bool,
+    #[serde(default)]
+    last_tick_at: Option<String>,
+    #[serde(default)]
+    active_persona_count: usize,
+    #[serde(default)]
+    events_buffered: usize,
+    #[serde(default)]
+    snapshots_buffered: usize,
+    #[serde(default)]
+    loop_interval_ms: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct CognitionLatestSnapshot {
+    generated_at: String,
+    summary: String,
+    #[serde(default)]
+    metadata: HashMap<String, serde_json::Value>,
+}
+
 /// Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
@@ -77,6 +130,20 @@ pub async fn run(args: A2aArgs) -> Result<()> {
 
     let client = Client::new();
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
+    if cognition_heartbeat.enabled {
+        tracing::info!(
+            source = %cognition_heartbeat.source_base_url,
+            include_thoughts = cognition_heartbeat.include_thought_summary,
+            max_chars = cognition_heartbeat.summary_max_chars,
+            timeout_ms = cognition_heartbeat.request_timeout_ms,
+            "Cognition heartbeat sharing enabled (set CODETETHER_WORKER_COGNITION_SHARE_ENABLED=false to disable)"
+        );
+    } else {
+        tracing::warn!(
+            "Cognition heartbeat sharing disabled; worker thought state will not be shared upstream"
+        );
+    }
 
     let auto_approve = match args.auto_approve.as_str() {
         "all" => AutoApprove::All,
@@ -117,6 +184,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
             args.token.clone(),
             heartbeat_state.clone(),
             processing.clone(),
+            cognition_heartbeat.clone(),
         );
 
         match connect_stream(
@@ -1572,11 +1640,14 @@ fn start_heartbeat(
     token: Option<String>,
     heartbeat_state: HeartbeatState,
     processing: Arc<Mutex<HashSet<String>>>,
+    cognition_config: CognitionHeartbeatConfig,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut consecutive_failures = 0u32;
         const MAX_FAILURES: u32 = 3;
         const HEARTBEAT_INTERVAL_SECS: u64 = 30;
+        const COGNITION_RETRY_COOLDOWN_SECS: u64 = 300;
+        let mut cognition_payload_disabled_until: Option<Instant> = None;
 
         let mut interval =
             tokio::time::interval(tokio::time::Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
@@ -1609,12 +1680,27 @@ fn start_heartbeat(
             }
 
             let status_str = heartbeat_state.status.lock().await.as_str().to_string();
-            let payload = serde_json::json!({
+            let base_payload = serde_json::json!({
                 "worker_id": &heartbeat_state.worker_id,
                 "agent_name": &heartbeat_state.agent_name,
                 "status": status_str,
                 "active_task_count": active_count,
             });
+            let mut payload = base_payload.clone();
+            let mut included_cognition_payload = false;
+            let cognition_payload_allowed = cognition_payload_disabled_until
+                .map(|until| Instant::now() >= until)
+                .unwrap_or(true);
+
+            if cognition_config.enabled
+                && cognition_payload_allowed
+                && let Some(cognition_payload) =
+                    fetch_cognition_heartbeat_payload(&client, &cognition_config).await
+                && let Some(obj) = payload.as_object_mut()
+            {
+                obj.insert("cognition".to_string(), cognition_payload);
+                included_cognition_payload = true;
+            }
 
             match req.json(&payload).send().await {
                 Ok(res) => {
@@ -1626,6 +1712,50 @@ fn start_heartbeat(
                             active_tasks = active_count,
                             "Heartbeat sent successfully"
                         );
+                    } else if included_cognition_payload && res.status().is_client_error() {
+                        tracing::warn!(
+                            worker_id = %heartbeat_state.worker_id,
+                            status = %res.status(),
+                            "Heartbeat cognition payload rejected, retrying without cognition payload"
+                        );
+
+                        let mut retry_req = client.post(&url);
+                        if let Some(ref t) = token {
+                            retry_req = retry_req.bearer_auth(t);
+                        }
+
+                        match retry_req.json(&base_payload).send().await {
+                            Ok(retry_res) if retry_res.status().is_success() => {
+                                cognition_payload_disabled_until = Some(
+                                    Instant::now()
+                                        + Duration::from_secs(COGNITION_RETRY_COOLDOWN_SECS),
+                                );
+                                consecutive_failures = 0;
+                                tracing::warn!(
+                                    worker_id = %heartbeat_state.worker_id,
+                                    retry_after_secs = COGNITION_RETRY_COOLDOWN_SECS,
+                                    "Paused cognition heartbeat payload after schema rejection"
+                                );
+                            }
+                            Ok(retry_res) => {
+                                consecutive_failures += 1;
+                                tracing::warn!(
+                                    worker_id = %heartbeat_state.worker_id,
+                                    status = %retry_res.status(),
+                                    failures = consecutive_failures,
+                                    "Heartbeat failed even after retry without cognition payload"
+                                );
+                            }
+                            Err(e) => {
+                                consecutive_failures += 1;
+                                tracing::warn!(
+                                    worker_id = %heartbeat_state.worker_id,
+                                    error = %e,
+                                    failures = consecutive_failures,
+                                    "Heartbeat retry without cognition payload failed"
+                                );
+                            }
+                        }
                     } else {
                         consecutive_failures += 1;
                         tracing::warn!(
@@ -1660,4 +1790,121 @@ fn start_heartbeat(
             }
         }
     })
+}
+
+async fn fetch_cognition_heartbeat_payload(
+    client: &Client,
+    config: &CognitionHeartbeatConfig,
+) -> Option<serde_json::Value> {
+    let status_url = format!("{}/v1/cognition/status", config.source_base_url);
+    let status_res = tokio::time::timeout(
+        Duration::from_millis(config.request_timeout_ms),
+        client.get(status_url).send(),
+    )
+    .await
+    .ok()?
+    .ok()?;
+
+    if !status_res.status().is_success() {
+        return None;
+    }
+
+    let status: CognitionStatusSnapshot = status_res.json().await.ok()?;
+    let mut payload = serde_json::json!({
+        "running": status.running,
+        "last_tick_at": status.last_tick_at,
+        "active_persona_count": status.active_persona_count,
+        "events_buffered": status.events_buffered,
+        "snapshots_buffered": status.snapshots_buffered,
+        "loop_interval_ms": status.loop_interval_ms,
+    });
+
+    if config.include_thought_summary {
+        let snapshot_url = format!("{}/v1/cognition/snapshots/latest", config.source_base_url);
+        let snapshot_res = tokio::time::timeout(
+            Duration::from_millis(config.request_timeout_ms),
+            client.get(snapshot_url).send(),
+        )
+        .await
+        .ok()
+        .and_then(Result::ok);
+
+        if let Some(snapshot_res) = snapshot_res
+            && snapshot_res.status().is_success()
+            && let Ok(snapshot) = snapshot_res.json::<CognitionLatestSnapshot>().await
+            && let Some(obj) = payload.as_object_mut()
+        {
+            obj.insert(
+                "latest_snapshot_at".to_string(),
+                serde_json::Value::String(snapshot.generated_at),
+            );
+            obj.insert(
+                "latest_thought".to_string(),
+                serde_json::Value::String(trim_for_heartbeat(
+                    &snapshot.summary,
+                    config.summary_max_chars,
+                )),
+            );
+            if let Some(model) = snapshot
+                .metadata
+                .get("model")
+                .and_then(serde_json::Value::as_str)
+            {
+                obj.insert(
+                    "latest_thought_model".to_string(),
+                    serde_json::Value::String(model.to_string()),
+                );
+            }
+            if let Some(source) = snapshot
+                .metadata
+                .get("source")
+                .and_then(serde_json::Value::as_str)
+            {
+                obj.insert(
+                    "latest_thought_source".to_string(),
+                    serde_json::Value::String(source.to_string()),
+                );
+            }
+        }
+    }
+
+    Some(payload)
+}
+
+fn trim_for_heartbeat(input: &str, max_chars: usize) -> String {
+    if input.chars().count() <= max_chars {
+        return input.trim().to_string();
+    }
+
+    let mut trimmed = String::with_capacity(max_chars + 3);
+    for ch in input.chars().take(max_chars) {
+        trimmed.push(ch);
+    }
+    trimmed.push_str("...");
+    trimmed.trim().to_string()
+}
+
+fn env_bool(name: &str, default: bool) -> bool {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| match v.to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" => Some(true),
+            "0" | "false" | "no" | "off" => Some(false),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn env_usize(name: &str, default: usize) -> usize {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(default)
+}
+
+fn env_u64(name: &str, default: u64) -> u64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(default)
 }

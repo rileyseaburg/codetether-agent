@@ -267,6 +267,33 @@ When running `codetether serve`, the agent also exposes cognition + swarm contro
 
 `/v1/cognition/start` auto-seeds a default `root-thinker` persona when no personas exist, unless a `seed_persona` is provided.
 
+### Worker Cognition Sharing (Social-by-Default)
+
+When running in worker mode, CodeTether can include cognition status and a short latest-thought summary in worker heartbeats so upstream systems can monitor active reasoning state.
+
+- Default: enabled
+- Privacy control: disable any time with `CODETETHER_WORKER_COGNITION_SHARE_ENABLED=false`
+- Safety: summary text is truncated before transmission (default `480` chars)
+
+```bash
+# Disable upstream thought sharing
+export CODETETHER_WORKER_COGNITION_SHARE_ENABLED=false
+
+# Point worker to a non-default local cognition API
+export CODETETHER_WORKER_COGNITION_SOURCE_URL=http://127.0.0.1:4096
+
+# Keep status sharing but disable thought text
+export CODETETHER_WORKER_COGNITION_INCLUDE_THOUGHTS=false
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CODETETHER_WORKER_COGNITION_SHARE_ENABLED` | `true` | Enable cognition payload in worker heartbeat |
+| `CODETETHER_WORKER_COGNITION_SOURCE_URL` | `http://127.0.0.1:4096` | Local cognition API base URL |
+| `CODETETHER_WORKER_COGNITION_INCLUDE_THOUGHTS` | `true` | Include latest thought summary |
+| `CODETETHER_WORKER_COGNITION_THOUGHT_MAX_CHARS` | `480` | Max chars for latest thought summary |
+| `CODETETHER_WORKER_COGNITION_TIMEOUT_MS` | `2500` | Timeout for local cognition API reads |
+
 See `docs/perpetual_persona_swarms.md` for request/response contracts.
 
 ### CUDA Build/Deploy Helpers
