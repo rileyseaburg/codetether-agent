@@ -162,7 +162,7 @@ install_functiongemma() {
             printf "  ${BOLD}[2]${NC} Paste an existing token\n"
             printf "  ${BOLD}[3]${NC} Skip tokenizer download\n\n"
             printf "  Choice [1/2/3]: "
-            read -r auth_choice
+            read -r auth_choice < /dev/tty
 
             case "$auth_choice" in
                 1|"")
@@ -184,11 +184,11 @@ install_functiongemma() {
 
                     printf "\n  Create a ${BOLD}read${NC} token, then paste it here.\n"
                     printf "  HuggingFace token: "
-                    read -r hf_token
+                    read -r hf_token < /dev/tty
                     ;;
                 2)
                     printf "  HuggingFace token: "
-                    read -r hf_token
+                    read -r hf_token < /dev/tty
                     ;;
                 3)
                     warn "skipping tokenizer download"
