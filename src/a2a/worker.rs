@@ -264,31 +264,34 @@ fn model_ref_to_provider_model(model: &str) -> String {
 fn provider_preferences_for_tier(model_tier: Option<&str>) -> &'static [&'static str] {
     match model_tier.unwrap_or("balanced") {
         "fast" | "quick" => &[
-            "google",
             "openai",
+            "github-copilot",
             "moonshotai",
             "zhipuai",
-            "anthropic",
             "openrouter",
             "novita",
+            "google",
+            "anthropic",
         ],
         "heavy" | "deep" => &[
             "anthropic",
             "openai",
-            "google",
+            "github-copilot",
             "moonshotai",
             "zhipuai",
             "openrouter",
             "novita",
+            "google",
         ],
         _ => &[
             "openai",
+            "github-copilot",
             "anthropic",
-            "google",
             "moonshotai",
             "zhipuai",
             "openrouter",
             "novita",
+            "google",
         ],
     }
 }
