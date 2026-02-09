@@ -20,6 +20,27 @@ fn is_interactive_tool(tool_name: &str) -> bool {
     matches!(tool_name, "question")
 }
 
+fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
+    // Keep Google as an explicit option, but don't default to it first because
+    // some environments expose API keys that are not valid for ChatCompletions.
+    let preferred = [
+        "zhipuai",
+        "openai",
+        "github-copilot",
+        "anthropic",
+        "openrouter",
+        "novita",
+        "moonshotai",
+        "google",
+    ];
+    for name in preferred {
+        if let Some(found) = providers.iter().copied().find(|p| *p == name) {
+            return Some(found);
+        }
+    }
+    providers.first().copied()
+}
+
 /// A conversation session
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
@@ -201,17 +222,11 @@ impl Session {
             (None, String::new())
         };
 
-        // Determine which provider to use (prefer zhipuai as default)
+        // Determine which provider to use with deterministic fallback ordering.
         let selected_provider = provider_name
             .as_deref()
             .filter(|p| providers.contains(p))
-            .or_else(|| {
-                if providers.contains(&"zhipuai") {
-                    Some("zhipuai")
-                } else {
-                    providers.first().copied()
-                }
-            })
+            .or_else(|| choose_default_provider(providers.as_slice()))
             .ok_or_else(|| anyhow::anyhow!("No providers available"))?;
 
         let provider = registry
@@ -475,17 +490,11 @@ impl Session {
             (None, String::new())
         };
 
-        // Determine which provider to use (prefer zhipuai as default)
+        // Determine which provider to use with deterministic fallback ordering.
         let selected_provider = provider_name
             .as_deref()
             .filter(|p| providers.contains(p))
-            .or_else(|| {
-                if providers.contains(&"zhipuai") {
-                    Some("zhipuai")
-                } else {
-                    providers.first().copied()
-                }
-            })
+            .or_else(|| choose_default_provider(providers.as_slice()))
             .ok_or_else(|| anyhow::anyhow!("No providers available"))?;
 
         let provider = registry

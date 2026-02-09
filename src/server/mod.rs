@@ -25,7 +25,7 @@ use futures::stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 /// Server state shared across handlers
@@ -100,10 +100,12 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .nest("/a2a", a2a_router)
         // Middleware
         .layer(
+            // Mirror request origin so credentialed browser requests do not fail CORS.
             CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any),
+                .allow_origin(AllowOrigin::mirror_request())
+                .allow_credentials(true)
+                .allow_methods(AllowMethods::mirror_request())
+                .allow_headers(AllowHeaders::mirror_request()),
         )
         .layer(TraceLayer::new_for_http());
 
