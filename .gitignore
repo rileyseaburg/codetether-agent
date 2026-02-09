@@ -17,6 +17,8 @@ Thumbs.db
 *.so
 *.dylib
 *.dll
+/dist/
+nohup.out
 
 # Debug
 *.log

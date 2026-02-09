@@ -364,7 +364,9 @@ impl RlmRouter {
             // Optionally run FunctionGemma to convert text-only response
             #[cfg(feature = "functiongemma")]
             let response = if let Some(ref router) = tool_router {
-                router.maybe_reformat(response, &tools).await
+                // RLM router shares the session's provider which supports
+                // native tool calling.  Skip FunctionGemma.
+                router.maybe_reformat(response, &tools, true).await
             } else {
                 response
             };

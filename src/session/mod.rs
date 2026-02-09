@@ -255,6 +255,18 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
+        // Check whether the model natively supports tool calling.
+        // If it does, FunctionGemma is unnecessary and will be skipped.
+        #[cfg(feature = "functiongemma")]
+        let model_supports_tools = provider
+            .list_models()
+            .await
+            .unwrap_or_default()
+            .iter()
+            .find(|m| m.id == model)
+            .map(|m| m.supports_tools)
+            .unwrap_or(true); // Default true = assume native support (safe).
+
         // Build system prompt with AGENTS.md
         let cwd = self
             .metadata
@@ -307,10 +319,13 @@ impl Session {
             let response = provider.complete(request).await?;
 
             // Optionally route text-only responses through FunctionGemma to
-            // produce structured tool calls.
+            // produce structured tool calls.  Skipped when the model natively
+            // supports tool calling (which all current providers do).
             #[cfg(feature = "functiongemma")]
             let response = if let Some(ref router) = tool_router {
-                router.maybe_reformat(response, &tool_definitions).await
+                router
+                    .maybe_reformat(response, &tool_definitions, model_supports_tools)
+                    .await
             } else {
                 response
             };
@@ -513,6 +528,17 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
+        // Check whether the model natively supports tool calling.
+        #[cfg(feature = "functiongemma")]
+        let model_supports_tools = provider
+            .list_models()
+            .await
+            .unwrap_or_default()
+            .iter()
+            .find(|m| m.id == model)
+            .map(|m| m.supports_tools)
+            .unwrap_or(true);
+
         // Build system prompt
         let cwd = std::env::var("PWD")
             .map(std::path::PathBuf::from)
@@ -561,10 +587,12 @@ impl Session {
             let response = provider.complete(request).await?;
 
             // Optionally route text-only responses through FunctionGemma to
-            // produce structured tool calls.
+            // produce structured tool calls.  Skipped for native tool-calling models.
             #[cfg(feature = "functiongemma")]
             let response = if let Some(ref router) = tool_router {
-                router.maybe_reformat(response, &tool_definitions).await
+                router
+                    .maybe_reformat(response, &tool_definitions, model_supports_tools)
+                    .await
             } else {
                 response
             };
