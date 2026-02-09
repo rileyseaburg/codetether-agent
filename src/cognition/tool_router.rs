@@ -33,6 +33,7 @@ pub struct ToolRouterConfig {
     /// Device preference (auto / cpu / cuda).
     pub device: super::thinker::CandleDevicePreference,
     /// Max tokens for the FunctionGemma response.
+    /// FunctionGemma only outputs `<tool_call>` JSON blocks — 128 is generous.
     pub max_tokens: usize,
     /// Temperature for FunctionGemma sampling.
     pub temperature: f32,
@@ -46,7 +47,7 @@ impl Default for ToolRouterConfig {
             tokenizer_path: None,
             arch: "gemma3".to_string(),
             device: super::thinker::CandleDevicePreference::Auto,
-            max_tokens: 512,
+            max_tokens: 128,
             temperature: 0.1,
         }
     }
@@ -81,7 +82,7 @@ impl ToolRouterConfig {
             max_tokens: std::env::var("CODETETHER_TOOL_ROUTER_MAX_TOKENS")
                 .ok()
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(512),
+                .unwrap_or(128),
             temperature: std::env::var("CODETETHER_TOOL_ROUTER_TEMPERATURE")
                 .ok()
                 .and_then(|v| v.parse().ok())
@@ -257,17 +258,30 @@ impl ToolCallRouter {
 
     /// Conditionally reformat a `CompletionResponse`.
     ///
+    /// - If the model natively supports tool calling, return **unchanged**
+    ///   (FunctionGemma is only useful for models that lack native tool support).
     /// - If the response already contains `ContentPart::ToolCall` entries,
     ///   return it **unchanged** (zero overhead path).
-    /// - If the response is text-only, run FunctionGemma to convert the text
-    ///   into structured tool calls.
+    /// - If the assistant text doesn't look like it's describing tool usage,
+    ///   return **unchanged** (cheap heuristic avoids expensive inference).
+    /// - Otherwise, run FunctionGemma to convert the text into structured
+    ///   tool calls.
     /// - On any internal error, return the **original** response unchanged
     ///   (safe degradation — the router never breaks existing functionality).
     pub async fn maybe_reformat(
         &self,
         response: CompletionResponse,
         tools: &[ToolDefinition],
+        model_supports_tools: bool,
     ) -> CompletionResponse {
+        // Fast path: model already handles tool calling natively.
+        // FunctionGemma is only needed for models that return text descriptions
+        // of tool calls instead of structured ContentPart::ToolCall entries.
+        if model_supports_tools {
+            tracing::trace!("Skipping FunctionGemma: model supports native tool calling");
+            return response;
+        }
+
         // Fast path: if the response already has structured tool calls, pass through.
         let has_tool_calls = response
             .message
@@ -297,6 +311,18 @@ impl ToolCallRouter {
             .join("\n");
 
         if assistant_text.trim().is_empty() {
+            return response;
+        }
+
+        // Cheap heuristic: skip FunctionGemma if the text doesn't mention any
+        // available tool name.  This avoids expensive CPU inference for pure
+        // conversational / final-answer responses.
+        let text_lower = assistant_text.to_lowercase();
+        let mentions_tool = tools.iter().any(|t| text_lower.contains(&t.name.to_lowercase()));
+        if !mentions_tool {
+            tracing::trace!(
+                "Skipping FunctionGemma: assistant text mentions no tool names"
+            );
             return response;
         }
 
@@ -467,6 +493,6 @@ not valid json
         let config = ToolRouterConfig::default();
         assert!(!config.enabled);
         assert_eq!(config.arch, "gemma3");
-        assert_eq!(config.max_tokens, 512);
+        assert_eq!(config.max_tokens, 128);
     }
 }

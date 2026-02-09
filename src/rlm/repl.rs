@@ -603,7 +603,10 @@ impl RlmExecutor {
             // structured tool calls.
             #[cfg(feature = "functiongemma")]
             let response = if let Some(ref router) = self.tool_router {
-                router.maybe_reformat(response, &tools).await
+                // RLM executor currently uses the same provider as the main session,
+                // which always supports native tool calling.  Pass `true` so
+                // FunctionGemma is skipped — it would only waste CPU here.
+                router.maybe_reformat(response, &tools, true).await
             } else {
                 response
             };
