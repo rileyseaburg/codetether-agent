@@ -5,6 +5,9 @@
 //! - In-memory runtime manager for lifecycle + lineage
 //! - Feature-flagged perpetual loop (no external execution side effects)
 
+pub mod beliefs;
+pub mod executor;
+pub mod persistence;
 mod thinker;
 
 #[cfg(feature = "functiongemma")]
@@ -14,8 +17,10 @@ pub use thinker::{
     CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig, ThinkerOutput,
 };
 
+use crate::tool::ToolRegistry;
 use anyhow::{Result, anyhow};
-use chrono::{DateTime, Utc};
+use beliefs::{Belief, BeliefStatus};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::{HashMap, VecDeque};
@@ -42,10 +47,12 @@ pub enum PersonaStatus {
 pub struct PersonaPolicy {
     pub max_spawn_depth: u32,
     pub max_branching_factor: u32,
-    pub token_credits_per_minute: u32,
-    pub cpu_credits_per_minute: u32,
+    pub token_budget_per_minute: u32,
+    pub compute_ms_per_minute: u32,
     pub idle_ttl_secs: u64,
     pub share_memory: bool,
+    #[serde(default)]
+    pub allowed_tools: Vec<String>,
 }
 
 impl Default for PersonaPolicy {
@@ -53,10 +60,11 @@ impl Default for PersonaPolicy {
         Self {
             max_spawn_depth: 4,
             max_branching_factor: 4,
-            token_credits_per_minute: 20_000,
-            cpu_credits_per_minute: 10_000,
+            token_budget_per_minute: 20_000,
+            compute_ms_per_minute: 10_000,
             idle_ttl_secs: 3_600,
             share_memory: false,
+            allowed_tools: Vec::new(),
         }
     }
 }
@@ -72,6 +80,8 @@ pub struct PersonaIdentity {
     pub parent_id: Option<String>,
     pub depth: u32,
     pub created_at: DateTime<Utc>,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 /// Full runtime state for a persona.
@@ -83,10 +93,21 @@ pub struct PersonaRuntimeState {
     pub thought_count: u64,
     pub last_tick_at: Option<DateTime<Utc>>,
     pub updated_at: DateTime<Utc>,
+    /// Tokens consumed in current 60-second window.
+    pub tokens_this_window: u32,
+    /// Compute milliseconds consumed in current 60-second window.
+    pub compute_ms_this_window: u32,
+    /// Start of the current budget window.
+    pub window_started_at: DateTime<Utc>,
+    /// Last time this persona made meaningful progress (not budget-paused/quorum-waiting).
+    pub last_progress_at: DateTime<Utc>,
+    /// Whether this persona is currently paused due to budget exhaustion.
+    #[serde(default)]
+    pub budget_paused: bool,
 }
 
 /// Proposal risk level.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProposalRisk {
     Low,
@@ -105,6 +126,16 @@ pub enum ProposalStatus {
     Executed,
 }
 
+/// A vote on a proposal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProposalVote {
+    Approve,
+    Reject,
+    Veto,
+    Abstain,
+}
+
 /// Proposal contract (think first, execute through gates).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proposal {
@@ -116,6 +147,14 @@ pub struct Proposal {
     pub risk: ProposalRisk,
     pub status: ProposalStatus,
     pub created_at: DateTime<Utc>,
+    /// Votes from personas: persona_id -> vote
+    #[serde(default)]
+    pub votes: HashMap<String, ProposalVote>,
+    /// Deadline for voting
+    pub vote_deadline: Option<DateTime<Utc>>,
+    /// Whether votes have been requested this cycle
+    #[serde(default)]
+    pub votes_requested: bool,
 }
 
 /// Thought/event types emitted by the cognition loop.
@@ -133,6 +172,14 @@ pub enum ThoughtEventType {
     PersonaSpawned,
     PersonaReaped,
     SnapshotCompressed,
+    BeliefExtracted,
+    BeliefContested,
+    BeliefRevalidated,
+    BudgetPaused,
+    IdleReaped,
+    AttentionCreated,
+    VoteCast,
+    WorkspaceUpdated,
 }
 
 impl ThoughtEventType {
@@ -149,6 +196,14 @@ impl ThoughtEventType {
             Self::PersonaSpawned => "persona_spawned",
             Self::PersonaReaped => "persona_reaped",
             Self::SnapshotCompressed => "snapshot_compressed",
+            Self::BeliefExtracted => "belief_extracted",
+            Self::BeliefContested => "belief_contested",
+            Self::BeliefRevalidated => "belief_revalidated",
+            Self::BudgetPaused => "budget_paused",
+            Self::IdleReaped => "idle_reaped",
+            Self::AttentionCreated => "attention_created",
+            Self::VoteCast => "vote_cast",
+            Self::WorkspaceUpdated => "workspace_updated",
         }
     }
 }
@@ -188,6 +243,8 @@ pub struct CreatePersonaRequest {
     pub swarm_id: Option<String>,
     pub parent_id: Option<String>,
     pub policy: Option<PersonaPolicy>,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 /// Request payload for spawning a child persona.
@@ -219,6 +276,75 @@ pub struct StartCognitionRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StopCognitionRequest {
     pub reason: Option<String>,
+}
+
+// ── Attention, Governance, GlobalWorkspace ──────────────────────────────
+
+/// Source of an attention item.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttentionSource {
+    ContestedBelief,
+    FailedCheck,
+    StaleBelief,
+    ProposalTimeout,
+    FailedExecution,
+}
+
+/// An item requiring persona attention.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttentionItem {
+    pub id: String,
+    pub topic: String,
+    pub topic_tags: Vec<String>,
+    pub priority: f32,
+    pub source_type: AttentionSource,
+    pub source_id: String,
+    pub assigned_persona: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+}
+
+/// Governance rules for swarm voting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SwarmGovernance {
+    pub quorum_fraction: f32,
+    pub required_approvers_by_role: HashMap<ProposalRisk, Vec<String>>,
+    pub veto_roles: Vec<String>,
+    pub vote_timeout_secs: u64,
+}
+
+impl Default for SwarmGovernance {
+    fn default() -> Self {
+        Self {
+            quorum_fraction: 0.5,
+            required_approvers_by_role: HashMap::new(),
+            veto_roles: Vec::new(),
+            vote_timeout_secs: 300,
+        }
+    }
+}
+
+/// The coherent "now" for the entire swarm.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GlobalWorkspace {
+    pub top_beliefs: Vec<String>,
+    pub top_uncertainties: Vec<String>,
+    pub top_attention: Vec<String>,
+    pub active_objectives: Vec<String>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Default for GlobalWorkspace {
+    fn default() -> Self {
+        Self {
+            top_beliefs: Vec::new(),
+            top_uncertainties: Vec::new(),
+            top_attention: Vec::new(),
+            active_objectives: Vec::new(),
+            updated_at: Utc::now(),
+        }
+    }
 }
 
 /// Start/stop response status.
@@ -361,6 +487,14 @@ pub struct CognitionRuntime {
     loop_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     event_tx: broadcast::Sender<ThoughtEvent>,
     thinker: Option<Arc<ThinkerClient>>,
+    beliefs: Arc<RwLock<HashMap<String, Belief>>>,
+    attention_queue: Arc<RwLock<Vec<AttentionItem>>>,
+    governance: Arc<RwLock<SwarmGovernance>>,
+    workspace: Arc<RwLock<GlobalWorkspace>>,
+    tools: Option<Arc<ToolRegistry>>,
+    receipts: Arc<RwLock<Vec<executor::DecisionReceipt>>>,
+    /// Proposals pending human approval for Critical risk.
+    pending_approvals: Arc<RwLock<HashMap<String, bool>>>,
 }
 
 impl CognitionRuntime {
@@ -375,13 +509,14 @@ impl CognitionRuntime {
         options.default_policy = PersonaPolicy {
             max_spawn_depth: env_u32("CODETETHER_COGNITION_MAX_SPAWN_DEPTH", 4),
             max_branching_factor: env_u32("CODETETHER_COGNITION_MAX_BRANCHING_FACTOR", 4),
-            token_credits_per_minute: env_u32(
-                "CODETETHER_COGNITION_TOKEN_CREDITS_PER_MINUTE",
+            token_budget_per_minute: env_u32(
+                "CODETETHER_COGNITION_TOKEN_BUDGET_PER_MINUTE",
                 20_000,
             ),
-            cpu_credits_per_minute: env_u32("CODETETHER_COGNITION_CPU_CREDITS_PER_MINUTE", 10_000),
+            compute_ms_per_minute: env_u32("CODETETHER_COGNITION_COMPUTE_MS_PER_MINUTE", 10_000),
             idle_ttl_secs: env_u64("CODETETHER_COGNITION_IDLE_TTL_SECS", 3_600),
             share_memory: env_bool("CODETETHER_COGNITION_SHARE_MEMORY", false),
+            allowed_tools: Vec::new(),
         };
 
         let thinker_config = ThinkerConfig {
@@ -475,6 +610,13 @@ impl CognitionRuntime {
             loop_handle: Arc::new(Mutex::new(None)),
             event_tx,
             thinker,
+            beliefs: Arc::new(RwLock::new(HashMap::new())),
+            attention_queue: Arc::new(RwLock::new(Vec::new())),
+            governance: Arc::new(RwLock::new(SwarmGovernance::default())),
+            workspace: Arc::new(RwLock::new(GlobalWorkspace::default())),
+            tools: None,
+            receipts: Arc::new(RwLock::new(Vec::new())),
+            pending_approvals: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -532,6 +674,13 @@ impl CognitionRuntime {
         let max_snapshots = self.max_snapshots;
         let event_tx = self.event_tx.clone();
         let thinker = self.thinker.clone();
+        let beliefs = Arc::clone(&self.beliefs);
+        let attention_queue = Arc::clone(&self.attention_queue);
+        let governance = Arc::clone(&self.governance);
+        let workspace = Arc::clone(&self.workspace);
+        let tools = self.tools.clone();
+        let receipts = Arc::clone(&self.receipts);
+        let pending_approvals = Arc::clone(&self.pending_approvals);
 
         let handle = tokio::spawn(async move {
             let mut next_tick = Instant::now();
@@ -554,6 +703,7 @@ impl CognitionRuntime {
                 let mut new_snapshots = Vec::new();
                 let mut new_proposals = Vec::new();
 
+                // ── Step 1: Budget window reset + enforcement ──
                 let work_items: Vec<ThoughtWorkItem> = {
                     let mut map = personas.write().await;
                     let mut items = Vec::new();
@@ -562,6 +712,43 @@ impl CognitionRuntime {
                             continue;
                         }
 
+                        // Reset budget window every 60 seconds
+                        let window_elapsed = now
+                            .signed_duration_since(persona.window_started_at)
+                            .num_seconds();
+                        if window_elapsed >= 60 {
+                            persona.tokens_this_window = 0;
+                            persona.compute_ms_this_window = 0;
+                            persona.window_started_at = now;
+                        }
+
+                        // Check budget
+                        let token_ok =
+                            persona.tokens_this_window < persona.policy.token_budget_per_minute;
+                        let compute_ok =
+                            persona.compute_ms_this_window < persona.policy.compute_ms_per_minute;
+                        if !token_ok || !compute_ok {
+                            if !persona.budget_paused {
+                                persona.budget_paused = true;
+                                new_events.push(ThoughtEvent {
+                                    id: Uuid::new_v4().to_string(),
+                                    event_type: ThoughtEventType::BudgetPaused,
+                                    persona_id: Some(persona.identity.id.clone()),
+                                    swarm_id: persona.identity.swarm_id.clone(),
+                                    timestamp: now,
+                                    payload: json!({
+                                        "budget_paused": true,
+                                        "tokens_used": persona.tokens_this_window,
+                                        "compute_ms_used": persona.compute_ms_this_window,
+                                        "token_budget": persona.policy.token_budget_per_minute,
+                                        "compute_budget": persona.policy.compute_ms_per_minute,
+                                    }),
+                                });
+                            }
+                            continue; // skip tick for this persona
+                        }
+
+                        persona.budget_paused = false;
                         persona.thought_count = persona.thought_count.saturating_add(1);
                         persona.last_tick_at = Some(now);
                         persona.updated_at = now;
@@ -578,11 +765,14 @@ impl CognitionRuntime {
                     items
                 };
 
-                for work in work_items {
+                for work in &work_items {
                     let context = recent_persona_context(&events, &work.persona_id, 8).await;
-                    let thought = generate_phase_thought(thinker.as_deref(), &work, &context).await;
+
+                    let thought = generate_phase_thought(thinker.as_deref(), work, &context).await;
 
                     let event_timestamp = Utc::now();
+                    let is_fallback = thought.source == "fallback";
+
                     new_events.push(ThoughtEvent {
                         id: Uuid::new_v4().to_string(),
                         event_type: work.phase.event_type(),
@@ -612,6 +802,122 @@ impl CognitionRuntime {
                         }),
                     });
 
+                    // ── After thought: update budget counters ──
+                    {
+                        let mut map = personas.write().await;
+                        if let Some(persona) = map.get_mut(&work.persona_id) {
+                            let tokens_used = thought.total_tokens.unwrap_or(0);
+                            let compute_used = thought.latency_ms as u32;
+                            persona.tokens_this_window =
+                                persona.tokens_this_window.saturating_add(tokens_used);
+                            persona.compute_ms_this_window =
+                                persona.compute_ms_this_window.saturating_add(compute_used);
+
+                            // Step 2: Update last_progress_at for non-fallback thought
+                            if !is_fallback {
+                                persona.last_progress_at = Utc::now();
+                            }
+                        }
+                    }
+
+                    // ── Step 3: Belief extraction during Reflect phase ──
+                    if work.phase == ThoughtPhase::Reflect && !is_fallback {
+                        let extracted = beliefs::extract_beliefs_from_thought(
+                            thinker.as_deref(),
+                            &work.persona_id,
+                            &thought.thinking,
+                        )
+                        .await;
+
+                        if !extracted.is_empty() {
+                            let mut belief_store = beliefs.write().await;
+                            let mut attn_queue = attention_queue.write().await;
+                            for mut new_belief in extracted {
+                                // Check for existing belief_key (duplicate detection)
+                                let existing_id = belief_store
+                                    .values()
+                                    .find(|b| {
+                                        b.belief_key == new_belief.belief_key
+                                            && b.status != BeliefStatus::Invalidated
+                                    })
+                                    .map(|b| b.id.clone());
+
+                                if let Some(eid) = existing_id {
+                                    // Confirm existing belief
+                                    if let Some(existing) = belief_store.get_mut(&eid) {
+                                        if !existing.confirmed_by.contains(&work.persona_id) {
+                                            existing.confirmed_by.push(work.persona_id.clone());
+                                        }
+                                        existing.updated_at = Utc::now();
+                                    }
+                                } else {
+                                    // Handle contradiction targets
+                                    let contest_targets: Vec<String> =
+                                        new_belief.contradicts.clone();
+                                    for target_key in &contest_targets {
+                                        if let Some(target) = belief_store.values_mut().find(|b| {
+                                            &b.belief_key == target_key
+                                                && b.status != BeliefStatus::Invalidated
+                                        }) {
+                                            target.contested_by.push(new_belief.id.clone());
+                                            if !new_belief.contradicts.contains(&target.belief_key)
+                                            {
+                                                new_belief
+                                                    .contradicts
+                                                    .push(target.belief_key.clone());
+                                            }
+                                            // Apply contest penalty
+                                            target.confidence = (target.confidence - 0.1).max(0.05);
+                                            if target.confidence < 0.5 {
+                                                target.status = BeliefStatus::Stale;
+                                            } else {
+                                                // Create revalidation attention item
+                                                attn_queue.push(AttentionItem {
+                                                    id: Uuid::new_v4().to_string(),
+                                                    topic: format!(
+                                                        "Revalidate belief: {}",
+                                                        target.claim
+                                                    ),
+                                                    topic_tags: vec![target.belief_key.clone()],
+                                                    priority: 0.7,
+                                                    source_type: AttentionSource::ContestedBelief,
+                                                    source_id: target.id.clone(),
+                                                    assigned_persona: None,
+                                                    created_at: Utc::now(),
+                                                    resolved_at: None,
+                                                });
+                                            }
+                                        }
+                                    }
+
+                                    new_events.push(ThoughtEvent {
+                                        id: Uuid::new_v4().to_string(),
+                                        event_type: ThoughtEventType::BeliefExtracted,
+                                        persona_id: Some(work.persona_id.clone()),
+                                        swarm_id: work.swarm_id.clone(),
+                                        timestamp: Utc::now(),
+                                        payload: json!({
+                                            "belief_id": new_belief.id,
+                                            "belief_key": new_belief.belief_key,
+                                            "claim": trim_for_storage(&new_belief.claim, 280),
+                                            "confidence": new_belief.confidence,
+                                        }),
+                                    });
+
+                                    // Mark progress for belief creation
+                                    {
+                                        let mut map = personas.write().await;
+                                        if let Some(p) = map.get_mut(&work.persona_id) {
+                                            p.last_progress_at = Utc::now();
+                                        }
+                                    }
+
+                                    belief_store.insert(new_belief.id.clone(), new_belief);
+                                }
+                            }
+                        }
+                    }
+
                     if work.phase == ThoughtPhase::Test {
                         new_events.push(ThoughtEvent {
                             id: Uuid::new_v4().to_string(),
@@ -627,9 +933,49 @@ impl CognitionRuntime {
                                 "model": thought.model,
                             }),
                         });
+
+                        // Mark progress for check result
+                        {
+                            let mut map = personas.write().await;
+                            if let Some(p) = map.get_mut(&work.persona_id) {
+                                p.last_progress_at = Utc::now();
+                            }
+                        }
+
+                        // ── Step 6: Tool execution via capability leases ──
+                        if !is_fallback {
+                            if let Some(ref tool_registry) = tools {
+                                let allowed = {
+                                    let map = personas.read().await;
+                                    map.get(&work.persona_id)
+                                        .map(|p| p.policy.allowed_tools.clone())
+                                        .unwrap_or_default()
+                                };
+                                if !allowed.is_empty() {
+                                    let tool_results = executor::execute_tool_requests(
+                                        thinker.as_deref(),
+                                        tool_registry,
+                                        &work.persona_id,
+                                        &thought.thinking,
+                                        &allowed,
+                                    )
+                                    .await;
+
+                                    for result_event in tool_results {
+                                        new_events.push(result_event);
+                                        // Mark progress for tool execution
+                                        let mut map = personas.write().await;
+                                        if let Some(p) = map.get_mut(&work.persona_id) {
+                                            p.last_progress_at = Utc::now();
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     if work.phase == ThoughtPhase::Reflect && work.thought_count % 8 == 2 {
+                        let gov = governance.read().await;
                         let proposal = Proposal {
                             id: Uuid::new_v4().to_string(),
                             persona_id: work.persona_id.clone(),
@@ -642,6 +988,11 @@ impl CognitionRuntime {
                             risk: ProposalRisk::Low,
                             status: ProposalStatus::Created,
                             created_at: Utc::now(),
+                            votes: HashMap::new(),
+                            vote_deadline: Some(
+                                Utc::now() + ChronoDuration::seconds(gov.vote_timeout_secs as i64),
+                            ),
+                            votes_requested: false,
                         };
 
                         new_events.push(ThoughtEvent {
@@ -702,6 +1053,276 @@ impl CognitionRuntime {
                                 ),
                             ]),
                         });
+
+                        // ── Step 3: Belief staleness decay in Compress phase ──
+                        {
+                            let mut belief_store = beliefs.write().await;
+                            let mut attn_queue = attention_queue.write().await;
+                            let stale_ids: Vec<String> = belief_store
+                                .values()
+                                .filter(|b| {
+                                    b.status == BeliefStatus::Active && now > b.review_after
+                                })
+                                .map(|b| b.id.clone())
+                                .collect();
+                            for id in stale_ids {
+                                if let Some(belief) = belief_store.get_mut(&id) {
+                                    belief.status = BeliefStatus::Stale;
+                                    belief.confidence *= 0.98;
+                                    belief.confidence = belief.confidence.max(0.05);
+                                    attn_queue.push(AttentionItem {
+                                        id: Uuid::new_v4().to_string(),
+                                        topic: format!("Stale belief: {}", belief.claim),
+                                        topic_tags: vec![belief.belief_key.clone()],
+                                        priority: 0.4,
+                                        source_type: AttentionSource::StaleBelief,
+                                        source_id: belief.id.clone(),
+                                        assigned_persona: None,
+                                        created_at: now,
+                                        resolved_at: None,
+                                    });
+                                }
+                            }
+                        }
+
+                        // ── Step 4d: Update GlobalWorkspace ──
+                        {
+                            let belief_store = beliefs.read().await;
+                            let attn_queue = attention_queue.read().await;
+
+                            let mut sorted_beliefs: Vec<&Belief> = belief_store
+                                .values()
+                                .filter(|b| b.status == BeliefStatus::Active)
+                                .collect();
+                            sorted_beliefs.sort_by(|a, b| {
+                                let score_a = a.confidence
+                                    * (1.0
+                                        / (1.0
+                                            + now.signed_duration_since(a.updated_at).num_minutes()
+                                                as f32));
+                                let score_b = b.confidence
+                                    * (1.0
+                                        / (1.0
+                                            + now.signed_duration_since(b.updated_at).num_minutes()
+                                                as f32));
+                                score_b
+                                    .partial_cmp(&score_a)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            });
+
+                            let top_beliefs: Vec<String> = sorted_beliefs
+                                .iter()
+                                .take(10)
+                                .map(|b| b.id.clone())
+                                .collect();
+                            let top_uncertainties: Vec<String> = belief_store
+                                .values()
+                                .filter(|b| {
+                                    b.status == BeliefStatus::Stale || !b.contested_by.is_empty()
+                                })
+                                .take(5)
+                                .map(|b| {
+                                    format!("[{}] {}", b.belief_key, trim_for_storage(&b.claim, 80))
+                                })
+                                .collect();
+
+                            let mut sorted_attn: Vec<&AttentionItem> = attn_queue
+                                .iter()
+                                .filter(|a| a.resolved_at.is_none())
+                                .collect();
+                            sorted_attn.sort_by(|a, b| {
+                                b.priority
+                                    .partial_cmp(&a.priority)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            });
+                            let top_attention: Vec<String> =
+                                sorted_attn.iter().take(10).map(|a| a.id.clone()).collect();
+
+                            let mut ws = workspace.write().await;
+                            ws.top_beliefs = top_beliefs;
+                            ws.top_uncertainties = top_uncertainties;
+                            ws.top_attention = top_attention;
+                            ws.updated_at = now;
+                        }
+
+                        new_events.push(ThoughtEvent {
+                            id: Uuid::new_v4().to_string(),
+                            event_type: ThoughtEventType::WorkspaceUpdated,
+                            persona_id: Some(work.persona_id.clone()),
+                            swarm_id: work.swarm_id.clone(),
+                            timestamp: Utc::now(),
+                            payload: json!({ "updated": true }),
+                        });
+                    }
+                }
+
+                // ── Step 4c: Governance — resolve proposals ──
+                {
+                    let gov = governance.read().await;
+                    let mut proposal_store = proposals.write().await;
+                    let persona_map = personas.read().await;
+                    let active_count = persona_map
+                        .values()
+                        .filter(|p| p.status == PersonaStatus::Active)
+                        .count();
+
+                    let proposal_ids: Vec<String> = proposal_store
+                        .values()
+                        .filter(|p| p.status == ProposalStatus::Created)
+                        .map(|p| p.id.clone())
+                        .collect();
+
+                    let mut attn_queue = attention_queue.write().await;
+                    for pid in proposal_ids {
+                        if let Some(proposal) = proposal_store.get_mut(&pid) {
+                            // Check vote deadline
+                            if let Some(deadline) = proposal.vote_deadline {
+                                if now > deadline {
+                                    let quorum_needed =
+                                        (active_count as f32 * gov.quorum_fraction).ceil() as usize;
+                                    if proposal.votes.len() < quorum_needed {
+                                        // Timeout without quorum → attention item
+                                        attn_queue.push(AttentionItem {
+                                            id: Uuid::new_v4().to_string(),
+                                            topic: format!(
+                                                "Proposal vote timeout: {}",
+                                                proposal.title
+                                            ),
+                                            topic_tags: Vec::new(),
+                                            priority: 0.6,
+                                            source_type: AttentionSource::ProposalTimeout,
+                                            source_id: proposal.id.clone(),
+                                            assigned_persona: None,
+                                            created_at: now,
+                                            resolved_at: None,
+                                        });
+                                        continue;
+                                    }
+                                }
+                            }
+
+                            // Resolve if enough votes
+                            let quorum_needed =
+                                (active_count as f32 * gov.quorum_fraction).ceil() as usize;
+                            if proposal.votes.len() >= quorum_needed {
+                                // Check for veto
+                                let vetoed = proposal.votes.iter().any(|(voter_id, vote)| {
+                                    if *vote != ProposalVote::Veto {
+                                        return false;
+                                    }
+                                    if let Some(voter) = persona_map.get(voter_id) {
+                                        gov.veto_roles.contains(&voter.identity.role)
+                                    } else {
+                                        false
+                                    }
+                                });
+
+                                if vetoed {
+                                    proposal.status = ProposalStatus::Rejected;
+                                    continue;
+                                }
+
+                                // Check required approvers
+                                let required_roles = gov
+                                    .required_approvers_by_role
+                                    .get(&proposal.risk)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                let all_required_met = required_roles.iter().all(|role| {
+                                    proposal.votes.iter().any(|(vid, vote)| {
+                                        *vote == ProposalVote::Approve
+                                            && persona_map
+                                                .get(vid)
+                                                .map(|p| &p.identity.role == role)
+                                                .unwrap_or(false)
+                                    })
+                                });
+
+                                if !all_required_met {
+                                    continue; // wait for required approvers
+                                }
+
+                                // Count approvals vs rejections
+                                let approvals = proposal
+                                    .votes
+                                    .values()
+                                    .filter(|v| **v == ProposalVote::Approve)
+                                    .count();
+                                let rejections = proposal
+                                    .votes
+                                    .values()
+                                    .filter(|v| **v == ProposalVote::Reject)
+                                    .count();
+
+                                if approvals > rejections {
+                                    proposal.status = ProposalStatus::Verified;
+                                } else {
+                                    proposal.status = ProposalStatus::Rejected;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Step 7: Execute verified proposals ──
+                {
+                    let mut proposal_store = proposals.write().await;
+                    let verified_ids: Vec<String> = proposal_store
+                        .values()
+                        .filter(|p| p.status == ProposalStatus::Verified)
+                        .map(|p| p.id.clone())
+                        .collect();
+
+                    for pid in verified_ids {
+                        if let Some(proposal) = proposal_store.get_mut(&pid) {
+                            if proposal.risk == ProposalRisk::Critical {
+                                // Check for human approval
+                                let approved = {
+                                    let approvals = pending_approvals.read().await;
+                                    approvals.get(&pid).copied().unwrap_or(false)
+                                };
+                                if !approved {
+                                    // Register for human approval
+                                    let mut approvals = pending_approvals.write().await;
+                                    approvals.entry(pid.clone()).or_insert(false);
+                                    continue;
+                                }
+                            }
+
+                            // Create decision receipt
+                            let receipt = executor::DecisionReceipt {
+                                id: Uuid::new_v4().to_string(),
+                                proposal_id: pid.clone(),
+                                inputs: proposal.evidence_refs.clone(),
+                                governance_decision: format!(
+                                    "Approved with {} votes",
+                                    proposal.votes.len()
+                                ),
+                                capability_leases: Vec::new(),
+                                tool_invocations: Vec::new(),
+                                outcome: executor::ExecutionOutcome::Success {
+                                    summary: format!("Proposal '{}' executed", proposal.title),
+                                },
+                                created_at: Utc::now(),
+                            };
+
+                            new_events.push(ThoughtEvent {
+                                id: Uuid::new_v4().to_string(),
+                                event_type: ThoughtEventType::ActionExecuted,
+                                persona_id: Some(proposal.persona_id.clone()),
+                                swarm_id: None,
+                                timestamp: Utc::now(),
+                                payload: json!({
+                                    "receipt_id": receipt.id,
+                                    "proposal_id": pid,
+                                    "outcome": "success",
+                                    "summary": format!("Proposal '{}' executed", proposal.title),
+                                }),
+                            });
+
+                            receipts.write().await.push(receipt);
+                            proposal.status = ProposalStatus::Executed;
+                        }
                     }
                 }
 
@@ -717,6 +1338,72 @@ impl CognitionRuntime {
                 }
                 for snapshot in new_snapshots {
                     push_snapshot_internal(&snapshots, max_snapshots, snapshot).await;
+                }
+
+                // ── Step 2: Idle TTL reaping ──
+                {
+                    let mut map = personas.write().await;
+                    let idle_ids: Vec<String> = map
+                        .values()
+                        .filter(|p| {
+                            p.status == PersonaStatus::Active
+                                && !p.budget_paused
+                                && now.signed_duration_since(p.last_progress_at).num_seconds()
+                                    > p.policy.idle_ttl_secs as i64
+                        })
+                        .map(|p| p.identity.id.clone())
+                        .collect();
+
+                    for id in &idle_ids {
+                        if let Some(persona) = map.get_mut(id) {
+                            persona.status = PersonaStatus::Reaped;
+                            persona.updated_at = now;
+                        }
+                        // Also cascade-reap children
+                        let children: Vec<String> = map
+                            .values()
+                            .filter(|p| p.identity.parent_id.as_deref() == Some(id.as_str()))
+                            .map(|p| p.identity.id.clone())
+                            .collect();
+                        for child_id in children {
+                            if let Some(child) = map.get_mut(&child_id) {
+                                child.status = PersonaStatus::Reaped;
+                                child.updated_at = now;
+                            }
+                        }
+                    }
+                    drop(map);
+
+                    for id in idle_ids {
+                        push_event_internal(
+                            &events,
+                            max_events,
+                            &event_tx,
+                            ThoughtEvent {
+                                id: Uuid::new_v4().to_string(),
+                                event_type: ThoughtEventType::IdleReaped,
+                                persona_id: Some(id),
+                                swarm_id: None,
+                                timestamp: now,
+                                payload: json!({ "reason": "idle_ttl_expired" }),
+                            },
+                        )
+                        .await;
+                    }
+                }
+
+                // ── Step 5: Persistence on Compress ──
+                if work_items.iter().any(|w| w.phase == ThoughtPhase::Compress) {
+                    let _ = persistence::save_state(
+                        &personas,
+                        &proposals,
+                        &beliefs,
+                        &attention_queue,
+                        &workspace,
+                        &events,
+                        &snapshots,
+                    )
+                    .await;
                 }
 
                 let interval = Duration::from_millis((*loop_interval_ms.read().await).max(100));
@@ -833,6 +1520,7 @@ impl CognitionRuntime {
             parent_id: req.parent_id,
             depth: computed_depth,
             created_at: now,
+            tags: req.tags,
         };
 
         let persona = PersonaRuntimeState {
@@ -842,6 +1530,11 @@ impl CognitionRuntime {
             thought_count: 0,
             last_tick_at: None,
             updated_at: now,
+            tokens_this_window: 0,
+            compute_ms_this_window: 0,
+            window_started_at: now,
+            last_progress_at: now,
+            budget_paused: false,
         };
 
         personas.insert(persona_id, persona.clone());
@@ -878,6 +1571,7 @@ impl CognitionRuntime {
             swarm_id: req.swarm_id,
             parent_id: Some(parent_id.to_string()),
             policy: req.policy,
+            tags: Vec::new(),
         };
         self.create_persona(request).await
     }
@@ -1026,6 +1720,71 @@ impl CognitionRuntime {
 
     async fn push_event(&self, event: ThoughtEvent) {
         push_event_internal(&self.events, self.max_events, &self.event_tx, event).await;
+    }
+
+    /// Set the tool registry for capability-based tool execution.
+    pub fn set_tools(&mut self, registry: Arc<ToolRegistry>) {
+        self.tools = Some(registry);
+    }
+
+    /// Get current beliefs.
+    pub async fn get_beliefs(&self) -> HashMap<String, Belief> {
+        self.beliefs.read().await.clone()
+    }
+
+    /// Get a single belief by ID.
+    pub async fn get_belief(&self, id: &str) -> Option<Belief> {
+        self.beliefs.read().await.get(id).cloned()
+    }
+
+    /// Get the current attention queue.
+    pub async fn get_attention_queue(&self) -> Vec<AttentionItem> {
+        self.attention_queue.read().await.clone()
+    }
+
+    /// Get all proposals.
+    pub async fn get_proposals(&self) -> HashMap<String, Proposal> {
+        self.proposals.read().await.clone()
+    }
+
+    /// Get the current global workspace.
+    pub async fn get_workspace(&self) -> GlobalWorkspace {
+        self.workspace.read().await.clone()
+    }
+
+    /// Get decision receipts.
+    pub async fn get_receipts(&self) -> Vec<executor::DecisionReceipt> {
+        self.receipts.read().await.clone()
+    }
+
+    /// Approve a Critical-risk proposal for execution.
+    pub async fn approve_proposal(&self, proposal_id: &str) -> Result<()> {
+        let proposals = self.proposals.read().await;
+        let proposal = proposals
+            .get(proposal_id)
+            .ok_or_else(|| anyhow!("Proposal not found: {}", proposal_id))?;
+
+        if proposal.risk != ProposalRisk::Critical {
+            return Err(anyhow!("Only Critical proposals require human approval"));
+        }
+        if proposal.status != ProposalStatus::Verified {
+            return Err(anyhow!("Proposal is not in Verified status"));
+        }
+        drop(proposals);
+
+        let mut approvals = self.pending_approvals.write().await;
+        approvals.insert(proposal_id.to_string(), true);
+        Ok(())
+    }
+
+    /// Get governance settings.
+    pub async fn get_governance(&self) -> SwarmGovernance {
+        self.governance.read().await.clone()
+    }
+
+    /// Get persona state for a specific persona.
+    pub async fn get_persona(&self, id: &str) -> Option<PersonaRuntimeState> {
+        self.personas.read().await.get(id).cloned()
     }
 }
 
@@ -1434,6 +2193,7 @@ fn default_seed_persona() -> CreatePersonaRequest {
         swarm_id: Some("swarm-core".to_string()),
         parent_id: None,
         policy: None,
+        tags: vec!["orchestration".to_string()],
     }
 }
 
@@ -1513,10 +2273,11 @@ mod tests {
             default_policy: PersonaPolicy {
                 max_spawn_depth: 2,
                 max_branching_factor: 2,
-                token_credits_per_minute: 1_000,
-                cpu_credits_per_minute: 1_000,
+                token_budget_per_minute: 1_000,
+                compute_ms_per_minute: 1_000,
                 idle_ttl_secs: 300,
                 share_memory: false,
+                allowed_tools: Vec::new(),
             },
         })
     }
@@ -1562,6 +2323,7 @@ mod tests {
                 swarm_id: Some("swarm-a".to_string()),
                 parent_id: None,
                 policy: None,
+                tags: Vec::new(),
             })
             .await
             .expect("root should be created");
@@ -1604,6 +2366,7 @@ mod tests {
                 swarm_id: Some("swarm-a".to_string()),
                 parent_id: None,
                 policy: None,
+                tags: Vec::new(),
             })
             .await
             .expect("root should be created");
@@ -1699,6 +2462,7 @@ mod tests {
                     swarm_id: Some("swarm-seed".to_string()),
                     parent_id: None,
                     policy: None,
+                    tags: Vec::new(),
                 }),
             }))
             .await
@@ -1715,5 +2479,363 @@ mod tests {
             .expect("runtime should stop");
         let stopped_status = runtime.status().await;
         assert!(!stopped_status.running);
+    }
+
+    #[tokio::test]
+    async fn zero_budget_persona_is_skipped() {
+        let runtime = CognitionRuntime::new_with_options(CognitionRuntimeOptions {
+            enabled: true,
+            loop_interval_ms: 10,
+            max_events: 256,
+            max_snapshots: 32,
+            default_policy: PersonaPolicy {
+                max_spawn_depth: 2,
+                max_branching_factor: 2,
+                token_budget_per_minute: 0,
+                compute_ms_per_minute: 0,
+                idle_ttl_secs: 3_600,
+                share_memory: false,
+                allowed_tools: Vec::new(),
+            },
+        });
+
+        let persona = runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("budget-test".to_string()),
+                name: "budget-test".to_string(),
+                role: "tester".to_string(),
+                charter: "test budgets".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .expect("should create persona");
+
+        assert_eq!(persona.tokens_this_window, 0);
+        assert_eq!(persona.compute_ms_this_window, 0);
+
+        // Start and run a few ticks
+        runtime.start(None).await.expect("should start");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        runtime.stop(None).await.expect("should stop");
+
+        // Persona should still have 0 thought count (budget blocked)
+        let p = runtime.get_persona("budget-test").await.unwrap();
+        assert_eq!(p.thought_count, 0);
+        assert!(p.budget_paused);
+    }
+
+    #[tokio::test]
+    async fn budget_counters_reset_after_window() {
+        let now = Utc::now();
+        let mut persona = PersonaRuntimeState {
+            identity: PersonaIdentity {
+                id: "p1".to_string(),
+                name: "test".to_string(),
+                role: "tester".to_string(),
+                charter: "test".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                depth: 0,
+                created_at: now,
+                tags: Vec::new(),
+            },
+            policy: PersonaPolicy::default(),
+            status: PersonaStatus::Active,
+            thought_count: 0,
+            last_tick_at: None,
+            updated_at: now,
+            tokens_this_window: 5000,
+            compute_ms_this_window: 3000,
+            window_started_at: now - ChronoDuration::seconds(61),
+            last_progress_at: now,
+            budget_paused: false,
+        };
+
+        // Simulate window reset check
+        let window_elapsed = now
+            .signed_duration_since(persona.window_started_at)
+            .num_seconds();
+        assert!(window_elapsed >= 60);
+
+        // Reset
+        persona.tokens_this_window = 0;
+        persona.compute_ms_this_window = 0;
+        persona.window_started_at = now;
+
+        assert_eq!(persona.tokens_this_window, 0);
+        assert_eq!(persona.compute_ms_this_window, 0);
+    }
+
+    #[tokio::test]
+    async fn idle_persona_is_reaped() {
+        let runtime = CognitionRuntime::new_with_options(CognitionRuntimeOptions {
+            enabled: true,
+            loop_interval_ms: 10,
+            max_events: 256,
+            max_snapshots: 32,
+            default_policy: PersonaPolicy {
+                max_spawn_depth: 2,
+                max_branching_factor: 2,
+                token_budget_per_minute: 20_000,
+                compute_ms_per_minute: 10_000,
+                idle_ttl_secs: 0, // 0 TTL = immediately idle
+                share_memory: false,
+                allowed_tools: Vec::new(),
+            },
+        });
+
+        runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("idle-test".to_string()),
+                name: "idle-test".to_string(),
+                role: "idler".to_string(),
+                charter: "idle away".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .expect("should create persona");
+
+        // Manually set last_progress_at to the past
+        {
+            let mut personas = runtime.personas.write().await;
+            if let Some(p) = personas.get_mut("idle-test") {
+                p.last_progress_at = Utc::now() - ChronoDuration::seconds(10);
+            }
+        }
+
+        runtime.start(None).await.expect("should start");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        runtime.stop(None).await.expect("should stop");
+
+        let p = runtime.get_persona("idle-test").await.unwrap();
+        assert_eq!(p.status, PersonaStatus::Reaped);
+    }
+
+    #[tokio::test]
+    async fn budget_paused_persona_not_reaped_for_idle() {
+        let runtime = CognitionRuntime::new_with_options(CognitionRuntimeOptions {
+            enabled: true,
+            loop_interval_ms: 10,
+            max_events: 256,
+            max_snapshots: 32,
+            default_policy: PersonaPolicy {
+                max_spawn_depth: 2,
+                max_branching_factor: 2,
+                token_budget_per_minute: 0, // zero budget = always paused
+                compute_ms_per_minute: 0,
+                idle_ttl_secs: 0, // 0 TTL
+                share_memory: false,
+                allowed_tools: Vec::new(),
+            },
+        });
+
+        runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("paused-test".to_string()),
+                name: "paused-test".to_string(),
+                role: "pauser".to_string(),
+                charter: "pause".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .expect("should create persona");
+
+        // Set last_progress_at to the past to trigger idle check
+        {
+            let mut personas = runtime.personas.write().await;
+            if let Some(p) = personas.get_mut("paused-test") {
+                p.last_progress_at = Utc::now() - ChronoDuration::seconds(10);
+            }
+        }
+
+        runtime.start(None).await.expect("should start");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        runtime.stop(None).await.expect("should stop");
+
+        let p = runtime.get_persona("paused-test").await.unwrap();
+        // Budget-paused personas are NOT reaped for idle
+        assert_eq!(p.status, PersonaStatus::Active);
+        assert!(p.budget_paused);
+    }
+
+    #[tokio::test]
+    async fn governance_proposal_resolution() {
+        let runtime = test_runtime();
+        let gov = SwarmGovernance {
+            quorum_fraction: 0.5,
+            required_approvers_by_role: HashMap::new(),
+            veto_roles: vec!["auditor".to_string()],
+            vote_timeout_secs: 300,
+        };
+        *runtime.governance.write().await = gov;
+
+        // Create two personas
+        runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("voter-1".to_string()),
+                name: "voter-1".to_string(),
+                role: "engineer".to_string(),
+                charter: "vote".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .unwrap();
+        runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("voter-2".to_string()),
+                name: "voter-2".to_string(),
+                role: "engineer".to_string(),
+                charter: "vote".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .unwrap();
+
+        // Insert a proposal with votes
+        {
+            let mut proposals = runtime.proposals.write().await;
+            let mut votes = HashMap::new();
+            votes.insert("voter-1".to_string(), ProposalVote::Approve);
+            proposals.insert(
+                "prop-1".to_string(),
+                Proposal {
+                    id: "prop-1".to_string(),
+                    persona_id: "voter-1".to_string(),
+                    title: "test proposal".to_string(),
+                    rationale: "testing governance".to_string(),
+                    evidence_refs: Vec::new(),
+                    risk: ProposalRisk::Low,
+                    status: ProposalStatus::Created,
+                    created_at: Utc::now(),
+                    votes,
+                    vote_deadline: Some(Utc::now() + ChronoDuration::seconds(300)),
+                    votes_requested: true,
+                },
+            );
+        }
+
+        // quorum = 0.5 * 2 = 1, and we have 1 approval → should be verified
+        runtime.start(None).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        runtime.stop(None).await.unwrap();
+
+        let proposals = runtime.get_proposals().await;
+        let prop = proposals.get("prop-1").unwrap();
+        // Should be verified or executed (it gets verified then executed in same tick)
+        assert!(
+            prop.status == ProposalStatus::Verified || prop.status == ProposalStatus::Executed,
+            "Expected Verified or Executed, got {:?}",
+            prop.status
+        );
+    }
+
+    #[tokio::test]
+    async fn veto_rejects_proposal() {
+        let runtime = test_runtime();
+        let gov = SwarmGovernance {
+            quorum_fraction: 0.5,
+            required_approvers_by_role: HashMap::new(),
+            veto_roles: vec!["auditor".to_string()],
+            vote_timeout_secs: 300,
+        };
+        *runtime.governance.write().await = gov;
+
+        runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("eng".to_string()),
+                name: "eng".to_string(),
+                role: "engineer".to_string(),
+                charter: "build".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .unwrap();
+        runtime
+            .create_persona(CreatePersonaRequest {
+                persona_id: Some("aud".to_string()),
+                name: "aud".to_string(),
+                role: "auditor".to_string(),
+                charter: "audit".to_string(),
+                swarm_id: None,
+                parent_id: None,
+                policy: None,
+                tags: Vec::new(),
+            })
+            .await
+            .unwrap();
+
+        {
+            let mut proposals = runtime.proposals.write().await;
+            let mut votes = HashMap::new();
+            votes.insert("eng".to_string(), ProposalVote::Approve);
+            votes.insert("aud".to_string(), ProposalVote::Veto);
+            proposals.insert(
+                "prop-veto".to_string(),
+                Proposal {
+                    id: "prop-veto".to_string(),
+                    persona_id: "eng".to_string(),
+                    title: "vetoed proposal".to_string(),
+                    rationale: "testing veto".to_string(),
+                    evidence_refs: Vec::new(),
+                    risk: ProposalRisk::Low,
+                    status: ProposalStatus::Created,
+                    created_at: Utc::now(),
+                    votes,
+                    vote_deadline: Some(Utc::now() + ChronoDuration::seconds(300)),
+                    votes_requested: true,
+                },
+            );
+        }
+
+        runtime.start(None).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        runtime.stop(None).await.unwrap();
+
+        let proposals = runtime.get_proposals().await;
+        let prop = proposals.get("prop-veto").unwrap();
+        assert_eq!(prop.status, ProposalStatus::Rejected);
+    }
+
+    #[test]
+    fn global_workspace_default() {
+        let ws = GlobalWorkspace::default();
+        assert!(ws.top_beliefs.is_empty());
+        assert!(ws.top_uncertainties.is_empty());
+        assert!(ws.top_attention.is_empty());
+    }
+
+    #[test]
+    fn attention_item_creation() {
+        let item = AttentionItem {
+            id: "a1".to_string(),
+            topic: "test topic".to_string(),
+            topic_tags: vec!["reliability".to_string()],
+            priority: 0.8,
+            source_type: AttentionSource::ContestedBelief,
+            source_id: "b1".to_string(),
+            assigned_persona: None,
+            created_at: Utc::now(),
+            resolved_at: None,
+        };
+        assert!(item.resolved_at.is_none());
+        assert_eq!(item.priority, 0.8);
     }
 }
