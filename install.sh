@@ -227,12 +227,43 @@ install_functiongemma() {
 
     ok "FunctionGemma installed to ${FUNCTIONGEMMA_MODEL_DIR}"
 
-    # Print activation instructions
-    printf "\n${BOLD}To enable the FunctionGemma tool-call router:${NC}\n"
-    printf "  ${CYAN}export CODETETHER_TOOL_ROUTER_ENABLED=true${NC}\n"
-    printf "  ${CYAN}export CODETETHER_TOOL_ROUTER_MODEL_PATH=\"${model_path}\"${NC}\n"
-    printf "  ${CYAN}export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH=\"${tokenizer_path}\"${NC}\n\n"
-    info "add these to your shell profile for persistent activation"
+    # Auto-configure shell profile
+    local shell_profile=""
+    local shell_name="$(basename "${SHELL:-/bin/bash}")"
+    case "$shell_name" in
+        zsh)  shell_profile="$HOME/.zshrc" ;;
+        fish) shell_profile="$HOME/.config/fish/config.fish" ;;
+        *)    shell_profile="$HOME/.bashrc" ;;
+    esac
+
+    # Build the config block
+    local config_marker="# CodeTether FunctionGemma configuration"
+    local config_block="${config_marker}
+export CODETETHER_TOOL_ROUTER_ENABLED=true
+export CODETETHER_TOOL_ROUTER_MODEL_PATH=\"${model_path}\"
+export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH=\"${tokenizer_path}\""
+
+    # Check if already configured
+    if [ -f "$shell_profile" ] && grep -qF "$config_marker" "$shell_profile" 2>/dev/null; then
+        # Replace existing config block (remove old lines, append new)
+        local tmp_profile
+        tmp_profile="$(mktemp)"
+        sed "/${config_marker}/,/CODETETHER_TOOL_ROUTER_TOKENIZER_PATH/d" "$shell_profile" > "$tmp_profile"
+        printf "\n%s\n" "$config_block" >> "$tmp_profile"
+        mv "$tmp_profile" "$shell_profile"
+        ok "updated FunctionGemma config in ${shell_profile}"
+    else
+        printf "\n%s\n" "$config_block" >> "$shell_profile"
+        ok "added FunctionGemma config to ${shell_profile}"
+    fi
+
+    # Export for current session
+    export CODETETHER_TOOL_ROUTER_ENABLED=true
+    export CODETETHER_TOOL_ROUTER_MODEL_PATH="${model_path}"
+    export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH="${tokenizer_path}"
+
+    ok "FunctionGemma tool-call router is enabled"
+    info "config written to ${shell_profile} — active in new shells"
 }
 
 main() {
