@@ -37,10 +37,7 @@ pub enum RalphEvent {
     StoryStarted { story_id: String },
 
     /// Agent tool call for a story (basic - name only)
-    StoryToolCall {
-        story_id: String,
-        tool_name: String,
-    },
+    StoryToolCall { story_id: String, tool_name: String },
 
     /// Agent tool call with full detail
     StoryToolCallDetail {
@@ -414,7 +411,7 @@ pub fn render_ralph_view(f: &mut Frame, state: &mut RalphViewState, area: Rect) 
         .constraints([
             Constraint::Length(4), // Header: project/feature + iteration
             Constraint::Length(3), // Progress bar
-            Constraint::Min(1),   // Story list
+            Constraint::Min(1),    // Story list
             Constraint::Length(3), // Footer / status
         ])
         .split(area);
@@ -461,7 +458,10 @@ fn render_header(f: &mut Frame, state: &RalphViewState, area: Rect) {
         ]),
         Line::from(vec![
             Span::styled(
-                format!("Iteration: {}/{}", state.current_iteration, state.max_iterations),
+                format!(
+                    "Iteration: {}/{}",
+                    state.current_iteration, state.max_iterations
+                ),
                 Style::default().fg(Color::Cyan),
             ),
             Span::raw("  "),
@@ -631,7 +631,7 @@ fn render_story_detail(f: &mut Frame, state: &RalphViewState, area: Rect) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(6), // Story info header
-            Constraint::Min(1),   // Content
+            Constraint::Min(1),    // Content
             Constraint::Length(1), // Key hints
         ])
         .split(area);

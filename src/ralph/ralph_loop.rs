@@ -94,36 +94,28 @@ impl RalphLoop {
         let handle = tokio::spawn(async move {
             while let Some(event) = swarm_rx.recv().await {
                 let ralph_event = match event {
-                    SwarmEvent::AgentToolCall { tool_name, .. } => {
-                        RalphEvent::StoryToolCall {
-                            story_id: story_id.clone(),
-                            tool_name,
-                        }
-                    }
+                    SwarmEvent::AgentToolCall { tool_name, .. } => RalphEvent::StoryToolCall {
+                        story_id: story_id.clone(),
+                        tool_name,
+                    },
                     SwarmEvent::AgentToolCallDetail { detail, .. } => {
                         RalphEvent::StoryToolCallDetail {
                             story_id: story_id.clone(),
                             detail,
                         }
                     }
-                    SwarmEvent::AgentMessage { entry, .. } => {
-                        RalphEvent::StoryMessage {
-                            story_id: story_id.clone(),
-                            entry,
-                        }
-                    }
-                    SwarmEvent::AgentOutput { output, .. } => {
-                        RalphEvent::StoryOutput {
-                            story_id: story_id.clone(),
-                            output,
-                        }
-                    }
-                    SwarmEvent::AgentError { error, .. } => {
-                        RalphEvent::StoryError {
-                            story_id: story_id.clone(),
-                            error,
-                        }
-                    }
+                    SwarmEvent::AgentMessage { entry, .. } => RalphEvent::StoryMessage {
+                        story_id: story_id.clone(),
+                        entry,
+                    },
+                    SwarmEvent::AgentOutput { output, .. } => RalphEvent::StoryOutput {
+                        story_id: story_id.clone(),
+                        output,
+                    },
+                    SwarmEvent::AgentError { error, .. } => RalphEvent::StoryError {
+                        story_id: story_id.clone(),
+                        error,
+                    },
                     _ => continue, // Skip swarm-specific events
                 };
                 if ralph_tx.send(ralph_event).await.is_err() {
@@ -463,9 +455,11 @@ impl RalphLoop {
 
                     // Emit StoryStarted event
                     if let Some(ref tx) = ralph_tx {
-                        let _ = tx.send(RalphEvent::StoryStarted {
-                            story_id: story.id.clone(),
-                        }).await;
+                        let _ = tx
+                            .send(RalphEvent::StoryStarted {
+                                story_id: story.id.clone(),
+                            })
+                            .await;
                     }
 
                     // Build the prompt with worktree awareness
@@ -473,19 +467,22 @@ impl RalphLoop {
 
                     // Create event bridge for this story's sub-agent
                     let (bridge_tx, _bridge_handle) = if let Some(ref tx) = ralph_tx {
-                        let (btx, handle) =
-                            Self::create_swarm_event_bridge(tx, story.id.clone());
+                        let (btx, handle) = Self::create_swarm_event_bridge(tx, story.id.clone());
                         (Some(btx), Some(handle))
                     } else {
                         (None, None)
                     };
 
                     // Call the LLM
-                    let result =
-                        Self::call_llm_static(
-                            &provider, &model, &prompt, &story_working_dir,
-                            bridge_tx, story.id.clone(),
-                        ).await;
+                    let result = Self::call_llm_static(
+                        &provider,
+                        &model,
+                        &prompt,
+                        &story_working_dir,
+                        bridge_tx,
+                        story.id.clone(),
+                    )
+                    .await;
 
                     let entry = match &result {
                         Ok(response) => {
@@ -1150,8 +1147,7 @@ Respond with the implementation and any shell commands needed.
 
         // Create event bridge if we have an event channel
         let (bridge_tx, _bridge_handle) = if let Some(ref ralph_tx) = self.event_tx {
-            let (tx, handle) =
-                Self::create_swarm_event_bridge(ralph_tx, story_id.to_string());
+            let (tx, handle) = Self::create_swarm_event_bridge(ralph_tx, story_id.to_string());
             (Some(tx), Some(handle))
         } else {
             (None, None)

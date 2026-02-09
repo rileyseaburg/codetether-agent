@@ -68,9 +68,7 @@ impl RateLimitInfo {
     /// Check if we're approaching the rate limit (less than 20% remaining)
     pub fn is_approaching_limit(&self) -> bool {
         match (self.remaining, self.limit) {
-            (Some(remaining), Some(limit)) if limit > 0 => {
-                (remaining as f64 / limit as f64) < 0.2
-            }
+            (Some(remaining), Some(limit)) if limit > 0 => (remaining as f64 / limit as f64) < 0.2,
             _ => false,
         }
     }
@@ -108,7 +106,9 @@ impl RateLimitInfo {
                     let remaining_secs = reset_at - now;
                     if let Some(remaining) = self.remaining {
                         if remaining > 0 {
-                            return Duration::from_millis((remaining_secs * 1000) / remaining as u64);
+                            return Duration::from_millis(
+                                (remaining_secs * 1000) / remaining as u64,
+                            );
                         }
                     }
                     return Duration::from_secs(remaining_secs);
@@ -167,8 +167,8 @@ impl AdaptiveRateLimiter {
     pub fn new(base_delay_ms: u64) -> Self {
         Self {
             base_delay_ms,
-            min_delay_ms: 100,      // 100ms minimum
-            max_delay_ms: 60_000,   // 60s maximum
+            min_delay_ms: 100,    // 100ms minimum
+            max_delay_ms: 60_000, // 60s maximum
             current_delay_ms: Arc::new(RwLock::new(base_delay_ms)),
             backoff_multiplier: Arc::new(RwLock::new(1.0)),
             stats: Arc::new(RwLock::new(RateLimitStats::default())),

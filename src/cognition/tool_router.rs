@@ -318,11 +318,11 @@ impl ToolCallRouter {
         // available tool name.  This avoids expensive CPU inference for pure
         // conversational / final-answer responses.
         let text_lower = assistant_text.to_lowercase();
-        let mentions_tool = tools.iter().any(|t| text_lower.contains(&t.name.to_lowercase()));
+        let mentions_tool = tools
+            .iter()
+            .any(|t| text_lower.contains(&t.name.to_lowercase()));
         if !mentions_tool {
-            tracing::trace!(
-                "Skipping FunctionGemma: assistant text mentions no tool names"
-            );
+            tracing::trace!("Skipping FunctionGemma: assistant text mentions no tool names");
             return response;
         }
 

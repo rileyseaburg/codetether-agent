@@ -118,7 +118,8 @@ impl Session {
             )
         });
 
-        let canonical_workspace = workspace.map(|w| w.canonicalize().unwrap_or_else(|_| w.to_path_buf()));
+        let canonical_workspace =
+            workspace.map(|w| w.canonicalize().unwrap_or_else(|_| w.to_path_buf()));
 
         for entry in &entries {
             let content: String = fs::read_to_string(entry.path()).await?;
