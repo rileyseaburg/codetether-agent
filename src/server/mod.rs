@@ -5,9 +5,10 @@
 use crate::a2a;
 use crate::cli::ServeArgs;
 use crate::cognition::{
-    CognitionRuntime, CognitionStatus, CreatePersonaRequest, LineageGraph, MemorySnapshot,
-    ReapPersonaRequest, ReapPersonaResponse, SpawnPersonaRequest, StartCognitionRequest,
-    StopCognitionRequest,
+    AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
+    LineageGraph, MemorySnapshot, Proposal, ReapPersonaRequest, ReapPersonaResponse,
+    SpawnPersonaRequest, StartCognitionRequest, StopCognitionRequest, beliefs::Belief,
+    executor::DecisionReceipt,
 };
 use crate::config::Config;
 use anyhow::Result;
@@ -83,6 +84,17 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/swarm/personas/{id}/spawn", post(spawn_persona))
         .route("/v1/swarm/personas/{id}/reap", post(reap_persona))
         .route("/v1/swarm/lineage", get(get_swarm_lineage))
+        // Belief, attention, governance, workspace APIs
+        .route("/v1/cognition/beliefs", get(list_beliefs))
+        .route("/v1/cognition/beliefs/{id}", get(get_belief))
+        .route("/v1/cognition/attention", get(list_attention))
+        .route("/v1/cognition/proposals", get(list_proposals))
+        .route(
+            "/v1/cognition/proposals/{id}/approve",
+            post(approve_proposal),
+        )
+        .route("/v1/cognition/receipts", get(list_receipts))
+        .route("/v1/cognition/workspace", get(get_workspace))
         .with_state(state)
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
@@ -343,6 +355,88 @@ async fn get_swarm_lineage(
     State(state): State<AppState>,
 ) -> Result<Json<LineageGraph>, (StatusCode, String)> {
     Ok(Json(state.cognition.lineage_graph().await))
+}
+
+// ── Belief, Attention, Governance, Workspace handlers ──
+
+#[derive(Deserialize)]
+struct BeliefFilter {
+    status: Option<String>,
+    persona: Option<String>,
+}
+
+async fn list_beliefs(
+    State(state): State<AppState>,
+    Query(filter): Query<BeliefFilter>,
+) -> Result<Json<Vec<Belief>>, (StatusCode, String)> {
+    let beliefs = state.cognition.get_beliefs().await;
+    let mut result: Vec<Belief> = beliefs.into_values().collect();
+
+    if let Some(status) = &filter.status {
+        result.retain(|b| {
+            let s = serde_json::to_string(&b.status).unwrap_or_default();
+            s.contains(status)
+        });
+    }
+    if let Some(persona) = &filter.persona {
+        result.retain(|b| &b.asserted_by == persona);
+    }
+
+    result.sort_by(|a, b| {
+        b.confidence
+            .partial_cmp(&a.confidence)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    Ok(Json(result))
+}
+
+async fn get_belief(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Belief>, (StatusCode, String)> {
+    match state.cognition.get_belief(&id).await {
+        Some(belief) => Ok(Json(belief)),
+        None => Err((StatusCode::NOT_FOUND, format!("Belief not found: {}", id))),
+    }
+}
+
+async fn list_attention(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<AttentionItem>>, (StatusCode, String)> {
+    Ok(Json(state.cognition.get_attention_queue().await))
+}
+
+async fn list_proposals(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<Proposal>>, (StatusCode, String)> {
+    let proposals = state.cognition.get_proposals().await;
+    let mut result: Vec<Proposal> = proposals.into_values().collect();
+    result.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    Ok(Json(result))
+}
+
+async fn approve_proposal(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    state
+        .cognition
+        .approve_proposal(&id)
+        .await
+        .map(|_| Json(serde_json::json!({ "approved": true, "proposal_id": id })))
+        .map_err(internal_error)
+}
+
+async fn list_receipts(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DecisionReceipt>>, (StatusCode, String)> {
+    Ok(Json(state.cognition.get_receipts().await))
+}
+
+async fn get_workspace(
+    State(state): State<AppState>,
+) -> Result<Json<GlobalWorkspace>, (StatusCode, String)> {
+    Ok(Json(state.cognition.get_workspace().await))
 }
 
 fn internal_error(error: anyhow::Error) -> (StatusCode, String) {
