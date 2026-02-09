@@ -339,7 +339,10 @@ impl Provider for CopilotProvider {
             ("gpt-5.2", ("GPT-5.2", 400_000, 128_000)),
             ("gpt-5.1", ("GPT-5.1", 400_000, 128_000)),
             ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000)),
-            ("gpt-5.1-codex-mini", ("GPT-5.1-Codex-Mini", 264_000, 64_000)),
+            (
+                "gpt-5.1-codex-mini",
+                ("GPT-5.1-Codex-Mini", 264_000, 64_000),
+            ),
             ("gpt-5.1-codex-max", ("GPT-5.1-Codex-Max", 264_000, 64_000)),
             ("gpt-5", ("GPT-5", 400_000, 128_000)),
             ("gpt-5-mini", ("GPT-5 mini", 264_000, 64_000)),

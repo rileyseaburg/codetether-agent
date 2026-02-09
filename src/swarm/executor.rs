@@ -16,8 +16,8 @@ use crate::{
     agent::Agent,
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
     rlm::RlmExecutor,
-    telemetry::SwarmTelemetryCollector,
     swarm::{SwarmArtifact, SwarmStats},
+    telemetry::SwarmTelemetryCollector,
     tool::ToolRegistry,
     worktree::{WorktreeInfo, WorktreeManager},
 };
@@ -361,7 +361,10 @@ impl SwarmExecutor {
     }
 
     /// Set a telemetry collector for swarm execution metrics
-    pub fn with_telemetry(mut self, telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>) -> Self {
+    pub fn with_telemetry(
+        mut self,
+        telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>,
+    ) -> Self {
         self.telemetry = telemetry;
         self
     }
@@ -446,8 +449,11 @@ impl SwarmExecutor {
 
         // Initialize telemetry for this swarm execution
         let swarm_id = uuid::Uuid::new_v4().to_string();
-        self.telemetry.lock().await.start_swarm(swarm_id.clone(), subtasks.len(), &format!("{:?}", strategy));
-
+        self.telemetry.lock().await.start_swarm(
+            swarm_id.clone(),
+            subtasks.len(),
+            &format!("{:?}", strategy),
+        );
 
         // Shared state for completed results
         let completed_results: Arc<RwLock<HashMap<String, String>>> =
@@ -482,7 +488,12 @@ impl SwarmExecutor {
 
             // Execute all subtasks in this stage in parallel
             let stage_results = self
-                .execute_stage(&orchestrator, stage_subtasks, completed_results.clone(), &swarm_id)
+                .execute_stage(
+                    &orchestrator,
+                    stage_subtasks,
+                    completed_results.clone(),
+                    &swarm_id,
+                )
                 .await?;
 
             // Update completed results for next stage
@@ -527,7 +538,10 @@ impl SwarmExecutor {
         let provider_name = orchestrator.provider().to_string();
 
         // Record overall execution latency
-        self.telemetry.lock().await.record_swarm_latency("total_execution", start_time.elapsed());
+        self.telemetry
+            .lock()
+            .await
+            .record_swarm_latency("total_execution", start_time.elapsed());
 
         // Calculate final stats
         let stats = orchestrator.stats_mut();
@@ -686,7 +700,6 @@ impl SwarmExecutor {
                     .map_err(|_| anyhow::anyhow!("Swarm execution cancelled"))?;
 
                 let agent_start = Instant::now();
-
 
                 let start = Instant::now();
 

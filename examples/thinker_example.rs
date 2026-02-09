@@ -54,7 +54,8 @@ async fn main() -> Result<()> {
 
     // Define prompts for thought generation
     let system_prompt = "You are a helpful coding assistant. Provide concise, actionable advice.";
-    let user_prompt = "What are the key considerations when designing a robust error handling strategy in Rust?";
+    let user_prompt =
+        "What are the key considerations when designing a robust error handling strategy in Rust?";
 
     println!("\nGenerating thought...");
     println!("  System: {}", system_prompt);
@@ -79,7 +80,8 @@ async fn main() -> Result<()> {
 
     // Example: Using the thinker for code review
     println!("\n---\n");
-    let code_review_system = "You are a code reviewer. Focus on safety, performance, and maintainability.";
+    let code_review_system =
+        "You are a code reviewer. Focus on safety, performance, and maintainability.";
     let code_to_review = r#"
 fn process_data(data: &str) -> String {
     let mut result = String::new();

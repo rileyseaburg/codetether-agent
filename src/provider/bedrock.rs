@@ -76,12 +76,8 @@ impl BedrockProvider {
         match model {
             // --- Anthropic Claude (verified via AWS CLI) ---
             "claude-opus-4.6" | "claude-4.6-opus" => "us.anthropic.claude-opus-4-6-v1",
-            "claude-opus-4.5" | "claude-4.5-opus" => {
-                "us.anthropic.claude-opus-4-5-20251101-v1:0"
-            }
-            "claude-opus-4.1" | "claude-4.1-opus" => {
-                "us.anthropic.claude-opus-4-1-20250805-v1:0"
-            }
+            "claude-opus-4.5" | "claude-4.5-opus" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
+            "claude-opus-4.1" | "claude-4.1-opus" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
             "claude-sonnet-4.5" | "claude-4.5-sonnet" => {
                 "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -113,9 +109,7 @@ impl BedrockProvider {
             "nova-premier" => "us.amazon.nova-premier-v1:0",
 
             // --- Meta Llama ---
-            "llama-4-maverick" | "llama4-maverick" => {
-                "us.meta.llama4-maverick-17b-instruct-v1:0"
-            }
+            "llama-4-maverick" | "llama4-maverick" => "us.meta.llama4-maverick-17b-instruct-v1:0",
             "llama-4-scout" | "llama4-scout" => "us.meta.llama4-scout-17b-instruct-v1:0",
             "llama-3.3-70b" | "llama3.3-70b" => "us.meta.llama3-3-70b-instruct-v1:0",
             "llama-3.2-90b" | "llama3.2-90b" => "us.meta.llama3-2-90b-instruct-v1:0",
@@ -207,25 +201,19 @@ impl BedrockProvider {
                             let output_modalities: Vec<&str> = m
                                 .get("outputModalities")
                                 .and_then(|v| v.as_array())
-                                .map(|a| {
-                                    a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()
-                                })
+                                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
                                 .unwrap_or_default();
 
                             let input_modalities: Vec<&str> = m
                                 .get("inputModalities")
                                 .and_then(|v| v.as_array())
-                                .map(|a| {
-                                    a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()
-                                })
+                                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
                                 .unwrap_or_default();
 
                             let inference_types: Vec<&str> = m
                                 .get("inferenceTypesSupported")
                                 .and_then(|v| v.as_array())
-                                .map(|a| {
-                                    a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()
-                                })
+                                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
                                 .unwrap_or_default();
 
                             // Only include TEXT output models with ON_DEMAND or INFERENCE_PROFILE inference
@@ -464,7 +452,10 @@ impl BedrockProvider {
             32_000
         } else if id.contains("claude-opus-4-1") {
             32_000
-        } else if id.contains("claude-sonnet-4-5") || id.contains("claude-sonnet-4") || id.contains("claude-3-7") {
+        } else if id.contains("claude-sonnet-4-5")
+            || id.contains("claude-sonnet-4")
+            || id.contains("claude-3-7")
+        {
             64_000
         } else if id.contains("claude-haiku-4-5") {
             16_384
@@ -542,7 +533,9 @@ impl BedrockProvider {
                         // Merge into previous user message if the last message is also "user"
                         if let Some(last) = api_messages.last_mut() {
                             if last.get("role").and_then(|r| r.as_str()) == Some("user") {
-                                if let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut()) {
+                                if let Some(arr) =
+                                    last.get_mut("content").and_then(|c| c.as_array_mut())
+                                {
                                     arr.extend(content_parts);
                                     continue;
                                 }
@@ -587,7 +580,9 @@ impl BedrockProvider {
                     // Merge into previous assistant message if consecutive
                     if let Some(last) = api_messages.last_mut() {
                         if last.get("role").and_then(|r| r.as_str()) == Some("assistant") {
-                            if let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut()) {
+                            if let Some(arr) =
+                                last.get_mut("content").and_then(|c| c.as_array_mut())
+                            {
                                 arr.extend(content_parts);
                                 continue;
                             }
@@ -622,7 +617,9 @@ impl BedrockProvider {
                         // Merge into previous user message (from earlier Tool messages)
                         if let Some(last) = api_messages.last_mut() {
                             if last.get("role").and_then(|r| r.as_str()) == Some("user") {
-                                if let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut()) {
+                                if let Some(arr) =
+                                    last.get_mut("content").and_then(|c| c.as_array_mut())
+                                {
                                     arr.extend(content_parts);
                                     continue;
                                 }

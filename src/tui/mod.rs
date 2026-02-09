@@ -77,9 +77,18 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
 #[derive(Debug, Clone)]
 enum MessageType {
     Text(String),
-    Image { url: String, mime_type: Option<String> },
-    ToolCall { name: String, arguments: String },
-    ToolResult { name: String, output: String },
+    Image {
+        url: String,
+        mime_type: Option<String>,
+    },
+    ToolCall {
+        name: String,
+        arguments: String,
+    },
+    ToolResult {
+        name: String,
+        output: String,
+    },
 }
 
 /// View mode for the TUI
@@ -396,7 +405,11 @@ impl App {
 
         if message.trim() == "/inspector" {
             self.show_inspector = !self.show_inspector;
-            let state = if self.show_inspector { "enabled" } else { "disabled" };
+            let state = if self.show_inspector {
+                "enabled"
+            } else {
+                "disabled"
+            };
             self.messages.push(ChatMessage::new(
                 "system",
                 format!("Inspector pane {}. Press F3 to toggle quickly.", state),
@@ -410,7 +423,10 @@ impl App {
                 Ok(sessions) => self.update_cached_sessions(sessions),
                 Err(err) => self.messages.push(ChatMessage::new(
                     "system",
-                    format!("Workspace refreshed, but failed to refresh sessions: {}", err),
+                    format!(
+                        "Workspace refreshed, but failed to refresh sessions: {}",
+                        err
+                    ),
                 )),
             }
             self.messages.push(ChatMessage::new(
@@ -492,19 +508,23 @@ impl App {
                             match part {
                                 ContentPart::Text { text } => {
                                     if !text.is_empty() {
-                                        self.messages.push(ChatMessage::new(role_str, text.clone()));
+                                        self.messages
+                                            .push(ChatMessage::new(role_str, text.clone()));
                                     }
                                 }
                                 ContentPart::Image { url, mime_type } => {
                                     self.messages.push(
-                                        ChatMessage::new(role_str, "")
-                                            .with_message_type(MessageType::Image {
+                                        ChatMessage::new(role_str, "").with_message_type(
+                                            MessageType::Image {
                                                 url: url.clone(),
                                                 mime_type: mime_type.clone(),
-                                            }),
+                                            },
+                                        ),
                                     );
                                 }
-                                ContentPart::ToolCall { name, arguments, .. } => {
+                                ContentPart::ToolCall {
+                                    name, arguments, ..
+                                } => {
                                     self.messages.push(
                                         ChatMessage::new(role_str, format!("🔧 {name}"))
                                             .with_message_type(MessageType::ToolCall {
@@ -516,11 +536,14 @@ impl App {
                                 ContentPart::ToolResult { content, .. } => {
                                     let truncated = truncate_with_ellipsis(content, 500);
                                     self.messages.push(
-                                        ChatMessage::new(role_str, format!("✅ Result\n{truncated}"))
-                                            .with_message_type(MessageType::ToolResult {
-                                                name: "tool".to_string(),
-                                                output: content.clone(),
-                                            }),
+                                        ChatMessage::new(
+                                            role_str,
+                                            format!("✅ Result\n{truncated}"),
+                                        )
+                                        .with_message_type(MessageType::ToolResult {
+                                            name: "tool".to_string(),
+                                            output: content.clone(),
+                                        }),
                                     );
                                 }
                                 _ => {}
@@ -844,16 +867,22 @@ impl App {
                 Ok(registry) => match registry.get(&provider_name) {
                     Some(p) => p,
                     None => {
-                        let _ = tx_clone.send(RalphEvent::Error(
-                            format!("Provider '{}' not found", provider_name),
-                        )).await;
+                        let _ = tx_clone
+                            .send(RalphEvent::Error(format!(
+                                "Provider '{}' not found",
+                                provider_name
+                            )))
+                            .await;
                         return;
                     }
                 },
                 Err(e) => {
-                    let _ = tx_clone.send(RalphEvent::Error(
-                        format!("Failed to load providers: {}", e),
-                    )).await;
+                    let _ = tx_clone
+                        .send(RalphEvent::Error(format!(
+                            "Failed to load providers: {}",
+                            e
+                        )))
+                        .await;
                     return;
                 }
             };
@@ -872,9 +901,12 @@ impl App {
                     }
                 }
                 Err(e) => {
-                    let _ = tx_clone.send(RalphEvent::Error(
-                        format!("Failed to initialize Ralph: {}", e),
-                    )).await;
+                    let _ = tx_clone
+                        .send(RalphEvent::Error(format!(
+                            "Failed to initialize Ralph: {}",
+                            e
+                        )))
+                        .await;
                 }
             }
         });
@@ -972,7 +1004,11 @@ impl App {
                                 }
                             }
                             Err(e) => {
-                                tracing::warn!("Failed to list models for {}: {}", provider_name, e);
+                                tracing::warn!(
+                                    "Failed to list models for {}: {}",
+                                    provider_name,
+                                    e
+                                );
                             }
                         }
                     }
@@ -1026,8 +1062,7 @@ impl App {
                 .iter()
                 .enumerate()
                 .filter(|(_, (label, _, name))| {
-                    label.to_lowercase().contains(&filter)
-                        || name.to_lowercase().contains(&filter)
+                    label.to_lowercase().contains(&filter) || name.to_lowercase().contains(&filter)
                 })
                 .collect()
         }
@@ -1200,12 +1235,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         KeyCode::Esc => {
                             app.view_mode = ViewMode::Chat;
                         }
-                        KeyCode::Up | KeyCode::Char('k') if !key.modifiers.contains(KeyModifiers::ALT) => {
+                        KeyCode::Up | KeyCode::Char('k')
+                            if !key.modifiers.contains(KeyModifiers::ALT) =>
+                        {
                             if app.model_picker_selected > 0 {
                                 app.model_picker_selected -= 1;
                             }
                         }
-                        KeyCode::Down | KeyCode::Char('j') if !key.modifiers.contains(KeyModifiers::ALT) => {
+                        KeyCode::Down | KeyCode::Char('j')
+                            if !key.modifiers.contains(KeyModifiers::ALT) =>
+                        {
                             let filtered = app.filtered_models();
                             if app.model_picker_selected < filtered.len().saturating_sub(1) {
                                 app.model_picker_selected += 1;
@@ -1213,7 +1252,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                         KeyCode::Enter => {
                             let filtered = app.filtered_models();
-                            if let Some((_, (label, value, _name))) = filtered.get(app.model_picker_selected) {
+                            if let Some((_, (label, value, _name))) =
+                                filtered.get(app.model_picker_selected)
+                            {
                                 let label = label.clone();
                                 let value = value.clone();
                                 app.active_model = Some(value.clone());
@@ -1231,7 +1272,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             app.model_picker_filter.pop();
                             app.model_picker_selected = 0;
                         }
-                        KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) && !key.modifiers.contains(KeyModifiers::ALT) => {
+                        KeyCode::Char(c)
+                            if !key.modifiers.contains(KeyModifiers::CONTROL)
+                                && !key.modifiers.contains(KeyModifiers::ALT) =>
+                        {
                             app.model_picker_filter.push(c);
                             app.model_picker_selected = 0;
                         }
@@ -1439,7 +1483,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         KeyCode::Char('?') => {
                             app.show_help = true;
                         }
-                        KeyCode::F(2) | KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        KeyCode::F(2) | KeyCode::Char('s')
+                            if key.modifiers.contains(KeyModifiers::CONTROL) =>
+                        {
                             app.view_mode = ViewMode::Chat;
                         }
                         _ => {}
@@ -1464,13 +1510,17 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Toggle view mode (F2 or Ctrl+S)
                     KeyCode::F(2) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
+                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => {
+                                ViewMode::Swarm
+                            }
                             ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                         };
                     }
                     KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
+                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => {
+                                ViewMode::Swarm
+                            }
                             ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                         };
                     }
@@ -1762,7 +1812,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
 
         let picker_block = Block::default()
             .borders(Borders::ALL)
-            .title(format!(" Select Model (↑↓ navigate, Enter select, Esc cancel) [{}] ", filter_display))
+            .title(format!(
+                " Select Model (↑↓ navigate, Enter select, Esc cancel) [{}] ",
+                filter_display
+            ))
             .border_style(Style::default().fg(Color::Magenta));
 
         let filtered = app.filtered_models();
@@ -1772,7 +1825,9 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         if let Some(ref active) = app.active_model {
             list_lines.push(Line::styled(
                 format!("  Current: {}", active),
-                Style::default().fg(Color::Green).add_modifier(Modifier::DIM),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::DIM),
             ));
             list_lines.push(Line::from(""));
         }
@@ -1792,7 +1847,9 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                     }
                     list_lines.push(Line::styled(
                         format!("  ─── {} ───", provider),
-                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
                     ));
                     current_provider = provider.to_string();
                 }
@@ -1810,7 +1867,9 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 };
 
                 let style = if is_selected {
-                    Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::BOLD)
                 } else if is_active {
                     Style::default().fg(Color::Green)
                 } else {
@@ -1926,7 +1985,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     let model_label = app.active_model.as_deref().unwrap_or("auto");
     let messages_block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" CodeTether Agent [{}] model:{} ", app.current_agent, model_label))
+        .title(format!(
+            " CodeTether Agent [{}] model:{} ",
+            app.current_agent, model_label
+        ))
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
     let max_width = messages_area.width.saturating_sub(4) as usize;
@@ -2098,21 +2160,34 @@ fn render_webview_header(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
             ),
         ]),
         Line::from(vec![
-            Span::styled("Workspace ", Style::default().fg(theme.timestamp_color.to_color())),
+            Span::styled(
+                "Workspace ",
+                Style::default().fg(theme.timestamp_color.to_color()),
+            ),
             Span::styled(workspace_label, Style::default()),
             Span::raw("  "),
-            Span::styled("Branch ", Style::default().fg(theme.timestamp_color.to_color())),
+            Span::styled(
+                "Branch ",
+                Style::default().fg(theme.timestamp_color.to_color()),
+            ),
             Span::styled(
                 branch_label,
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::raw("  "),
             Span::styled(
                 dirty_label,
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::raw("  "),
-            Span::styled("Model ", Style::default().fg(theme.timestamp_color.to_color())),
+            Span::styled(
+                "Model ",
+                Style::default().fg(theme.timestamp_color.to_color()),
+            ),
             Span::styled(model_label, Style::default().fg(Color::Green)),
         ]),
     ];
@@ -2136,7 +2211,10 @@ fn render_webview_sidebar(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
 
     let mut workspace_lines = Vec::new();
     workspace_lines.push(Line::from(vec![
-        Span::styled("Updated ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            "Updated ",
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
         Span::styled(
             app.workspace.captured_at.clone(),
             Style::default().fg(theme.timestamp_color.to_color()),
@@ -2166,7 +2244,9 @@ fn render_webview_sidebar(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
     workspace_lines.push(Line::from(""));
     workspace_lines.push(Line::styled(
         "Use /refresh to rescan",
-        Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::DIM),
     ));
 
     let workspace_panel = Paragraph::new(workspace_lines)
@@ -2195,7 +2275,9 @@ fn render_webview_sidebar(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
             let title = session.title.as_deref().unwrap_or("(untitled)");
             let indicator = if is_active { "●" } else { "○" };
             let line_style = if is_active {
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
@@ -2280,7 +2362,9 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         "Idle"
     };
     let status_style = if app.is_processing {
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Green)
     };
@@ -2297,23 +2381,38 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
 
     let mut lines = Vec::new();
     lines.push(Line::from(vec![
-        Span::styled("Status: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            "Status: ",
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
         Span::styled(status_label, status_style),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("Tool: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            "Tool: ",
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
         Span::styled(tool_label, Style::default()),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("Session: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            "Session: ",
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
         Span::styled(format!("#{}", session_id), Style::default().fg(Color::Cyan)),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("Messages: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            "Messages: ",
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
         Span::styled(message_count.to_string(), Style::default()),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("Agent: ", Style::default().fg(theme.timestamp_color.to_color())),
+        Span::styled(
+            "Agent: ",
+            Style::default().fg(theme.timestamp_color.to_color()),
+        ),
         Span::styled(app.current_agent.clone(), Style::default()),
     ]));
     lines.push(Line::from(""));
@@ -2321,13 +2420,20 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         "Shortcuts:",
         Style::default().add_modifier(Modifier::BOLD),
     ));
-    lines.push(Line::styled("F3  Toggle inspector", Style::default().fg(Color::DarkGray)));
-    lines.push(Line::styled("Ctrl+B Toggle layout", Style::default().fg(Color::DarkGray)));
-    lines.push(Line::styled("Ctrl+S Swarm view", Style::default().fg(Color::DarkGray)));
+    lines.push(Line::styled(
+        "F3  Toggle inspector",
+        Style::default().fg(Color::DarkGray),
+    ));
+    lines.push(Line::styled(
+        "Ctrl+B Toggle layout",
+        Style::default().fg(Color::DarkGray),
+    ));
+    lines.push(Line::styled(
+        "Ctrl+S Swarm view",
+        Style::default().fg(Color::DarkGray),
+    ));
 
-    let panel = Paragraph::new(lines)
-        .block(block)
-        .wrap(Wrap { trim: true });
+    let panel = Paragraph::new(lines).block(block).wrap(Wrap { trim: true });
     f.render_widget(panel, area);
 }
 
@@ -2376,7 +2482,9 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                     Span::styled("  🔧 ", Style::default().fg(Color::Yellow)),
                     Span::styled(
                         format!("Tool: {}", name),
-                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
                     ),
                 ]);
                 message_lines.push(tool_header);
@@ -2384,7 +2492,10 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let mut formatted_args = format_tool_call_arguments(name, arguments);
                 let mut truncated = false;
                 if formatted_args.chars().count() > 900 {
-                    formatted_args = format!("{}...", formatted_args.chars().take(897).collect::<String>());
+                    formatted_args = format!(
+                        "{}...",
+                        formatted_args.chars().take(897).collect::<String>()
+                    );
                     truncated = true;
                 }
 
@@ -2401,7 +2512,9 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                         Span::styled("     ", Style::default()),
                         Span::styled(
                             "... (truncated)",
-                            Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
                         ),
                     ]));
                 }
@@ -2411,7 +2524,9 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                     Span::styled("  ✅ ", Style::default().fg(Color::Green)),
                     Span::styled(
                         format!("Result from {}", name),
-                        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
                     ),
                 ]);
                 message_lines.push(result_header);
@@ -2430,7 +2545,9 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                         Span::styled("     ", Style::default()),
                         Span::styled(
                             format!("... and {} more lines", output_lines.len() - 5),
-                            Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
                         ),
                     ]));
                 }
@@ -2471,23 +2588,27 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
         message_lines.push(processing_line);
 
         let (status_text, status_color) = if let Some(ref tool) = app.current_tool {
-            (format!("  {} Running: {}", spinner[spinner_idx], tool), Color::Cyan)
+            (
+                format!("  {} Running: {}", spinner[spinner_idx], tool),
+                Color::Cyan,
+            )
         } else {
             (
                 format!(
                     "  {} {}",
                     spinner[spinner_idx],
-                    app.processing_message
-                        .as_deref()
-                        .unwrap_or("Thinking...")
+                    app.processing_message.as_deref().unwrap_or("Thinking...")
                 ),
                 Color::Yellow,
             )
         };
 
-        let indicator_line = Line::from(vec![
-            Span::styled(status_text, Style::default().fg(status_color).add_modifier(Modifier::BOLD)),
-        ]);
+        let indicator_line = Line::from(vec![Span::styled(
+            status_text,
+            Style::default()
+                .fg(status_color)
+                .add_modifier(Modifier::BOLD),
+        )]);
         message_lines.push(indicator_line);
         message_lines.push(Line::from(""));
     }

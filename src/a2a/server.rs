@@ -384,7 +384,11 @@ async fn handle_message_stream(
         let mut session = match Session::new().await {
             Ok(s) => s,
             Err(e) => {
-                tracing::error!("Failed to create session for stream task {}: {}", task_id, e);
+                tracing::error!(
+                    "Failed to create session for stream task {}: {}",
+                    task_id,
+                    e
+                );
                 if let Some(mut t) = tasks.get_mut(&task_id) {
                     t.status.state = TaskState::Failed;
                     t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
