@@ -1,0 +1,2 @@
+80e53ec4f058c254a2ed36720423826620c9649ab657ff26cd1c4c6e2cb41eab  codetether-v0.1.6-x86_64-unknown-linux-gnu.tar.gz
+71b8bac5e33df05a676a292c7c790e03f9a31489e82527c10f8122330c4e1c51  codetether-v0.1.6-x86_64-unknown-linux-gnu

@@ -348,13 +348,24 @@ impl ToolCallRouter {
         Ok(parse_functiongemma_response(&output.text))
     }
 
-    /// Rewrite the `CompletionResponse` to include parsed tool calls.
+    /// Rewrite the `CompletionResponse` to replace text with structured tool calls.
+    ///
+    /// The original text is **removed** so the model sees a pure tool-call
+    /// assistant turn.  On the follow-up turn it will receive the tool results
+    /// and compose a proper answer – rather than ignoring them because it
+    /// already gave a complete text response.
     fn rewrite_response(
         &self,
         mut response: CompletionResponse,
         calls: Vec<ParsedToolCall>,
     ) -> CompletionResponse {
-        // Keep existing text parts; append tool call parts.
+        // Strip all text parts — the model should see only tool calls so it
+        // properly processes the tool results on the next iteration.
+        response
+            .message
+            .content
+            .retain(|p| !matches!(p, ContentPart::Text { .. }));
+
         for call in calls {
             response.message.content.push(ContentPart::ToolCall {
                 id: format!("fc_{}", Uuid::new_v4()),
