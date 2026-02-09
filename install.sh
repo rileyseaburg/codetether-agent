@@ -127,25 +127,83 @@ install_functiongemma() {
         fi
     fi
 
-    # Download tokenizer (gated model — requires HuggingFace API token)
+    # Download tokenizer (gated model — requires HuggingFace authentication)
     local tokenizer_path="${FUNCTIONGEMMA_MODEL_DIR}/${FUNCTIONGEMMA_TOKENIZER_FILE}"
     if [ -f "$tokenizer_path" ]; then
         ok "tokenizer already exists: ${tokenizer_path}"
     else
-        # Check for HF token in env, then prompt
-        local hf_token="${HF_TOKEN:-${HUGGING_FACE_HUB_TOKEN:-}}"
+        local hf_token=""
+
+        # 1. Check environment variables
+        hf_token="${HF_TOKEN:-${HUGGING_FACE_HUB_TOKEN:-}}"
+
+        # 2. Check huggingface-cli cached token (~/.cache/huggingface/token)
         if [ -z "$hf_token" ]; then
-            printf "\n${YELLOW}The FunctionGemma tokenizer requires a HuggingFace API token.${NC}\n"
-            printf "  1. Go to ${CYAN}https://huggingface.co/settings/tokens${NC}\n"
-            printf "  2. Create a token with ${BOLD}read${NC} access\n"
-            printf "  3. Accept the model license at ${CYAN}https://huggingface.co/google/functiongemma-270m-it${NC}\n\n"
-            printf "HuggingFace API token (or press Enter to skip): "
-            read -r hf_token
+            local hf_cache_token="${HF_HOME:-${XDG_CACHE_HOME:-${HOME}/.cache}/huggingface}/token"
+            if [ -f "$hf_cache_token" ]; then
+                hf_token="$(cat "$hf_cache_token" 2>/dev/null | tr -d '[:space:]')"
+                if [ -n "$hf_token" ]; then
+                    ok "found cached HuggingFace token (from huggingface-cli login)"
+                fi
+            fi
         fi
 
+        # 3. Interactive: offer browser-based login or manual paste
         if [ -z "$hf_token" ]; then
-            warn "skipping tokenizer download (no API token provided)"
-            warn "set HF_TOKEN and re-run: HF_TOKEN=hf_... $0 --functiongemma-only"
+            printf "\n${BOLD}HuggingFace Authentication Required${NC}\n"
+            printf "  The FunctionGemma tokenizer is a gated model that requires\n"
+            printf "  a HuggingFace account with model access granted.\n\n"
+            printf "  ${BOLD}Before continuing:${NC}\n"
+            printf "  Accept the model license at:\n"
+            printf "  ${CYAN}https://huggingface.co/google/functiongemma-270m-it${NC}\n\n"
+
+            printf "  Choose authentication method:\n"
+            printf "  ${BOLD}[1]${NC} Open browser to create a token (recommended)\n"
+            printf "  ${BOLD}[2]${NC} Paste an existing token\n"
+            printf "  ${BOLD}[3]${NC} Skip tokenizer download\n\n"
+            printf "  Choice [1/2/3]: "
+            read -r auth_choice
+
+            case "$auth_choice" in
+                1|"")
+                    local token_url="https://huggingface.co/settings/tokens/new?tokenType=read&description=codetether-install"
+                    info "opening browser..."
+
+                    # Try to open browser
+                    if command -v xdg-open > /dev/null 2>&1; then
+                        xdg-open "$token_url" 2>/dev/null
+                    elif command -v open > /dev/null 2>&1; then
+                        open "$token_url" 2>/dev/null
+                    elif command -v wslview > /dev/null 2>&1; then
+                        wslview "$token_url" 2>/dev/null
+                    else
+                        warn "could not open browser automatically"
+                        printf "  Open this URL manually:\n"
+                        printf "  ${CYAN}${token_url}${NC}\n"
+                    fi
+
+                    printf "\n  Create a ${BOLD}read${NC} token, then paste it here.\n"
+                    printf "  HuggingFace token: "
+                    read -r hf_token
+                    ;;
+                2)
+                    printf "  HuggingFace token: "
+                    read -r hf_token
+                    ;;
+                3)
+                    warn "skipping tokenizer download"
+                    warn "re-run later: HF_TOKEN=hf_... $0 --functiongemma-only"
+                    return 0
+                    ;;
+            esac
+        fi
+
+        # Trim whitespace
+        hf_token="$(echo "$hf_token" | tr -d '[:space:]')"
+
+        if [ -z "$hf_token" ]; then
+            warn "no token provided — skipping tokenizer download"
+            warn "re-run later: HF_TOKEN=hf_... $0 --functiongemma-only"
             return 0
         fi
 
@@ -160,8 +218,9 @@ install_functiongemma() {
             ok "tokenizer downloaded: ${tokenizer_path}"
         else
             rm -f "$tokenizer_path"
-            error "failed to download tokenizer (check token and model access)"
-            warn "set HF_TOKEN and re-run: HF_TOKEN=hf_... $0 --functiongemma-only"
+            error "failed to download tokenizer (check token and model license access)"
+            warn "1. Accept license: https://huggingface.co/google/functiongemma-270m-it"
+            warn "2. Re-run: HF_TOKEN=hf_... $0 --functiongemma-only"
             return 1
         fi
     fi
