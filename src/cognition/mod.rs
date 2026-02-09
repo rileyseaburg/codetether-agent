@@ -1142,7 +1142,8 @@ fn build_phase_prompts(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> (Str
 Respond with concise plain text only. Do not include markdown, XML, or code fences. \
 Write as an operational process update, not meta narration. \
 Do not say phrases like 'I need to', 'we need to', 'I will', or describe your own reasoning process. \
-Output concrete findings, checks, risks, and next actions."
+Output concrete findings, checks, risks, and next actions. \
+Fill every labeled field with concrete content. Never output placeholders such as '...', '<...>', 'TBD', or 'TODO'."
         .to_string();
 
     let context_lines = if context.is_empty() {
@@ -1159,31 +1160,31 @@ Output concrete findings, checks, risks, and next actions."
         ThoughtPhase::Observe => {
             "Process format (exact line labels): \
 Phase: Observe | Goal: detect current customer/business risk | \
-Signals: <1-3 concrete signals> | \
-Uncertainty: <one unknown that blocks confidence> | \
-Next_Action: <one immediate operational action>."
+Signals: 1-3 concrete signals separated by '; ' | \
+Uncertainty: one unknown that blocks confidence | \
+Next_Action: one immediate operational action."
         }
         ThoughtPhase::Reflect => {
             "Process format (exact line labels): \
-Phase: Reflect | Hypothesis: <single testable hypothesis> | \
-Rationale: <why this is likely> | \
-Business_Risk: <customer/revenue/SLA impact> | \
-Validation_Next_Action: <one action to confirm or falsify>."
+Phase: Reflect | Hypothesis: single testable hypothesis | \
+Rationale: why this is likely | \
+Business_Risk: customer/revenue/SLA impact | \
+Validation_Next_Action: one action to confirm or falsify."
         }
         ThoughtPhase::Test => {
             "Process format (exact line labels): \
-Phase: Test | Check: <single concrete check> | \
-Procedure: <short executable procedure> | \
-Expected_Result: <pass/fail expectation> | \
-Evidence_Quality: <low|medium|high with reason> | \
-Escalation_Trigger: <when to escalate immediately>."
+Phase: Test | Check: single concrete check | \
+Procedure: short executable procedure | \
+Expected_Result: pass/fail expectation | \
+Evidence_Quality: low|medium|high with reason | \
+Escalation_Trigger: when to escalate immediately."
         }
         ThoughtPhase::Compress => {
             "Process format (exact line labels): \
-Phase: Compress | State_Summary: <current state in one line> | \
-Retained_Facts: <3 short facts separated by '; '> | \
-Open_Risks: <up to 2 unresolved risks separated by '; '> | \
-Next_Process_Step: <next operational step>."
+Phase: Compress | State_Summary: current state in one line | \
+Retained_Facts: 3 short facts separated by '; ' | \
+Open_Risks: up to 2 unresolved risks separated by '; ' | \
+Next_Process_Step: next operational step."
         }
     };
 
@@ -1248,11 +1249,19 @@ fn normalize_thought_output(work: &ThoughtWorkItem, context: &[ThoughtEvent], ra
             .map(str::trim)
             .find(|line| !line.is_empty())
         {
-            if first_line.starts_with("Phase:") && !first_line.contains('<') {
-                return first_line.to_string();
+            let normalized_line = first_line.trim_matches('"').trim_matches('\'').trim();
+            if normalized_line.starts_with("Phase:")
+                && !normalized_line.contains('<')
+                && !has_template_placeholder_values(normalized_line)
+            {
+                return normalized_line.to_string();
             }
         }
-        if !candidate.is_empty() && !candidate.contains('<') && !candidate.contains('\n') {
+        if !candidate.is_empty()
+            && !candidate.contains('<')
+            && !candidate.contains('\n')
+            && !has_template_placeholder_values(candidate)
+        {
             return candidate.to_string();
         }
     }
@@ -1266,11 +1275,39 @@ fn normalize_thought_output(work: &ThoughtWorkItem, context: &[ThoughtEvent], ra
         || lower.contains("let's ")
         || lower.contains("we have to");
 
-    if looks_meta {
+    if looks_meta || has_template_placeholder_values(&trimmed) {
         return fallback_phase_text(work, context);
     }
 
     trimmed
+}
+
+fn has_template_placeholder_values(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    [
+        "goal: ...",
+        "signals: ...",
+        "uncertainty: ...",
+        "next_action: ...",
+        "hypothesis: ...",
+        "rationale: ...",
+        "business_risk: ...",
+        "validation_next_action: ...",
+        "check: ...",
+        "procedure: ...",
+        "expected_result: ...",
+        "evidence_quality: ...",
+        "escalation_trigger: ...",
+        "state_summary: ...",
+        "retained_facts: ...",
+        "open_risks: ...",
+        "next_process_step: ...",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+        || lower.contains("<...")
+        || lower.contains("tbd")
+        || lower.contains("todo")
 }
 
 fn find_process_label_start(text: &str) -> Option<usize> {
@@ -1313,6 +1350,7 @@ fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
                 .get("title")
                 .and_then(serde_json::Value::as_str)
             && !title.trim().is_empty()
+            && !has_template_placeholder_values(title)
         {
             latest_proposal = Some(trim_for_storage(title, 120));
         }
@@ -1324,6 +1362,7 @@ fn fallback_context_summary(context: &[ThoughtEvent]) -> String {
                 .get("result_excerpt")
                 .and_then(serde_json::Value::as_str)
             && !result.trim().is_empty()
+            && !has_template_placeholder_values(result)
         {
             latest_check = Some(trim_for_storage(result, 140));
         }
@@ -1452,6 +1491,19 @@ fn env_usize(name: &str, default: usize) -> usize {
 mod tests {
     use super::*;
 
+    fn sample_work_item(phase: ThoughtPhase) -> ThoughtWorkItem {
+        ThoughtWorkItem {
+            persona_id: "p-1".to_string(),
+            persona_name: "Spotlessbinco Business Thinker".to_string(),
+            role: "principal reliability engineer".to_string(),
+            charter: "Continuously think about /home/riley/spotlessbinco as a production business system."
+                .to_string(),
+            swarm_id: Some("spotlessbinco".to_string()),
+            thought_count: 4,
+            phase,
+        }
+    }
+
     fn test_runtime() -> CognitionRuntime {
         CognitionRuntime::new_with_options(CognitionRuntimeOptions {
             enabled: true,
@@ -1467,6 +1519,34 @@ mod tests {
                 share_memory: false,
             },
         })
+    }
+
+    #[test]
+    fn normalize_rejects_placeholder_process_line() {
+        let work = sample_work_item(ThoughtPhase::Compress);
+        let output = normalize_thought_output(
+            &work,
+            &[],
+            "Phase: Compress | State_Summary: ... | Retained_Facts: ... | Open_Risks: ... | Next_Process_Step: ...",
+        );
+        assert!(
+            output.starts_with("Phase: Compress | State_Summary: reliability monitoring active")
+        );
+        assert!(!output.contains("State_Summary: ..."));
+    }
+
+    #[test]
+    fn normalize_accepts_concrete_process_line() {
+        let work = sample_work_item(ThoughtPhase::Test);
+        let output = normalize_thought_output(
+            &work,
+            &[],
+            "Phase: Test | Check: inspect ingress 5xx over last 15m | Procedure: query error-rate dashboard and compare baseline | Expected_Result: pass if <=0.5% 5xx, fail otherwise | Evidence_Quality: high from direct telemetry | Escalation_Trigger: >2% 5xx for 5 minutes",
+        );
+        assert_eq!(
+            output,
+            "Phase: Test | Check: inspect ingress 5xx over last 15m | Procedure: query error-rate dashboard and compare baseline | Expected_Result: pass if <=0.5% 5xx, fail otherwise | Evidence_Quality: high from direct telemetry | Escalation_Trigger: >2% 5xx for 5 minutes"
+        );
     }
 
     #[tokio::test]

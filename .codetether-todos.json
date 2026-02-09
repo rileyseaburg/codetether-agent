@@ -299,5 +299,75 @@
     "status": "pending",
     "priority": "high",
     "created_at": "2026-02-05T19:23:49.020806528+00:00"
+  },
+  {
+    "id": "todo_1770543759932",
+    "content": "Explore swarm capabilities and identify enhancement opportunities",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-08T09:42:39.932774108+00:00"
+  },
+  {
+    "id": "todo_1770543799847",
+    "content": "Enhancement: Add swarm result caching to avoid re-executing identical tasks",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-08T09:43:19.847558092+00:00"
+  },
+  {
+    "id": "todo_1770543799853",
+    "content": "Enhancement: Implement sub-agent result sharing/communication during execution",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-08T09:43:19.853499898+00:00"
+  },
+  {
+    "id": "todo_1770543799855",
+    "content": "Enhancement: Add adaptive rate limiting based on provider tier and response headers",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-08T09:43:19.855386966+00:00"
+  },
+  {
+    "id": "todo_1770543799856",
+    "content": "Enhancement: Implement swarm checkpoint/resume for long-running tasks",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-08T09:43:19.856131201+00:00"
+  },
+  {
+    "id": "todo_1770543799861",
+    "content": "Enhancement: Add sub-agent retry with exponential backoff on failure",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-08T09:43:19.861901308+00:00"
+  },
+  {
+    "id": "todo_1770543799862",
+    "content": "Enhancement: Create swarm visualization export (HTML/JSON report)",
+    "status": "pending",
+    "priority": "low",
+    "created_at": "2026-02-08T09:43:19.862119918+00:00"
+  },
+  {
+    "id": "todo_1770543799868",
+    "content": "Enhancement: Add pre-flight validation for swarm tasks",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-08T09:43:19.868333197+00:00"
+  },
+  {
+    "id": "todo_1770543799869",
+    "content": "Enhancement: Implement dynamic sub-agent scaling based on workload",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-02-08T09:43:19.869451929+00:00"
+  },
+  {
+    "id": "todo_1770543799870",
+    "content": "Enhancement: Add swarm execution history and replay capability",
+    "status": "pending",
+    "priority": "low",
+    "created_at": "2026-02-08T09:43:19.870605213+00:00"
   }
 ]

@@ -1,0 +1,2 @@
+3c6d12c86cb05876384113eae225f94f8c009b7bf40f7baa4d139b9966c56e43  codetether-v0.1.5-x86_64-unknown-linux-gnu
+6ea14effa384133cea5b127d1fe1c52626d41e6ac004accd698d8540afdd0114  codetether-v0.1.5-x86_64-unknown-linux-gnu.tar.gz
