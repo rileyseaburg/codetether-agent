@@ -316,8 +316,8 @@ impl Provider for CopilotProvider {
                         supports_vision: supports.and_then(|s| s.vision).unwrap_or(false),
                         supports_tools: supports.and_then(|s| s.tool_calls).unwrap_or(true),
                         supports_streaming: supports.and_then(|s| s.streaming).unwrap_or(true),
-                        input_cost_per_million: Some(0.0),
-                        output_cost_per_million: Some(0.0),
+                        input_cost_per_million: None,  // Set below per-model
+                        output_cost_per_million: None,
                     }
                 })
                 .collect()
@@ -325,38 +325,52 @@ impl Provider for CopilotProvider {
             Vec::new()
         };
 
-        // Enrich API-returned models with known metadata (better names, accurate limits).
-        // We do NOT inject models the API doesn't list — those aren't usable yet.
-        // Source: https://docs.github.com/en/copilot/using-github-copilot/ai-models
-        // NOTE: Model IDs use dots for versions, same as the /models API returns
-        // (e.g. claude-opus-4.5, gpt-5.1, gpt-4.1).
-        let known_metadata: std::collections::HashMap<&str, (&str, usize, usize)> = [
-            ("claude-opus-4.5", ("Claude Opus 4.5", 200_000, 64_000)),
-            ("claude-opus-41", ("Claude Opus 4.1", 200_000, 64_000)),
-            ("claude-sonnet-4.5", ("Claude Sonnet 4.5", 200_000, 64_000)),
-            ("claude-sonnet-4", ("Claude Sonnet 4", 200_000, 64_000)),
-            ("claude-haiku-4.5", ("Claude Haiku 4.5", 200_000, 64_000)),
-            ("gpt-5.2", ("GPT-5.2", 400_000, 128_000)),
-            ("gpt-5.1", ("GPT-5.1", 400_000, 128_000)),
-            ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000)),
-            (
-                "gpt-5.1-codex-mini",
-                ("GPT-5.1-Codex-Mini", 264_000, 64_000),
-            ),
-            ("gpt-5.1-codex-max", ("GPT-5.1-Codex-Max", 264_000, 64_000)),
-            ("gpt-5", ("GPT-5", 400_000, 128_000)),
-            ("gpt-5-mini", ("GPT-5 mini", 264_000, 64_000)),
-            ("gpt-4.1", ("GPT-4.1", 128_000, 32_768)),
-            ("gpt-4o", ("GPT-4o", 128_000, 16_384)),
-            ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1_000_000, 64_000)),
-            ("grok-code-fast-1", ("Grok Code Fast 1", 128_000, 32_768)),
+        // Enrich API-returned models with known metadata (better names, accurate limits)
+        // AND per-model premium request costs from GitHub Copilot pricing.
+        // Source: https://docs.github.com/en/copilot/concepts/billing/copilot-requests
+        //
+        // Cost model: Premium requests at $0.04/request overflow rate.
+        // We convert multiplier to approximate $/M tokens using ~4K tokens/request avg.
+        // Formula: multiplier * $0.04 / 4K tokens * 1M = multiplier * $10/M tokens.
+        //
+        // Premium request multipliers (Feb 2026):
+        //   0x (included): GPT-4.1, GPT-4o, GPT-5 mini, Raptor mini
+        //   0.25x: Grok Code Fast 1
+        //   0.33x: Claude Haiku 4.5, Gemini 3 Flash, GPT-5.1-Codex-Mini
+        //   1x: Claude Sonnet 4/4.5, Gemini 2.5/3 Pro, GPT-5, GPT-5.x-Codex variants
+        //   3x: Claude Opus 4.5, Claude Opus 4.6
+        //   10x: Claude Opus 4.1
+        //
+        // Tuple: (display_name, context_window, max_output, premium_multiplier)
+        let known_metadata: std::collections::HashMap<&str, (&str, usize, usize, f64)> = [
+            ("claude-opus-4.5", ("Claude Opus 4.5", 200_000, 64_000, 3.0)),
+            ("claude-opus-4.6", ("Claude Opus 4.6", 200_000, 64_000, 3.0)),
+            ("claude-opus-41", ("Claude Opus 4.1", 200_000, 64_000, 10.0)),
+            ("claude-sonnet-4.5", ("Claude Sonnet 4.5", 200_000, 64_000, 1.0)),
+            ("claude-sonnet-4", ("Claude Sonnet 4", 200_000, 64_000, 1.0)),
+            ("claude-haiku-4.5", ("Claude Haiku 4.5", 200_000, 64_000, 0.33)),
+            ("gpt-5.2", ("GPT-5.2", 400_000, 128_000, 1.0)),
+            ("gpt-5.1", ("GPT-5.1", 400_000, 128_000, 1.0)),
+            ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000, 1.0)),
+            ("gpt-5.1-codex-mini", ("GPT-5.1-Codex-Mini", 264_000, 64_000, 0.33)),
+            ("gpt-5.1-codex-max", ("GPT-5.1-Codex-Max", 264_000, 64_000, 1.0)),
+            ("gpt-5", ("GPT-5", 400_000, 128_000, 1.0)),
+            ("gpt-5-mini", ("GPT-5 mini", 264_000, 64_000, 0.0)),
+            ("gpt-5-codex", ("GPT-5-Codex", 264_000, 64_000, 1.0)),
+            ("gpt-4.1", ("GPT-4.1", 128_000, 32_768, 0.0)),
+            ("gpt-4o", ("GPT-4o", 128_000, 16_384, 0.0)),
+            ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1_000_000, 64_000, 1.0)),
+            ("gemini-3-flash-preview", ("Gemini 3 Flash", 1_000_000, 64_000, 0.33)),
+            ("gemini-3-pro-preview", ("Gemini 3 Pro", 1_000_000, 64_000, 1.0)),
+            ("grok-code-fast-1", ("Grok Code Fast 1", 128_000, 32_768, 0.25)),
         ]
         .into_iter()
         .collect();
 
-        // Apply known metadata to enrich API models that had sparse info
+        // Apply known metadata to enrich API models that had sparse info,
+        // and set per-model premium request costs.
         for model in &mut models {
-            if let Some((name, ctx, max_out)) = known_metadata.get(model.id.as_str()) {
+            if let Some((name, ctx, max_out, premium_mult)) = known_metadata.get(model.id.as_str()) {
                 if model.name == model.id {
                     model.name = name.to_string();
                 }
@@ -365,6 +379,20 @@ impl Provider for CopilotProvider {
                 }
                 if model.max_output_tokens == Some(16_384) {
                     model.max_output_tokens = Some(*max_out);
+                }
+                // Convert premium request multiplier to approximate $/M tokens.
+                // $0.04/request overflow rate, ~4K tokens/request avg = multiplier * $10/M.
+                // Models at 0.0x are included free on paid plans.
+                let approx_cost = premium_mult * 10.0;
+                model.input_cost_per_million = Some(approx_cost);
+                model.output_cost_per_million = Some(approx_cost);
+            } else {
+                // Unknown Copilot model — assume 1x premium request ($10/M approx)
+                if model.input_cost_per_million.is_none() {
+                    model.input_cost_per_million = Some(10.0);
+                }
+                if model.output_cost_per_million.is_none() {
+                    model.output_cost_per_million = Some(10.0);
                 }
             }
         }

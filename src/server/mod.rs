@@ -2,7 +2,10 @@
 //!
 //! Main API server for the CodeTether Agent
 
+pub mod auth;
+
 use crate::a2a;
+use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::cli::ServeArgs;
 use crate::cognition::{
     AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
@@ -11,16 +14,20 @@ use crate::cognition::{
     executor::DecisionReceipt,
 };
 use crate::config::Config;
+use crate::k8s::K8sManager;
 use anyhow::Result;
 use axum::{
     Router,
+    body::Body,
     extract::Path,
     extract::{Query, State},
-    http::StatusCode,
-    response::Json,
+    http::{Request, StatusCode},
+    middleware::{self, Next},
+    response::{Json, Response},
     response::sse::{Event, KeepAlive, Sse},
     routing::{get, post},
 };
+use auth::AuthState;
 use futures::stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
@@ -33,12 +40,65 @@ use tower_http::trace::TraceLayer;
 pub struct AppState {
     pub config: Arc<Config>,
     pub cognition: Arc<CognitionRuntime>,
+    pub audit_log: AuditLog,
+    pub k8s: Arc<K8sManager>,
+    pub auth: AuthState,
+}
+
+/// Audit middleware — logs every request/response to the audit trail.
+async fn audit_middleware(
+    State(state): State<AppState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
+    let method = request.method().clone();
+    let path = request.uri().path().to_string();
+    let started = std::time::Instant::now();
+
+    let response = next.run(request).await;
+
+    let duration_ms = started.elapsed().as_millis() as u64;
+    let status = response.status().as_u16();
+    let outcome = if status < 400 {
+        AuditOutcome::Success
+    } else if status == 401 || status == 403 {
+        AuditOutcome::Denied
+    } else {
+        AuditOutcome::Failure
+    };
+
+    state.audit_log.record(audit::AuditEntry {
+        id: uuid::Uuid::new_v4().to_string(),
+        timestamp: chrono::Utc::now(),
+        category: AuditCategory::Api,
+        action: format!("{} {}", method, path),
+        principal: None,
+        outcome,
+        detail: Some(serde_json::json!({ "status": status })),
+        duration_ms: Some(duration_ms),
+    }).await;
+
+    response
 }
 
 /// Start the HTTP server
 pub async fn serve(args: ServeArgs) -> Result<()> {
     let config = Config::load().await?;
     let cognition = Arc::new(CognitionRuntime::new_from_env());
+
+    // Initialize audit log.
+    let audit_log = AuditLog::from_env();
+    let _ = audit::init_audit_log(audit_log.clone());
+
+    // Initialize K8s manager.
+    let k8s = Arc::new(K8sManager::new().await);
+    if k8s.is_available() {
+        tracing::info!("K8s self-deployment enabled");
+    }
+
+    // Initialize mandatory auth.
+    let auth_state = AuthState::from_env();
+    tracing::info!("Auth is mandatory. Token required for all API endpoints.");
 
     if cognition.is_enabled() && env_bool("CODETETHER_COGNITION_AUTO_START", true) {
         if let Err(error) = cognition.start(None).await {
@@ -51,6 +111,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let state = AppState {
         config: Arc::new(config),
         cognition,
+        audit_log,
+        k8s,
+        auth: auth_state.clone(),
     };
 
     let addr = format!("{}:{}", args.hostname, args.port);
@@ -63,7 +126,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let a2a_router = a2a_server.router();
 
     let app = Router::new()
-        // Health check
+        // Health check (public — auth exempt)
         .route("/health", get(health))
         // API routes
         .route("/api/version", get(get_version))
@@ -95,12 +158,23 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         )
         .route("/v1/cognition/receipts", get(list_receipts))
         .route("/v1/cognition/workspace", get(get_workspace))
-        .with_state(state)
+        // Audit trail API
+        .route("/v1/audit", get(list_audit_entries))
+        // K8s self-deployment APIs
+        .route("/v1/k8s/status", get(get_k8s_status))
+        .route("/v1/k8s/scale", post(k8s_scale))
+        .route("/v1/k8s/restart", post(k8s_restart))
+        .route("/v1/k8s/pods", get(k8s_list_pods))
+        .route("/v1/k8s/actions", get(k8s_actions))
+        .with_state(state.clone())
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
-        // Middleware
+        // Mandatory auth middleware — applies to all routes
+        .layer(middleware::from_fn_with_state(state.clone(), audit_middleware))
+        .layer(axum::Extension(state.auth.clone()))
+        .layer(middleware::from_fn(auth::require_auth))
+        // CORS + tracing
         .layer(
-            // Mirror request origin so credentialed browser requests do not fail CORS.
             CorsLayer::new()
                 .allow_origin(AllowOrigin::mirror_request())
                 .allow_credentials(true)
@@ -439,6 +513,108 @@ async fn get_workspace(
     State(state): State<AppState>,
 ) -> Result<Json<GlobalWorkspace>, (StatusCode, String)> {
     Ok(Json(state.cognition.get_workspace().await))
+}
+
+// ── Audit trail endpoints ──
+
+#[derive(Deserialize)]
+struct AuditQuery {
+    limit: Option<usize>,
+    category: Option<String>,
+}
+
+async fn list_audit_entries(
+    State(state): State<AppState>,
+    Query(query): Query<AuditQuery>,
+) -> Result<Json<Vec<audit::AuditEntry>>, (StatusCode, String)> {
+    let limit = query.limit.unwrap_or(100).min(1000);
+
+    let entries = if let Some(ref cat) = query.category {
+        let category = match cat.as_str() {
+            "api" => AuditCategory::Api,
+            "tool" | "tool_execution" => AuditCategory::ToolExecution,
+            "session" => AuditCategory::Session,
+            "cognition" => AuditCategory::Cognition,
+            "swarm" => AuditCategory::Swarm,
+            "auth" => AuditCategory::Auth,
+            "k8s" => AuditCategory::K8s,
+            "sandbox" => AuditCategory::Sandbox,
+            "config" => AuditCategory::Config,
+            _ => return Err((StatusCode::BAD_REQUEST, format!("Unknown category: {}", cat))),
+        };
+        state.audit_log.by_category(category, limit).await
+    } else {
+        state.audit_log.recent(limit).await
+    };
+
+    Ok(Json(entries))
+}
+
+// ── K8s self-deployment endpoints ──
+
+async fn get_k8s_status(
+    State(state): State<AppState>,
+) -> Result<Json<crate::k8s::K8sStatus>, (StatusCode, String)> {
+    Ok(Json(state.k8s.status().await))
+}
+
+#[derive(Deserialize)]
+struct ScaleRequest {
+    replicas: i32,
+}
+
+async fn k8s_scale(
+    State(state): State<AppState>,
+    Json(req): Json<ScaleRequest>,
+) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
+    if req.replicas < 0 || req.replicas > 100 {
+        return Err((StatusCode::BAD_REQUEST, "Replicas must be between 0 and 100".to_string()));
+    }
+
+    state.audit_log.log(
+        AuditCategory::K8s,
+        format!("scale:{}", req.replicas),
+        AuditOutcome::Success,
+        None,
+        None,
+    ).await;
+
+    state.k8s.scale(req.replicas)
+        .await
+        .map(Json)
+        .map_err(internal_error)
+}
+
+async fn k8s_restart(
+    State(state): State<AppState>,
+) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
+    state.audit_log.log(
+        AuditCategory::K8s,
+        "rolling_restart",
+        AuditOutcome::Success,
+        None,
+        None,
+    ).await;
+
+    state.k8s.rolling_restart()
+        .await
+        .map(Json)
+        .map_err(internal_error)
+}
+
+async fn k8s_list_pods(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<crate::k8s::PodInfo>>, (StatusCode, String)> {
+    state.k8s.list_pods()
+        .await
+        .map(Json)
+        .map_err(internal_error)
+}
+
+async fn k8s_actions(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<crate::k8s::DeployAction>>, (StatusCode, String)> {
+    Ok(Json(state.k8s.recent_actions(100).await))
 }
 
 fn internal_error(error: anyhow::Error) -> (StatusCode, String) {

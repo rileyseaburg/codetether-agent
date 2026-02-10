@@ -11,10 +11,12 @@
 
 mod a2a;
 mod agent;
+mod audit;
 mod cli;
 mod cognition;
 mod config;
 mod crash;
+mod k8s;
 pub mod mcp;
 mod provider;
 pub mod ralph;

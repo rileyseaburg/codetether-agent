@@ -18,11 +18,13 @@ pub mod prd;
 pub mod question;
 pub mod ralph;
 pub mod rlm;
+pub mod sandbox;
 pub mod search;
 pub mod skill;
 pub mod task;
 pub mod todo;
 pub mod undo;
+pub mod voice;
 pub mod webfetch;
 pub mod websearch;
 
@@ -203,6 +205,7 @@ impl ToolRegistry {
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
         registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
         registry.register(Arc::new(undo::UndoTool));
+        registry.register(Arc::new(voice::VoiceTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
 
@@ -238,6 +241,7 @@ impl ToolRegistry {
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));
         registry.register(Arc::new(undo::UndoTool));
+        registry.register(Arc::new(voice::VoiceTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
 
