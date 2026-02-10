@@ -17,6 +17,7 @@ use crate::cognition::{
 use crate::config::Config;
 use crate::k8s::K8sManager;
 use anyhow::Result;
+use auth::AuthState;
 use axum::{
     Router,
     body::Body,
@@ -24,11 +25,10 @@ use axum::{
     extract::{Query, State},
     http::{Request, StatusCode},
     middleware::{self, Next},
-    response::{Json, Response},
     response::sse::{Event, KeepAlive, Sse},
+    response::{Json, Response},
     routing::{get, post},
 };
-use auth::AuthState;
 use futures::stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
@@ -68,16 +68,19 @@ async fn audit_middleware(
         AuditOutcome::Failure
     };
 
-    state.audit_log.record(audit::AuditEntry {
-        id: uuid::Uuid::new_v4().to_string(),
-        timestamp: chrono::Utc::now(),
-        category: AuditCategory::Api,
-        action: format!("{} {}", method, path),
-        principal: None,
-        outcome,
-        detail: Some(serde_json::json!({ "status": status })),
-        duration_ms: Some(duration_ms),
-    }).await;
+    state
+        .audit_log
+        .record(audit::AuditEntry {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now(),
+            category: AuditCategory::Api,
+            action: format!("{} {}", method, path),
+            principal: None,
+            outcome,
+            detail: Some(serde_json::json!({ "status": status })),
+            duration_ms: Some(duration_ms),
+        })
+        .await;
 
     response
 }
@@ -92,37 +95,107 @@ struct PolicyRule {
 
 const POLICY_RULES: &[PolicyRule] = &[
     // Public / exempt
-    PolicyRule { pattern: "/health", methods: None, permission: "" },
-    PolicyRule { pattern: "/a2a/", methods: None, permission: "" },
-
+    PolicyRule {
+        pattern: "/health",
+        methods: None,
+        permission: "",
+    },
+    PolicyRule {
+        pattern: "/a2a/",
+        methods: None,
+        permission: "",
+    },
     // K8s management — admin only
-    PolicyRule { pattern: "/v1/k8s/scale", methods: Some(&["POST"]), permission: "admin:access" },
-    PolicyRule { pattern: "/v1/k8s/restart", methods: Some(&["POST"]), permission: "admin:access" },
-    PolicyRule { pattern: "/v1/k8s/", methods: Some(&["GET"]), permission: "admin:access" },
-
+    PolicyRule {
+        pattern: "/v1/k8s/scale",
+        methods: Some(&["POST"]),
+        permission: "admin:access",
+    },
+    PolicyRule {
+        pattern: "/v1/k8s/restart",
+        methods: Some(&["POST"]),
+        permission: "admin:access",
+    },
+    PolicyRule {
+        pattern: "/v1/k8s/",
+        methods: Some(&["GET"]),
+        permission: "admin:access",
+    },
     // Audit — admin
-    PolicyRule { pattern: "/v1/audit", methods: None, permission: "admin:access" },
-
+    PolicyRule {
+        pattern: "/v1/audit",
+        methods: None,
+        permission: "admin:access",
+    },
     // Cognition — write operations
-    PolicyRule { pattern: "/v1/cognition/start", methods: Some(&["POST"]), permission: "agent:execute" },
-    PolicyRule { pattern: "/v1/cognition/stop", methods: Some(&["POST"]), permission: "agent:execute" },
-    PolicyRule { pattern: "/v1/cognition/", methods: Some(&["GET"]), permission: "agent:read" },
-
+    PolicyRule {
+        pattern: "/v1/cognition/start",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/cognition/stop",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/cognition/",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
     // Swarm persona lifecycle
-    PolicyRule { pattern: "/v1/swarm/personas", methods: Some(&["POST"]), permission: "agent:execute" },
-    PolicyRule { pattern: "/v1/swarm/", methods: Some(&["POST"]), permission: "agent:execute" },
-    PolicyRule { pattern: "/v1/swarm/", methods: Some(&["GET"]), permission: "agent:read" },
-
+    PolicyRule {
+        pattern: "/v1/swarm/personas",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/swarm/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/swarm/",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
     // Session management
-    PolicyRule { pattern: "/api/session", methods: Some(&["POST"]), permission: "sessions:write" },
-    PolicyRule { pattern: "/api/session/", methods: Some(&["POST"]), permission: "sessions:write" },
-    PolicyRule { pattern: "/api/session", methods: Some(&["GET"]), permission: "sessions:read" },
-
+    PolicyRule {
+        pattern: "/api/session",
+        methods: Some(&["POST"]),
+        permission: "sessions:write",
+    },
+    PolicyRule {
+        pattern: "/api/session/",
+        methods: Some(&["POST"]),
+        permission: "sessions:write",
+    },
+    PolicyRule {
+        pattern: "/api/session",
+        methods: Some(&["GET"]),
+        permission: "sessions:read",
+    },
     // Config, version, providers, agents — read
-    PolicyRule { pattern: "/api/version", methods: None, permission: "agent:read" },
-    PolicyRule { pattern: "/api/config", methods: None, permission: "agent:read" },
-    PolicyRule { pattern: "/api/provider", methods: None, permission: "agent:read" },
-    PolicyRule { pattern: "/api/agent", methods: None, permission: "agent:read" },
+    PolicyRule {
+        pattern: "/api/version",
+        methods: None,
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/api/config",
+        methods: None,
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/api/provider",
+        methods: None,
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/api/agent",
+        methods: None,
+        permission: "agent:read",
+    },
 ];
 
 /// Find the required permission for a given path + method.
@@ -130,7 +203,7 @@ const POLICY_RULES: &[PolicyRule] = &[
 fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
     for rule in POLICY_RULES {
         let matches = if rule.pattern.ends_with('/') {
-            path.starts_with(rule.pattern) || path == &rule.pattern[..rule.pattern.len()-1]
+            path.starts_with(rule.pattern) || path == &rule.pattern[..rule.pattern.len() - 1]
         } else {
             path == rule.pattern || path.starts_with(&format!("{}/", rule.pattern))
         };
@@ -152,10 +225,7 @@ fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
 /// Runs after `require_auth` so the bearer token is already validated.
 /// Currently maps the static bearer token to an admin role since
 /// codetether-agent uses a single shared token model.
-async fn policy_middleware(
-    request: Request<Body>,
-    next: Next,
-) -> Result<Response, StatusCode> {
+async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     let path = request.uri().path().to_string();
     let method = request.method().as_str().to_string();
 
@@ -277,7 +347,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
         // Mandatory auth middleware — applies to all routes
-        .layer(middleware::from_fn_with_state(state.clone(), audit_middleware))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            audit_middleware,
+        ))
         .layer(axum::Extension(state.auth.clone()))
         .layer(middleware::from_fn(policy_middleware))
         .layer(middleware::from_fn(auth::require_auth))
@@ -648,7 +721,12 @@ async fn list_audit_entries(
             "k8s" => AuditCategory::K8s,
             "sandbox" => AuditCategory::Sandbox,
             "config" => AuditCategory::Config,
-            _ => return Err((StatusCode::BAD_REQUEST, format!("Unknown category: {}", cat))),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    format!("Unknown category: {}", cat),
+                ));
+            }
         };
         state.audit_log.by_category(category, limit).await
     } else {
@@ -676,18 +754,26 @@ async fn k8s_scale(
     Json(req): Json<ScaleRequest>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
     if req.replicas < 0 || req.replicas > 100 {
-        return Err((StatusCode::BAD_REQUEST, "Replicas must be between 0 and 100".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Replicas must be between 0 and 100".to_string(),
+        ));
     }
 
-    state.audit_log.log(
-        AuditCategory::K8s,
-        format!("scale:{}", req.replicas),
-        AuditOutcome::Success,
-        None,
-        None,
-    ).await;
+    state
+        .audit_log
+        .log(
+            AuditCategory::K8s,
+            format!("scale:{}", req.replicas),
+            AuditOutcome::Success,
+            None,
+            None,
+        )
+        .await;
 
-    state.k8s.scale(req.replicas)
+    state
+        .k8s
+        .scale(req.replicas)
         .await
         .map(Json)
         .map_err(internal_error)
@@ -696,15 +782,20 @@ async fn k8s_scale(
 async fn k8s_restart(
     State(state): State<AppState>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    state.audit_log.log(
-        AuditCategory::K8s,
-        "rolling_restart",
-        AuditOutcome::Success,
-        None,
-        None,
-    ).await;
+    state
+        .audit_log
+        .log(
+            AuditCategory::K8s,
+            "rolling_restart",
+            AuditOutcome::Success,
+            None,
+            None,
+        )
+        .await;
 
-    state.k8s.rolling_restart()
+    state
+        .k8s
+        .rolling_restart()
         .await
         .map(Json)
         .map_err(internal_error)
@@ -713,7 +804,9 @@ async fn k8s_restart(
 async fn k8s_list_pods(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<crate::k8s::PodInfo>>, (StatusCode, String)> {
-    state.k8s.list_pods()
+    state
+        .k8s
+        .list_pods()
         .await
         .map(Json)
         .map_err(internal_error)

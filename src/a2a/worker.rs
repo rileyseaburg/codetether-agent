@@ -663,31 +663,39 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
         if let Some(provider) = registry.get(provider_name) {
             match provider.list_models().await {
                 Ok(models) => {
-                    let enriched: Vec<crate::provider::ModelInfo> = models.into_iter().map(|mut m| {
-                        // Enrich with catalog pricing if the provider didn't set it
-                        if m.input_cost_per_million.is_none() || m.output_cost_per_million.is_none() {
-                            if let Some(ref cat) = catalog {
-                                let cat_pid = catalog_alias(provider_name);
-                                if let Some(prov_info) = cat.get_provider(&cat_pid) {
-                                    // Try exact match first, then strip "us." prefix (bedrock uses us.vendor.model format)
-                                    let model_info = prov_info.models.get(&m.id).or_else(|| {
-                                        m.id.strip_prefix("us.").and_then(|stripped| prov_info.models.get(stripped))
-                                    });
-                                    if let Some(model_info) = model_info {
-                                        if let Some(ref cost) = model_info.cost {
-                                            if m.input_cost_per_million.is_none() {
-                                                m.input_cost_per_million = Some(cost.input);
-                                            }
-                                            if m.output_cost_per_million.is_none() {
-                                                m.output_cost_per_million = Some(cost.output);
+                    let enriched: Vec<crate::provider::ModelInfo> = models
+                        .into_iter()
+                        .map(|mut m| {
+                            // Enrich with catalog pricing if the provider didn't set it
+                            if m.input_cost_per_million.is_none()
+                                || m.output_cost_per_million.is_none()
+                            {
+                                if let Some(ref cat) = catalog {
+                                    let cat_pid = catalog_alias(provider_name);
+                                    if let Some(prov_info) = cat.get_provider(&cat_pid) {
+                                        // Try exact match first, then strip "us." prefix (bedrock uses us.vendor.model format)
+                                        let model_info =
+                                            prov_info.models.get(&m.id).or_else(|| {
+                                                m.id.strip_prefix("us.").and_then(|stripped| {
+                                                    prov_info.models.get(stripped)
+                                                })
+                                            });
+                                        if let Some(model_info) = model_info {
+                                            if let Some(ref cost) = model_info.cost {
+                                                if m.input_cost_per_million.is_none() {
+                                                    m.input_cost_per_million = Some(cost.input);
+                                                }
+                                                if m.output_cost_per_million.is_none() {
+                                                    m.output_cost_per_million = Some(cost.output);
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
-                        m
-                    }).collect();
+                            m
+                        })
+                        .collect();
                     if !enriched.is_empty() {
                         tracing::debug!("Provider {}: {} models", provider_name, enriched.len());
                         models_by_provider.insert(provider_name.to_string(), enriched);
@@ -1006,10 +1014,7 @@ async fn handle_task(
         let status = res.status();
         let text = res.text().await?;
         if status == reqwest::StatusCode::CONFLICT {
-            tracing::debug!(
-                task_id,
-                "Task already claimed by another worker, skipping"
-            );
+            tracing::debug!(task_id, "Task already claimed by another worker, skipping");
         } else {
             tracing::warn!(task_id, %status, "Failed to claim task: {}", text);
         }

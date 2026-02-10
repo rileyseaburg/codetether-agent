@@ -545,7 +545,10 @@ impl CognitionRuntime {
                 .ok()
                 .and_then(|v| v.parse::<f32>().ok()),
             max_tokens: env_usize("CODETETHER_COGNITION_THINKER_MAX_TOKENS", 256),
-            timeout_ms: env_u64("CODETETHER_COGNITION_THINKER_TIMEOUT_MS", thinker_timeout_default),
+            timeout_ms: env_u64(
+                "CODETETHER_COGNITION_THINKER_TIMEOUT_MS",
+                thinker_timeout_default,
+            ),
             candle_model_path: std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH").ok(),
             candle_tokenizer_path: std::env::var(
                 "CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH",
@@ -999,7 +1002,8 @@ impl CognitionRuntime {
                                 Utc::now() + ChronoDuration::seconds(gov.vote_timeout_secs as i64),
                             ),
                             votes_requested: false,
-                            quorum_needed: (work_items.len() as f32 * gov.quorum_fraction).ceil() as usize,
+                            quorum_needed: (work_items.len() as f32 * gov.quorum_fraction).ceil()
+                                as usize,
                         };
 
                         new_events.push(ThoughtEvent {

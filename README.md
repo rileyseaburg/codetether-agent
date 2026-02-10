@@ -27,15 +27,28 @@ This release implements four major security features, making CodeTether a produc
 
 ## Install
 
+**Linux / macOS:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
 
-Downloads the binary to `/usr/local/bin` (or `~/.local/bin`) and the FunctionGemma model (~292 MB) for local tool-call routing. No Rust toolchain required.
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
+```
+
+Downloads the binary and the FunctionGemma model (~292 MB) for local tool-call routing. No Rust toolchain required.
 
 ```bash
-# Skip FunctionGemma model
+# Skip FunctionGemma model (Linux/macOS)
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --no-functiongemma
+```
+
+```powershell
+# Skip FunctionGemma model (Windows)
+.\install.ps1 -NoFunctionGemma
 ```
 
 ### From Source

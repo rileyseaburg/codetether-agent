@@ -843,11 +843,9 @@ async fn main() -> anyhow::Result<()> {
             match args.command {
                 MoltbookCommand::Register(reg) => {
                     println!("🦞 Registering on Moltbook as '{}'...\n", reg.name);
-                    let result = moltbook::MoltbookClient::register(
-                        &reg.name,
-                        reg.description.as_deref(),
-                    )
-                    .await?;
+                    let result =
+                        moltbook::MoltbookClient::register(&reg.name, reg.description.as_deref())
+                            .await?;
 
                     println!("✅ Registered successfully!\n");
                     println!("   Agent:             {}", reg.name);
@@ -903,7 +901,9 @@ async fn main() -> anyhow::Result<()> {
                     let client = moltbook::MoltbookClient::from_vault_or_env().await?;
                     let profile = client.me().await?;
                     let (title, content) = moltbook::intro_post(&profile.name);
-                    let resp = client.create_post("introductions", &title, &content).await?;
+                    let resp = client
+                        .create_post("introductions", &title, &content)
+                        .await?;
                     println!("✅ CodeTether intro posted to m/introductions!");
                     println!("   Title: {}", title);
                     tracing::debug!("Post response: {}", resp);

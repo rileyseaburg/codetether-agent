@@ -43,10 +43,7 @@ impl YouTubeTool {
         let base = voice_api_url();
         let url = format!("{base}/youtube/publish-episode");
 
-        let privacy = params
-            .privacy_status
-            .as_deref()
-            .unwrap_or("unlisted");
+        let privacy = params.privacy_status.as_deref().unwrap_or("unlisted");
 
         let mut form = reqwest::multipart::Form::new()
             .text("podcast_id", params.podcast_id.clone())
@@ -123,10 +120,7 @@ impl YouTubeTool {
             .file_name(file_name)
             .mime_str("video/mp4")?;
 
-        let privacy = params
-            .privacy_status
-            .as_deref()
-            .unwrap_or("unlisted");
+        let privacy = params.privacy_status.as_deref().unwrap_or("unlisted");
 
         let mut form = reqwest::multipart::Form::new()
             .part("video", part)
@@ -333,21 +327,31 @@ impl Tool for YouTubeTool {
             "publish_episode" => {
                 let podcast_id = match p.podcast_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "youtube",
-                        "'podcast_id' is required for publish_episode",
-                        Some(vec!["podcast_id"]),
-                        Some(json!({"action": "publish_episode", "podcast_id": "abc123", "episode_id": "xyz789"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "youtube",
+                            "'podcast_id' is required for publish_episode",
+                            Some(vec!["podcast_id"]),
+                            Some(
+                                json!({"action": "publish_episode", "podcast_id": "abc123", "episode_id": "xyz789"}),
+                            ),
+                        ));
+                    }
                 };
                 let episode_id = match p.episode_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "youtube",
-                        "'episode_id' is required for publish_episode",
-                        Some(vec!["episode_id"]),
-                        Some(json!({"action": "publish_episode", "podcast_id": "abc123", "episode_id": "xyz789"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "youtube",
+                            "'episode_id' is required for publish_episode",
+                            Some(vec!["episode_id"]),
+                            Some(
+                                json!({"action": "publish_episode", "podcast_id": "abc123", "episode_id": "xyz789"}),
+                            ),
+                        ));
+                    }
                 };
                 self.publish_episode(&PublishEpisodeParams {
                     podcast_id,
@@ -356,26 +360,37 @@ impl Tool for YouTubeTool {
                     custom_title: p.custom_title,
                     custom_description: p.custom_description,
                     tags: p.tags,
-                }).await
+                })
+                .await
             }
             "upload_video" => {
                 let file_path = match p.file_path {
                     Some(f) if !f.trim().is_empty() => f,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "youtube",
-                        "'file_path' is required for upload_video",
-                        Some(vec!["file_path"]),
-                        Some(json!({"action": "upload_video", "file_path": "/path/to/video.mp4", "title": "My Video"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "youtube",
+                            "'file_path' is required for upload_video",
+                            Some(vec!["file_path"]),
+                            Some(
+                                json!({"action": "upload_video", "file_path": "/path/to/video.mp4", "title": "My Video"}),
+                            ),
+                        ));
+                    }
                 };
                 let title = match p.title {
                     Some(t) if !t.trim().is_empty() => t,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "youtube",
-                        "'title' is required for upload_video",
-                        Some(vec!["title"]),
-                        Some(json!({"action": "upload_video", "file_path": "/path/to/video.mp4", "title": "My Video"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "youtube",
+                            "'title' is required for upload_video",
+                            Some(vec!["title"]),
+                            Some(
+                                json!({"action": "upload_video", "file_path": "/path/to/video.mp4", "title": "My Video"}),
+                            ),
+                        ));
+                    }
                 };
                 self.upload_video(&UploadVideoParams {
                     file_path,
@@ -384,11 +399,13 @@ impl Tool for YouTubeTool {
                     tags: p.tags,
                     privacy_status: p.privacy_status,
                     category_id: p.category_id,
-                }).await
+                })
+                .await
             }
             "status" => self.status().await,
             other => Ok(ToolResult::structured_error(
-                "INVALID_ACTION", "youtube",
+                "INVALID_ACTION",
+                "youtube",
                 &format!("Unknown action '{other}'. Use: publish_episode, upload_video, status"),
                 None,
                 Some(json!({"action": "status"})),

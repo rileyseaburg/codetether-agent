@@ -182,7 +182,9 @@ impl AvatarTool {
         let body: Value = resp.json().await.context("Failed to parse response")?;
 
         if let Some(error) = body["error"].as_str() {
-            return Ok(ToolResult::error(format!("Avatar generation error: {error}")));
+            return Ok(ToolResult::error(format!(
+                "Avatar generation error: {error}"
+            )));
         }
 
         let video_path = body["video_path"].as_str().unwrap_or("unknown");
@@ -234,7 +236,9 @@ impl AvatarTool {
         let body: Value = resp.json().await.context("Failed to parse response")?;
 
         if let Some(error) = body["error"].as_str() {
-            return Ok(ToolResult::error(format!("Avatar generation error: {error}")));
+            return Ok(ToolResult::error(format!(
+                "Avatar generation error: {error}"
+            )));
         }
 
         let video_path = body["video_path"].as_str().unwrap_or("unknown");
@@ -248,7 +252,9 @@ impl AvatarTool {
         if let Some(yt) = body.get("youtube") {
             let yt_url = yt["url"].as_str().unwrap_or("unknown");
             let yt_id = yt["video_id"].as_str().unwrap_or("unknown");
-            output.push_str(&format!("\n\nUploaded to YouTube!\nURL: {yt_url}\nVideo ID: {yt_id}"));
+            output.push_str(&format!(
+                "\n\nUploaded to YouTube!\nURL: {yt_url}\nVideo ID: {yt_id}"
+            ));
         }
 
         if let Some(yt_err) = body["youtube_error"].as_str() {
@@ -502,26 +508,37 @@ impl Tool for AvatarTool {
                     audio_file: p.audio_file,
                     model_video: p.model_video,
                     voice_id: p.voice_id,
-                }).await
+                })
+                .await
             }
             "generate_from_episode" => {
                 let podcast_id = match p.podcast_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "avatar",
-                        "'podcast_id' is required for generate_from_episode",
-                        Some(vec!["podcast_id"]),
-                        Some(json!({"action": "generate_from_episode", "podcast_id": "abc123", "episode_id": "xyz789"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "avatar",
+                            "'podcast_id' is required for generate_from_episode",
+                            Some(vec!["podcast_id"]),
+                            Some(
+                                json!({"action": "generate_from_episode", "podcast_id": "abc123", "episode_id": "xyz789"}),
+                            ),
+                        ));
+                    }
                 };
                 let episode_id = match p.episode_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "avatar",
-                        "'episode_id' is required for generate_from_episode",
-                        Some(vec!["episode_id"]),
-                        Some(json!({"action": "generate_from_episode", "podcast_id": "abc123", "episode_id": "xyz789"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "avatar",
+                            "'episode_id' is required for generate_from_episode",
+                            Some(vec!["episode_id"]),
+                            Some(
+                                json!({"action": "generate_from_episode", "podcast_id": "abc123", "episode_id": "xyz789"}),
+                            ),
+                        ));
+                    }
                 };
                 self.generate_from_episode(&EpisodeAvatarParams {
                     podcast_id,
@@ -529,33 +546,48 @@ impl Tool for AvatarTool {
                     model_video: p.model_video,
                     upload_youtube: p.upload_youtube.unwrap_or(false),
                     privacy_status: p.privacy_status,
-                }).await
+                })
+                .await
             }
             "list_models" => self.list_models().await,
             "upload_model" => {
                 let name = match p.name {
                     Some(n) if !n.trim().is_empty() => n,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "avatar",
-                        "'name' is required for upload_model",
-                        Some(vec!["name"]),
-                        Some(json!({"action": "upload_model", "name": "Riley", "file_path": "/path/to/video.mp4"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "avatar",
+                            "'name' is required for upload_model",
+                            Some(vec!["name"]),
+                            Some(
+                                json!({"action": "upload_model", "name": "Riley", "file_path": "/path/to/video.mp4"}),
+                            ),
+                        ));
+                    }
                 };
                 let file_path = match p.file_path {
                     Some(f) if !f.trim().is_empty() => f,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "avatar",
-                        "'file_path' is required for upload_model",
-                        Some(vec!["file_path"]),
-                        Some(json!({"action": "upload_model", "name": "Riley", "file_path": "/path/to/video.mp4"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "avatar",
+                            "'file_path' is required for upload_model",
+                            Some(vec!["file_path"]),
+                            Some(
+                                json!({"action": "upload_model", "name": "Riley", "file_path": "/path/to/video.mp4"}),
+                            ),
+                        ));
+                    }
                 };
-                self.upload_model(&UploadModelParams { name, file_path }).await
+                self.upload_model(&UploadModelParams { name, file_path })
+                    .await
             }
             other => Ok(ToolResult::structured_error(
-                "INVALID_ACTION", "avatar",
-                &format!("Unknown action '{other}'. Use: status, start, stop, generate, generate_from_episode, list_models, upload_model"),
+                "INVALID_ACTION",
+                "avatar",
+                &format!(
+                    "Unknown action '{other}'. Use: status, start, stop, generate, generate_from_episode, list_models, upload_model"
+                ),
                 None,
                 Some(json!({"action": "status"})),
             )),

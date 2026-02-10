@@ -223,7 +223,8 @@ impl ThinkerClient {
                 Err(e) => {
                     if is_transient_reqwest_error(&e) {
                         tracing::warn!(attempt, error = %e, "thinker HTTP request failed (transient)");
-                        last_err = Some(anyhow::Error::from(e).context("transient thinker send error"));
+                        last_err =
+                            Some(anyhow::Error::from(e).context("transient thinker send error"));
                         continue;
                     }
                     return Err(anyhow::Error::from(e).context("non-transient thinker send error"));
@@ -234,13 +235,24 @@ impl ThinkerClient {
             if is_transient_http_error(status.as_u16()) {
                 let body_text = response.text().await.unwrap_or_default();
                 tracing::warn!(attempt, status = %status, "thinker received transient HTTP error");
-                last_err = Some(anyhow!("thinker request failed with status {}: {}", status, body_text));
+                last_err = Some(anyhow!(
+                    "thinker request failed with status {}: {}",
+                    status,
+                    body_text
+                ));
                 continue;
             }
 
             if !status.is_success() {
-                let body_text = response.text().await.unwrap_or_else(|_| "<empty>".to_string());
-                return Err(anyhow!("thinker request failed with status {}: {}", status, body_text));
+                let body_text = response
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "<empty>".to_string());
+                return Err(anyhow!(
+                    "thinker request failed with status {}: {}",
+                    status,
+                    body_text
+                ));
             }
 
             let payload: OpenAIChatResponse = response
@@ -275,7 +287,9 @@ impl ThinkerClient {
             return Ok(output);
         }
 
-        Err(last_err.unwrap_or_else(|| anyhow!("thinker HTTP request failed after {max_attempts} attempts")))
+        Err(last_err.unwrap_or_else(|| {
+            anyhow!("thinker HTTP request failed after {max_attempts} attempts")
+        }))
     }
 }
 
@@ -627,10 +641,7 @@ fn detect_context_window(content: &gguf_file::Content, architecture: &str) -> Op
 /// Extract EOS token IDs from GGUF metadata before the content is consumed.
 fn extract_gguf_eos_ids(content: &gguf_file::Content) -> Vec<u32> {
     let mut ids = Vec::new();
-    for key in [
-        "tokenizer.ggml.eos_token_id",
-        "tokenizer.ggml.eot_token_id",
-    ] {
+    for key in ["tokenizer.ggml.eos_token_id", "tokenizer.ggml.eot_token_id"] {
         if let Some(v) = content.metadata.get(key) {
             if let Ok(id) = v.to_u32() {
                 if !ids.contains(&id) {

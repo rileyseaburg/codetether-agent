@@ -45,7 +45,13 @@ impl PodcastTool {
         let mut form = reqwest::multipart::Form::new()
             .text("title", params.title.clone())
             .text("description", params.description.clone())
-            .text("author", params.author.clone().unwrap_or_else(|| "CodeTether Agent".into()));
+            .text(
+                "author",
+                params
+                    .author
+                    .clone()
+                    .unwrap_or_else(|| "CodeTether Agent".into()),
+            );
 
         if let Some(ref email) = params.email {
             form = form.text("email", email.clone());
@@ -214,8 +220,7 @@ impl PodcastTool {
         }
 
         let body: Value = resp.json().await.context("Failed to parse response")?;
-        let formatted =
-            serde_json::to_string_pretty(&body).unwrap_or_else(|_| body.to_string());
+        let formatted = serde_json::to_string_pretty(&body).unwrap_or_else(|_| body.to_string());
 
         Ok(ToolResult::success(formatted))
     }
@@ -409,21 +414,31 @@ impl Tool for PodcastTool {
             "create_podcast" => {
                 let title = match p.title {
                     Some(t) if !t.trim().is_empty() => t,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'title' is required for create_podcast",
-                        Some(vec!["title"]),
-                        Some(json!({"action": "create_podcast", "title": "My Podcast", "description": "A tech podcast"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'title' is required for create_podcast",
+                            Some(vec!["title"]),
+                            Some(
+                                json!({"action": "create_podcast", "title": "My Podcast", "description": "A tech podcast"}),
+                            ),
+                        ));
+                    }
                 };
                 let description = match p.description {
                     Some(d) if !d.trim().is_empty() => d,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'description' is required for create_podcast",
-                        Some(vec!["description"]),
-                        Some(json!({"action": "create_podcast", "title": "My Podcast", "description": "A tech podcast"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'description' is required for create_podcast",
+                            Some(vec!["description"]),
+                            Some(
+                                json!({"action": "create_podcast", "title": "My Podcast", "description": "A tech podcast"}),
+                            ),
+                        ));
+                    }
                 };
                 self.create_podcast(&CreatePodcastParams {
                     title,
@@ -433,35 +448,51 @@ impl Tool for PodcastTool {
                     category: p.category,
                     subcategory: p.subcategory,
                     language: p.language,
-                }).await
+                })
+                .await
             }
             "create_episode" => {
                 let podcast_id = match p.podcast_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'podcast_id' is required for create_episode",
-                        Some(vec!["podcast_id"]),
-                        Some(json!({"action": "create_episode", "podcast_id": "abc12345", "title": "Episode 1", "script": "Hello listeners..."})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'podcast_id' is required for create_episode",
+                            Some(vec!["podcast_id"]),
+                            Some(
+                                json!({"action": "create_episode", "podcast_id": "abc12345", "title": "Episode 1", "script": "Hello listeners..."}),
+                            ),
+                        ));
+                    }
                 };
                 let title = match p.title {
                     Some(t) if !t.trim().is_empty() => t,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'title' is required for create_episode",
-                        Some(vec!["title"]),
-                        Some(json!({"action": "create_episode", "podcast_id": "abc12345", "title": "Episode 1", "script": "Hello listeners..."})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'title' is required for create_episode",
+                            Some(vec!["title"]),
+                            Some(
+                                json!({"action": "create_episode", "podcast_id": "abc12345", "title": "Episode 1", "script": "Hello listeners..."}),
+                            ),
+                        ));
+                    }
                 };
                 let script = match p.script {
                     Some(s) if !s.trim().is_empty() => s,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'script' is required for create_episode — this is the text that will be converted to speech",
-                        Some(vec!["script"]),
-                        Some(json!({"action": "create_episode", "podcast_id": "abc12345", "title": "Episode 1", "script": "Hello listeners..."})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'script' is required for create_episode — this is the text that will be converted to speech",
+                            Some(vec!["script"]),
+                            Some(
+                                json!({"action": "create_episode", "podcast_id": "abc12345", "title": "Episode 1", "script": "Hello listeners..."}),
+                            ),
+                        ));
+                    }
                 };
                 self.create_episode(&CreateEpisodeParams {
                     podcast_id,
@@ -471,57 +502,77 @@ impl Tool for PodcastTool {
                     description: p.description,
                     episode_number: p.episode_number,
                     season_number: p.season_number,
-                }).await
+                })
+                .await
             }
             "list_podcasts" => self.list_podcasts().await,
             "get_podcast" => {
                 let podcast_id = match p.podcast_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'podcast_id' is required for get_podcast",
-                        Some(vec!["podcast_id"]),
-                        Some(json!({"action": "get_podcast", "podcast_id": "abc12345"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'podcast_id' is required for get_podcast",
+                            Some(vec!["podcast_id"]),
+                            Some(json!({"action": "get_podcast", "podcast_id": "abc12345"})),
+                        ));
+                    }
                 };
                 self.get_podcast(&podcast_id).await
             }
             "delete_podcast" => {
                 let podcast_id = match p.podcast_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'podcast_id' is required for delete_podcast",
-                        Some(vec!["podcast_id"]),
-                        Some(json!({"action": "delete_podcast", "podcast_id": "abc12345"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'podcast_id' is required for delete_podcast",
+                            Some(vec!["podcast_id"]),
+                            Some(json!({"action": "delete_podcast", "podcast_id": "abc12345"})),
+                        ));
+                    }
                 };
                 self.delete_podcast(&podcast_id).await
             }
             "delete_episode" => {
                 let podcast_id = match p.podcast_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'podcast_id' is required for delete_episode",
-                        Some(vec!["podcast_id"]),
-                        Some(json!({"action": "delete_episode", "podcast_id": "abc12345", "episode_id": "xyz789"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'podcast_id' is required for delete_episode",
+                            Some(vec!["podcast_id"]),
+                            Some(
+                                json!({"action": "delete_episode", "podcast_id": "abc12345", "episode_id": "xyz789"}),
+                            ),
+                        ));
+                    }
                 };
                 let episode_id = match p.episode_id {
                     Some(id) if !id.trim().is_empty() => id,
-                    _ => return Ok(ToolResult::structured_error(
-                        "MISSING_PARAM", "podcast",
-                        "'episode_id' is required for delete_episode",
-                        Some(vec!["episode_id"]),
-                        Some(json!({"action": "delete_episode", "podcast_id": "abc12345", "episode_id": "xyz789"})),
-                    )),
+                    _ => {
+                        return Ok(ToolResult::structured_error(
+                            "MISSING_PARAM",
+                            "podcast",
+                            "'episode_id' is required for delete_episode",
+                            Some(vec!["episode_id"]),
+                            Some(
+                                json!({"action": "delete_episode", "podcast_id": "abc12345", "episode_id": "xyz789"}),
+                            ),
+                        ));
+                    }
                 };
                 self.delete_episode(&podcast_id, &episode_id).await
             }
             other => Ok(ToolResult::structured_error(
-                "INVALID_ACTION", "podcast",
-                &format!("Unknown action '{other}'. Use: create_podcast, create_episode, list_podcasts, get_podcast, delete_podcast, delete_episode"),
+                "INVALID_ACTION",
+                "podcast",
+                &format!(
+                    "Unknown action '{other}'. Use: create_podcast, create_episode, list_podcasts, get_podcast, delete_podcast, delete_episode"
+                ),
                 None,
                 Some(json!({"action": "list_podcasts"})),
             )),

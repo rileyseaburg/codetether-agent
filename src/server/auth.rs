@@ -36,7 +36,9 @@ impl AuthState {
             _ => {
                 let generated: String = {
                     let mut rng = rand::rng();
-                    (0..32).map(|_| format!("{:02x}", rng.random::<u8>())).collect()
+                    (0..32)
+                        .map(|_| format!("{:02x}", rng.random::<u8>()))
+                        .collect()
                 };
                 tracing::warn!(
                     token = %generated,
@@ -67,10 +69,7 @@ impl AuthState {
 
 /// Axum middleware layer that enforces Bearer token auth on every request
 /// except public paths.
-pub async fn require_auth(
-    request: Request<Body>,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn require_auth(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     let path = request.uri().path();
 
     // Allow public paths through without auth.
@@ -96,15 +95,13 @@ pub async fn require_auth(
         _ => {
             // Also accept token via query parameter for SSE/WebSocket clients.
             let query = request.uri().query().unwrap_or("");
-            let token_param = query
-                .split('&')
-                .find_map(|pair| {
-                    let mut parts = pair.splitn(2, '=');
-                    match (parts.next(), parts.next()) {
-                        (Some("token"), Some(v)) => Some(v),
-                        _ => None,
-                    }
-                });
+            let token_param = query.split('&').find_map(|pair| {
+                let mut parts = pair.splitn(2, '=');
+                match (parts.next(), parts.next()) {
+                    (Some("token"), Some(v)) => Some(v),
+                    _ => None,
+                }
+            });
             match token_param {
                 Some(t) => t,
                 None => return Err(StatusCode::UNAUTHORIZED),
@@ -147,7 +144,9 @@ mod tests {
     fn auth_state_generates_token_when_env_missing() {
         // Ensure the env var is not set for this test.
         // SAFETY: This is a single-threaded test; no other thread reads this env var.
-        unsafe { std::env::remove_var("CODETETHER_AUTH_TOKEN"); }
+        unsafe {
+            std::env::remove_var("CODETETHER_AUTH_TOKEN");
+        }
         let state = AuthState::from_env();
         assert_eq!(state.token().len(), 64); // 32 bytes = 64 hex chars
     }
