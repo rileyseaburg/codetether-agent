@@ -89,7 +89,7 @@ struct OpaResponse {
 // ─── Local policy data (compiled in) ─────────────────────────────
 
 /// Embedded copy of `policies/data.json` for local evaluation.
-static POLICY_DATA: &str = include_str!("../../../policies/data.json");
+static POLICY_DATA: &str = include_str!("../../policies/data.json");
 
 /// Lightweight local policy evaluator.
 fn evaluate_local(user: &PolicyUser, action: &str) -> bool {
