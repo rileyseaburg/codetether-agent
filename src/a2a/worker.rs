@@ -669,7 +669,11 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
                             if let Some(ref cat) = catalog {
                                 let cat_pid = catalog_alias(provider_name);
                                 if let Some(prov_info) = cat.get_provider(&cat_pid) {
-                                    if let Some(model_info) = prov_info.models.get(&m.id) {
+                                    // Try exact match first, then strip "us." prefix (bedrock uses us.vendor.model format)
+                                    let model_info = prov_info.models.get(&m.id).or_else(|| {
+                                        m.id.strip_prefix("us.").and_then(|stripped| prov_info.models.get(stripped))
+                                    });
+                                    if let Some(model_info) = model_info {
                                         if let Some(ref cost) = model_info.cost {
                                             if m.input_cost_per_million.is_none() {
                                                 m.input_cost_per_million = Some(cost.input);

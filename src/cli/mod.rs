@@ -434,6 +434,9 @@ pub enum MoltbookCommand {
     /// Run a heartbeat — check feed, show recent posts
     Heartbeat,
 
+    /// Comment on a Moltbook post
+    Comment(MoltbookCommentArgs),
+
     /// Search Moltbook posts and comments
     Search(MoltbookSearchArgs),
 }
@@ -467,6 +470,15 @@ pub struct MoltbookPostArgs {
     /// Submolt to post in
     #[arg(short, long, default_value = "general")]
     pub submolt: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct MoltbookCommentArgs {
+    /// Post ID to comment on
+    pub post_id: String,
+
+    /// Comment content
+    pub content: String,
 }
 
 #[derive(Parser, Debug)]

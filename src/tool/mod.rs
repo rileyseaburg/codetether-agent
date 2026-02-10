@@ -2,6 +2,7 @@
 //!
 //! Tools are the executable capabilities available to agents.
 
+pub mod avatar;
 pub mod bash;
 pub mod batch;
 pub mod codesearch;
@@ -14,6 +15,7 @@ pub mod lsp;
 pub mod multiedit;
 pub mod patch;
 pub mod plan;
+pub mod podcast;
 pub mod prd;
 pub mod question;
 pub mod ralph;
@@ -27,6 +29,7 @@ pub mod undo;
 pub mod voice;
 pub mod webfetch;
 pub mod websearch;
+pub mod youtube;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -206,6 +209,9 @@ impl ToolRegistry {
         registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
         registry.register(Arc::new(undo::UndoTool));
         registry.register(Arc::new(voice::VoiceTool::new()));
+        registry.register(Arc::new(podcast::PodcastTool::new()));
+        registry.register(Arc::new(youtube::YouTubeTool::new()));
+        registry.register(Arc::new(avatar::AvatarTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
 
@@ -242,6 +248,9 @@ impl ToolRegistry {
         registry.register(Arc::new(prd::PrdTool::new()));
         registry.register(Arc::new(undo::UndoTool));
         registry.register(Arc::new(voice::VoiceTool::new()));
+        registry.register(Arc::new(podcast::PodcastTool::new()));
+        registry.register(Arc::new(youtube::YouTubeTool::new()));
+        registry.register(Arc::new(avatar::AvatarTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
 
