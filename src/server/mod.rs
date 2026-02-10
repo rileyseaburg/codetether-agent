@@ -3,6 +3,7 @@
 //! Main API server for the CodeTether Agent
 
 pub mod auth;
+pub mod policy;
 
 use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};

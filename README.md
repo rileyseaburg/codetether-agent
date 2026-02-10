@@ -6,9 +6,17 @@
 
 A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
 
-## v1.0.0
+## v1.1.0 — Security-First Release
 
-This major release brings together the full CodeTether agent experience:
+This release implements four major security features, making CodeTether a production-grade runtime with mandatory security controls:
+
+- **Mandatory Authentication** — Bearer token auth middleware that **cannot be disabled**. Auto-generates HMAC-SHA256 tokens if `CODETETHER_AUTH_TOKEN` is not set. Only `/health` is exempt.
+- **System-Wide Audit Trail** — Every API call, tool execution, and session event is logged to an append-only JSON Lines file. Queryable via new `/v1/audit/events` and `/v1/audit/query` endpoints.
+- **Plugin Sandboxing & Code Signing** — Tool manifests are SHA-256 hashed and Ed25519 signed. Sandbox policies enforce resource limits (memory, CPU, network). Unsigned or tampered tools are rejected.
+- **Kubernetes Self-Deployment** — The agent manages its own pods via the Kubernetes API. Auto-detects cluster environment, creates/updates Deployments, scales replicas, health-checks pods, and runs a reconciliation loop every 30 seconds.
+- **New API Endpoints** — `/v1/audit/events`, `/v1/audit/query`, `/v1/k8s/status`, `/v1/k8s/scale`, `/v1/k8s/health`, `/v1/k8s/reconcile`
+
+### v1.0.0
 
 - **FunctionGemma Tool Router** — A local 270M-param model that converts text-only LLM responses into structured tool calls. Your primary LLM reasons; FunctionGemma formats. Provider-agnostic, zero-cost passthrough when not needed, safe degradation on failure.
 - **RLM + FunctionGemma Integration** — The Recursive Language Model now uses structured tool dispatch instead of regex-parsed DSL. `rlm_head`, `rlm_tail`, `rlm_grep`, `rlm_count`, `rlm_slice`, `rlm_llm_query`, and `rlm_final` are proper tool definitions.
@@ -86,6 +94,37 @@ codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
 codetether worker --server URL           # A2A worker mode
 codetether config --show                 # Show config
 ```
+
+## Security
+
+CodeTether treats security as non-optional infrastructure, not a feature flag.
+
+| Control | Implementation |
+|---------|----------------|
+| **Authentication** | Mandatory Bearer token on every endpoint (except `/health`). Cannot be disabled. |
+| **Audit Trail** | Append-only JSON Lines log of every action — queryable by actor, action, resource, time range. |
+| **Plugin Signing** | Ed25519 signatures on tool manifests. SHA-256 content hashing. Unsigned tools rejected. |
+| **Sandboxing** | Resource-limited execution: max memory, max CPU seconds, network allow/deny per tool. |
+| **Secrets** | All API keys stored in HashiCorp Vault — never in config files or environment variables. |
+| **K8s Self-Healing** | Reconciliation loop detects unhealthy pods and triggers rolling restarts. |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CODETETHER_AUTH_TOKEN` | (auto-generated) | Bearer token for API auth. If unset, HMAC-SHA256 token is generated from hostname + timestamp. |
+| `KUBERNETES_SERVICE_HOST` | — | Set automatically inside K8s. Enables self-deployment features. |
+
+### Security API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/audit/events` | List recent audit events |
+| `POST` | `/v1/audit/query` | Query audit log with filters |
+| `GET` | `/v1/k8s/status` | Cluster and pod status |
+| `POST` | `/v1/k8s/scale` | Scale replica count |
+| `POST` | `/v1/k8s/health` | Trigger health check |
+| `POST` | `/v1/k8s/reconcile` | Trigger reconciliation |
 
 ## Features
 
@@ -217,10 +256,14 @@ All keys stored in Vault at `secret/codetether/providers/<name>`.
 │        │            │            │            │        │
 │        └────────────┴────────────┴────────────┘        │
 │                          │                             │
-│   ┌──────────────────────┴──────────────────────────┐  │
-│   │              HashiCorp Vault                    │  │
-│   │         (API Keys & Secrets)                    │  │
-│   └─────────────────────────────────────────────────┘  │
+│   ┌──────────┐  ┌────────┴────────┐  ┌──────────────┐  │
+│   │ Auth     │  │ HashiCorp Vault │  │ Audit Log    │  │
+│   │ (Bearer) │  │ (API Keys)      │  │ (JSON Lines) │  │
+│   └──────────┘  └─────────────────┘  └──────────────┘  │
+│   ┌──────────┐  ┌─────────────────┐                    │
+│   │ Sandbox  │  │ K8s Manager     │                    │
+│   │ (Ed25519)│  │ (Self-Deploy)   │                    │
+│   └──────────┘  └─────────────────┘                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -240,7 +283,7 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
 {
   "name": "CodeTether Agent",
   "description": "A2A-native AI coding agent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "skills": [
     { "id": "code-generation", "name": "Code Generation" },
     { "id": "code-review", "name": "Code Review" },
