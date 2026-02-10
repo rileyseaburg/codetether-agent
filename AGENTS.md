@@ -53,17 +53,25 @@ src/
 ├── lib.rs           # Library root - re-exports all modules
 ├── a2a/             # A2A protocol client/server/worker
 ├── agent/           # Agent definitions (builtin agents)
+├── audit/           # System-wide audit trail (JSON Lines, queryable)
+│   └── mod.rs       # AuditEntry, AuditLog, global singleton, query filters
 ├── cli/             # CLI commands (run, tui, serve, ralph, swarm, etc.)
 ├── config/          # Configuration loading
+├── k8s/             # Kubernetes self-deployment manager
+│   └── mod.rs       # K8sManager, cluster detection, pod lifecycle, reconcile loop
 ├── mcp/             # MCP protocol implementation
 ├── provider/        # LLM provider implementations
 ├── ralph/           # Autonomous PRD-driven development loop
 ├── rlm/             # Recursive Language Model processing
 ├── secrets/         # HashiCorp Vault secrets management
 ├── server/          # HTTP server (axum)
+│   ├── mod.rs       # Routes, middleware, AppState
+│   └── auth.rs      # Mandatory Bearer token auth (cannot be disabled)
 ├── session/         # Conversation session management
 ├── swarm/           # Parallel sub-agent orchestration
-├── tool/            # Tool implementations (24+ tools)
+├── tool/            # Tool implementations (27+ tools)
+│   ├── mod.rs       # Tool registry
+│   └── sandbox.rs   # Plugin sandboxing, Ed25519 signing, resource limits
 ├── tui/             # Terminal UI (ratatui + crossterm)
 └── worktree/        # Git worktree management for isolation
 ```
@@ -293,6 +301,33 @@ Message { role: Role::Assistant, content: vec![ContentPart::Text { text }] }
 Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id, content }] }
 ```
 
+## Security Modules
+
+### Authentication (`src/server/auth.rs`)
+- Mandatory Bearer token middleware — **cannot be disabled**
+- Auto-generates HMAC-SHA256 token if `CODETETHER_AUTH_TOKEN` env var not set
+- Only `/health` is exempt from auth
+- Integrate by adding `AuthLayer` to the axum router
+
+### Audit Trail (`src/audit/mod.rs`)
+- Global `AUDIT_LOG` singleton initialized at server startup
+- Log events with `log_event(actor, action, resource, outcome, metadata)`
+- Query with `query_audit_log(filters)` — filter by actor, action, resource, time range
+- Backend: append-only JSON Lines file
+
+### Plugin Sandbox (`src/tool/sandbox.rs`)
+- `ToolManifest`: tool_id, version, sha256_hash, signature, allowed_resources, limits
+- `ToolSandbox::execute()`: validates manifest signature (Ed25519), checks SHA-256 integrity, enforces resource policy
+- `ManifestStore`: registry for signed tool manifests
+- Sandbox policies: `Default`, `Restricted`, `Custom`
+
+### Kubernetes Manager (`src/k8s/mod.rs`)
+- `K8sManager::detect_cluster()` checks for `KUBERNETES_SERVICE_HOST`
+- `ensure_deployment()` creates or updates Deployments
+- `scale(replicas)` adjusts replica count
+- `reconcile_loop()` runs every 30s in background
+- All ops use the `kube` crate with in-cluster config
+
 ## Common Pitfalls
 
 1. **Tool results must use `Role::Tool`** - Using `Role::User` causes API errors with tool call validation
@@ -304,6 +339,10 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 4. **TodoStatus enum has aliases** - Accepts both `inprogress` and `in_progress` variants
 
 5. **Session must call `.save()` after modifications** - Persist to disk for session continuity
+
+6. **Auth is mandatory** - The `AuthLayer` in `src/server/auth.rs` cannot be conditionally removed. All endpoints except `/health` require a Bearer token.
+
+7. **Audit log must be initialized before serving** - Call `init_audit_log()` in `serve()` before binding the router. The `AUDIT_LOG` OnceCell can only be set once.
 
 ## PR/Commit Guidelines
 
