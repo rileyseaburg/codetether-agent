@@ -699,7 +699,7 @@ impl SwarmExecutor {
                     .await
                     .map_err(|_| anyhow::anyhow!("Swarm execution cancelled"))?;
 
-                let agent_start = Instant::now();
+                let _agent_start = Instant::now();
 
                 let start = Instant::now();
 
@@ -1245,7 +1245,11 @@ pub async fn run_agent_loop(
 
         // Log assistant output
         if !text_parts.is_empty() {
-            final_output = text_parts.join("\n");
+            let step_output = text_parts.join("\n");
+            if !final_output.is_empty() {
+                final_output.push('\n');
+            }
+            final_output.push_str(&step_output);
             tracing::info!(
                 step = steps,
                 output_len = final_output.len(),
@@ -1255,14 +1259,14 @@ pub async fn run_agent_loop(
 
             // Emit assistant message event for TUI detail view
             if let Some(ref tx) = event_tx {
-                let preview = if final_output.len() > 500 {
+                let preview = if step_output.len() > 500 {
                     let mut end = 500;
-                    while end > 0 && !final_output.is_char_boundary(end) {
+                    while end > 0 && !step_output.is_char_boundary(end) {
                         end -= 1;
                     }
-                    format!("{}...", &final_output[..end])
+                    format!("{}...", &step_output[..end])
                 } else {
-                    final_output.clone()
+                    step_output.clone()
                 };
                 let _ = tx.try_send(SwarmEvent::AgentMessage {
                     subtask_id: subtask_id.clone(),

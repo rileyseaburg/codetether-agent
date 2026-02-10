@@ -24,7 +24,10 @@ use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
+    event::{
+        self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste,
+        EnableMouseCapture, Event, KeyCode, KeyModifiers,
+    },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -54,7 +57,7 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture, EnableBracketedPaste)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -66,7 +69,8 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
     execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,
-        DisableMouseCapture
+        DisableMouseCapture,
+        DisableBracketedPaste
     )?;
     terminal.show_cursor()?;
 
@@ -88,6 +92,10 @@ enum MessageType {
     ToolResult {
         name: String,
         output: String,
+    },
+    File {
+        path: String,
+        mime_type: Option<String>,
     },
 }
 
@@ -142,6 +150,12 @@ struct App {
     is_processing: bool,
     processing_message: Option<String>,
     current_tool: Option<String>,
+    /// Tracks when processing started for elapsed timer display
+    processing_started_at: Option<Instant>,
+    /// Partial streaming text being assembled (shown with typing indicator)
+    streaming_text: Option<String>,
+    /// Total tool calls in this session for inspector
+    tool_call_count: usize,
     response_rx: Option<mpsc::Receiver<SessionEvent>>,
     /// Cached provider registry to avoid reloading from Vault on every message
     provider_registry: Option<std::sync::Arc<crate::provider::ProviderRegistry>>,
@@ -160,6 +174,8 @@ struct App {
     // Session picker state
     session_picker_list: Vec<SessionSummary>,
     session_picker_selected: usize,
+    session_picker_filter: String,
+    session_picker_confirm_delete: bool,
     // Model picker state
     model_picker_list: Vec<(String, String, String)>, // (display label, provider/model value, human name)
     model_picker_selected: usize,
@@ -310,6 +326,9 @@ impl App {
             is_processing: false,
             processing_message: None,
             current_tool: None,
+            processing_started_at: None,
+            streaming_text: None,
+            tool_call_count: 0,
             response_rx: None,
             provider_registry: None,
             workspace_dir: workspace_root.clone(),
@@ -323,6 +342,8 @@ impl App {
             ralph_rx: None,
             session_picker_list: Vec::new(),
             session_picker_selected: 0,
+            session_picker_filter: String::new(),
+            session_picker_confirm_delete: false,
             model_picker_list: Vec::new(),
             model_picker_selected: 0,
             model_picker_filter: String::new(),
@@ -549,7 +570,18 @@ impl App {
                                         }),
                                     );
                                 }
-                                _ => {}
+                                ContentPart::File { path, mime_type } => {
+                                    self.messages.push(
+                                        ChatMessage::new(
+                                            role_str,
+                                            format!("📎 {}", path),
+                                        )
+                                        .with_message_type(MessageType::File {
+                                            path: path.clone(),
+                                            mime_type: mime_type.clone(),
+                                        }),
+                                    );
+                                }
                             }
                         }
                     }
@@ -660,6 +692,8 @@ impl App {
         self.is_processing = true;
         self.processing_message = Some("Thinking...".to_string());
         self.current_tool = None;
+        self.processing_started_at = Some(Instant::now());
+        self.streaming_text = None;
 
         // Load provider registry once and cache it
         if self.provider_registry.is_none() {
@@ -710,10 +744,20 @@ impl App {
             SessionEvent::Thinking => {
                 self.processing_message = Some("Thinking...".to_string());
                 self.current_tool = None;
+                if self.processing_started_at.is_none() {
+                    self.processing_started_at = Some(Instant::now());
+                }
             }
             SessionEvent::ToolCallStart { name, arguments } => {
+                // Flush any streaming text before showing tool call
+                if let Some(text) = self.streaming_text.take() {
+                    if !text.is_empty() {
+                        self.messages.push(ChatMessage::new("assistant", text));
+                    }
+                }
                 self.processing_message = Some(format!("Running {}...", name));
                 self.current_tool = Some(name.clone());
+                self.tool_call_count += 1;
                 self.messages.push(
                     ChatMessage::new("tool", format!("🔧 {}", name))
                         .with_message_type(MessageType::ToolCall { name, arguments }),
@@ -732,10 +776,13 @@ impl App {
                 self.current_tool = None;
                 self.processing_message = Some("Thinking...".to_string());
             }
-            SessionEvent::TextChunk(_text) => {
-                // Could be used for streaming text display in the future
+            SessionEvent::TextChunk(text) => {
+                // Show streaming text as it arrives (before TextComplete finalizes)
+                self.streaming_text = Some(text);
             }
             SessionEvent::TextComplete(text) => {
+                // Clear streaming preview and add the final message
+                self.streaming_text = None;
                 if !text.is_empty() {
                     self.messages.push(ChatMessage::new("assistant", text));
                 }
@@ -753,6 +800,8 @@ impl App {
                 self.is_processing = false;
                 self.processing_message = None;
                 self.current_tool = None;
+                self.processing_started_at = None;
+                self.streaming_text = None;
                 self.response_rx = None;
             }
         }
@@ -1082,6 +1131,28 @@ impl App {
         }
     }
 
+    /// Get filtered session list for the session picker
+    fn filtered_sessions(&self) -> Vec<(usize, &SessionSummary)> {
+        if self.session_picker_filter.is_empty() {
+            self.session_picker_list.iter().enumerate().collect()
+        } else {
+            let filter = self.session_picker_filter.to_lowercase();
+            self.session_picker_list
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| {
+                    s.title
+                        .as_deref()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains(&filter)
+                        || s.agent.to_lowercase().contains(&filter)
+                        || s.id.to_lowercase().contains(&filter)
+                })
+                .collect()
+        }
+    }
+
     /// Get filtered model list
     fn filtered_models(&self) -> Vec<(usize, &(String, String, String))> {
         if self.model_picker_filter.is_empty() {
@@ -1250,7 +1321,23 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         }
 
         if event::poll(std::time::Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
+            let ev = event::read()?;
+
+            // Handle bracketed paste: insert entire clipboard text at cursor without submitting
+            if let Event::Paste(text) = &ev {
+                for c in text.chars() {
+                    if c == '\n' || c == '\r' {
+                        // Replace newlines with spaces to keep paste as single message
+                        app.input.insert(app.cursor_position, ' ');
+                    } else {
+                        app.input.insert(app.cursor_position, c);
+                    }
+                    app.cursor_position += 1;
+                }
+                continue;
+            }
+
+            if let Event::Key(key) = ev {
                 // Help overlay
                 if app.show_help {
                     if matches!(key.code, KeyCode::Esc | KeyCode::Char('?')) {
@@ -1324,25 +1411,73 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 if app.view_mode == ViewMode::SessionPicker {
                     match key.code {
                         KeyCode::Esc => {
-                            app.view_mode = ViewMode::Chat;
+                            if app.session_picker_confirm_delete {
+                                app.session_picker_confirm_delete = false;
+                            } else {
+                                app.session_picker_filter.clear();
+                                app.view_mode = ViewMode::Chat;
+                            }
                         }
                         KeyCode::Up | KeyCode::Char('k') => {
                             if app.session_picker_selected > 0 {
                                 app.session_picker_selected -= 1;
                             }
+                            app.session_picker_confirm_delete = false;
                         }
                         KeyCode::Down | KeyCode::Char('j') => {
-                            if app.session_picker_selected
-                                < app.session_picker_list.len().saturating_sub(1)
-                            {
+                            let filtered_count = app.filtered_sessions().len();
+                            if app.session_picker_selected < filtered_count.saturating_sub(1) {
                                 app.session_picker_selected += 1;
                             }
+                            app.session_picker_confirm_delete = false;
+                        }
+                        KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            if app.session_picker_confirm_delete {
+                                // Second press: actually delete
+                                let filtered = app.filtered_sessions();
+                                if let Some((orig_idx, _)) = filtered.get(app.session_picker_selected) {
+                                    let session_id = app.session_picker_list[*orig_idx].id.clone();
+                                    let is_active = app.session.as_ref().map(|s| s.id == session_id).unwrap_or(false);
+                                    if !is_active {
+                                        if let Err(e) = Session::delete(&session_id).await {
+                                            app.messages.push(ChatMessage::new(
+                                                "system",
+                                                format!("Failed to delete session: {}", e),
+                                            ));
+                                        } else {
+                                            app.session_picker_list.retain(|s| s.id != session_id);
+                                            if app.session_picker_selected >= app.session_picker_list.len() {
+                                                app.session_picker_selected = app.session_picker_list.len().saturating_sub(1);
+                                            }
+                                        }
+                                    }
+                                }
+                                app.session_picker_confirm_delete = false;
+                            } else {
+                                // First press: ask for confirmation
+                                let filtered = app.filtered_sessions();
+                                if let Some((orig_idx, _)) = filtered.get(app.session_picker_selected) {
+                                    let is_active = app.session.as_ref().map(|s| s.id == app.session_picker_list[*orig_idx].id).unwrap_or(false);
+                                    if !is_active {
+                                        app.session_picker_confirm_delete = true;
+                                    }
+                                }
+                            }
+                        }
+                        KeyCode::Backspace => {
+                            app.session_picker_filter.pop();
+                            app.session_picker_selected = 0;
+                            app.session_picker_confirm_delete = false;
+                        }
+                        KeyCode::Char('/') => {
+                            // Focus filter (no-op, just signals we're in filter mode)
                         }
                         KeyCode::Enter => {
-                            if let Some(session_summary) =
-                                app.session_picker_list.get(app.session_picker_selected)
-                            {
-                                let session_id = session_summary.id.clone();
+                            app.session_picker_confirm_delete = false;
+                            let filtered = app.filtered_sessions();
+                            let session_id = filtered.get(app.session_picker_selected)
+                                .map(|(orig_idx, _)| app.session_picker_list[*orig_idx].id.clone());
+                            if let Some(session_id) = session_id {
                                 match Session::load(&session_id).await {
                                     Ok(session) => {
                                         app.messages.clear();
@@ -1361,21 +1496,54 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                                 Role::Tool => "tool",
                                             };
 
-                                            let text = msg
-                                                .content
-                                                .iter()
-                                                .filter_map(|part| {
-                                                    if let ContentPart::Text { text } = part {
-                                                        Some(text.as_str())
-                                                    } else {
-                                                        None
+                                            // Process each content part separately
+                                            // (consistent with /resume command)
+                                            for part in &msg.content {
+                                                match part {
+                                                    ContentPart::Text { text } => {
+                                                        if !text.is_empty() {
+                                                            app.messages.push(ChatMessage::new(role_str, text.clone()));
+                                                        }
                                                     }
-                                                })
-                                                .collect::<Vec<_>>()
-                                                .join("\n");
-
-                                            if !text.is_empty() {
-                                                app.messages.push(ChatMessage::new(role_str, text));
+                                                    ContentPart::Image { url, mime_type } => {
+                                                        app.messages.push(
+                                                            ChatMessage::new(role_str, "").with_message_type(
+                                                                MessageType::Image {
+                                                                    url: url.clone(),
+                                                                    mime_type: mime_type.clone(),
+                                                                },
+                                                            ),
+                                                        );
+                                                    }
+                                                    ContentPart::ToolCall { name, arguments, .. } => {
+                                                        app.messages.push(
+                                                            ChatMessage::new(role_str, format!("🔧 {name}"))
+                                                                .with_message_type(MessageType::ToolCall {
+                                                                    name: name.clone(),
+                                                                    arguments: arguments.clone(),
+                                                                }),
+                                                        );
+                                                    }
+                                                    ContentPart::ToolResult { content, .. } => {
+                                                        let truncated = truncate_with_ellipsis(content, 500);
+                                                        app.messages.push(
+                                                            ChatMessage::new(role_str, format!("✅ Result\n{truncated}"))
+                                                                .with_message_type(MessageType::ToolResult {
+                                                                    name: "tool".to_string(),
+                                                                    output: content.clone(),
+                                                                }),
+                                                        );
+                                                    }
+                                                    ContentPart::File { path, mime_type } => {
+                                                        app.messages.push(
+                                                            ChatMessage::new(role_str, format!("📎 {path}"))
+                                                                .with_message_type(MessageType::File {
+                                                                    path: path.clone(),
+                                                                    mime_type: mime_type.clone(),
+                                                                }),
+                                                        );
+                                                    }
+                                                }
                                             }
                                         }
 
@@ -1399,6 +1567,15 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                         KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             return Ok(());
+                        }
+                        KeyCode::Char(c)
+                            if !key.modifiers.contains(KeyModifiers::CONTROL)
+                                && !key.modifiers.contains(KeyModifiers::ALT)
+                                && c != 'j' && c != 'k' =>
+                        {
+                            app.session_picker_filter.push(c);
+                            app.session_picker_selected = 0;
+                            app.session_picker_confirm_delete = false;
                         }
                         _ => {}
                     }
@@ -1930,43 +2107,89 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             ])
             .split(f.area());
 
-        // Session list
+        // Build title with filter display
+        let filter_display = if app.session_picker_filter.is_empty() {
+            String::new()
+        } else {
+            format!(" [filter: {}]", app.session_picker_filter)
+        };
+
         let list_block = Block::default()
             .borders(Borders::ALL)
-            .title(" Select Session (↑↓ to navigate, Enter to load, Esc to cancel) ")
+            .title(format!(
+                " Sessions (↑↓ navigate, Enter load, d delete, Esc cancel){} ",
+                filter_display
+            ))
             .border_style(Style::default().fg(Color::Cyan));
 
         let mut list_lines: Vec<Line> = Vec::new();
         list_lines.push(Line::from(""));
 
-        for (i, session) in app.session_picker_list.iter().enumerate() {
-            let is_selected = i == app.session_picker_selected;
+        let filtered = app.filtered_sessions();
+        if filtered.is_empty() {
+            if app.session_picker_filter.is_empty() {
+                list_lines.push(Line::styled(
+                    "  No sessions found.",
+                    Style::default().fg(Color::DarkGray),
+                ));
+            } else {
+                list_lines.push(Line::styled(
+                    format!("  No sessions matching '{}'", app.session_picker_filter),
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+        }
+
+        for (display_idx, (_orig_idx, session)) in filtered.iter().enumerate() {
+            let is_selected = display_idx == app.session_picker_selected;
+            let is_active = app
+                .session
+                .as_ref()
+                .map(|s| s.id == session.id)
+                .unwrap_or(false);
             let title = session.title.as_deref().unwrap_or("(untitled)");
             let date = session.updated_at.format("%Y-%m-%d %H:%M");
+            let active_marker = if is_active { " ●" } else { "" };
             let line_str = format!(
-                " {} {} - {} ({} msgs)",
+                " {} {}{} - {} ({} msgs)",
                 if is_selected { "▶" } else { " " },
                 title,
+                active_marker,
                 date,
                 session.message_count
             );
 
-            let style = if is_selected {
+            let style = if is_selected && app.session_picker_confirm_delete {
+                Style::default()
+                    .fg(Color::Red)
+                    .add_modifier(Modifier::BOLD)
+            } else if is_selected {
                 Style::default()
                     .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD)
+            } else if is_active {
+                Style::default().fg(Color::Green)
             } else {
                 Style::default()
             };
 
             list_lines.push(Line::styled(line_str, style));
 
-            // Add agent info on next line for selected item
+            // Show details for selected item
             if is_selected {
-                list_lines.push(Line::styled(
-                    format!("   Agent: {} | ID: {}", session.agent, session.id),
-                    Style::default().fg(Color::DarkGray),
-                ));
+                if app.session_picker_confirm_delete {
+                    list_lines.push(Line::styled(
+                        "   ⚠ Press d again to confirm delete, Esc to cancel",
+                        Style::default()
+                            .fg(Color::Red)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                } else {
+                    list_lines.push(Line::styled(
+                        format!("   Agent: {} | ID: {}", session.agent, session.id),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
             }
         }
 
@@ -1975,20 +2198,36 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             .wrap(Wrap { trim: false });
         f.render_widget(list, chunks[0]);
 
-        // Status bar
-        let status = Paragraph::new(Line::from(vec![
+        // Status bar with more actions
+        let mut status_spans = vec![
             Span::styled(
                 " SESSION PICKER ",
                 Style::default().fg(Color::Black).bg(Color::Cyan),
             ),
-            Span::raw(" | "),
-            Span::styled("↑↓/jk", Style::default().fg(Color::Yellow)),
-            Span::raw(": Navigate | "),
+            Span::raw(" "),
+            Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+            Span::raw(": Nav "),
             Span::styled("Enter", Style::default().fg(Color::Yellow)),
-            Span::raw(": Load | "),
+            Span::raw(": Load "),
+            Span::styled("d", Style::default().fg(Color::Yellow)),
+            Span::raw(": Delete "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
-            Span::raw(": Cancel"),
-        ]));
+            Span::raw(": Cancel "),
+        ];
+        if !app.session_picker_filter.is_empty() || !app.session_picker_list.is_empty() {
+            status_spans.push(Span::styled("Type", Style::default().fg(Color::Yellow)));
+            status_spans.push(Span::raw(": Filter "));
+        }
+        let total = app.session_picker_list.len();
+        let showing = filtered.len();
+        if showing < total {
+            status_spans.push(Span::styled(
+                format!("{}/{}", showing, total),
+                Style::default().fg(Color::DarkGray),
+            ));
+        }
+
+        let status = Paragraph::new(Line::from(status_spans));
         f.render_widget(status, chunks[1]);
         return;
     }
@@ -2065,15 +2304,26 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     }
 
     // Input area
+    let input_title = if app.is_processing {
+        if let Some(started) = app.processing_started_at {
+            let elapsed = started.elapsed();
+            format!(" Processing ({:.0}s)... ", elapsed.as_secs_f64())
+        } else {
+            " Message (Processing...) ".to_string()
+        }
+    } else if app.input.starts_with('/') {
+        let hint = match_slash_command_hint(&app.input);
+        format!(" {} ", hint)
+    } else {
+        " Message (Enter to send, / for commands) ".to_string()
+    };
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .title(if app.is_processing {
-            " Message (Processing...) "
-        } else {
-            " Message (Enter to send) "
-        })
+        .title(input_title)
         .border_style(Style::default().fg(if app.is_processing {
             Color::Yellow
+        } else if app.input.starts_with('/') {
+            Color::Magenta
         } else {
             theme.input_border_color.to_color()
         }));
@@ -2408,75 +2658,146 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         .as_ref()
         .map(|s| s.id.chars().take(8).collect::<String>())
         .unwrap_or_else(|| "new".to_string());
+    let model_label = app
+        .active_model
+        .as_deref()
+        .or_else(|| {
+            app.session
+                .as_ref()
+                .and_then(|s| s.metadata.model.as_deref())
+        })
+        .unwrap_or("auto");
+    let conversation_depth = app
+        .session
+        .as_ref()
+        .map(|s| s.messages.len())
+        .unwrap_or(0);
+
+    let label_style = Style::default().fg(theme.timestamp_color.to_color());
 
     let mut lines = Vec::new();
     lines.push(Line::from(vec![
-        Span::styled(
-            "Status: ",
-            Style::default().fg(theme.timestamp_color.to_color()),
-        ),
+        Span::styled("Status: ", label_style),
         Span::styled(status_label, status_style),
     ]));
+
+    // Show elapsed time when processing
+    if let Some(started) = app.processing_started_at {
+        let elapsed = started.elapsed();
+        let elapsed_str = if elapsed.as_secs() >= 60 {
+            format!("{}m{:02}s", elapsed.as_secs() / 60, elapsed.as_secs() % 60)
+        } else {
+            format!("{:.1}s", elapsed.as_secs_f64())
+        };
+        lines.push(Line::from(vec![
+            Span::styled("Elapsed: ", label_style),
+            Span::styled(
+                elapsed_str,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+
     lines.push(Line::from(vec![
+        Span::styled("Tool: ", label_style),
         Span::styled(
-            "Tool: ",
-            Style::default().fg(theme.timestamp_color.to_color()),
+            tool_label,
+            if app.current_tool.is_some() {
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            },
         ),
-        Span::styled(tool_label, Style::default()),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled(
-            "Session: ",
-            Style::default().fg(theme.timestamp_color.to_color()),
-        ),
-        Span::styled(format!("#{}", session_id), Style::default().fg(Color::Cyan)),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled(
-            "Messages: ",
-            Style::default().fg(theme.timestamp_color.to_color()),
-        ),
-        Span::styled(message_count.to_string(), Style::default()),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled(
-            "Agent: ",
-            Style::default().fg(theme.timestamp_color.to_color()),
-        ),
-        Span::styled(app.current_agent.clone(), Style::default()),
     ]));
     lines.push(Line::from(""));
     lines.push(Line::styled(
-        "Shortcuts:",
+        "Session",
         Style::default().add_modifier(Modifier::BOLD),
     ));
+    lines.push(Line::from(vec![
+        Span::styled("ID: ", label_style),
+        Span::styled(format!("#{}", session_id), Style::default().fg(Color::Cyan)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Model: ", label_style),
+        Span::styled(model_label.to_string(), Style::default().fg(Color::Green)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Agent: ", label_style),
+        Span::styled(app.current_agent.clone(), Style::default()),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Messages: ", label_style),
+        Span::styled(message_count.to_string(), Style::default()),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Context: ", label_style),
+        Span::styled(
+            format!("{} turns", conversation_depth),
+            Style::default(),
+        ),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Tools used: ", label_style),
+        Span::styled(app.tool_call_count.to_string(), Style::default()),
+    ]));
+    lines.push(Line::from(""));
     lines.push(Line::styled(
-        "F3  Toggle inspector",
-        Style::default().fg(Color::DarkGray),
+        "Shortcuts",
+        Style::default().add_modifier(Modifier::BOLD),
     ));
-    lines.push(Line::styled(
-        "Ctrl+B Toggle layout",
-        Style::default().fg(Color::DarkGray),
-    ));
-    lines.push(Line::styled(
-        "Ctrl+S Swarm view",
-        Style::default().fg(Color::DarkGray),
-    ));
+    lines.push(Line::from(vec![
+        Span::styled("F3      ", Style::default().fg(Color::Yellow)),
+        Span::styled("Inspector", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Ctrl+B  ", Style::default().fg(Color::Yellow)),
+        Span::styled("Layout", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Ctrl+M  ", Style::default().fg(Color::Yellow)),
+        Span::styled("Model", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("Ctrl+S  ", Style::default().fg(Color::Yellow)),
+        Span::styled("Swarm", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("?       ", Style::default().fg(Color::Yellow)),
+        Span::styled("Help", Style::default().fg(Color::DarkGray)),
+    ]));
 
     let panel = Paragraph::new(lines).block(block).wrap(Wrap { trim: true });
     f.render_widget(panel, area);
 }
 
 fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let title = if app.is_processing {
+        if let Some(started) = app.processing_started_at {
+            let elapsed = started.elapsed();
+            format!(" Processing ({:.0}s)... ", elapsed.as_secs_f64())
+        } else {
+            " Message (Processing...) ".to_string()
+        }
+    } else if app.input.starts_with('/') {
+        // Show matching slash commands as hints
+        let hint = match_slash_command_hint(&app.input);
+        format!(" {} ", hint)
+    } else {
+        " Message (Enter to send, / for commands) ".to_string()
+    };
+
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .title(if app.is_processing {
-            " Message (Processing...) "
-        } else {
-            " Message (Enter to send) "
-        })
+        .title(title)
         .border_style(Style::default().fg(if app.is_processing {
             Color::Yellow
+        } else if app.input.starts_with('/') {
+            Color::Magenta
         } else {
             theme.input_border_color.to_color()
         }));
@@ -2491,9 +2812,33 @@ fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
 
 fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'static>> {
     let mut message_lines = Vec::new();
+    let separator_width = max_width.min(60);
 
-    for message in &app.messages {
+    for (idx, message) in app.messages.iter().enumerate() {
         let role_style = theme.get_role_style(&message.role);
+
+        // Add a thin separator between messages (not before the first)
+        if idx > 0 {
+            let sep_char = match message.role.as_str() {
+                "tool" => "·",
+                _ => "─",
+            };
+            message_lines.push(Line::from(Span::styled(
+                sep_char.repeat(separator_width),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            )));
+        }
+
+        // Role icons for better visual hierarchy
+        let role_icon = match message.role.as_str() {
+            "user" => "▸ ",
+            "assistant" => "◆ ",
+            "system" => "⚙ ",
+            "tool" => "⚡",
+            _ => "  ",
+        };
 
         let header_line = Line::from(vec![
             Span::styled(
@@ -2502,6 +2847,7 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                     .fg(theme.timestamp_color.to_color())
                     .add_modifier(Modifier::DIM),
             ),
+            Span::styled(role_icon, role_style),
             Span::styled(message.role.clone(), role_style),
         ]);
         message_lines.push(header_line);
@@ -2532,14 +2878,14 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let arg_lines: Vec<&str> = formatted_args.lines().collect();
                 for line in arg_lines.iter().take(10) {
                     let args_line = Line::from(vec![
-                        Span::styled("     ", Style::default()),
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled((*line).to_string(), Style::default().fg(Color::DarkGray)),
                     ]);
                     message_lines.push(args_line);
                 }
                 if arg_lines.len() > 10 || truncated {
                     message_lines.push(Line::from(vec![
-                        Span::styled("     ", Style::default()),
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled(
                             "... (truncated)",
                             Style::default()
@@ -2565,14 +2911,14 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let output_lines: Vec<&str> = output_str.lines().collect();
                 for line in output_lines.iter().take(5) {
                     let output_line = Line::from(vec![
-                        Span::styled("     ", Style::default()),
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
                     ]);
                     message_lines.push(output_line);
                 }
                 if output_lines.len() > 5 {
                     message_lines.push(Line::from(vec![
-                        Span::styled("     ", Style::default()),
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled(
                             format!("... and {} more lines", output_lines.len() - 5),
                             Style::default()
@@ -2592,9 +2938,62 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let image_line = formatter.format_image(url, mime_type.as_deref());
                 message_lines.push(image_line);
             }
+            MessageType::File { path, mime_type } => {
+                let mime_label = mime_type
+                    .as_deref()
+                    .unwrap_or("unknown type");
+                let file_header = Line::from(vec![
+                    Span::styled("  📎 ", Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!("File: {}", path),
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        format!(" ({})", mime_label),
+                        Style::default()
+                            .fg(Color::DarkGray)
+                            .add_modifier(Modifier::DIM),
+                    ),
+                ]);
+                message_lines.push(file_header);
+            }
         }
 
         message_lines.push(Line::from(""));
+    }
+
+    // Show streaming text preview (text arriving before TextComplete finalizes it)
+    if let Some(ref streaming) = app.streaming_text {
+        if !streaming.is_empty() {
+            message_lines.push(Line::from(Span::styled(
+                "─".repeat(separator_width),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            )));
+            message_lines.push(Line::from(vec![
+                Span::styled(
+                    format!("[{}] ", chrono::Local::now().format("%H:%M")),
+                    Style::default()
+                        .fg(theme.timestamp_color.to_color())
+                        .add_modifier(Modifier::DIM),
+                ),
+                Span::styled("◆ ", theme.get_role_style("assistant")),
+                Span::styled("assistant", theme.get_role_style("assistant")),
+                Span::styled(
+                    " (streaming...)",
+                    Style::default()
+                        .fg(theme.timestamp_color.to_color())
+                        .add_modifier(Modifier::DIM),
+                ),
+            ]));
+            let formatter = MessageFormatter::new(max_width);
+            let formatted = formatter.format_content(streaming, "assistant");
+            message_lines.extend(formatted);
+            message_lines.push(Line::from(""));
+        }
     }
 
     if app.is_processing {
@@ -2606,6 +3005,18 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
             / 100) as usize
             % spinner.len();
 
+        // Elapsed time display
+        let elapsed_str = if let Some(started) = app.processing_started_at {
+            let elapsed = started.elapsed();
+            if elapsed.as_secs() >= 60 {
+                format!(" {}m{:02}s", elapsed.as_secs() / 60, elapsed.as_secs() % 60)
+            } else {
+                format!(" {:.1}s", elapsed.as_secs_f64())
+            }
+        } else {
+            String::new()
+        };
+
         let processing_line = Line::from(vec![
             Span::styled(
                 format!("[{}] ", chrono::Local::now().format("%H:%M")),
@@ -2613,7 +3024,14 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                     .fg(theme.timestamp_color.to_color())
                     .add_modifier(Modifier::DIM),
             ),
+            Span::styled("◆ ", theme.get_role_style("assistant")),
             Span::styled("assistant", theme.get_role_style("assistant")),
+            Span::styled(
+                elapsed_str,
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
         ]);
         message_lines.push(processing_line);
 
@@ -2644,6 +3062,37 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
     }
 
     message_lines
+}
+
+fn match_slash_command_hint(input: &str) -> String {
+    let commands = [
+        ("/swarm ", "Run task in parallel swarm mode"),
+        ("/ralph", "Start autonomous PRD loop"),
+        ("/sessions", "Open session picker"),
+        ("/resume", "Resume a session"),
+        ("/new", "Start a new session"),
+        ("/model", "Select or set model"),
+        ("/webview", "Switch to webview layout"),
+        ("/classic", "Switch to classic layout"),
+        ("/inspector", "Toggle inspector pane"),
+        ("/refresh", "Refresh workspace"),
+        ("/view", "Toggle swarm view"),
+    ];
+
+    let input_lower = input.to_lowercase();
+    let matches: Vec<_> = commands
+        .iter()
+        .filter(|(cmd, _)| cmd.starts_with(&input_lower))
+        .collect();
+
+    if matches.len() == 1 {
+        format!("{} — {}", matches[0].0.trim(), matches[0].1)
+    } else if matches.is_empty() {
+        "Unknown command".to_string()
+    } else {
+        let cmds: Vec<_> = matches.iter().map(|(cmd, _)| cmd.trim()).collect();
+        cmds.join(" | ")
+    }
 }
 
 fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
@@ -2701,16 +3150,17 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "".to_string(),
         "  Enter        Send message".to_string(),
         "  Tab          Switch between build/plan agents".to_string(),
+        "  Ctrl+M       Open model picker".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
         "  Ctrl+B       Toggle webview layout".to_string(),
         "  F3           Toggle inspector pane".to_string(),
         "  Ctrl+C       Quit".to_string(),
         "  ?            Toggle this help".to_string(),
         "".to_string(),
-        "  SLASH COMMANDS".to_string(),
+        "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
         "  /swarm <task>   Run task in parallel swarm mode".to_string(),
         "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
-        "  /sessions       Open session picker to resume".to_string(),
+        "  /sessions       Open session picker (filter, delete, load)".to_string(),
         "  /resume         Resume most recent session".to_string(),
         "  /resume <id>    Resume specific session by ID".to_string(),
         "  /new            Start a fresh session".to_string(),
@@ -2720,6 +3170,14 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /classic        Single-pane layout".to_string(),
         "  /inspector      Toggle inspector pane".to_string(),
         "  /refresh        Refresh workspace and sessions".to_string(),
+        "".to_string(),
+        "  SESSION PICKER".to_string(),
+        "  ↑/↓/j/k      Navigate sessions".to_string(),
+        "  Enter         Load selected session".to_string(),
+        "  d             Delete session (press twice to confirm)".to_string(),
+        "  Type          Filter sessions by name/agent/ID".to_string(),
+        "  Backspace     Clear filter character".to_string(),
+        "  Esc           Close picker".to_string(),
         "".to_string(),
         "  VIM-STYLE NAVIGATION".to_string(),
         "  Alt+j        Scroll down".to_string(),
