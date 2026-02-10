@@ -271,17 +271,10 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
-        // Check whether the model natively supports tool calling.
-        // If it does, FunctionGemma is unnecessary and will be skipped.
+        // All current providers support native tool calling.  Hardcode to
+        // true so we skip the expensive list_models() API call on every message.
         #[cfg(feature = "functiongemma")]
-        let model_supports_tools = provider
-            .list_models()
-            .await
-            .unwrap_or_default()
-            .iter()
-            .find(|m| m.id == model)
-            .map(|m| m.supports_tools)
-            .unwrap_or(true); // Default true = assume native support (safe).
+        let model_supports_tools = true;
 
         // Build system prompt with AGENTS.md
         let cwd = self
@@ -455,19 +448,22 @@ impl Session {
 
     /// Process a user message with real-time event streaming for UI updates.
     /// Events are sent through the provided channel as tool calls execute.
+    ///
+    /// Accepts a pre-loaded `ProviderRegistry` to avoid re-fetching secrets
+    /// from Vault on every message (which was the primary TUI performance
+    /// bottleneck).
     pub async fn prompt_with_events(
         &mut self,
         message: &str,
         event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
+        registry: std::sync::Arc<crate::provider::ProviderRegistry>,
     ) -> Result<SessionResult> {
         use crate::provider::{
-            CompletionRequest, ContentPart, ProviderRegistry, Role, parse_model_string,
+            CompletionRequest, ContentPart, Role, parse_model_string,
         };
 
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
-        // Load provider registry from Vault
-        let registry = ProviderRegistry::from_vault().await?;
         let providers = registry.list();
         if providers.is_empty() {
             anyhow::bail!(
@@ -538,16 +534,10 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
-        // Check whether the model natively supports tool calling.
+        // All current providers support native tool calling.  Hardcode to
+        // true so we skip the expensive list_models() API call on every message.
         #[cfg(feature = "functiongemma")]
-        let model_supports_tools = provider
-            .list_models()
-            .await
-            .unwrap_or_default()
-            .iter()
-            .find(|m| m.id == model)
-            .map(|m| m.supports_tools)
-            .unwrap_or(true);
+        let model_supports_tools = true;
 
         // Build system prompt
         let cwd = std::env::var("PWD")
@@ -729,6 +719,10 @@ impl Session {
         let _ = event_tx
             .send(SessionEvent::TextComplete(final_output.trim().to_string()))
             .await;
+        // Send updated session state so the caller can sync back
+        let _ = event_tx
+            .send(SessionEvent::SessionSync(self.clone()))
+            .await;
         let _ = event_tx.send(SessionEvent::Done).await;
 
         Ok(SessionResult {
@@ -856,6 +850,8 @@ pub enum SessionEvent {
     TextChunk(String),
     /// Final text output
     TextComplete(String),
+    /// Updated session state for caller to sync back
+    SessionSync(Session),
     /// Processing complete
     Done,
     /// Error occurred
