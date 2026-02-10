@@ -19,11 +19,11 @@ $ErrorActionPreference = 'Stop'
 
 $Repo = 'rileyseaburg/codetether-agent'
 $BinaryName = 'codetether'
-$InstallDir = Join-Path $env:LOCALAPPDATA 'codetether' 'bin'
+$InstallDir = Join-Path (Join-Path $env:LOCALAPPDATA 'codetether') 'bin'
 
 # FunctionGemma model configuration
 $DataDir = if ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME } else { Join-Path $env:LOCALAPPDATA 'codetether' }
-$FunctionGemmaModelDir = Join-Path $DataDir 'models' 'functiongemma'
+$FunctionGemmaModelDir = Join-Path (Join-Path $DataDir 'models') 'functiongemma'
 $FunctionGemmaModelUrl = 'https://huggingface.co/unsloth/functiongemma-270m-it-GGUF/resolve/main/functiongemma-270m-it-Q8_0.gguf'
 $FunctionGemmaModelFile = 'functiongemma-270m-it-Q8_0.gguf'
 $FunctionGemmaTokenizerUrl = 'https://huggingface.co/google/functiongemma-270m-it/resolve/main/tokenizer.json'
@@ -93,7 +93,7 @@ function Install-FunctionGemma {
 
         # Check huggingface-cli cached token
         if (-not $hfToken) {
-            $hfCacheDir = if ($env:HF_HOME) { $env:HF_HOME } else { Join-Path $env:USERPROFILE '.cache' 'huggingface' }
+            $hfCacheDir = if ($env:HF_HOME) { $env:HF_HOME } else { Join-Path (Join-Path $env:USERPROFILE '.cache') 'huggingface' }
             $hfCacheToken = Join-Path $hfCacheDir 'token'
             if (Test-Path $hfCacheToken) {
                 $hfToken = (Get-Content $hfCacheToken -Raw).Trim()
