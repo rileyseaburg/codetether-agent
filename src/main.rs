@@ -12,12 +12,14 @@
 mod a2a;
 mod agent;
 mod audit;
+mod benchmark;
 mod cli;
 mod cognition;
 mod config;
 mod crash;
 mod k8s;
 pub mod mcp;
+mod moltbook;
 mod provider;
 pub mod ralph;
 pub mod rlm;
@@ -720,6 +722,66 @@ async fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Some(Command::Benchmark(args)) => {
+            if args.models.is_empty() {
+                anyhow::bail!("At least one model is required (--models provider:model)");
+            }
+
+            let config = benchmark::BenchmarkConfig {
+                prd_dir: args.prd_dir,
+                models: args.models,
+                tier: args.tier,
+                parallel: args.parallel,
+                max_iterations: args.max_iterations,
+                story_timeout_secs: args.story_timeout,
+                output: args.output,
+                cost_ceiling_usd: Some(args.cost_ceiling),
+                submit_api_url: args.submit_url,
+                submit_api_key: args.submit_key,
+            };
+
+            let runner = benchmark::BenchmarkRunner::new(config);
+            let result = runner.run().await?;
+
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                println!("=== Benchmark Results ===\n");
+                println!("Date: {}", result.run_date);
+                println!("Agent: {} v{}\n", result.agent, result.agent_version);
+
+                for mr in &result.model_results {
+                    println!("--- {} ---", mr.model);
+                    println!(
+                        "  Pass Rate: {:.1}% ({}/{} stories)",
+                        mr.aggregate.overall_pass_rate * 100.0,
+                        mr.aggregate.total_stories_passed,
+                        mr.aggregate.total_stories
+                    );
+                    println!(
+                        "  Speed: {:.1} stories/hour ({:.1}s avg)",
+                        mr.aggregate.stories_per_hour, mr.aggregate.avg_seconds_per_story
+                    );
+                    println!(
+                        "  Cost: ${:.4}/story (${:.2} total)",
+                        mr.aggregate.avg_cost_per_story, mr.aggregate.total_cost_usd
+                    );
+                    println!(
+                        "  PRDs: {}/{} fully passed\n",
+                        mr.aggregate.prds_fully_passed, mr.aggregate.prds_attempted
+                    );
+                }
+
+                if !result.summary.rankings.is_empty() {
+                    println!("=== Rankings ===");
+                    println!("Best Pass Rate: {}", result.summary.best_pass_rate_model);
+                    println!("Fastest: {}", result.summary.fastest_model);
+                    println!("Cheapest: {}", result.summary.cheapest_model);
+                    println!("Best Overall: {}", result.summary.best_overall_model);
+                }
+            }
+            Ok(())
+        }
         Some(Command::Cleanup(args)) => {
             // Clean up orphaned worktrees and branches from Ralph runs
             use worktree::WorktreeManager;
@@ -774,6 +836,92 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             Ok(())
+        }
+        Some(Command::Moltbook(args)) => {
+            use cli::MoltbookCommand;
+
+            match args.command {
+                MoltbookCommand::Register(reg) => {
+                    println!("🦞 Registering on Moltbook as '{}'...\n", reg.name);
+                    let result = moltbook::MoltbookClient::register(
+                        &reg.name,
+                        reg.description.as_deref(),
+                    )
+                    .await?;
+
+                    println!("✅ Registered successfully!\n");
+                    println!("   Agent:             {}", reg.name);
+                    println!("   API Key:           {}", result.agent.api_key);
+                    println!("   Claim URL:         {}", result.agent.claim_url);
+                    println!("   Verification Code: {}", result.agent.verification_code);
+                    println!("\n🔗 Send the claim URL to your human to verify ownership.");
+                    println!("🔐 API key has been saved to Vault (codetether/moltbook).");
+                    Ok(())
+                }
+                MoltbookCommand::Status => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    let status = client.claim_status().await?;
+                    println!("Moltbook claim status: {}", status.status);
+                    Ok(())
+                }
+                MoltbookCommand::Profile => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    let profile = client.me().await?;
+                    println!("# Moltbook Profile\n");
+                    println!("**Name:** {}", profile.name);
+                    if let Some(desc) = &profile.description {
+                        println!("**Description:** {}", desc);
+                    }
+                    if let Some(k) = profile.karma {
+                        println!("**Karma:** {}", k);
+                    }
+                    if let Some(f) = profile.follower_count {
+                        println!("**Followers:** {}", f);
+                    }
+                    if let Some(claimed) = profile.is_claimed {
+                        println!("**Claimed:** {}", if claimed { "Yes" } else { "No" });
+                    }
+                    println!("\n🔗 https://www.moltbook.com/u/{}", profile.name);
+                    Ok(())
+                }
+                MoltbookCommand::UpdateProfile(upd) => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    client.update_profile(upd.description.as_deref()).await?;
+                    println!("✅ Profile updated (CodeTether branding included).");
+                    Ok(())
+                }
+                MoltbookCommand::Post(post) => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    let resp = client
+                        .create_post(&post.submolt, &post.title, &post.content)
+                        .await?;
+                    println!("✅ Posted to m/{}: {}", post.submolt, post.title);
+                    tracing::debug!("Post response: {}", resp);
+                    Ok(())
+                }
+                MoltbookCommand::Intro => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    let profile = client.me().await?;
+                    let (title, content) = moltbook::intro_post(&profile.name);
+                    let resp = client.create_post("introductions", &title, &content).await?;
+                    println!("✅ CodeTether intro posted to m/introductions!");
+                    println!("   Title: {}", title);
+                    tracing::debug!("Post response: {}", resp);
+                    Ok(())
+                }
+                MoltbookCommand::Heartbeat => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    let summary = client.heartbeat().await?;
+                    println!("{}", summary);
+                    Ok(())
+                }
+                MoltbookCommand::Search(s) => {
+                    let client = moltbook::MoltbookClient::from_vault_or_env().await?;
+                    let results = client.search(&s.query, s.limit).await?;
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                    Ok(())
+                }
+            }
         }
         None => {
             // Default: launch TUI
