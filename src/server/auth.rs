@@ -146,7 +146,8 @@ mod tests {
     #[test]
     fn auth_state_generates_token_when_env_missing() {
         // Ensure the env var is not set for this test.
-        std::env::remove_var("CODETETHER_AUTH_TOKEN");
+        // SAFETY: This is a single-threaded test; no other thread reads this env var.
+        unsafe { std::env::remove_var("CODETETHER_AUTH_TOKEN"); }
         let state = AuthState::from_env();
         assert_eq!(state.token().len(), 64); // 32 bytes = 64 hex chars
     }

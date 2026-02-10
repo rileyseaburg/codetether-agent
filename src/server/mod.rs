@@ -82,6 +82,112 @@ async fn audit_middleware(
     response
 }
 
+/// Mapping from (path pattern, HTTP method) → OPA permission action.
+/// The first matching rule wins.
+struct PolicyRule {
+    pattern: &'static str,
+    methods: Option<&'static [&'static str]>,
+    permission: &'static str,
+}
+
+const POLICY_RULES: &[PolicyRule] = &[
+    // Public / exempt
+    PolicyRule { pattern: "/health", methods: None, permission: "" },
+    PolicyRule { pattern: "/a2a/", methods: None, permission: "" },
+
+    // K8s management — admin only
+    PolicyRule { pattern: "/v1/k8s/scale", methods: Some(&["POST"]), permission: "admin:access" },
+    PolicyRule { pattern: "/v1/k8s/restart", methods: Some(&["POST"]), permission: "admin:access" },
+    PolicyRule { pattern: "/v1/k8s/", methods: Some(&["GET"]), permission: "admin:access" },
+
+    // Audit — admin
+    PolicyRule { pattern: "/v1/audit", methods: None, permission: "admin:access" },
+
+    // Cognition — write operations
+    PolicyRule { pattern: "/v1/cognition/start", methods: Some(&["POST"]), permission: "agent:execute" },
+    PolicyRule { pattern: "/v1/cognition/stop", methods: Some(&["POST"]), permission: "agent:execute" },
+    PolicyRule { pattern: "/v1/cognition/", methods: Some(&["GET"]), permission: "agent:read" },
+
+    // Swarm persona lifecycle
+    PolicyRule { pattern: "/v1/swarm/personas", methods: Some(&["POST"]), permission: "agent:execute" },
+    PolicyRule { pattern: "/v1/swarm/", methods: Some(&["POST"]), permission: "agent:execute" },
+    PolicyRule { pattern: "/v1/swarm/", methods: Some(&["GET"]), permission: "agent:read" },
+
+    // Session management
+    PolicyRule { pattern: "/api/session", methods: Some(&["POST"]), permission: "sessions:write" },
+    PolicyRule { pattern: "/api/session/", methods: Some(&["POST"]), permission: "sessions:write" },
+    PolicyRule { pattern: "/api/session", methods: Some(&["GET"]), permission: "sessions:read" },
+
+    // Config, version, providers, agents — read
+    PolicyRule { pattern: "/api/version", methods: None, permission: "agent:read" },
+    PolicyRule { pattern: "/api/config", methods: None, permission: "agent:read" },
+    PolicyRule { pattern: "/api/provider", methods: None, permission: "agent:read" },
+    PolicyRule { pattern: "/api/agent", methods: None, permission: "agent:read" },
+];
+
+/// Find the required permission for a given path + method.
+/// Returns `Some("")` for exempt, `Some(perm)` for required, `None` for unmatched (pass-through).
+fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
+    for rule in POLICY_RULES {
+        let matches = if rule.pattern.ends_with('/') {
+            path.starts_with(rule.pattern) || path == &rule.pattern[..rule.pattern.len()-1]
+        } else {
+            path == rule.pattern || path.starts_with(&format!("{}/", rule.pattern))
+        };
+        if matches {
+            if let Some(allowed_methods) = rule.methods {
+                if !allowed_methods.contains(&method) {
+                    continue;
+                }
+            }
+            return Some(rule.permission);
+        }
+    }
+    None
+}
+
+/// Policy authorization middleware for Axum.
+///
+/// Maps request paths to OPA permission strings and enforces authorization.
+/// Runs after `require_auth` so the bearer token is already validated.
+/// Currently maps the static bearer token to an admin role since
+/// codetether-agent uses a single shared token model.
+async fn policy_middleware(
+    request: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let path = request.uri().path().to_string();
+    let method = request.method().as_str().to_string();
+
+    let permission = match match_policy_rule(&path, &method) {
+        None | Some("") => return Ok(next.run(request).await),
+        Some(perm) => perm,
+    };
+
+    // The current auth model uses a single static token for all access.
+    // When this is the case, the authenticated user effectively has admin role.
+    // Future: extract user claims from JWT and build a proper PolicyUser.
+    let user = policy::PolicyUser {
+        user_id: "bearer-token-user".to_string(),
+        roles: vec!["admin".to_string()],
+        tenant_id: None,
+        scopes: vec![],
+        auth_source: "static_token".to_string(),
+    };
+
+    if !policy::check_policy(&user, permission, None).await {
+        tracing::warn!(
+            path = %path,
+            method = %method,
+            permission = %permission,
+            "Policy middleware denied request"
+        );
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(request).await)
+}
+
 /// Start the HTTP server
 pub async fn serve(args: ServeArgs) -> Result<()> {
     let config = Config::load().await?;
@@ -173,6 +279,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Mandatory auth middleware — applies to all routes
         .layer(middleware::from_fn_with_state(state.clone(), audit_middleware))
         .layer(axum::Extension(state.auth.clone()))
+        .layer(middleware::from_fn(policy_middleware))
         .layer(middleware::from_fn(auth::require_auth))
         // CORS + tracing
         .layer(

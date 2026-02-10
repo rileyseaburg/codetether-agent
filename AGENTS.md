@@ -65,8 +65,9 @@ src/
 ├── rlm/             # Recursive Language Model processing
 ├── secrets/         # HashiCorp Vault secrets management
 ├── server/          # HTTP server (axum)
-│   ├── mod.rs       # Routes, middleware, AppState
-│   └── auth.rs      # Mandatory Bearer token auth (cannot be disabled)
+│   ├── mod.rs       # Routes, middleware, AppState, policy middleware
+│   ├── auth.rs      # Mandatory Bearer token auth (cannot be disabled)
+│   └── policy.rs    # OPA policy client (local eval + HTTP)
 ├── session/         # Conversation session management
 ├── swarm/           # Parallel sub-agent orchestration
 ├── tool/            # Tool implementations (27+ tools)
@@ -315,6 +316,16 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 - Query with `query_audit_log(filters)` — filter by actor, action, resource, time range
 - Backend: append-only JSON Lines file
 
+### Policy Engine (`src/server/policy.rs` + `mod.rs`)
+- **OPA integration**: `check_policy()` sends authz queries to OPA sidecar via HTTP, falls back to `evaluate_local()` with compiled-in `data.json`
+- **Structs**: `PolicyUser` (sub, roles, tenant_id, auth_source, scopes), `PolicyResource` (resource_type, resource_id, owner, tenant_id)
+- **Middleware**: `policy_middleware()` in `mod.rs` intercepts requests, maps path+method to a permission string via `POLICY_ROUTES`, and calls `check_policy()`
+- **`POLICY_ROUTES`**: Static array of `(&str, &str, &str)` tuples — `(path_prefix, http_method, permission)` — covering ~30 Axum endpoints
+- **Adding a new endpoint**: Add a `(path, method, "resource:action")` entry to `POLICY_ROUTES` in `mod.rs`
+- **Roles**: `admin`, `a2a-admin`, `operator`, `editor`, `viewer` — permissions defined in `policies/data.json`
+- **Env vars**: `OPA_URL` (default `http://localhost:8181`), `OPA_ENABLED` (default `true`)
+- **Testing**: `cargo test policy` runs 9 unit tests covering role-based access, API key scopes, and tenant isolation
+
 ### Plugin Sandbox (`src/tool/sandbox.rs`)
 - `ToolManifest`: tool_id, version, sha256_hash, signature, allowed_resources, limits
 - `ToolSandbox::execute()`: validates manifest signature (Ed25519), checks SHA-256 integrity, enforces resource policy
@@ -343,6 +354,10 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 6. **Auth is mandatory** - The `AuthLayer` in `src/server/auth.rs` cannot be conditionally removed. All endpoints except `/health` require a Bearer token.
 
 7. **Audit log must be initialized before serving** - Call `init_audit_log()` in `serve()` before binding the router. The `AUDIT_LOG` OnceCell can only be set once.
+
+8. **Policy middleware ordering** - Policy middleware runs between audit and auth middleware. Auth verifies the token, then policy middleware checks permissions via OPA. If you add a new route, add a corresponding `POLICY_ROUTES` entry.
+
+9. **`unsafe` in tests** - Rust 2024 edition requires `unsafe {}` around `std::env::remove_var()` in tests (see `auth.rs`).
 
 ## PR/Commit Guidelines
 
