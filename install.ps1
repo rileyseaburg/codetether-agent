@@ -138,7 +138,8 @@ function Install-FunctionGemma {
             }
         }
 
-        $hfToken = ($hfToken ?? '').Trim()
+        if (-not $hfToken) { $hfToken = '' }
+        $hfToken = $hfToken.Trim()
 
         if (-not $hfToken) {
             Write-Warn "no token provided - skipping tokenizer download"
