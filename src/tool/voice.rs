@@ -41,17 +41,11 @@ impl VoiceTool {
 
     async fn speak(&self, params: &SpeakParams) -> Result<ToolResult> {
         let base_url = default_voice_api_url();
-        let voice_id = params
-            .voice_id
-            .as_deref()
-            .unwrap_or("960f89fc");
+        let voice_id = params.voice_id.as_deref().unwrap_or("960f89fc");
 
         let url = format!("{base_url}/voices/{voice_id}/speak");
 
-        let lang = params
-            .language
-            .clone()
-            .unwrap_or_else(|| "english".into());
+        let lang = params.language.clone().unwrap_or_else(|| "english".into());
 
         let form = reqwest::multipart::Form::new()
             .text("text", params.text.clone())
@@ -81,7 +75,10 @@ impl VoiceTool {
             .to_string();
 
         // Save the WAV to a temp file
-        let bytes = resp.bytes().await.context("Failed to read audio response")?;
+        let bytes = resp
+            .bytes()
+            .await
+            .context("Failed to read audio response")?;
         let output_dir = std::env::current_dir().unwrap_or_else(|_| ".".into());
         let output_path = output_dir.join(format!("voice_{job_id}.wav"));
         tokio::fs::write(&output_path, &bytes)
@@ -188,7 +185,9 @@ impl VoiceTool {
                 }
                 Ok(ToolResult::success(output).with_metadata("count", json!(voices.len())))
             }
-            _ => Ok(ToolResult::success("No voices found. Create one by uploading a voice sample.")),
+            _ => Ok(ToolResult::success(
+                "No voices found. Create one by uploading a voice sample.",
+            )),
         }
     }
 
@@ -204,7 +203,10 @@ impl VoiceTool {
             .await
             .map_err(|e| anyhow::anyhow!("Voice API health check failed: {e}"))?;
 
-        let body: Value = resp.json().await.context("Failed to parse health response")?;
+        let body: Value = resp
+            .json()
+            .await
+            .context("Failed to parse health response")?;
         let status = body["status"].as_str().unwrap_or("unknown");
         let tts_loaded = body["tts_model_loaded"].as_bool().unwrap_or(false);
         let whisper_loaded = body["whisper_model_loaded"].as_bool().unwrap_or(false);
@@ -212,7 +214,11 @@ impl VoiceTool {
         Ok(ToolResult::success(format!(
             "Voice API Status: {status}\nTTS model: {}\nWhisper model: {}",
             if tts_loaded { "loaded" } else { "not loaded" },
-            if whisper_loaded { "loaded" } else { "not loaded" },
+            if whisper_loaded {
+                "loaded"
+            } else {
+                "not loaded"
+            },
         )))
     }
 }
@@ -298,7 +304,7 @@ impl Tool for VoiceTool {
                             "The 'text' parameter is required for the 'speak' action",
                             Some(vec!["text"]),
                             Some(json!({"action": "speak", "text": "Hello world"})),
-                        ))
+                        ));
                     }
                 };
                 self.speak(&SpeakParams {
@@ -317,8 +323,10 @@ impl Tool for VoiceTool {
                             "voice",
                             "The 'file_path' parameter is required for the 'transcribe' action",
                             Some(vec!["file_path"]),
-                            Some(json!({"action": "transcribe", "file_path": "/path/to/audio.wav"})),
-                        ))
+                            Some(
+                                json!({"action": "transcribe", "file_path": "/path/to/audio.wav"}),
+                            ),
+                        ));
                     }
                 };
                 self.transcribe(&TranscribeParams { file_path }).await

@@ -116,17 +116,13 @@ impl SigningKey {
                 key
             }
         };
-        Self {
-            key: Arc::new(key),
-        }
+        Self { key: Arc::new(key) }
     }
 
     /// Create with an explicit key (for tests).
     #[cfg(test)]
     pub fn with_key(key: Vec<u8>) -> Self {
-        Self {
-            key: Arc::new(key),
-        }
+        Self { key: Arc::new(key) }
     }
 
     /// Sign a manifest payload: `id|version|content_hash`.
@@ -135,8 +131,7 @@ impl SigningKey {
         type HmacSha256 = Hmac<Sha256>;
 
         let payload = format!("{}|{}|{}", id, version, content_hash);
-        let mut mac = HmacSha256::new_from_slice(&self.key)
-            .expect("HMAC can take key of any size");
+        let mut mac = HmacSha256::new_from_slice(&self.key).expect("HMAC can take key of any size");
         mac.update(payload.as_bytes());
         let result = mac.finalize();
         hex::encode(result.into_bytes())
@@ -235,8 +230,8 @@ pub async fn execute_sandboxed(
     policy: &SandboxPolicy,
     working_dir: Option<&Path>,
 ) -> Result<SandboxResult> {
-    use tokio::process::Command;
     use std::time::Instant;
+    use tokio::process::Command;
 
     let started = Instant::now();
     let mut violations = Vec::new();

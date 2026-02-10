@@ -212,7 +212,9 @@ pub fn init_audit_log(log: AuditLog) -> Result<(), AuditLog> {
 
 /// Get the global audit log (panics if not initialized).
 pub fn audit_log() -> &'static AuditLog {
-    AUDIT_LOG.get().expect("Audit log not initialized — call init_audit_log() at startup")
+    AUDIT_LOG
+        .get()
+        .expect("Audit log not initialized — call init_audit_log() at startup")
 }
 
 /// Get the global audit log if initialized.

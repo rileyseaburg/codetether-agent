@@ -316,7 +316,7 @@ impl Provider for CopilotProvider {
                         supports_vision: supports.and_then(|s| s.vision).unwrap_or(false),
                         supports_tools: supports.and_then(|s| s.tool_calls).unwrap_or(true),
                         supports_streaming: supports.and_then(|s| s.streaming).unwrap_or(true),
-                        input_cost_per_million: None,  // Set below per-model
+                        input_cost_per_million: None, // Set below per-model
                         output_cost_per_million: None,
                     }
                 })
@@ -346,23 +346,44 @@ impl Provider for CopilotProvider {
             ("claude-opus-4.5", ("Claude Opus 4.5", 200_000, 64_000, 3.0)),
             ("claude-opus-4.6", ("Claude Opus 4.6", 200_000, 64_000, 3.0)),
             ("claude-opus-41", ("Claude Opus 4.1", 200_000, 64_000, 10.0)),
-            ("claude-sonnet-4.5", ("Claude Sonnet 4.5", 200_000, 64_000, 1.0)),
+            (
+                "claude-sonnet-4.5",
+                ("Claude Sonnet 4.5", 200_000, 64_000, 1.0),
+            ),
             ("claude-sonnet-4", ("Claude Sonnet 4", 200_000, 64_000, 1.0)),
-            ("claude-haiku-4.5", ("Claude Haiku 4.5", 200_000, 64_000, 0.33)),
+            (
+                "claude-haiku-4.5",
+                ("Claude Haiku 4.5", 200_000, 64_000, 0.33),
+            ),
             ("gpt-5.2", ("GPT-5.2", 400_000, 128_000, 1.0)),
             ("gpt-5.1", ("GPT-5.1", 400_000, 128_000, 1.0)),
             ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000, 1.0)),
-            ("gpt-5.1-codex-mini", ("GPT-5.1-Codex-Mini", 264_000, 64_000, 0.33)),
-            ("gpt-5.1-codex-max", ("GPT-5.1-Codex-Max", 264_000, 64_000, 1.0)),
+            (
+                "gpt-5.1-codex-mini",
+                ("GPT-5.1-Codex-Mini", 264_000, 64_000, 0.33),
+            ),
+            (
+                "gpt-5.1-codex-max",
+                ("GPT-5.1-Codex-Max", 264_000, 64_000, 1.0),
+            ),
             ("gpt-5", ("GPT-5", 400_000, 128_000, 1.0)),
             ("gpt-5-mini", ("GPT-5 mini", 264_000, 64_000, 0.0)),
             ("gpt-5-codex", ("GPT-5-Codex", 264_000, 64_000, 1.0)),
             ("gpt-4.1", ("GPT-4.1", 128_000, 32_768, 0.0)),
             ("gpt-4o", ("GPT-4o", 128_000, 16_384, 0.0)),
             ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1_000_000, 64_000, 1.0)),
-            ("gemini-3-flash-preview", ("Gemini 3 Flash", 1_000_000, 64_000, 0.33)),
-            ("gemini-3-pro-preview", ("Gemini 3 Pro", 1_000_000, 64_000, 1.0)),
-            ("grok-code-fast-1", ("Grok Code Fast 1", 128_000, 32_768, 0.25)),
+            (
+                "gemini-3-flash-preview",
+                ("Gemini 3 Flash", 1_000_000, 64_000, 0.33),
+            ),
+            (
+                "gemini-3-pro-preview",
+                ("Gemini 3 Pro", 1_000_000, 64_000, 1.0),
+            ),
+            (
+                "grok-code-fast-1",
+                ("Grok Code Fast 1", 128_000, 32_768, 0.25),
+            ),
         ]
         .into_iter()
         .collect();
@@ -370,7 +391,8 @@ impl Provider for CopilotProvider {
         // Apply known metadata to enrich API models that had sparse info,
         // and set per-model premium request costs.
         for model in &mut models {
-            if let Some((name, ctx, max_out, premium_mult)) = known_metadata.get(model.id.as_str()) {
+            if let Some((name, ctx, max_out, premium_mult)) = known_metadata.get(model.id.as_str())
+            {
                 if model.name == model.id {
                     model.name = name.to_string();
                 }

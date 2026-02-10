@@ -251,12 +251,7 @@ impl MoltbookClient {
     // ------- posts ----------------------------------------------------------
 
     /// Create a post in a submolt.
-    pub async fn create_post(
-        &self,
-        submolt: &str,
-        title: &str,
-        content: &str,
-    ) -> Result<String> {
+    pub async fn create_post(&self, submolt: &str, title: &str, content: &str) -> Result<String> {
         let resp = self
             .post_json(
                 "/posts",
@@ -409,12 +404,7 @@ impl MoltbookClient {
         let status = resp.status();
         let body = resp.text().await?;
         if !status.is_success() {
-            anyhow::bail!(
-                "Moltbook API error {} on PATCH {}: {}",
-                status,
-                path,
-                body
-            );
+            anyhow::bail!("Moltbook API error {} on PATCH {}: {}", status, path, body);
         }
         Ok(body)
     }

@@ -209,10 +209,7 @@ impl BenchmarkRunner {
     }
 
     /// Run quality checks in a directory and collect results
-    fn run_quality_checks(
-        working_dir: &Path,
-        checks: &QualityChecks,
-    ) -> Vec<QualityCheckResult> {
+    fn run_quality_checks(working_dir: &Path, checks: &QualityChecks) -> Vec<QualityCheckResult> {
         let mut results = Vec::new();
 
         for (name, cmd) in [
@@ -358,19 +355,13 @@ impl BenchmarkRunner {
             anyhow::bail!("No benchmark PRDs found in {}", self.config.prd_dir);
         }
 
-        info!(
-            "Discovered {} benchmark PRDs across tiers",
-            prds.len()
-        );
+        info!("Discovered {} benchmark PRDs across tiers", prds.len());
 
         let mut model_results = Vec::new();
 
         for model_str in &self.config.models {
             let (provider_name, model_name) = Self::parse_model(model_str)?;
-            info!(
-                "Benchmarking model: {}:{}",
-                provider_name, model_name
-            );
+            info!("Benchmarking model: {}:{}", provider_name, model_name);
 
             // Load provider from Vault
             let registry = ProviderRegistry::from_vault().await?;
@@ -469,10 +460,7 @@ impl BenchmarkRunner {
             summary,
         };
 
-        info!(
-            "Benchmark suite complete in {:.1}s",
-            elapsed.as_secs_f64()
-        );
+        info!("Benchmark suite complete in {:.1}s", elapsed.as_secs_f64());
 
         // Write results to file
         let output_path = Path::new(&self.config.output);
@@ -481,10 +469,9 @@ impl BenchmarkRunner {
         info!("Results written to {}", self.config.output);
 
         // Submit to API if configured
-        if let (Some(api_url), Some(api_key)) = (
-            &self.config.submit_api_url,
-            &self.config.submit_api_key,
-        ) {
+        if let (Some(api_url), Some(api_key)) =
+            (&self.config.submit_api_url, &self.config.submit_api_key)
+        {
             Self::submit_results(&result, api_url, api_key).await;
         }
 
@@ -550,10 +537,14 @@ impl BenchmarkRunner {
 
         // Snapshot token usage after
         let tokens_after = TOKEN_USAGE.global_snapshot();
-        let input_tokens =
-            tokens_after.totals.input.saturating_sub(tokens_before.totals.input);
-        let output_tokens =
-            tokens_after.totals.output.saturating_sub(tokens_before.totals.output);
+        let input_tokens = tokens_after
+            .totals
+            .input
+            .saturating_sub(tokens_before.totals.input);
+        let output_tokens = tokens_after
+            .totals
+            .output
+            .saturating_sub(tokens_before.totals.output);
         let tokens_used = input_tokens + output_tokens;
 
         // Calculate cost using real pricing
@@ -616,10 +607,7 @@ impl BenchmarkRunner {
     /// Compute aggregate metrics from PRD results
     fn compute_aggregate(prd_results: &[PrdBenchmarkResult]) -> AggregateMetrics {
         let prds_attempted = prd_results.len();
-        let prds_fully_passed = prd_results
-            .iter()
-            .filter(|r| r.pass_rate >= 1.0)
-            .count();
+        let prds_fully_passed = prd_results.iter().filter(|r| r.pass_rate >= 1.0).count();
 
         let total_stories: usize = prd_results.iter().map(|r| r.stories_total).sum();
         let total_passed: usize = prd_results.iter().map(|r| r.stories_passed).sum();

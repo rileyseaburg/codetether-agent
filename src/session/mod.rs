@@ -458,9 +458,7 @@ impl Session {
         event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
         registry: std::sync::Arc<crate::provider::ProviderRegistry>,
     ) -> Result<SessionResult> {
-        use crate::provider::{
-            CompletionRequest, ContentPart, Role, parse_model_string,
-        };
+        use crate::provider::{CompletionRequest, ContentPart, Role, parse_model_string};
 
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
@@ -720,9 +718,7 @@ impl Session {
             .send(SessionEvent::TextComplete(final_output.trim().to_string()))
             .await;
         // Send updated session state so the caller can sync back
-        let _ = event_tx
-            .send(SessionEvent::SessionSync(self.clone()))
-            .await;
+        let _ = event_tx.send(SessionEvent::SessionSync(self.clone())).await;
         let _ = event_tx.send(SessionEvent::Done).await;
 
         Ok(SessionResult {

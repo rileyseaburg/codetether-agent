@@ -78,45 +78,45 @@ impl K8sManager {
             .or_else(|_| Self::read_namespace_file())
             .unwrap_or_else(|_| "default".to_string());
 
-        let pod_name = std::env::var("HOSTNAME").ok()
+        let pod_name = std::env::var("HOSTNAME")
+            .ok()
             .or_else(|| std::env::var("CODETETHER_POD_NAME").ok());
 
         let deployment_name = std::env::var("CODETETHER_DEPLOYMENT_NAME").ok();
 
         let client = match KubeConfig::incluster() {
-            Ok(config) => {
-                match Client::try_from(config) {
-                    Ok(c) => {
-                        tracing::info!(
-                            namespace = %namespace,
-                            pod = pod_name.as_deref().unwrap_or("-"),
-                            "K8s client initialized (in-cluster)"
-                        );
-                        Some(c)
-                    }
-                    Err(e) => {
-                        tracing::debug!("Failed to create in-cluster K8s client: {}", e);
-                        None
-                    }
+            Ok(config) => match Client::try_from(config) {
+                Ok(c) => {
+                    tracing::info!(
+                        namespace = %namespace,
+                        pod = pod_name.as_deref().unwrap_or("-"),
+                        "K8s client initialized (in-cluster)"
+                    );
+                    Some(c)
                 }
-            }
+                Err(e) => {
+                    tracing::debug!("Failed to create in-cluster K8s client: {}", e);
+                    None
+                }
+            },
             Err(_) => {
                 // Try loading from KUBECONFIG for local development.
-                match KubeConfig::from_kubeconfig(&kube::config::KubeConfigOptions::default()).await {
-                    Ok(config) => {
-                        match Client::try_from(config) {
-                            Ok(c) => {
-                                tracing::info!(namespace = %namespace, "K8s client initialized (kubeconfig)");
-                                Some(c)
-                            }
-                            Err(e) => {
-                                tracing::debug!("Failed to create K8s client from kubeconfig: {}", e);
-                                None
-                            }
+                match KubeConfig::from_kubeconfig(&kube::config::KubeConfigOptions::default()).await
+                {
+                    Ok(config) => match Client::try_from(config) {
+                        Ok(c) => {
+                            tracing::info!(namespace = %namespace, "K8s client initialized (kubeconfig)");
+                            Some(c)
                         }
-                    }
+                        Err(e) => {
+                            tracing::debug!("Failed to create K8s client from kubeconfig: {}", e);
+                            None
+                        }
+                    },
                     Err(_) => {
-                        tracing::debug!("Not running in K8s and no kubeconfig found — K8s features disabled");
+                        tracing::debug!(
+                            "Not running in K8s and no kubeconfig found — K8s features disabled"
+                        );
                         None
                     }
                 }
@@ -187,9 +187,13 @@ impl K8sManager {
 
     /// Scale the agent's own deployment.
     pub async fn scale(&self, replicas: i32) -> Result<DeployAction> {
-        let client = self.client.as_ref()
+        let client = self
+            .client
+            .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available — cannot scale"))?;
-        let dep_name = self.deployment_name.as_ref()
+        let dep_name = self
+            .deployment_name
+            .as_ref()
             .ok_or_else(|| anyhow!("Deployment name not set — set CODETETHER_DEPLOYMENT_NAME"))?;
 
         let deployments: Api<Deployment> = Api::namespaced(client.clone(), &self.namespace);
@@ -201,9 +205,18 @@ impl K8sManager {
         });
 
         deployments
-            .patch(dep_name, &PatchParams::apply("codetether"), &Patch::Merge(&patch))
+            .patch(
+                dep_name,
+                &PatchParams::apply("codetether"),
+                &Patch::Merge(&patch),
+            )
             .await
-            .with_context(|| format!("Failed to scale deployment {} to {} replicas", dep_name, replicas))?;
+            .with_context(|| {
+                format!(
+                    "Failed to scale deployment {} to {} replicas",
+                    dep_name, replicas
+                )
+            })?;
 
         let action = DeployAction {
             action: format!("scale:{}", replicas),
@@ -224,9 +237,13 @@ impl K8sManager {
 
     /// Perform a rolling restart of the agent's deployment.
     pub async fn rolling_restart(&self) -> Result<DeployAction> {
-        let client = self.client.as_ref()
+        let client = self
+            .client
+            .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available — cannot restart"))?;
-        let dep_name = self.deployment_name.as_ref()
+        let dep_name = self
+            .deployment_name
+            .as_ref()
             .ok_or_else(|| anyhow!("Deployment name not set — set CODETETHER_DEPLOYMENT_NAME"))?;
 
         let deployments: Api<Deployment> = Api::namespaced(client.clone(), &self.namespace);
@@ -245,7 +262,11 @@ impl K8sManager {
         });
 
         deployments
-            .patch(dep_name, &PatchParams::apply("codetether"), &Patch::Merge(&patch))
+            .patch(
+                dep_name,
+                &PatchParams::apply("codetether"),
+                &Patch::Merge(&patch),
+            )
             .await
             .with_context(|| format!("Failed to trigger rolling restart for {}", dep_name))?;
 
@@ -264,12 +285,16 @@ impl K8sManager {
 
     /// List pods belonging to our deployment.
     pub async fn list_pods(&self) -> Result<Vec<PodInfo>> {
-        let client = self.client.as_ref()
+        let client = self
+            .client
+            .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available"))?;
 
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
 
-        let label_selector = self.deployment_name.as_ref()
+        let label_selector = self
+            .deployment_name
+            .as_ref()
             .map(|n| format!("app={}", n))
             .unwrap_or_else(|| "app=codetether".to_string());
 
@@ -278,28 +303,40 @@ impl K8sManager {
             .await
             .context("Failed to list pods")?;
 
-        let infos: Vec<PodInfo> = list.items.iter().map(|pod| {
-            let name = pod.metadata.name.clone().unwrap_or_default();
-            let phase = pod.status.as_ref()
-                .and_then(|s| s.phase.clone())
-                .unwrap_or_else(|| "Unknown".to_string());
-            let ready = pod.status.as_ref()
-                .and_then(|s| s.conditions.as_ref())
-                .map(|conditions| {
-                    conditions.iter().any(|c| c.type_ == "Ready" && c.status == "True")
-                })
-                .unwrap_or(false);
-            let start_time = pod.status.as_ref()
-                .and_then(|s| s.start_time.as_ref())
-                .map(|t| t.0.to_rfc3339());
+        let infos: Vec<PodInfo> = list
+            .items
+            .iter()
+            .map(|pod| {
+                let name = pod.metadata.name.clone().unwrap_or_default();
+                let phase = pod
+                    .status
+                    .as_ref()
+                    .and_then(|s| s.phase.clone())
+                    .unwrap_or_else(|| "Unknown".to_string());
+                let ready = pod
+                    .status
+                    .as_ref()
+                    .and_then(|s| s.conditions.as_ref())
+                    .map(|conditions| {
+                        conditions
+                            .iter()
+                            .any(|c| c.type_ == "Ready" && c.status == "True")
+                    })
+                    .unwrap_or(false);
+                let start_time = pod
+                    .status
+                    .as_ref()
+                    .and_then(|s| s.start_time.as_ref())
+                    .map(|t| t.0.to_rfc3339());
 
-            PodInfo {
-                name,
-                phase,
-                ready,
-                start_time,
-            }
-        }).collect();
+                PodInfo {
+                    name,
+                    phase,
+                    ready,
+                    start_time,
+                }
+            })
+            .collect();
 
         Ok(infos)
     }
@@ -311,19 +348,28 @@ impl K8sManager {
         image: Option<&str>,
         env_vars: HashMap<String, String>,
     ) -> Result<DeployAction> {
-        let client = self.client.as_ref()
+        let client = self
+            .client
+            .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available — cannot spawn sub-agent pod"))?;
 
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
 
         let image = image.unwrap_or("ghcr.io/rileyseaburg/codetether-agent:latest");
-        let pod_name = format!("codetether-subagent-{}", &subagent_id[..8.min(subagent_id.len())]);
+        let pod_name = format!(
+            "codetether-subagent-{}",
+            &subagent_id[..8.min(subagent_id.len())]
+        );
 
-        let mut env_list: Vec<serde_json::Value> = env_vars.iter().map(|(k, v)| {
-            serde_json::json!({ "name": k, "value": v })
-        }).collect();
-        env_list.push(serde_json::json!({ "name": "CODETETHER_SUBAGENT_ID", "value": subagent_id }));
-        env_list.push(serde_json::json!({ "name": "CODETETHER_K8S_NAMESPACE", "value": &self.namespace }));
+        let mut env_list: Vec<serde_json::Value> = env_vars
+            .iter()
+            .map(|(k, v)| serde_json::json!({ "name": k, "value": v }))
+            .collect();
+        env_list
+            .push(serde_json::json!({ "name": "CODETETHER_SUBAGENT_ID", "value": subagent_id }));
+        env_list.push(
+            serde_json::json!({ "name": "CODETETHER_K8S_NAMESPACE", "value": &self.namespace }),
+        );
 
         let pod_manifest: Pod = serde_json::from_value(serde_json::json!({
             "apiVersion": "v1",
@@ -358,7 +404,10 @@ impl K8sManager {
         let action = DeployAction {
             action: format!("spawn_subagent:{}", subagent_id),
             success: true,
-            message: format!("Created sub-agent pod '{}' in namespace '{}'", pod_name, self.namespace),
+            message: format!(
+                "Created sub-agent pod '{}' in namespace '{}'",
+                pod_name, self.namespace
+            ),
             timestamp: Utc::now().to_rfc3339(),
         };
 
@@ -374,11 +423,16 @@ impl K8sManager {
 
     /// Delete a sub-agent pod.
     pub async fn delete_subagent_pod(&self, subagent_id: &str) -> Result<DeployAction> {
-        let client = self.client.as_ref()
+        let client = self
+            .client
+            .as_ref()
             .ok_or_else(|| anyhow!("K8s client not available"))?;
 
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
-        let pod_name = format!("codetether-subagent-{}", &subagent_id[..8.min(subagent_id.len())]);
+        let pod_name = format!(
+            "codetether-subagent-{}",
+            &subagent_id[..8.min(subagent_id.len())]
+        );
 
         pods.delete(&pod_name, &kube::api::DeleteParams::default())
             .await

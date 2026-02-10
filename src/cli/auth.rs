@@ -103,7 +103,10 @@ async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
         user: serde_json::Value,
     }
 
-    let login: LoginResponse = resp.json().await.context("Failed to parse login response")?;
+    let login: LoginResponse = resp
+        .json()
+        .await
+        .context("Failed to parse login response")?;
 
     // Store token to ~/.config/codetether-agent/credentials.json
     let cred_path = credential_file_path()?;
