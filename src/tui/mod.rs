@@ -143,6 +143,8 @@ struct App {
     processing_message: Option<String>,
     current_tool: Option<String>,
     response_rx: Option<mpsc::Receiver<SessionEvent>>,
+    /// Cached provider registry to avoid reloading from Vault on every message
+    provider_registry: Option<std::sync::Arc<crate::provider::ProviderRegistry>>,
     /// Working directory for workspace-scoped session filtering
     workspace_dir: PathBuf,
     // Swarm mode state
@@ -309,6 +311,7 @@ impl App {
             processing_message: None,
             current_tool: None,
             response_rx: None,
+            provider_registry: None,
             workspace_dir: workspace_root.clone(),
             view_mode: ViewMode::Chat,
             chat_layout: ChatLayoutMode::Webview,
@@ -658,6 +661,25 @@ impl App {
         self.processing_message = Some("Thinking...".to_string());
         self.current_tool = None;
 
+        // Load provider registry once and cache it
+        if self.provider_registry.is_none() {
+            match crate::provider::ProviderRegistry::from_vault().await {
+                Ok(registry) => {
+                    self.provider_registry = Some(std::sync::Arc::new(registry));
+                }
+                Err(err) => {
+                    tracing::error!(error = %err, "Failed to load provider registry");
+                    self.messages.push(ChatMessage::new(
+                        "assistant",
+                        format!("Error loading providers: {err}"),
+                    ));
+                    self.is_processing = false;
+                    return;
+                }
+            }
+        }
+        let registry = self.provider_registry.clone().unwrap();
+
         // Create channel for async communication
         let (tx, rx) = mpsc::channel(100);
         self.response_rx = Some(rx);
@@ -669,7 +691,10 @@ impl App {
         // Spawn async task to process the message with event streaming
         tokio::spawn(async move {
             let mut session = session_clone;
-            if let Err(err) = session.prompt_with_events(&message_clone, tx.clone()).await {
+            if let Err(err) = session
+                .prompt_with_events(&message_clone, tx.clone(), registry)
+                .await
+            {
                 tracing::error!(error = %err, "Agent processing failed");
                 let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
                 let _ = tx.send(SessionEvent::Done).await;
@@ -714,6 +739,11 @@ impl App {
                 if !text.is_empty() {
                     self.messages.push(ChatMessage::new("assistant", text));
                 }
+            }
+            SessionEvent::SessionSync(session) => {
+                // Sync the updated session (with full conversation history) back
+                // so subsequent messages include prior context.
+                self.session = Some(session);
             }
             SessionEvent::Error(err) => {
                 self.messages

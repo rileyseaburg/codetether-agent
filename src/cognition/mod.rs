@@ -155,6 +155,9 @@ pub struct Proposal {
     /// Whether votes have been requested this cycle
     #[serde(default)]
     pub votes_requested: bool,
+    /// Quorum required (frozen at creation time to prevent drift).
+    #[serde(default)]
+    pub quorum_needed: usize,
 }
 
 /// Thought/event types emitted by the cognition loop.
@@ -519,12 +522,17 @@ impl CognitionRuntime {
             allowed_tools: Vec::new(),
         };
 
+        let thinker_backend = thinker::ThinkerBackend::from_env(
+            &std::env::var("CODETETHER_COGNITION_THINKER_BACKEND")
+                .unwrap_or_else(|_| "openai_compat".to_string()),
+        );
+        let thinker_timeout_default = match thinker_backend {
+            thinker::ThinkerBackend::OpenAICompat => 30_000,
+            thinker::ThinkerBackend::Candle => 12_000,
+        };
         let thinker_config = ThinkerConfig {
             enabled: env_bool("CODETETHER_COGNITION_THINKER_ENABLED", true),
-            backend: thinker::ThinkerBackend::from_env(
-                &std::env::var("CODETETHER_COGNITION_THINKER_BACKEND")
-                    .unwrap_or_else(|_| "openai_compat".to_string()),
-            ),
+            backend: thinker_backend,
             endpoint: normalize_thinker_endpoint(
                 &std::env::var("CODETETHER_COGNITION_THINKER_BASE_URL")
                     .unwrap_or_else(|_| "http://127.0.0.1:11434/v1".to_string()),
@@ -537,7 +545,7 @@ impl CognitionRuntime {
                 .ok()
                 .and_then(|v| v.parse::<f32>().ok()),
             max_tokens: env_usize("CODETETHER_COGNITION_THINKER_MAX_TOKENS", 256),
-            timeout_ms: env_u64("CODETETHER_COGNITION_THINKER_TIMEOUT_MS", 12_000),
+            timeout_ms: env_u64("CODETETHER_COGNITION_THINKER_TIMEOUT_MS", thinker_timeout_default),
             candle_model_path: std::env::var("CODETETHER_COGNITION_THINKER_CANDLE_MODEL_PATH").ok(),
             candle_tokenizer_path: std::env::var(
                 "CODETETHER_COGNITION_THINKER_CANDLE_TOKENIZER_PATH",
@@ -572,7 +580,7 @@ impl CognitionRuntime {
         options: CognitionRuntimeOptions,
         thinker_config: Option<ThinkerConfig>,
     ) -> Self {
-        let (event_tx, _) = broadcast::channel(options.max_events.max(16));
+        let (event_tx, _) = broadcast::channel(256);
         let thinker = thinker_config.and_then(|cfg| {
             if !cfg.enabled {
                 return None;
@@ -772,6 +780,8 @@ impl CognitionRuntime {
 
                     let event_timestamp = Utc::now();
                     let is_fallback = thought.source == "fallback";
+                    let tokens_used = thought.total_tokens.unwrap_or(0);
+                    let compute_used = thought.latency_ms as u32;
 
                     new_events.push(ThoughtEvent {
                         id: Uuid::new_v4().to_string(),
@@ -806,14 +816,10 @@ impl CognitionRuntime {
                     {
                         let mut map = personas.write().await;
                         if let Some(persona) = map.get_mut(&work.persona_id) {
-                            let tokens_used = thought.total_tokens.unwrap_or(0);
-                            let compute_used = thought.latency_ms as u32;
                             persona.tokens_this_window =
                                 persona.tokens_this_window.saturating_add(tokens_used);
                             persona.compute_ms_this_window =
                                 persona.compute_ms_this_window.saturating_add(compute_used);
-
-                            // Step 2: Update last_progress_at for non-fallback thought
                             if !is_fallback {
                                 persona.last_progress_at = Utc::now();
                             }
@@ -993,6 +999,7 @@ impl CognitionRuntime {
                                 Utc::now() + ChronoDuration::seconds(gov.vote_timeout_secs as i64),
                             ),
                             votes_requested: false,
+                            quorum_needed: (work_items.len() as f32 * gov.quorum_fraction).ceil() as usize,
                         };
 
                         new_events.push(ThoughtEvent {
@@ -1115,16 +1122,40 @@ impl CognitionRuntime {
                                 .take(10)
                                 .map(|b| b.id.clone())
                                 .collect();
-                            let top_uncertainties: Vec<String> = belief_store
-                                .values()
-                                .filter(|b| {
-                                    b.status == BeliefStatus::Stale || !b.contested_by.is_empty()
-                                })
-                                .take(5)
-                                .map(|b| {
-                                    format!("[{}] {}", b.belief_key, trim_for_storage(&b.claim, 80))
-                                })
-                                .collect();
+                            let top_uncertainties: Vec<String> = {
+                                let mut uncertain: Vec<&Belief> = belief_store
+                                    .values()
+                                    .filter(|b| {
+                                        b.status == BeliefStatus::Stale
+                                            || !b.contested_by.is_empty()
+                                    })
+                                    .collect();
+                                // Deterministic order: contested first, then lowest confidence,
+                                // then oldest updated_at.
+                                uncertain.sort_by(|a, b| {
+                                    let a_contested = !a.contested_by.is_empty();
+                                    let b_contested = !b.contested_by.is_empty();
+                                    b_contested
+                                        .cmp(&a_contested)
+                                        .then_with(|| {
+                                            a.confidence
+                                                .partial_cmp(&b.confidence)
+                                                .unwrap_or(std::cmp::Ordering::Equal)
+                                        })
+                                        .then_with(|| a.updated_at.cmp(&b.updated_at))
+                                });
+                                uncertain
+                                    .iter()
+                                    .take(5)
+                                    .map(|b| {
+                                        format!(
+                                            "[{}] {}",
+                                            b.belief_key,
+                                            trim_for_storage(&b.claim, 80)
+                                        )
+                                    })
+                                    .collect()
+                            };
 
                             let mut sorted_attn: Vec<&AttentionItem> = attn_queue
                                 .iter()
@@ -1161,10 +1192,6 @@ impl CognitionRuntime {
                     let gov = governance.read().await;
                     let mut proposal_store = proposals.write().await;
                     let persona_map = personas.read().await;
-                    let active_count = persona_map
-                        .values()
-                        .filter(|p| p.status == PersonaStatus::Active)
-                        .count();
 
                     let proposal_ids: Vec<String> = proposal_store
                         .values()
@@ -1175,11 +1202,11 @@ impl CognitionRuntime {
                     let mut attn_queue = attention_queue.write().await;
                     for pid in proposal_ids {
                         if let Some(proposal) = proposal_store.get_mut(&pid) {
+                            let quorum_needed = proposal.quorum_needed.max(1);
+
                             // Check vote deadline
                             if let Some(deadline) = proposal.vote_deadline {
                                 if now > deadline {
-                                    let quorum_needed =
-                                        (active_count as f32 * gov.quorum_fraction).ceil() as usize;
                                     if proposal.votes.len() < quorum_needed {
                                         // Timeout without quorum → attention item
                                         attn_queue.push(AttentionItem {
@@ -1196,14 +1223,47 @@ impl CognitionRuntime {
                                             created_at: now,
                                             resolved_at: None,
                                         });
+                                        proposal.status = ProposalStatus::Rejected;
+                                        continue;
+                                    }
+
+                                    // Deadline passed with quorum but missing required approvers → reject
+                                    let required_roles = gov
+                                        .required_approvers_by_role
+                                        .get(&proposal.risk)
+                                        .cloned()
+                                        .unwrap_or_default();
+                                    let all_required_met = required_roles.iter().all(|role| {
+                                        proposal.votes.iter().any(|(vid, vote)| {
+                                            *vote == ProposalVote::Approve
+                                                && persona_map
+                                                    .get(vid)
+                                                    .map(|p| &p.identity.role == role)
+                                                    .unwrap_or(false)
+                                        })
+                                    });
+                                    if !all_required_met {
+                                        attn_queue.push(AttentionItem {
+                                            id: Uuid::new_v4().to_string(),
+                                            topic: format!(
+                                                "Missing required approvers: {}",
+                                                proposal.title
+                                            ),
+                                            topic_tags: Vec::new(),
+                                            priority: 0.7,
+                                            source_type: AttentionSource::ProposalTimeout,
+                                            source_id: proposal.id.clone(),
+                                            assigned_persona: None,
+                                            created_at: now,
+                                            resolved_at: None,
+                                        });
+                                        proposal.status = ProposalStatus::Rejected;
                                         continue;
                                     }
                                 }
                             }
 
                             // Resolve if enough votes
-                            let quorum_needed =
-                                (active_count as f32 * gov.quorum_fraction).ceil() as usize;
                             if proposal.votes.len() >= quorum_needed {
                                 // Check for veto
                                 let vetoed = proposal.votes.iter().any(|(voter_id, vote)| {
@@ -1833,6 +1893,9 @@ async fn recent_persona_context(
                         ThoughtEventType::CheckResult
                             | ThoughtEventType::ProposalCreated
                             | ThoughtEventType::SnapshotCompressed
+                            | ThoughtEventType::WorkspaceUpdated
+                            | ThoughtEventType::ActionExecuted
+                            | ThoughtEventType::BudgetPaused
                     ))
         })
         .take(limit)
@@ -2003,25 +2066,23 @@ fn normalize_thought_output(work: &ThoughtWorkItem, context: &[ThoughtEvent], ra
     // Prefer process-labeled content if the model emitted a preamble first.
     if let Some(idx) = find_process_label_start(&trimmed) {
         let candidate = trimmed[idx..].trim();
-        if let Some(first_line) = candidate
-            .lines()
-            .map(str::trim)
-            .find(|line| !line.is_empty())
-        {
-            let normalized_line = first_line.trim_matches('"').trim_matches('\'').trim();
-            if normalized_line.starts_with("Phase:")
-                && !normalized_line.contains('<')
-                && !has_template_placeholder_values(normalized_line)
-            {
-                return normalized_line.to_string();
-            }
-        }
+        // Return the full candidate (all structured fields), not just the first line.
         if !candidate.is_empty()
             && !candidate.contains('<')
-            && !candidate.contains('\n')
             && !has_template_placeholder_values(candidate)
         {
-            return candidate.to_string();
+            // If it's a multi-line structured output, collapse to pipe-delimited single line.
+            let collapsed: String = candidate
+                .lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .collect::<Vec<_>>()
+                .join(" | ");
+            let cleaned = collapsed.trim_matches('"').trim_matches('\'').trim();
+            if cleaned.starts_with("Phase:") {
+                return cleaned.to_string();
+            }
+            return collapsed;
         }
     }
 
@@ -2725,6 +2786,7 @@ mod tests {
                     votes,
                     vote_deadline: Some(Utc::now() + ChronoDuration::seconds(300)),
                     votes_requested: true,
+                    quorum_needed: 1,
                 },
             );
         }
@@ -2801,6 +2863,7 @@ mod tests {
                     votes,
                     vote_deadline: Some(Utc::now() + ChronoDuration::seconds(300)),
                     votes_requested: true,
+                    quorum_needed: 1,
                 },
             );
         }

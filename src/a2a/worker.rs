@@ -959,8 +959,16 @@ async fn handle_task(
         .await?;
 
     if !res.status().is_success() {
+        let status = res.status();
         let text = res.text().await?;
-        tracing::warn!("Failed to claim task: {}", text);
+        if status == reqwest::StatusCode::CONFLICT {
+            tracing::debug!(
+                task_id,
+                "Task already claimed by another worker, skipping"
+            );
+        } else {
+            tracing::warn!(task_id, %status, "Failed to claim task: {}", text);
+        }
         return Ok(());
     }
 

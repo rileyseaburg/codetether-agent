@@ -8,6 +8,7 @@ use candle_transformers::models::{quantized_llama, quantized_qwen2};
 use candle_transformers::utils::apply_repeat_penalty;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
@@ -79,7 +80,7 @@ impl Default for ThinkerConfig {
             temperature: 0.2,
             top_p: None,
             max_tokens: 256,
-            timeout_ms: 12_000,
+            timeout_ms: 30_000,
             candle_model_path: None,
             candle_tokenizer_path: None,
             candle_arch: None,
@@ -160,9 +161,15 @@ impl ThinkerClient {
                 let system_prompt = system_prompt.to_string();
                 let user_prompt = user_prompt.to_string();
                 tokio::task::spawn_blocking(move || {
-                    let mut guard = runtime
-                        .lock()
-                        .map_err(|_| anyhow!("candle thinker mutex poisoned"))?;
+                    let mut guard = match runtime.try_lock() {
+                        Ok(g) => g,
+                        Err(std::sync::TryLockError::WouldBlock) => {
+                            return Err(anyhow!("candle thinker is busy"));
+                        }
+                        Err(std::sync::TryLockError::Poisoned(_)) => {
+                            return Err(anyhow!("candle thinker mutex poisoned"));
+                        }
+                    };
                     guard.think(&system_prompt, &user_prompt)
                 })
                 .await
@@ -177,6 +184,7 @@ impl ThinkerClient {
         system_prompt: &str,
         user_prompt: &str,
     ) -> Result<ThinkerOutput> {
+        let started_at = Instant::now();
         let body = OpenAIChatRequest {
             model: self.config.model.clone(),
             messages: vec![
@@ -195,47 +203,79 @@ impl ThinkerClient {
             stream: false,
         };
 
-        let mut request = http.post(&self.config.endpoint).json(&body);
-        if let Some(key) = self.config.api_key.as_ref() {
-            request = request.bearer_auth(key);
-        }
+        // Retry once on transient failures (connection errors, 429, 502-504).
+        let max_attempts: u32 = 2;
+        let mut last_err: Option<anyhow::Error> = None;
 
-        let response = request
-            .send()
-            .await
-            .context("thinker request failed to send")?;
-        if !response.status().is_success() {
+        for attempt in 0..max_attempts {
+            if attempt > 0 {
+                tokio::time::sleep(Duration::from_millis(500 * attempt as u64)).await;
+                tracing::debug!(attempt, "retrying thinker HTTP request");
+            }
+
+            let mut request = http.post(&self.config.endpoint).json(&body);
+            if let Some(key) = self.config.api_key.as_ref() {
+                request = request.bearer_auth(key);
+            }
+
+            let response = match request.send().await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    if is_transient_reqwest_error(&e) {
+                        tracing::warn!(attempt, error = %e, "thinker HTTP request failed (transient)");
+                        last_err = Some(anyhow::Error::from(e).context("transient thinker send error"));
+                        continue;
+                    }
+                    return Err(anyhow::Error::from(e).context("non-transient thinker send error"));
+                }
+            };
+
             let status = response.status();
-            let body_text = response
-                .text()
+            if is_transient_http_error(status.as_u16()) {
+                let body_text = response.text().await.unwrap_or_default();
+                tracing::warn!(attempt, status = %status, "thinker received transient HTTP error");
+                last_err = Some(anyhow!("thinker request failed with status {}: {}", status, body_text));
+                continue;
+            }
+
+            if !status.is_success() {
+                let body_text = response.text().await.unwrap_or_else(|_| "<empty>".to_string());
+                return Err(anyhow!("thinker request failed with status {}: {}", status, body_text));
+            }
+
+            let payload: OpenAIChatResponse = response
+                .json()
                 .await
-                .unwrap_or_else(|_| "<empty>".to_string());
-            return Err(anyhow!(
-                "thinker request failed with status {}: {}",
-                status,
-                body_text
-            ));
+                .context("failed to decode thinker response")?;
+            let choice = payload
+                .choices
+                .first()
+                .ok_or_else(|| anyhow!("thinker response did not include choices"))?;
+            let text = choice.message.extract_text();
+            let usage = payload.usage.unwrap_or_default();
+
+            let output = ThinkerOutput {
+                model: payload.model.unwrap_or_else(|| self.config.model.clone()),
+                finish_reason: choice.finish_reason.clone(),
+                text,
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens,
+                total_tokens: usage.total_tokens,
+            };
+
+            tracing::debug!(
+                model = %output.model,
+                latency_ms = started_at.elapsed().as_millis(),
+                prompt_tokens = ?output.prompt_tokens,
+                completion_tokens = ?output.completion_tokens,
+                attempt,
+                "openai-compat thinker generated thought"
+            );
+
+            return Ok(output);
         }
 
-        let payload: OpenAIChatResponse = response
-            .json()
-            .await
-            .context("failed to decode thinker response")?;
-        let choice = payload
-            .choices
-            .first()
-            .ok_or_else(|| anyhow!("thinker response did not include choices"))?;
-        let text = choice.message.extract_text();
-        let usage = payload.usage.unwrap_or_default();
-
-        Ok(ThinkerOutput {
-            model: payload.model.unwrap_or_else(|| self.config.model.clone()),
-            finish_reason: choice.finish_reason.clone(),
-            text,
-            prompt_tokens: usage.prompt_tokens,
-            completion_tokens: usage.completion_tokens,
-            total_tokens: usage.total_tokens,
-        })
+        Err(last_err.unwrap_or_else(|| anyhow!("thinker HTTP request failed after {max_attempts} attempts")))
     }
 }
 
@@ -244,6 +284,7 @@ pub(crate) struct CandleThinker {
     tokenizer: Tokenizer,
     device: Device,
     model_label: String,
+    architecture: String,
     context_window: usize,
     temperature: f32,
     top_p: Option<f32>,
@@ -252,7 +293,7 @@ pub(crate) struct CandleThinker {
     repeat_last_n: usize,
     seed: u64,
     request_index: u64,
-    eos_token_ids: Vec<u32>,
+    eos_token_ids: HashSet<u32>,
 }
 
 enum CandleModel {
@@ -306,6 +347,12 @@ impl CandleThinker {
         let context_window = detect_context_window(&content, &architecture).unwrap_or(4096);
         let model_label = format!("candle:{}:{}@{}", architecture, device_label, model_path);
 
+        let tokenizer = Tokenizer::from_file(tokenizer_path)
+            .map_err(|e| anyhow!("failed to load tokenizer from {}: {}", tokenizer_path, e))?;
+
+        // Extract EOS metadata from content before it is moved into from_gguf.
+        let gguf_eos_ids = extract_gguf_eos_ids(&content);
+
         let model = match architecture.as_str() {
             "llama" => CandleModel::Llama(
                 quantized_llama::ModelWeights::from_gguf(content, &mut reader, &device)
@@ -340,10 +387,7 @@ impl CandleThinker {
             }
         };
 
-        let tokenizer = Tokenizer::from_file(tokenizer_path)
-            .map_err(|e| anyhow!("failed to load tokenizer from {}: {}", tokenizer_path, e))?;
-
-        let eos_token_ids = collect_eos_token_ids(&tokenizer);
+        let eos_token_ids: HashSet<u32> = collect_eos_token_ids(&tokenizer, &gguf_eos_ids);
         if eos_token_ids.is_empty() {
             tracing::warn!(
                 "No EOS tokens found in tokenizer; generation will stop on max token limit"
@@ -355,6 +399,7 @@ impl CandleThinker {
             tokenizer,
             device,
             model_label,
+            architecture,
             context_window,
             temperature: config.temperature,
             top_p: config.top_p,
@@ -373,10 +418,7 @@ impl CandleThinker {
         user_prompt: &str,
     ) -> Result<ThinkerOutput> {
         let started_at = Instant::now();
-        let prompt = format!(
-            "System:\n{}\n\nUser:\n{}\n\nAssistant:\n",
-            system_prompt, user_prompt
-        );
+        let prompt = format_chat_prompt(&self.architecture, system_prompt, user_prompt);
         let encoding = self
             .tokenizer
             .encode(prompt.as_str(), true)
@@ -386,9 +428,27 @@ impl CandleThinker {
             return Err(anyhow!("tokenizer produced an empty prompt token set"));
         }
 
+        // Truncate user content while preserving the system prompt prefix.
         if self.context_window > 8 && tokens.len() >= self.context_window {
-            let keep = self.context_window.saturating_sub(8);
-            tokens = tokens[tokens.len().saturating_sub(keep)..].to_vec();
+            let system_only = format_chat_prompt(&self.architecture, system_prompt, "");
+            let sys_encoding = self
+                .tokenizer
+                .encode(system_only.as_str(), true)
+                .map_err(|e| anyhow!("tokenizer encode failed (system): {}", e))?;
+            let sys_len = sys_encoding.get_ids().len();
+            let budget = self.context_window.saturating_sub(8);
+            if sys_len < budget {
+                // Keep system prefix + tail of user content that fits
+                let tail_budget = budget.saturating_sub(sys_len);
+                let tail_start = tokens.len().saturating_sub(tail_budget);
+                let mut truncated = sys_encoding.get_ids().to_vec();
+                truncated.extend_from_slice(&tokens[tail_start..]);
+                tokens = truncated;
+            } else {
+                // System alone exceeds budget; keep only the tail
+                let keep = budget;
+                tokens = tokens[tokens.len().saturating_sub(keep)..].to_vec();
+            }
         }
         let prompt_token_count = tokens.len() as u32;
 
@@ -473,6 +533,36 @@ impl CandleThinker {
     }
 }
 
+/// Build a chat prompt using the proper template for each model architecture.
+fn format_chat_prompt(architecture: &str, system_prompt: &str, user_prompt: &str) -> String {
+    match architecture {
+        // ChatML template (Qwen2, Yi, etc.)
+        "qwen2" => format!(
+            "<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n",
+            system = system_prompt,
+            user = user_prompt,
+        ),
+        // Llama 3 instruct template
+        "llama" => format!(
+            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+            system = system_prompt,
+            user = user_prompt,
+        ),
+        // Gemma instruct template
+        "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => format!(
+            "<start_of_turn>user\n{system}\n\n{user}<end_of_turn>\n<start_of_turn>model\n",
+            system = system_prompt,
+            user = user_prompt,
+        ),
+        // Fallback for unknown architectures
+        _ => format!(
+            "System:\n{system}\n\nUser:\n{user}\n\nAssistant:\n",
+            system = system_prompt,
+            user = user_prompt,
+        ),
+    }
+}
+
 fn select_candle_device(config: &ThinkerConfig) -> Result<(Device, String)> {
     match config.candle_device {
         CandleDevicePreference::Cpu => Ok((Device::Cpu, "cpu".to_string())),
@@ -534,7 +624,28 @@ fn detect_context_window(content: &gguf_file::Content, architecture: &str) -> Op
         .map(|v| v as usize)
 }
 
-fn collect_eos_token_ids(tokenizer: &Tokenizer) -> Vec<u32> {
+/// Extract EOS token IDs from GGUF metadata before the content is consumed.
+fn extract_gguf_eos_ids(content: &gguf_file::Content) -> Vec<u32> {
+    let mut ids = Vec::new();
+    for key in [
+        "tokenizer.ggml.eos_token_id",
+        "tokenizer.ggml.eot_token_id",
+    ] {
+        if let Some(v) = content.metadata.get(key) {
+            if let Ok(id) = v.to_u32() {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+        }
+    }
+    ids
+}
+
+fn collect_eos_token_ids(tokenizer: &Tokenizer, gguf_eos_ids: &[u32]) -> HashSet<u32> {
+    let mut ids: HashSet<u32> = gguf_eos_ids.iter().copied().collect();
+
+    // Also check well-known special token strings as fallback.
     let candidates = [
         "<|im_end|>",
         "<|eot_id|>",
@@ -543,15 +654,22 @@ fn collect_eos_token_ids(tokenizer: &Tokenizer) -> Vec<u32> {
         "<|end|>",
         "<end_of_turn>",
     ];
-    let mut ids = Vec::new();
     for token in candidates {
         if let Some(id) = tokenizer.token_to_id(token) {
-            if !ids.contains(&id) {
-                ids.push(id);
-            }
+            ids.insert(id);
         }
     }
     ids
+}
+
+/// Returns true for HTTP status codes that are worth retrying.
+fn is_transient_http_error(status: u16) -> bool {
+    matches!(status, 429 | 502 | 503 | 504)
+}
+
+/// Returns true for reqwest errors that are worth retrying (timeouts, connection resets).
+fn is_transient_reqwest_error(e: &reqwest::Error) -> bool {
+    e.is_timeout() || e.is_connect() || e.is_request()
 }
 
 #[derive(Debug, Serialize)]
