@@ -622,15 +622,24 @@ impl Session {
                 })
                 .collect();
 
-            // Collect text output
+            // Collect text output for this step
+            let mut step_text = String::new();
             for part in &response.message.content {
                 if let ContentPart::Text { text } = part {
                     if !text.is_empty() {
-                        final_output.push_str(text);
-                        final_output.push('\n');
-                        let _ = event_tx.send(SessionEvent::TextChunk(text.clone())).await;
+                        step_text.push_str(text);
+                        step_text.push('\n');
                     }
                 }
+            }
+
+            // Emit this step's text BEFORE tool calls so it appears in correct
+            // chronological order in the TUI chat display.
+            if !step_text.trim().is_empty() {
+                let trimmed = step_text.trim().to_string();
+                let _ = event_tx.send(SessionEvent::TextChunk(trimmed.clone())).await;
+                let _ = event_tx.send(SessionEvent::TextComplete(trimmed)).await;
+                final_output.push_str(&step_text);
             }
 
             if tool_calls.is_empty() {
@@ -714,10 +723,8 @@ impl Session {
 
         self.save().await?;
 
-        let _ = event_tx
-            .send(SessionEvent::TextComplete(final_output.trim().to_string()))
-            .await;
-        // Send updated session state so the caller can sync back
+        // Text was already sent per-step via TextComplete events.
+        // Send updated session state so the caller can sync back.
         let _ = event_tx.send(SessionEvent::SessionSync(self.clone())).await;
         let _ = event_tx.send(SessionEvent::Done).await;
 
@@ -806,6 +813,15 @@ impl Session {
             self.regenerate_title().await?;
         }
 
+        Ok(())
+    }
+
+    /// Delete a session by ID
+    pub async fn delete(id: &str) -> Result<()> {
+        let path = Self::session_path(id)?;
+        if path.exists() {
+            tokio::fs::remove_file(&path).await?;
+        }
         Ok(())
     }
 
