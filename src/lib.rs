@@ -6,11 +6,13 @@
 pub mod a2a;
 pub mod agent;
 pub mod audit;
+pub mod benchmark;
 pub mod cli;
 pub mod cognition;
 pub mod config;
 pub mod k8s;
 pub mod mcp;
+pub mod moltbook;
 pub mod provider;
 pub mod ralph;
 pub mod rlm;
