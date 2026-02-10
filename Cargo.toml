@@ -78,7 +78,7 @@ clap = { version = "4", features = ["derive", "env"] }
 
 # HTTP server/client
 axum = { version = "0.8", features = ["ws", "macros"] }
-reqwest = { version = "0.13.1", features = ["json", "stream", "rustls"], default-features = false }
+reqwest = { version = "0.13.1", features = ["json", "stream", "rustls", "multipart"], default-features = false }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace", "auth"] }
 
@@ -103,6 +103,15 @@ toml = "0.9.8"
 
 # Secrets (HashiCorp Vault)
 vaultrs = "0.7"
+
+# Kubernetes self-deployment
+kube = { version = "0.98", features = ["runtime", "client", "derive", "config"] }
+k8s-openapi = { version = "0.24", features = ["latest"] }
+
+# Plugin signing & sandboxing
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
 
 # Utilities
 anyhow = "1"

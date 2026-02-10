@@ -571,18 +571,25 @@ async fn register_worker(
         req = req.bearer_auth(t);
     }
 
-    // Flatten models HashMap into array of {id, name, provider, provider_id} objects
+    // Flatten models HashMap into array of model objects with pricing data
     // matching the format expected by the A2A server's /models and /workers endpoints
     let models_array: Vec<serde_json::Value> = models
         .iter()
-        .flat_map(|(provider, model_ids)| {
-            model_ids.iter().map(move |model_id| {
-                serde_json::json!({
-                    "id": format!("{}/{}", provider, model_id),
-                    "name": model_id,
+        .flat_map(|(provider, model_infos)| {
+            model_infos.iter().map(move |m| {
+                let mut obj = serde_json::json!({
+                    "id": format!("{}/{}", provider, m.id),
+                    "name": &m.id,
                     "provider": provider,
                     "provider_id": provider,
-                })
+                });
+                if let Some(input_cost) = m.input_cost_per_million {
+                    obj["input_cost_per_million"] = serde_json::json!(input_cost);
+                }
+                if let Some(output_cost) = m.output_cost_per_million {
+                    obj["output_cost_per_million"] = serde_json::json!(output_cost);
+                }
+                obj
             })
         })
         .collect();
@@ -620,7 +627,8 @@ async fn register_worker(
 
 /// Load ProviderRegistry and collect all available models grouped by provider.
 /// Tries Vault first, then falls back to config/env vars if Vault is unreachable.
-async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
+/// Returns ModelInfo structs (with pricing data when available).
+async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>> {
     // Try Vault first
     let registry = match ProviderRegistry::from_vault().await {
         Ok(r) if !r.list().is_empty() => {
@@ -637,16 +645,48 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
         }
     };
 
-    let mut models_by_provider: HashMap<String, Vec<String>> = HashMap::new();
+    // Fetch the models.dev catalog for pricing data enrichment
+    let catalog = crate::provider::models::ModelCatalog::fetch().await.ok();
+
+    // Map provider IDs to their catalog equivalents (some differ)
+    let catalog_alias = |pid: &str| -> String {
+        match pid {
+            "bedrock" => "amazon-bedrock".to_string(),
+            "novita" => "novita-ai".to_string(),
+            _ => pid.to_string(),
+        }
+    };
+
+    let mut models_by_provider: HashMap<String, Vec<crate::provider::ModelInfo>> = HashMap::new();
 
     for provider_name in registry.list() {
         if let Some(provider) = registry.get(provider_name) {
             match provider.list_models().await {
                 Ok(models) => {
-                    let model_ids: Vec<String> = models.into_iter().map(|m| m.id).collect();
-                    if !model_ids.is_empty() {
-                        tracing::debug!("Provider {}: {} models", provider_name, model_ids.len());
-                        models_by_provider.insert(provider_name.to_string(), model_ids);
+                    let enriched: Vec<crate::provider::ModelInfo> = models.into_iter().map(|mut m| {
+                        // Enrich with catalog pricing if the provider didn't set it
+                        if m.input_cost_per_million.is_none() || m.output_cost_per_million.is_none() {
+                            if let Some(ref cat) = catalog {
+                                let cat_pid = catalog_alias(provider_name);
+                                if let Some(prov_info) = cat.get_provider(&cat_pid) {
+                                    if let Some(model_info) = prov_info.models.get(&m.id) {
+                                        if let Some(ref cost) = model_info.cost {
+                                            if m.input_cost_per_million.is_none() {
+                                                m.input_cost_per_million = Some(cost.input);
+                                            }
+                                            if m.output_cost_per_million.is_none() {
+                                                m.output_cost_per_million = Some(cost.output);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        m
+                    }).collect();
+                    if !enriched.is_empty() {
+                        tracing::debug!("Provider {}: {} models", provider_name, enriched.len());
+                        models_by_provider.insert(provider_name.to_string(), enriched);
                     }
                 }
                 Err(e) => {
@@ -663,22 +703,22 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<String>>> {
         tracing::info!(
             "No authenticated providers found, fetching models.dev catalog (all providers)"
         );
-        if let Ok(catalog) = crate::provider::models::ModelCatalog::fetch().await {
+        if let Ok(cat) = crate::provider::models::ModelCatalog::fetch().await {
             // Use all_providers_with_models() to get every provider+model from catalog
             // regardless of API key availability (Vault may be down)
-            for (provider_id, provider_info) in catalog.all_providers() {
-                let model_ids: Vec<String> = provider_info
+            for (provider_id, provider_info) in cat.all_providers() {
+                let model_infos: Vec<crate::provider::ModelInfo> = provider_info
                     .models
                     .values()
-                    .map(|m| m.id.clone())
+                    .map(|m| cat.to_model_info(m, provider_id))
                     .collect();
-                if !model_ids.is_empty() {
+                if !model_infos.is_empty() {
                     tracing::debug!(
                         "Catalog provider {}: {} models",
                         provider_id,
-                        model_ids.len()
+                        model_infos.len()
                     );
-                    models_by_provider.insert(provider_id.clone(), model_ids);
+                    models_by_provider.insert(provider_id.clone(), model_infos);
                 }
             }
             tracing::info!(
