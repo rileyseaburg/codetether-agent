@@ -116,6 +116,7 @@ Be thorough but fast. Return the most relevant results without unnecessary explo
 /// Returns the content and path if found.
 pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> {
     let mut current = start_dir.to_path_buf();
+    let repo_root = find_git_root(start_dir);
 
     loop {
         let agents_path = current.join("AGENTS.md");
@@ -123,6 +124,11 @@ pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> 
             if let Ok(content) = std::fs::read_to_string(&agents_path) {
                 return Some((content, agents_path));
             }
+        }
+
+        // Stop traversal at repository boundary.
+        if repo_root.as_ref() == Some(&current) {
+            break;
         }
 
         // Try parent directory
@@ -136,9 +142,11 @@ pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> 
 
 /// Load all AGENTS.md files from the given directory up to the root.
 /// Returns a list of (content, path) tuples, from most specific (closest to start_dir) to least.
+/// Traversal stops at the nearest git repository root (directory containing `.git`).
 pub fn load_all_agents_md(start_dir: &Path) -> Vec<(String, std::path::PathBuf)> {
     let mut results = Vec::new();
     let mut current = start_dir.to_path_buf();
+    let repo_root = find_git_root(start_dir);
 
     loop {
         let agents_path = current.join("AGENTS.md");
@@ -148,6 +156,11 @@ pub fn load_all_agents_md(start_dir: &Path) -> Vec<(String, std::path::PathBuf)>
             }
         }
 
+        // Stop traversal at repository boundary.
+        if repo_root.as_ref() == Some(&current) {
+            break;
+        }
+
         // Try parent directory
         if !current.pop() {
             break;
@@ -155,6 +168,22 @@ pub fn load_all_agents_md(start_dir: &Path) -> Vec<(String, std::path::PathBuf)>
     }
 
     results
+}
+
+fn find_git_root(start_dir: &Path) -> Option<std::path::PathBuf> {
+    let mut current = start_dir.to_path_buf();
+
+    loop {
+        if current.join(".git").exists() {
+            return Some(current);
+        }
+
+        if !current.pop() {
+            break;
+        }
+    }
+
+    None
 }
 
 /// Build a complete system prompt for the build agent, including AGENTS.md content if present.
@@ -208,4 +237,52 @@ pub fn build_plan_system_prompt(cwd: &Path) -> String {
     }
 
     format!("{base_prompt}{agents_section}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{load_agents_md, load_all_agents_md};
+    use tempfile::tempdir;
+
+    #[test]
+    fn load_agents_md_stops_at_git_root() {
+        let tmp = tempdir().expect("tempdir");
+        let parent_agents = tmp.path().join("AGENTS.md");
+        std::fs::write(&parent_agents, "parent instructions").expect("write parent AGENTS");
+
+        let repo_root = tmp.path().join("repo");
+        let nested = repo_root.join("src/nested");
+        std::fs::create_dir_all(repo_root.join(".git")).expect("create .git dir");
+        std::fs::create_dir_all(&nested).expect("create nested dir");
+        let repo_agents = repo_root.join("AGENTS.md");
+        std::fs::write(&repo_agents, "repo instructions").expect("write repo AGENTS");
+
+        let loaded = load_agents_md(&nested).expect("expected AGENTS");
+        assert_eq!(loaded.1, repo_agents);
+        assert_eq!(loaded.0, "repo instructions");
+    }
+
+    #[test]
+    fn load_all_agents_md_collects_within_repo_only() {
+        let tmp = tempdir().expect("tempdir");
+        let parent_agents = tmp.path().join("AGENTS.md");
+        std::fs::write(&parent_agents, "parent instructions").expect("write parent AGENTS");
+
+        let repo_root = tmp.path().join("repo");
+        let subdir = repo_root.join("service");
+        let nested = subdir.join("src");
+        std::fs::create_dir_all(repo_root.join(".git")).expect("create .git dir");
+        std::fs::create_dir_all(&nested).expect("create nested dir");
+        let repo_agents = repo_root.join("AGENTS.md");
+        std::fs::write(&repo_agents, "repo instructions").expect("write repo AGENTS");
+        let sub_agents = subdir.join("AGENTS.md");
+        std::fs::write(&sub_agents, "sub instructions").expect("write sub AGENTS");
+
+        let loaded = load_all_agents_md(&nested);
+
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].1, sub_agents);
+        assert_eq!(loaded[1].1, repo_agents);
+        assert!(!loaded.iter().any(|(_, path)| path == &parent_agents));
+    }
 }
