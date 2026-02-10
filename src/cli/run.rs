@@ -17,19 +17,28 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     // Load configuration
     let config = Config::load().await.unwrap_or_default();
 
-    // Create or continue session - default is to continue last session if it exists
+    // Create or continue session.
     let mut session = if let Some(session_id) = args.session {
         tracing::info!("Continuing session: {}", session_id);
         Session::load(&session_id).await?
     } else if args.continue_session {
-        match Session::last().await {
+        let workspace_dir = std::env::current_dir().unwrap_or_default();
+        match Session::last_for_directory(Some(&workspace_dir)).await {
             Ok(s) => {
-                tracing::info!("Continuing last session: {}", s.id);
+                tracing::info!(
+                    session_id = %s.id,
+                    workspace = %workspace_dir.display(),
+                    "Continuing last workspace session"
+                );
                 s
             }
             Err(_) => {
                 let s = Session::new().await?;
-                tracing::info!("Created new session: {}", s.id);
+                tracing::info!(
+                    session_id = %s.id,
+                    workspace = %workspace_dir.display(),
+                    "No workspace session found; created new session"
+                );
                 s
             }
         }
