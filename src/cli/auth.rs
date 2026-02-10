@@ -1,6 +1,6 @@
 //! Provider authentication commands.
 
-use super::{AuthArgs, AuthCommand, CopilotAuthArgs};
+use super::{AuthArgs, AuthCommand, CopilotAuthArgs, LoginAuthArgs};
 use crate::provider::copilot::normalize_enterprise_domain;
 use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
@@ -8,6 +8,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+use std::io::{self, Write};
 use tokio::time::{Duration, sleep};
 
 const DEFAULT_GITHUB_DOMAIN: &str = "github.com";
@@ -39,7 +40,173 @@ struct AccessTokenResponse {
 pub async fn execute(args: AuthArgs) -> Result<()> {
     match args.command {
         AuthCommand::Copilot(copilot_args) => authenticate_copilot(copilot_args).await,
+        AuthCommand::Login(login_args) => authenticate_login(login_args).await,
     }
+}
+
+async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
+    let server_url = args.server.trim_end_matches('/').to_string();
+
+    // Prompt for email if not provided
+    let email = match args.email {
+        Some(e) => e,
+        None => {
+            print!("Email: ");
+            io::stdout().flush()?;
+            let mut email = String::new();
+            io::stdin().read_line(&mut email)?;
+            email.trim().to_string()
+        }
+    };
+
+    if email.is_empty() {
+        anyhow::bail!("Email is required");
+    }
+
+    // Prompt for password (no echo)
+    let password = rpassword_prompt("Password: ")?;
+    if password.is_empty() {
+        anyhow::bail!("Password is required");
+    }
+
+    println!("Authenticating with {}...", server_url);
+
+    let client = Client::new();
+    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
+
+    let resp = client
+        .post(format!("{}/v1/users/login", server_url))
+        .header("User-Agent", &user_agent)
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "email": email,
+            "password": password,
+        }))
+        .send()
+        .await
+        .context("Failed to connect to CodeTether server")?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+        let detail = body
+            .get("detail")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Authentication failed");
+        anyhow::bail!("Login failed ({}): {}", status, detail);
+    }
+
+    #[derive(Deserialize)]
+    struct LoginResponse {
+        access_token: String,
+        expires_at: String,
+        user: serde_json::Value,
+    }
+
+    let login: LoginResponse = resp.json().await.context("Failed to parse login response")?;
+
+    // Store token to ~/.config/codetether-agent/credentials.json
+    let cred_path = credential_file_path()?;
+    if let Some(parent) = cred_path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create config dir: {}", parent.display()))?;
+    }
+
+    let creds = json!({
+        "server": server_url,
+        "access_token": login.access_token,
+        "expires_at": login.expires_at,
+        "email": email,
+    });
+
+    // Write with restrictive permissions (owner-only read/write)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&cred_path)
+            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
+        serde_json::to_writer_pretty(file, &creds)?;
+    }
+    #[cfg(not(unix))]
+    {
+        let file = std::fs::File::create(&cred_path)
+            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
+        serde_json::to_writer_pretty(file, &creds)?;
+    }
+
+    let user_email = login
+        .user
+        .get("email")
+        .and_then(|v| v.as_str())
+        .unwrap_or(&email);
+
+    println!("Logged in as {} (expires {})", user_email, login.expires_at);
+    println!("Credentials saved to {}", cred_path.display());
+    println!(
+        "\nUse the token with: export CODETETHER_TOKEN={}",
+        &login.access_token[..login.access_token.len().min(20)]
+    );
+    println!("Or run commands directly — the CLI reads credentials automatically.");
+
+    Ok(())
+}
+
+/// Read password from terminal without echo.
+fn rpassword_prompt(prompt: &str) -> Result<String> {
+    print!("{}", prompt);
+    io::stdout().flush()?;
+
+    // Disable echo on Unix
+    #[cfg(unix)]
+    {
+        use std::io::BufRead;
+        // Save terminal state
+        let fd = 0; // stdin
+        let orig = unsafe {
+            let mut termios = std::mem::zeroed::<libc::termios>();
+            libc::tcgetattr(fd, &mut termios);
+            termios
+        };
+
+        // Disable echo
+        unsafe {
+            let mut termios = orig;
+            termios.c_lflag &= !libc::ECHO;
+            libc::tcsetattr(fd, libc::TCSANOW, &termios);
+        }
+
+        let mut password = String::new();
+        let result = io::stdin().lock().read_line(&mut password);
+
+        // Restore terminal state
+        unsafe {
+            libc::tcsetattr(fd, libc::TCSANOW, &orig);
+        }
+        println!(); // newline after password entry
+
+        result?;
+        Ok(password.trim().to_string())
+    }
+
+    #[cfg(not(unix))]
+    {
+        let mut password = String::new();
+        io::stdin().read_line(&mut password)?;
+        Ok(password.trim().to_string())
+    }
+}
+
+/// Get the path to the credential storage file.
+fn credential_file_path() -> Result<std::path::PathBuf> {
+    use directories::ProjectDirs;
+    let dirs = ProjectDirs::from("ai", "codetether", "codetether-agent")
+        .ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
+    Ok(dirs.config_dir().join("credentials.json"))
 }
 
 async fn authenticate_copilot(args: CopilotAuthArgs) -> Result<()> {

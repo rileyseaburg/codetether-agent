@@ -84,6 +84,12 @@ pub enum Command {
 
     /// List available models from all configured providers
     Models(ModelsArgs),
+
+    /// Run benchmark suite against models using Ralph PRDs
+    Benchmark(BenchmarkArgs),
+
+    /// Moltbook — social network for AI agents
+    Moltbook(MoltbookArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -96,6 +102,20 @@ pub struct AuthArgs {
 pub enum AuthCommand {
     /// Authenticate with GitHub Copilot using device flow
     Copilot(CopilotAuthArgs),
+
+    /// Login to a CodeTether server with email/password
+    Login(LoginAuthArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct LoginAuthArgs {
+    /// CodeTether server URL (e.g., https://api.codetether.io)
+    #[arg(short, long, env = "CODETETHER_SERVER")]
+    pub server: String,
+
+    /// Email address
+    #[arg(short, long)]
+    pub email: Option<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -381,6 +401,127 @@ pub struct ModelsArgs {
     pub provider: Option<String>,
 
     /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct MoltbookArgs {
+    #[command(subcommand)]
+    pub command: MoltbookCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum MoltbookCommand {
+    /// Register a new agent on Moltbook
+    Register(MoltbookRegisterArgs),
+
+    /// Check claim status
+    Status,
+
+    /// View your Moltbook profile
+    Profile,
+
+    /// Update your profile description
+    UpdateProfile(MoltbookUpdateProfileArgs),
+
+    /// Create a post (defaults to m/general)
+    Post(MoltbookPostArgs),
+
+    /// Post a CodeTether introduction to Moltbook
+    Intro,
+
+    /// Run a heartbeat — check feed, show recent posts
+    Heartbeat,
+
+    /// Search Moltbook posts and comments
+    Search(MoltbookSearchArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct MoltbookRegisterArgs {
+    /// Agent name to register on Moltbook
+    pub name: String,
+
+    /// Optional extra description (CodeTether branding is always included)
+    #[arg(short, long)]
+    pub description: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct MoltbookUpdateProfileArgs {
+    /// Extra description to append
+    #[arg(short, long)]
+    pub description: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct MoltbookPostArgs {
+    /// Post title
+    pub title: String,
+
+    /// Post content
+    #[arg(short, long)]
+    pub content: String,
+
+    /// Submolt to post in
+    #[arg(short, long, default_value = "general")]
+    pub submolt: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct MoltbookSearchArgs {
+    /// Search query
+    pub query: String,
+
+    /// Max results
+    #[arg(short, long, default_value = "10")]
+    pub limit: usize,
+}
+
+#[derive(Parser, Debug)]
+pub struct BenchmarkArgs {
+    /// Directory containing benchmark PRD files
+    #[arg(long, default_value = "benchmarks")]
+    pub prd_dir: String,
+
+    /// Models to benchmark (comma-separated, format: provider:model)
+    #[arg(short, long, value_delimiter = ',')]
+    pub models: Vec<String>,
+
+    /// Only run PRDs matching this tier (1, 2, or 3)
+    #[arg(long)]
+    pub tier: Option<u8>,
+
+    /// Run model×PRD combos in parallel
+    #[arg(long)]
+    pub parallel: bool,
+
+    /// Maximum iterations per story
+    #[arg(long, default_value = "10")]
+    pub max_iterations: usize,
+
+    /// Timeout per story in seconds
+    #[arg(long, default_value = "300")]
+    pub story_timeout: u64,
+
+    /// Output file path
+    #[arg(short, long, default_value = "benchmark_results.json")]
+    pub output: String,
+
+    /// Cost ceiling per run in USD (prevents runaway spending)
+    #[arg(long, default_value = "50.0")]
+    pub cost_ceiling: f64,
+
+    /// Submit results to this API URL (e.g. https://opencode.ai/bench/submission)
+    #[arg(long)]
+    pub submit_url: Option<String>,
+
+    /// API key for submitting results (Bearer token)
+    #[arg(long, env = "BENCHMARK_API_KEY")]
+    pub submit_key: Option<String>,
+
+    /// Output as JSON to stdout
     #[arg(long)]
     pub json: bool,
 }
