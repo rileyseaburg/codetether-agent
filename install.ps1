@@ -35,10 +35,10 @@ function Write-Err   { param([string]$Msg) Write-Host "error: " -ForegroundColor
 function Write-Ok    { param([string]$Msg) Write-Host "  ok: " -ForegroundColor Green -NoNewline; Write-Host $Msg }
 
 function Get-Platform {
-    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    $arch = $env:PROCESSOR_ARCHITECTURE
     switch ($arch) {
-        'X64'   { $archStr = 'x86_64' }
-        'Arm64' { $archStr = 'aarch64' }
+        'AMD64' { $archStr = 'x86_64' }
+        'ARM64' { $archStr = 'aarch64' }
         default { Write-Err "Unsupported architecture: $arch"; exit 1 }
     }
     return "$archStr-pc-windows-msvc"
