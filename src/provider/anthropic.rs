@@ -125,7 +125,7 @@ impl AnthropicProvider {
                     }
 
                     if content_parts.is_empty() {
-                        content_parts.push(json!({"type": "text", "text": ""}));
+                        content_parts.push(json!({"type": "text", "text": " "}));
                     }
 
                     api_messages.push(json!({

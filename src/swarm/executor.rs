@@ -64,6 +64,7 @@ fn estimate_message_tokens(message: &Message) -> usize {
                 content,
             } => estimate_tokens(tool_call_id) + estimate_tokens(content) + 6,
             ContentPart::Image { .. } | ContentPart::File { .. } => 2000, // Binary content is expensive
+            ContentPart::Thinking { text } => estimate_tokens(text),
         };
     }
 

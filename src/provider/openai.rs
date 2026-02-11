@@ -79,12 +79,7 @@ impl OpenAIProvider {
                 ("MiniMax-M1-80k", "MiniMax M1 80k"),
                 ("MiniMax-Text-01", "MiniMax Text 01"),
             ],
-            "zhipuai" => vec![
-                ("glm-4.7", "GLM-4.7"),
-                ("glm-4-plus", "GLM-4 Plus"),
-                ("glm-4-flash", "GLM-4 Flash"),
-                ("glm-4-long", "GLM-4 Long"),
-            ],
+            "zhipuai" => vec![],
             "novita" => vec![
                 ("qwen/qwen3-coder-next", "Qwen 3 Coder Next"),
                 ("deepseek/deepseek-v3-0324", "DeepSeek V3"),

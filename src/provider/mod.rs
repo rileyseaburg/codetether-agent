@@ -11,6 +11,7 @@ pub mod moonshot;
 pub mod openai;
 pub mod openrouter;
 pub mod stepfun;
+pub mod zai;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -56,6 +57,9 @@ pub enum ContentPart {
     ToolResult {
         tool_call_id: String,
         content: String,
+    },
+    Thinking {
+        text: String,
     },
 }
 
@@ -392,15 +396,15 @@ impl ProviderRegistry {
                             }
                         }
                     }
-                    // ZhipuAI - OpenAI-compatible coding API
-                    "zhipuai" => {
+                    // Z.AI (formerly ZhipuAI) — first-class provider for GLM models
+                    "zhipuai" | "zai" => {
                         let base_url = secrets
                             .base_url
                             .clone()
                             .unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
-                        match openai::OpenAIProvider::with_base_url(api_key, base_url, "zhipuai") {
+                        match zai::ZaiProvider::with_base_url(api_key, base_url) {
                             Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init zhipuai: {}", e),
+                            Err(e) => tracing::warn!("Failed to init zai: {}", e),
                         }
                     }
                     // Cerebras - OpenAI-compatible fast inference
