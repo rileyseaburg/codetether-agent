@@ -2,13 +2,14 @@
 
 [package]
 name = "codetether-agent"
-version = "1.1.6-alpha-7"
+version = "1.1.6-alpha-7.2"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
 license = "MIT"
 repository = "https://github.com/rileyseaburg/codetether-agent"
 exclude = [
+    "npm/",
     "dist/",
     "target/",
     "vendor/",
@@ -72,6 +73,9 @@ functiongemma = []
 [dependencies]
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+
+# Clipboard support
+arboard = "3.4"
 
 # CLI
 clap = { version = "4.5.58", features = ["derive", "env"] }

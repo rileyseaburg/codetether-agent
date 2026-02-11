@@ -4,9 +4,8 @@
 
 use anyhow::Result;
 use lsp_types::{
-    ClientCapabilities, CompletionItem, DocumentSymbol, Location,
-    Position, Range, ServerCapabilities, SymbolInformation, TextDocumentIdentifier,
-    TextDocumentItem,
+    ClientCapabilities, CompletionItem, DocumentSymbol, Location, Position, Range,
+    ServerCapabilities, SymbolInformation, TextDocumentIdentifier, TextDocumentItem,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -224,7 +223,10 @@ pub enum LspActionResult {
     /// Find references result
     References { locations: Vec<LocationInfo> },
     /// Hover result
-    Hover { contents: String, range: Option<RangeInfo> },
+    Hover {
+        contents: String,
+        range: Option<RangeInfo>,
+    },
     /// Document symbols result
     DocumentSymbols { symbols: Vec<SymbolInfo> },
     /// Workspace symbols result
@@ -368,7 +370,12 @@ pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
         "typescript" | "javascript" => Some(LspConfig {
             command: "typescript-language-server".to_string(),
             args: vec!["--stdio".to_string()],
-            file_extensions: vec!["ts".to_string(), "tsx".to_string(), "js".to_string(), "jsx".to_string()],
+            file_extensions: vec![
+                "ts".to_string(),
+                "tsx".to_string(),
+                "js".to_string(),
+                "jsx".to_string(),
+            ],
             ..Default::default()
         }),
         "python" => Some(LspConfig {
@@ -386,7 +393,14 @@ pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
         "c" | "cpp" | "c++" => Some(LspConfig {
             command: "clangd".to_string(),
             args: vec![],
-            file_extensions: vec!["c".to_string(), "cpp".to_string(), "cc".to_string(), "cxx".to_string(), "h".to_string(), "hpp".to_string()],
+            file_extensions: vec![
+                "c".to_string(),
+                "cpp".to_string(),
+                "cc".to_string(),
+                "cxx".to_string(),
+                "h".to_string(),
+                "hpp".to_string(),
+            ],
             ..Default::default()
         }),
         _ => None,
@@ -397,7 +411,13 @@ pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
 fn install_command_for(command: &str) -> Option<&'static [&'static str]> {
     match command {
         "rust-analyzer" => Some(&["rustup", "component", "add", "rust-analyzer"]),
-        "typescript-language-server" => Some(&["npm", "install", "-g", "typescript-language-server", "typescript"]),
+        "typescript-language-server" => Some(&[
+            "npm",
+            "install",
+            "-g",
+            "typescript-language-server",
+            "typescript",
+        ]),
         "pylsp" => Some(&["pip", "install", "--user", "python-lsp-server"]),
         "gopls" => Some(&["go", "install", "golang.org/x/tools/gopls@latest"]),
         "clangd" => None, // system package manager varies

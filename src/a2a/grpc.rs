@@ -90,7 +90,9 @@ impl A2aService for A2aServiceImpl {
         request: Request<proto::SendMessageRequest>,
     ) -> Result<Response<proto::SendMessageResponse>, Status> {
         let req = request.into_inner();
-        let msg = req.request.ok_or_else(|| Status::invalid_argument("missing message"))?;
+        let msg = req
+            .request
+            .ok_or_else(|| Status::invalid_argument("missing message"))?;
         let local_msg = bridge::proto_message_to_local(&msg);
 
         // Create / route task
@@ -134,7 +136,9 @@ impl A2aService for A2aServiceImpl {
         request: Request<proto::SendMessageRequest>,
     ) -> Result<Response<Self::SendStreamingMessageStream>, Status> {
         let req = request.into_inner();
-        let msg = req.request.ok_or_else(|| Status::invalid_argument("missing message"))?;
+        let msg = req
+            .request
+            .ok_or_else(|| Status::invalid_argument("missing message"))?;
         let local_msg = bridge::proto_message_to_local(&msg);
 
         let task_id = local_msg
@@ -195,7 +199,9 @@ impl A2aService for A2aServiceImpl {
             }
         };
 
-        Ok(Response::new(Box::pin(stream) as Self::SendStreamingMessageStream))
+        Ok(Response::new(
+            Box::pin(stream) as Self::SendStreamingMessageStream
+        ))
     }
 
     // ── GetTask ─────────────────────────────────────────────────────────
@@ -229,7 +235,9 @@ impl A2aService for A2aServiceImpl {
             .ok_or_else(|| Status::not_found(format!("task {task_id} not found")))?;
 
         if task.status.state.is_terminal() {
-            return Err(Status::failed_precondition("task already in terminal state"));
+            return Err(Status::failed_precondition(
+                "task already in terminal state",
+            ));
         }
 
         task.status = local::TaskStatus {
@@ -240,7 +248,10 @@ impl A2aService for A2aServiceImpl {
         let snapshot = task.clone();
         drop(task);
 
-        let _ = self.store.update_tx.send((task_id.to_string(), snapshot.status.clone()));
+        let _ = self
+            .store
+            .update_tx
+            .send((task_id.to_string(), snapshot.status.clone()));
 
         Ok(Response::new(bridge::local_task_to_proto(&snapshot)))
     }
@@ -254,7 +265,11 @@ impl A2aService for A2aServiceImpl {
         request: Request<proto::TaskSubscriptionRequest>,
     ) -> Result<Response<Self::TaskSubscriptionStream>, Status> {
         let req = request.into_inner();
-        let task_id = req.name.strip_prefix("tasks/").unwrap_or(&req.name).to_string();
+        let task_id = req
+            .name
+            .strip_prefix("tasks/")
+            .unwrap_or(&req.name)
+            .to_string();
 
         let task = self
             .store
@@ -272,7 +287,9 @@ impl A2aService for A2aServiceImpl {
                     payload: Some(proto::stream_response::Payload::Task(proto_task)),
                 };
             };
-            return Ok(Response::new(Box::pin(stream) as Self::TaskSubscriptionStream));
+            return Ok(Response::new(
+                Box::pin(stream) as Self::TaskSubscriptionStream
+            ));
         }
 
         let stream = async_stream::try_stream! {
@@ -305,7 +322,9 @@ impl A2aService for A2aServiceImpl {
             }
         };
 
-        Ok(Response::new(Box::pin(stream) as Self::TaskSubscriptionStream))
+        Ok(Response::new(
+            Box::pin(stream) as Self::TaskSubscriptionStream
+        ))
     }
 
     // ── Push notification config CRUD ───────────────────────────────────
@@ -321,15 +340,29 @@ impl A2aService for A2aServiceImpl {
             return Err(Status::not_found(format!("task {task_id} not found")));
         }
 
-        let config = req.config.ok_or_else(|| Status::invalid_argument("missing config"))?;
+        let config = req
+            .config
+            .ok_or_else(|| Status::invalid_argument("missing config"))?;
         let pnc = config.push_notification_config.as_ref();
 
         let local_config = local::TaskPushNotificationConfig {
             id: task_id.to_string(),
             push_notification_config: local::PushNotificationConfig {
                 url: pnc.map(|c| c.url.clone()).unwrap_or_default(),
-                token: pnc.and_then(|c| if c.token.is_empty() { None } else { Some(c.token.clone()) }),
-                id: pnc.and_then(|c| if c.id.is_empty() { None } else { Some(c.id.clone()) }),
+                token: pnc.and_then(|c| {
+                    if c.token.is_empty() {
+                        None
+                    } else {
+                        Some(c.token.clone())
+                    }
+                }),
+                id: pnc.and_then(|c| {
+                    if c.id.is_empty() {
+                        None
+                    } else {
+                        Some(c.id.clone())
+                    }
+                }),
             },
         };
 
@@ -386,17 +419,26 @@ impl A2aService for A2aServiceImpl {
             .map(|cs| {
                 cs.iter()
                     .map(|c| proto::TaskPushNotificationConfig {
-                        name: format!("tasks/{}/pushNotificationConfigs/{}", task_id, c.push_notification_config.id.as_deref().unwrap_or("default")),
+                        name: format!(
+                            "tasks/{}/pushNotificationConfigs/{}",
+                            task_id,
+                            c.push_notification_config
+                                .id
+                                .as_deref()
+                                .unwrap_or("default")
+                        ),
                         push_notification_config: None,
                     })
                     .collect()
             })
             .unwrap_or_default();
 
-        Ok(Response::new(proto::ListTaskPushNotificationConfigResponse {
-            configs,
-            next_page_token: String::new(),
-        }))
+        Ok(Response::new(
+            proto::ListTaskPushNotificationConfigResponse {
+                configs,
+                next_page_token: String::new(),
+            },
+        ))
     }
 
     async fn delete_task_push_notification_config(

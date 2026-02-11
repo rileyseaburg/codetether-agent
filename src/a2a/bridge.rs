@@ -40,9 +40,7 @@ pub fn proto_message_to_local(msg: &proto::Message) -> local::Message {
 
 fn proto_part_to_local(part: &proto::Part) -> Option<local::Part> {
     match &part.part {
-        Some(proto::part::Part::Text(text)) => Some(local::Part::Text {
-            text: text.clone(),
-        }),
+        Some(proto::part::Part::Text(text)) => Some(local::Part::Text { text: text.clone() }),
         Some(proto::part::Part::File(file)) => {
             let (bytes, uri) = match &file.file {
                 Some(proto::file_part::File::FileWithUri(u)) => (None, Some(u.clone())),

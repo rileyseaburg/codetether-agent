@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use tokio::fs;
 
 /// Main configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// Default provider to use
     #[serde(default)]
@@ -50,6 +50,24 @@ pub struct Config {
     /// Telemetry and crash reporting settings
     #[serde(default)]
     pub telemetry: TelemetryConfig,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            // Default to GLM-5 via Z.AI everywhere unless overridden.
+            // Use provider/model format so provider selection is unambiguous.
+            default_provider: Some("zai".to_string()),
+            default_model: Some("zai/glm-5".to_string()),
+            providers: HashMap::new(),
+            agents: HashMap::new(),
+            permissions: PermissionConfig::default(),
+            a2a: A2aConfig::default(),
+            ui: UiConfig::default(),
+            session: SessionConfig::default(),
+            telemetry: TelemetryConfig::default(),
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]

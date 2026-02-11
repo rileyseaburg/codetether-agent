@@ -282,14 +282,22 @@ impl ProviderRegistry {
                         .to_string();
 
                     // Prefer SigV4 if AWS credentials are in Vault
-                    let aws_key_id = secrets.extra.get("aws_access_key_id").and_then(|v| v.as_str());
-                    let aws_secret = secrets.extra.get("aws_secret_access_key").and_then(|v| v.as_str());
+                    let aws_key_id = secrets
+                        .extra
+                        .get("aws_access_key_id")
+                        .and_then(|v| v.as_str());
+                    let aws_secret = secrets
+                        .extra
+                        .get("aws_secret_access_key")
+                        .and_then(|v| v.as_str());
 
                     let result = if let (Some(key_id), Some(secret)) = (aws_key_id, aws_secret) {
                         let creds = bedrock::AwsCredentials {
                             access_key_id: key_id.to_string(),
                             secret_access_key: secret.to_string(),
-                            session_token: secrets.extra.get("aws_session_token")
+                            session_token: secrets
+                                .extra
+                                .get("aws_session_token")
                                 .and_then(|v| v.as_str())
                                 .map(|s| s.to_string()),
                         };
@@ -301,7 +309,9 @@ impl ProviderRegistry {
                         if let Some(creds) = bedrock::AwsCredentials::from_environment() {
                             bedrock::BedrockProvider::with_credentials(creds, region)
                         } else {
-                            Err(anyhow::anyhow!("No AWS credentials or API key found for Bedrock"))
+                            Err(anyhow::anyhow!(
+                                "No AWS credentials or API key found for Bedrock"
+                            ))
                         }
                     };
 

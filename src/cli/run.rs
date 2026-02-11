@@ -20,7 +20,15 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     // Create or continue session.
     let mut session = if let Some(session_id) = args.session {
         tracing::info!("Continuing session: {}", session_id);
-        Session::load(&session_id).await?
+        if let Some(oc_id) = session_id.strip_prefix("opencode_") {
+            if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
+                Session::from_opencode(oc_id, &storage).await?
+            } else {
+                anyhow::bail!("OpenCode storage not available")
+            }
+        } else {
+            Session::load(&session_id).await?
+        }
     } else if args.continue_session {
         let workspace_dir = std::env::current_dir().unwrap_or_default();
         match Session::last_for_directory(Some(&workspace_dir)).await {

@@ -6,8 +6,8 @@ pub mod auth;
 pub mod policy;
 
 use crate::a2a;
-use crate::bus::AgentBus;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
+use crate::bus::AgentBus;
 use crate::cli::ServeArgs;
 use crate::cognition::{
     AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
@@ -294,8 +294,14 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
     // Initialize mandatory auth.
     let auth_state = AuthState::from_env();
-    tracing::info!(token_len = auth_state.token().len(), "Auth is mandatory. Token required for all API endpoints.");
-    tracing::info!(audit_entries = audit_log.count().await, "Audit log initialized");
+    tracing::info!(
+        token_len = auth_state.token().len(),
+        "Auth is mandatory. Token required for all API endpoints."
+    );
+    tracing::info!(
+        audit_entries = audit_log.count().await,
+        "Audit log initialized"
+    );
 
     // Create agent bus for in-process communication
     let bus = AgentBus::new().into_arc();
@@ -389,7 +395,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/k8s/pods", get(k8s_list_pods))
         .route("/v1/k8s/actions", get(k8s_actions))
         .route("/v1/k8s/subagent", post(k8s_spawn_subagent))
-        .route("/v1/k8s/subagent/{id}", axum::routing::delete(k8s_delete_subagent))
+        .route(
+            "/v1/k8s/subagent/{id}",
+            axum::routing::delete(k8s_delete_subagent),
+        )
         // Plugin registry API
         .route("/v1/plugins", get(list_plugins))
         .with_state(state.clone())
@@ -760,7 +769,10 @@ async fn get_persona(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    state.cognition.get_persona(&id).await
+    state
+        .cognition
+        .get_persona(&id)
+        .await
         .map(Json)
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Persona not found: {}", id)))
 }
@@ -921,9 +933,7 @@ async fn k8s_delete_subagent(
 }
 
 /// List registered plugins.
-async fn list_plugins(
-    State(_state): State<AppState>,
-) -> Json<PluginListResponse> {
+async fn list_plugins(State(_state): State<AppState>) -> Json<PluginListResponse> {
     let server_fingerprint = hash_bytes(env!("CARGO_PKG_VERSION").as_bytes());
     let signing_key = SigningKey::from_env();
     let test_sig = signing_key.sign("_probe", "0.0.0", &server_fingerprint);

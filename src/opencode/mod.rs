@@ -210,7 +210,7 @@ impl OpenCodeStorage {
     /// List all available sessions
     pub async fn list_sessions(&self) -> Result<Vec<OpenCodeSessionSummary>> {
         let session_dir = self.storage_dir.join("session");
-        
+
         if !session_dir.exists() {
             return Ok(Vec::new());
         }
@@ -224,7 +224,7 @@ impl OpenCodeStorage {
                 if let Ok(content) = fs::read_to_string(&path).await {
                     if let Ok(session) = serde_json::from_str::<OpenCodeSession>(&content) {
                         let message_count = self.count_messages(&session.id).await.unwrap_or(0);
-                        
+
                         summaries.push(OpenCodeSessionSummary {
                             id: session.id.clone(),
                             title: session.title,
@@ -246,15 +246,20 @@ impl OpenCodeStorage {
     }
 
     /// List sessions for a specific directory
-    pub async fn list_sessions_for_directory(&self, dir: &Path) -> Result<Vec<OpenCodeSessionSummary>> {
+    pub async fn list_sessions_for_directory(
+        &self,
+        dir: &Path,
+    ) -> Result<Vec<OpenCodeSessionSummary>> {
         let all = self.list_sessions().await?;
         let canonical_dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
-        
+
         Ok(all
             .into_iter()
             .filter(|s| {
                 let session_dir = Path::new(&s.directory);
-                let canonical_session = session_dir.canonicalize().unwrap_or_else(|_| session_dir.to_path_buf());
+                let canonical_session = session_dir
+                    .canonicalize()
+                    .unwrap_or_else(|_| session_dir.to_path_buf());
                 canonical_session == canonical_dir
             })
             .collect())
@@ -262,7 +267,10 @@ impl OpenCodeStorage {
 
     /// Load a session by ID
     pub async fn load_session(&self, session_id: &str) -> Result<OpenCodeSession> {
-        let path = self.storage_dir.join("session").join(format!("{}.json", session_id));
+        let path = self
+            .storage_dir
+            .join("session")
+            .join(format!("{}.json", session_id));
         let content = fs::read_to_string(&path)
             .await
             .with_context(|| format!("Failed to read session file: {}", path.display()))?;
@@ -274,7 +282,7 @@ impl OpenCodeStorage {
     /// Load all messages for a session
     pub async fn load_messages(&self, session_id: &str) -> Result<Vec<OpenCodeMessage>> {
         let message_dir = self.storage_dir.join("message").join(session_id);
-        
+
         if !message_dir.exists() {
             return Ok(Vec::new());
         }
@@ -300,10 +308,8 @@ impl OpenCodeStorage {
 
     /// Load parts for a message
     pub async fn load_parts(&self, message_id: &str) -> Result<Vec<OpenCodePart>> {
-        let part_dir = self.storage_dir
-            .join("part")
-            .join(message_id);
-        
+        let part_dir = self.storage_dir.join("part").join(message_id);
+
         if !part_dir.exists() {
             return Ok(Vec::new());
         }
@@ -329,8 +335,11 @@ impl OpenCodeStorage {
 
     /// Load todos for a session
     pub async fn load_todos(&self, session_id: &str) -> Result<Vec<OpenCodeTodo>> {
-        let todo_path = self.storage_dir.join("todo").join(format!("{}.json", session_id));
-        
+        let todo_path = self
+            .storage_dir
+            .join("todo")
+            .join(format!("{}.json", session_id));
+
         if !todo_path.exists() {
             return Ok(Vec::new());
         }
@@ -343,7 +352,7 @@ impl OpenCodeStorage {
     /// Count messages in a session
     async fn count_messages(&self, session_id: &str) -> Result<usize> {
         let message_dir = self.storage_dir.join("message").join(session_id);
-        
+
         if !message_dir.exists() {
             return Ok(0);
         }
@@ -364,7 +373,7 @@ impl OpenCodeStorage {
     /// Get the most recent session
     pub async fn last_session(&self) -> Result<OpenCodeSession> {
         let sessions = self.list_sessions().await?;
-        
+
         if let Some(first) = sessions.first() {
             self.load_session(&first.id).await
         } else {
@@ -375,11 +384,14 @@ impl OpenCodeStorage {
     /// Get the most recent session for a directory
     pub async fn last_session_for_directory(&self, dir: &Path) -> Result<OpenCodeSession> {
         let sessions = self.list_sessions_for_directory(dir).await?;
-        
+
         if let Some(first) = sessions.first() {
             self.load_session(&first.id).await
         } else {
-            anyhow::bail!("No OpenCode sessions found for directory: {}", dir.display())
+            anyhow::bail!(
+                "No OpenCode sessions found for directory: {}",
+                dir.display()
+            )
         }
     }
 }

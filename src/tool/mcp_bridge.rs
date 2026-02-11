@@ -89,8 +89,7 @@ impl Tool for McpBridgeTool {
 
         match action {
             "list_tools" => {
-                let client =
-                    crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                let client = crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
                 let tools = client.tools().await;
                 let result: Vec<Value> = tools
                     .iter()
@@ -116,8 +115,7 @@ impl Tool for McpBridgeTool {
                     arguments
                 };
 
-                let client =
-                    crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                let client = crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
                 let result = client.call_tool(tool_name, arguments).await?;
                 client.close().await?;
 
@@ -143,8 +141,7 @@ impl Tool for McpBridgeTool {
                 }
             }
             "list_resources" => {
-                let client =
-                    crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                let client = crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
                 let resources = client.list_resources().await?;
                 let result: Vec<Value> = resources
                     .iter()
@@ -165,8 +162,7 @@ impl Tool for McpBridgeTool {
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("Missing 'resource_uri' for read_resource"))?;
 
-                let client =
-                    crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                let client = crate::mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
                 let result = client.read_resource(uri).await?;
                 client.close().await?;
                 Ok(ToolResult::success(serde_json::to_string_pretty(&result)?))

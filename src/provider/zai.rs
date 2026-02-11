@@ -384,7 +384,10 @@ impl Provider for ZaiProvider {
             .context("Failed to send request to Z.AI")?;
 
         let status = response.status();
-        let text = response.text().await.context("Failed to read Z.AI response")?;
+        let text = response
+            .text()
+            .await
+            .context("Failed to read Z.AI response")?;
 
         if !status.is_success() {
             if let Ok(err) = serde_json::from_str::<ZaiError>(&text) {
@@ -469,7 +472,11 @@ impl Provider for ZaiProvider {
                 content,
             },
             usage: Usage {
-                prompt_tokens: response.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
+                prompt_tokens: response
+                    .usage
+                    .as_ref()
+                    .map(|u| u.prompt_tokens)
+                    .unwrap_or(0),
                 completion_tokens: response
                     .usage
                     .as_ref()
@@ -567,10 +574,12 @@ impl Provider for ZaiProvider {
                                 continue;
                             }
                             if let Some(data) = line.strip_prefix("data: ") {
-                                if let Ok(parsed) = serde_json::from_str::<ZaiStreamResponse>(data) {
+                                if let Ok(parsed) = serde_json::from_str::<ZaiStreamResponse>(data)
+                                {
                                     if let Some(choice) = parsed.choices.first() {
                                         // Reasoning content streamed as text (prefixed for TUI rendering)
-                                        if let Some(ref reasoning) = choice.delta.reasoning_content {
+                                        if let Some(ref reasoning) = choice.delta.reasoning_content
+                                        {
                                             if !reasoning.is_empty() {
                                                 text_buf.push_str(reasoning);
                                             }
@@ -581,7 +590,9 @@ impl Provider for ZaiProvider {
                                         // Streaming tool calls
                                         if let Some(ref tool_calls) = choice.delta.tool_calls {
                                             if !text_buf.is_empty() {
-                                                chunks.push(StreamChunk::Text(std::mem::take(&mut text_buf)));
+                                                chunks.push(StreamChunk::Text(std::mem::take(
+                                                    &mut text_buf,
+                                                )));
                                             }
                                             for tc in tool_calls {
                                                 if let Some(ref func) = tc.function {
@@ -595,13 +606,19 @@ impl Provider for ZaiProvider {
                                                     if let Some(ref args) = func.arguments {
                                                         let delta = match args {
                                                             Value::String(s) => s.clone(),
-                                                            other => serde_json::to_string(other).unwrap_or_default(),
+                                                            other => serde_json::to_string(other)
+                                                                .unwrap_or_default(),
                                                         };
                                                         if !delta.is_empty() {
-                                                            chunks.push(StreamChunk::ToolCallDelta {
-                                                                id: tc.id.clone().unwrap_or_default(),
-                                                                arguments_delta: delta,
-                                                            });
+                                                            chunks.push(
+                                                                StreamChunk::ToolCallDelta {
+                                                                    id: tc
+                                                                        .id
+                                                                        .clone()
+                                                                        .unwrap_or_default(),
+                                                                    arguments_delta: delta,
+                                                                },
+                                                            );
                                                         }
                                                     }
                                                 }
@@ -610,7 +627,9 @@ impl Provider for ZaiProvider {
                                         // finish_reason signals end of a tool call or completion
                                         if let Some(ref reason) = choice.finish_reason {
                                             if !text_buf.is_empty() {
-                                                chunks.push(StreamChunk::Text(std::mem::take(&mut text_buf)));
+                                                chunks.push(StreamChunk::Text(std::mem::take(
+                                                    &mut text_buf,
+                                                )));
                                             }
                                             if reason == "tool_calls" {
                                                 // Emit ToolCallEnd for the last tool call

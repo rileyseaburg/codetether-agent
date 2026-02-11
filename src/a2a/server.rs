@@ -2,6 +2,7 @@
 
 use super::types::*;
 use crate::session::Session;
+use crate::telemetry::{ToolExecution, record_persistent};
 use anyhow::Result;
 use axum::{
     Router,
@@ -12,6 +13,7 @@ use axum::{
 };
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 /// A2A Server state
@@ -119,6 +121,35 @@ async fn get_agent_card(State(server): State<A2AServer>) -> Json<AgentCard> {
     Json(server.agent_card.clone())
 }
 
+fn record_a2a_message_telemetry(
+    tool_name: &str,
+    task_id: &str,
+    blocking: bool,
+    prompt: &str,
+    duration: Duration,
+    success: bool,
+    output: Option<String>,
+    error: Option<String>,
+) {
+    let input = serde_json::json!({
+        "task_id": task_id,
+        "blocking": blocking,
+        "prompt": prompt,
+    });
+
+    let execution = ToolExecution::start(tool_name, input).with_session(task_id.to_string());
+    let execution = if success {
+        execution.complete_success(output.unwrap_or_default(), duration)
+    } else {
+        execution.complete_error(
+            error.unwrap_or_else(|| "A2A message execution failed".to_string()),
+            duration,
+        )
+    };
+
+    record_persistent(execution);
+}
+
 /// Handle JSON-RPC requests
 async fn handle_rpc(
     State(server): State<A2AServer>,
@@ -214,14 +245,16 @@ async fn handle_message_send(
         let mut session = Session::new().await.map_err(|e| {
             JsonRpcError::internal_error(format!("Failed to create session: {}", e))
         })?;
+        let started_at = Instant::now();
 
         match session.prompt(&prompt).await {
             Ok(result) => {
+                let result_text = result.text;
                 let response_message = Message {
                     message_id: Uuid::new_v4().to_string(),
                     role: MessageRole::Agent,
                     parts: vec![Part::Text {
-                        text: result.text.clone(),
+                        text: result_text.clone(),
                     }],
                     context_id: params.message.context_id.clone(),
                     task_id: Some(task_id.clone()),
@@ -231,7 +264,9 @@ async fn handle_message_send(
 
                 let artifact = Artifact {
                     artifact_id: Uuid::new_v4().to_string(),
-                    parts: vec![Part::Text { text: result.text }],
+                    parts: vec![Part::Text {
+                        text: result_text.clone(),
+                    }],
                     name: Some("response".to_string()),
                     description: None,
                     metadata: std::collections::HashMap::new(),
@@ -267,6 +302,17 @@ async fn handle_message_send(
                         "Artifact produced"
                     );
                 }
+
+                record_a2a_message_telemetry(
+                    "a2a_message_send",
+                    &task_id,
+                    true,
+                    &prompt,
+                    started_at.elapsed(),
+                    true,
+                    Some(result_text),
+                    None,
+                );
             }
             Err(e) => {
                 let error_message = Message {
@@ -286,6 +332,17 @@ async fn handle_message_send(
                     t.status.message = Some(error_message);
                     t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
                 }
+
+                record_a2a_message_telemetry(
+                    "a2a_message_send",
+                    &task_id,
+                    true,
+                    &prompt,
+                    started_at.elapsed(),
+                    false,
+                    None,
+                    Some(e.to_string()),
+                );
             }
         }
     } else {
@@ -296,6 +353,7 @@ async fn handle_message_send(
 
         tokio::spawn(async move {
             let task_id = spawn_task_id;
+            let started_at = Instant::now();
             let mut session = match Session::new().await {
                 Ok(s) => s,
                 Err(e) => {
@@ -304,17 +362,28 @@ async fn handle_message_send(
                         t.status.state = TaskState::Failed;
                         t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
                     }
+                    record_a2a_message_telemetry(
+                        "a2a_message_send",
+                        &task_id,
+                        false,
+                        &prompt,
+                        started_at.elapsed(),
+                        false,
+                        None,
+                        Some(e.to_string()),
+                    );
                     return;
                 }
             };
 
             match session.prompt(&prompt).await {
                 Ok(result) => {
+                    let result_text = result.text;
                     let response_message = Message {
                         message_id: Uuid::new_v4().to_string(),
                         role: MessageRole::Agent,
                         parts: vec![Part::Text {
-                            text: result.text.clone(),
+                            text: result_text.clone(),
                         }],
                         context_id,
                         task_id: Some(task_id.clone()),
@@ -324,7 +393,9 @@ async fn handle_message_send(
 
                     let artifact = Artifact {
                         artifact_id: Uuid::new_v4().to_string(),
-                        parts: vec![Part::Text { text: result.text }],
+                        parts: vec![Part::Text {
+                            text: result_text.clone(),
+                        }],
                         name: Some("response".to_string()),
                         description: None,
                         metadata: std::collections::HashMap::new(),
@@ -338,6 +409,17 @@ async fn handle_message_send(
                         t.artifacts.push(artifact);
                         t.history.push(response_message);
                     }
+
+                    record_a2a_message_telemetry(
+                        "a2a_message_send",
+                        &task_id,
+                        false,
+                        &prompt,
+                        started_at.elapsed(),
+                        true,
+                        Some(result_text),
+                        None,
+                    );
                 }
                 Err(e) => {
                     tracing::error!("Task {} failed: {}", task_id, e);
@@ -345,6 +427,16 @@ async fn handle_message_send(
                         t.status.state = TaskState::Failed;
                         t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
                     }
+                    record_a2a_message_telemetry(
+                        "a2a_message_send",
+                        &task_id,
+                        false,
+                        &prompt,
+                        started_at.elapsed(),
+                        false,
+                        None,
+                        Some(e.to_string()),
+                    );
                 }
             }
         });
@@ -416,6 +508,7 @@ async fn handle_message_stream(
 
     tokio::spawn(async move {
         let task_id = spawn_task_id;
+        let started_at = Instant::now();
         let mut session = match Session::new().await {
             Ok(s) => s,
             Err(e) => {
@@ -428,17 +521,28 @@ async fn handle_message_stream(
                     t.status.state = TaskState::Failed;
                     t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
                 }
+                record_a2a_message_telemetry(
+                    "a2a_message_stream",
+                    &task_id,
+                    false,
+                    &prompt,
+                    started_at.elapsed(),
+                    false,
+                    None,
+                    Some(e.to_string()),
+                );
                 return;
             }
         };
 
         match session.prompt(&prompt).await {
             Ok(result) => {
+                let result_text = result.text;
                 let response_message = Message {
                     message_id: Uuid::new_v4().to_string(),
                     role: MessageRole::Agent,
                     parts: vec![Part::Text {
-                        text: result.text.clone(),
+                        text: result_text.clone(),
                     }],
                     context_id,
                     task_id: Some(task_id.clone()),
@@ -448,7 +552,9 @@ async fn handle_message_stream(
 
                 let artifact = Artifact {
                     artifact_id: Uuid::new_v4().to_string(),
-                    parts: vec![Part::Text { text: result.text }],
+                    parts: vec![Part::Text {
+                        text: result_text.clone(),
+                    }],
                     name: Some("response".to_string()),
                     description: None,
                     metadata: std::collections::HashMap::new(),
@@ -485,6 +591,17 @@ async fn handle_message_stream(
                         "Artifact produced"
                     );
                 }
+
+                record_a2a_message_telemetry(
+                    "a2a_message_stream",
+                    &task_id,
+                    false,
+                    &prompt,
+                    started_at.elapsed(),
+                    true,
+                    Some(result_text),
+                    None,
+                );
             }
             Err(e) => {
                 tracing::error!("Stream task {} failed: {}", task_id, e);
@@ -492,6 +609,16 @@ async fn handle_message_stream(
                     t.status.state = TaskState::Failed;
                     t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
                 }
+                record_a2a_message_telemetry(
+                    "a2a_message_stream",
+                    &task_id,
+                    false,
+                    &prompt,
+                    started_at.elapsed(),
+                    false,
+                    None,
+                    Some(e.to_string()),
+                );
             }
         }
     });

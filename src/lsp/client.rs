@@ -10,8 +10,8 @@ use super::types::*;
 use anyhow::Result;
 use lsp_types::{
     ClientCapabilities, CompletionContext, CompletionParams, CompletionTriggerKind,
-    DocumentSymbolParams, HoverParams, Position,
-    TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams,
+    DocumentSymbolParams, HoverParams, Position, TextDocumentIdentifier, TextDocumentItem,
+    TextDocumentPositionParams,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -179,7 +179,10 @@ impl LspClient {
         };
 
         self.transport
-            .notify("textDocument/didChange", Some(serde_json::to_value(params)?))
+            .notify(
+                "textDocument/didChange",
+                Some(serde_json::to_value(params)?),
+            )
             .await?;
 
         debug!(path = %path.display(), version = *version, "Changed document");
@@ -188,7 +191,12 @@ impl LspClient {
     }
 
     /// Go to definition
-    pub async fn go_to_definition(&self, path: &Path, line: u32, character: u32) -> Result<LspActionResult> {
+    pub async fn go_to_definition(
+        &self,
+        path: &Path,
+        line: u32,
+        character: u32,
+    ) -> Result<LspActionResult> {
         let uri = path_to_uri(path);
         self.ensure_document_open(path).await?;
 
@@ -206,7 +214,13 @@ impl LspClient {
     }
 
     /// Find references
-    pub async fn find_references(&self, path: &Path, line: u32, character: u32, include_declaration: bool) -> Result<LspActionResult> {
+    pub async fn find_references(
+        &self,
+        path: &Path,
+        line: u32,
+        character: u32,
+        include_declaration: bool,
+    ) -> Result<LspActionResult> {
         let uri = path_to_uri(path);
         self.ensure_document_open(path).await?;
 
@@ -214,13 +228,21 @@ impl LspClient {
             text_document: TextDocumentIdentifier {
                 uri: parse_uri(&uri)?,
             },
-            position: Position { line: line.saturating_sub(1), character: character.saturating_sub(1) },
-            context: ReferenceContext { include_declaration },
+            position: Position {
+                line: line.saturating_sub(1),
+                character: character.saturating_sub(1),
+            },
+            context: ReferenceContext {
+                include_declaration,
+            },
         };
 
         let response = self
             .transport
-            .request("textDocument/references", Some(serde_json::to_value(params)?))
+            .request(
+                "textDocument/references",
+                Some(serde_json::to_value(params)?),
+            )
             .await?;
 
         parse_location_response(response, "references")
@@ -236,7 +258,10 @@ impl LspClient {
                 text_document: TextDocumentIdentifier {
                     uri: parse_uri(&uri)?,
                 },
-                position: Position { line: line.saturating_sub(1), character: character.saturating_sub(1) },
+                position: Position {
+                    line: line.saturating_sub(1),
+                    character: character.saturating_sub(1),
+                },
             },
             work_done_progress_params: Default::default(),
         };
@@ -264,7 +289,10 @@ impl LspClient {
 
         let response = self
             .transport
-            .request("textDocument/documentSymbol", Some(serde_json::to_value(params)?))
+            .request(
+                "textDocument/documentSymbol",
+                Some(serde_json::to_value(params)?),
+            )
             .await?;
 
         parse_document_symbols_response(response)
@@ -285,7 +313,12 @@ impl LspClient {
     }
 
     /// Go to implementation
-    pub async fn go_to_implementation(&self, path: &Path, line: u32, character: u32) -> Result<LspActionResult> {
+    pub async fn go_to_implementation(
+        &self,
+        path: &Path,
+        line: u32,
+        character: u32,
+    ) -> Result<LspActionResult> {
         let uri = path_to_uri(path);
         self.ensure_document_open(path).await?;
 
@@ -303,7 +336,12 @@ impl LspClient {
     }
 
     /// Get code completions
-    pub async fn completion(&self, path: &Path, line: u32, character: u32) -> Result<LspActionResult> {
+    pub async fn completion(
+        &self,
+        path: &Path,
+        line: u32,
+        character: u32,
+    ) -> Result<LspActionResult> {
         let uri = path_to_uri(path);
         self.ensure_document_open(path).await?;
 
@@ -312,7 +350,10 @@ impl LspClient {
                 text_document: TextDocumentIdentifier {
                     uri: parse_uri(&uri)?,
                 },
-                position: Position { line: line.saturating_sub(1), character: character.saturating_sub(1) },
+                position: Position {
+                    line: line.saturating_sub(1),
+                    character: character.saturating_sub(1),
+                },
             },
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
@@ -324,7 +365,10 @@ impl LspClient {
 
         let response = self
             .transport
-            .request("textDocument/completion", Some(serde_json::to_value(params)?))
+            .request(
+                "textDocument/completion",
+                Some(serde_json::to_value(params)?),
+            )
             .await?;
 
         parse_completion_response(response)
@@ -364,9 +408,9 @@ impl LspClient {
             _ => &[],
         };
 
-        extensions.iter().any(|ext| {
-            self.config.file_extensions.iter().any(|fe| fe == *ext)
-        })
+        extensions
+            .iter()
+            .any(|ext| self.config.file_extensions.iter().any(|fe| fe == *ext))
     }
 }
 
@@ -378,7 +422,9 @@ fn path_to_uri(path: &Path) -> String {
 
 /// Parse a string URI into an lsp_types::Uri
 fn parse_uri(uri_str: &str) -> Result<lsp_types::Uri> {
-    uri_str.parse().map_err(|e| anyhow::anyhow!("Invalid URI: {e}"))
+    uri_str
+        .parse()
+        .map_err(|e| anyhow::anyhow!("Invalid URI: {e}"))
 }
 
 /// Parse a location response (definition, references, implementation)
@@ -454,12 +500,14 @@ fn parse_hover_response(response: JsonRpcResponse) -> Result<LspActionResult> {
             lsp_types::MarkedString::String(s) => s,
             lsp_types::MarkedString::LanguageString(ls) => ls.value,
         },
-        lsp_types::HoverContents::Array(markups) => {
-            markups.into_iter().map(|m| match m {
+        lsp_types::HoverContents::Array(markups) => markups
+            .into_iter()
+            .map(|m| match m {
                 lsp_types::MarkedString::String(s) => s,
                 lsp_types::MarkedString::LanguageString(ls) => ls.value,
-            }).collect::<Vec<_>>().join("\n\n")
-        }
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n"),
         lsp_types::HoverContents::Markup(markup) => markup.value,
     };
 
@@ -519,7 +567,8 @@ fn parse_workspace_symbols_response(response: JsonRpcResponse) -> Result<LspActi
     }
 
     // Try SymbolInformation[]
-    if let Ok(symbols) = serde_json::from_value::<Vec<lsp_types::SymbolInformation>>(result.clone()) {
+    if let Ok(symbols) = serde_json::from_value::<Vec<lsp_types::SymbolInformation>>(result.clone())
+    {
         return Ok(LspActionResult::WorkspaceSymbols {
             symbols: symbols.into_iter().map(SymbolInfo::from).collect(),
         });
@@ -532,7 +581,9 @@ fn parse_workspace_symbols_response(response: JsonRpcResponse) -> Result<LspActi
                 .into_iter()
                 .map(|s| {
                     let (uri, range) = match s.location {
-                        lsp_types::OneOf::Left(loc) => (loc.uri.to_string(), Some(RangeInfo::from(loc.range))),
+                        lsp_types::OneOf::Left(loc) => {
+                            (loc.uri.to_string(), Some(RangeInfo::from(loc.range)))
+                        }
                         lsp_types::OneOf::Right(wl) => (wl.uri.to_string(), None),
                     };
                     SymbolInfo {
@@ -570,7 +621,11 @@ fn parse_completion_response(response: JsonRpcResponse) -> Result<LspActionResul
     // Try CompletionList first
     if let Ok(list) = serde_json::from_value::<lsp_types::CompletionList>(result.clone()) {
         return Ok(LspActionResult::Completion {
-            items: list.items.into_iter().map(CompletionItemInfo::from).collect(),
+            items: list
+                .items
+                .into_iter()
+                .map(CompletionItemInfo::from)
+                .collect(),
         });
     }
 
@@ -614,7 +669,10 @@ impl LspManager {
         client.initialize().await?;
 
         let client = Arc::new(client);
-        self.clients.write().await.insert(language.to_string(), Arc::clone(&client));
+        self.clients
+            .write()
+            .await
+            .insert(language.to_string(), Arc::clone(&client));
 
         Ok(client)
     }

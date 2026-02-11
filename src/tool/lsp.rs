@@ -11,7 +11,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Global LSP manager - lazily initialized
-static LSP_MANAGER: std::sync::OnceLock<Arc<RwLock<Option<Arc<LspManager>>>>> = std::sync::OnceLock::new();
+static LSP_MANAGER: std::sync::OnceLock<Arc<RwLock<Option<Arc<LspManager>>>>> =
+    std::sync::OnceLock::new();
 
 /// LSP Tool for performing Language Server Protocol operations
 pub struct LspTool {
@@ -25,7 +26,9 @@ impl LspTool {
 
     /// Create with a specific workspace root
     pub fn with_root(root_uri: String) -> Self {
-        Self { root_uri: Some(root_uri) }
+        Self {
+            root_uri: Some(root_uri),
+        }
     }
 
     /// Shutdown all LSP clients, releasing resources.
@@ -147,10 +150,12 @@ impl Tool for LspTool {
         // For other actions, we need a file and position
         let line = args["line"]
             .as_u64()
-            .ok_or_else(|| anyhow::anyhow!("line is required for action: {}", action))? as u32;
+            .ok_or_else(|| anyhow::anyhow!("line is required for action: {}", action))?
+            as u32;
         let column = args["column"]
             .as_u64()
-            .ok_or_else(|| anyhow::anyhow!("column is required for action: {}", action))? as u32;
+            .ok_or_else(|| anyhow::anyhow!("column is required for action: {}", action))?
+            as u32;
 
         let client = manager.get_client_for_file(path).await?;
 
@@ -158,7 +163,9 @@ impl Tool for LspTool {
             "goToDefinition" => client.go_to_definition(path, line, column).await?,
             "findReferences" => {
                 let include_decl = args["include_declaration"].as_bool().unwrap_or(true);
-                client.find_references(path, line, column, include_decl).await?
+                client
+                    .find_references(path, line, column, include_decl)
+                    .await?
             }
             "hover" => client.hover(path, line, column).await?,
             "documentSymbol" => client.document_symbols(path).await?,
@@ -216,9 +223,13 @@ fn format_result(result: LspActionResult) -> Result<ToolResult> {
             let mut out = "Hover information:\n\n".to_string();
             out.push_str(&contents);
             if let Some(r) = range {
-                out.push_str(&format!("\n\nRange: line {}-{}, col {}-{}",
-                    r.start.line + 1, r.end.line + 1,
-                    r.start.character + 1, r.end.character + 1));
+                out.push_str(&format!(
+                    "\n\nRange: line {}-{}, col {}-{}",
+                    r.start.line + 1,
+                    r.end.line + 1,
+                    r.start.character + 1,
+                    r.end.character + 1
+                ));
             }
             out
         }

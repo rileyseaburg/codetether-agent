@@ -175,7 +175,7 @@ impl Default for SwarmConfig {
             subagent_timeout_secs: 600, // 10 minutes for complex tasks
             parallel_enabled: true,
             critical_path_threshold: 10,
-            model: None,
+            model: Some("zai/glm-5".to_string()),
             max_concurrent_requests: 3, // V1 tier allows 3 concurrent
             request_delay_ms: 1000,     // V1 tier: 60 RPM, 3 concurrent = fast
             worktree_enabled: true,     // Enable worktree isolation by default

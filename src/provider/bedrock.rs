@@ -45,7 +45,9 @@ impl AwsCredentials {
                 return Some(Self {
                     access_key_id: key_id,
                     secret_access_key: secret,
-                    session_token: std::env::var("AWS_SESSION_TOKEN").ok().filter(|s| !s.is_empty()),
+                    session_token: std::env::var("AWS_SESSION_TOKEN")
+                        .ok()
+                        .filter(|s| !s.is_empty()),
                 });
             }
         }
@@ -165,10 +167,13 @@ pub struct BedrockProvider {
 impl std::fmt::Debug for BedrockProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BedrockProvider")
-            .field("auth", &match &self.auth {
-                BedrockAuth::SigV4(_) => "SigV4",
-                BedrockAuth::BearerToken(_) => "BearerToken",
-            })
+            .field(
+                "auth",
+                &match &self.auth {
+                    BedrockAuth::SigV4(_) => "SigV4",
+                    BedrockAuth::BearerToken(_) => "BearerToken",
+                },
+            )
             .field("region", &self.region)
             .finish()
     }
@@ -238,8 +243,7 @@ impl BedrockProvider {
     // ── AWS SigV4 signing helpers ──────────────────────────────────────
 
     fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
-        let mut mac = Hmac::<Sha256>::new_from_slice(key)
-            .expect("HMAC can take key of any size");
+        let mut mac = Hmac::<Sha256>::new_from_slice(key).expect("HMAC can take key of any size");
         mac.update(data);
         mac.finalize().into_bytes().to_vec()
     }
@@ -271,7 +275,10 @@ impl BedrockProvider {
 
         // Parse URL components
         let host_start = url.find("://").map(|i| i + 3).unwrap_or(0);
-        let after_host = url[host_start..].find('/').map(|i| host_start + i).unwrap_or(url.len());
+        let after_host = url[host_start..]
+            .find('/')
+            .map(|i| host_start + i)
+            .unwrap_or(url.len());
         let host = url[host_start..after_host].to_string();
         let path_and_query = &url[after_host..];
         let (canonical_uri, canonical_querystring) = match path_and_query.split_once('?') {
@@ -307,15 +314,21 @@ impl BedrockProvider {
 
         let canonical_request = format!(
             "{}\n{}\n{}\n{}\n{}\n{}",
-            method, canonical_uri, canonical_querystring,
-            canonical_headers, signed_headers, payload_hash
+            method,
+            canonical_uri,
+            canonical_querystring,
+            canonical_headers,
+            signed_headers,
+            payload_hash
         );
 
         let credential_scope = format!("{}/{}/{}/aws4_request", datestamp, self.region, service);
 
         let string_to_sign = format!(
             "AWS4-HMAC-SHA256\n{}\n{}\n{}",
-            amz_date, credential_scope, Self::sha256_hex(canonical_request.as_bytes())
+            amz_date,
+            credential_scope,
+            Self::sha256_hex(canonical_request.as_bytes())
         );
 
         // Derive signing key
@@ -336,10 +349,7 @@ impl BedrockProvider {
 
         let mut req = self
             .client
-            .request(
-                method.parse().unwrap_or(reqwest::Method::POST),
-                url,
-            )
+            .request(method.parse().unwrap_or(reqwest::Method::POST), url)
             .header("content-type", "application/json")
             .header("host", &host)
             .header("x-amz-date", &amz_date)
@@ -354,7 +364,9 @@ impl BedrockProvider {
             req = req.body(body.to_vec());
         }
 
-        req.send().await.context("Failed to send signed request to Bedrock")
+        req.send()
+            .await
+            .context("Failed to send signed request to Bedrock")
     }
 
     /// Send an HTTP request using whichever auth mode is configured.
@@ -367,22 +379,24 @@ impl BedrockProvider {
     ) -> Result<reqwest::Response> {
         match &self.auth {
             BedrockAuth::SigV4(_) => {
-                self.send_signed_request(method, url, body.unwrap_or(b""), service).await
+                self.send_signed_request(method, url, body.unwrap_or(b""), service)
+                    .await
             }
             BedrockAuth::BearerToken(token) => {
-                let mut req = self.client.request(
-                    method.parse().unwrap_or(reqwest::Method::GET),
-                    url,
-                )
-                .bearer_auth(token)
-                .header("content-type", "application/json")
-                .header("accept", "application/json");
+                let mut req = self
+                    .client
+                    .request(method.parse().unwrap_or(reqwest::Method::GET), url)
+                    .bearer_auth(token)
+                    .header("content-type", "application/json")
+                    .header("accept", "application/json");
 
                 if let Some(b) = body {
                     req = req.body(b.to_vec());
                 }
 
-                req.send().await.context("Failed to send request to Bedrock")
+                req.send()
+                    .await
+                    .context("Failed to send request to Bedrock")
             }
         }
     }
@@ -483,6 +497,7 @@ impl BedrockProvider {
             "nemotron-nano-9b" => "nvidia.nemotron-nano-9b-v2",
 
             // --- Z.AI / GLM (ON_DEMAND only, no us. prefix) ---
+            "glm-5" => "zai.glm-5",
             "glm-4.7" => "zai.glm-4.7",
             "glm-4.7-flash" => "zai.glm-4.7-flash",
 
@@ -498,9 +513,7 @@ impl BedrockProvider {
 
         // 1) Fetch foundation models
         let fm_url = format!("{}/foundation-models", self.management_url());
-        let fm_resp = self
-            .send_request("GET", &fm_url, None, "bedrock")
-            .await;
+        let fm_resp = self.send_request("GET", &fm_url, None, "bedrock").await;
 
         if let Ok(resp) = fm_resp {
             if resp.status().is_success() {
@@ -602,9 +615,7 @@ impl BedrockProvider {
             "{}/inference-profiles?typeEquals=SYSTEM_DEFINED&maxResults=200",
             self.management_url()
         );
-        let ip_resp = self
-            .send_request("GET", &ip_url, None, "bedrock")
-            .await;
+        let ip_resp = self.send_request("GET", &ip_url, None, "bedrock").await;
 
         if let Ok(resp) = ip_resp {
             if resp.status().is_success() {

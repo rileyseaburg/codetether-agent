@@ -37,6 +37,15 @@ This release adds the inter-agent communication backbone — a broadcast-based i
 
 ## Install
 
+### Via npx (no Rust)
+
+```bash
+npx codetether --help
+npx codetether tui
+```
+
+(This uses the npm wrapper under `npm/codetether/`, which downloads the matching prebuilt binary from GitHub Releases for your platform. Publish it to npm to make `npx codetether ...` work globally.)
+
 **Linux / macOS:**
 
 ```bash

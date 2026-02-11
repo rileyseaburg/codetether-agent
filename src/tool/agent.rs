@@ -14,7 +14,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{mpsc, OnceCell};
+use tokio::sync::{OnceCell, mpsc};
 
 /// A spawned sub-agent with its own session and identity.
 struct AgentEntry {
@@ -173,50 +173,118 @@ impl Tool for AgentTool {
                 // Take the session out of the store so we can mutably use it
                 let mut session = {
                     let mut store = AGENT_STORE.write();
-                    let entry = store
-                        .get_mut(&name)
-                        .ok_or_else(|| anyhow::anyhow!("Agent @{name} not found. Spawn it first."))?;
+                    let entry = store.get_mut(&name).ok_or_else(|| {
+                        anyhow::anyhow!("Agent @{name} not found. Spawn it first.")
+                    })?;
                     entry.session.clone()
                 };
 
                 let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
                 let registry = get_registry().await?;
 
-                // Run the agent's prompt loop
-                let result = session.prompt_with_events(&message, tx, registry).await;
+                // Use tokio::spawn to run the agent in the background
+                // This allows the main event loop to remain responsive
+                let mut session_clone = session.clone();
+                let msg_clone = message.clone();
+                let registry_clone = registry.clone();
+                let tx_clone = tx.clone();
 
-                // Collect the response
+                // Spawn the agent prompt task
+                let handle = tokio::spawn(async move {
+                    session_clone
+                        .prompt_with_events(&msg_clone, tx_clone, registry_clone)
+                        .await
+                });
+
+                // Wait for completion events with yielding to stay responsive
                 let mut response_text = String::new();
                 let mut thinking_text = String::new();
                 let mut tool_calls = Vec::new();
+                let mut agent_done = false;
+                let mut last_error: Option<String> = None;
 
-                while let Ok(event) = rx.try_recv() {
-                    match event {
-                        SessionEvent::TextComplete(text) => {
-                            response_text.push_str(&text);
+                // Maximum wait time: 5 minutes per agent
+                let max_wait = std::time::Duration::from_secs(300);
+                let start = std::time::Instant::now();
+
+                while !agent_done && start.elapsed() < max_wait {
+                    // Yield immediately on each iteration to keep the TUI event loop responsive
+                    // This prevents UI freezes when multiple agents are spawned
+                    tokio::task::yield_now().await;
+
+                    // Use tokio::select! with small timeout to stay responsive
+                    match tokio::time::timeout(std::time::Duration::from_millis(20), rx.recv())
+                        .await
+                    {
+                        Ok(Some(event)) => match event {
+                            SessionEvent::TextComplete(text) => {
+                                response_text.push_str(&text);
+                            }
+                            SessionEvent::ThinkingComplete(text) => {
+                                thinking_text.push_str(&text);
+                            }
+                            SessionEvent::ToolCallComplete {
+                                name: tool_name,
+                                output,
+                                success,
+                            } => {
+                                tool_calls.push(json!({
+                                    "tool": tool_name,
+                                    "success": success,
+                                    "output_preview": if output.len() > 200 {
+                                        format!("{}...", &output[..200])
+                                    } else {
+                                        output
+                                    }
+                                }));
+                            }
+                            SessionEvent::Error(err) => {
+                                response_text.push_str(&format!("\n[Error: {err}]"));
+                                last_error = Some(err);
+                            }
+                            SessionEvent::Done => {
+                                agent_done = true;
+                            }
+                            SessionEvent::SessionSync(synced) => {
+                                session = synced;
+                            }
+                            _ => {}
+                        },
+                        Ok(None) => {
+                            // Channel closed
+                            agent_done = true;
                         }
-                        SessionEvent::ThinkingComplete(text) => {
-                            thinking_text.push_str(&text);
+                        Err(_) => {
+                            // Timeout - check if spawn is done and yield to other tasks
+                            if handle.is_finished() {
+                                agent_done = true;
+                            }
                         }
-                        SessionEvent::ToolCallComplete {
-                            name: tool_name,
-                            output,
-                            success,
-                        } => {
-                            tool_calls.push(json!({
-                                "tool": tool_name,
-                                "success": success,
-                                "output_preview": if output.len() > 200 {
-                                    format!("{}...", &output[..200])
-                                } else {
-                                    output
-                                }
-                            }));
+                    }
+                }
+
+                // Check the result of the spawned task
+                if handle.is_finished() {
+                    match handle.await {
+                        Ok(Ok(_)) => {}
+                        Ok(Err(err)) => {
+                            if last_error.is_none() {
+                                last_error = Some(err.to_string());
+                            }
                         }
-                        SessionEvent::Error(err) => {
-                            response_text.push_str(&format!("\n[Error: {err}]"));
+                        Err(err) => {
+                            if err.is_cancelled() {
+                                last_error = Some("Agent task was cancelled".to_string());
+                            } else {
+                                last_error = Some(format!("Agent task panicked: {}", err));
+                            }
                         }
-                        _ => {}
+                    }
+                } else {
+                    // Agent didn't finish in time - abort it
+                    handle.abort();
+                    if last_error.is_none() {
+                        last_error = Some(format!("Agent @{name} timed out after 5 minutes"));
                     }
                 }
 
@@ -228,10 +296,12 @@ impl Tool for AgentTool {
                     }
                 }
 
-                if let Err(err) = result {
-                    return Ok(ToolResult::error(format!(
-                        "Agent @{name} failed: {err}"
-                    )));
+                if let Some(ref err) = last_error {
+                    if response_text.is_empty() {
+                        return Ok(ToolResult::error(format!("Agent @{name} failed: {err}")));
+                    }
+                    // Partial response with error
+                    response_text.push_str(&format!("\n\n[Warning: {err}]"));
                 }
 
                 let mut output = json!({

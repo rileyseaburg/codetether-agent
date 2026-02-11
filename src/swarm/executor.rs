@@ -4,7 +4,8 @@
 //! respecting dependencies and optimizing for critical path.
 
 use super::{
-    CacheConfig, CacheStats, DecompositionStrategy, StageStats, SwarmCache, SwarmConfig, SwarmResult,
+    CacheConfig, CacheStats, DecompositionStrategy, StageStats, SwarmCache, SwarmConfig,
+    SwarmResult,
     orchestrator::Orchestrator,
     result_store::ResultStore,
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
@@ -13,7 +14,7 @@ use crate::bus::{AgentBus, BusMessage};
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
 // Re-export swarm types for convenience
-pub use super::{SwarmMessage};
+pub use super::SwarmMessage;
 use crate::{
     agent::Agent,
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
@@ -992,12 +993,10 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 // Create per-agent registry with SwarmShareTool for this subtask
                 let mut agent_registry =
                     ToolRegistry::with_provider(Arc::clone(&provider), model.clone());
-                agent_registry.register(Arc::new(
-                    crate::tool::swarm_share::SwarmShareTool::new(
-                        Arc::clone(&agent_result_store),
-                        subtask_id.clone(),
-                    ),
-                ));
+                agent_registry.register(Arc::new(crate::tool::swarm_share::SwarmShareTool::new(
+                    Arc::clone(&agent_result_store),
+                    subtask_id.clone(),
+                )));
                 let registry = Arc::new(agent_registry);
 
                 let result = run_agent_loop(

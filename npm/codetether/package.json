@@ -1,0 +1,33 @@
+{
+  "name": "codetether",
+  "version": "1.1.6-alpha-7.2",
+  "description": "npx wrapper for the CodeTether Agent CLI (codetether)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rileyseaburg/codetether-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rileyseaburg/codetether-agent/issues"
+  },
+  "homepage": "https://github.com/rileyseaburg/codetether-agent#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "codetether": "bin/codetether.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.12",
+    "tar": "^6.2.1"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/",
+    "README.md"
+  ]
+}
