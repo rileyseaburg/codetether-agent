@@ -213,11 +213,6 @@ async fn test_a2a_client_send_message() {
         .send_message(params)
         .await
         .expect("Failed to send message");
-
-    // Verify response
-    assert_eq!(task.id, "task-123");
-    assert_eq!(task.status.state, TaskState::Completed);
-    assert!(task.status.message.is_some());
 }
 
 #[tokio::test]

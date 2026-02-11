@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "1.1.6-alpha-2"
+version = "1.1.6-alpha-7"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -93,15 +93,16 @@ async-openai = { version = "0.32.4", features = ["chat-completion"] }
 jsonrpc-core = "18"
 
 # gRPC transport (A2A protocol)
-tonic = "0.13"
-prost = "0.13"
-prost-types = "0.13"
+tonic = "0.14.3"
+tonic-prost = "0.14.3"
+prost = "0.14.3"
+prost-types = "0.14.3"
 async-stream = "0.3"
 tokio-stream = "0.1"
 
 # TUI
 ratatui = "0.30.0"
-crossterm = "0.29.0"
+crossterm = { version = "0.29.0", features = ["event-stream"] }
 
 # Config
 config = "0.15"
@@ -142,6 +143,7 @@ glob = "0.3"
 html-escape = "0.2"
 ignore = "0.4"
 walkdir = "2"
+which = "7"
 regex = "1"
 similar = "2"
 lsp-types = "0.97.0"
@@ -160,7 +162,7 @@ tempfile = "3"
 insta = "1"
 
 [build-dependencies]
-tonic-build = "0.13"
+tonic-prost-build = "0.14.3"
 
 [profile.release]
 lto = "thin"

@@ -14,6 +14,5 @@ pub mod client;
 pub mod transport;
 pub mod types;
 
-pub use client::{LspClient, LspManager};
-pub use transport::LspTransport;
+pub use client::LspManager;
 pub use types::*;

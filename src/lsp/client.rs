@@ -31,6 +31,9 @@ pub struct LspClient {
 impl LspClient {
     /// Create a new LSP client with the given configuration
     pub async fn new(config: LspConfig) -> Result<Self> {
+        // Auto-install the language server if it's not on PATH
+        super::types::ensure_server_installed(&config).await?;
+
         let transport = LspTransport::spawn(&config.command, &config.args).await?;
 
         Ok(Self {

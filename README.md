@@ -247,6 +247,7 @@ The terminal UI includes a webview layout, model selector, session picker, swarm
 
 | Provider | Default Model | Notes |
 |----------|---------------|-------|
+| `zai` | `glm-5` | Z.AI flagship — GLM-5 agentic coding (200K ctx) |
 | `moonshotai` | `kimi-k2.5` | Default — excellent for coding |
 | `github-copilot` | `claude-opus-4` | GitHub Copilot models |
 | `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |

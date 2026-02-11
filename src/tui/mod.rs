@@ -2,6 +2,7 @@
 //!
 //! Interactive TUI using Ratatui
 
+pub mod bus_log;
 pub mod message_formatter;
 pub mod ralph_view;
 pub mod swarm_view;
@@ -17,6 +18,7 @@ use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
 use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_with_opencode};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
+use crate::tui::bus_log::{BusLogState, render_bus_log};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::ralph_view::{RalphEvent, RalphViewState, render_ralph_view};
 use crate::tui::swarm_view::{SwarmEvent, SwarmViewState, render_swarm_view};
@@ -25,12 +27,13 @@ use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
 use crossterm::{
     event::{
-        self, DisableBracketedPaste, EnableBracketedPaste,
-        Event, KeyCode, KeyModifiers,
+        DisableBracketedPaste, EnableBracketedPaste,
+        Event, EventStream, KeyCode, KeyModifiers,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use futures::StreamExt;
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
@@ -41,6 +44,7 @@ use ratatui::{
         Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
     },
 };
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -96,6 +100,7 @@ enum MessageType {
         path: String,
         mime_type: Option<String>,
     },
+    Thinking(String),
 }
 
 /// View mode for the TUI
@@ -104,6 +109,7 @@ enum ViewMode {
     Chat,
     Swarm,
     Ralph,
+    BusLog,
     SessionPicker,
     ModelPicker,
 }
@@ -170,6 +176,10 @@ struct App {
     // Ralph mode state
     ralph_state: RalphViewState,
     ralph_rx: Option<mpsc::Receiver<RalphEvent>>,
+    // Bus protocol log state
+    bus_log_state: BusLogState,
+    bus_log_rx: Option<mpsc::Receiver<crate::bus::BusEnvelope>>,
+    bus: Option<std::sync::Arc<crate::bus::AgentBus>>,
     // Session picker state
     session_picker_list: Vec<SessionSummary>,
     session_picker_selected: usize,
@@ -180,6 +190,9 @@ struct App {
     model_picker_selected: usize,
     model_picker_filter: String,
     active_model: Option<String>,
+    // Spawned sub-agents state
+    spawned_agents: HashMap<String, SpawnedAgent>,
+    agent_response_rxs: Vec<(String, mpsc::Receiver<SessionEvent>)>,
     // Cached max scroll for key handlers
     last_max_scroll: usize,
 }
@@ -190,6 +203,70 @@ struct ChatMessage {
     content: String,
     timestamp: String,
     message_type: MessageType,
+    /// Per-step usage metadata (set on assistant messages)
+    usage_meta: Option<UsageMeta>,
+    /// Name of the spawned agent that produced this message (None = main chat)
+    agent_name: Option<String>,
+}
+
+/// A spawned sub-agent with its own independent LLM session.
+#[allow(dead_code)]
+struct SpawnedAgent {
+    /// User-facing name (e.g. "planner", "coder")
+    name: String,
+    /// System instructions for this agent
+    instructions: String,
+    /// Independent conversation session
+    session: Session,
+    /// Whether this agent is currently processing a message
+    is_processing: bool,
+}
+
+/// Token usage + cost + latency for one LLM round-trip
+#[derive(Debug, Clone)]
+struct UsageMeta {
+    prompt_tokens: usize,
+    completion_tokens: usize,
+    duration_ms: u64,
+    cost_usd: Option<f64>,
+}
+
+/// Estimate USD cost from model name and token counts.
+/// Uses approximate per-million-token pricing for well-known models.
+fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) -> Option<f64> {
+    // (input $/M, output $/M)
+    let (input_rate, output_rate) = match model {
+        // Anthropic - Claude
+        m if m.contains("claude-opus") => (15.0, 75.0),
+        m if m.contains("claude-sonnet") => (3.0, 15.0),
+        m if m.contains("claude-haiku") => (0.25, 1.25),
+        // OpenAI
+        m if m.contains("gpt-4o-mini") => (0.15, 0.6),
+        m if m.contains("gpt-4o") => (2.5, 10.0),
+        m if m.contains("o3") => (10.0, 40.0),
+        m if m.contains("o4-mini") => (1.10, 4.40),
+        // Google
+        m if m.contains("gemini-2.5-pro") => (1.25, 10.0),
+        m if m.contains("gemini-2.5-flash") => (0.15, 0.6),
+        m if m.contains("gemini-2.0-flash") => (0.10, 0.40),
+        // Bedrock third-party
+        m if m.contains("kimi-k2") => (0.35, 1.40),
+        m if m.contains("deepseek") => (0.80, 2.0),
+        m if m.contains("llama") => (0.50, 1.50),
+        // Amazon Nova
+        m if m.contains("nova-pro") => (0.80, 3.20),
+        m if m.contains("nova-lite") => (0.06, 0.24),
+        m if m.contains("nova-micro") => (0.035, 0.14),
+        // Z.AI GLM
+        m if m.contains("glm-5") => (2.0, 8.0),
+        m if m.contains("glm-4.7-flash") => (0.0, 0.0),
+        m if m.contains("glm-4.7") => (0.50, 2.0),
+        m if m.contains("glm-4") => (0.35, 1.40),
+        _ => return None,
+    };
+    let cost = (prompt_tokens as f64 * input_rate + completion_tokens as f64 * output_rate)
+        / 1_000_000.0;
+    Some(cost)
 }
 
 impl ChatMessage {
@@ -200,11 +277,23 @@ impl ChatMessage {
             timestamp: chrono::Local::now().format("%H:%M").to_string(),
             message_type: MessageType::Text(content.clone()),
             content,
+            usage_meta: None,
+            agent_name: None,
         }
     }
 
     fn with_message_type(mut self, message_type: MessageType) -> Self {
         self.message_type = message_type;
+        self
+    }
+
+    fn with_usage_meta(mut self, meta: UsageMeta) -> Self {
+        self.usage_meta = Some(meta);
+        self
+    }
+
+    fn with_agent_name(mut self, name: impl Into<String>) -> Self {
+        self.agent_name = Some(name.into());
         self
     }
 }
@@ -313,7 +402,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -339,6 +428,9 @@ impl App {
             swarm_rx: None,
             ralph_state: RalphViewState::new(),
             ralph_rx: None,
+            bus_log_state: BusLogState::new(),
+            bus_log_rx: None,
+            bus: None,
             session_picker_list: Vec::new(),
             session_picker_selected: 0,
             session_picker_filter: String::new(),
@@ -347,6 +439,8 @@ impl App {
             model_picker_selected: 0,
             model_picker_filter: String::new(),
             active_model: None,
+            spawned_agents: HashMap::new(),
+            agent_response_rxs: Vec::new(),
             last_max_scroll: 0,
         }
     }
@@ -462,9 +556,181 @@ impl App {
         // Check for /view command to toggle views
         if message.trim() == "/view" || message.trim() == "/swarm" {
             self.view_mode = match self.view_mode {
-                ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => ViewMode::Swarm,
+                ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker | ViewMode::BusLog => ViewMode::Swarm,
                 ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
             };
+            return;
+        }
+
+        // Check for /buslog command to open protocol bus log
+        if message.trim() == "/buslog" || message.trim() == "/bus" {
+            self.view_mode = ViewMode::BusLog;
+            return;
+        }
+
+        // Check for /spawn command - create a named sub-agent
+        if message.trim().starts_with("/spawn ") {
+            let rest = message.trim().strip_prefix("/spawn ").unwrap_or("").trim();
+            let (name, instructions) = match rest.split_once(' ') {
+                Some((n, i)) => (n.to_string(), i.to_string()),
+                None => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        "Usage: /spawn <name> <instructions>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
+                    ));
+                    return;
+                }
+            };
+
+            if self.spawned_agents.contains_key(&name) {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Agent @{name} already exists. Use /kill {name} first."),
+                ));
+                return;
+            }
+
+            match Session::new().await {
+                Ok(mut session) => {
+                    // Use the same model as the main chat
+                    session.metadata.model = self.active_model.clone()
+                        .or_else(|| config.default_model.clone());
+                    session.agent = name.clone();
+
+                    // Add system message with the agent's instructions
+                    session.add_message(crate::provider::Message {
+                        role: Role::System,
+                        content: vec![ContentPart::Text {
+                            text: format!(
+                                "You are @{name}, a specialized sub-agent. {instructions}\n\n\
+                                 When you receive a message from another agent (prefixed with their name), \
+                                 respond helpfully. Keep responses concise and focused on your specialty."
+                            ),
+                        }],
+                    });
+
+                    // Announce on bus
+                    if let Some(ref bus) = self.bus {
+                        let handle = bus.handle(&name);
+                        handle.announce_ready(vec![name.clone()]);
+                    }
+
+                    let agent = SpawnedAgent {
+                        name: name.clone(),
+                        instructions: instructions.clone(),
+                        session,
+                        is_processing: false,
+                    };
+                    self.spawned_agents.insert(name.clone(), agent);
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Spawned agent @{name}: {instructions}\nUse @{name} <message> to talk to it."),
+                    ));
+                }
+                Err(e) => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed to spawn agent: {e}"),
+                    ));
+                }
+            }
+            return;
+        }
+
+        // Check for /agents command - list spawned agents
+        if message.trim() == "/agents" {
+            if self.spawned_agents.is_empty() {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "No agents spawned. Use /spawn <name> <instructions> to create one.",
+                ));
+            } else {
+                let mut lines = vec!["Active agents:".to_string()];
+                for (name, agent) in &self.spawned_agents {
+                    let status = if agent.is_processing { "⚡ working" } else { "● idle" };
+                    lines.push(format!("  @{name} [{status}] — {}", agent.instructions));
+                }
+                self.messages.push(ChatMessage::new("system", lines.join("\n")));
+            }
+            return;
+        }
+
+        // Check for /kill command - remove a spawned agent
+        if message.trim().starts_with("/kill ") {
+            let name = message.trim().strip_prefix("/kill ").unwrap_or("").trim().to_string();
+            if self.spawned_agents.remove(&name).is_some() {
+                // Remove its response channels
+                self.agent_response_rxs.retain(|(n, _)| n != &name);
+                // Announce shutdown on bus
+                if let Some(ref bus) = self.bus {
+                    let handle = bus.handle(&name);
+                    handle.send("broadcast", crate::bus::BusMessage::AgentShutdown {
+                        agent_id: name.clone(),
+                    });
+                }
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Agent @{name} removed."),
+                ));
+            } else {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("No agent named @{name}. Use /agents to list."),
+                ));
+            }
+            return;
+        }
+
+        // Check for @mention - route message to a specific spawned agent
+        if message.trim().starts_with('@') {
+            let trimmed = message.trim();
+            let (target, content) = match trimmed.split_once(' ') {
+                Some((mention, rest)) => (mention.strip_prefix('@').unwrap_or(mention).to_string(), rest.to_string()),
+                None => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Usage: @agent_name your message\nAvailable: {}",
+                            if self.spawned_agents.is_empty() {
+                                "none (use /spawn first)".to_string()
+                            } else {
+                                self.spawned_agents.keys().map(|n| format!("@{n}")).collect::<Vec<_>>().join(", ")
+                            }
+                        ),
+                    ));
+                    return;
+                }
+            };
+
+            if !self.spawned_agents.contains_key(&target) {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("No agent named @{target}. Available: {}",
+                        if self.spawned_agents.is_empty() {
+                            "none (use /spawn first)".to_string()
+                        } else {
+                            self.spawned_agents.keys().map(|n| format!("@{n}")).collect::<Vec<_>>().join(", ")
+                        }
+                    ),
+                ));
+                return;
+            }
+
+            // Show the user's @mention message in chat
+            self.messages.push(
+                ChatMessage::new("user", format!("@{target} {content}"))
+            );
+            self.scroll = SCROLL_BOTTOM;
+
+            // Send the message over the bus
+            if let Some(ref bus) = self.bus {
+                let handle = bus.handle("user");
+                handle.send_to_agent(&target, vec![crate::a2a::types::Part::Text {
+                    text: content.clone(),
+                }]);
+            }
+
+            // Send the message to the target agent's session
+            self.send_to_agent(&target, &content, config).await;
             return;
         }
 
@@ -587,6 +853,14 @@ impl App {
                                             mime_type: mime_type.clone(),
                                         }),
                                     );
+                                }
+                                ContentPart::Thinking { text } => {
+                                    if !text.is_empty() {
+                                        self.messages.push(
+                                            ChatMessage::new(role_str, text.clone())
+                                                .with_message_type(MessageType::Thinking(text.clone())),
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -842,11 +1116,32 @@ impl App {
                 // Show streaming text as it arrives (before TextComplete finalizes)
                 self.streaming_text = Some(text);
             }
+            SessionEvent::ThinkingComplete(text) => {
+                if !text.is_empty() {
+                    self.messages.push(
+                        ChatMessage::new("assistant", &text)
+                            .with_message_type(MessageType::Thinking(text)),
+                    );
+                }
+            }
             SessionEvent::TextComplete(text) => {
                 // Clear streaming preview and add the final message
                 self.streaming_text = None;
                 if !text.is_empty() {
                     self.messages.push(ChatMessage::new("assistant", text));
+                }
+            }
+            SessionEvent::UsageReport { prompt_tokens, completion_tokens, duration_ms, model } => {
+                let cost_usd = estimate_cost(&model, prompt_tokens, completion_tokens);
+                let meta = UsageMeta {
+                    prompt_tokens,
+                    completion_tokens,
+                    duration_ms,
+                    cost_usd,
+                };
+                // Attach to the most recent assistant message
+                if let Some(msg) = self.messages.iter_mut().rev().find(|m| m.role == "assistant") {
+                    msg.usage_meta = Some(meta);
                 }
             }
             SessionEvent::SessionSync(session) => {
@@ -865,6 +1160,141 @@ impl App {
                 self.processing_started_at = None;
                 self.streaming_text = None;
                 self.response_rx = None;
+            }
+        }
+    }
+
+    /// Send a message to a specific spawned agent
+    async fn send_to_agent(&mut self, agent_name: &str, message: &str, _config: &Config) {
+        // Load provider registry if needed
+        if self.provider_registry.is_none() {
+            match crate::provider::ProviderRegistry::from_vault().await {
+                Ok(registry) => {
+                    self.provider_registry = Some(std::sync::Arc::new(registry));
+                }
+                Err(err) => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Error loading providers: {err}"),
+                    ));
+                    return;
+                }
+            }
+        }
+        let registry = self.provider_registry.clone().unwrap();
+
+        let agent = match self.spawned_agents.get_mut(agent_name) {
+            Some(a) => a,
+            None => return,
+        };
+
+        agent.is_processing = true;
+        let session_clone = agent.session.clone();
+        let msg_clone = message.to_string();
+        let agent_name_owned = agent_name.to_string();
+        let bus_arc = self.bus.clone();
+
+        let (tx, rx) = mpsc::channel(100);
+        self.agent_response_rxs.push((agent_name.to_string(), rx));
+
+        tokio::spawn(async move {
+            let mut session = session_clone;
+            if let Err(err) = session
+                .prompt_with_events(&msg_clone, tx.clone(), registry)
+                .await
+            {
+                tracing::error!(agent = %agent_name_owned, error = %err, "Spawned agent failed");
+                let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
+                let _ = tx.send(SessionEvent::Done).await;
+            }
+
+            // Send the agent's response over the bus
+            if let Some(ref bus) = bus_arc {
+                let handle = bus.handle(&agent_name_owned);
+                handle.send(
+                    format!("agent.{agent_name_owned}.events"),
+                    crate::bus::BusMessage::AgentMessage {
+                        from: agent_name_owned.clone(),
+                        to: "user".to_string(),
+                        parts: vec![crate::a2a::types::Part::Text {
+                            text: "(response complete)".to_string(),
+                        }],
+                    },
+                );
+            }
+        });
+    }
+
+    /// Handle an event from a spawned agent
+    fn handle_agent_response(&mut self, agent_name: &str, event: SessionEvent) {
+        self.scroll = SCROLL_BOTTOM;
+
+        match event {
+            SessionEvent::Thinking => {
+                // Show thinking indicator for this agent
+                if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
+                    agent.is_processing = true;
+                }
+            }
+            SessionEvent::ToolCallStart { name, arguments } => {
+                self.messages.push(
+                    ChatMessage::new("tool", format!("🔧 @{agent_name} → {name}"))
+                        .with_message_type(MessageType::ToolCall { name, arguments })
+                        .with_agent_name(agent_name),
+                );
+            }
+            SessionEvent::ToolCallComplete { name, output, success } => {
+                let icon = if success { "✓" } else { "✗" };
+                self.messages.push(
+                    ChatMessage::new("tool", format!("{icon} @{agent_name} → {name}"))
+                        .with_message_type(MessageType::ToolResult { name, output })
+                        .with_agent_name(agent_name),
+                );
+            }
+            SessionEvent::TextChunk(_text) => {
+                // For spawned agents, we could show streaming but for now just wait for complete
+            }
+            SessionEvent::ThinkingComplete(text) => {
+                if !text.is_empty() {
+                    self.messages.push(
+                        ChatMessage::new("assistant", &text)
+                            .with_message_type(MessageType::Thinking(text))
+                            .with_agent_name(agent_name),
+                    );
+                }
+            }
+            SessionEvent::TextComplete(text) => {
+                if !text.is_empty() {
+                    self.messages.push(
+                        ChatMessage::new("assistant", &text)
+                            .with_agent_name(agent_name),
+                    );
+                }
+            }
+            SessionEvent::UsageReport { prompt_tokens, completion_tokens, duration_ms, model } => {
+                let cost_usd = estimate_cost(&model, prompt_tokens, completion_tokens);
+                let meta = UsageMeta { prompt_tokens, completion_tokens, duration_ms, cost_usd };
+                if let Some(msg) = self.messages.iter_mut().rev()
+                    .find(|m| m.role == "assistant" && m.agent_name.as_deref() == Some(agent_name))
+                {
+                    msg.usage_meta = Some(meta);
+                }
+            }
+            SessionEvent::SessionSync(session) => {
+                if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
+                    agent.session = session;
+                }
+            }
+            SessionEvent::Error(err) => {
+                self.messages.push(
+                    ChatMessage::new("assistant", format!("Error: {err}"))
+                        .with_agent_name(agent_name),
+                );
+            }
+            SessionEvent::Done => {
+                if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
+                    agent.is_processing = false;
+                }
             }
         }
     }
@@ -1103,9 +1533,13 @@ impl App {
 
         // Spawn swarm execution — executor emits all events via event_tx
         let task_clone = task;
+        let bus_arc = self.bus.clone();
         tokio::spawn(async move {
             // Create executor with event channel — it handles decomposition + execution
-            let executor = SwarmExecutor::new(swarm_config).with_event_tx(tx.clone());
+            let mut executor = SwarmExecutor::new(swarm_config).with_event_tx(tx.clone());
+            if let Some(bus) = bus_arc {
+                executor = executor.with_bus(bus);
+            }
             let result = executor
                 .execute(&task_clone, DecompositionStrategy::Automatic)
                 .await;
@@ -1313,6 +1747,27 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         app.update_cached_sessions(sessions);
     }
 
+    // Create agent bus and subscribe the TUI as an observer
+    let bus = std::sync::Arc::new(crate::bus::AgentBus::new());
+    let mut bus_handle = bus.handle("tui-observer");
+    let (bus_tx, bus_rx) = mpsc::channel::<crate::bus::BusEnvelope>(512);
+    app.bus_log_rx = Some(bus_rx);
+    app.bus = Some(bus.clone());
+
+    // Spawn a forwarder task: bus broadcast → mpsc channel for the TUI event loop
+    tokio::spawn(async move {
+        loop {
+            match bus_handle.recv().await {
+                Some(env) => {
+                    if bus_tx.send(env).await.is_err() {
+                        break; // TUI closed
+                    }
+                }
+                None => break, // bus closed
+            }
+        }
+    });
+
     // Load configuration and theme
     let mut config = Config::load().await?;
     let mut theme = crate::tui::theme_utils::validate_theme(&config.load_theme());
@@ -1327,9 +1782,33 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         .map(|dirs| dirs.config_dir().join("config.toml"));
 
     let mut last_check = Instant::now();
-    let mut last_session_refresh = Instant::now();
+    let mut event_stream = EventStream::new();
+
+    // Background session refresh — fires every 5s, sends results via channel
+    let (session_tx, mut session_rx) = mpsc::channel::<Vec<crate::session::SessionSummary>>(1);
+    {
+        let workspace_dir = app.workspace_dir.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(5));
+            loop {
+                interval.tick().await;
+                if let Ok(sessions) = list_sessions_with_opencode(&workspace_dir).await {
+                    if session_tx.send(sessions).await.is_err() {
+                        break; // TUI closed
+                    }
+                }
+            }
+        });
+    }
 
     loop {
+        // --- Periodic background work (non-blocking) ---
+
+        // Receive session list updates from background task
+        if let Ok(sessions) = session_rx.try_recv() {
+            app.update_cached_sessions(sessions);
+        }
+
         // Check for theme changes if hot-reload is enabled
         if config.ui.hot_reload && last_check.elapsed() > Duration::from_secs(2) {
             if let Ok(new_config) = Config::load().await {
@@ -1341,13 +1820,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
             }
             last_check = Instant::now();
-        }
-
-        if last_session_refresh.elapsed() > Duration::from_secs(5) {
-            if let Ok(sessions) = list_sessions_with_opencode(&app.workspace_dir).await {
-                app.update_cached_sessions(sessions);
-            }
-            last_session_refresh = Instant::now();
         }
 
         terminal.draw(|f| ui(f, &mut app, &theme))?;
@@ -1382,8 +1854,46 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             app.ralph_rx = Some(rx);
         }
 
-        if event::poll(std::time::Duration::from_millis(100))? {
-            let ev = event::read()?;
+        // Drain all pending bus log events
+        if let Some(mut rx) = app.bus_log_rx.take() {
+            while let Ok(env) = rx.try_recv() {
+                app.bus_log_state.ingest(&env);
+            }
+            app.bus_log_rx = Some(rx);
+        }
+
+        // Drain all pending spawned-agent responses
+        {
+            let mut i = 0;
+            while i < app.agent_response_rxs.len() {
+                let mut done = false;
+                while let Ok(event) = app.agent_response_rxs[i].1.try_recv() {
+                    if matches!(event, SessionEvent::Done) {
+                        done = true;
+                    }
+                    let name = app.agent_response_rxs[i].0.clone();
+                    app.handle_agent_response(&name, event);
+                }
+                if done {
+                    app.agent_response_rxs.swap_remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+        }
+
+        // Wait for terminal events asynchronously (no blocking!)
+        let ev = tokio::select! {
+            maybe_event = event_stream.next() => {
+                match maybe_event {
+                    Some(Ok(ev)) => ev,
+                    Some(Err(_)) => continue,
+                    None => return Ok(()), // stream ended
+                }
+            }
+            // Tick at 50ms to keep rendering responsive during streaming
+            _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
+        };
 
             // Handle bracketed paste: insert entire clipboard text at cursor without submitting
             if let Event::Paste(text) = &ev {
@@ -1614,6 +2124,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                                                 }),
                                                         );
                                                     }
+                                                    ContentPart::Thinking { text } => {
+                                                        if !text.is_empty() {
+                                                            app.messages.push(
+                                                                ChatMessage::new(role_str, text.clone())
+                                                                    .with_message_type(MessageType::Thinking(text.clone())),
+                                                            );
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
@@ -1771,6 +2289,73 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     continue;
                 }
 
+                // Bus log view key handling
+                if app.view_mode == ViewMode::BusLog {
+                    match key.code {
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Esc => {
+                            if app.bus_log_state.detail_mode {
+                                app.bus_log_state.exit_detail();
+                            } else {
+                                app.view_mode = ViewMode::Chat;
+                            }
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            if app.bus_log_state.detail_mode {
+                                app.bus_log_state.exit_detail();
+                                app.bus_log_state.select_prev();
+                                app.bus_log_state.enter_detail();
+                            } else {
+                                app.bus_log_state.select_prev();
+                            }
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            if app.bus_log_state.detail_mode {
+                                app.bus_log_state.exit_detail();
+                                app.bus_log_state.select_next();
+                                app.bus_log_state.enter_detail();
+                            } else {
+                                app.bus_log_state.select_next();
+                            }
+                        }
+                        KeyCode::Enter => {
+                            if !app.bus_log_state.detail_mode {
+                                app.bus_log_state.enter_detail();
+                            }
+                        }
+                        KeyCode::PageDown => {
+                            app.bus_log_state.detail_scroll_down(10);
+                        }
+                        KeyCode::PageUp => {
+                            app.bus_log_state.detail_scroll_up(10);
+                        }
+                        // Clear all entries
+                        KeyCode::Char('c') => {
+                            app.bus_log_state.entries.clear();
+                            app.bus_log_state.selected_index = 0;
+                        }
+                        // Jump to bottom (re-enable auto-scroll)
+                        KeyCode::Char('g') => {
+                            let len = app.bus_log_state.filtered_entries().len();
+                            if len > 0 {
+                                app.bus_log_state.selected_index = len - 1;
+                                app.bus_log_state.list_state.select(Some(len - 1));
+                            }
+                            app.bus_log_state.auto_scroll = true;
+                        }
+                        KeyCode::Char('?') => {
+                            app.show_help = true;
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
                 match key.code {
                     // Quit
                     KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -1788,7 +2373,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Toggle view mode (F2 or Ctrl+S)
                     KeyCode::F(2) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => {
+                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker | ViewMode::BusLog => {
                                 ViewMode::Swarm
                             }
                             ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
@@ -1796,7 +2381,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker => {
+                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker | ViewMode::BusLog => {
                                 ViewMode::Swarm
                             }
                             ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
@@ -1820,6 +2405,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     KeyCode::Esc => {
                         if app.view_mode == ViewMode::Swarm
                             || app.view_mode == ViewMode::Ralph
+                            || app.view_mode == ViewMode::BusLog
                             || app.view_mode == ViewMode::SessionPicker
                             || app.view_mode == ViewMode::ModelPicker
                         {
@@ -1830,6 +2416,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     // Model picker (Ctrl+M)
                     KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.open_model_picker(&config).await;
+                    }
+
+                    // Bus protocol log (Ctrl+L)
+                    KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.view_mode = ViewMode::BusLog;
                     }
 
                     // Switch agent
@@ -1952,7 +2543,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     _ => {}
                 }
             }
-        }
     }
 }
 
@@ -2072,6 +2662,55 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 Span::raw(": Back"),
             ])
         };
+        let status = Paragraph::new(status_line);
+        f.render_widget(status, chunks[2]);
+        return;
+    }
+
+    // Bus protocol log view
+    if app.view_mode == ViewMode::BusLog {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(1),    // Bus log view
+                Constraint::Length(3), // Input
+                Constraint::Length(1), // Status bar
+            ])
+            .split(f.area());
+
+        render_bus_log(f, &mut app.bus_log_state, chunks[0]);
+
+        let input_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Press Esc to return to chat ")
+            .border_style(Style::default().fg(Color::Green));
+
+        let input = Paragraph::new(app.input.as_str())
+            .block(input_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(input, chunks[1]);
+
+        let count_info = format!(
+            " {}/{} ",
+            app.bus_log_state.visible_count(),
+            app.bus_log_state.total_count()
+        );
+        let status_line = Line::from(vec![
+            Span::styled(
+                " BUS LOG ",
+                Style::default().fg(Color::Black).bg(Color::Green),
+            ),
+            Span::raw(&count_info),
+            Span::raw("| "),
+            Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+            Span::raw(": Select | "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(": Detail | "),
+            Span::styled("c", Style::default().fg(Color::Yellow)),
+            Span::raw(": Clear | "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": Back"),
+        ]);
         let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
         return;
@@ -2410,9 +3049,18 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         chunks[1].y + 1,
     ));
 
-    // Enhanced status bar with token display
+    // Enhanced status bar with token display and model info
     let token_display = TokenDisplay::new();
-    let status = Paragraph::new(token_display.create_status_bar(theme));
+    let mut status_line = token_display.create_status_bar(theme);
+    let model_status = if let Some(ref active) = app.active_model {
+        let (provider, model) = crate::provider::parse_model_string(active);
+        format!(" {}:{} ", provider.unwrap_or("auto"), model)
+    } else {
+        " auto ".to_string()
+    };
+    status_line.spans.insert(0, Span::styled("│ ", Style::default().fg(theme.timestamp_color.to_color()).add_modifier(Modifier::DIM)));
+    status_line.spans.insert(0, Span::styled(model_status, Style::default().fg(Color::Cyan)));
+    let status = Paragraph::new(status_line);
     f.render_widget(status, chunks[2]);
 
     render_help_overlay_if_needed(f, app, theme);
@@ -2460,7 +3108,16 @@ fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
     render_webview_input(f, app, theme, main_chunks[2]);
 
     let token_display = TokenDisplay::new();
-    let status = Paragraph::new(token_display.create_status_bar(theme));
+    let mut status_line = token_display.create_status_bar(theme);
+    let model_status = if let Some(ref active) = app.active_model {
+        let (provider, model) = crate::provider::parse_model_string(active);
+        format!(" {}:{} ", provider.unwrap_or("auto"), model)
+    } else {
+        " auto ".to_string()
+    };
+    status_line.spans.insert(0, Span::styled("│ ", Style::default().fg(theme.timestamp_color.to_color()).add_modifier(Modifier::DIM)));
+    status_line.spans.insert(0, Span::styled(model_status, Style::default().fg(Color::Cyan)));
+    let status = Paragraph::new(status_line);
     f.render_widget(status, main_chunks[3]);
 
     true
@@ -2911,16 +3568,27 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
             _ => "  ",
         };
 
-        let header_line = Line::from(vec![
-            Span::styled(
-                format!("[{}] ", message.timestamp),
-                Style::default()
-                    .fg(theme.timestamp_color.to_color())
-                    .add_modifier(Modifier::DIM),
-            ),
-            Span::styled(role_icon, role_style),
-            Span::styled(message.role.clone(), role_style),
-        ]);
+        let header_line = {
+            let mut spans = vec![
+                Span::styled(
+                    format!("[{}] ", message.timestamp),
+                    Style::default()
+                        .fg(theme.timestamp_color.to_color())
+                        .add_modifier(Modifier::DIM),
+                ),
+                Span::styled(role_icon, role_style),
+                Span::styled(message.role.clone(), role_style),
+            ];
+            if let Some(ref agent) = message.agent_name {
+                spans.push(Span::styled(
+                    format!(" @{agent}"),
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+            Line::from(spans)
+        };
         message_lines.push(header_line);
 
         match &message.message_type {
@@ -3004,6 +3672,32 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let formatted_content = formatter.format_content(text, &message.role);
                 message_lines.extend(formatted_content);
             }
+            MessageType::Thinking(text) => {
+                let thinking_style = Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM | Modifier::ITALIC);
+                message_lines.push(Line::from(Span::styled(
+                    "  💭 Thinking...",
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::DIM),
+                )));
+                // Show truncated thinking content
+                let max_thinking_lines = 8;
+                let lines: Vec<&str> = text.lines().collect();
+                for line in lines.iter().take(max_thinking_lines) {
+                    message_lines.push(Line::from(vec![
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(line.to_string(), thinking_style),
+                    ]));
+                }
+                if lines.len() > max_thinking_lines {
+                    message_lines.push(Line::from(Span::styled(
+                        format!("  │ ... {} more lines of reasoning", lines.len() - max_thinking_lines),
+                        thinking_style,
+                    )));
+                }
+            }
             MessageType::Image { url, mime_type } => {
                 let formatter = MessageFormatter::new(max_width);
                 let image_line = formatter.format_image(url, mime_type.as_deref());
@@ -3029,6 +3723,38 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                     ),
                 ]);
                 message_lines.push(file_header);
+            }
+        }
+
+        // Show usage indicator after assistant messages
+        if message.role == "assistant" {
+            if let Some(ref meta) = message.usage_meta {
+                let duration_str = if meta.duration_ms >= 60_000 {
+                    format!(
+                        "{}m{:02}.{}s",
+                        meta.duration_ms / 60_000,
+                        (meta.duration_ms % 60_000) / 1000,
+                        (meta.duration_ms % 1000) / 100
+                    )
+                } else {
+                    format!("{}.{}s", meta.duration_ms / 1000, (meta.duration_ms % 1000) / 100)
+                };
+                let tokens_str = format!("{}→{} tokens", meta.prompt_tokens, meta.completion_tokens);
+                let cost_str = match meta.cost_usd {
+                    Some(c) if c < 0.01 => format!("${:.4}", c),
+                    Some(c) => format!("${:.2}", c),
+                    None => String::new(),
+                };
+                let dim_style = Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM);
+                let mut spans = vec![
+                    Span::styled(format!("  ⏱ {} │ 📊 {}", duration_str, tokens_str), dim_style),
+                ];
+                if !cost_str.is_empty() {
+                    spans.push(Span::styled(format!(" │ 💰 {}", cost_str), dim_style));
+                }
+                message_lines.push(Line::from(spans));
             }
         }
 
@@ -3149,6 +3875,7 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/inspector", "Toggle inspector pane"),
         ("/refresh", "Refresh workspace"),
         ("/view", "Toggle swarm view"),
+        ("/buslog", "Show protocol bus log"),
     ];
 
     let input_lower = input.to_lowercase();
@@ -3215,6 +3942,29 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
     let token_display = TokenDisplay::new();
     let token_info = token_display.create_detailed_display();
 
+    // Model / provider info
+    let model_section: Vec<String> = if let Some(ref active) = app.active_model {
+        let (provider, model) = crate::provider::parse_model_string(active);
+        let provider_label = provider.unwrap_or("auto");
+        vec![
+            "".to_string(),
+            "  ACTIVE MODEL".to_string(),
+            "  ==============".to_string(),
+            format!("  Provider:  {}", provider_label),
+            format!("  Model:     {}", model),
+            format!("  Agent:     {}", app.current_agent),
+        ]
+    } else {
+        vec![
+            "".to_string(),
+            "  ACTIVE MODEL".to_string(),
+            "  ==============".to_string(),
+            format!("  Provider:  auto"),
+            format!("  Model:     (default)"),
+            format!("  Agent:     {}", app.current_agent),
+        ]
+    };
+
     let help_text: Vec<String> = vec![
         "".to_string(),
         "  KEYBOARD SHORTCUTS".to_string(),
@@ -3223,6 +3973,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Enter        Send message".to_string(),
         "  Tab          Switch between build/plan agents".to_string(),
         "  Ctrl+M       Open model picker".to_string(),
+        "  Ctrl+L       Protocol bus log".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
         "  Ctrl+B       Toggle webview layout".to_string(),
         "  F3           Toggle inspector pane".to_string(),
@@ -3239,6 +3990,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /new            Start a fresh session".to_string(),
         "  /model          Open model picker (or /model <name>)".to_string(),
         "  /view           Toggle swarm view".to_string(),
+        "  /buslog         Show protocol bus log".to_string(),
         "  /webview        Web dashboard layout".to_string(),
         "  /classic        Single-pane layout".to_string(),
         "  /inspector      Toggle inspector pane".to_string(),
@@ -3272,6 +4024,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
     ];
 
     let mut combined_text = token_info;
+    combined_text.extend(model_section);
     combined_text.extend(help_text);
 
     let help = Paragraph::new(combined_text.join("\n"))

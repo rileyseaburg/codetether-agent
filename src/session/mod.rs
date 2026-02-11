@@ -72,7 +72,7 @@ impl Session {
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" => "glm-4.7".to_string(),
+            "zhipuai" | "zai" => "glm-5".to_string(),
             "openrouter" => "openrouter/pony-alpha".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
@@ -616,7 +616,9 @@ impl Session {
                 stop: Vec::new(),
             };
 
+            let llm_start = std::time::Instant::now();
             let response = provider.complete(request).await?;
+            let llm_duration_ms = llm_start.elapsed().as_millis() as u64;
 
             // Optionally route text-only responses through FunctionGemma to
             // produce structured tool calls.  Skipped for native tool-calling models.
@@ -634,6 +636,14 @@ impl Session {
                 response.usage.prompt_tokens as u64,
                 response.usage.completion_tokens as u64,
             );
+
+            // Emit usage report for TUI display
+            let _ = event_tx.send(SessionEvent::UsageReport {
+                prompt_tokens: response.usage.prompt_tokens,
+                completion_tokens: response.usage.completion_tokens,
+                duration_ms: llm_duration_ms,
+                model: model.clone(),
+            }).await;
 
             // Extract tool calls
             let tool_calls: Vec<(String, String, serde_json::Value)> = response
@@ -657,14 +667,30 @@ impl Session {
                 .collect();
 
             // Collect text output for this step
+            // Collect thinking and text output
+            let mut thinking_text = String::new();
             let mut step_text = String::new();
             for part in &response.message.content {
-                if let ContentPart::Text { text } = part {
-                    if !text.is_empty() {
-                        step_text.push_str(text);
-                        step_text.push('\n');
+                match part {
+                    ContentPart::Thinking { text } => {
+                        if !text.is_empty() {
+                            thinking_text.push_str(text);
+                            thinking_text.push('\n');
+                        }
                     }
+                    ContentPart::Text { text } => {
+                        if !text.is_empty() {
+                            step_text.push_str(text);
+                            step_text.push('\n');
+                        }
+                    }
+                    _ => {}
                 }
+            }
+
+            // Emit thinking output first
+            if !thinking_text.trim().is_empty() {
+                let _ = event_tx.send(SessionEvent::ThinkingComplete(thinking_text.trim().to_string())).await;
             }
 
             // Emit this step's text BEFORE tool calls so it appears in correct
@@ -956,6 +982,15 @@ pub enum SessionEvent {
     TextChunk(String),
     /// Final text output
     TextComplete(String),
+    /// Model thinking/reasoning output
+    ThinkingComplete(String),
+    /// Token usage for one LLM round-trip
+    UsageReport {
+        prompt_tokens: usize,
+        completion_tokens: usize,
+        duration_ms: u64,
+        model: String,
+    },
     /// Updated session state for caller to sync back
     SessionSync(Session),
     /// Processing complete

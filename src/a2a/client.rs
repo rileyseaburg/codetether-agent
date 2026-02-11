@@ -8,7 +8,7 @@ use reqwest::Client;
 pub struct A2AClient {
     client: Client,
     base_url: String,
-    token: Option<String>,
+    auth: Option<AuthenticationInfo>,
 }
 
 #[allow(dead_code)]
@@ -18,13 +18,16 @@ impl A2AClient {
         Self {
             client: Client::new(),
             base_url: base_url.into().trim_end_matches('/').to_string(),
-            token: None,
+            auth: None,
         }
     }
 
     /// Set authentication token
     pub fn with_token(mut self, token: impl Into<String>) -> Self {
-        self.token = Some(token.into());
+        self.auth = Some(AuthenticationInfo {
+            schemes: vec!["bearer".to_string()],
+            credentials: Some(token.into()),
+        });
         self
     }
 
@@ -37,7 +40,7 @@ impl A2AClient {
     }
 
     /// Send a message to the agent
-    pub async fn send_message(&self, params: MessageSendParams) -> Result<Task> {
+    pub async fn send_message(&self, params: MessageSendParams) -> Result<SendMessageResponse> {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: serde_json::json!(1),
@@ -51,12 +54,12 @@ impl A2AClient {
             anyhow::bail!("RPC error {}: {}", error.code, error.message);
         }
 
-        let task: Task = serde_json::from_value(
+        let result: SendMessageResponse = serde_json::from_value(
             response
                 .result
                 .ok_or_else(|| anyhow::anyhow!("No result"))?,
         )?;
-        Ok(task)
+        Ok(result)
     }
 
     /// Get task status
@@ -114,8 +117,10 @@ impl A2AClient {
     pub async fn call_rpc(&self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
         let mut req = self.client.post(&self.base_url);
 
-        if let Some(ref token) = self.token {
-            req = req.bearer_auth(token);
+        if let Some(ref auth) = self.auth {
+            if let Some(ref creds) = auth.credentials {
+                req = req.bearer_auth(creds);
+            }
         }
 
         let res = req

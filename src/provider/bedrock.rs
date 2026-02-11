@@ -891,7 +891,7 @@ impl BedrockProvider {
                         }
                     }
                     if content_parts.is_empty() {
-                        content_parts.push(json!({"text": ""}));
+                        content_parts.push(json!({"text": " "}));
                     }
                     // Merge into previous assistant message if consecutive
                     if let Some(last) = api_messages.last_mut() {
@@ -998,6 +998,10 @@ struct ConverseMessage {
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ConverseContent {
+    ReasoningContent {
+        #[serde(rename = "reasoningContent")]
+        reasoning_content: ReasoningContentBlock,
+    },
     Text {
         text: String,
     },
@@ -1005,6 +1009,17 @@ enum ConverseContent {
         #[serde(rename = "toolUse")]
         tool_use: ConverseToolUse,
     },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReasoningContentBlock {
+    reasoning_text: ReasoningText,
+}
+
+#[derive(Debug, Deserialize)]
+struct ReasoningText {
+    text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1128,6 +1143,13 @@ impl Provider for BedrockProvider {
 
         for part in &response.output.message.content {
             match part {
+                ConverseContent::ReasoningContent { reasoning_content } => {
+                    if !reasoning_content.reasoning_text.text.is_empty() {
+                        content.push(ContentPart::Thinking {
+                            text: reasoning_content.reasoning_text.text.clone(),
+                        });
+                    }
+                }
                 ConverseContent::Text { text } => {
                     if !text.is_empty() {
                         content.push(ContentPart::Text { text: text.clone() });

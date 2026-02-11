@@ -242,8 +242,30 @@ async fn handle_message_send(
                     t.status.state = TaskState::Completed;
                     t.status.message = Some(response_message.clone());
                     t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                    t.artifacts.push(artifact);
+                    t.artifacts.push(artifact.clone());
                     t.history.push(response_message);
+
+                    let status_event = TaskStatusUpdateEvent {
+                        id: task_id.clone(),
+                        status: t.status.clone(),
+                        is_final: true,
+                        metadata: std::collections::HashMap::new(),
+                    };
+                    let artifact_event = TaskArtifactUpdateEvent {
+                        id: task_id.clone(),
+                        artifact,
+                        metadata: std::collections::HashMap::new(),
+                    };
+                    tracing::debug!(
+                        task_id = %task_id,
+                        event = ?StreamEvent::StatusUpdate(status_event),
+                        "Task completed"
+                    );
+                    tracing::debug!(
+                        task_id = %task_id,
+                        event = ?StreamEvent::ArtifactUpdate(artifact_event),
+                        "Artifact produced"
+                    );
                 }
             }
             Err(e) => {
@@ -328,9 +350,10 @@ async fn handle_message_send(
         });
     }
 
-    // Return current task state
+    // Return current task state wrapped in SendMessageResponse
     let task = server.tasks.get(&task_id).unwrap();
-    serde_json::to_value(task.value().clone())
+    let response = SendMessageResponse::Task(task.value().clone());
+    serde_json::to_value(response)
         .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 
@@ -436,8 +459,31 @@ async fn handle_message_stream(
                     t.status.state = TaskState::Completed;
                     t.status.message = Some(response_message.clone());
                     t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
-                    t.artifacts.push(artifact);
+                    t.artifacts.push(artifact.clone());
                     t.history.push(response_message);
+
+                    // Emit streaming events for SSE consumers
+                    let status_event = TaskStatusUpdateEvent {
+                        id: task_id.clone(),
+                        status: t.status.clone(),
+                        is_final: true,
+                        metadata: std::collections::HashMap::new(),
+                    };
+                    let artifact_event = TaskArtifactUpdateEvent {
+                        id: task_id.clone(),
+                        artifact,
+                        metadata: std::collections::HashMap::new(),
+                    };
+                    tracing::debug!(
+                        task_id = %task_id,
+                        event = ?StreamEvent::StatusUpdate(status_event),
+                        "Task completed"
+                    );
+                    tracing::debug!(
+                        task_id = %task_id,
+                        event = ?StreamEvent::ArtifactUpdate(artifact_event),
+                        "Artifact produced"
+                    );
                 }
             }
             Err(e) => {
@@ -451,7 +497,8 @@ async fn handle_message_stream(
     });
 
     // Return task in Working state — client polls tasks/get for completion
-    serde_json::to_value(task)
+    let response = SendMessageResponse::Task(task);
+    serde_json::to_value(response)
         .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
 }
 

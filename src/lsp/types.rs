@@ -2,6 +2,7 @@
 //!
 //! These types map directly to the LSP protocol types.
 
+use anyhow::Result;
 use lsp_types::{
     ClientCapabilities, CompletionItem, DocumentSymbol, Location,
     Position, Range, ServerCapabilities, SymbolInformation, TextDocumentIdentifier,
@@ -9,6 +10,7 @@ use lsp_types::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::{info, warn};
 
 /// LSP client configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -389,6 +391,60 @@ pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
         }),
         _ => None,
     }
+}
+
+/// Returns the install command for a language server binary, if known.
+fn install_command_for(command: &str) -> Option<&'static [&'static str]> {
+    match command {
+        "rust-analyzer" => Some(&["rustup", "component", "add", "rust-analyzer"]),
+        "typescript-language-server" => Some(&["npm", "install", "-g", "typescript-language-server", "typescript"]),
+        "pylsp" => Some(&["pip", "install", "--user", "python-lsp-server"]),
+        "gopls" => Some(&["go", "install", "golang.org/x/tools/gopls@latest"]),
+        "clangd" => None, // system package manager varies
+        _ => None,
+    }
+}
+
+/// Ensure a language server binary is available, installing it if possible.
+pub async fn ensure_server_installed(config: &LspConfig) -> Result<()> {
+    // Check if the binary is already on PATH
+    if which::which(&config.command).is_ok() {
+        return Ok(());
+    }
+
+    let Some(install_args) = install_command_for(&config.command) else {
+        return Err(anyhow::anyhow!(
+            "Language server '{}' not found and no auto-install available. \
+             Install it manually.",
+            config.command,
+        ));
+    };
+
+    info!(command = %config.command, "Language server not found, installing...");
+
+    let status = tokio::process::Command::new(install_args[0])
+        .args(&install_args[1..])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .status()
+        .await?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!(
+            "Failed to install '{}' (exit code {:?}). Install it manually.",
+            config.command,
+            status.code(),
+        ));
+    }
+
+    // Verify installation succeeded
+    if which::which(&config.command).is_err() {
+        warn!(command = %config.command, "Install succeeded but binary still not found on PATH");
+    } else {
+        info!(command = %config.command, "Language server installed successfully");
+    }
+
+    Ok(())
 }
 
 /// Detect language from file extension

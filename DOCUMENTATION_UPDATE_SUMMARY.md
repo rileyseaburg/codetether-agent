@@ -15,16 +15,17 @@
 Removed documentation for providers that don't exist in the codebase:
 - ❌ MiniMax (not in src/provider/)
 - ❌ Novita (not in src/provider/)
-- ❌ ZhipuAI (not in src/provider/)
 - ❌ DeepSeek (not in src/provider/)
 
-**Actual Providers (6 total)**:
+**Actual Providers (8 total)**:
+- ✅ zai (glm-5) — Z.AI flagship, formerly ZhipuAI
 - ✅ moonshotai (kimi-k2.5) - Default
 - ✅ openrouter
 - ✅ google
 - ✅ anthropic
 - ✅ stepfun
 - ✅ openai
+- ✅ bedrock
 
 #### Added Missing CLI Commands
 Added documentation for commands that exist but weren't documented:
@@ -76,7 +77,7 @@ Added new "Tool Reference" section documenting all 27+ tools organized by catego
 
 ### Codebase Statistics
 - **Total Tools**: 27 (including confirm_edit, confirm_multiedit, advanced_edit, undo, skill, task)
-- **Total Providers**: 6 (anthropic, google, moonshot, openai, openrouter, stepfun)
+- **Total Providers**: 8 (anthropic, bedrock, google, moonshot, openai, openrouter, stepfun, zai)
 - **CLI Commands**: 11 (tui, serve, run, worker, config, swarm, rlm, ralph, mcp, stats, cleanup)
 
 ### Previous Documentation Issues

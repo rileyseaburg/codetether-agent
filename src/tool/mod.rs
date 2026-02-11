@@ -3,6 +3,7 @@
 //! Tools are the executable capabilities available to agents.
 
 pub mod advanced_edit;
+pub mod agent;
 pub mod avatar;
 pub mod bash;
 pub mod batch;
@@ -232,6 +233,8 @@ impl ToolRegistry {
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
+        // Agent orchestration tool
+        registry.register(Arc::new(agent::AgentTool::new()));
 
         registry
     }
@@ -277,6 +280,8 @@ impl ToolRegistry {
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
+        // Agent orchestration tool
+        registry.register(Arc::new(agent::AgentTool::new()));
 
         registry
     }
