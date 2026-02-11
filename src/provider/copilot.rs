@@ -368,7 +368,9 @@ impl Provider for CopilotProvider {
                 "claude-haiku-4.5",
                 ("Claude Haiku 4.5", 200_000, 64_000, 0.33),
             ),
+            ("gpt-5.3-codex", ("GPT-5.3-Codex", 264_000, 64_000, 1.0)),
             ("gpt-5.2", ("GPT-5.2", 400_000, 128_000, 1.0)),
+            ("gpt-5.2-codex", ("GPT-5.2-Codex", 264_000, 64_000, 1.0)),
             ("gpt-5.1", ("GPT-5.1", 400_000, 128_000, 1.0)),
             ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000, 1.0)),
             (

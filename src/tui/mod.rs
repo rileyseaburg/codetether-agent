@@ -13,6 +13,15 @@ pub mod token_display;
 /// Sentinel value meaning "scroll to bottom"
 const SCROLL_BOTTOM: usize = 1_000_000;
 
+// Tool-call / tool-result rendering can carry very large JSON payloads (e.g. patches, file blobs).
+// If we pretty-print + split/collect that payload on every frame, the TUI can appear to “stop
+// rendering” after a few tool calls due to render-time CPU churn.
+const TOOL_ARGS_PRETTY_JSON_MAX_BYTES: usize = 16_000;
+const TOOL_ARGS_PREVIEW_MAX_LINES: usize = 10;
+const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
+const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
+const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
+
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
@@ -27,8 +36,7 @@ use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
 use crossterm::{
     event::{
-        DisableBracketedPaste, EnableBracketedPaste,
-        Event, EventStream, KeyCode, KeyModifiers,
+        DisableBracketedPaste, EnableBracketedPaste, Event, EventStream, KeyCode, KeyModifiers,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -90,11 +98,15 @@ enum MessageType {
     },
     ToolCall {
         name: String,
-        arguments: String,
+        arguments_preview: String,
+        arguments_len: usize,
+        truncated: bool,
     },
     ToolResult {
         name: String,
-        output: String,
+        output_preview: String,
+        output_len: usize,
+        truncated: bool,
     },
     File {
         path: String,
@@ -264,8 +276,8 @@ fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) ->
         m if m.contains("glm-4") => (0.35, 1.40),
         _ => return None,
     };
-    let cost = (prompt_tokens as f64 * input_rate + completion_tokens as f64 * output_rate)
-        / 1_000_000.0;
+    let cost =
+        (prompt_tokens as f64 * input_rate + completion_tokens as f64 * output_rate) / 1_000_000.0;
     Some(cost)
 }
 
@@ -556,7 +568,10 @@ impl App {
         // Check for /view command to toggle views
         if message.trim() == "/view" || message.trim() == "/swarm" {
             self.view_mode = match self.view_mode {
-                ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker | ViewMode::BusLog => ViewMode::Swarm,
+                ViewMode::Chat
+                | ViewMode::SessionPicker
+                | ViewMode::ModelPicker
+                | ViewMode::BusLog => ViewMode::Swarm,
                 ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
             };
             return;
@@ -593,7 +608,9 @@ impl App {
             match Session::new().await {
                 Ok(mut session) => {
                     // Use the same model as the main chat
-                    session.metadata.model = self.active_model.clone()
+                    session.metadata.model = self
+                        .active_model
+                        .clone()
                         .or_else(|| config.default_model.clone());
                     session.agent = name.clone();
 
@@ -647,26 +664,39 @@ impl App {
             } else {
                 let mut lines = vec!["Active agents:".to_string()];
                 for (name, agent) in &self.spawned_agents {
-                    let status = if agent.is_processing { "⚡ working" } else { "● idle" };
+                    let status = if agent.is_processing {
+                        "⚡ working"
+                    } else {
+                        "● idle"
+                    };
                     lines.push(format!("  @{name} [{status}] — {}", agent.instructions));
                 }
-                self.messages.push(ChatMessage::new("system", lines.join("\n")));
+                self.messages
+                    .push(ChatMessage::new("system", lines.join("\n")));
             }
             return;
         }
 
         // Check for /kill command - remove a spawned agent
         if message.trim().starts_with("/kill ") {
-            let name = message.trim().strip_prefix("/kill ").unwrap_or("").trim().to_string();
+            let name = message
+                .trim()
+                .strip_prefix("/kill ")
+                .unwrap_or("")
+                .trim()
+                .to_string();
             if self.spawned_agents.remove(&name).is_some() {
                 // Remove its response channels
                 self.agent_response_rxs.retain(|(n, _)| n != &name);
                 // Announce shutdown on bus
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&name);
-                    handle.send("broadcast", crate::bus::BusMessage::AgentShutdown {
-                        agent_id: name.clone(),
-                    });
+                    handle.send(
+                        "broadcast",
+                        crate::bus::BusMessage::AgentShutdown {
+                            agent_id: name.clone(),
+                        },
+                    );
                 }
                 self.messages.push(ChatMessage::new(
                     "system",
@@ -685,15 +715,23 @@ impl App {
         if message.trim().starts_with('@') {
             let trimmed = message.trim();
             let (target, content) = match trimmed.split_once(' ') {
-                Some((mention, rest)) => (mention.strip_prefix('@').unwrap_or(mention).to_string(), rest.to_string()),
+                Some((mention, rest)) => (
+                    mention.strip_prefix('@').unwrap_or(mention).to_string(),
+                    rest.to_string(),
+                ),
                 None => {
                     self.messages.push(ChatMessage::new(
                         "system",
-                        format!("Usage: @agent_name your message\nAvailable: {}",
+                        format!(
+                            "Usage: @agent_name your message\nAvailable: {}",
                             if self.spawned_agents.is_empty() {
                                 "none (use /spawn first)".to_string()
                             } else {
-                                self.spawned_agents.keys().map(|n| format!("@{n}")).collect::<Vec<_>>().join(", ")
+                                self.spawned_agents
+                                    .keys()
+                                    .map(|n| format!("@{n}"))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
                             }
                         ),
                     ));
@@ -704,11 +742,16 @@ impl App {
             if !self.spawned_agents.contains_key(&target) {
                 self.messages.push(ChatMessage::new(
                     "system",
-                    format!("No agent named @{target}. Available: {}",
+                    format!(
+                        "No agent named @{target}. Available: {}",
                         if self.spawned_agents.is_empty() {
                             "none (use /spawn first)".to_string()
                         } else {
-                            self.spawned_agents.keys().map(|n| format!("@{n}")).collect::<Vec<_>>().join(", ")
+                            self.spawned_agents
+                                .keys()
+                                .map(|n| format!("@{n}"))
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         }
                     ),
                 ));
@@ -716,17 +759,19 @@ impl App {
             }
 
             // Show the user's @mention message in chat
-            self.messages.push(
-                ChatMessage::new("user", format!("@{target} {content}"))
-            );
+            self.messages
+                .push(ChatMessage::new("user", format!("@{target} {content}")));
             self.scroll = SCROLL_BOTTOM;
 
             // Send the message over the bus
             if let Some(ref bus) = self.bus {
                 let handle = bus.handle("user");
-                handle.send_to_agent(&target, vec![crate::a2a::types::Part::Text {
-                    text: content.clone(),
-                }]);
+                handle.send_to_agent(
+                    &target,
+                    vec![crate::a2a::types::Part::Text {
+                        text: content.clone(),
+                    }],
+                );
             }
 
             // Send the message to the target agent's session
@@ -766,7 +811,11 @@ impl App {
                 .filter(|s| !s.is_empty());
             let loaded = if let Some(id) = session_id {
                 if let Some(oc_id) = id.strip_prefix("opencode_") {
-                    Session::from_opencode(oc_id, &crate::opencode::OpenCodeStorage::new().unwrap()).await
+                    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
+                        Session::from_opencode(oc_id, &storage).await
+                    } else {
+                        Err(anyhow::anyhow!("OpenCode storage not available"))
+                    }
                 } else {
                     Session::load(id).await
                 }
@@ -821,16 +870,29 @@ impl App {
                                 ContentPart::ToolCall {
                                     name, arguments, ..
                                 } => {
+                                    let (preview, truncated) = build_tool_arguments_preview(
+                                        name,
+                                        arguments,
+                                        TOOL_ARGS_PREVIEW_MAX_LINES,
+                                        TOOL_ARGS_PREVIEW_MAX_BYTES,
+                                    );
                                     self.messages.push(
                                         ChatMessage::new(role_str, format!("🔧 {name}"))
                                             .with_message_type(MessageType::ToolCall {
                                                 name: name.clone(),
-                                                arguments: arguments.clone(),
+                                                arguments_preview: preview,
+                                                arguments_len: arguments.len(),
+                                                truncated,
                                             }),
                                     );
                                 }
                                 ContentPart::ToolResult { content, .. } => {
                                     let truncated = truncate_with_ellipsis(content, 500);
+                                    let (preview, preview_truncated) = build_text_preview(
+                                        content,
+                                        TOOL_OUTPUT_PREVIEW_MAX_LINES,
+                                        TOOL_OUTPUT_PREVIEW_MAX_BYTES,
+                                    );
                                     self.messages.push(
                                         ChatMessage::new(
                                             role_str,
@@ -838,27 +900,28 @@ impl App {
                                         )
                                         .with_message_type(MessageType::ToolResult {
                                             name: "tool".to_string(),
-                                            output: content.clone(),
+                                            output_preview: preview,
+                                            output_len: content.len(),
+                                            truncated: preview_truncated,
                                         }),
                                     );
                                 }
                                 ContentPart::File { path, mime_type } => {
                                     self.messages.push(
-                                        ChatMessage::new(
-                                            role_str,
-                                            format!("📎 {}", path),
-                                        )
-                                        .with_message_type(MessageType::File {
-                                            path: path.clone(),
-                                            mime_type: mime_type.clone(),
-                                        }),
+                                        ChatMessage::new(role_str, format!("📎 {}", path))
+                                            .with_message_type(MessageType::File {
+                                                path: path.clone(),
+                                                mime_type: mime_type.clone(),
+                                            }),
                                     );
                                 }
                                 ContentPart::Thinking { text } => {
                                     if !text.is_empty() {
                                         self.messages.push(
                                             ChatMessage::new(role_str, text.clone())
-                                                .with_message_type(MessageType::Thinking(text.clone())),
+                                                .with_message_type(MessageType::Thinking(
+                                                    text.clone(),
+                                                )),
                                         );
                                     }
                                 }
@@ -925,10 +988,8 @@ impl App {
             }
 
             if !found_user {
-                self.messages.push(ChatMessage::new(
-                    "system",
-                    "Nothing to undo.",
-                ));
+                self.messages
+                    .push(ChatMessage::new("system", "Nothing to undo."));
                 return;
             }
 
@@ -1094,9 +1155,22 @@ impl App {
                 self.processing_message = Some(format!("Running {}...", name));
                 self.current_tool = Some(name.clone());
                 self.tool_call_count += 1;
+
+                let (preview, truncated) = build_tool_arguments_preview(
+                    &name,
+                    &arguments,
+                    TOOL_ARGS_PREVIEW_MAX_LINES,
+                    TOOL_ARGS_PREVIEW_MAX_BYTES,
+                );
                 self.messages.push(
-                    ChatMessage::new("tool", format!("🔧 {}", name))
-                        .with_message_type(MessageType::ToolCall { name, arguments }),
+                    ChatMessage::new("tool", format!("🔧 {}", name)).with_message_type(
+                        MessageType::ToolCall {
+                            name,
+                            arguments_preview: preview,
+                            arguments_len: arguments.len(),
+                            truncated,
+                        },
+                    ),
                 );
             }
             SessionEvent::ToolCallComplete {
@@ -1105,9 +1179,21 @@ impl App {
                 success,
             } => {
                 let icon = if success { "✓" } else { "✗" };
+
+                let (preview, truncated) = build_text_preview(
+                    &output,
+                    TOOL_OUTPUT_PREVIEW_MAX_LINES,
+                    TOOL_OUTPUT_PREVIEW_MAX_BYTES,
+                );
                 self.messages.push(
-                    ChatMessage::new("tool", format!("{} {}", icon, name))
-                        .with_message_type(MessageType::ToolResult { name, output }),
+                    ChatMessage::new("tool", format!("{} {}", icon, name)).with_message_type(
+                        MessageType::ToolResult {
+                            name,
+                            output_preview: preview,
+                            output_len: output.len(),
+                            truncated,
+                        },
+                    ),
                 );
                 self.current_tool = None;
                 self.processing_message = Some("Thinking...".to_string());
@@ -1131,7 +1217,12 @@ impl App {
                     self.messages.push(ChatMessage::new("assistant", text));
                 }
             }
-            SessionEvent::UsageReport { prompt_tokens, completion_tokens, duration_ms, model } => {
+            SessionEvent::UsageReport {
+                prompt_tokens,
+                completion_tokens,
+                duration_ms,
+                model,
+            } => {
                 let cost_usd = estimate_cost(&model, prompt_tokens, completion_tokens);
                 let meta = UsageMeta {
                     prompt_tokens,
@@ -1140,7 +1231,12 @@ impl App {
                     cost_usd,
                 };
                 // Attach to the most recent assistant message
-                if let Some(msg) = self.messages.iter_mut().rev().find(|m| m.role == "assistant") {
+                if let Some(msg) = self
+                    .messages
+                    .iter_mut()
+                    .rev()
+                    .find(|m| m.role == "assistant")
+                {
                     msg.usage_meta = Some(meta);
                 }
             }
@@ -1237,17 +1333,42 @@ impl App {
                 }
             }
             SessionEvent::ToolCallStart { name, arguments } => {
+                let (preview, truncated) = build_tool_arguments_preview(
+                    &name,
+                    &arguments,
+                    TOOL_ARGS_PREVIEW_MAX_LINES,
+                    TOOL_ARGS_PREVIEW_MAX_BYTES,
+                );
                 self.messages.push(
                     ChatMessage::new("tool", format!("🔧 @{agent_name} → {name}"))
-                        .with_message_type(MessageType::ToolCall { name, arguments })
+                        .with_message_type(MessageType::ToolCall {
+                            name,
+                            arguments_preview: preview,
+                            arguments_len: arguments.len(),
+                            truncated,
+                        })
                         .with_agent_name(agent_name),
                 );
             }
-            SessionEvent::ToolCallComplete { name, output, success } => {
+            SessionEvent::ToolCallComplete {
+                name,
+                output,
+                success,
+            } => {
                 let icon = if success { "✓" } else { "✗" };
+                let (preview, truncated) = build_text_preview(
+                    &output,
+                    TOOL_OUTPUT_PREVIEW_MAX_LINES,
+                    TOOL_OUTPUT_PREVIEW_MAX_BYTES,
+                );
                 self.messages.push(
                     ChatMessage::new("tool", format!("{icon} @{agent_name} → {name}"))
-                        .with_message_type(MessageType::ToolResult { name, output })
+                        .with_message_type(MessageType::ToolResult {
+                            name,
+                            output_preview: preview,
+                            output_len: output.len(),
+                            truncated,
+                        })
                         .with_agent_name(agent_name),
                 );
             }
@@ -1265,17 +1386,27 @@ impl App {
             }
             SessionEvent::TextComplete(text) => {
                 if !text.is_empty() {
-                    self.messages.push(
-                        ChatMessage::new("assistant", &text)
-                            .with_agent_name(agent_name),
-                    );
+                    self.messages
+                        .push(ChatMessage::new("assistant", &text).with_agent_name(agent_name));
                 }
             }
-            SessionEvent::UsageReport { prompt_tokens, completion_tokens, duration_ms, model } => {
+            SessionEvent::UsageReport {
+                prompt_tokens,
+                completion_tokens,
+                duration_ms,
+                model,
+            } => {
                 let cost_usd = estimate_cost(&model, prompt_tokens, completion_tokens);
-                let meta = UsageMeta { prompt_tokens, completion_tokens, duration_ms, cost_usd };
-                if let Some(msg) = self.messages.iter_mut().rev()
-                    .find(|m| m.role == "assistant" && m.agent_name.as_deref() == Some(agent_name))
+                let meta = UsageMeta {
+                    prompt_tokens,
+                    completion_tokens,
+                    duration_ms,
+                    cost_usd,
+                };
+                if let Some(msg) =
+                    self.messages.iter_mut().rev().find(|m| {
+                        m.role == "assistant" && m.agent_name.as_deref() == Some(agent_name)
+                    })
                 {
                     msg.usage_meta = Some(meta);
                 }
@@ -1895,162 +2026,182 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
         };
 
-            // Handle bracketed paste: insert entire clipboard text at cursor without submitting
-            if let Event::Paste(text) = &ev {
-                for c in text.chars() {
-                    if c == '\n' || c == '\r' {
-                        // Replace newlines with spaces to keep paste as single message
-                        app.input.insert(app.cursor_position, ' ');
-                    } else {
-                        app.input.insert(app.cursor_position, c);
-                    }
-                    app.cursor_position += 1;
+        // Handle bracketed paste: insert entire clipboard text at cursor without submitting
+        if let Event::Paste(text) = &ev {
+            // Ensure cursor is at a valid char boundary before inserting
+            let mut pos = app.cursor_position;
+            while pos > 0 && !app.input.is_char_boundary(pos) {
+                pos -= 1;
+            }
+            app.cursor_position = pos;
+
+            for c in text.chars() {
+                if c == '\n' || c == '\r' {
+                    // Replace newlines with spaces to keep paste as single message
+                    app.input.insert(app.cursor_position, ' ');
+                } else {
+                    app.input.insert(app.cursor_position, c);
+                }
+                app.cursor_position += c.len_utf8();
+            }
+            continue;
+        }
+
+        if let Event::Key(key) = ev {
+            // Help overlay
+            if app.show_help {
+                if matches!(key.code, KeyCode::Esc | KeyCode::Char('?')) {
+                    app.show_help = false;
                 }
                 continue;
             }
 
-            if let Event::Key(key) = ev {
-                // Help overlay
-                if app.show_help {
-                    if matches!(key.code, KeyCode::Esc | KeyCode::Char('?')) {
-                        app.show_help = false;
+            // Model picker overlay
+            if app.view_mode == ViewMode::ModelPicker {
+                match key.code {
+                    KeyCode::Esc => {
+                        app.view_mode = ViewMode::Chat;
                     }
-                    continue;
-                }
-
-                // Model picker overlay
-                if app.view_mode == ViewMode::ModelPicker {
-                    match key.code {
-                        KeyCode::Esc => {
+                    KeyCode::Up | KeyCode::Char('k')
+                        if !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        if app.model_picker_selected > 0 {
+                            app.model_picker_selected -= 1;
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('j')
+                        if !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        let filtered = app.filtered_models();
+                        if app.model_picker_selected < filtered.len().saturating_sub(1) {
+                            app.model_picker_selected += 1;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        let filtered = app.filtered_models();
+                        if let Some((_, (label, value, _name))) =
+                            filtered.get(app.model_picker_selected)
+                        {
+                            let label = label.clone();
+                            let value = value.clone();
+                            app.active_model = Some(value.clone());
+                            if let Some(session) = app.session.as_mut() {
+                                session.metadata.model = Some(value.clone());
+                            }
+                            app.messages.push(ChatMessage::new(
+                                "system",
+                                format!("Model set to: {}", label),
+                            ));
                             app.view_mode = ViewMode::Chat;
                         }
-                        KeyCode::Up | KeyCode::Char('k')
-                            if !key.modifiers.contains(KeyModifiers::ALT) =>
-                        {
-                            if app.model_picker_selected > 0 {
-                                app.model_picker_selected -= 1;
-                            }
-                        }
-                        KeyCode::Down | KeyCode::Char('j')
-                            if !key.modifiers.contains(KeyModifiers::ALT) =>
-                        {
-                            let filtered = app.filtered_models();
-                            if app.model_picker_selected < filtered.len().saturating_sub(1) {
-                                app.model_picker_selected += 1;
-                            }
-                        }
-                        KeyCode::Enter => {
-                            let filtered = app.filtered_models();
-                            if let Some((_, (label, value, _name))) =
-                                filtered.get(app.model_picker_selected)
-                            {
-                                let label = label.clone();
-                                let value = value.clone();
-                                app.active_model = Some(value.clone());
-                                if let Some(session) = app.session.as_mut() {
-                                    session.metadata.model = Some(value.clone());
-                                }
-                                app.messages.push(ChatMessage::new(
-                                    "system",
-                                    format!("Model set to: {}", label),
-                                ));
-                                app.view_mode = ViewMode::Chat;
-                            }
-                        }
-                        KeyCode::Backspace => {
-                            app.model_picker_filter.pop();
-                            app.model_picker_selected = 0;
-                        }
-                        KeyCode::Char(c)
-                            if !key.modifiers.contains(KeyModifiers::CONTROL)
-                                && !key.modifiers.contains(KeyModifiers::ALT) =>
-                        {
-                            app.model_picker_filter.push(c);
-                            app.model_picker_selected = 0;
-                        }
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        _ => {}
                     }
-                    continue;
+                    KeyCode::Backspace => {
+                        app.model_picker_filter.pop();
+                        app.model_picker_selected = 0;
+                    }
+                    KeyCode::Char(c)
+                        if !key.modifiers.contains(KeyModifiers::CONTROL)
+                            && !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        app.model_picker_filter.push(c);
+                        app.model_picker_selected = 0;
+                    }
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    _ => {}
                 }
+                continue;
+            }
 
-                // Session picker overlay - handle specially
-                if app.view_mode == ViewMode::SessionPicker {
-                    match key.code {
-                        KeyCode::Esc => {
-                            if app.session_picker_confirm_delete {
-                                app.session_picker_confirm_delete = false;
-                            } else {
-                                app.session_picker_filter.clear();
-                                app.view_mode = ViewMode::Chat;
-                            }
-                        }
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            if app.session_picker_selected > 0 {
-                                app.session_picker_selected -= 1;
-                            }
+            // Session picker overlay - handle specially
+            if app.view_mode == ViewMode::SessionPicker {
+                match key.code {
+                    KeyCode::Esc => {
+                        if app.session_picker_confirm_delete {
                             app.session_picker_confirm_delete = false;
+                        } else {
+                            app.session_picker_filter.clear();
+                            app.view_mode = ViewMode::Chat;
                         }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            let filtered_count = app.filtered_sessions().len();
-                            if app.session_picker_selected < filtered_count.saturating_sub(1) {
-                                app.session_picker_selected += 1;
-                            }
-                            app.session_picker_confirm_delete = false;
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if app.session_picker_selected > 0 {
+                            app.session_picker_selected -= 1;
                         }
-                        KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            if app.session_picker_confirm_delete {
-                                // Second press: actually delete
-                                let filtered = app.filtered_sessions();
-                                if let Some((orig_idx, _)) = filtered.get(app.session_picker_selected) {
-                                    let session_id = app.session_picker_list[*orig_idx].id.clone();
-                                    let is_active = app.session.as_ref().map(|s| s.id == session_id).unwrap_or(false);
-                                    if !is_active {
-                                        if let Err(e) = Session::delete(&session_id).await {
-                                            app.messages.push(ChatMessage::new(
-                                                "system",
-                                                format!("Failed to delete session: {}", e),
-                                            ));
-                                        } else {
-                                            app.session_picker_list.retain(|s| s.id != session_id);
-                                            if app.session_picker_selected >= app.session_picker_list.len() {
-                                                app.session_picker_selected = app.session_picker_list.len().saturating_sub(1);
-                                            }
+                        app.session_picker_confirm_delete = false;
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let filtered_count = app.filtered_sessions().len();
+                        if app.session_picker_selected < filtered_count.saturating_sub(1) {
+                            app.session_picker_selected += 1;
+                        }
+                        app.session_picker_confirm_delete = false;
+                    }
+                    KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        if app.session_picker_confirm_delete {
+                            // Second press: actually delete
+                            let filtered = app.filtered_sessions();
+                            if let Some((orig_idx, _)) = filtered.get(app.session_picker_selected) {
+                                let session_id = app.session_picker_list[*orig_idx].id.clone();
+                                let is_active = app
+                                    .session
+                                    .as_ref()
+                                    .map(|s| s.id == session_id)
+                                    .unwrap_or(false);
+                                if !is_active {
+                                    if let Err(e) = Session::delete(&session_id).await {
+                                        app.messages.push(ChatMessage::new(
+                                            "system",
+                                            format!("Failed to delete session: {}", e),
+                                        ));
+                                    } else {
+                                        app.session_picker_list.retain(|s| s.id != session_id);
+                                        if app.session_picker_selected
+                                            >= app.session_picker_list.len()
+                                        {
+                                            app.session_picker_selected =
+                                                app.session_picker_list.len().saturating_sub(1);
                                         }
                                     }
                                 }
-                                app.session_picker_confirm_delete = false;
-                            } else {
-                                // First press: ask for confirmation
-                                let filtered = app.filtered_sessions();
-                                if let Some((orig_idx, _)) = filtered.get(app.session_picker_selected) {
-                                    let is_active = app.session.as_ref().map(|s| s.id == app.session_picker_list[*orig_idx].id).unwrap_or(false);
-                                    if !is_active {
-                                        app.session_picker_confirm_delete = true;
-                                    }
+                            }
+                            app.session_picker_confirm_delete = false;
+                        } else {
+                            // First press: ask for confirmation
+                            let filtered = app.filtered_sessions();
+                            if let Some((orig_idx, _)) = filtered.get(app.session_picker_selected) {
+                                let is_active = app
+                                    .session
+                                    .as_ref()
+                                    .map(|s| s.id == app.session_picker_list[*orig_idx].id)
+                                    .unwrap_or(false);
+                                if !is_active {
+                                    app.session_picker_confirm_delete = true;
                                 }
                             }
                         }
-                        KeyCode::Backspace => {
-                            app.session_picker_filter.pop();
-                            app.session_picker_selected = 0;
-                            app.session_picker_confirm_delete = false;
-                        }
-                        KeyCode::Char('/') => {
-                            // Focus filter (no-op, just signals we're in filter mode)
-                        }
-                        KeyCode::Enter => {
-                            app.session_picker_confirm_delete = false;
-                            let filtered = app.filtered_sessions();
-                            let session_id = filtered.get(app.session_picker_selected)
-                                .map(|(orig_idx, _)| app.session_picker_list[*orig_idx].id.clone());
-                            if let Some(session_id) = session_id {
-                                let load_result = if let Some(oc_id) = session_id.strip_prefix("opencode_") {
+                    }
+                    KeyCode::Backspace => {
+                        app.session_picker_filter.pop();
+                        app.session_picker_selected = 0;
+                        app.session_picker_confirm_delete = false;
+                    }
+                    KeyCode::Char('/') => {
+                        // Focus filter (no-op, just signals we're in filter mode)
+                    }
+                    KeyCode::Enter => {
+                        app.session_picker_confirm_delete = false;
+                        let filtered = app.filtered_sessions();
+                        let session_id = filtered
+                            .get(app.session_picker_selected)
+                            .map(|(orig_idx, _)| app.session_picker_list[*orig_idx].id.clone());
+                        if let Some(session_id) = session_id {
+                            let load_result =
+                                if let Some(oc_id) = session_id.strip_prefix("opencode_") {
                                     if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
                                         Session::from_opencode(oc_id, &storage).await
                                     } else {
@@ -2059,490 +2210,588 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 } else {
                                     Session::load(&session_id).await
                                 };
-                                match load_result {
-                                    Ok(session) => {
-                                        app.messages.clear();
-                                        app.messages.push(ChatMessage::new("system", format!(
+                            match load_result {
+                                Ok(session) => {
+                                    app.messages.clear();
+                                    app.messages.push(ChatMessage::new(
+                                        "system",
+                                        format!(
                                             "Resumed session: {}\nCreated: {}\n{} messages loaded",
                                             session.title.as_deref().unwrap_or("(untitled)"),
                                             session.created_at.format("%Y-%m-%d %H:%M"),
                                             session.messages.len()
-                                        )));
+                                        ),
+                                    ));
 
-                                        for msg in &session.messages {
-                                            let role_str = match msg.role {
-                                                Role::System => "system",
-                                                Role::User => "user",
-                                                Role::Assistant => "assistant",
-                                                Role::Tool => "tool",
-                                            };
+                                    for msg in &session.messages {
+                                        let role_str = match msg.role {
+                                            Role::System => "system",
+                                            Role::User => "user",
+                                            Role::Assistant => "assistant",
+                                            Role::Tool => "tool",
+                                        };
 
-                                            // Process each content part separately
-                                            // (consistent with /resume command)
-                                            for part in &msg.content {
-                                                match part {
-                                                    ContentPart::Text { text } => {
-                                                        if !text.is_empty() {
-                                                            app.messages.push(ChatMessage::new(role_str, text.clone()));
-                                                        }
+                                        // Process each content part separately
+                                        // (consistent with /resume command)
+                                        for part in &msg.content {
+                                            match part {
+                                                ContentPart::Text { text } => {
+                                                    if !text.is_empty() {
+                                                        app.messages.push(ChatMessage::new(
+                                                            role_str,
+                                                            text.clone(),
+                                                        ));
                                                     }
-                                                    ContentPart::Image { url, mime_type } => {
-                                                        app.messages.push(
-                                                            ChatMessage::new(role_str, "").with_message_type(
+                                                }
+                                                ContentPart::Image { url, mime_type } => {
+                                                    app.messages.push(
+                                                        ChatMessage::new(role_str, "")
+                                                            .with_message_type(
                                                                 MessageType::Image {
                                                                     url: url.clone(),
                                                                     mime_type: mime_type.clone(),
                                                                 },
                                                             ),
+                                                    );
+                                                }
+                                                ContentPart::ToolCall {
+                                                    name, arguments, ..
+                                                } => {
+                                                    let (preview, truncated) =
+                                                        build_tool_arguments_preview(
+                                                            name,
+                                                            arguments,
+                                                            TOOL_ARGS_PREVIEW_MAX_LINES,
+                                                            TOOL_ARGS_PREVIEW_MAX_BYTES,
                                                         );
-                                                    }
-                                                    ContentPart::ToolCall { name, arguments, .. } => {
+                                                    app.messages.push(
+                                                        ChatMessage::new(
+                                                            role_str,
+                                                            format!("🔧 {name}"),
+                                                        )
+                                                        .with_message_type(MessageType::ToolCall {
+                                                            name: name.clone(),
+                                                            arguments_preview: preview,
+                                                            arguments_len: arguments.len(),
+                                                            truncated,
+                                                        }),
+                                                    );
+                                                }
+                                                ContentPart::ToolResult { content, .. } => {
+                                                    let truncated =
+                                                        truncate_with_ellipsis(content, 500);
+                                                    let (preview, preview_truncated) =
+                                                        build_text_preview(
+                                                            content,
+                                                            TOOL_OUTPUT_PREVIEW_MAX_LINES,
+                                                            TOOL_OUTPUT_PREVIEW_MAX_BYTES,
+                                                        );
+                                                    app.messages.push(
+                                                        ChatMessage::new(
+                                                            role_str,
+                                                            format!("✅ Result\n{truncated}"),
+                                                        )
+                                                        .with_message_type(
+                                                            MessageType::ToolResult {
+                                                                name: "tool".to_string(),
+                                                                output_preview: preview,
+                                                                output_len: content.len(),
+                                                                truncated: preview_truncated,
+                                                            },
+                                                        ),
+                                                    );
+                                                }
+                                                ContentPart::File { path, mime_type } => {
+                                                    app.messages.push(
+                                                        ChatMessage::new(
+                                                            role_str,
+                                                            format!("📎 {path}"),
+                                                        )
+                                                        .with_message_type(MessageType::File {
+                                                            path: path.clone(),
+                                                            mime_type: mime_type.clone(),
+                                                        }),
+                                                    );
+                                                }
+                                                ContentPart::Thinking { text } => {
+                                                    if !text.is_empty() {
                                                         app.messages.push(
-                                                            ChatMessage::new(role_str, format!("🔧 {name}"))
-                                                                .with_message_type(MessageType::ToolCall {
-                                                                    name: name.clone(),
-                                                                    arguments: arguments.clone(),
-                                                                }),
+                                                            ChatMessage::new(
+                                                                role_str,
+                                                                text.clone(),
+                                                            )
+                                                            .with_message_type(
+                                                                MessageType::Thinking(text.clone()),
+                                                            ),
                                                         );
-                                                    }
-                                                    ContentPart::ToolResult { content, .. } => {
-                                                        let truncated = truncate_with_ellipsis(content, 500);
-                                                        app.messages.push(
-                                                            ChatMessage::new(role_str, format!("✅ Result\n{truncated}"))
-                                                                .with_message_type(MessageType::ToolResult {
-                                                                    name: "tool".to_string(),
-                                                                    output: content.clone(),
-                                                                }),
-                                                        );
-                                                    }
-                                                    ContentPart::File { path, mime_type } => {
-                                                        app.messages.push(
-                                                            ChatMessage::new(role_str, format!("📎 {path}"))
-                                                                .with_message_type(MessageType::File {
-                                                                    path: path.clone(),
-                                                                    mime_type: mime_type.clone(),
-                                                                }),
-                                                        );
-                                                    }
-                                                    ContentPart::Thinking { text } => {
-                                                        if !text.is_empty() {
-                                                            app.messages.push(
-                                                                ChatMessage::new(role_str, text.clone())
-                                                                    .with_message_type(MessageType::Thinking(text.clone())),
-                                                            );
-                                                        }
                                                     }
                                                 }
                                             }
                                         }
+                                    }
 
-                                        app.current_agent = session.agent.clone();
-                                        app.session = Some(session);
-                                        app.scroll = SCROLL_BOTTOM;
-                                        app.view_mode = ViewMode::Chat;
-                                    }
-                                    Err(e) => {
-                                        app.messages.push(ChatMessage::new(
-                                            "system",
-                                            format!("Failed to load session: {}", e),
-                                        ));
-                                        app.view_mode = ViewMode::Chat;
-                                    }
+                                    app.current_agent = session.agent.clone();
+                                    app.session = Some(session);
+                                    app.scroll = SCROLL_BOTTOM;
+                                    app.view_mode = ViewMode::Chat;
+                                }
+                                Err(e) => {
+                                    app.messages.push(ChatMessage::new(
+                                        "system",
+                                        format!("Failed to load session: {}", e),
+                                    ));
+                                    app.view_mode = ViewMode::Chat;
                                 }
                             }
                         }
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Char(c)
-                            if !key.modifiers.contains(KeyModifiers::CONTROL)
-                                && !key.modifiers.contains(KeyModifiers::ALT)
-                                && c != 'j' && c != 'k' =>
-                        {
-                            app.session_picker_filter.push(c);
-                            app.session_picker_selected = 0;
-                            app.session_picker_confirm_delete = false;
-                        }
-                        _ => {}
                     }
-                    continue;
-                }
-
-                // Swarm view key handling
-                if app.view_mode == ViewMode::Swarm {
-                    match key.code {
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Esc => {
-                            if app.swarm_state.detail_mode {
-                                app.swarm_state.exit_detail();
-                            } else {
-                                app.view_mode = ViewMode::Chat;
-                            }
-                        }
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            if app.swarm_state.detail_mode {
-                                // In detail mode, Up/Down switch between agents
-                                app.swarm_state.exit_detail();
-                                app.swarm_state.select_prev();
-                                app.swarm_state.enter_detail();
-                            } else {
-                                app.swarm_state.select_prev();
-                            }
-                        }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            if app.swarm_state.detail_mode {
-                                app.swarm_state.exit_detail();
-                                app.swarm_state.select_next();
-                                app.swarm_state.enter_detail();
-                            } else {
-                                app.swarm_state.select_next();
-                            }
-                        }
-                        KeyCode::Enter => {
-                            if !app.swarm_state.detail_mode {
-                                app.swarm_state.enter_detail();
-                            }
-                        }
-                        KeyCode::PageDown => {
-                            app.swarm_state.detail_scroll_down(10);
-                        }
-                        KeyCode::PageUp => {
-                            app.swarm_state.detail_scroll_up(10);
-                        }
-                        KeyCode::Char('?') => {
-                            app.show_help = true;
-                        }
-                        KeyCode::F(2) => {
-                            app.view_mode = ViewMode::Chat;
-                        }
-                        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.view_mode = ViewMode::Chat;
-                        }
-                        _ => {}
-                    }
-                    continue;
-                }
-
-                // Ralph view key handling
-                if app.view_mode == ViewMode::Ralph {
-                    match key.code {
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Esc => {
-                            if app.ralph_state.detail_mode {
-                                app.ralph_state.exit_detail();
-                            } else {
-                                app.view_mode = ViewMode::Chat;
-                            }
-                        }
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            if app.ralph_state.detail_mode {
-                                app.ralph_state.exit_detail();
-                                app.ralph_state.select_prev();
-                                app.ralph_state.enter_detail();
-                            } else {
-                                app.ralph_state.select_prev();
-                            }
-                        }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            if app.ralph_state.detail_mode {
-                                app.ralph_state.exit_detail();
-                                app.ralph_state.select_next();
-                                app.ralph_state.enter_detail();
-                            } else {
-                                app.ralph_state.select_next();
-                            }
-                        }
-                        KeyCode::Enter => {
-                            if !app.ralph_state.detail_mode {
-                                app.ralph_state.enter_detail();
-                            }
-                        }
-                        KeyCode::PageDown => {
-                            app.ralph_state.detail_scroll_down(10);
-                        }
-                        KeyCode::PageUp => {
-                            app.ralph_state.detail_scroll_up(10);
-                        }
-                        KeyCode::Char('?') => {
-                            app.show_help = true;
-                        }
-                        KeyCode::F(2) | KeyCode::Char('s')
-                            if key.modifiers.contains(KeyModifiers::CONTROL) =>
-                        {
-                            app.view_mode = ViewMode::Chat;
-                        }
-                        _ => {}
-                    }
-                    continue;
-                }
-
-                // Bus log view key handling
-                if app.view_mode == ViewMode::BusLog {
-                    match key.code {
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(());
-                        }
-                        KeyCode::Esc => {
-                            if app.bus_log_state.detail_mode {
-                                app.bus_log_state.exit_detail();
-                            } else {
-                                app.view_mode = ViewMode::Chat;
-                            }
-                        }
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            if app.bus_log_state.detail_mode {
-                                app.bus_log_state.exit_detail();
-                                app.bus_log_state.select_prev();
-                                app.bus_log_state.enter_detail();
-                            } else {
-                                app.bus_log_state.select_prev();
-                            }
-                        }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            if app.bus_log_state.detail_mode {
-                                app.bus_log_state.exit_detail();
-                                app.bus_log_state.select_next();
-                                app.bus_log_state.enter_detail();
-                            } else {
-                                app.bus_log_state.select_next();
-                            }
-                        }
-                        KeyCode::Enter => {
-                            if !app.bus_log_state.detail_mode {
-                                app.bus_log_state.enter_detail();
-                            }
-                        }
-                        KeyCode::PageDown => {
-                            app.bus_log_state.detail_scroll_down(10);
-                        }
-                        KeyCode::PageUp => {
-                            app.bus_log_state.detail_scroll_up(10);
-                        }
-                        // Clear all entries
-                        KeyCode::Char('c') => {
-                            app.bus_log_state.entries.clear();
-                            app.bus_log_state.selected_index = 0;
-                        }
-                        // Jump to bottom (re-enable auto-scroll)
-                        KeyCode::Char('g') => {
-                            let len = app.bus_log_state.filtered_entries().len();
-                            if len > 0 {
-                                app.bus_log_state.selected_index = len - 1;
-                                app.bus_log_state.list_state.select(Some(len - 1));
-                            }
-                            app.bus_log_state.auto_scroll = true;
-                        }
-                        KeyCode::Char('?') => {
-                            app.show_help = true;
-                        }
-                        _ => {}
-                    }
-                    continue;
-                }
-
-                match key.code {
-                    // Quit
                     KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         return Ok(());
                     }
                     KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         return Ok(());
                     }
-
-                    // Help
-                    KeyCode::Char('?') => {
-                        app.show_help = true;
+                    KeyCode::Char(c)
+                        if !key.modifiers.contains(KeyModifiers::CONTROL)
+                            && !key.modifiers.contains(KeyModifiers::ALT)
+                            && c != 'j'
+                            && c != 'k' =>
+                    {
+                        app.session_picker_filter.push(c);
+                        app.session_picker_selected = 0;
+                        app.session_picker_confirm_delete = false;
                     }
+                    _ => {}
+                }
+                continue;
+            }
 
-                    // Toggle view mode (F2 or Ctrl+S)
-                    KeyCode::F(2) => {
-                        app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker | ViewMode::BusLog => {
-                                ViewMode::Swarm
-                            }
-                            ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
-                        };
+            // Swarm view key handling
+            if app.view_mode == ViewMode::Swarm {
+                match key.code {
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
                     }
-                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.view_mode = match app.view_mode {
-                            ViewMode::Chat | ViewMode::SessionPicker | ViewMode::ModelPicker | ViewMode::BusLog => {
-                                ViewMode::Swarm
-                            }
-                            ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
-                        };
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
                     }
-
-                    // Toggle inspector pane in webview layout
-                    KeyCode::F(3) => {
-                        app.show_inspector = !app.show_inspector;
-                    }
-
-                    // Toggle chat layout (Ctrl+B)
-                    KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.chat_layout = match app.chat_layout {
-                            ChatLayoutMode::Classic => ChatLayoutMode::Webview,
-                            ChatLayoutMode::Webview => ChatLayoutMode::Classic,
-                        };
-                    }
-
-                    // Escape - return to chat from swarm/picker view
                     KeyCode::Esc => {
-                        if app.view_mode == ViewMode::Swarm
-                            || app.view_mode == ViewMode::Ralph
-                            || app.view_mode == ViewMode::BusLog
-                            || app.view_mode == ViewMode::SessionPicker
-                            || app.view_mode == ViewMode::ModelPicker
-                        {
+                        if app.swarm_state.detail_mode {
+                            app.swarm_state.exit_detail();
+                        } else {
                             app.view_mode = ViewMode::Chat;
                         }
                     }
-
-                    // Model picker (Ctrl+M)
-                    KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.open_model_picker(&config).await;
-                    }
-
-                    // Bus protocol log (Ctrl+L)
-                    KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.view_mode = ViewMode::BusLog;
-                    }
-
-                    // Switch agent
-                    KeyCode::Tab => {
-                        app.current_agent = if app.current_agent == "build" {
-                            "plan".to_string()
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if app.swarm_state.detail_mode {
+                            // In detail mode, Up/Down switch between agents
+                            app.swarm_state.exit_detail();
+                            app.swarm_state.select_prev();
+                            app.swarm_state.enter_detail();
                         } else {
-                            "build".to_string()
-                        };
+                            app.swarm_state.select_prev();
+                        }
                     }
-
-                    // Submit message
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        if app.swarm_state.detail_mode {
+                            app.swarm_state.exit_detail();
+                            app.swarm_state.select_next();
+                            app.swarm_state.enter_detail();
+                        } else {
+                            app.swarm_state.select_next();
+                        }
+                    }
                     KeyCode::Enter => {
-                        app.submit_message(&config).await;
-                    }
-
-                    // Vim-style scrolling (Alt + j/k)
-                    KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        if app.scroll < SCROLL_BOTTOM {
-                            app.scroll = app.scroll.saturating_add(1);
+                        if !app.swarm_state.detail_mode {
+                            app.swarm_state.enter_detail();
                         }
-                    }
-                    KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = app.last_max_scroll; // Leave auto-scroll mode
-                        }
-                        app.scroll = app.scroll.saturating_sub(1);
-                    }
-
-                    // Command history
-                    KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.search_history();
-                    }
-                    KeyCode::Up if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.navigate_history(-1);
-                    }
-                    KeyCode::Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.navigate_history(1);
-                    }
-
-                    // Additional Vim-style navigation (with modifiers to avoid conflicts)
-                    KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.scroll = 0; // Go to top
-                    }
-                    KeyCode::Char('G') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        // Go to bottom (auto-scroll)
-                        app.scroll = SCROLL_BOTTOM;
-                    }
-
-                    // Enhanced scrolling (with Alt to avoid conflicts)
-                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        // Half page down
-                        if app.scroll < SCROLL_BOTTOM {
-                            app.scroll = app.scroll.saturating_add(5);
-                        }
-                    }
-                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        // Half page up
-                        if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = app.last_max_scroll;
-                        }
-                        app.scroll = app.scroll.saturating_sub(5);
-                    }
-
-                    // Text input
-                    KeyCode::Char(c) => {
-                        app.input.insert(app.cursor_position, c);
-                        app.cursor_position += 1;
-                    }
-                    KeyCode::Backspace => {
-                        if app.cursor_position > 0 {
-                            app.cursor_position -= 1;
-                            app.input.remove(app.cursor_position);
-                        }
-                    }
-                    KeyCode::Delete => {
-                        if app.cursor_position < app.input.len() {
-                            app.input.remove(app.cursor_position);
-                        }
-                    }
-                    KeyCode::Left => {
-                        app.cursor_position = app.cursor_position.saturating_sub(1);
-                    }
-                    KeyCode::Right => {
-                        if app.cursor_position < app.input.len() {
-                            app.cursor_position += 1;
-                        }
-                    }
-                    KeyCode::Home => {
-                        app.cursor_position = 0;
-                    }
-                    KeyCode::End => {
-                        app.cursor_position = app.input.len();
-                    }
-
-                    // Scroll (normalize first to handle SCROLL_BOTTOM sentinel)
-                    KeyCode::Up => {
-                        if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = app.last_max_scroll; // Leave auto-scroll mode
-                        }
-                        app.scroll = app.scroll.saturating_sub(1);
-                    }
-                    KeyCode::Down => {
-                        if app.scroll < SCROLL_BOTTOM {
-                            app.scroll = app.scroll.saturating_add(1);
-                        }
-                    }
-                    KeyCode::PageUp => {
-                        if app.scroll >= SCROLL_BOTTOM {
-                            app.scroll = app.last_max_scroll;
-                        }
-                        app.scroll = app.scroll.saturating_sub(10);
                     }
                     KeyCode::PageDown => {
-                        if app.scroll < SCROLL_BOTTOM {
-                            app.scroll = app.scroll.saturating_add(10);
-                        }
+                        app.swarm_state.detail_scroll_down(10);
                     }
-
+                    KeyCode::PageUp => {
+                        app.swarm_state.detail_scroll_up(10);
+                    }
+                    KeyCode::Char('?') => {
+                        app.show_help = true;
+                    }
+                    KeyCode::F(2) => {
+                        app.view_mode = ViewMode::Chat;
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.view_mode = ViewMode::Chat;
+                    }
                     _ => {}
                 }
+                continue;
             }
+
+            // Ralph view key handling
+            if app.view_mode == ViewMode::Ralph {
+                match key.code {
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Esc => {
+                        if app.ralph_state.detail_mode {
+                            app.ralph_state.exit_detail();
+                        } else {
+                            app.view_mode = ViewMode::Chat;
+                        }
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if app.ralph_state.detail_mode {
+                            app.ralph_state.exit_detail();
+                            app.ralph_state.select_prev();
+                            app.ralph_state.enter_detail();
+                        } else {
+                            app.ralph_state.select_prev();
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        if app.ralph_state.detail_mode {
+                            app.ralph_state.exit_detail();
+                            app.ralph_state.select_next();
+                            app.ralph_state.enter_detail();
+                        } else {
+                            app.ralph_state.select_next();
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if !app.ralph_state.detail_mode {
+                            app.ralph_state.enter_detail();
+                        }
+                    }
+                    KeyCode::PageDown => {
+                        app.ralph_state.detail_scroll_down(10);
+                    }
+                    KeyCode::PageUp => {
+                        app.ralph_state.detail_scroll_up(10);
+                    }
+                    KeyCode::Char('?') => {
+                        app.show_help = true;
+                    }
+                    KeyCode::F(2) | KeyCode::Char('s')
+                        if key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        app.view_mode = ViewMode::Chat;
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+
+            // Bus log view key handling
+            if app.view_mode == ViewMode::BusLog {
+                match key.code {
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Esc => {
+                        if app.bus_log_state.detail_mode {
+                            app.bus_log_state.exit_detail();
+                        } else {
+                            app.view_mode = ViewMode::Chat;
+                        }
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if app.bus_log_state.detail_mode {
+                            app.bus_log_state.exit_detail();
+                            app.bus_log_state.select_prev();
+                            app.bus_log_state.enter_detail();
+                        } else {
+                            app.bus_log_state.select_prev();
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        if app.bus_log_state.detail_mode {
+                            app.bus_log_state.exit_detail();
+                            app.bus_log_state.select_next();
+                            app.bus_log_state.enter_detail();
+                        } else {
+                            app.bus_log_state.select_next();
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if !app.bus_log_state.detail_mode {
+                            app.bus_log_state.enter_detail();
+                        }
+                    }
+                    KeyCode::PageDown => {
+                        app.bus_log_state.detail_scroll_down(10);
+                    }
+                    KeyCode::PageUp => {
+                        app.bus_log_state.detail_scroll_up(10);
+                    }
+                    // Clear all entries
+                    KeyCode::Char('c') => {
+                        app.bus_log_state.entries.clear();
+                        app.bus_log_state.selected_index = 0;
+                    }
+                    // Jump to bottom (re-enable auto-scroll)
+                    KeyCode::Char('g') => {
+                        let len = app.bus_log_state.filtered_entries().len();
+                        if len > 0 {
+                            app.bus_log_state.selected_index = len - 1;
+                            app.bus_log_state.list_state.select(Some(len - 1));
+                        }
+                        app.bus_log_state.auto_scroll = true;
+                    }
+                    KeyCode::Char('?') => {
+                        app.show_help = true;
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+
+            match key.code {
+                // Quit
+                KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    return Ok(());
+                }
+                KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    return Ok(());
+                }
+
+                // Help
+                KeyCode::Char('?') => {
+                    app.show_help = true;
+                }
+
+                // Toggle view mode (F2 or Ctrl+S)
+                KeyCode::F(2) => {
+                    app.view_mode = match app.view_mode {
+                        ViewMode::Chat
+                        | ViewMode::SessionPicker
+                        | ViewMode::ModelPicker
+                        | ViewMode::BusLog => ViewMode::Swarm,
+                        ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
+                    };
+                }
+                KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.view_mode = match app.view_mode {
+                        ViewMode::Chat
+                        | ViewMode::SessionPicker
+                        | ViewMode::ModelPicker
+                        | ViewMode::BusLog => ViewMode::Swarm,
+                        ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
+                    };
+                }
+
+                // Toggle inspector pane in webview layout
+                KeyCode::F(3) => {
+                    app.show_inspector = !app.show_inspector;
+                }
+
+                // Copy last message to clipboard (Ctrl+Y)
+                KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    if let Some(last_msg) = app.messages.last() {
+                        let text = &last_msg.content;
+                        match arboard::Clipboard::new() {
+                            Ok(mut clipboard) => {
+                                if let Err(e) = clipboard.set_text(text) {
+                                    tracing::warn!("Failed to copy to clipboard: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to access clipboard: {}", e);
+                            }
+                        }
+                    }
+                }
+
+                // Toggle chat layout (Ctrl+B)
+                KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.chat_layout = match app.chat_layout {
+                        ChatLayoutMode::Classic => ChatLayoutMode::Webview,
+                        ChatLayoutMode::Webview => ChatLayoutMode::Classic,
+                    };
+                }
+
+                // Escape - return to chat from swarm/picker view
+                KeyCode::Esc => {
+                    if app.view_mode == ViewMode::Swarm
+                        || app.view_mode == ViewMode::Ralph
+                        || app.view_mode == ViewMode::BusLog
+                        || app.view_mode == ViewMode::SessionPicker
+                        || app.view_mode == ViewMode::ModelPicker
+                    {
+                        app.view_mode = ViewMode::Chat;
+                    }
+                }
+
+                // Model picker (Ctrl+M)
+                KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.open_model_picker(&config).await;
+                }
+
+                // Bus protocol log (Ctrl+L)
+                KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.view_mode = ViewMode::BusLog;
+                }
+
+                // Switch agent
+                KeyCode::Tab => {
+                    app.current_agent = if app.current_agent == "build" {
+                        "plan".to_string()
+                    } else {
+                        "build".to_string()
+                    };
+                }
+
+                // Submit message
+                KeyCode::Enter => {
+                    app.submit_message(&config).await;
+                }
+
+                // Vim-style scrolling (Alt + j/k)
+                KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
+                    if app.scroll < SCROLL_BOTTOM {
+                        app.scroll = app.scroll.saturating_add(1);
+                    }
+                }
+                KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
+                    if app.scroll >= SCROLL_BOTTOM {
+                        app.scroll = app.last_max_scroll; // Leave auto-scroll mode
+                    }
+                    app.scroll = app.scroll.saturating_sub(1);
+                }
+
+                // Command history
+                KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.search_history();
+                }
+                KeyCode::Up if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.navigate_history(-1);
+                }
+                KeyCode::Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.navigate_history(1);
+                }
+
+                // Additional Vim-style navigation (with modifiers to avoid conflicts)
+                KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.scroll = 0; // Go to top
+                }
+                KeyCode::Char('G') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    // Go to bottom (auto-scroll)
+                    app.scroll = SCROLL_BOTTOM;
+                }
+
+                // Enhanced scrolling (with Alt to avoid conflicts)
+                KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
+                    // Half page down
+                    if app.scroll < SCROLL_BOTTOM {
+                        app.scroll = app.scroll.saturating_add(5);
+                    }
+                }
+                KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
+                    // Half page up
+                    if app.scroll >= SCROLL_BOTTOM {
+                        app.scroll = app.last_max_scroll;
+                    }
+                    app.scroll = app.scroll.saturating_sub(5);
+                }
+
+                // Text input
+                KeyCode::Char(c) => {
+                    // Ensure cursor is at a valid char boundary
+                    while app.cursor_position > 0
+                        && !app.input.is_char_boundary(app.cursor_position)
+                    {
+                        app.cursor_position -= 1;
+                    }
+                    app.input.insert(app.cursor_position, c);
+                    app.cursor_position += c.len_utf8();
+                }
+                KeyCode::Backspace => {
+                    // Move back to previous char boundary
+                    while app.cursor_position > 0
+                        && !app.input.is_char_boundary(app.cursor_position)
+                    {
+                        app.cursor_position -= 1;
+                    }
+                    if app.cursor_position > 0 {
+                        // Find start of previous char
+                        let prev = app.input[..app.cursor_position].char_indices().rev().next();
+                        if let Some((idx, ch)) = prev {
+                            app.input.replace_range(idx..idx + ch.len_utf8(), "");
+                            app.cursor_position = idx;
+                        }
+                    }
+                }
+                KeyCode::Delete => {
+                    // Ensure cursor is at a valid char boundary
+                    while app.cursor_position > 0
+                        && !app.input.is_char_boundary(app.cursor_position)
+                    {
+                        app.cursor_position -= 1;
+                    }
+                    if app.cursor_position < app.input.len() {
+                        let ch = app.input[app.cursor_position..].chars().next();
+                        if let Some(ch) = ch {
+                            app.input.replace_range(
+                                app.cursor_position..app.cursor_position + ch.len_utf8(),
+                                "",
+                            );
+                        }
+                    }
+                }
+                KeyCode::Left => {
+                    // Move left by one character (not byte)
+                    let prev = app.input[..app.cursor_position].char_indices().rev().next();
+                    if let Some((idx, _)) = prev {
+                        app.cursor_position = idx;
+                    }
+                }
+                KeyCode::Right => {
+                    if app.cursor_position < app.input.len() {
+                        let ch = app.input[app.cursor_position..].chars().next();
+                        if let Some(ch) = ch {
+                            app.cursor_position += ch.len_utf8();
+                        }
+                    }
+                }
+                KeyCode::Home => {
+                    app.cursor_position = 0;
+                }
+                KeyCode::End => {
+                    app.cursor_position = app.input.len();
+                }
+
+                // Scroll (normalize first to handle SCROLL_BOTTOM sentinel)
+                KeyCode::Up => {
+                    if app.scroll >= SCROLL_BOTTOM {
+                        app.scroll = app.last_max_scroll; // Leave auto-scroll mode
+                    }
+                    app.scroll = app.scroll.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    if app.scroll < SCROLL_BOTTOM {
+                        app.scroll = app.scroll.saturating_add(1);
+                    }
+                }
+                KeyCode::PageUp => {
+                    if app.scroll >= SCROLL_BOTTOM {
+                        app.scroll = app.last_max_scroll;
+                    }
+                    app.scroll = app.scroll.saturating_sub(10);
+                }
+                KeyCode::PageDown => {
+                    if app.scroll < SCROLL_BOTTOM {
+                        app.scroll = app.scroll.saturating_add(10);
+                    }
+                }
+
+                _ => {}
+            }
+        }
     }
 }
 
@@ -2870,9 +3119,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             );
 
             let style = if is_selected && app.session_picker_confirm_delete {
-                Style::default()
-                    .fg(Color::Red)
-                    .add_modifier(Modifier::BOLD)
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
             } else if is_selected {
                 Style::default()
                     .fg(Color::Cyan)
@@ -2890,9 +3137,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 if app.session_picker_confirm_delete {
                     list_lines.push(Line::styled(
                         "   ⚠ Press d again to confirm delete, Esc to cancel",
-                        Style::default()
-                            .fg(Color::Red)
-                            .add_modifier(Modifier::BOLD),
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                     ));
                 } else {
                     list_lines.push(Line::styled(
@@ -3058,8 +3303,19 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     } else {
         " auto ".to_string()
     };
-    status_line.spans.insert(0, Span::styled("│ ", Style::default().fg(theme.timestamp_color.to_color()).add_modifier(Modifier::DIM)));
-    status_line.spans.insert(0, Span::styled(model_status, Style::default().fg(Color::Cyan)));
+    status_line.spans.insert(
+        0,
+        Span::styled(
+            "│ ",
+            Style::default()
+                .fg(theme.timestamp_color.to_color())
+                .add_modifier(Modifier::DIM),
+        ),
+    );
+    status_line.spans.insert(
+        0,
+        Span::styled(model_status, Style::default().fg(Color::Cyan)),
+    );
     let status = Paragraph::new(status_line);
     f.render_widget(status, chunks[2]);
 
@@ -3115,8 +3371,19 @@ fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
     } else {
         " auto ".to_string()
     };
-    status_line.spans.insert(0, Span::styled("│ ", Style::default().fg(theme.timestamp_color.to_color()).add_modifier(Modifier::DIM)));
-    status_line.spans.insert(0, Span::styled(model_status, Style::default().fg(Color::Cyan)));
+    status_line.spans.insert(
+        0,
+        Span::styled(
+            "│ ",
+            Style::default()
+                .fg(theme.timestamp_color.to_color())
+                .add_modifier(Modifier::DIM),
+        ),
+    );
+    status_line.spans.insert(
+        0,
+        Span::styled(model_status, Style::default().fg(Color::Cyan)),
+    );
     let status = Paragraph::new(status_line);
     f.render_widget(status, main_chunks[3]);
 
@@ -3395,11 +3662,7 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
                 .and_then(|s| s.metadata.model.as_deref())
         })
         .unwrap_or("auto");
-    let conversation_depth = app
-        .session
-        .as_ref()
-        .map(|s| s.messages.len())
-        .unwrap_or(0);
+    let conversation_depth = app.session.as_ref().map(|s| s.messages.len()).unwrap_or(0);
 
     let label_style = Style::default().fg(theme.timestamp_color.to_color());
 
@@ -3464,10 +3727,7 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
     ]));
     lines.push(Line::from(vec![
         Span::styled("Context: ", label_style),
-        Span::styled(
-            format!("{} turns", conversation_depth),
-            Style::default(),
-        ),
+        Span::styled(format!("{} turns", conversation_depth), Style::default()),
     ]));
     lines.push(Line::from(vec![
         Span::styled("Tools used: ", label_style),
@@ -3592,7 +3852,12 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
         message_lines.push(header_line);
 
         match &message.message_type {
-            MessageType::ToolCall { name, arguments } => {
+            MessageType::ToolCall {
+                name,
+                arguments_preview,
+                arguments_len,
+                truncated,
+            } => {
                 let tool_header = Line::from(vec![
                     Span::styled("  🔧 ", Style::default().fg(Color::Yellow)),
                     Span::styled(
@@ -3604,37 +3869,45 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 ]);
                 message_lines.push(tool_header);
 
-                let mut formatted_args = format_tool_call_arguments(name, arguments);
-                let mut truncated = false;
-                if formatted_args.chars().count() > 900 {
-                    formatted_args = format!(
-                        "{}...",
-                        formatted_args.chars().take(897).collect::<String>()
-                    );
-                    truncated = true;
-                }
-
-                let arg_lines: Vec<&str> = formatted_args.lines().collect();
-                for line in arg_lines.iter().take(10) {
-                    let args_line = Line::from(vec![
-                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
-                        Span::styled((*line).to_string(), Style::default().fg(Color::DarkGray)),
-                    ]);
-                    message_lines.push(args_line);
-                }
-                if arg_lines.len() > 10 || truncated {
+                if arguments_preview.trim().is_empty() {
                     message_lines.push(Line::from(vec![
                         Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled(
-                            "... (truncated)",
+                            "(no arguments)",
                             Style::default()
                                 .fg(Color::DarkGray)
                                 .add_modifier(Modifier::DIM),
                         ),
                     ]));
+                } else {
+                    for line in arguments_preview.lines() {
+                        let args_line = Line::from(vec![
+                            Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
+                            Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
+                        ]);
+                        message_lines.push(args_line);
+                    }
+                }
+
+                if *truncated {
+                    let args_line = Line::from(vec![
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            format!("... (truncated; {} bytes)", arguments_len),
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
+                        ),
+                    ]);
+                    message_lines.push(args_line);
                 }
             }
-            MessageType::ToolResult { name, output } => {
+            MessageType::ToolResult {
+                name,
+                output_preview,
+                output_len,
+                truncated,
+            } => {
                 let result_header = Line::from(vec![
                     Span::styled("  ✅ ", Style::default().fg(Color::Green)),
                     Span::styled(
@@ -3646,20 +3919,31 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 ]);
                 message_lines.push(result_header);
 
-                let output_str = truncate_with_ellipsis(output, 300);
-                let output_lines: Vec<&str> = output_str.lines().collect();
-                for line in output_lines.iter().take(5) {
-                    let output_line = Line::from(vec![
-                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
-                        Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
-                    ]);
-                    message_lines.push(output_line);
-                }
-                if output_lines.len() > 5 {
+                if output_preview.trim().is_empty() {
                     message_lines.push(Line::from(vec![
                         Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled(
-                            format!("... and {} more lines", output_lines.len() - 5),
+                            "(empty output)",
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
+                        ),
+                    ]));
+                } else {
+                    for line in output_preview.lines() {
+                        let output_line = Line::from(vec![
+                            Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
+                            Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
+                        ]);
+                        message_lines.push(output_line);
+                    }
+                }
+
+                if *truncated {
+                    message_lines.push(Line::from(vec![
+                        Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(
+                            format!("... (truncated; {} bytes)", output_len),
                             Style::default()
                                 .fg(Color::DarkGray)
                                 .add_modifier(Modifier::DIM),
@@ -3684,16 +3968,19 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 )));
                 // Show truncated thinking content
                 let max_thinking_lines = 8;
-                let lines: Vec<&str> = text.lines().collect();
-                for line in lines.iter().take(max_thinking_lines) {
+                let mut iter = text.lines();
+                let mut shown = 0usize;
+                while shown < max_thinking_lines {
+                    let Some(line) = iter.next() else { break };
                     message_lines.push(Line::from(vec![
                         Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
                         Span::styled(line.to_string(), thinking_style),
                     ]));
+                    shown += 1;
                 }
-                if lines.len() > max_thinking_lines {
+                if iter.next().is_some() {
                     message_lines.push(Line::from(Span::styled(
-                        format!("  │ ... {} more lines of reasoning", lines.len() - max_thinking_lines),
+                        "  │ ... (truncated)",
                         thinking_style,
                     )));
                 }
@@ -3704,9 +3991,7 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 message_lines.push(image_line);
             }
             MessageType::File { path, mime_type } => {
-                let mime_label = mime_type
-                    .as_deref()
-                    .unwrap_or("unknown type");
+                let mime_label = mime_type.as_deref().unwrap_or("unknown type");
                 let file_header = Line::from(vec![
                     Span::styled("  📎 ", Style::default().fg(Color::Cyan)),
                     Span::styled(
@@ -3737,9 +4022,14 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                         (meta.duration_ms % 1000) / 100
                     )
                 } else {
-                    format!("{}.{}s", meta.duration_ms / 1000, (meta.duration_ms % 1000) / 100)
+                    format!(
+                        "{}.{}s",
+                        meta.duration_ms / 1000,
+                        (meta.duration_ms % 1000) / 100
+                    )
                 };
-                let tokens_str = format!("{}→{} tokens", meta.prompt_tokens, meta.completion_tokens);
+                let tokens_str =
+                    format!("{}→{} tokens", meta.prompt_tokens, meta.completion_tokens);
                 let cost_str = match meta.cost_usd {
                     Some(c) if c < 0.01 => format!("${:.4}", c),
                     Some(c) => format!("${:.2}", c),
@@ -3748,9 +4038,10 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 let dim_style = Style::default()
                     .fg(theme.timestamp_color.to_color())
                     .add_modifier(Modifier::DIM);
-                let mut spans = vec![
-                    Span::styled(format!("  ⏱ {} │ 📊 {}", duration_str, tokens_str), dim_style),
-                ];
+                let mut spans = vec![Span::styled(
+                    format!("  ⏱ {} │ 📊 {}", duration_str, tokens_str),
+                    dim_style,
+                )];
                 if !cost_str.is_empty() {
                     spans.push(Span::styled(format!(" │ 💰 {}", cost_str), dim_style));
                 }
@@ -3895,6 +4186,13 @@ fn match_slash_command_hint(input: &str) -> String {
 }
 
 fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
+    // Avoid expensive JSON parsing/pretty-printing for very large payloads.
+    // Large tool arguments are common (e.g., patches) and reformatting them provides
+    // little value in a terminal preview.
+    if arguments.len() > TOOL_ARGS_PRETTY_JSON_MAX_BYTES {
+        return arguments.to_string();
+    }
+
     let parsed = match serde_json::from_str::<serde_json::Value>(arguments) {
         Ok(value) => value,
         Err(_) => return arguments.to_string(),
@@ -3907,6 +4205,71 @@ fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
     }
 
     serde_json::to_string_pretty(&parsed).unwrap_or_else(|_| arguments.to_string())
+}
+
+fn build_tool_arguments_preview(
+    tool_name: &str,
+    arguments: &str,
+    max_lines: usize,
+    max_bytes: usize,
+) -> (String, bool) {
+    // Pretty-print when reasonably sized; otherwise keep raw to avoid a heavy parse.
+    let formatted = format_tool_call_arguments(tool_name, arguments);
+    build_text_preview(&formatted, max_lines, max_bytes)
+}
+
+/// Build a stable, size-limited preview used by the renderer.
+///
+/// Returns (preview_text, truncated).
+fn build_text_preview(text: &str, max_lines: usize, max_bytes: usize) -> (String, bool) {
+    if max_lines == 0 || max_bytes == 0 || text.is_empty() {
+        return (String::new(), !text.is_empty());
+    }
+
+    let mut out = String::new();
+    let mut truncated = false;
+    let mut remaining = max_bytes;
+
+    let mut iter = text.lines();
+    for i in 0..max_lines {
+        let Some(line) = iter.next() else { break };
+
+        // Add newline separator if needed
+        if i > 0 {
+            if remaining == 0 {
+                truncated = true;
+                break;
+            }
+            out.push('\n');
+            remaining = remaining.saturating_sub(1);
+        }
+
+        if remaining == 0 {
+            truncated = true;
+            break;
+        }
+
+        if line.len() <= remaining {
+            out.push_str(line);
+            remaining = remaining.saturating_sub(line.len());
+        } else {
+            // Truncate this line to remaining bytes, respecting UTF-8 boundaries.
+            let mut end = remaining;
+            while end > 0 && !line.is_char_boundary(end) {
+                end -= 1;
+            }
+            out.push_str(&line[..end]);
+            truncated = true;
+            break;
+        }
+    }
+
+    // If there are still lines left, we truncated.
+    if !truncated && iter.next().is_some() {
+        truncated = true;
+    }
+
+    (out, truncated)
 }
 
 fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {

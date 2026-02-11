@@ -269,7 +269,7 @@ pub struct SwarmArgs {
     /// Task to execute with swarm
     pub task: String,
 
-    /// Model to use (provider/model format, e.g. openrouter/z-ai/glm-4.7)
+    /// Model to use (provider/model format, e.g. zai/glm-5 or openrouter/z-ai/glm-5)
     #[arg(short, long)]
     pub model: Option<String>,
 

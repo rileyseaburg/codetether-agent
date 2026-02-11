@@ -1,7 +1,7 @@
 //! Bash tool: execute shell commands
 
-use super::{Tool, ToolResult};
 use super::sandbox::{SandboxPolicy, execute_sandboxed};
+use super::{Tool, ToolResult};
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -110,7 +110,9 @@ impl Tool for BashTool {
         // Sandboxed execution path: restricted env, resource limits, audit logged
         if self.sandboxed {
             let policy = SandboxPolicy {
-                allowed_paths: cwd.map(|d| vec![std::path::PathBuf::from(d)]).unwrap_or_default(),
+                allowed_paths: cwd
+                    .map(|d| vec![std::path::PathBuf::from(d)])
+                    .unwrap_or_default(),
                 allow_network: false,
                 allow_exec: true,
                 timeout_secs,
@@ -122,13 +124,18 @@ impl Tool for BashTool {
                 &["-c".to_string(), command.to_string()],
                 &policy,
                 work_dir,
-            ).await;
+            )
+            .await;
 
             // Audit log the sandboxed execution
             if let Some(audit) = try_audit_log() {
                 let (outcome, detail) = match &sandbox_result {
                     Ok(r) => (
-                        if r.success { AuditOutcome::Success } else { AuditOutcome::Failure },
+                        if r.success {
+                            AuditOutcome::Success
+                        } else {
+                            AuditOutcome::Failure
+                        },
                         json!({
                             "sandboxed": true,
                             "exit_code": r.exit_code,
@@ -136,21 +143,29 @@ impl Tool for BashTool {
                             "violations": r.sandbox_violations,
                         }),
                     ),
-                    Err(e) => (AuditOutcome::Failure, json!({ "sandboxed": true, "error": e.to_string() })),
+                    Err(e) => (
+                        AuditOutcome::Failure,
+                        json!({ "sandboxed": true, "error": e.to_string() }),
+                    ),
                 };
-                audit.log(
-                    AuditCategory::Sandbox,
-                    format!("bash:{}", &command[..command.len().min(80)]),
-                    outcome,
-                    None,
-                    Some(detail),
-                ).await;
+                audit
+                    .log(
+                        AuditCategory::Sandbox,
+                        format!("bash:{}", &command[..command.len().min(80)]),
+                        outcome,
+                        None,
+                        Some(detail),
+                    )
+                    .await;
             }
 
             return match sandbox_result {
                 Ok(r) => {
                     let duration = exec_start.elapsed();
-                    let exec = ToolExecution::start("bash", json!({ "command": command, "sandboxed": true }));
+                    let exec = ToolExecution::start(
+                        "bash",
+                        json!({ "command": command, "sandboxed": true }),
+                    );
                     let exec = if r.success {
                         exec.complete_success(format!("exit_code={:?}", r.exit_code), duration)
                     } else {
@@ -165,14 +180,22 @@ impl Tool for BashTool {
                         metadata: [
                             ("exit_code".to_string(), json!(r.exit_code)),
                             ("sandboxed".to_string(), json!(true)),
-                            ("sandbox_violations".to_string(), json!(r.sandbox_violations)),
-                        ].into_iter().collect(),
+                            (
+                                "sandbox_violations".to_string(),
+                                json!(r.sandbox_violations),
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
                     })
                 }
                 Err(e) => {
                     let duration = exec_start.elapsed();
-                    let exec = ToolExecution::start("bash", json!({ "command": command, "sandboxed": true }))
-                        .complete_error(e.to_string(), duration);
+                    let exec = ToolExecution::start(
+                        "bash",
+                        json!({ "command": command, "sandboxed": true }),
+                    )
+                    .complete_error(e.to_string(), duration);
                     TOOL_EXECUTIONS.record(exec.clone());
                     record_persistent(exec);
                     Ok(ToolResult::error(format!("Sandbox error: {}", e)))

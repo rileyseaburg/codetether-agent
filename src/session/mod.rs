@@ -26,7 +26,7 @@ fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
     // Keep Google as an explicit option, but don't default to it first because
     // some environments expose API keys that are not valid for ChatCompletions.
     let preferred = [
-        "zhipuai",
+        "zai",
         "openai",
         "github-copilot",
         "anthropic",
@@ -73,10 +73,11 @@ impl Session {
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
             "zhipuai" | "zai" => "glm-5".to_string(),
-            "openrouter" => "openrouter/pony-alpha".to_string(),
+            // OpenRouter uses model IDs like "z-ai/glm-5".
+            "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
-            _ => "glm-4.7".to_string(),
+            _ => "glm-5".to_string(),
         }
     }
 
@@ -210,6 +211,7 @@ impl Session {
         // Parse model string (format: "provider/model", "provider", or just "model")
         let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
             let (prov, model) = parse_model_string(model_str);
+            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
             if prov.is_some() {
                 // Format: provider/model
                 (prov.map(|s| s.to_string()), model.to_string())
@@ -263,10 +265,11 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        // Kimi K2.5 requires temperature=1.0
-        // Use contains() to match both short aliases (kimi-k2.5) and full
-        // Bedrock model IDs (us.moonshotai.kimi-k2.5)
-        let temperature = if model.contains("kimi-k2") {
+        // Some models behave best with temperature=1.0.
+        // - Kimi K2.x requires temperature=1.0
+        // - GLM (Z.AI) defaults to temperature 1.0 for coding workflows
+        // Use contains() to match both short aliases and provider-qualified IDs.
+        let temperature = if model.contains("kimi-k2") || model.contains("glm-") {
             Some(1.0)
         } else {
             Some(0.7)
@@ -449,13 +452,15 @@ impl Session {
                 } else {
                     tracing::warn!(tool = %tool_name, "Tool not found");
                     if let Some(audit) = try_audit_log() {
-                        audit.log(
-                            AuditCategory::ToolExecution,
-                            format!("tool:{}", tool_name),
-                            AuditOutcome::Failure,
-                            None,
-                            Some(json!({ "error": "unknown_tool" })),
-                        ).await;
+                        audit
+                            .log(
+                                AuditCategory::ToolExecution,
+                                format!("tool:{}", tool_name),
+                                AuditOutcome::Failure,
+                                None,
+                                Some(json!({ "error": "unknown_tool" })),
+                            )
+                            .await;
                     }
                     format!("Error: Unknown tool '{}'", tool_name)
                 };
@@ -507,6 +512,7 @@ impl Session {
         // Parse model string (format: "provider/model", "provider", or just "model")
         let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
             let (prov, model) = parse_model_string(model_str);
+            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
             if prov.is_some() {
                 (prov.map(|s| s.to_string()), model.to_string())
             } else if providers.contains(&model) {
@@ -557,7 +563,7 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        let temperature = if model.contains("kimi-k2") {
+        let temperature = if model.contains("kimi-k2") || model.contains("glm-") {
             Some(1.0)
         } else {
             Some(0.7)
@@ -638,12 +644,14 @@ impl Session {
             );
 
             // Emit usage report for TUI display
-            let _ = event_tx.send(SessionEvent::UsageReport {
-                prompt_tokens: response.usage.prompt_tokens,
-                completion_tokens: response.usage.completion_tokens,
-                duration_ms: llm_duration_ms,
-                model: model.clone(),
-            }).await;
+            let _ = event_tx
+                .send(SessionEvent::UsageReport {
+                    prompt_tokens: response.usage.prompt_tokens,
+                    completion_tokens: response.usage.completion_tokens,
+                    duration_ms: llm_duration_ms,
+                    model: model.clone(),
+                })
+                .await;
 
             // Extract tool calls
             let tool_calls: Vec<(String, String, serde_json::Value)> = response
@@ -690,14 +698,20 @@ impl Session {
 
             // Emit thinking output first
             if !thinking_text.trim().is_empty() {
-                let _ = event_tx.send(SessionEvent::ThinkingComplete(thinking_text.trim().to_string())).await;
+                let _ = event_tx
+                    .send(SessionEvent::ThinkingComplete(
+                        thinking_text.trim().to_string(),
+                    ))
+                    .await;
             }
 
             // Emit this step's text BEFORE tool calls so it appears in correct
             // chronological order in the TUI chat display.
             if !step_text.trim().is_empty() {
                 let trimmed = step_text.trim().to_string();
-                let _ = event_tx.send(SessionEvent::TextChunk(trimmed.clone())).await;
+                let _ = event_tx
+                    .send(SessionEvent::TextChunk(trimmed.clone()))
+                    .await;
                 let _ = event_tx.send(SessionEvent::TextComplete(trimmed)).await;
                 final_output.push_str(&step_text);
             }
@@ -782,13 +796,15 @@ impl Session {
                 } else {
                     tracing::warn!(tool = %tool_name, "Tool not found");
                     if let Some(audit) = try_audit_log() {
-                        audit.log(
-                            AuditCategory::ToolExecution,
-                            format!("tool:{}", tool_name),
-                            AuditOutcome::Failure,
-                            None,
-                            Some(json!({ "error": "unknown_tool" })),
-                        ).await;
+                        audit
+                            .log(
+                                AuditCategory::ToolExecution,
+                                format!("tool:{}", tool_name),
+                                AuditOutcome::Failure,
+                                None,
+                                Some(json!({ "error": "unknown_tool" })),
+                            )
+                            .await;
                     }
                     (format!("Error: Unknown tool '{}'", tool_name), false)
                 };
@@ -910,7 +926,10 @@ impl Session {
     ///
     /// Loads messages and parts from OpenCode storage and converts them
     /// into a CodeTether session that can be resumed.
-    pub async fn from_opencode(session_id: &str, storage: &crate::opencode::OpenCodeStorage) -> Result<Self> {
+    pub async fn from_opencode(
+        session_id: &str,
+        storage: &crate::opencode::OpenCodeStorage,
+    ) -> Result<Self> {
         let oc_session = storage.load_session(session_id).await?;
         let oc_messages = storage.load_messages(session_id).await?;
 

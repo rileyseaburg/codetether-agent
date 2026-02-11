@@ -1,0 +1,41 @@
+name: Publish npm (codetether npx wrapper)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    # Only run if an npm token is configured.
+    if: ${{ secrets.NPM_TOKEN != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Set npm package version from git tag
+        working-directory: npm/codetether
+        run: |
+          set -euo pipefail
+          ver="${GITHUB_REF_NAME#v}"
+          npm version "$ver" --no-git-tag-version
+
+      - name: Install dependencies
+        working-directory: npm/codetether
+        run: npm install --omit=dev
+
+      - name: Publish
+        working-directory: npm/codetether
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

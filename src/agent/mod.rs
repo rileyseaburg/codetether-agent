@@ -90,7 +90,11 @@ impl Agent {
                     .info
                     .model
                     .clone()
-                    .unwrap_or_else(|| "gpt-4o".to_string()),
+                    .unwrap_or_else(|| match self.provider.name() {
+                        "zhipuai" | "zai" => "glm-5".to_string(),
+                        "openrouter" => "z-ai/glm-5".to_string(),
+                        _ => "glm-5".to_string(),
+                    }),
                 temperature: self.info.temperature,
                 top_p: self.info.top_p,
                 max_tokens: None,

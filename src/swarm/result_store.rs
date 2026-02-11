@@ -247,10 +247,7 @@ impl ResultStore {
     ) {
         let subtask_id = subtask_id.into();
         let mut subscriptions = self.subscriptions.write().await;
-        subscriptions
-            .entry(subtask_id)
-            .or_default()
-            .push(pattern);
+        subscriptions.entry(subtask_id).or_default().push(pattern);
     }
 
     /// Unregister all subscriptions for a subtask
@@ -317,7 +314,10 @@ pub trait ResultStoreContext {
     ) -> impl std::future::Future<Output = Result<SharedResult>> + Send;
 
     /// Get a result from the shared store
-    fn get_result(&self, key: &str) -> impl std::future::Future<Output = Option<SharedResult>> + Send;
+    fn get_result(
+        &self,
+        key: &str,
+    ) -> impl std::future::Future<Output = Option<SharedResult>> + Send;
 
     /// Get a typed result from the shared store
     fn get_result_typed<T: for<'de> Deserialize<'de>>(
@@ -411,17 +411,35 @@ mod tests {
         let store = ResultStore::new();
 
         store
-            .publish("key-1", "task-1", "value-1", vec!["tag-a".to_string()], None)
+            .publish(
+                "key-1",
+                "task-1",
+                "value-1",
+                vec!["tag-a".to_string()],
+                None,
+            )
             .await
             .unwrap();
 
         store
-            .publish("key-2", "task-2", "value-2", vec!["tag-b".to_string()], None)
+            .publish(
+                "key-2",
+                "task-2",
+                "value-2",
+                vec!["tag-b".to_string()],
+                None,
+            )
             .await
             .unwrap();
 
         store
-            .publish("key-3", "task-1", "value-3", vec!["tag-a".to_string(), "tag-c".to_string()], None)
+            .publish(
+                "key-3",
+                "task-1",
+                "value-3",
+                vec!["tag-a".to_string(), "tag-c".to_string()],
+                None,
+            )
             .await
             .unwrap();
 
@@ -458,7 +476,13 @@ mod tests {
         let mut rx = store.subscribe();
 
         store
-            .publish("notify-key", "task-1", "value", vec!["tag-1".to_string()], None)
+            .publish(
+                "notify-key",
+                "task-1",
+                "value",
+                vec!["tag-1".to_string()],
+                None,
+            )
             .await
             .unwrap();
 
@@ -479,11 +503,29 @@ mod tests {
             tags: vec!["tag-a".to_string()],
         };
 
-        assert!(ResultStore::matches_pattern(&result, &SubscriptionPattern::Exact("test/key".to_string())));
-        assert!(!ResultStore::matches_pattern(&result, &SubscriptionPattern::Exact("other".to_string())));
-        assert!(ResultStore::matches_pattern(&result, &SubscriptionPattern::Prefix("test/".to_string())));
-        assert!(ResultStore::matches_pattern(&result, &SubscriptionPattern::Tag(vec!["tag-a".to_string()])));
-        assert!(ResultStore::matches_pattern(&result, &SubscriptionPattern::Producer("task-1".to_string())));
-        assert!(ResultStore::matches_pattern(&result, &SubscriptionPattern::All));
+        assert!(ResultStore::matches_pattern(
+            &result,
+            &SubscriptionPattern::Exact("test/key".to_string())
+        ));
+        assert!(!ResultStore::matches_pattern(
+            &result,
+            &SubscriptionPattern::Exact("other".to_string())
+        ));
+        assert!(ResultStore::matches_pattern(
+            &result,
+            &SubscriptionPattern::Prefix("test/".to_string())
+        ));
+        assert!(ResultStore::matches_pattern(
+            &result,
+            &SubscriptionPattern::Tag(vec!["tag-a".to_string()])
+        ));
+        assert!(ResultStore::matches_pattern(
+            &result,
+            &SubscriptionPattern::Producer("task-1".to_string())
+        ));
+        assert!(ResultStore::matches_pattern(
+            &result,
+            &SubscriptionPattern::All
+        ));
     }
 }

@@ -70,10 +70,7 @@ pub enum BusMessage {
         message: Option<String>,
     },
     /// A new artifact was produced for a task
-    ArtifactUpdate {
-        task_id: String,
-        artifact: Artifact,
-    },
+    ArtifactUpdate { task_id: String, artifact: Artifact },
     /// A sub-agent published a shared result (replaces raw `ResultStore` publish)
     SharedResult {
         key: String,
@@ -344,7 +341,12 @@ mod tests {
         let mut handle_a = bus.handle("agent-a");
         let mut handle_b = bus.handle("agent-b");
 
-        handle_a.send_to_agent("agent-b", vec![Part::Text { text: "hello".into() }]);
+        handle_a.send_to_agent(
+            "agent-b",
+            vec![Part::Text {
+                text: "hello".into(),
+            }],
+        );
 
         // Both handles receive the broadcast
         let env = handle_b.recv().await.unwrap();

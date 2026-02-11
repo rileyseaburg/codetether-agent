@@ -112,7 +112,7 @@ struct CognitionLatestSnapshot {
     metadata: HashMap<String, serde_json::Value>,
 }
 
-/// Run the A2A worker
+// Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
     let name = args
@@ -277,31 +277,31 @@ fn model_ref_to_provider_model(model: &str) -> String {
 fn provider_preferences_for_tier(model_tier: Option<&str>) -> &'static [&'static str] {
     match model_tier.unwrap_or("balanced") {
         "fast" | "quick" => &[
+            "zai",
             "openai",
             "github-copilot",
             "moonshotai",
-            "zhipuai",
             "openrouter",
             "novita",
             "google",
             "anthropic",
         ],
         "heavy" | "deep" => &[
+            "zai",
             "anthropic",
             "openai",
             "github-copilot",
             "moonshotai",
-            "zhipuai",
             "openrouter",
             "novita",
             "google",
         ],
         _ => &[
+            "zai",
             "openai",
             "github-copilot",
             "anthropic",
             "moonshotai",
-            "zhipuai",
             "openrouter",
             "novita",
             "google",
@@ -315,7 +315,7 @@ fn choose_provider_for_tier<'a>(providers: &'a [&'a str], model_tier: Option<&st
             return found;
         }
     }
-    if let Some(found) = providers.iter().copied().find(|p| *p == "zhipuai") {
+    if let Some(found) = providers.iter().copied().find(|p| *p == "zai") {
         return found;
     }
     providers[0]
@@ -328,30 +328,30 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "anthropic" => "claude-haiku-4-5".to_string(),
             "openai" => "gpt-4o-mini".to_string(),
             "google" => "gemini-2.5-flash".to_string(),
-            "zhipuai" => "glm-4.7".to_string(),
-            "openrouter" => "z-ai/glm-4.7".to_string(),
+            "zhipuai" | "zai" => "glm-5".to_string(),
+            "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
-            _ => "glm-4.7".to_string(),
+            _ => "glm-5".to_string(),
         },
         "heavy" | "deep" => match provider {
             "moonshotai" => "kimi-k2.5".to_string(),
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "o3".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" => "glm-4.7".to_string(),
-            "openrouter" => "z-ai/glm-4.7".to_string(),
+            "zhipuai" | "zai" => "glm-5".to_string(),
+            "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
-            _ => "glm-4.7".to_string(),
+            _ => "glm-5".to_string(),
         },
         _ => match provider {
             "moonshotai" => "kimi-k2.5".to_string(),
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" => "glm-4.7".to_string(),
-            "openrouter" => "z-ai/glm-4.7".to_string(),
+            "zhipuai" | "zai" => "glm-5".to_string(),
+            "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
-            _ => "glm-4.7".to_string(),
+            _ => "glm-5".to_string(),
         },
     }
 }
@@ -811,8 +811,16 @@ async fn fetch_pending_tasks(
                 let bus = bus.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) =
-                        handle_task(&client, &server, &token, &worker_id, &task, auto_approve, &bus).await
+                    if let Err(e) = handle_task(
+                        &client,
+                        &server,
+                        &token,
+                        &worker_id,
+                        &task,
+                        auto_approve,
+                        &bus,
+                    )
+                    .await
                     {
                         tracing::error!("Task {} failed: {}", task_id, e);
                     }
@@ -946,8 +954,16 @@ async fn spawn_task_handler(
             let bus = bus.clone();
 
             tokio::spawn(async move {
-                if let Err(e) =
-                    handle_task(&client, &server, &token, &worker_id, &task, auto_approve, &bus).await
+                if let Err(e) = handle_task(
+                    &client,
+                    &server,
+                    &token,
+                    &worker_id,
+                    &task,
+                    auto_approve,
+                    &bus,
+                )
+                .await
                 {
                     tracing::error!("Task {} failed: {}", task_id, e);
                 }
@@ -1358,9 +1374,7 @@ where
         if let Some(bus) = bus {
             executor = executor.with_bus(Arc::clone(bus));
         }
-        executor
-            .execute(prompt, strategy)
-            .await?
+        executor.execute(prompt, strategy).await?
     };
 
     let final_text = if swarm_result.result.trim().is_empty() {
@@ -1419,6 +1433,7 @@ where
     // Parse model string
     let (provider_name, model_id) = if let Some(ref model_str) = session.metadata.model {
         let (prov, model) = parse_model_string(model_str);
+        let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
         if prov.is_some() {
             (prov.map(|s| s.to_string()), model.to_string())
         } else if providers.contains(&model) {

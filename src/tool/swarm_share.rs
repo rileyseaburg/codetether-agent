@@ -91,7 +91,9 @@ impl Tool for SwarmShareTool {
 
         match p.action.as_str() {
             "publish" => {
-                let key = p.key.ok_or_else(|| anyhow::anyhow!("key required for publish"))?;
+                let key = p
+                    .key
+                    .ok_or_else(|| anyhow::anyhow!("key required for publish"))?;
                 let value = p
                     .value
                     .ok_or_else(|| anyhow::anyhow!("value required for publish"))?;
@@ -108,7 +110,9 @@ impl Tool for SwarmShareTool {
                 )))
             }
             "get" => {
-                let key = p.key.ok_or_else(|| anyhow::anyhow!("key required for get"))?;
+                let key = p
+                    .key
+                    .ok_or_else(|| anyhow::anyhow!("key required for get"))?;
 
                 match self.store.get(&key).await {
                     Some(result) => {

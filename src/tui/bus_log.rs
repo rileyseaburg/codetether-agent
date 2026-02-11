@@ -73,7 +73,10 @@ impl BusLogEntry {
                 (
                     "MSG".to_string(),
                     format!("{from} → {to}: {preview}"),
-                    format!("From: {from}\nTo: {to}\nParts ({}):\n{text_preview}", parts.len()),
+                    format!(
+                        "From: {from}\nTo: {to}\nParts ({}):\n{text_preview}",
+                        parts.len()
+                    ),
                     Color::Cyan,
                 )
             }
@@ -337,11 +340,7 @@ pub fn render_bus_log(f: &mut Frame, state: &mut BusLogState, area: Rect) {
             Style::default().fg(Color::Cyan),
         ),
         Span::styled(
-            format!(
-                "{}/{} messages",
-                state.visible_count(),
-                state.total_count()
-            ),
+            format!("{}/{} messages", state.visible_count(), state.total_count()),
             Style::default().fg(Color::White),
         ),
         Span::styled(filter_display, Style::default().fg(Color::Yellow)),

@@ -177,7 +177,7 @@ async fn main() -> anyhow::Result<()> {
                 max_subagents: args.max_subagents,
                 max_steps_per_subagent: args.max_steps,
                 subagent_timeout_secs: args.timeout,
-                model: args.model.clone(),
+                model: args.model.clone().or_else(|| Some("zai/glm-5".to_string())),
                 ..Default::default()
             });
 
@@ -259,20 +259,19 @@ async fn main() -> anyhow::Result<()> {
 
             // Try to use LLM-powered RLM if provider is available
             let registry = ProviderRegistry::from_vault().await.ok();
-            let provider_opt = registry
-                .as_ref()
-                .and_then(|r| r.get("moonshotai").or_else(|| r.get("openai")));
+            let provider_opt = registry.as_ref().and_then(|r| {
+                r.get("zai")
+                    .or_else(|| r.get("moonshotai"))
+                    .or_else(|| r.get("openai"))
+            });
 
             if let Some(provider) = provider_opt {
                 // Use LLM-powered RLM with llm_query() support
                 tracing::info!("Using LLM-powered RLM analysis");
 
-                let mut executor = rlm::RlmExecutor::new(
-                    content.clone(),
-                    provider,
-                    "kimi-k2-0711-preview".to_string(), // Use Kimi K2.5
-                )
-                .with_verbose(args.verbose);
+                let mut executor =
+                    rlm::RlmExecutor::new(content.clone(), provider, "glm-5".to_string())
+                        .with_verbose(args.verbose);
 
                 let result = executor.analyze(&args.query).await?;
 
@@ -459,13 +458,12 @@ async fn main() -> anyhow::Result<()> {
 
                     let registry = ProviderRegistry::from_vault().await?;
                     let provider = registry
-                        .get("moonshotai")
+                        .get("zai")
+                        .or_else(|| registry.get("moonshotai"))
                         .or_else(|| registry.get("openai"))
                         .ok_or_else(|| anyhow::anyhow!("No provider available in Vault"))?;
 
-                    let model = args
-                        .model
-                        .unwrap_or_else(|| "kimi-k2-0711-preview".to_string());
+                    let model = args.model.unwrap_or_else(|| "glm-5".to_string());
                     let config = ralph::RalphConfig {
                         prd_path: args.prd.to_string_lossy().to_string(),
                         max_iterations: args.max_iterations,

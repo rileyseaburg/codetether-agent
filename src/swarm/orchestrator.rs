@@ -58,6 +58,7 @@ impl Orchestrator {
 
         let (provider, model) = if let Some(ref model_str) = model_str {
             let (prov, mod_id) = parse_model_string(model_str);
+            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
             let provider = prov
                 .filter(|p| provider_list.contains(p))
                 .unwrap_or(provider_list[0])
@@ -65,11 +66,11 @@ impl Orchestrator {
             let model = mod_id.to_string();
             (provider, model)
         } else {
-            // Default to novita (fast, cheap) for swarm, then moonshotai, otherwise first provider
-            let provider = if provider_list.contains(&"novita") {
-                "novita".to_string()
-            } else if provider_list.contains(&"moonshotai") {
-                "moonshotai".to_string()
+            // Default to GLM-5 via Z.AI for swarm.
+            let provider = if provider_list.contains(&"zai") {
+                "zai".to_string()
+            } else if provider_list.contains(&"openrouter") {
+                "openrouter".to_string()
             } else {
                 provider_list[0].to_string()
             };
@@ -98,10 +99,11 @@ impl Orchestrator {
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
-            "openrouter" => "z-ai/glm-4.7".to_string(),
+            "zhipuai" | "zai" => "glm-5".to_string(),
+            "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
-            _ => "kimi-k2.5".to_string(),
+            _ => "glm-5".to_string(),
         }
     }
 
@@ -126,7 +128,7 @@ impl Orchestrator {
             .get(&self.provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", self.provider))?;
 
-        let temperature = if self.model.contains("kimi-k2") {
+        let temperature = if self.model.contains("kimi-k2") || self.model.contains("glm-") {
             1.0
         } else {
             0.7

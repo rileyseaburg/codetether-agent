@@ -110,7 +110,9 @@ impl SigningKey {
             }
             _ => {
                 let mut rng = rand::rng();
-                let key: Vec<u8> = (0..32).map(|_| rand::RngExt::random::<u8>(&mut rng)).collect();
+                let key: Vec<u8> = (0..32)
+                    .map(|_| rand::RngExt::random::<u8>(&mut rng))
+                    .collect();
                 tracing::warn!(
                     "No CODETETHER_PLUGIN_SIGNING_KEY set — generated ephemeral key. \
                      Plugin signatures will not persist across restarts."

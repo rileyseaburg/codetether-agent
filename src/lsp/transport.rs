@@ -9,11 +9,11 @@
 
 use super::types::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use anyhow::Result;
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
-use tokio::sync::{mpsc, oneshot, RwLock};
+use tokio::sync::{RwLock, mpsc, oneshot};
 use tracing::{debug, error, trace, warn};
 
 /// LSP Transport for communicating with language servers
@@ -40,8 +40,14 @@ impl LspTransport {
             .stderr(std::process::Stdio::inherit())
             .spawn()?;
 
-        let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("No stdout"))?;
-        let mut stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("No stdin"))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No stdout"))?;
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No stdin"))?;
 
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
         let pending: Arc<RwLock<std::collections::HashMap<i64, oneshot::Sender<JsonRpcResponse>>>> =
@@ -161,7 +167,11 @@ impl LspTransport {
     }
 
     /// Send a request and wait for response
-    pub async fn request(&self, method: &str, params: Option<serde_json::Value>) -> Result<JsonRpcResponse> {
+    pub async fn request(
+        &self,
+        method: &str,
+        params: Option<serde_json::Value>,
+    ) -> Result<JsonRpcResponse> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
         let request = JsonRpcRequest::new(id, method, params);
 
@@ -172,13 +182,10 @@ impl LspTransport {
         self.tx.send(json).await?;
 
         // Wait for response with timeout
-        let response = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            rx,
-        )
-        .await
-        .map_err(|_| anyhow::anyhow!("LSP request timeout for method: {}", method))?
-        .map_err(|_| anyhow::anyhow!("LSP response channel closed"))?;
+        let response = tokio::time::timeout(std::time::Duration::from_secs(30), rx)
+            .await
+            .map_err(|_| anyhow::anyhow!("LSP request timeout for method: {}", method))?
+            .map_err(|_| anyhow::anyhow!("LSP response channel closed"))?;
 
         Ok(response)
     }
@@ -198,7 +205,8 @@ impl LspTransport {
 
     /// Mark the server as initialized
     pub fn set_initialized(&self, value: bool) {
-        self.initialized.store(value, std::sync::atomic::Ordering::SeqCst);
+        self.initialized
+            .store(value, std::sync::atomic::Ordering::SeqCst);
     }
 }
 

@@ -1,3 +1,8 @@
+// Jenkins Job Configuration Requirements:
+// - Multibranch Pipeline: Add "Discover tags" behavior in Branch Sources → Git → Behaviors
+// - Or configure GitHub webhook to trigger builds on tag push events
+// - The "Package & Release" and "Publish to crates.io" stages only run when building tags
+
 pipeline {
     agent any
 

@@ -1,21 +1,25 @@
 //! Advanced Edit Tool with multiple replacement strategies (port of opencode edit.ts)
 
+use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use tokio::fs;
-use super::{Tool, ToolResult};
 
 pub struct AdvancedEditTool;
 
 impl Default for AdvancedEditTool {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AdvancedEditTool {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 #[derive(Deserialize)]
@@ -32,17 +36,27 @@ struct Params {
 
 /// Levenshtein distance for fuzzy matching
 fn levenshtein(a: &str, b: &str) -> usize {
-    if a.is_empty() { return b.len(); }
-    if b.is_empty() { return a.len(); }
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
     let mut matrix = vec![vec![0usize; b.len() + 1]; a.len() + 1];
-    for i in 0..=a.len() { matrix[i][0] = i; }
-    for j in 0..=b.len() { matrix[0][j] = j; }
+    for i in 0..=a.len() {
+        matrix[i][0] = i;
+    }
+    for j in 0..=b.len() {
+        matrix[0][j] = j;
+    }
     for i in 1..=a.len() {
         for j in 1..=b.len() {
-            let cost = if a[i-1] == b[j-1] { 0 } else { 1 };
-            matrix[i][j] = (matrix[i-1][j] + 1).min(matrix[i][j-1] + 1).min(matrix[i-1][j-1] + cost);
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            matrix[i][j] = (matrix[i - 1][j] + 1)
+                .min(matrix[i][j - 1] + 1)
+                .min(matrix[i - 1][j - 1] + cost);
         }
     }
     matrix[a.len()][b.len()]
@@ -52,14 +66,20 @@ type Replacer = fn(&str, &str) -> Vec<String>;
 
 /// Simple exact match
 fn simple_replacer(content: &str, find: &str) -> Vec<String> {
-    if content.contains(find) { vec![find.to_string()] } else { vec![] }
+    if content.contains(find) {
+        vec![find.to_string()]
+    } else {
+        vec![]
+    }
 }
 
 /// Match with trimmed lines
 fn line_trimmed_replacer(content: &str, find: &str) -> Vec<String> {
     let orig_lines: Vec<&str> = content.lines().collect();
     let mut search_lines: Vec<&str> = find.lines().collect();
-    if search_lines.last() == Some(&"") { search_lines.pop(); }
+    if search_lines.last() == Some(&"") {
+        search_lines.pop();
+    }
     let mut results = vec![];
     for i in 0..=orig_lines.len().saturating_sub(search_lines.len()) {
         let mut matches = true;
@@ -81,13 +101,19 @@ fn line_trimmed_replacer(content: &str, find: &str) -> Vec<String> {
 fn block_anchor_replacer(content: &str, find: &str) -> Vec<String> {
     let orig_lines: Vec<&str> = content.lines().collect();
     let mut search_lines: Vec<&str> = find.lines().collect();
-    if search_lines.len() < 3 { return vec![]; }
-    if search_lines.last() == Some(&"") { search_lines.pop(); }
+    if search_lines.len() < 3 {
+        return vec![];
+    }
+    if search_lines.last() == Some(&"") {
+        search_lines.pop();
+    }
     let first = search_lines[0].trim();
     let last = search_lines.last().unwrap().trim();
     let mut candidates = vec![];
     for i in 0..orig_lines.len() {
-        if orig_lines[i].trim() != first { continue; }
+        if orig_lines[i].trim() != first {
+            continue;
+        }
         for j in (i + 2)..orig_lines.len() {
             if orig_lines[j].trim() == last {
                 candidates.push((i, j));
@@ -95,7 +121,9 @@ fn block_anchor_replacer(content: &str, find: &str) -> Vec<String> {
             }
         }
     }
-    if candidates.is_empty() { return vec![]; }
+    if candidates.is_empty() {
+        return vec![];
+    }
     if candidates.len() == 1 {
         let (start, end) = candidates[0];
         return vec![orig_lines[start..=end].join("\n")];
@@ -163,9 +191,25 @@ fn indentation_flexible_replacer(content: &str, find: &str) -> Vec<String> {
     let remove_indent = |s: &str| {
         let lines: Vec<&str> = s.lines().collect();
         let non_empty: Vec<_> = lines.iter().filter(|l| !l.trim().is_empty()).collect();
-        if non_empty.is_empty() { return s.to_string(); }
-        let min_indent = non_empty.iter().map(|l| l.len() - l.trim_start().len()).min().unwrap_or(0);
-        lines.iter().map(|l| if l.len() >= min_indent { &l[min_indent..] } else { *l }).collect::<Vec<_>>().join("\n")
+        if non_empty.is_empty() {
+            return s.to_string();
+        }
+        let min_indent = non_empty
+            .iter()
+            .map(|l| l.len() - l.trim_start().len())
+            .min()
+            .unwrap_or(0);
+        lines
+            .iter()
+            .map(|l| {
+                if l.len() >= min_indent {
+                    &l[min_indent..]
+                } else {
+                    *l
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     };
     let norm_find = remove_indent(find);
     let lines: Vec<&str> = content.lines().collect();
@@ -183,7 +227,9 @@ fn indentation_flexible_replacer(content: &str, find: &str) -> Vec<String> {
 /// Trimmed boundary matching
 fn trimmed_boundary_replacer(content: &str, find: &str) -> Vec<String> {
     let trimmed = find.trim();
-    if trimmed == find { return vec![]; }
+    if trimmed == find {
+        return vec![];
+    }
     if content.contains(trimmed) {
         return vec![trimmed.to_string()];
     }
@@ -206,7 +252,9 @@ fn replace(content: &str, old: &str, new: &str, replace_all: bool) -> Result<Str
     for replacer in replacers {
         let matches = replacer(content, old);
         for search in matches {
-            if !content.contains(&search) { continue; }
+            if !content.contains(&search) {
+                continue;
+            }
             if replace_all {
                 return Ok(content.replace(&search, new));
             }
@@ -216,7 +264,12 @@ fn replace(content: &str, old: &str, new: &str, replace_all: bool) -> Result<Str
                 continue; // Multiple matches, need more context
             }
             if let Some(idx) = first {
-                return Ok(format!("{}{}{}", &content[..idx], new, &content[idx + search.len()..]));
+                return Ok(format!(
+                    "{}{}{}",
+                    &content[..idx],
+                    new,
+                    &content[idx + search.len()..]
+                ));
             }
         }
     }
@@ -225,8 +278,12 @@ fn replace(content: &str, old: &str, new: &str, replace_all: bool) -> Result<Str
 
 #[async_trait]
 impl Tool for AdvancedEditTool {
-    fn id(&self) -> &str { "edit" }
-    fn name(&self) -> &str { "Edit" }
+    fn id(&self) -> &str {
+        "edit"
+    }
+    fn name(&self) -> &str {
+        "Edit"
+    }
     fn description(&self) -> &str {
         "Edit a file by replacing oldString with newString. Uses multiple matching strategies \
          including exact match, line-trimmed, block anchor, whitespace normalized, and \
@@ -249,27 +306,42 @@ impl Tool for AdvancedEditTool {
         let p: Params = serde_json::from_value(params).context("Invalid parameters")?;
         let path = PathBuf::from(&p.file_path);
         if !path.exists() {
-            return Ok(ToolResult::error(format!("File not found: {}", p.file_path)));
+            return Ok(ToolResult::error(format!(
+                "File not found: {}",
+                p.file_path
+            )));
         }
         if p.old_string == p.new_string {
-            return Ok(ToolResult::error("oldString and newString must be different"));
+            return Ok(ToolResult::error(
+                "oldString and newString must be different",
+            ));
         }
         // Creating new file
         if p.old_string.is_empty() {
-            fs::write(&path, &p.new_string).await.context("Failed to write file")?;
-            return Ok(ToolResult::success(format!("Created file: {}", p.file_path)));
+            fs::write(&path, &p.new_string)
+                .await
+                .context("Failed to write file")?;
+            return Ok(ToolResult::success(format!(
+                "Created file: {}",
+                p.file_path
+            )));
         }
-        let content = fs::read_to_string(&path).await.context("Failed to read file")?;
+        let content = fs::read_to_string(&path)
+            .await
+            .context("Failed to read file")?;
         let new_content = match replace(&content, &p.old_string, &p.new_string, p.replace_all) {
             Ok(c) => c,
             Err(e) => return Ok(ToolResult::error(e.to_string())),
         };
-        fs::write(&path, &new_content).await.context("Failed to write file")?;
+        fs::write(&path, &new_content)
+            .await
+            .context("Failed to write file")?;
         let old_lines = p.old_string.lines().count();
         let new_lines = p.new_string.lines().count();
         Ok(ToolResult::success(format!(
             "Edit applied: {} line(s) replaced with {} line(s) in {}",
             old_lines, new_lines, p.file_path
-        )).with_metadata("file", json!(p.file_path)))
+        ))
+        .with_metadata("file", json!(p.file_path)))
     }
 }

@@ -53,7 +53,7 @@ impl ImageTool {
     /// Encode image data as base64 data URL
     fn encode_as_data_url(data: &[u8], mime_type: &str) -> String {
         let base64 = STANDARD.encode(data);
-        format!("data:{};base64,{}" , mime_type, base64)
+        format!("data:{};base64,{}", mime_type, base64)
     }
 }
 
@@ -93,19 +93,19 @@ impl Tool for ImageTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let input: ImageToolInput = serde_json::from_value(args)?;
-        
+
         // Check if path is a URL
         let data = if input.path.starts_with("http://") || input.path.starts_with("https://") {
             // Fetch image from URL
             let response = reqwest::get(&input.path).await?;
-            
+
             if !response.status().is_success() {
                 return Ok(ToolResult::error(format!(
                     "Failed to fetch image from URL: HTTP {}",
                     response.status()
                 )));
             }
-            
+
             // Try to get MIME type from response headers
             let mime_type = response
                 .headers()
@@ -113,10 +113,10 @@ impl Tool for ImageTool {
                 .and_then(|v| v.to_str().ok())
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| Self::detect_mime_type(&input.path).to_string());
-            
+
             let bytes = response.bytes().await?;
             let data_url = Self::encode_as_data_url(&bytes, &mime_type);
-            
+
             serde_json::json!({
                 "data_url": data_url,
                 "mime_type": mime_type,
@@ -127,18 +127,18 @@ impl Tool for ImageTool {
         } else {
             // Load from file path
             let path = std::path::Path::new(&input.path);
-            
+
             if !path.exists() {
                 return Ok(ToolResult::error(format!(
                     "Image file not found: {}",
                     input.path
                 )));
             }
-            
+
             let data = tokio::fs::read(path).await?;
             let mime_type = Self::detect_mime_type(&input.path);
             let data_url = Self::encode_as_data_url(&data, mime_type);
-            
+
             serde_json::json!({
                 "data_url": data_url,
                 "mime_type": mime_type,
@@ -147,7 +147,7 @@ impl Tool for ImageTool {
                 "detail": input.detail.unwrap_or_else(|| "auto".to_string())
             })
         };
-        
+
         Ok(ToolResult::success(serde_json::to_string_pretty(&data)?))
     }
 }
