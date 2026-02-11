@@ -436,55 +436,55 @@ impl BedrockProvider {
             "llama-3.2-1b" | "llama3.2-1b" => "us.meta.llama3-2-1b-instruct-v1:0",
             "llama-3.1-70b" | "llama3.1-70b" => "us.meta.llama3-1-70b-instruct-v1:0",
             "llama-3.1-8b" | "llama3.1-8b" => "us.meta.llama3-1-8b-instruct-v1:0",
-            "llama-3-70b" | "llama3-70b" => "us.meta.llama3-70b-instruct-v1:0",
-            "llama-3-8b" | "llama3-8b" => "us.meta.llama3-8b-instruct-v1:0",
+            "llama-3-70b" | "llama3-70b" => "meta.llama3-70b-instruct-v1:0",
+            "llama-3-8b" | "llama3-8b" => "meta.llama3-8b-instruct-v1:0",
 
-            // --- Mistral ---
-            "mistral-large-3" | "mistral-large" => "us.mistral.mistral-large-3-675b-instruct",
-            "mistral-large-2402" => "us.mistral.mistral-large-2402-v1:0",
-            "mistral-small" => "us.mistral.mistral-small-2402-v1:0",
-            "mixtral-8x7b" => "us.mistral.mixtral-8x7b-instruct-v0:1",
+            // --- Mistral (mix of ON_DEMAND and INFERENCE_PROFILE) ---
+            "mistral-large-3" | "mistral-large" => "mistral.mistral-large-3-675b-instruct",
+            "mistral-large-2402" => "mistral.mistral-large-2402-v1:0",
+            "mistral-small" => "mistral.mistral-small-2402-v1:0",
+            "mixtral-8x7b" => "mistral.mixtral-8x7b-instruct-v0:1",
             "pixtral-large" => "us.mistral.pixtral-large-2502-v1:0",
-            "magistral-small" => "us.mistral.magistral-small-2509",
+            "magistral-small" => "mistral.magistral-small-2509",
 
             // --- DeepSeek ---
             "deepseek-r1" => "us.deepseek.r1-v1:0",
-            "deepseek-v3" | "deepseek-v3.2" => "us.deepseek.v3.2",
+            "deepseek-v3" | "deepseek-v3.2" => "deepseek.v3.2",
 
-            // --- Cohere ---
-            "command-r" => "us.cohere.command-r-v1:0",
-            "command-r-plus" => "us.cohere.command-r-plus-v1:0",
+            // --- Cohere (ON_DEMAND only, no us. prefix) ---
+            "command-r" => "cohere.command-r-v1:0",
+            "command-r-plus" => "cohere.command-r-plus-v1:0",
 
-            // --- Qwen ---
-            "qwen3-32b" => "us.qwen.qwen3-32b-v1:0",
-            "qwen3-coder" | "qwen3-coder-next" => "us.qwen.qwen3-coder-next",
-            "qwen3-coder-30b" => "us.qwen.qwen3-coder-30b-a3b-v1:0",
+            // --- Qwen (ON_DEMAND only, no us. prefix) ---
+            "qwen3-32b" => "qwen.qwen3-32b-v1:0",
+            "qwen3-coder" | "qwen3-coder-next" => "qwen.qwen3-coder-next",
+            "qwen3-coder-30b" => "qwen.qwen3-coder-30b-a3b-v1:0",
 
-            // --- Google Gemma ---
-            "gemma-3-27b" => "us.google.gemma-3-27b-it",
-            "gemma-3-12b" => "us.google.gemma-3-12b-it",
-            "gemma-3-4b" => "us.google.gemma-3-4b-it",
+            // --- Google Gemma (ON_DEMAND only, no us. prefix) ---
+            "gemma-3-27b" => "google.gemma-3-27b-it",
+            "gemma-3-12b" => "google.gemma-3-12b-it",
+            "gemma-3-4b" => "google.gemma-3-4b-it",
 
-            // --- Moonshot / Kimi ---
-            "kimi-k2" | "kimi-k2-thinking" => "us.moonshot.kimi-k2-thinking",
-            "kimi-k2.5" => "us.moonshotai.kimi-k2.5",
+            // --- Moonshot / Kimi (ON_DEMAND only, no us. prefix) ---
+            "kimi-k2" | "kimi-k2-thinking" => "moonshot.kimi-k2-thinking",
+            "kimi-k2.5" => "moonshotai.kimi-k2.5",
 
-            // --- AI21 Jamba ---
-            "jamba-1.5-large" => "us.ai21.jamba-1-5-large-v1:0",
-            "jamba-1.5-mini" => "us.ai21.jamba-1-5-mini-v1:0",
+            // --- AI21 Jamba (ON_DEMAND only, no us. prefix) ---
+            "jamba-1.5-large" => "ai21.jamba-1-5-large-v1:0",
+            "jamba-1.5-mini" => "ai21.jamba-1-5-mini-v1:0",
 
-            // --- MiniMax ---
-            "minimax-m2" => "us.minimax.minimax-m2",
-            "minimax-m2.1" => "us.minimax.minimax-m2.1",
+            // --- MiniMax (ON_DEMAND only, no us. prefix) ---
+            "minimax-m2" => "minimax.minimax-m2",
+            "minimax-m2.1" => "minimax.minimax-m2.1",
 
-            // --- NVIDIA ---
-            "nemotron-nano-30b" => "us.nvidia.nemotron-nano-3-30b",
-            "nemotron-nano-12b" => "us.nvidia.nemotron-nano-12b-v2",
-            "nemotron-nano-9b" => "us.nvidia.nemotron-nano-9b-v2",
+            // --- NVIDIA (ON_DEMAND only, no us. prefix) ---
+            "nemotron-nano-30b" => "nvidia.nemotron-nano-3-30b",
+            "nemotron-nano-12b" => "nvidia.nemotron-nano-12b-v2",
+            "nemotron-nano-9b" => "nvidia.nemotron-nano-9b-v2",
 
-            // --- Z.AI / GLM ---
-            "glm-4.7" => "us.zai.glm-4.7",
-            "glm-4.7-flash" => "us.zai.glm-4.7-flash",
+            // --- Z.AI / GLM (ON_DEMAND only, no us. prefix) ---
+            "glm-4.7" => "zai.glm-4.7",
+            "glm-4.7-flash" => "zai.glm-4.7-flash",
 
             // Pass through full model IDs unchanged
             other => other,
@@ -556,11 +556,15 @@ impl BedrockProvider {
                                 .unwrap_or(false);
                             let vision = input_modalities.contains(&"IMAGE");
 
-                            // Non-Amazon models need us. cross-region prefix
+                            // Models with INFERENCE_PROFILE support use cross-region
+                            // us. prefix; ON_DEMAND-only models use bare model IDs.
+                            // Amazon models never get the prefix.
                             let actual_id = if model_id.starts_with("amazon.") {
                                 model_id.to_string()
-                            } else {
+                            } else if inference_types.contains(&"INFERENCE_PROFILE") {
                                 format!("us.{}", model_id)
+                            } else {
+                                model_id.to_string()
                             };
 
                             let display_name = format!("{} (Bedrock)", model_name);
