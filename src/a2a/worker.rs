@@ -230,6 +230,9 @@ enum AutoApprove {
     None,
 }
 
+/// Default A2A server URL when none is configured
+pub const DEFAULT_A2A_SERVER_URL: &str = "https://api.codetether.run";
+
 /// Capabilities of the codetether-agent worker
 const WORKER_CAPABILITIES: &[&str] = &["ralph", "swarm", "rlm", "a2a", "mcp"];
 
@@ -1685,6 +1688,7 @@ fn create_filtered_registry(
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
         registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
         registry.register(Arc::new(undo::UndoTool));
+        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
     }
 
     registry.register(Arc::new(invalid::InvalidTool::new()));
