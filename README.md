@@ -4,11 +4,21 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
-A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
+A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
 
-## v1.1.0 — Security-First Release
+## v1.1.6-alpha-1 — Agent Bus & gRPC Transport
 
-This release implements four major security features, making CodeTether a production-grade runtime with mandatory security controls:
+This release adds the inter-agent communication backbone — a broadcast-based in-process message bus and a gRPC transport layer implementing the full A2A protocol, enabling high-frequency agent-to-agent communication both locally and across the network.
+
+- **Agent Message Bus** — Central `AgentBus` with topic-based pub/sub routing (`agent.{id}`, `task.{id}`, `swarm.{id}`, `broadcast`). Every local agent gets a zero-copy `BusHandle` for send/receive. Supports task updates, artifact sharing, tool dispatch, heartbeats, and free-form inter-agent messaging.
+- **Agent Registry** — `AgentRegistry` tracks connected agents via `AgentCard`. Ephemeral card factory for short-lived sub-agents with `bus://local/{name}` URLs.
+- **gRPC Transport (A2A Protocol)** — Full tonic-based gRPC server implementing all 9 A2A RPCs: `SendMessage`, `SendStreamingMessage`, `GetTask`, `CancelTask`, `TaskSubscription`, push notification config CRUD, and `GetAgentCard`. Shares state with JSON-RPC via `GrpcTaskStore`.
+- **Proto-Parity A2A Types** — Complete rewrite of `a2a/types.rs` with 30+ types matching the A2A protocol spec: `SecurityScheme` (5 variants), `AgentInterface`, `AgentExtension`, `AgentCardSignature`, `OAuthFlows`, `SecurityRequirement`, and more.
+- **Worker as A2A Peer** — Workers create an `AgentBus` on startup, announce readiness, and thread the bus through the full task pipeline into `SwarmExecutor`. Sub-agents communicate via the bus instead of HTTP polling.
+- **Dual Transport Server** — `codetether serve` now runs both Axum (JSON-RPC) and tonic (gRPC) simultaneously. gRPC port configurable via `CODETETHER_GRPC_PORT` (default: `50051`).
+- **Swarm ↔ Bus Integration** — `SwarmExecutor` accepts an optional `AgentBus` via `.with_bus()`. Swarm events (started, stage complete, subtask updates, errors, completion) are emitted on the bus alongside the TUI event channel.
+
+### v1.1.0 — Security-First Release
 
 - **Mandatory Authentication** — Bearer token auth middleware that **cannot be disabled**. Auto-generates HMAC-SHA256 tokens if `CODETETHER_AUTH_TOKEN` is not set. Only `/health` is exempt.
 - **System-Wide Audit Trail** — Every API call, tool execution, and session event is logged to an append-only JSON Lines file. Queryable via new `/v1/audit/events` and `/v1/audit/query` endpoints.
@@ -254,39 +264,91 @@ All keys stored in Vault at `secret/codetether/providers/<name>`.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   CodeTether Platform                   │
-│                  (A2A Server at api.codetether.run)     │
-└────────────────────────┬────────────────────────────────┘
-                         │ SSE/JSON-RPC
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                   codetether-agent                      │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
-│   │ A2A     │  │ Agent   │  │ Tool    │  │ Provider│  │
-│   │ Worker  │  │ System  │  │ System  │  │ Layer   │  │
-│   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  │
-│        │            │            │            │        │
-│        └────────────┴────────────┴────────────┘        │
-│                          │                             │
-│   ┌──────────┐  ┌────────┴────────┐  ┌──────────────┐  │
-│   │ Auth     │  │ HashiCorp Vault │  │ Audit Log    │  │
-│   │ (Bearer) │  │ (API Keys)      │  │ (JSON Lines) │  │
-│   └──────────┘  └─────────────────┘  └──────────────┘  │
-│   ┌──────────┐  ┌─────────────────┐                    │
-│   │ Sandbox  │  │ K8s Manager     │                    │
-│   │ (Ed25519)│  │ (Self-Deploy)   │                    │
-│   └──────────┘  └─────────────────┘                    │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    CodeTether Platform                       │
+│                 (A2A Server at api.codetether.run)           │
+└───────────────┬───────────────────────┬─────────────────────┘
+                │ SSE/JSON-RPC          │ gRPC (A2A proto)
+                ▼                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    codetether-agent                          │
+│                                                             │
+│   ┌───────────────────────────────────────────────────┐     │
+│   │              Agent Message Bus                     │     │
+│   │   (broadcast pub/sub, topic routing, BusHandle)    │     │
+│   └──┬──────────┬──────────┬──────────┬───────────────┘     │
+│      │          │          │          │                      │
+│   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐             │
+│   │ A2A  │  │ Swarm│  │ Tool │  │  Provider  │             │
+│   │Worker│  │ Exec │  │System│  │   Layer    │             │
+│   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘             │
+│      │         │         │         │                        │
+│   ┌──┴─────────┴─────────┴─────────┴──┐                    │
+│   │         Agent Registry             │                    │
+│   │  (AgentCard, ephemeral sub-agents) │                    │
+│   └───────────────────────────────────┘                    │
+│                                                             │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│   │JSON-RPC  │  │ gRPC     │  │ Auth     │  │ Audit    │  │
+│   │(Axum)    │  │ (Tonic)  │  │ (Bearer) │  │ (JSONL)  │  │
+│   │:4096     │  │ :50051   │  │ Mandatory│  │ Append   │  │
+│   └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
+│   ┌──────────┐  ┌──────────┐  ┌──────────────────────┐    │
+│   │ Sandbox  │  │ K8s Mgr  │  │  HashiCorp Vault     │    │
+│   │ (Ed25519)│  │ (Deploy) │  │  (API Keys)          │    │
+│   └──────────┘  └──────────┘  └──────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## A2A Protocol
 
-Built for Agent-to-Agent communication:
+Built for Agent-to-Agent communication with dual transports and a shared in-process bus:
 
-- **Worker mode** — Connect to the CodeTether platform and process tasks
-- **Server mode** — Accept tasks from other agents (`codetether serve`)
-- **Cognition APIs** — Perpetual persona swarms with SSE event stream, spawn/reap control, and lineage graph
+- **Worker mode** — Connect to the CodeTether platform and process tasks. Creates a local `AgentBus` for sub-agent coordination.
+- **Server mode** — Accept tasks from other agents (`codetether serve`) via JSON-RPC (Axum) and gRPC (Tonic) simultaneously.
+- **Bus mode** — In-process pub/sub for zero-latency communication between local agents, swarm sub-agents, and tool dispatch.
+- **Cognition APIs** — Perpetual persona swarms with SSE event stream, spawn/reap control, and lineage graph.
+
+### Transports
+
+| Transport | Port | Use Case |
+|-----------|------|----------|
+| JSON-RPC (Axum) | `4096` (default) | REST API, SSE streams, `/.well-known/agent.json` |
+| gRPC (Tonic) | `50051` (default) | High-frequency A2A protocol RPCs, streaming |
+| In-Process Bus | — | Local sub-agents, swarm coordination, tool dispatch |
+
+### gRPC RPCs (A2A Protocol)
+
+| RPC | Description |
+|-----|-------------|
+| `SendMessage` | Submit a task/message to the agent |
+| `SendStreamingMessage` | Submit with server-streaming status updates |
+| `GetTask` | Retrieve task by ID |
+| `CancelTask` | Cancel a running task |
+| `TaskSubscription` | Subscribe to task status updates (server-stream) |
+| `CreateTaskPushNotificationConfig` | Register push notification endpoint |
+| `GetTaskPushNotificationConfig` | Get push notification config |
+| `ListTaskPushNotificationConfig` | List all push configs for a task |
+| `DeleteTaskPushNotificationConfig` | Remove a push notification config |
+| `GetAgentCard` | Retrieve the agent's capability card |
+
+### Agent Bus Topics
+
+| Topic Pattern | Semantics |
+|---------------|-----------|
+| `agent.{id}` | Messages *to* a specific agent |
+| `agent.{id}.events` | Events *from* a specific agent |
+| `task.{id}` | All updates for a task |
+| `swarm.{id}` | Swarm-level coordination |
+| `broadcast` | Global announcements |
+| `results.{key}` | Shared result publication |
+| `tools.{name}` | Tool-specific channels |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CODETETHER_GRPC_PORT` | `50051` | gRPC server port (used alongside Axum HTTP) |
 
 ### AgentCard
 
@@ -296,7 +358,8 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
 {
   "name": "CodeTether Agent",
   "description": "A2A-native AI coding agent",
-  "version": "1.1.0",
+  "version": "1.1.6-alpha-1",
+  "preferred_transport": "GRPC",
   "skills": [
     { "id": "code-generation", "name": "Code Generation" },
     { "id": "code-review", "name": "Code Review" },
