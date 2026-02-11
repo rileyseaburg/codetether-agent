@@ -12,6 +12,7 @@ pub mod edit;
 pub mod file;
 pub mod invalid;
 pub mod lsp;
+pub mod mcp_bridge;
 pub mod multiedit;
 pub mod patch;
 pub mod plan;
@@ -212,6 +213,7 @@ impl ToolRegistry {
         registry.register(Arc::new(podcast::PodcastTool::new()));
         registry.register(Arc::new(youtube::YouTubeTool::new()));
         registry.register(Arc::new(avatar::AvatarTool::new()));
+        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
 
@@ -251,6 +253,7 @@ impl ToolRegistry {
         registry.register(Arc::new(podcast::PodcastTool::new()));
         registry.register(Arc::new(youtube::YouTubeTool::new()));
         registry.register(Arc::new(avatar::AvatarTool::new()));
+        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
 
