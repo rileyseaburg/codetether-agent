@@ -115,6 +115,7 @@ codetether ralph run --prd prd.json      # Autonomous PRD-driven development
 codetether ralph create-prd --feature X  # Generate a PRD template
 codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
 codetether worker --server URL           # A2A worker mode
+codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn real A2A agent with auto-discovery
 codetether config --show                 # Show config
 ```
 
@@ -307,6 +308,7 @@ Built for Agent-to-Agent communication with dual transports and a shared in-proc
 
 - **Worker mode** — Connect to the CodeTether platform and process tasks. Creates a local `AgentBus` for sub-agent coordination.
 - **Server mode** — Accept tasks from other agents (`codetether serve`) via JSON-RPC (Axum) and gRPC (Tonic) simultaneously.
+- **Spawn mode** — Launch a standalone A2A peer (`codetether spawn`) that serves its own `AgentCard`, auto-registers on the local agent bus, and continuously discovers peer agents.
 - **Bus mode** — In-process pub/sub for zero-latency communication between local agents, swarm sub-agents, and tool dispatch.
 - **Cognition APIs** — Perpetual persona swarms with SSE event stream, spawn/reap control, and lineage graph.
 
@@ -350,6 +352,7 @@ Built for Agent-to-Agent communication with dual transports and a shared in-proc
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CODETETHER_GRPC_PORT` | `50051` | gRPC server port (used alongside Axum HTTP) |
+| `CODETETHER_A2A_PEERS` | — | Comma-separated peer seed URLs used by `codetether spawn` discovery loop |
 
 ### AgentCard
 

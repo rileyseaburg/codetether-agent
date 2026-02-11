@@ -170,6 +170,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Worker(args)) => a2a::worker::run(args).await,
+        Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
         Some(Command::Swarm(args)) => {
             let executor = SwarmExecutor::new(swarm::SwarmConfig {
