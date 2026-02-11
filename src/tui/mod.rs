@@ -631,6 +631,62 @@ impl App {
             return;
         }
 
+        // Check for /undo command - remove last user turn and response
+        if message.trim() == "/undo" {
+            // Remove from TUI messages: walk backwards and remove everything
+            // until we've removed the last "user" message (inclusive)
+            let mut found_user = false;
+            while let Some(msg) = self.messages.last() {
+                if msg.role == "user" {
+                    if found_user {
+                        break; // hit the previous user turn, stop
+                    }
+                    found_user = true;
+                }
+                // Skip system messages that aren't part of the turn
+                if msg.role == "system" && !found_user {
+                    break;
+                }
+                self.messages.pop();
+            }
+
+            if !found_user {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "Nothing to undo.",
+                ));
+                return;
+            }
+
+            // Remove from session: walk backwards removing the last user message
+            // and all assistant/tool messages after it
+            if let Some(session) = self.session.as_mut() {
+                let mut found_session_user = false;
+                while let Some(msg) = session.messages.last() {
+                    if msg.role == crate::provider::Role::User {
+                        if found_session_user {
+                            break;
+                        }
+                        found_session_user = true;
+                    }
+                    if msg.role == crate::provider::Role::System && !found_session_user {
+                        break;
+                    }
+                    session.messages.pop();
+                }
+                if let Err(e) = session.save().await {
+                    tracing::warn!(error = %e, "Failed to save session after undo");
+                }
+            }
+
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Undid last message and response.",
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            return;
+        }
+
         // Check for /new command to start a fresh session
         if message.trim() == "/new" {
             self.session = None;
@@ -3083,6 +3139,7 @@ fn match_slash_command_hint(input: &str) -> String {
     let commands = [
         ("/swarm ", "Run task in parallel swarm mode"),
         ("/ralph", "Start autonomous PRD loop"),
+        ("/undo", "Undo last message and response"),
         ("/sessions", "Open session picker"),
         ("/resume", "Resume a session"),
         ("/new", "Start a new session"),
@@ -3175,6 +3232,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
         "  /swarm <task>   Run task in parallel swarm mode".to_string(),
         "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
+        "  /undo           Undo last message and response".to_string(),
         "  /sessions       Open session picker (filter, delete, load)".to_string(),
         "  /resume         Resume most recent session".to_string(),
         "  /resume <id>    Resume specific session by ID".to_string(),
