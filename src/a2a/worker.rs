@@ -1,5 +1,6 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
+use crate::bus::AgentBus;
 use crate::cli::A2aArgs;
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
@@ -154,6 +155,13 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     // Create heartbeat state
     let heartbeat_state = HeartbeatState::new(worker_id.clone(), name.clone());
 
+    // Create agent bus for in-process sub-agent communication
+    let bus = AgentBus::new().into_arc();
+    {
+        let handle = bus.handle(&worker_id);
+        handle.announce_ready(WORKER_CAPABILITIES.iter().map(|s| s.to_string()).collect());
+    }
+
     // Register worker
     register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
 
@@ -165,6 +173,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         &worker_id,
         &processing,
         &auto_approve,
+        &bus,
     )
     .await?;
 
@@ -196,6 +205,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
             &codebases,
             &processing,
             &auto_approve,
+            &bus,
         )
         .await
         {
@@ -760,6 +770,7 @@ async fn fetch_pending_tasks(
     worker_id: &str,
     processing: &Arc<Mutex<HashSet<String>>>,
     auto_approve: &AutoApprove,
+    bus: &Arc<AgentBus>,
 ) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
@@ -797,10 +808,11 @@ async fn fetch_pending_tasks(
                 let worker_id = worker_id.to_string();
                 let auto_approve = *auto_approve;
                 let processing = processing.clone();
+                let bus = bus.clone();
 
                 tokio::spawn(async move {
                     if let Err(e) =
-                        handle_task(&client, &server, &token, &worker_id, &task, auto_approve).await
+                        handle_task(&client, &server, &token, &worker_id, &task, auto_approve, &bus).await
                     {
                         tracing::error!("Task {} failed: {}", task_id, e);
                     }
@@ -823,6 +835,7 @@ async fn connect_stream(
     codebases: &[String],
     processing: &Arc<Mutex<HashSet<String>>>,
     auto_approve: &AutoApprove,
+    bus: &Arc<AgentBus>,
 ) -> Result<()> {
     let url = format!(
         "{}/v1/worker/tasks/stream?agent_name={}&worker_id={}",
@@ -875,7 +888,7 @@ async fn connect_stream(
                                 if let Ok(task) = serde_json::from_str::<serde_json::Value>(data) {
                                     spawn_task_handler(
                                         &task, client, server, token, worker_id,
-                                        processing, auto_approve,
+                                        processing, auto_approve, bus,
                                     ).await;
                                 }
                             }
@@ -893,7 +906,7 @@ async fn connect_stream(
             _ = poll_interval.tick() => {
                 // Periodic poll for pending tasks the SSE stream may have missed
                 if let Err(e) = poll_pending_tasks(
-                    client, server, token, worker_id, processing, auto_approve,
+                    client, server, token, worker_id, processing, auto_approve, bus,
                 ).await {
                     tracing::warn!("Periodic task poll failed: {}", e);
                 }
@@ -910,6 +923,7 @@ async fn spawn_task_handler(
     worker_id: &str,
     processing: &Arc<Mutex<HashSet<String>>>,
     auto_approve: &AutoApprove,
+    bus: &Arc<AgentBus>,
 ) {
     if let Some(id) = task
         .get("task")
@@ -929,10 +943,11 @@ async fn spawn_task_handler(
             let worker_id = worker_id.to_string();
             let auto_approve = *auto_approve;
             let processing_clone = processing.clone();
+            let bus = bus.clone();
 
             tokio::spawn(async move {
                 if let Err(e) =
-                    handle_task(&client, &server, &token, &worker_id, &task, auto_approve).await
+                    handle_task(&client, &server, &token, &worker_id, &task, auto_approve, &bus).await
                 {
                     tracing::error!("Task {} failed: {}", task_id, e);
                 }
@@ -949,6 +964,7 @@ async fn poll_pending_tasks(
     worker_id: &str,
     processing: &Arc<Mutex<HashSet<String>>>,
     auto_approve: &AutoApprove,
+    bus: &Arc<AgentBus>,
 ) -> Result<()> {
     let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
     if let Some(t) = token {
@@ -980,6 +996,7 @@ async fn poll_pending_tasks(
             worker_id,
             processing,
             auto_approve,
+            bus,
         )
         .await;
     }
@@ -994,6 +1011,7 @@ async fn handle_task(
     worker_id: &str,
     task: &serde_json::Value,
     auto_approve: AutoApprove,
+    bus: &Arc<AgentBus>,
 ) -> Result<()> {
     let task_id = task_str(task, "id").ok_or_else(|| anyhow::anyhow!("No task ID"))?;
     let title = task_str(task, "title").unwrap_or("Untitled");
@@ -1132,6 +1150,7 @@ async fn handle_task(
             complexity_hint.as_deref(),
             worker_personality.as_deref(),
             target_agent_name.as_deref(),
+            Some(bus),
             Some(&output_callback),
         )
         .await
@@ -1216,6 +1235,7 @@ async fn execute_swarm_with_policy<F>(
     complexity_hint: Option<&str>,
     worker_personality: Option<&str>,
     target_agent_name: Option<&str>,
+    bus: Option<&Arc<AgentBus>>,
     output_callback: Option<&F>,
 ) -> Result<(crate::session::SessionResult, bool)>
 where
@@ -1296,7 +1316,10 @@ where
 
     let swarm_result = if output_callback.is_some() {
         let (event_tx, mut event_rx) = mpsc::channel(256);
-        let executor = SwarmExecutor::new(swarm_config).with_event_tx(event_tx);
+        let mut executor = SwarmExecutor::new(swarm_config).with_event_tx(event_tx);
+        if let Some(bus) = bus {
+            executor = executor.with_bus(Arc::clone(bus));
+        }
         let prompt_owned = prompt.to_string();
         let mut exec_handle =
             tokio::spawn(async move { executor.execute(&prompt_owned, strategy).await });
@@ -1331,7 +1354,11 @@ where
 
         final_result.ok_or_else(|| anyhow::anyhow!("Swarm execution returned no result"))?
     } else {
-        SwarmExecutor::new(swarm_config)
+        let mut executor = SwarmExecutor::new(swarm_config);
+        if let Some(bus) = bus {
+            executor = executor.with_bus(Arc::clone(bus));
+        }
+        executor
             .execute(prompt, strategy)
             .await?
     };
@@ -1445,7 +1472,7 @@ where
         create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve);
     let tool_definitions = tool_registry.definitions();
 
-    let temperature = if model.starts_with("kimi-k2") {
+    let temperature = if model.contains("kimi-k2") {
         Some(1.0)
     } else {
         Some(0.7)

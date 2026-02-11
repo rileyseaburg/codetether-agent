@@ -52,10 +52,13 @@ impl A2AServer {
             url: url.to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
             protocol_version: "0.3.0".to_string(),
+            preferred_transport: None,
+            additional_interfaces: vec![],
             capabilities: AgentCapabilities {
                 streaming: true,
                 push_notifications: false,
                 state_transition_history: true,
+                extensions: vec![],
             },
             skills: vec![
                 AgentSkill {
@@ -103,6 +106,10 @@ impl A2AServer {
             }),
             icon_url: None,
             documentation_url: None,
+            security_schemes: Default::default(),
+            security: vec![],
+            supports_authenticated_extended_card: false,
+            signatures: vec![],
         }
     }
 }
@@ -219,6 +226,7 @@ async fn handle_message_send(
                     context_id: params.message.context_id.clone(),
                     task_id: Some(task_id.clone()),
                     metadata: std::collections::HashMap::new(),
+                    extensions: vec![],
                 };
 
                 let artifact = Artifact {
@@ -227,6 +235,7 @@ async fn handle_message_send(
                     name: Some("response".to_string()),
                     description: None,
                     metadata: std::collections::HashMap::new(),
+                    extensions: vec![],
                 };
 
                 if let Some(mut t) = server.tasks.get_mut(&task_id) {
@@ -247,6 +256,7 @@ async fn handle_message_send(
                     context_id: params.message.context_id.clone(),
                     task_id: Some(task_id.clone()),
                     metadata: std::collections::HashMap::new(),
+                    extensions: vec![],
                 };
 
                 if let Some(mut t) = server.tasks.get_mut(&task_id) {
@@ -287,6 +297,7 @@ async fn handle_message_send(
                         context_id,
                         task_id: Some(task_id.clone()),
                         metadata: std::collections::HashMap::new(),
+                        extensions: vec![],
                     };
 
                     let artifact = Artifact {
@@ -295,6 +306,7 @@ async fn handle_message_send(
                         name: Some("response".to_string()),
                         description: None,
                         metadata: std::collections::HashMap::new(),
+                        extensions: vec![],
                     };
 
                     if let Some(mut t) = tasks.get_mut(&task_id) {
@@ -408,6 +420,7 @@ async fn handle_message_stream(
                     context_id,
                     task_id: Some(task_id.clone()),
                     metadata: std::collections::HashMap::new(),
+                    extensions: vec![],
                 };
 
                 let artifact = Artifact {
@@ -416,6 +429,7 @@ async fn handle_message_stream(
                     name: Some("response".to_string()),
                     description: None,
                     metadata: std::collections::HashMap::new(),
+                    extensions: vec![],
                 };
 
                 if let Some(mut t) = tasks.get_mut(&task_id) {

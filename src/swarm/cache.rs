@@ -7,7 +7,7 @@ use super::{SubTask, SubTaskResult};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use tokio::fs;
 use tracing;
@@ -328,6 +328,11 @@ impl SwarmCache {
     /// Get the path for a cache entry file
     fn entry_path(&self, key: &str) -> PathBuf {
         self.cache_dir.join(format!("{}.json", key))
+    }
+
+    /// Get the cache directory path.
+    pub fn cache_dir(&self) -> &std::path::Path {
+        &self.cache_dir
     }
 
     /// Save an entry to disk

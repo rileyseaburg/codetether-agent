@@ -236,6 +236,16 @@ impl ProviderRegistry {
             }
         }
 
+        // Initialize Bedrock via AWS credentials (env vars or ~/.aws/credentials)
+        if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+            let region = bedrock::AwsCredentials::detect_region()
+                .unwrap_or_else(|| bedrock::DEFAULT_REGION.to_string());
+            match bedrock::BedrockProvider::with_credentials(creds, region) {
+                Ok(p) => registry.register(Arc::new(p)),
+                Err(e) => tracing::warn!("Failed to init bedrock from AWS credentials: {}", e),
+            }
+        }
+
         Ok(registry)
     }
 
@@ -257,6 +267,47 @@ impl ProviderRegistry {
                     None => continue,
                 };
 
+                // Handle Bedrock before api_key extraction since it can use
+                // AWS IAM credentials instead of an API key.
+                if matches!(provider_id.as_str(), "bedrock" | "aws-bedrock") {
+                    let region = secrets
+                        .extra
+                        .get("region")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("us-east-1")
+                        .to_string();
+
+                    // Prefer SigV4 if AWS credentials are in Vault
+                    let aws_key_id = secrets.extra.get("aws_access_key_id").and_then(|v| v.as_str());
+                    let aws_secret = secrets.extra.get("aws_secret_access_key").and_then(|v| v.as_str());
+
+                    let result = if let (Some(key_id), Some(secret)) = (aws_key_id, aws_secret) {
+                        let creds = bedrock::AwsCredentials {
+                            access_key_id: key_id.to_string(),
+                            secret_access_key: secret.to_string(),
+                            session_token: secrets.extra.get("aws_session_token")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
+                        };
+                        bedrock::BedrockProvider::with_credentials(creds, region)
+                    } else if let Some(ref key) = secrets.api_key {
+                        bedrock::BedrockProvider::with_region(key.clone(), region)
+                    } else {
+                        // Try auto-detecting from environment as last resort
+                        if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+                            bedrock::BedrockProvider::with_credentials(creds, region)
+                        } else {
+                            Err(anyhow::anyhow!("No AWS credentials or API key found for Bedrock"))
+                        }
+                    };
+
+                    match result {
+                        Ok(p) => registry.register(Arc::new(p)),
+                        Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
+                    }
+                    continue;
+                }
+
                 let api_key = match secrets.api_key {
                     Some(key) => key,
                     None => continue,
@@ -264,19 +315,6 @@ impl ProviderRegistry {
 
                 // Determine which provider implementation to use
                 match provider_id.as_str() {
-                    // Amazon Bedrock - native Converse API with bearer token
-                    "bedrock" | "aws-bedrock" => {
-                        let region = secrets
-                            .extra
-                            .get("region")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("us-east-1")
-                            .to_string();
-                        match bedrock::BedrockProvider::with_region(api_key, region) {
-                            Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
-                        }
-                    }
                     // Native providers
                     "anthropic" | "anthropic-eu" | "anthropic-asia" => {
                         match anthropic::AnthropicProvider::new(api_key) {
@@ -456,7 +494,22 @@ impl ProviderRegistry {
                 }
             }
         } else {
-            tracing::warn!("Vault not configured, no providers will be available");
+            tracing::warn!("Vault not configured, no providers will be available from Vault");
+        }
+
+        // If Bedrock wasn't registered via Vault, try auto-detecting AWS credentials
+        if !registry.providers.contains_key("bedrock") {
+            if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+                let region = bedrock::AwsCredentials::detect_region()
+                    .unwrap_or_else(|| "us-east-1".to_string());
+                match bedrock::BedrockProvider::with_credentials(creds, region) {
+                    Ok(p) => {
+                        tracing::info!("Registered Bedrock provider from local AWS credentials");
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init bedrock from AWS credentials: {}", e),
+                }
+            }
         }
 
         tracing::info!(

@@ -15,7 +15,7 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
-use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_for_directory};
+use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_with_opencode};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::message_formatter::MessageFormatter;
 use crate::tui::ralph_view::{RalphEvent, RalphViewState, render_ralph_view};
@@ -25,8 +25,8 @@ use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
 use crossterm::{
     event::{
-        self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste,
-        EnableMouseCapture, Event, KeyCode, KeyModifiers,
+        self, DisableBracketedPaste, EnableBracketedPaste,
+        Event, KeyCode, KeyModifiers,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -57,7 +57,7 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture, EnableBracketedPaste)?;
+    execute!(stdout, EnterAlternateScreen, EnableBracketedPaste)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -69,7 +69,6 @@ pub async fn run(project: Option<PathBuf>) -> Result<()> {
     execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,
-        DisableMouseCapture,
         DisableBracketedPaste
     )?;
     terminal.show_cursor()?;
@@ -443,7 +442,7 @@ impl App {
 
         if message.trim() == "/refresh" {
             self.refresh_workspace();
-            match list_sessions_for_directory(&self.workspace_dir).await {
+            match list_sessions_with_opencode(&self.workspace_dir).await {
                 Ok(sessions) => self.update_cached_sessions(sessions),
                 Err(err) => self.messages.push(ChatMessage::new(
                     "system",
@@ -471,7 +470,7 @@ impl App {
 
         // Check for /sessions command - open session picker
         if message.trim() == "/sessions" {
-            match list_sessions_for_directory(&self.workspace_dir).await {
+            match list_sessions_with_opencode(&self.workspace_dir).await {
                 Ok(sessions) => {
                     if sessions.is_empty() {
                         self.messages
@@ -500,9 +499,16 @@ impl App {
                 .map(|s| s.trim())
                 .filter(|s| !s.is_empty());
             let loaded = if let Some(id) = session_id {
-                Session::load(id).await
+                if let Some(oc_id) = id.strip_prefix("opencode_") {
+                    Session::from_opencode(oc_id, &crate::opencode::OpenCodeStorage::new().unwrap()).await
+                } else {
+                    Session::load(id).await
+                }
             } else {
-                Session::last_for_directory(Some(&self.workspace_dir)).await
+                match Session::last_for_directory(Some(&self.workspace_dir)).await {
+                    Ok(s) => Ok(s),
+                    Err(_) => Session::last_opencode_for_directory(&self.workspace_dir).await,
+                }
             };
 
             match loaded {
@@ -1247,7 +1253,7 @@ impl App {
 
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     let mut app = App::new();
-    if let Ok(sessions) = list_sessions_for_directory(&app.workspace_dir).await {
+    if let Ok(sessions) = list_sessions_with_opencode(&app.workspace_dir).await {
         app.update_cached_sessions(sessions);
     }
 
@@ -1282,7 +1288,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         }
 
         if last_session_refresh.elapsed() > Duration::from_secs(5) {
-            if let Ok(sessions) = list_sessions_for_directory(&app.workspace_dir).await {
+            if let Ok(sessions) = list_sessions_with_opencode(&app.workspace_dir).await {
                 app.update_cached_sessions(sessions);
             }
             last_session_refresh = Instant::now();
@@ -1478,7 +1484,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             let session_id = filtered.get(app.session_picker_selected)
                                 .map(|(orig_idx, _)| app.session_picker_list[*orig_idx].id.clone());
                             if let Some(session_id) = session_id {
-                                match Session::load(&session_id).await {
+                                let load_result = if let Some(oc_id) = session_id.strip_prefix("opencode_") {
+                                    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
+                                        Session::from_opencode(oc_id, &storage).await
+                                    } else {
+                                        Err(anyhow::anyhow!("OpenCode storage not available"))
+                                    }
+                                } else {
+                                    Session::load(&session_id).await
+                                };
+                                match load_result {
                                     Ok(session) => {
                                         app.messages.clear();
                                         app.messages.push(ChatMessage::new("system", format!(

@@ -11,7 +11,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use rand::Rng;
+use rand::RngExt;
 use std::sync::Arc;
 
 /// Paths that are exempt from authentication.

@@ -29,6 +29,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::{Mutex, RwLock, broadcast};
 use tokio::task::JoinHandle;
+
+// Ensure re-exported types are referenced to suppress warnings.
+const _: () = {
+    fn _assert_types_used() {
+        let _ = std::mem::size_of::<CandleDevicePreference>();
+        let _ = std::mem::size_of::<ThinkerBackend>();
+        let _ = std::mem::size_of::<ThinkerOutput>();
+    }
+};
 use tokio::time::Instant;
 use uuid::Uuid;
 
@@ -571,7 +580,29 @@ impl CognitionRuntime {
             candle_seed: env_u64("CODETETHER_COGNITION_THINKER_CANDLE_SEED", 42),
         };
 
-        Self::new_with_options_and_thinker(options, Some(thinker_config))
+        let mut runtime = Self::new_with_options(options);
+        // Configure the thinker on the existing runtime
+        runtime.thinker = Some(thinker_config).and_then(|cfg| {
+            if !cfg.enabled {
+                return None;
+            }
+            match ThinkerClient::new(cfg) {
+                Ok(client) => {
+                    tracing::info!(
+                        backend = ?client.config().backend,
+                        endpoint = %client.config().endpoint,
+                        model = %client.config().model,
+                        "Cognition thinker initialized"
+                    );
+                    Some(Arc::new(client))
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "Failed to initialize cognition thinker; using fallback thoughts");
+                    None
+                }
+            }
+        });
+        runtime
     }
 
     /// Build runtime from explicit options.
@@ -605,7 +636,7 @@ impl CognitionRuntime {
             }
         });
 
-        Self {
+        let runtime = Self {
             enabled: options.enabled,
             max_events: options.max_events.max(32),
             max_snapshots: options.max_snapshots.max(8),
@@ -628,7 +659,24 @@ impl CognitionRuntime {
             tools: None,
             receipts: Arc::new(RwLock::new(Vec::new())),
             pending_approvals: Arc::new(RwLock::new(HashMap::new())),
+        };
+
+        // Attempt to restore persisted state from disk.
+        if let Some(persisted) = persistence::load_state() {
+            tracing::info!(
+                personas = persisted.personas.len(),
+                beliefs = persisted.beliefs.len(),
+                persisted_at = %persisted.persisted_at,
+                "Restoring persisted cognition state"
+            );
+            *runtime.personas.blocking_write() = persisted.personas;
+            *runtime.beliefs.blocking_write() = persisted.beliefs;
+            *runtime.proposals.blocking_write() = persisted.proposals;
+            *runtime.attention_queue.blocking_write() = persisted.attention_queue;
+            *runtime.workspace.blocking_write() = persisted.workspace;
         }
+
+        runtime
     }
 
     /// Whether cognition is enabled by feature flag.
@@ -857,7 +905,7 @@ impl CognitionRuntime {
                                         if !existing.confirmed_by.contains(&work.persona_id) {
                                             existing.confirmed_by.push(work.persona_id.clone());
                                         }
-                                        existing.updated_at = Utc::now();
+                                        existing.revalidation_success();
                                     }
                                 } else {
                                     // Handle contradiction targets
@@ -876,10 +924,8 @@ impl CognitionRuntime {
                                                     .push(target.belief_key.clone());
                                             }
                                             // Apply contest penalty
-                                            target.confidence = (target.confidence - 0.1).max(0.05);
-                                            if target.confidence < 0.5 {
-                                                target.status = BeliefStatus::Stale;
-                                            } else {
+                                            target.revalidation_failure();
+                                            if target.confidence >= 0.5 {
                                                 // Create revalidation attention item
                                                 attn_queue.push(AttentionItem {
                                                     id: Uuid::new_v4().to_string(),
@@ -921,6 +967,7 @@ impl CognitionRuntime {
                                         }
                                     }
 
+                                    new_belief.clamp_confidence();
                                     belief_store.insert(new_belief.id.clone(), new_belief);
                                 }
                             }
@@ -1078,9 +1125,7 @@ impl CognitionRuntime {
                                 .collect();
                             for id in stale_ids {
                                 if let Some(belief) = belief_store.get_mut(&id) {
-                                    belief.status = BeliefStatus::Stale;
-                                    belief.confidence *= 0.98;
-                                    belief.confidence = belief.confidence.max(0.05);
+                                    belief.decay();
                                     attn_queue.push(AttentionItem {
                                         id: Uuid::new_v4().to_string(),
                                         topic: format!("Stale belief: {}", belief.claim),

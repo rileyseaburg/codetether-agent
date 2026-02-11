@@ -4,14 +4,16 @@
 //! respecting dependencies and optimizing for critical path.
 
 use super::{
-    DecompositionStrategy, StageStats, SwarmConfig, SwarmResult,
+    CacheConfig, CacheStats, DecompositionStrategy, StageStats, SwarmCache, SwarmConfig, SwarmResult,
     orchestrator::Orchestrator,
+    result_store::ResultStore,
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
 };
+use crate::bus::{AgentBus, BusMessage};
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
 // Re-export swarm types for convenience
-pub use super::{Actor, ActorStatus, Handler, SwarmMessage};
+pub use super::{SwarmMessage};
 use crate::{
     agent::Agent,
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
@@ -334,6 +336,12 @@ pub struct SwarmExecutor {
     event_tx: Option<mpsc::Sender<SwarmEvent>>,
     /// Telemetry collector for swarm execution metrics
     telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>,
+    /// Cache for avoiding duplicate subtask execution
+    cache: Option<Arc<tokio::sync::Mutex<SwarmCache>>>,
+    /// Shared result store for sub-agent result sharing
+    result_store: Arc<ResultStore>,
+    /// Optional agent bus for inter-agent communication
+    bus: Option<Arc<AgentBus>>,
 }
 
 impl SwarmExecutor {
@@ -344,7 +352,41 @@ impl SwarmExecutor {
             coordinator_agent: None,
             event_tx: None,
             telemetry: Arc::new(tokio::sync::Mutex::new(SwarmTelemetryCollector::default())),
+            cache: None,
+            result_store: ResultStore::new_arc(),
+            bus: None,
         }
+    }
+
+    /// Create a new executor with caching enabled
+    pub async fn with_cache(config: SwarmConfig, cache_config: CacheConfig) -> Result<Self> {
+        let cache = SwarmCache::new(cache_config).await?;
+        Ok(Self {
+            config,
+            coordinator_agent: None,
+            event_tx: None,
+            telemetry: Arc::new(tokio::sync::Mutex::new(SwarmTelemetryCollector::default())),
+            cache: Some(Arc::new(tokio::sync::Mutex::new(cache))),
+            result_store: ResultStore::new_arc(),
+            bus: None,
+        })
+    }
+
+    /// Set a pre-initialized cache
+    pub fn with_cache_instance(mut self, cache: Arc<tokio::sync::Mutex<SwarmCache>>) -> Self {
+        self.cache = Some(cache);
+        self
+    }
+
+    /// Set an agent bus for inter-agent communication
+    pub fn with_bus(mut self, bus: Arc<AgentBus>) -> Self {
+        self.bus = Some(bus);
+        self
+    }
+
+    /// Get the agent bus if set
+    pub fn bus(&self) -> Option<&Arc<AgentBus>> {
+        self.bus.as_ref()
     }
 
     /// Set an event channel for real-time TUI updates
@@ -378,8 +420,57 @@ impl SwarmExecutor {
         self.coordinator_agent.as_ref()
     }
 
+    /// Get the shared result store
+    pub fn result_store(&self) -> &Arc<ResultStore> {
+        &self.result_store
+    }
+
+    /// Get cache statistics if caching is enabled
+    pub async fn cache_stats(&self) -> Option<CacheStats> {
+        if let Some(ref cache) = self.cache {
+            let cache_guard = cache.lock().await;
+            Some(cache_guard.stats().clone())
+        } else {
+            None
+        }
+    }
+
+    /// Clear the cache if enabled
+    pub async fn clear_cache(&self) -> Result<()> {
+        if let Some(ref cache) = self.cache {
+            let mut cache_guard = cache.lock().await;
+            cache_guard.clear().await?;
+        }
+        Ok(())
+    }
+
     /// Send an event to the TUI if channel is connected (non-blocking)
     fn try_send_event(&self, event: SwarmEvent) {
+        // Also emit on the agent bus if connected
+        if let Some(ref bus) = self.bus {
+            let handle = bus.handle("swarm-executor");
+            match &event {
+                SwarmEvent::Started { task, .. } => {
+                    handle.send(
+                        "broadcast",
+                        BusMessage::AgentReady {
+                            agent_id: "swarm-executor".to_string(),
+                            capabilities: vec![format!("executing:{task}")],
+                        },
+                    );
+                }
+                SwarmEvent::Complete { success, .. } => {
+                    let state = if *success {
+                        crate::a2a::types::TaskState::Completed
+                    } else {
+                        crate::a2a::types::TaskState::Failed
+                    };
+                    handle.send_task_update("swarm", state, None);
+                }
+                _ => {} // Other events are TUI-specific
+            }
+        }
+
         if let Some(ref tx) = self.event_tx {
             let _ = tx.try_send(event);
         }
@@ -501,6 +592,21 @@ impl SwarmExecutor {
                 let mut completed = completed_results.write().await;
                 for result in &stage_results {
                     completed.insert(result.subtask_id.clone(), result.result.clone());
+                    // Also publish to shared ResultStore for richer querying
+                    let tags = vec![
+                        format!("stage:{stage}"),
+                        format!("subtask:{}", result.subtask_id),
+                    ];
+                    let _ = self
+                        .result_store
+                        .publish(
+                            &result.subtask_id,
+                            &result.subagent_id,
+                            &result.result,
+                            tags,
+                            None,
+                        )
+                        .await;
                 }
             }
 
@@ -592,6 +698,7 @@ impl SwarmExecutor {
             String,
             tokio::task::JoinHandle<Result<(SubTaskResult, Option<WorktreeInfo>), anyhow::Error>>,
         )> = Vec::new();
+        let mut cached_results: Vec<SubTaskResult> = Vec::new();
 
         // Rate limiting: semaphore for max concurrent requests
         let semaphore = Arc::new(tokio::sync::Semaphore::new(
@@ -609,14 +716,57 @@ impl SwarmExecutor {
 
         tracing::info!(provider_name = %provider_name, "Selected provider for subtask execution");
 
-        // Create shared tool registry with provider for ralph and batch tool
-        let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
+        // Create base tool registry with provider for ralph and batch tool
+        let base_tool_registry =
+            ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
         // Filter out 'question' tool - sub-agents must be autonomous, not interactive
-        let tool_definitions: Vec<_> = tool_registry
+        // Include 'swarm_share' definition so LLMs know about it (registered per-agent below)
+        let mut tool_definitions: Vec<_> = base_tool_registry
             .definitions()
             .into_iter()
             .filter(|t| t.name != "question")
             .collect();
+
+        // Add swarm_share tool definition so LLMs know it's available
+        let swarm_share_def = crate::provider::ToolDefinition {
+            name: "swarm_share".to_string(),
+            description: "Share results with other sub-agents in the swarm. Actions: publish \
+                          (share a result), get (retrieve a result by key), query_tags (find \
+                          results by tags), query_prefix (find results by key prefix), list \
+                          (show all shared results)."
+                .to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["publish", "get", "query_tags", "query_prefix", "list"],
+                        "description": "Action to perform"
+                    },
+                    "key": {
+                        "type": "string",
+                        "description": "Result key (for publish/get)"
+                    },
+                    "value": {
+                        "description": "Result value to publish (any JSON value)"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags for publish or query_tags"
+                    },
+                    "prefix": {
+                        "type": "string",
+                        "description": "Key prefix for query_prefix"
+                    }
+                },
+                "required": ["action"]
+            }),
+        };
+        tool_definitions.push(swarm_share_def);
+
+        // Clone the result store for sub-agent sharing
+        let result_store = Arc::clone(&self.result_store);
 
         // Create worktree manager if enabled
         let worktree_manager = if self.config.worktree_enabled {
@@ -651,6 +801,26 @@ impl SwarmExecutor {
             let _provider_name = provider_name.clone();
             let provider = Arc::clone(&provider);
 
+            // Check cache first
+            if let Some(ref cache) = self.cache {
+                let mut cache_guard = cache.lock().await;
+                if let Some(cached_result) = cache_guard.get(&subtask).await {
+                    tracing::info!(
+                        subtask_id = %subtask.id,
+                        task_name = %subtask.name,
+                        "Cache hit for subtask, skipping execution"
+                    );
+                    self.try_send_event(SwarmEvent::SubTaskUpdate {
+                        id: subtask.id.clone(),
+                        name: subtask.name.clone(),
+                        status: SubTaskStatus::Completed,
+                        agent_name: Some("cached".to_string()),
+                    });
+                    cached_results.push(cached_result);
+                    continue;
+                }
+            }
+
             // Get context from dependencies
             let context = {
                 let completed = completed_results.read().await;
@@ -676,7 +846,8 @@ impl SwarmExecutor {
 
             // Clone for the async block
             let tools = tool_definitions.clone();
-            let registry = Arc::clone(&tool_registry);
+            let _base_registry = Arc::clone(&base_tool_registry);
+            let agent_result_store = Arc::clone(&result_store);
             let sem = Arc::clone(&semaphore);
             let stagger_delay = delay_ms * idx as u64; // Stagger start times
             let worktree_mgr = worktree_manager.clone();
@@ -764,6 +935,14 @@ Available tools:
 - webfetch: Fetch web pages
 - prd: Generate structured PRD for complex tasks
 - ralph: Run autonomous agent loop on a PRD
+- swarm_share: Share results with other sub-agents running in parallel
+
+SHARING RESULTS:
+Use swarm_share to collaborate with other sub-agents:
+- swarm_share({{action: 'publish', key: 'my-finding', value: '...', tags: ['research']}}) to share a result
+- swarm_share({{action: 'get', key: 'some-key'}}) to retrieve a result from another agent
+- swarm_share({{action: 'list'}}) to see all shared results
+- swarm_share({{action: 'query_tags', tags: ['research']}}) to find results by tag
 
 COMPLEX TASKS:
 If your task is complex and involves multiple implementation steps, use the prd + ralph workflow:
@@ -809,6 +988,17 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 }
 
                 // Run the agentic loop
+                // Create per-agent registry with SwarmShareTool for this subtask
+                let mut agent_registry =
+                    ToolRegistry::with_provider(Arc::clone(&provider), model.clone());
+                agent_registry.register(Arc::new(
+                    crate::tool::swarm_share::SwarmShareTool::new(
+                        Arc::clone(&agent_result_store),
+                        subtask_id.clone(),
+                    ),
+                ));
+                let registry = Arc::new(agent_registry);
+
                 let result = run_agent_loop(
                     provider,
                     &model,
@@ -919,7 +1109,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
         }
 
         // Wait for all handles and handle worktree merging
-        let mut results = Vec::new();
+        let mut results = cached_results;
         let auto_merge = self.config.worktree_auto_merge;
 
         for (subtask_id, handle) in handles {
@@ -988,6 +1178,23 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                 worktree_path = %wt.path.display(),
                                 "Keeping worktree for debugging (task failed)"
                             );
+                        }
+                    }
+
+                    // Cache successful result
+                    if result.success {
+                        if let Some(ref cache_arc) = self.cache {
+                            let mut cache_guard: tokio::sync::MutexGuard<'_, SwarmCache> =
+                                cache_arc.lock().await;
+                            // Create a minimal subtask for cache lookup key
+                            let cache_subtask = SubTask::new(&subtask_id, &result.result);
+                            if let Err(e) = cache_guard.put(&cache_subtask, &result).await {
+                                tracing::warn!(
+                                    subtask_id = %result.subtask_id,
+                                    error = %e,
+                                    "Failed to cache subtask result"
+                                );
+                            }
                         }
                     }
 

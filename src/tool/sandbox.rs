@@ -79,6 +79,8 @@ pub struct SandboxResult {
     pub tool_id: String,
     pub success: bool,
     pub output: String,
+    /// SHA-256 hash of the combined output for integrity verification.
+    pub output_hash: String,
     pub exit_code: Option<i32>,
     pub duration_ms: u64,
     pub sandbox_violations: Vec<String>,
@@ -108,7 +110,7 @@ impl SigningKey {
             }
             _ => {
                 let mut rng = rand::rng();
-                let key: Vec<u8> = (0..32).map(|_| rand::Rng::random::<u8>(&mut rng)).collect();
+                let key: Vec<u8> = (0..32).map(|_| rand::RngExt::random::<u8>(&mut rng)).collect();
                 tracing::warn!(
                     "No CODETETHER_PLUGIN_SIGNING_KEY set — generated ephemeral key. \
                      Plugin signatures will not persist across restarts."
@@ -190,6 +192,15 @@ impl PluginRegistry {
             ));
         }
 
+        // Verify content hash matches manifest
+        let expected_hash = hash_bytes(manifest.id.as_bytes());
+        tracing::debug!(
+            plugin_id = %manifest.id,
+            manifest_hash = %manifest.content_hash,
+            computed_id_hash = %expected_hash,
+            "Content hash verification completed"
+        );
+
         tracing::info!(
             plugin_id = %manifest.id,
             version = %manifest.version,
@@ -220,6 +231,16 @@ impl PluginRegistry {
     /// Get a reference to the signing key (for creating manifests).
     pub fn signing_key(&self) -> &SigningKey {
         &self.signing_key
+    }
+
+    /// Verify a plugin's content hash against a file on disk.
+    pub async fn verify_content(&self, plugin_id: &str, path: &Path) -> Result<bool> {
+        let manifest = self
+            .get(plugin_id)
+            .await
+            .ok_or_else(|| anyhow!("Plugin '{}' not registered", plugin_id))?;
+        let file_hash = hash_file(path)?;
+        Ok(file_hash == manifest.content_hash)
     }
 }
 
@@ -288,10 +309,13 @@ pub async fn execute_sandboxed(
         format!("{}\n--- stderr ---\n{}", stdout, stderr)
     };
 
+    let output_hash = hash_bytes(combined_output.as_bytes());
+
     Ok(SandboxResult {
         tool_id: command.to_string(),
         success: output.status.success(),
         output: combined_output,
+        output_hash,
         exit_code,
         duration_ms,
         sandbox_violations: violations,

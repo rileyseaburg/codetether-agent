@@ -183,7 +183,7 @@ pub struct RunArgs {
 #[derive(Parser, Debug, Clone)]
 pub struct A2aArgs {
     /// A2A server URL
-    #[arg(short, long, env = "CODETETHER_SERVER", default_value = "https://api.codetether.run")]
+    #[arg(short, long, env = "CODETETHER_SERVER", default_value = crate::a2a::worker::DEFAULT_A2A_SERVER_URL)]
     pub server: String,
 
     /// Authentication token

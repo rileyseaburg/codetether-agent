@@ -298,6 +298,19 @@ impl Provider for CopilotProvider {
             parsed
                 .data
                 .into_iter()
+                .filter(|model| {
+                    // Skip models that are disabled in the picker
+                    if model.model_picker_enabled == Some(false) {
+                        return false;
+                    }
+                    // Skip models with a disabled policy state
+                    if let Some(ref policy) = model.policy {
+                        if policy.state.as_deref() == Some("disabled") {
+                            return false;
+                        }
+                    }
+                    true
+                })
                 .map(|model| {
                     let caps = model.capabilities.as_ref();
                     let limits = caps.and_then(|c| c.limits.as_ref());

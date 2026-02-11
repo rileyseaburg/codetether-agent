@@ -2,6 +2,7 @@
 //!
 //! Tools are the executable capabilities available to agents.
 
+pub mod advanced_edit;
 pub mod avatar;
 pub mod bash;
 pub mod batch;
@@ -10,6 +11,7 @@ pub mod confirm_edit;
 pub mod confirm_multiedit;
 pub mod edit;
 pub mod file;
+pub mod image;
 pub mod invalid;
 pub mod lsp;
 pub mod mcp_bridge;
@@ -24,6 +26,7 @@ pub mod rlm;
 pub mod sandbox;
 pub mod search;
 pub mod skill;
+pub mod swarm_share;
 pub mod task;
 pub mod todo;
 pub mod undo;
@@ -40,6 +43,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::provider::Provider;
+pub use sandbox::{PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file};
 
 /// A tool that can be executed by an agent
 #[async_trait]
@@ -135,6 +139,7 @@ impl ToolResult {
 /// Registry of available tools
 pub struct ToolRegistry {
     tools: HashMap<String, Arc<dyn Tool>>,
+    plugin_registry: PluginRegistry,
 }
 
 impl std::fmt::Debug for ToolRegistry {
@@ -149,7 +154,13 @@ impl ToolRegistry {
     pub fn new() -> Self {
         Self {
             tools: HashMap::new(),
+            plugin_registry: PluginRegistry::from_env(),
         }
+    }
+
+    /// Get a reference to the plugin registry for managing signed plugins.
+    pub fn plugins(&self) -> &PluginRegistry {
+        &self.plugin_registry
     }
 
     /// Register a tool
@@ -188,9 +199,13 @@ impl ToolRegistry {
         registry.register(Arc::new(file::ListTool::new()));
         registry.register(Arc::new(file::GlobTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
-        registry.register(Arc::new(edit::EditTool::new()));
+        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
-        registry.register(Arc::new(lsp::LspTool::new()));
+        registry.register(Arc::new(lsp::LspTool::with_root(
+            std::env::current_dir()
+                .map(|p| format!("file://{}", p.display()))
+                .unwrap_or_default(),
+        )));
         registry.register(Arc::new(webfetch::WebFetchTool::new()));
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(websearch::WebSearchTool::new()));
@@ -213,6 +228,7 @@ impl ToolRegistry {
         registry.register(Arc::new(podcast::PodcastTool::new()));
         registry.register(Arc::new(youtube::YouTubeTool::new()));
         registry.register(Arc::new(avatar::AvatarTool::new()));
+        registry.register(Arc::new(image::ImageTool::new()));
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
@@ -229,9 +245,13 @@ impl ToolRegistry {
         registry.register(Arc::new(file::ListTool::new()));
         registry.register(Arc::new(file::GlobTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
-        registry.register(Arc::new(edit::EditTool::new()));
+        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
-        registry.register(Arc::new(lsp::LspTool::new()));
+        registry.register(Arc::new(lsp::LspTool::with_root(
+            std::env::current_dir()
+                .map(|p| format!("file://{}", p.display()))
+                .unwrap_or_default(),
+        )));
         registry.register(Arc::new(webfetch::WebFetchTool::new()));
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(websearch::WebSearchTool::new()));
@@ -253,6 +273,7 @@ impl ToolRegistry {
         registry.register(Arc::new(podcast::PodcastTool::new()));
         registry.register(Arc::new(youtube::YouTubeTool::new()));
         registry.register(Arc::new(avatar::AvatarTool::new()));
+        registry.register(Arc::new(image::ImageTool::new()));
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));

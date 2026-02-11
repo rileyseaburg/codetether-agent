@@ -27,10 +27,13 @@ async fn create_mock_server() -> (SocketAddr, tokio::task::JoinHandle<()>) {
             url: "http://localhost:8080".to_string(),
             version: "1.0.0".to_string(),
             protocol_version: "0.3.0".to_string(),
+            preferred_transport: None,
+            additional_interfaces: vec![],
             capabilities: AgentCapabilities {
                 streaming: false,
                 push_notifications: false,
                 state_transition_history: true,
+                extensions: vec![],
             },
             skills: vec![AgentSkill {
                 id: "test-skill".to_string(),
@@ -46,6 +49,10 @@ async fn create_mock_server() -> (SocketAddr, tokio::task::JoinHandle<()>) {
             provider: None,
             icon_url: None,
             documentation_url: None,
+            security_schemes: Default::default(),
+            security: vec![],
+            supports_authenticated_extended_card: false,
+            signatures: vec![],
         })
     }
 
@@ -67,6 +74,7 @@ async fn create_mock_server() -> (SocketAddr, tokio::task::JoinHandle<()>) {
                             context_id: None,
                             task_id: Some("task-123".to_string()),
                             metadata: Default::default(),
+                            extensions: vec![],
                         }),
                         timestamp: Some("2024-01-01T00:00:00Z".to_string()),
                     },
@@ -192,6 +200,7 @@ async fn test_a2a_client_send_message() {
         context_id: None,
         task_id: None,
         metadata: Default::default(),
+        extensions: vec![],
     };
 
     // Send message

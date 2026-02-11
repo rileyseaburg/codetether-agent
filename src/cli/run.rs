@@ -33,13 +33,26 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 s
             }
             Err(_) => {
-                let s = Session::new().await?;
-                tracing::info!(
-                    session_id = %s.id,
-                    workspace = %workspace_dir.display(),
-                    "No workspace session found; created new session"
-                );
-                s
+                // Fallback: try to resume from OpenCode session
+                match Session::last_opencode_for_directory(&workspace_dir).await {
+                    Ok(s) => {
+                        tracing::info!(
+                            session_id = %s.id,
+                            workspace = %workspace_dir.display(),
+                            "Resuming from OpenCode session"
+                        );
+                        s
+                    }
+                    Err(_) => {
+                        let s = Session::new().await?;
+                        tracing::info!(
+                            session_id = %s.id,
+                            workspace = %workspace_dir.display(),
+                            "No workspace session found; created new session"
+                        );
+                        s
+                    }
+                }
             }
         }
     } else {

@@ -3,11 +3,13 @@
 //! Sessions track the conversation history and state for agent interactions.
 
 use crate::agent::ToolUse;
+use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::provider::{Message, Usage};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
@@ -71,7 +73,7 @@ impl Session {
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
             "zhipuai" => "glm-4.7".to_string(),
-            "openrouter" => "z-ai/glm-4.7".to_string(),
+            "openrouter" => "openrouter/pony-alpha".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
             _ => "glm-4.7".to_string(),
@@ -262,7 +264,9 @@ impl Session {
             .collect();
 
         // Kimi K2.5 requires temperature=1.0
-        let temperature = if model.starts_with("kimi-k2") {
+        // Use contains() to match both short aliases (kimi-k2.5) and full
+        // Bedrock model IDs (us.moonshotai.kimi-k2.5)
+        let temperature = if model.contains("kimi-k2") {
             Some(1.0)
         } else {
             Some(0.7)
@@ -410,19 +414,49 @@ impl Session {
                 }
 
                 // Get and execute the tool
+                let exec_start = std::time::Instant::now();
                 let content = if let Some(tool) = tool_registry.get(&tool_name) {
                     match tool.execute(tool_input.clone()).await {
                         Ok(result) => {
+                            let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
+                            if let Some(audit) = try_audit_log() {
+                                audit.log(
+                                    AuditCategory::ToolExecution,
+                                    format!("tool:{}", tool_name),
+                                    if result.success { AuditOutcome::Success } else { AuditOutcome::Failure },
+                                    None,
+                                    Some(json!({ "duration_ms": duration_ms, "output_len": result.output.len() })),
+                                ).await;
+                            }
                             result.output
                         }
                         Err(e) => {
+                            let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
+                            if let Some(audit) = try_audit_log() {
+                                audit.log(
+                                    AuditCategory::ToolExecution,
+                                    format!("tool:{}", tool_name),
+                                    AuditOutcome::Failure,
+                                    None,
+                                    Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
+                                ).await;
+                            }
                             format!("Error: {}", e)
                         }
                     }
                 } else {
                     tracing::warn!(tool = %tool_name, "Tool not found");
+                    if let Some(audit) = try_audit_log() {
+                        audit.log(
+                            AuditCategory::ToolExecution,
+                            format!("tool:{}", tool_name),
+                            AuditOutcome::Failure,
+                            None,
+                            Some(json!({ "error": "unknown_tool" })),
+                        ).await;
+                    }
                     format!("Error: Unknown tool '{}'", tool_name)
                 };
 
@@ -523,7 +557,7 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        let temperature = if model.starts_with("kimi-k2") {
+        let temperature = if model.contains("kimi-k2") {
             Some(1.0)
         } else {
             Some(0.7)
@@ -687,19 +721,49 @@ impl Session {
                     continue;
                 }
 
+                let exec_start = std::time::Instant::now();
                 let (content, success) = if let Some(tool) = tool_registry.get(&tool_name) {
                     match tool.execute(tool_input.clone()).await {
                         Ok(result) => {
+                            let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
+                            if let Some(audit) = try_audit_log() {
+                                audit.log(
+                                    AuditCategory::ToolExecution,
+                                    format!("tool:{}", tool_name),
+                                    if result.success { AuditOutcome::Success } else { AuditOutcome::Failure },
+                                    None,
+                                    Some(json!({ "duration_ms": duration_ms, "output_len": result.output.len() })),
+                                ).await;
+                            }
                             (result.output, result.success)
                         }
                         Err(e) => {
+                            let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
+                            if let Some(audit) = try_audit_log() {
+                                audit.log(
+                                    AuditCategory::ToolExecution,
+                                    format!("tool:{}", tool_name),
+                                    AuditOutcome::Failure,
+                                    None,
+                                    Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
+                                ).await;
+                            }
                             (format!("Error: {}", e), false)
                         }
                     }
                 } else {
                     tracing::warn!(tool = %tool_name, "Tool not found");
+                    if let Some(audit) = try_audit_log() {
+                        audit.log(
+                            AuditCategory::ToolExecution,
+                            format!("tool:{}", tool_name),
+                            AuditOutcome::Failure,
+                            None,
+                            Some(json!({ "error": "unknown_tool" })),
+                        ).await;
+                    }
                     (format!("Error: Unknown tool '{}'", tool_name), false)
                 };
 
@@ -816,6 +880,36 @@ impl Session {
         Ok(())
     }
 
+    /// Import an OpenCode session into CodeTether
+    ///
+    /// Loads messages and parts from OpenCode storage and converts them
+    /// into a CodeTether session that can be resumed.
+    pub async fn from_opencode(session_id: &str, storage: &crate::opencode::OpenCodeStorage) -> Result<Self> {
+        let oc_session = storage.load_session(session_id).await?;
+        let oc_messages = storage.load_messages(session_id).await?;
+
+        let mut messages_with_parts = Vec::new();
+        for msg in oc_messages {
+            let parts = storage.load_parts(&msg.id).await?;
+            messages_with_parts.push((msg, parts));
+        }
+
+        crate::opencode::convert::to_codetether_session(&oc_session, messages_with_parts).await
+    }
+
+    /// Try to load the last OpenCode session for a directory as a fallback
+    pub async fn last_opencode_for_directory(dir: &std::path::Path) -> Result<Self> {
+        let storage = crate::opencode::OpenCodeStorage::new()
+            .ok_or_else(|| anyhow::anyhow!("OpenCode storage directory not found"))?;
+
+        if !storage.exists() {
+            anyhow::bail!("OpenCode storage does not exist");
+        }
+
+        let oc_session = storage.last_session_for_directory(dir).await?;
+        Self::from_opencode(&oc_session.id, &storage).await
+    }
+
     /// Delete a session by ID
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
@@ -922,6 +1016,44 @@ pub async fn list_sessions_for_directory(dir: &std::path::Path) -> Result<Vec<Se
                 .unwrap_or(false)
         })
         .collect())
+}
+
+/// List sessions including OpenCode sessions for a directory.
+///
+/// Merges CodeTether sessions with any discovered OpenCode sessions,
+/// sorted by most recently updated first. OpenCode sessions are
+/// prefixed with `opencode_` in their ID.
+pub async fn list_sessions_with_opencode(dir: &std::path::Path) -> Result<Vec<SessionSummary>> {
+    let mut sessions = list_sessions_for_directory(dir).await?;
+
+    // Also include OpenCode sessions if available
+    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
+        if storage.exists() {
+            if let Ok(oc_sessions) = storage.list_sessions_for_directory(dir).await {
+                for oc in oc_sessions {
+                    // Skip if we already have a CodeTether import of this session
+                    let import_id = format!("opencode_{}", oc.id);
+                    if sessions.iter().any(|s| s.id == import_id) {
+                        continue;
+                    }
+
+                    sessions.push(SessionSummary {
+                        id: import_id,
+                        title: Some(format!("[opencode] {}", oc.title)),
+                        created_at: oc.created_at,
+                        updated_at: oc.updated_at,
+                        message_count: oc.message_count,
+                        agent: "build".to_string(),
+                        directory: Some(PathBuf::from(&oc.directory)),
+                    });
+                }
+            }
+        }
+    }
+
+    // Re-sort merged list by updated_at descending
+    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    Ok(sessions)
 }
 
 /// Summary of a session for listing

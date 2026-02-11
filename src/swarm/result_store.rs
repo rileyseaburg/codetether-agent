@@ -311,8 +311,8 @@ pub trait ResultStoreContext {
     /// Publish a result to the shared store
     fn publish_result(
         &self,
-        key: impl Into<String>,
-        value: impl Serialize,
+        key: impl Into<String> + Send,
+        value: impl Serialize + Send,
         tags: Vec<String>,
     ) -> impl std::future::Future<Output = Result<SharedResult>> + Send;
 
@@ -324,6 +324,43 @@ pub trait ResultStoreContext {
         &self,
         key: &str,
     ) -> impl std::future::Future<Output = Result<T>> + Send;
+}
+
+/// Handle for a sub-agent to interact with the shared result store
+pub struct SubTaskStoreHandle {
+    store: Arc<ResultStore>,
+    subtask_id: String,
+}
+
+impl SubTaskStoreHandle {
+    /// Create a new handle for a specific subtask
+    pub fn new(store: Arc<ResultStore>, subtask_id: impl Into<String>) -> Self {
+        Self {
+            store,
+            subtask_id: subtask_id.into(),
+        }
+    }
+}
+
+impl ResultStoreContext for SubTaskStoreHandle {
+    async fn publish_result(
+        &self,
+        key: impl Into<String> + Send,
+        value: impl Serialize + Send,
+        tags: Vec<String>,
+    ) -> Result<SharedResult> {
+        self.store
+            .publish(key, &self.subtask_id, value, tags, None)
+            .await
+    }
+
+    async fn get_result(&self, key: &str) -> Option<SharedResult> {
+        self.store.get(key).await
+    }
+
+    async fn get_result_typed<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<T> {
+        self.store.get_typed(key).await
+    }
 }
 
 #[cfg(test)]

@@ -316,16 +316,16 @@ impl BenchmarkRunner {
         };
 
         for mr in &result.model_results {
-            let body = serde_json::json!({
-                "model": mr.model,
-                "agent": format!("{} v{}", result.agent, result.agent_version),
-                "result": result_json,
-            });
+            let submission = crate::benchmark::types::BenchmarkSubmission {
+                model: mr.model.clone(),
+                agent: format!("{} v{}", result.agent, result.agent_version),
+                result: result_json.clone(),
+            };
 
             match client
                 .post(api_url)
                 .header("Authorization", format!("Bearer {}", api_key))
-                .json(&body)
+                .json(&submission)
                 .send()
                 .await
             {
