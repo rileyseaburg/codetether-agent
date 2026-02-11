@@ -126,7 +126,7 @@ impl Orchestrator {
             .get(&self.provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", self.provider))?;
 
-        let temperature = if self.model.starts_with("kimi-k2") {
+        let temperature = if self.model.contains("kimi-k2") {
             1.0
         } else {
             0.7

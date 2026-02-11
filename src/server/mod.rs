@@ -6,6 +6,7 @@ pub mod auth;
 pub mod policy;
 
 use crate::a2a;
+use crate::bus::AgentBus;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::cli::ServeArgs;
 use crate::cognition::{
@@ -16,6 +17,7 @@ use crate::cognition::{
 };
 use crate::config::Config;
 use crate::k8s::K8sManager;
+use crate::tool::{PluginManifest, SigningKey, hash_bytes, hash_file};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
@@ -44,6 +46,7 @@ pub struct AppState {
     pub audit_log: AuditLog,
     pub k8s: Arc<K8sManager>,
     pub auth: AuthState,
+    pub bus: Arc<AgentBus>,
 }
 
 /// Audit middleware — logs every request/response to the audit trail.
@@ -120,6 +123,18 @@ const POLICY_RULES: &[PolicyRule] = &[
         pattern: "/v1/k8s/",
         methods: Some(&["GET"]),
         permission: "admin:access",
+    },
+    // K8s sub-agent lifecycle — admin only
+    PolicyRule {
+        pattern: "/v1/k8s/subagent",
+        methods: Some(&["POST", "DELETE"]),
+        permission: "admin:access",
+    },
+    // Plugin registry — read
+    PolicyRule {
+        pattern: "/v1/plugins",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
     },
     // Audit — admin
     PolicyRule {
@@ -245,14 +260,14 @@ async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Respons
         auth_source: "static_token".to_string(),
     };
 
-    if !policy::check_policy(&user, permission, None).await {
+    if let Err(status) = policy::enforce_policy(&user, permission, None).await {
         tracing::warn!(
             path = %path,
             method = %method,
             permission = %permission,
             "Policy middleware denied request"
         );
-        return Err(StatusCode::FORBIDDEN);
+        return Err(status);
     }
 
     Ok(next.run(request).await)
@@ -261,7 +276,11 @@ async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Respons
 /// Start the HTTP server
 pub async fn serve(args: ServeArgs) -> Result<()> {
     let config = Config::load().await?;
-    let cognition = Arc::new(CognitionRuntime::new_from_env());
+    let mut cognition = CognitionRuntime::new_from_env();
+
+    // Set up tool registry for cognition execution engine.
+    cognition.set_tools(Arc::new(crate::tool::ToolRegistry::with_defaults()));
+    let cognition = Arc::new(cognition);
 
     // Initialize audit log.
     let audit_log = AuditLog::from_env();
@@ -275,7 +294,11 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
     // Initialize mandatory auth.
     let auth_state = AuthState::from_env();
-    tracing::info!("Auth is mandatory. Token required for all API endpoints.");
+    tracing::info!(token_len = auth_state.token().len(), "Auth is mandatory. Token required for all API endpoints.");
+    tracing::info!(audit_entries = audit_log.count().await, "Audit log initialized");
+
+    // Create agent bus for in-process communication
+    let bus = AgentBus::new().into_arc();
 
     if cognition.is_enabled() && env_bool("CODETETHER_COGNITION_AUTO_START", true) {
         if let Err(error) = cognition.start(None).await {
@@ -285,22 +308,42 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         }
     }
 
+    let addr = format!("{}:{}", args.hostname, args.port);
+
+    // Build the agent card
+    let agent_card = a2a::server::A2AServer::default_card(&format!("http://{}", addr));
+    let a2a_server = a2a::server::A2AServer::new(agent_card.clone());
+
+    // Build A2A router separately
+    let a2a_router = a2a_server.router();
+
+    // Start gRPC transport on a separate port
+    let grpc_port = std::env::var("CODETETHER_GRPC_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(50051);
+    let grpc_addr: std::net::SocketAddr = format!("{}:{}", args.hostname, grpc_port).parse()?;
+    let grpc_store = crate::a2a::grpc::GrpcTaskStore::with_bus(agent_card, bus.clone());
+    let grpc_service = grpc_store.into_service();
+    tokio::spawn(async move {
+        tracing::info!("gRPC A2A server listening on {}", grpc_addr);
+        if let Err(e) = tonic::transport::Server::builder()
+            .add_service(grpc_service)
+            .serve(grpc_addr)
+            .await
+        {
+            tracing::error!("gRPC server error: {}", e);
+        }
+    });
+
     let state = AppState {
         config: Arc::new(config),
         cognition,
         audit_log,
         k8s,
         auth: auth_state.clone(),
+        bus,
     };
-
-    let addr = format!("{}:{}", args.hostname, args.port);
-
-    // Build the agent card
-    let agent_card = a2a::server::A2AServer::default_card(&format!("http://{}", addr));
-    let a2a_server = a2a::server::A2AServer::new(agent_card);
-
-    // Build A2A router separately
-    let a2a_router = a2a_server.router();
 
     let app = Router::new()
         // Health check (public — auth exempt)
@@ -335,6 +378,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         )
         .route("/v1/cognition/receipts", get(list_receipts))
         .route("/v1/cognition/workspace", get(get_workspace))
+        .route("/v1/cognition/governance", get(get_governance))
+        .route("/v1/cognition/personas/{id}", get(get_persona))
         // Audit trail API
         .route("/v1/audit", get(list_audit_entries))
         // K8s self-deployment APIs
@@ -343,6 +388,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/k8s/restart", post(k8s_restart))
         .route("/v1/k8s/pods", get(k8s_list_pods))
         .route("/v1/k8s/actions", get(k8s_actions))
+        .route("/v1/k8s/subagent", post(k8s_spawn_subagent))
+        .route("/v1/k8s/subagent/{id}", axum::routing::delete(k8s_delete_subagent))
+        // Plugin registry API
+        .route("/v1/plugins", get(list_plugins))
         .with_state(state.clone())
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
@@ -382,12 +431,17 @@ async fn health() -> &'static str {
 struct VersionInfo {
     version: &'static str,
     name: &'static str,
+    binary_hash: Option<String>,
 }
 
 async fn get_version() -> Json<VersionInfo> {
+    let binary_hash = std::env::current_exe()
+        .ok()
+        .and_then(|p| hash_file(&p).ok());
     Json(VersionInfo {
         version: env!("CARGO_PKG_VERSION"),
         name: env!("CARGO_PKG_NAME"),
+        binary_hash,
     })
 }
 
@@ -696,6 +750,21 @@ async fn get_workspace(
     Ok(Json(state.cognition.get_workspace().await))
 }
 
+async fn get_governance(
+    State(state): State<AppState>,
+) -> Result<Json<crate::cognition::SwarmGovernance>, (StatusCode, String)> {
+    Ok(Json(state.cognition.get_governance().await))
+}
+
+async fn get_persona(
+    State(state): State<AppState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
+    state.cognition.get_persona(&id).await
+        .map(Json)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Persona not found: {}", id)))
+}
+
 // ── Audit trail endpoints ──
 
 #[derive(Deserialize)]
@@ -816,6 +885,60 @@ async fn k8s_actions(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<crate::k8s::DeployAction>>, (StatusCode, String)> {
     Ok(Json(state.k8s.recent_actions(100).await))
+}
+
+#[derive(Deserialize)]
+struct SpawnSubagentRequest {
+    subagent_id: String,
+    #[serde(default)]
+    image: Option<String>,
+    #[serde(default)]
+    env_vars: std::collections::HashMap<String, String>,
+}
+
+async fn k8s_spawn_subagent(
+    State(state): State<AppState>,
+    Json(req): Json<SpawnSubagentRequest>,
+) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
+    state
+        .k8s
+        .spawn_subagent_pod(&req.subagent_id, req.image.as_deref(), req.env_vars)
+        .await
+        .map(Json)
+        .map_err(internal_error)
+}
+
+async fn k8s_delete_subagent(
+    State(state): State<AppState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
+    state
+        .k8s
+        .delete_subagent_pod(&id)
+        .await
+        .map(Json)
+        .map_err(internal_error)
+}
+
+/// List registered plugins.
+async fn list_plugins(
+    State(_state): State<AppState>,
+) -> Json<PluginListResponse> {
+    let server_fingerprint = hash_bytes(env!("CARGO_PKG_VERSION").as_bytes());
+    let signing_key = SigningKey::from_env();
+    let test_sig = signing_key.sign("_probe", "0.0.0", &server_fingerprint);
+    Json(PluginListResponse {
+        server_fingerprint,
+        signing_available: !test_sig.is_empty(),
+        plugins: Vec::<PluginManifest>::new(),
+    })
+}
+
+#[derive(Serialize)]
+struct PluginListResponse {
+    server_fingerprint: String,
+    signing_available: bool,
+    plugins: Vec<PluginManifest>,
 }
 
 fn internal_error(error: anyhow::Error) -> (StatusCode, String) {

@@ -9,14 +9,18 @@
 //! - **SubTask**: A unit of work that can be executed in parallel
 //! - **Critical Path**: Latency-oriented metric for parallel execution
 
+pub mod cache;
 pub mod executor;
 pub mod orchestrator;
 pub mod rate_limiter;
+pub mod result_store;
 pub mod subtask;
 
+pub use cache::{CacheConfig, CacheStats, SwarmCache};
 pub use executor::{SwarmExecutor, run_agent_loop};
 pub use orchestrator::Orchestrator;
 pub use rate_limiter::{AdaptiveRateLimiter, RateLimitInfo, RateLimitStats};
+pub use result_store::{ResultStore, ResultStoreContext, SharedResult, SubTaskStoreHandle};
 pub use subtask::{SubAgent, SubTask, SubTaskContext, SubTaskResult, SubTaskStatus};
 
 use anyhow::Result;

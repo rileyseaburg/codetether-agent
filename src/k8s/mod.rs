@@ -327,7 +327,7 @@ impl K8sManager {
                     .status
                     .as_ref()
                     .and_then(|s| s.start_time.as_ref())
-                    .map(|t| t.0.to_rfc3339());
+                    .map(|t| t.0.to_string());
 
                 PodInfo {
                     name,

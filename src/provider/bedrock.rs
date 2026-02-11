@@ -1,6 +1,9 @@
 //! Amazon Bedrock provider implementation using the Converse API
 //!
-//! Supports all Bedrock foundation models via API Key bearer token auth.
+//! Supports all Bedrock foundation models via either:
+//! - AWS SigV4 signing (standard AWS credentials from env/file/profile)
+//! - Bearer token auth (API Gateway / Vault-managed keys)
+//!
 //! Uses the native Bedrock Converse API format.
 //! Dynamically discovers available models via the Bedrock ListFoundationModels
 //! and ListInferenceProfiles APIs.
@@ -12,50 +15,213 @@ use super::{
 };
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use hmac::{Hmac, Mac};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
-const DEFAULT_REGION: &str = "us-east-1";
+pub const DEFAULT_REGION: &str = "us-east-1";
+
+/// AWS credentials for SigV4 signing
+#[derive(Debug, Clone)]
+pub struct AwsCredentials {
+    pub access_key_id: String,
+    pub secret_access_key: String,
+    pub session_token: Option<String>,
+}
+
+impl AwsCredentials {
+    /// Load credentials from environment variables, then fall back to
+    /// ~/.aws/credentials file (default or named profile).
+    pub fn from_environment() -> Option<Self> {
+        // 1) Try env vars first
+        if let (Ok(key_id), Ok(secret)) = (
+            std::env::var("AWS_ACCESS_KEY_ID"),
+            std::env::var("AWS_SECRET_ACCESS_KEY"),
+        ) {
+            if !key_id.is_empty() && !secret.is_empty() {
+                return Some(Self {
+                    access_key_id: key_id,
+                    secret_access_key: secret,
+                    session_token: std::env::var("AWS_SESSION_TOKEN").ok().filter(|s| !s.is_empty()),
+                });
+            }
+        }
+
+        // 2) Fall back to ~/.aws/credentials file
+        let profile = std::env::var("AWS_PROFILE").unwrap_or_else(|_| "default".to_string());
+        Self::from_credentials_file(&profile)
+    }
+
+    /// Parse ~/.aws/credentials INI file for the given profile.
+    fn from_credentials_file(profile: &str) -> Option<Self> {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .ok()?;
+        let path = std::path::Path::new(&home).join(".aws").join("credentials");
+        let content = std::fs::read_to_string(&path).ok()?;
+
+        let section_header = format!("[{}]", profile);
+        let mut in_section = false;
+        let mut key_id = None;
+        let mut secret = None;
+        let mut token = None;
+
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('[') {
+                in_section = trimmed == section_header;
+                continue;
+            }
+            if !in_section {
+                continue;
+            }
+            if let Some((k, v)) = trimmed.split_once('=') {
+                let k = k.trim();
+                let v = v.trim();
+                match k {
+                    "aws_access_key_id" => key_id = Some(v.to_string()),
+                    "aws_secret_access_key" => secret = Some(v.to_string()),
+                    "aws_session_token" => token = Some(v.to_string()),
+                    _ => {}
+                }
+            }
+        }
+
+        Some(Self {
+            access_key_id: key_id?,
+            secret_access_key: secret?,
+            session_token: token,
+        })
+    }
+
+    /// Detect region from AWS_REGION / AWS_DEFAULT_REGION env vars,
+    /// then from ~/.aws/config.
+    pub fn detect_region() -> Option<String> {
+        if let Ok(r) = std::env::var("AWS_REGION") {
+            if !r.is_empty() {
+                return Some(r);
+            }
+        }
+        if let Ok(r) = std::env::var("AWS_DEFAULT_REGION") {
+            if !r.is_empty() {
+                return Some(r);
+            }
+        }
+        // Try ~/.aws/config
+        let profile = std::env::var("AWS_PROFILE").unwrap_or_else(|_| "default".to_string());
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .ok()?;
+        let path = std::path::Path::new(&home).join(".aws").join("config");
+        let content = std::fs::read_to_string(&path).ok()?;
+
+        // In ~/.aws/config, default profile is [default], others are [profile foo]
+        let section_header = if profile == "default" {
+            "[default]".to_string()
+        } else {
+            format!("[profile {}]", profile)
+        };
+        let mut in_section = false;
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('[') {
+                in_section = trimmed == section_header;
+                continue;
+            }
+            if !in_section {
+                continue;
+            }
+            if let Some((k, v)) = trimmed.split_once('=') {
+                if k.trim() == "region" {
+                    let v = v.trim();
+                    if !v.is_empty() {
+                        return Some(v.to_string());
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
+/// Authentication mode for the Bedrock provider.
+#[derive(Debug, Clone)]
+pub enum BedrockAuth {
+    /// Standard AWS SigV4 signing with IAM credentials
+    SigV4(AwsCredentials),
+    /// Bearer token (API Gateway or custom auth layer)
+    BearerToken(String),
+}
 
 pub struct BedrockProvider {
     client: Client,
-    api_key: String,
+    auth: BedrockAuth,
     region: String,
 }
 
 impl std::fmt::Debug for BedrockProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BedrockProvider")
-            .field("api_key", &"<REDACTED>")
+            .field("auth", &match &self.auth {
+                BedrockAuth::SigV4(_) => "SigV4",
+                BedrockAuth::BearerToken(_) => "BearerToken",
+            })
             .field("region", &self.region)
             .finish()
     }
 }
 
 impl BedrockProvider {
+    /// Create from a bearer token (API Gateway / Vault key).
     pub fn new(api_key: String) -> Result<Self> {
         Self::with_region(api_key, DEFAULT_REGION.to_string())
     }
 
+    /// Create from a bearer token with a specific region.
     pub fn with_region(api_key: String, region: String) -> Result<Self> {
         tracing::debug!(
             provider = "bedrock",
             region = %region,
-            api_key_len = api_key.len(),
+            auth = "bearer_token",
             "Creating Bedrock provider"
         );
         Ok(Self {
             client: Client::new(),
-            api_key,
+            auth: BedrockAuth::BearerToken(api_key),
             region,
         })
     }
 
-    fn validate_api_key(&self) -> Result<()> {
-        if self.api_key.is_empty() {
-            anyhow::bail!("Bedrock API key is empty");
+    /// Create from AWS IAM credentials (SigV4 signing).
+    pub fn with_credentials(credentials: AwsCredentials, region: String) -> Result<Self> {
+        tracing::debug!(
+            provider = "bedrock",
+            region = %region,
+            auth = "sigv4",
+            "Creating Bedrock provider with AWS credentials"
+        );
+        Ok(Self {
+            client: Client::new(),
+            auth: BedrockAuth::SigV4(credentials),
+            region,
+        })
+    }
+
+    fn validate_auth(&self) -> Result<()> {
+        match &self.auth {
+            BedrockAuth::BearerToken(key) => {
+                if key.is_empty() {
+                    anyhow::bail!("Bedrock API key is empty");
+                }
+            }
+            BedrockAuth::SigV4(creds) => {
+                if creds.access_key_id.is_empty() || creds.secret_access_key.is_empty() {
+                    anyhow::bail!("AWS credentials are incomplete");
+                }
+            }
         }
         Ok(())
     }
@@ -67,6 +233,158 @@ impl BedrockProvider {
     /// Management API URL (for listing models, not inference)
     fn management_url(&self) -> String {
         format!("https://bedrock.{}.amazonaws.com", self.region)
+    }
+
+    // ── AWS SigV4 signing helpers ──────────────────────────────────────
+
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+        let mut mac = Hmac::<Sha256>::new_from_slice(key)
+            .expect("HMAC can take key of any size");
+        mac.update(data);
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    fn sha256_hex(data: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        hex::encode(hasher.finalize())
+    }
+
+    /// Build a SigV4-signed request and send it.
+    async fn send_signed_request(
+        &self,
+        method: &str,
+        url: &str,
+        body: &[u8],
+        service: &str,
+    ) -> Result<reqwest::Response> {
+        let creds = match &self.auth {
+            BedrockAuth::SigV4(c) => c,
+            BedrockAuth::BearerToken(_) => {
+                anyhow::bail!("send_signed_request called with bearer token auth");
+            }
+        };
+
+        let now = chrono::Utc::now();
+        let datestamp = now.format("%Y%m%d").to_string();
+        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+
+        // Parse URL components
+        let host_start = url.find("://").map(|i| i + 3).unwrap_or(0);
+        let after_host = url[host_start..].find('/').map(|i| host_start + i).unwrap_or(url.len());
+        let host = url[host_start..after_host].to_string();
+        let path_and_query = &url[after_host..];
+        let (canonical_uri, canonical_querystring) = match path_and_query.split_once('?') {
+            Some((p, q)) => (p.to_string(), q.to_string()),
+            None => (path_and_query.to_string(), String::new()),
+        };
+
+        let payload_hash = Self::sha256_hex(body);
+
+        // Build canonical headers (must be sorted)
+        let mut headers_map: Vec<(&str, String)> = vec![
+            ("content-type", "application/json".to_string()),
+            ("host", host.clone()),
+            ("x-amz-date", amz_date.clone()),
+        ];
+        if let Some(token) = &creds.session_token {
+            headers_map.push(("x-amz-security-token", token.clone()));
+        }
+        headers_map.sort_by_key(|(k, _)| *k);
+
+        let canonical_headers: String = headers_map
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k, v))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+
+        let signed_headers: String = headers_map
+            .iter()
+            .map(|(k, _)| *k)
+            .collect::<Vec<_>>()
+            .join(";");
+
+        let canonical_request = format!(
+            "{}\n{}\n{}\n{}\n{}\n{}",
+            method, canonical_uri, canonical_querystring,
+            canonical_headers, signed_headers, payload_hash
+        );
+
+        let credential_scope = format!("{}/{}/{}/aws4_request", datestamp, self.region, service);
+
+        let string_to_sign = format!(
+            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+            amz_date, credential_scope, Self::sha256_hex(canonical_request.as_bytes())
+        );
+
+        // Derive signing key
+        let k_date = Self::hmac_sha256(
+            format!("AWS4{}", creds.secret_access_key).as_bytes(),
+            datestamp.as_bytes(),
+        );
+        let k_region = Self::hmac_sha256(&k_date, self.region.as_bytes());
+        let k_service = Self::hmac_sha256(&k_region, service.as_bytes());
+        let k_signing = Self::hmac_sha256(&k_service, b"aws4_request");
+
+        let signature = hex::encode(Self::hmac_sha256(&k_signing, string_to_sign.as_bytes()));
+
+        let authorization = format!(
+            "AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}",
+            creds.access_key_id, credential_scope, signed_headers, signature
+        );
+
+        let mut req = self
+            .client
+            .request(
+                method.parse().unwrap_or(reqwest::Method::POST),
+                url,
+            )
+            .header("content-type", "application/json")
+            .header("host", &host)
+            .header("x-amz-date", &amz_date)
+            .header("x-amz-content-sha256", &payload_hash)
+            .header("authorization", &authorization);
+
+        if let Some(token) = &creds.session_token {
+            req = req.header("x-amz-security-token", token);
+        }
+
+        if method == "POST" || method == "PUT" {
+            req = req.body(body.to_vec());
+        }
+
+        req.send().await.context("Failed to send signed request to Bedrock")
+    }
+
+    /// Send an HTTP request using whichever auth mode is configured.
+    async fn send_request(
+        &self,
+        method: &str,
+        url: &str,
+        body: Option<&[u8]>,
+        service: &str,
+    ) -> Result<reqwest::Response> {
+        match &self.auth {
+            BedrockAuth::SigV4(_) => {
+                self.send_signed_request(method, url, body.unwrap_or(b""), service).await
+            }
+            BedrockAuth::BearerToken(token) => {
+                let mut req = self.client.request(
+                    method.parse().unwrap_or(reqwest::Method::GET),
+                    url,
+                )
+                .bearer_auth(token)
+                .header("content-type", "application/json")
+                .header("accept", "application/json");
+
+                if let Some(b) = body {
+                    req = req.body(b.to_vec());
+                }
+
+                req.send().await.context("Failed to send request to Bedrock")
+            }
+        }
     }
 
     /// Resolve a short model alias to the full Bedrock model ID.
@@ -181,10 +499,7 @@ impl BedrockProvider {
         // 1) Fetch foundation models
         let fm_url = format!("{}/foundation-models", self.management_url());
         let fm_resp = self
-            .client
-            .get(&fm_url)
-            .bearer_auth(&self.api_key)
-            .send()
+            .send_request("GET", &fm_url, None, "bedrock")
             .await;
 
         if let Ok(resp) = fm_resp {
@@ -284,10 +599,7 @@ impl BedrockProvider {
             self.management_url()
         );
         let ip_resp = self
-            .client
-            .get(&ip_url)
-            .bearer_auth(&self.api_key)
-            .send()
+            .send_request("GET", &ip_url, None, "bedrock")
             .await;
 
         if let Ok(resp) = ip_resp {
@@ -722,7 +1034,7 @@ impl Provider for BedrockProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        self.validate_api_key()?;
+        self.validate_auth()?;
         self.discover_models().await
     }
 
@@ -738,7 +1050,7 @@ impl Provider for BedrockProvider {
             "Starting Bedrock Converse request"
         );
 
-        self.validate_api_key()?;
+        self.validate_auth()?;
 
         let (system_parts, messages) = Self::convert_messages(&request.messages);
         let tools = Self::convert_tools(&request.tools);
@@ -775,16 +1087,10 @@ impl Provider for BedrockProvider {
         let url = format!("{}/model/{}/converse", self.base_url(), encoded_model_id);
         tracing::debug!("Bedrock request URL: {}", url);
 
+        let body_bytes = serde_json::to_vec(&body)?;
         let response = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.api_key)
-            .header("content-type", "application/json")
-            .header("accept", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .context("Failed to send request to Bedrock")?;
+            .send_request("POST", &url, Some(&body_bytes), "bedrock-runtime")
+            .await?;
 
         let status = response.status();
         let text = response

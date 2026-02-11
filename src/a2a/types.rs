@@ -1,6 +1,9 @@
 //! A2A Protocol Types
 //!
-//! Types aligned with the A2A specification (a2a.json schema)
+//! Types aligned with the A2A gRPC specification (a2a.proto) and JSON-RPC schema.
+//! This module provides full protocol parity with the proto definition including
+//! streaming events, security schemes, push notification config CRUD, and
+//! agent card extensions.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -72,6 +75,9 @@ pub struct Message {
     pub task_id: Option<String>,
     #[serde(default)]
     pub metadata: HashMap<String, serde_json::Value>,
+    /// URIs of extensions present in or contributing to this Message
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extensions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -119,9 +125,12 @@ pub struct Artifact {
     pub description: Option<String>,
     #[serde(default)]
     pub metadata: HashMap<String, serde_json::Value>,
+    /// URIs of extensions present in or contributing to this Artifact
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extensions: Vec<String>,
 }
 
-/// Agent Card - self-describing manifest
+/// Agent Card - self-describing manifest (full proto parity)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentCard {
@@ -131,6 +140,12 @@ pub struct AgentCard {
     pub version: String,
     #[serde(default = "default_protocol_version")]
     pub protocol_version: String,
+    /// Transport of the preferred endpoint. Defaults to "JSONRPC".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preferred_transport: Option<String>,
+    /// Additional supported transports
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_interfaces: Vec<AgentInterface>,
     pub capabilities: AgentCapabilities,
     pub skills: Vec<AgentSkill>,
     #[serde(default)]
@@ -143,6 +158,18 @@ pub struct AgentCard {
     pub icon_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub documentation_url: Option<String>,
+    /// Security scheme definitions
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub security_schemes: HashMap<String, SecurityScheme>,
+    /// Security requirements (OR of ANDs)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub security: Vec<SecurityRequirement>,
+    /// Whether the agent supports an extended card when authenticated
+    #[serde(default)]
+    pub supports_authenticated_extended_card: bool,
+    /// JWS signatures for this agent card
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub signatures: Vec<AgentCardSignature>,
 }
 
 fn default_protocol_version() -> String {
@@ -158,6 +185,9 @@ pub struct AgentCapabilities {
     pub push_notifications: bool,
     #[serde(default)]
     pub state_transition_history: bool,
+    /// Extensions supported by this agent
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extensions: Vec<AgentExtension>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -257,6 +287,15 @@ impl JsonRpcError {
             data: None,
         }
     }
+
+    /// Create an unsupported operation error (-32004)
+    pub fn unsupported_operation(msg: impl Into<String>) -> Self {
+        Self {
+            code: UNSUPPORTED_OPERATION,
+            message: msg.into(),
+            data: None,
+        }
+    }
 }
 
 // Standard JSON-RPC error codes
@@ -316,4 +355,209 @@ pub struct TaskQueryParams {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub history_length: Option<usize>,
+}
+
+// ─── Streaming & Response Event Types ────────────────────────────────────
+
+/// A task status update pushed via SSE / streaming
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskStatusUpdateEvent {
+    pub id: String,
+    pub status: TaskStatus,
+    #[serde(default, rename = "final")]
+    pub is_final: bool,
+    #[serde(default)]
+    pub metadata: HashMap<String, serde_json::Value>,
+}
+
+/// A task artifact update pushed via SSE / streaming
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskArtifactUpdateEvent {
+    pub id: String,
+    pub artifact: Artifact,
+    #[serde(default)]
+    pub metadata: HashMap<String, serde_json::Value>,
+}
+
+/// A single frame on a streaming response (SSE `data:` payload).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum StreamEvent {
+    StatusUpdate(TaskStatusUpdateEvent),
+    ArtifactUpdate(TaskArtifactUpdateEvent),
+}
+
+/// The response union for `message/send` — either a full Task or a Message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SendMessageResponse {
+    Task(Task),
+    Message(Message),
+}
+
+// ─── Security Types (OAS 3.1 / proto parity) ────────────────────────────
+
+/// Security scheme definition (union), matches proto `SecurityScheme`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum SecurityScheme {
+    #[serde(rename = "apiKey")]
+    ApiKey {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        name: String,
+        #[serde(rename = "in")]
+        location: String, // "query" | "header" | "cookie"
+    },
+    #[serde(rename = "http")]
+    Http {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        scheme: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        bearer_format: Option<String>,
+    },
+    #[serde(rename = "oauth2")]
+    OAuth2 {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        flows: OAuthFlows,
+    },
+    #[serde(rename = "openIdConnect")]
+    OpenIdConnect {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        open_id_connect_url: String,
+    },
+    #[serde(rename = "mutualTLS")]
+    MutualTls {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+    },
+}
+
+/// OAuth 2.0 flows (matches proto `OAuthFlows`)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthFlows {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implicit: Option<OAuthFlowImplicit>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authorization_code: Option<OAuthFlowAuthorizationCode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_credentials: Option<OAuthFlowClientCredentials>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_code: Option<OAuthFlowDeviceCode>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthFlowImplicit {
+    pub authorization_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_url: Option<String>,
+    #[serde(default)]
+    pub scopes: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthFlowAuthorizationCode {
+    pub authorization_url: String,
+    pub token_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_url: Option<String>,
+    #[serde(default)]
+    pub scopes: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthFlowClientCredentials {
+    pub token_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_url: Option<String>,
+    #[serde(default)]
+    pub scopes: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthFlowDeviceCode {
+    pub device_authorization_url: String,
+    pub token_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_url: Option<String>,
+    #[serde(default)]
+    pub scopes: HashMap<String, String>,
+}
+
+/// A security requirement entry: name → list of required scopes
+pub type SecurityRequirement = HashMap<String, Vec<String>>;
+
+// ─── Agent Card Extension Types ──────────────────────────────────────────
+
+/// An agent-level extension declaration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentExtension {
+    /// URI identifying the extension
+    pub uri: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Whether this extension is required to interact with the agent
+    #[serde(default)]
+    pub required: bool,
+    /// Extension-specific configuration parameters
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<serde_json::Value>,
+}
+
+/// JWS signature attached to an agent card
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCardSignature {
+    /// The JWS compact serialization payload
+    pub signature: String,
+    /// The algorithm used (e.g. "ES256", "RS256")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub algorithm: Option<String>,
+    /// Key ID referencing the signing key
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
+}
+
+/// An additional transport interface for an agent
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentInterface {
+    /// Transport name (e.g. "GRPC", "JSONRPC", "WEBSOCKET")
+    pub transport: String,
+    /// Endpoint URL for this interface
+    pub url: String,
+    /// Content-types accepted at this interface
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub content_types: Vec<String>,
+}
+
+// ─── Push Notification CRUD Types ────────────────────────────────────────
+
+/// Request to set push notification config for a task
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskPushNotificationConfig {
+    pub id: String, // task id
+    pub push_notification_config: PushNotificationConfig,
+}
+
+/// Authentication info for connecting to an agent (used by clients)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthenticationInfo {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub schemes: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credentials: Option<String>,
 }

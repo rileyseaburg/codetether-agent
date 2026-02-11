@@ -270,7 +270,13 @@ impl MoltbookClient {
         let resp = self
             .get(&format!("/posts?sort={}&limit={}", sort, limit))
             .await?;
-        // The API may return posts under different keys
+        // Try structured deserialization first
+        if let Ok(feed) = serde_json::from_str::<FeedResponse>(&resp) {
+            if feed.success {
+                return Ok(feed.posts);
+            }
+        }
+        // Fallback: The API may return posts under different keys
         let val: serde_json::Value = serde_json::from_str(&resp)?;
         if let Some(posts) = val.get("posts") {
             Ok(serde_json::from_value(posts.clone()).unwrap_or_default())
@@ -330,6 +336,13 @@ impl MoltbookClient {
                 author,
                 votes,
             ));
+        }
+
+        // Engage with top post if available
+        if let Some(top_post) = posts.first() {
+            if let Ok(resp) = self.upvote(&top_post.id).await {
+                summary.push_str(&format!("  Upvoted top post: {}\n", resp));
+            }
         }
 
         Ok(summary)

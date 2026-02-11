@@ -254,6 +254,24 @@ Return JSON only: {{ \"tool_requests\": [{{ \"tool\": \"tool-name\", \"arguments
         // Create capability lease
         let lease = CapabilityLease::new(persona_id, &request.tool, "policy");
 
+        // Validate lease is still valid before executing
+        if !lease.is_valid() {
+            events.push(ThoughtEvent {
+                id: Uuid::new_v4().to_string(),
+                event_type: ThoughtEventType::CheckResult,
+                persona_id: Some(persona_id.to_string()),
+                swarm_id: None,
+                timestamp: Utc::now(),
+                payload: serde_json::json!({
+                    "tool_rejected": true,
+                    "tool": request.tool,
+                    "reason": "capability_lease_expired",
+                    "lease_id": lease.id,
+                }),
+            });
+            continue;
+        }
+
         // Execute the tool
         let result = tool.execute(request.arguments.clone()).await;
 
