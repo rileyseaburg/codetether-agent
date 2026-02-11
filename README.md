@@ -6,7 +6,7 @@
 
 A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
 
-## v1.1.6-alpha-1 — Agent Bus & gRPC Transport
+## v1.1.6-alpha-2 — Agent Bus & gRPC Transport
 
 This release adds the inter-agent communication backbone — a broadcast-based in-process message bus and a gRPC transport layer implementing the full A2A protocol, enabling high-frequency agent-to-agent communication both locally and across the network.
 
