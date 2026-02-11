@@ -162,10 +162,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
             binary: codetether
             archive: tar.gz
-          - os: macos-13
-            target: x86_64-apple-darwin
-            binary: codetether
-            archive: tar.gz
           - os: macos-14
             target: aarch64-apple-darwin
             binary: codetether
@@ -220,7 +216,7 @@ jobs:
   publish:
     name: Publish Crate + GitHub Release
     needs: [prepare, build]
-    if: ${{ !inputs.dry_run }}
+    if: ${{ !inputs.dry_run && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release commit
