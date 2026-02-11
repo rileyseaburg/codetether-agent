@@ -64,6 +64,9 @@ pub enum Command {
     /// A2A worker mode (explicit - also the default)
     Worker(A2aArgs),
 
+    /// Spawn an A2A agent runtime with auto card registration and peer discovery
+    Spawn(SpawnArgs),
+
     /// Execute task with parallel sub-agents (swarm mode)
     Swarm(SwarmArgs),
 
@@ -209,6 +212,41 @@ pub struct A2aArgs {
     /// Push notification endpoint URL
     #[arg(long)]
     pub push_url: Option<String>,
+}
+
+#[derive(Parser, Debug, Clone)]
+pub struct SpawnArgs {
+    /// Agent name
+    #[arg(short, long)]
+    pub name: Option<String>,
+
+    /// Hostname to bind the spawned A2A agent
+    #[arg(long, default_value = "127.0.0.1")]
+    pub hostname: String,
+
+    /// Port to bind the spawned A2A agent
+    #[arg(short, long, default_value = "4097")]
+    pub port: u16,
+
+    /// Public URL published in the agent card (defaults to http://<hostname>:<port>)
+    #[arg(long)]
+    pub public_url: Option<String>,
+
+    /// Optional custom agent description for the card
+    #[arg(short, long)]
+    pub description: Option<String>,
+
+    /// Peer seed URLs to discover and talk to (repeat flag or comma-separated)
+    #[arg(long, value_delimiter = ',', env = "CODETETHER_A2A_PEERS")]
+    pub peer: Vec<String>,
+
+    /// Discovery interval in seconds
+    #[arg(long, default_value = "15")]
+    pub discovery_interval_secs: u64,
+
+    /// Disable sending an automatic intro message to newly discovered peers
+    #[arg(long = "no-auto-introduce", action = clap::ArgAction::SetFalse, default_value_t = true)]
+    pub auto_introduce: bool,
 }
 
 #[derive(Parser, Debug)]

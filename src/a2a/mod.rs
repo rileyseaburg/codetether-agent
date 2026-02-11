@@ -11,6 +11,7 @@ pub mod bridge;
 pub mod client;
 pub mod grpc;
 pub mod server;
+pub mod spawn;
 pub mod types;
 pub mod worker;
 
