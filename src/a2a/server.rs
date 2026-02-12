@@ -104,7 +104,7 @@ impl A2AServer {
             default_output_modes: vec!["text/plain".to_string(), "application/json".to_string()],
             provider: Some(AgentProvider {
                 organization: "CodeTether".to_string(),
-                url: "https://codetether.ai".to_string(),
+                url: "https://codetether.run".to_string(),
             }),
             icon_url: None,
             documentation_url: None,
