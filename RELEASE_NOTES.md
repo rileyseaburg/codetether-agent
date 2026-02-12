@@ -1,23 +1,19 @@
-# v1.1.6-alpha-8.5
+# v1.1.7
 
 ## What's New
 
-- **Protocol-first autochat relay** — New relay infrastructure (`src/bus/relay.rs`) enables protocol-first communication patterns for improved agent orchestration
-- **Installer version checking** — Install scripts now validate and report version information during setup
-- **Model discovery in installer** — Installers can discover and configure available models during installation
-- **Protocol registry UX** — Enhanced user experience for protocol registration and management in the TUI
+- **Easy-mode slash commands**: Added convenient slash commands in the TUI for streamlined interactions
+- **Improved autochat UX**: Enhanced the autochat experience with better interface and workflow
 
 ## Bug Fixes
 
-- Removed accidentally committed secrets from `jenkinsfile.sh`
-- Fixed case sensitivity issue in `.gitignore`
+- Fixed PowerShell compatibility by replacing ternary operators with if/else statements in `install.ps1`, ensuring support for older PowerShell versions
 
 ## Changes
 
-- **TUI improvements** — Major TUI expansion with 1000+ new lines for enhanced terminal interface capabilities
-- **Installer script updates** — Significant improvements to both `install.sh` and `install.ps1` with better error handling and model configuration
-- **Bus infrastructure** — New `registry.rs` module for managing protocol endpoints and message routing
-- **Cognition system refinements** — Updated persistence and thinker modules for improved agent reasoning
-- **Server and provider updates** — Minor adjustments to server routing and Bedrock provider integration
+**2 files changed**, 251 insertions(+), 57 deletions(-)
 
-**Stats:** 14 files changed, 1,965 insertions(+), 221 deletions(-)
+| File | Changes |
+|------|---------|
+| `install.ps1` | PowerShell compatibility improvements |
+| `src/tui/mod.rs` | Slash commands and autochat enhancements |
