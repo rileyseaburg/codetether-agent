@@ -151,8 +151,11 @@ impl ThinkerClient {
             ThinkerBackend::Bedrock => {
                 let creds = AwsCredentials::from_environment()
                     .ok_or_else(|| anyhow!("Bedrock thinker requires AWS credentials (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or ~/.aws/credentials)"))?;
-                let provider = BedrockProvider::with_credentials(creds, config.bedrock_region.clone())?;
-                ThinkerClientBackend::Bedrock { provider: Arc::new(provider) }
+                let provider =
+                    BedrockProvider::with_credentials(creds, config.bedrock_region.clone())?;
+                ThinkerClientBackend::Bedrock {
+                    provider: Arc::new(provider),
+                }
             }
         };
 
@@ -170,7 +173,8 @@ impl ThinkerClient {
                     .await
             }
             ThinkerClientBackend::Bedrock { provider } => {
-                self.think_bedrock(provider, system_prompt, user_prompt).await
+                self.think_bedrock(provider, system_prompt, user_prompt)
+                    .await
             }
             ThinkerClientBackend::Candle { runtime } => {
                 let runtime = Arc::clone(runtime);
@@ -229,14 +233,21 @@ impl ThinkerClient {
             .context("Bedrock thinker converse request failed")?;
 
         let status = response.status();
-        let text = response.text().await.context("Failed to read Bedrock thinker response")?;
+        let text = response
+            .text()
+            .await
+            .context("Failed to read Bedrock thinker response")?;
 
         if !status.is_success() {
-            return Err(anyhow!("Bedrock thinker error ({}): {}", status, &text[..text.len().min(500)]));
+            return Err(anyhow!(
+                "Bedrock thinker error ({}): {}",
+                status,
+                &text[..text.len().min(500)]
+            ));
         }
 
-        let parsed: serde_json::Value = serde_json::from_str(&text)
-            .context("Failed to parse Bedrock thinker response")?;
+        let parsed: serde_json::Value =
+            serde_json::from_str(&text).context("Failed to parse Bedrock thinker response")?;
 
         let output_text = parsed["output"]["message"]["content"]
             .as_array()

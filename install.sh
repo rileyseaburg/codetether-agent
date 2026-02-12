@@ -8,6 +8,7 @@
 # Options:
 #   --functiongemma      Download the FunctionGemma model for local tool-call routing (optional)
 #   --functiongemma-only Only download the FunctionGemma model (skip binary install)
+#   --force              Force reinstall even if latest version is already installed
 
 set -e
 
@@ -17,6 +18,7 @@ INSTALL_DIR="/usr/local/bin"
 USE_SUDO="true"
 INSTALL_FUNCTIONGEMMA="false"
 FUNCTIONGEMMA_ONLY="false"
+FORCE_INSTALL="false"
 
 # FunctionGemma model configuration
 FUNCTIONGEMMA_MODEL_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/codetether/models/functiongemma"
@@ -75,6 +77,75 @@ detect_platform() {
     esac
 
     echo "${arch}-${os}"
+}
+
+semver_cmp() {
+    # Returns: 1 if $1 > $2, 0 if equal, -1 if $1 < $2
+    awk -v a="$1" -v b="$2" '
+    function isnum(x) { return x ~ /^[0-9]+$/ }
+    function cmp_ident(x, y, xn, yn) {
+        if (x == y) return 0
+        xn = isnum(x); yn = isnum(y)
+        if (xn && yn) return ((x + 0) > (y + 0)) ? 1 : -1
+        if (xn && !yn) return -1
+        if (!xn && yn) return 1
+        return (x > y) ? 1 : -1
+    }
+    function parse(v,    idx, base, pre, n, arr, i) {
+        sub(/^v/, "", v)
+        idx = index(v, "-")
+        if (idx > 0) {
+            base = substr(v, 1, idx - 1)
+            pre = substr(v, idx + 1)
+        } else {
+            base = v
+            pre = ""
+        }
+
+        split(base, arr, ".")
+        maj = (arr[1] == "") ? 0 : arr[1] + 0
+        min = (arr[2] == "") ? 0 : arr[2] + 0
+        pat = (arr[3] == "") ? 0 : arr[3] + 0
+
+        delete pre_parts
+        pre_len = 0
+        if (pre != "") {
+            pre_len = split(pre, pre_parts, /[.-]/)
+        }
+    }
+    BEGIN {
+        parse(a)
+        a_maj = maj; a_min = min; a_pat = pat; a_pre = pre; a_pre_len = pre_len
+        delete a_parts
+        for (i = 1; i <= a_pre_len; i++) a_parts[i] = pre_parts[i]
+
+        parse(b)
+        b_maj = maj; b_min = min; b_pat = pat; b_pre = pre; b_pre_len = pre_len
+        delete b_parts
+        for (i = 1; i <= b_pre_len; i++) b_parts[i] = pre_parts[i]
+
+        if (a_maj != b_maj) { print (a_maj > b_maj) ? 1 : -1; exit }
+        if (a_min != b_min) { print (a_min > b_min) ? 1 : -1; exit }
+        if (a_pat != b_pat) { print (a_pat > b_pat) ? 1 : -1; exit }
+
+        if (a_pre == "" && b_pre == "") { print 0; exit }
+        if (a_pre == "" && b_pre != "") { print 1; exit }
+        if (a_pre != "" && b_pre == "") { print -1; exit }
+
+        max_len = (a_pre_len > b_pre_len) ? a_pre_len : b_pre_len
+        for (i = 1; i <= max_len; i++) {
+            if (i > a_pre_len) { print -1; exit }
+            if (i > b_pre_len) { print 1; exit }
+            c = cmp_ident(a_parts[i], b_parts[i])
+            if (c != 0) { print c; exit }
+        }
+
+        print 0
+    }'
+}
+
+version_is_newer() {
+    [ "$(semver_cmp "$1" "$2")" -gt 0 ]
 }
 
 get_latest_version() {
@@ -411,11 +482,15 @@ main() {
             --functiongemma-only)
                 FUNCTIONGEMMA_ONLY="true"
                 ;;
+            --force)
+                FORCE_INSTALL="true"
+                ;;
             --help|-h)
                 printf "Usage: $0 [OPTIONS]\n\n"
                 printf "Options:\n"
                 printf "  --functiongemma      Download the FunctionGemma model for tool-call routing\n"
                 printf "  --functiongemma-only Only download the FunctionGemma model\n"
+                printf "  --force              Force reinstall even if latest is already installed\n"
                 printf "  --help, -h           Show this help message\n"
                 exit 0
                 ;;
@@ -441,6 +516,18 @@ main() {
     platform="$(detect_platform)"
     info "detected platform: ${platform}"
 
+    # Determine install location before checking for updates
+    if [ "$(id -u)" = "0" ]; then
+        USE_SUDO="false"
+    elif ! command -v sudo > /dev/null 2>&1; then
+        USE_SUDO="false"
+        INSTALL_DIR="${HOME}/.local/bin"
+    fi
+
+    if [ "$USE_SUDO" = "true" ] && ! sudo -n true 2>/dev/null; then
+        info "installing to ${INSTALL_DIR} (may require sudo password)"
+    fi
+
     # Get latest version
     info "fetching latest release..."
     local version
@@ -452,64 +539,70 @@ main() {
     fi
     info "latest version: ${version}"
 
+    local target_path="${INSTALL_DIR}/${BINARY_NAME}"
+    local installed_version=""
+    local skip_binary_install="false"
+
+    if [ -x "$target_path" ]; then
+        installed_version="$("$target_path" --version 2>/dev/null | awk '{print $NF}' | head -1)"
+    elif command -v "$BINARY_NAME" > /dev/null 2>&1; then
+        installed_version="$("$BINARY_NAME" --version 2>/dev/null | awk '{print $NF}' | head -1)"
+    fi
+
+    if [ -n "$installed_version" ]; then
+        info "installed version: ${installed_version}"
+        if [ "$FORCE_INSTALL" != "true" ] && ! version_is_newer "$version" "$installed_version"; then
+            ok "already up to date (${installed_version}); skipping binary install"
+            skip_binary_install="true"
+        fi
+    fi
+
+    if [ "$skip_binary_install" = "false" ]; then
+
     # Build download URL
     local artifact_name="codetether-${version}-${platform}"
     local tarball="${artifact_name}.tar.gz"
     local url="https://github.com/${REPO}/releases/download/${version}/${tarball}"
 
-    # Create temp directory
-    local tmp_dir
-    tmp_dir="$(mktemp -d)"
-    trap 'rm -rf "$tmp_dir"' EXIT
+        # Create temp directory
+        local tmp_dir
+        tmp_dir="$(mktemp -d)"
+        trap 'rm -rf "$tmp_dir"' EXIT
 
-    # Download
-    info "downloading ${tarball}..."
-    download "$url" "${tmp_dir}/${tarball}"
+        # Download
+        info "downloading ${tarball}..."
+        download "$url" "${tmp_dir}/${tarball}"
 
-    if [ ! -f "${tmp_dir}/${tarball}" ]; then
-        error "download failed — no pre-built binary for ${platform}"
-        error "you can build from source: cargo install codetether-agent"
-        exit 1
+        if [ ! -f "${tmp_dir}/${tarball}" ]; then
+            error "download failed — no pre-built binary for ${platform}"
+            error "you can build from source: cargo install codetether-agent"
+            exit 1
+        fi
+
+        # Extract
+        info "extracting..."
+        tar xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
+
+        if [ ! -f "${tmp_dir}/${artifact_name}" ]; then
+            error "expected binary not found in archive"
+            exit 1
+        fi
+
+        chmod +x "${tmp_dir}/${artifact_name}"
+
+        # Ensure install directory exists
+        if [ "$USE_SUDO" = "true" ]; then
+            sudo mkdir -p "$INSTALL_DIR"
+            sudo mv "${tmp_dir}/${artifact_name}" "${INSTALL_DIR}/${BINARY_NAME}"
+            sudo chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+        else
+            mkdir -p "$INSTALL_DIR"
+            mv "${tmp_dir}/${artifact_name}" "${INSTALL_DIR}/${BINARY_NAME}"
+            chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+        fi
+
+        ok "installed ${BINARY_NAME} ${version} to ${INSTALL_DIR}/${BINARY_NAME}"
     fi
-
-    # Extract
-    info "extracting..."
-    tar xzf "${tmp_dir}/${tarball}" -C "${tmp_dir}"
-
-    if [ ! -f "${tmp_dir}/${artifact_name}" ]; then
-        error "expected binary not found in archive"
-        exit 1
-    fi
-
-    chmod +x "${tmp_dir}/${artifact_name}"
-
-    # Determine install location
-    # Try /usr/local/bin with sudo, fall back to ~/.local/bin
-    if [ "$(id -u)" = "0" ]; then
-        USE_SUDO="false"
-    elif ! command -v sudo > /dev/null 2>&1; then
-        USE_SUDO="false"
-        INSTALL_DIR="${HOME}/.local/bin"
-    fi
-
-    # If we can't write to /usr/local/bin without sudo, use ~/.local/bin as fallback
-    if [ "$USE_SUDO" = "true" ] && ! sudo -n true 2>/dev/null; then
-        # sudo might prompt for password — try it
-        info "installing to ${INSTALL_DIR} (may require sudo password)"
-    fi
-
-    # Ensure install directory exists
-    if [ "$USE_SUDO" = "true" ]; then
-        sudo mkdir -p "$INSTALL_DIR"
-        sudo mv "${tmp_dir}/${artifact_name}" "${INSTALL_DIR}/${BINARY_NAME}"
-        sudo chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-    else
-        mkdir -p "$INSTALL_DIR"
-        mv "${tmp_dir}/${artifact_name}" "${INSTALL_DIR}/${BINARY_NAME}"
-        chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-    fi
-
-    ok "installed ${BINARY_NAME} ${version} to ${INSTALL_DIR}/${BINARY_NAME}"
 
     # Verify
     if command -v "$BINARY_NAME" > /dev/null 2>&1; then

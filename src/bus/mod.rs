@@ -19,6 +19,7 @@
 //! | `tools.{name}` | Tool-specific channels |
 
 pub mod registry;
+pub mod relay;
 
 use crate::a2a::types::{Artifact, Part, TaskState};
 use chrono::{DateTime, Utc};

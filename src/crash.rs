@@ -460,7 +460,10 @@ async fn load_upload_state(settings: &CrashReporterSettings) -> Option<CrashUplo
     serde_json::from_str(&raw).ok()
 }
 
-async fn save_upload_state(state: CrashUploadState, settings: &CrashReporterSettings) -> Result<()> {
+async fn save_upload_state(
+    state: CrashUploadState,
+    settings: &CrashReporterSettings,
+) -> Result<()> {
     let path = crash_upload_state_path(settings);
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent)
@@ -474,7 +477,10 @@ async fn save_upload_state(state: CrashUploadState, settings: &CrashReporterSett
     Ok(())
 }
 
-async fn bump_upload_backoff(last_error: Option<String>, settings: &CrashReporterSettings) -> Result<()> {
+async fn bump_upload_backoff(
+    last_error: Option<String>,
+    settings: &CrashReporterSettings,
+) -> Result<()> {
     let mut state = load_upload_state(settings).await.unwrap_or_default();
     state.consecutive_failures = state.consecutive_failures.saturating_add(1);
     state.last_attempt_at = Some(Utc::now());

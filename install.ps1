@@ -9,10 +9,12 @@
 # Options:
 #   -FunctionGemma      Download the FunctionGemma model for local tool-call routing (optional)
 #   -FunctionGemmaOnly  Only download the FunctionGemma model (skip binary install)
+#   -Force              Force reinstall even if latest version is already installed
 
 param(
     [switch]$FunctionGemma,
     [switch]$FunctionGemmaOnly,
+    [switch]$Force,
     [switch]$Help
 )
 
@@ -59,6 +61,84 @@ function Get-LatestVersion {
         Write-Err "Failed to fetch latest release from GitHub"
         exit 1
     }
+}
+
+function Compare-SemVer {
+    param(
+        [Parameter(Mandatory = $true)][string]$A,
+        [Parameter(Mandatory = $true)][string]$B
+    )
+
+    function Parse-Version {
+        param([string]$v)
+        $v = $v.TrimStart('v')
+
+        $base = $v
+        $pre = ''
+        $idx = $v.IndexOf('-')
+        if ($idx -ge 0) {
+            $base = $v.Substring(0, $idx)
+            $pre = $v.Substring($idx + 1)
+        }
+
+        $parts = $base.Split('.')
+        $maj = if ($parts.Length -ge 1 -and $parts[0]) { [int]$parts[0] } else { 0 }
+        $min = if ($parts.Length -ge 2 -and $parts[1]) { [int]$parts[1] } else { 0 }
+        $pat = if ($parts.Length -ge 3 -and $parts[2]) { [int]$parts[2] } else { 0 }
+        $preParts = if ($pre) { $pre -split '[.-]' } else { @() }
+
+        return @($maj, $min, $pat, $pre, $preParts)
+    }
+
+    function Compare-PreId {
+        param([string]$x, [string]$y)
+        if ($x -eq $y) { return 0 }
+        $xNum = $x -match '^[0-9]+$'
+        $yNum = $y -match '^[0-9]+$'
+        if ($xNum -and $yNum) {
+            $xi = [int]$x
+            $yi = [int]$y
+            if ($xi -gt $yi) { return 1 }
+            if ($xi -lt $yi) { return -1 }
+            return 0
+        }
+        if ($xNum -and -not $yNum) { return -1 }
+        if (-not $xNum -and $yNum) { return 1 }
+        return [string]::CompareOrdinal($x, $y) -gt 0 ? 1 : -1
+    }
+
+    $ap = Parse-Version -v $A
+    $bp = Parse-Version -v $B
+
+    if ($ap[0] -ne $bp[0]) { return ($ap[0] -gt $bp[0]) ? 1 : -1 }
+    if ($ap[1] -ne $bp[1]) { return ($ap[1] -gt $bp[1]) ? 1 : -1 }
+    if ($ap[2] -ne $bp[2]) { return ($ap[2] -gt $bp[2]) ? 1 : -1 }
+
+    $aPre = [string]$ap[3]
+    $bPre = [string]$bp[3]
+    if (-not $aPre -and -not $bPre) { return 0 }
+    if (-not $aPre -and $bPre) { return 1 }
+    if ($aPre -and -not $bPre) { return -1 }
+
+    $aPreParts = [string[]]$ap[4]
+    $bPreParts = [string[]]$bp[4]
+    $max = [Math]::Max($aPreParts.Length, $bPreParts.Length)
+    for ($i = 0; $i -lt $max; $i++) {
+        if ($i -ge $aPreParts.Length) { return -1 }
+        if ($i -ge $bPreParts.Length) { return 1 }
+        $cmp = Compare-PreId -x $aPreParts[$i] -y $bPreParts[$i]
+        if ($cmp -ne 0) { return $cmp }
+    }
+
+    return 0
+}
+
+function Test-VersionIsNewer {
+    param(
+        [Parameter(Mandatory = $true)][string]$Candidate,
+        [Parameter(Mandatory = $true)][string]$Current
+    )
+    return ((Compare-SemVer -A $Candidate -B $Current) -gt 0)
 }
 
 function Install-FunctionGemma {
@@ -350,6 +430,7 @@ Usage: .\install.ps1 [OPTIONS]
 Options:
   -FunctionGemma      Download the FunctionGemma model for local tool-call routing
   -FunctionGemmaOnly  Only download the FunctionGemma model
+    -Force              Force reinstall even if latest is already installed
   -Help               Show this help message
 "@
     exit 0
@@ -375,6 +456,34 @@ if (-not $version) {
 }
 Write-Info "latest version: $version"
 
+$destPath = Join-Path $InstallDir "$BinaryName.exe"
+$installedVersion = $null
+$skipBinaryInstall = $false
+
+if (Test-Path $destPath) {
+    try {
+        $installedVersionRaw = & $destPath --version 2>$null
+        if ($installedVersionRaw) {
+            $firstLine = ($installedVersionRaw | Select-Object -First 1)
+            $parts = [string]$firstLine -split '\s+'
+            if ($parts.Length -gt 0) {
+                $installedVersion = $parts[$parts.Length - 1]
+            }
+        }
+    }
+    catch {
+        $installedVersion = $null
+    }
+}
+
+if ($installedVersion) {
+    Write-Info "installed version: $installedVersion"
+    if (-not $Force -and -not (Test-VersionIsNewer -Candidate $version -Current $installedVersion)) {
+        Write-Ok "already up to date ($installedVersion); skipping binary install"
+        $skipBinaryInstall = $true
+    }
+}
+
 # Create temp directory
 $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "codetether-install-$([guid]::NewGuid().ToString('N').Substring(0,8))"
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
@@ -383,92 +492,93 @@ $downloadSuccess = $false
 $exePath = $null
 
 try {
-    # Try each platform + archive combination
-    foreach ($platform in $platforms) {
-        foreach ($archiveExt in @('zip', 'tar.gz')) {
-            $artifactName = "codetether-$version-$platform"
-            $archiveName = "$artifactName.$archiveExt"
-            $url = "https://github.com/$Repo/releases/download/$version/$archiveName"
-            
-            Write-Info "trying $archiveName..."
-            $archivePath = Join-Path $tmpDir $archiveName
-            
-            try {
-                Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing -ErrorAction Stop
-                Write-Ok "downloaded $archiveName"
-                $downloadSuccess = $true
-            }
-            catch {
-                continue
+    if (-not $skipBinaryInstall) {
+        # Try each platform + archive combination
+        foreach ($platform in $platforms) {
+            foreach ($archiveExt in @('zip', 'tar.gz')) {
+                $artifactName = "codetether-$version-$platform"
+                $archiveName = "$artifactName.$archiveExt"
+                $url = "https://github.com/$Repo/releases/download/$version/$archiveName"
+
+                Write-Info "trying $archiveName..."
+                $archivePath = Join-Path $tmpDir $archiveName
+
+                try {
+                    Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing -ErrorAction Stop
+                    Write-Ok "downloaded $archiveName"
+                    $downloadSuccess = $true
+                }
+                catch {
+                    continue
+                }
+
+                # Extract based on archive type
+                Write-Info "extracting..."
+                try {
+                    if ($archiveExt -eq 'zip') {
+                        Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
+                    }
+                    else {
+                        # .tar.gz - use Windows built-in tar
+                        $tarCmd = Get-Command tar -ErrorAction SilentlyContinue
+                        if (-not $tarCmd) {
+                            Write-Warn "tar command not found - skipping $archiveName"
+                            continue
+                        }
+                        & tar -xzf $archivePath -C $tmpDir
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Warn "tar extraction failed - skipping $archiveName"
+                            continue
+                        }
+                    }
+                }
+                catch {
+                    Write-Warn "extraction failed for $archiveName - skipping"
+                    continue
+                }
+
+                # Find the binary
+                $expectedExe = "$artifactName.exe"
+                $exePath = Get-ChildItem -Path $tmpDir -Filter $expectedExe -Recurse | Select-Object -First 1
+                if (-not $exePath) {
+                    # Fallback: try finding any .exe
+                    $exePath = Get-ChildItem -Path $tmpDir -Filter "codetether*.exe" -Recurse | Select-Object -First 1
+                }
+
+                if ($exePath) {
+                    Write-Ok "found binary: $($exePath.Name)"
+                    break
+                }
             }
 
-            # Extract based on archive type
-            Write-Info "extracting..."
-            try {
-                if ($archiveExt -eq 'zip') {
-                    Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
-                }
-                else {
-                    # .tar.gz - use Windows built-in tar
-                    $tarCmd = Get-Command tar -ErrorAction SilentlyContinue
-                    if (-not $tarCmd) {
-                        Write-Warn "tar command not found - skipping $archiveName"
-                        continue
-                    }
-                    & tar -xzf $archivePath -C $tmpDir
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Warn "tar extraction failed - skipping $archiveName"
-                        continue
-                    }
-                }
-            }
-            catch {
-                Write-Warn "extraction failed for $archiveName - skipping"
-                continue
-            }
-
-            # Find the binary
-            $expectedExe = "$artifactName.exe"
-            $exePath = Get-ChildItem -Path $tmpDir -Filter $expectedExe -Recurse | Select-Object -First 1
-            if (-not $exePath) {
-                # Fallback: try finding any .exe
-                $exePath = Get-ChildItem -Path $tmpDir -Filter "codetether*.exe" -Recurse | Select-Object -First 1
-            }
-            
             if ($exePath) {
-                Write-Ok "found binary: $($exePath.Name)"
                 break
             }
         }
-        
-        if ($exePath) {
-            break
+
+        if (-not $downloadSuccess) {
+            Write-Err "download failed - no pre-built binary available"
+            Write-Err "tried platforms: $($platforms -join ', ')"
+            Write-Err "you can build from source: cargo install codetether-agent"
+            exit 1
         }
-    }
 
-    if (-not $downloadSuccess) {
-        Write-Err "download failed - no pre-built binary available"
-        Write-Err "tried platforms: $($platforms -join ', ')"
-        Write-Err "you can build from source: cargo install codetether-agent"
-        exit 1
-    }
+        if (-not $exePath) {
+            Write-Err "expected binary not found in archive"
+            Write-Info "archive contents:"
+            Get-ChildItem -Path $tmpDir -Recurse | ForEach-Object { Write-Info "  $($_.Name)" }
+            exit 1
+        }
 
-    if (-not $exePath) {
-        Write-Err "expected binary not found in archive"
-        Write-Info "archive contents:"
-        Get-ChildItem -Path $tmpDir -Recurse | ForEach-Object { Write-Info "  $($_.Name)" }
-        exit 1
-    }
+        # Ensure install directory exists
+        if (-not (Test-Path $InstallDir)) {
+            New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+        }
 
-    # Ensure install directory exists
-    if (-not (Test-Path $InstallDir)) {
-        New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+        # Copy binary
+        Copy-Item -Path $exePath.FullName -Destination $destPath -Force
+        Write-Ok "installed $BinaryName $version to $destPath"
     }
-
-    # Copy binary
-    $destPath = Join-Path $InstallDir "$BinaryName.exe"
-    Copy-Item -Path $exePath.FullName -Destination $destPath -Force
-    Write-Ok "installed $BinaryName $version to $destPath"
 
     # Add to PATH if not already there
     $pathAdded = Add-ToUserPath -Dir $InstallDir

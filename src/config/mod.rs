@@ -501,8 +501,7 @@ impl Config {
                 return;
             }
 
-            let is_legacy_kimi_default = model_trimmed
-                .eq_ignore_ascii_case("moonshotai/kimi-k2.5")
+            let is_legacy_kimi_default = model_trimmed.eq_ignore_ascii_case("moonshotai/kimi-k2.5")
                 || model_trimmed.eq_ignore_ascii_case("kimi-k2.5");
 
             if is_legacy_kimi_default {

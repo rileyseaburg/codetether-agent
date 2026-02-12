@@ -580,8 +580,9 @@ impl CognitionRuntime {
             ),
             candle_seed: env_u64("CODETETHER_COGNITION_THINKER_CANDLE_SEED", 42),
             bedrock_region: std::env::var("CODETETHER_COGNITION_THINKER_BEDROCK_REGION")
-                .unwrap_or_else(|_| std::env::var("AWS_DEFAULT_REGION")
-                    .unwrap_or_else(|_| "us-west-2".to_string())),
+                .unwrap_or_else(|_| {
+                    std::env::var("AWS_DEFAULT_REGION").unwrap_or_else(|_| "us-west-2".to_string())
+                }),
         };
 
         let mut runtime = Self::new_with_options(options);

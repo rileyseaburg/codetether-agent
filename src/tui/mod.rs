@@ -21,10 +21,15 @@ const TOOL_ARGS_PREVIEW_MAX_LINES: usize = 10;
 const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
 const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
 const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
+const AUTOCHAT_MAX_AGENTS: usize = 8;
+const AUTOCHAT_MAX_ROUNDS: usize = 3;
+const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
 
+use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::config::Config;
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
+use crate::rlm::RlmExecutor;
 use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_with_opencode};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::bus_log::{BusLogState, render_bus_log};
@@ -37,7 +42,8 @@ use anyhow::Result;
 use base64::Engine;
 use crossterm::{
     event::{
-        DisableBracketedPaste, EnableBracketedPaste, Event, EventStream, KeyCode, KeyModifiers,
+        DisableBracketedPaste, EnableBracketedPaste, Event, EventStream, KeyCode, KeyEventKind,
+        KeyModifiers,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -424,7 +430,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /spawn <name> <instructions> - create a sub-agent\n• /agent <name> - focus chat on a spawned sub-agent\n• /agent <name> <message> - send one message to a spawned sub-agent\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /protocol - inspect registered AgentCards (or Ctrl+P)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /spawn <name> <instructions> - create a sub-agent\n• /autochat <count> <task> - protocol-first relay chat\n• /agent <name> - focus chat on a spawned sub-agent\n• /agent <name> <message> - send one message to a spawned sub-agent\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /protocol - inspect registered AgentCards (or Ctrl+P)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -513,6 +519,447 @@ impl App {
         self.view_mode = ViewMode::Protocol;
     }
 
+    fn unique_spawned_name(&self, base: &str) -> String {
+        if !self.spawned_agents.contains_key(base) {
+            return base.to_string();
+        }
+
+        let mut suffix = 2usize;
+        loop {
+            let candidate = format!("{base}-{suffix}");
+            if !self.spawned_agents.contains_key(&candidate) {
+                return candidate;
+            }
+            suffix += 1;
+        }
+    }
+
+    fn build_autochat_profiles(&self, count: usize) -> Vec<(String, String, Vec<String>)> {
+        let templates = [
+            (
+                "planner",
+                "Decompose objectives into precise, sequenced steps.",
+                "planning",
+            ),
+            (
+                "researcher",
+                "Validate assumptions, surface edge cases, and gather critical evidence.",
+                "research",
+            ),
+            (
+                "coder",
+                "Propose concrete implementation details and practical code-level direction.",
+                "implementation",
+            ),
+            (
+                "reviewer",
+                "Challenge weak spots, enforce quality, and reduce regressions.",
+                "review",
+            ),
+            (
+                "tester",
+                "Design verification strategy, tests, and failure-oriented checks.",
+                "testing",
+            ),
+            (
+                "integrator",
+                "Synthesize contributions into a coherent delivery plan.",
+                "integration",
+            ),
+            (
+                "skeptic",
+                "Stress-test confidence and call out hidden risks early.",
+                "risk-analysis",
+            ),
+            (
+                "summarizer",
+                "Produce concise, actionable final guidance.",
+                "summarization",
+            ),
+        ];
+
+        let mut profiles = Vec::with_capacity(count);
+        for idx in 0..count {
+            let (slug, mission, specialty) = templates[idx % templates.len()];
+            let base = if idx < templates.len() {
+                format!("auto-{slug}")
+            } else {
+                format!("auto-{slug}-{}", idx + 1)
+            };
+            let name = self.unique_spawned_name(&base);
+            let instructions = format!(
+                "You are @{name}, a specialist in {specialty}. {mission}\n\n
+                 This is a protocol-first relay conversation. Treat the incoming handoff as the authoritative context.\n\
+                 Keep your response concise, concrete, and useful for the next specialist.\n\
+                 Include one clear recommendation for what the next agent should do."
+            );
+            let capabilities = vec![
+                specialty.to_string(),
+                "relay".to_string(),
+                "context-handoff".to_string(),
+                "rlm-aware".to_string(),
+                "autochat".to_string(),
+            ];
+
+            profiles.push((name, instructions, capabilities));
+        }
+
+        profiles
+    }
+
+    fn resolve_provider_for_model(
+        &self,
+        registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+        model_ref: &str,
+    ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
+        let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
+        if let Some(provider_name) = provider_name
+            && let Some(provider) = registry.get(provider_name)
+        {
+            return Some((provider, model_name.to_string()));
+        }
+
+        let fallbacks = [
+            "zai",
+            "openai",
+            "github-copilot",
+            "anthropic",
+            "openrouter",
+            "novita",
+            "moonshotai",
+            "google",
+        ];
+
+        for provider_name in fallbacks {
+            if let Some(provider) = registry.get(provider_name) {
+                return Some((provider, model_ref.to_string()));
+            }
+        }
+
+        registry
+            .list()
+            .first()
+            .copied()
+            .and_then(|name| registry.get(name))
+            .map(|provider| (provider, model_ref.to_string()))
+    }
+
+    async fn prepare_autochat_handoff(
+        &self,
+        task: &str,
+        from_agent: &str,
+        output: &str,
+        model_ref: &str,
+    ) -> (String, bool) {
+        let mut used_rlm = false;
+        let mut relay_payload = output.to_string();
+
+        if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
+            relay_payload = truncate_with_ellipsis(output, 3_500);
+
+            if let Some(registry) = self.provider_registry.as_ref()
+                && let Some((provider, model_name)) =
+                    self.resolve_provider_for_model(registry, model_ref)
+            {
+                let mut executor = RlmExecutor::new(output.to_string(), provider, model_name)
+                    .with_max_iterations(2);
+
+                let query = "Summarize this agent output for the next specialist in a relay. Keep:\n\
+                             1) key conclusions, 2) unresolved risks, 3) exact next action.\n\
+                             Keep it concise and actionable.";
+                match executor.analyze(query).await {
+                    Ok(result) => {
+                        relay_payload = result.answer;
+                        used_rlm = true;
+                    }
+                    Err(err) => {
+                        tracing::warn!(error = %err, "RLM handoff summarization failed; using truncation fallback");
+                    }
+                }
+            }
+        }
+
+        (
+            format!(
+                "Relay task:\n{task}\n\nIncoming handoff from @{from_agent}:\n{relay_payload}\n\n\
+                 Continue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent."
+            ),
+            used_rlm,
+        )
+    }
+
+    async fn prompt_spawned_agent_sync(
+        &mut self,
+        agent_name: &str,
+        message: &str,
+    ) -> Result<String> {
+        if self.provider_registry.is_none() {
+            let registry = crate::provider::ProviderRegistry::from_vault().await?;
+            self.provider_registry = Some(std::sync::Arc::new(registry));
+        }
+
+        let registry = self
+            .provider_registry
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("Provider registry unavailable"))?;
+
+        let mut session = self
+            .spawned_agents
+            .get(agent_name)
+            .map(|agent| agent.session.clone())
+            .ok_or_else(|| anyhow::anyhow!("Spawned agent '{}' not found", agent_name))?;
+
+        if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
+            agent.is_processing = true;
+        }
+
+        let (tx, mut rx) = mpsc::channel(256);
+        let prompt_text = message.to_string();
+
+        let join = tokio::spawn(async move {
+            let result = session.prompt_with_events(&prompt_text, tx, registry).await;
+            (session, result)
+        });
+
+        while !join.is_finished() {
+            while let Ok(event) = rx.try_recv() {
+                self.handle_agent_response(agent_name, event);
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+
+        let (updated_session, result) = join
+            .await
+            .map_err(|err| anyhow::anyhow!("Autochat agent task join error: {err}"))?;
+
+        while let Ok(event) = rx.try_recv() {
+            self.handle_agent_response(agent_name, event);
+        }
+
+        if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
+            agent.session = updated_session;
+            agent.is_processing = false;
+        }
+
+        Ok(result?.text)
+    }
+
+    async fn start_autochat_execution(
+        &mut self,
+        agent_count: usize,
+        task: String,
+        config: &Config,
+    ) {
+        if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!(
+                    "Usage: /autochat <count> <task>\ncount must be between 2 and {AUTOCHAT_MAX_AGENTS}."
+                ),
+            ));
+            return;
+        }
+
+        let Some(bus) = self.bus.clone() else {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Protocol bus unavailable; cannot start /autochat relay.",
+            ));
+            return;
+        };
+
+        let model_ref = self
+            .active_model
+            .clone()
+            .or_else(|| config.default_model.clone())
+            .unwrap_or_else(|| "zai/glm-5".to_string());
+
+        if self.provider_registry.is_none() {
+            match crate::provider::ProviderRegistry::from_vault().await {
+                Ok(registry) => {
+                    self.provider_registry = Some(std::sync::Arc::new(registry));
+                }
+                Err(err) => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed to load providers for /autochat: {err}"),
+                    ));
+                    return;
+                }
+            }
+        }
+
+        let relay = ProtocolRelayRuntime::new(bus);
+        let profiles = self.build_autochat_profiles(agent_count);
+        if profiles.is_empty() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "No relay profiles could be created.",
+            ));
+            return;
+        }
+
+        let mut relay_profiles = Vec::with_capacity(profiles.len());
+        let mut ordered_agents = Vec::with_capacity(profiles.len());
+
+        for (name, instructions, capabilities) in profiles {
+            match Session::new().await {
+                Ok(mut session) => {
+                    session.metadata.model = Some(model_ref.clone());
+                    session.agent = name.clone();
+                    session.add_message(crate::provider::Message {
+                        role: Role::System,
+                        content: vec![ContentPart::Text {
+                            text: instructions.clone(),
+                        }],
+                    });
+
+                    self.spawned_agents.insert(
+                        name.clone(),
+                        SpawnedAgent {
+                            name: name.clone(),
+                            instructions,
+                            session,
+                            is_processing: false,
+                        },
+                    );
+                    relay_profiles.push(RelayAgentProfile {
+                        name: name.clone(),
+                        capabilities,
+                    });
+                    ordered_agents.push(name);
+                }
+                Err(err) => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed creating relay agent session: {err}"),
+                    ));
+                }
+            }
+        }
+
+        if ordered_agents.len() < 2 {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Autochat needs at least 2 agents to relay.",
+            ));
+            return;
+        }
+
+        relay.register_agents(&relay_profiles);
+        self.active_spawned_agent = None;
+
+        self.messages.push(ChatMessage::new(
+            "user",
+            format!("/autochat {agent_count} {task}"),
+        ));
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Starting protocol-first relay {id} with agents: {agents}\nModel: {model_ref}",
+                id = relay.relay_id(),
+                agents = ordered_agents
+                    .iter()
+                    .map(|name| format!("@{name}"))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+        ));
+
+        let mut baton = format!(
+            "Task:\n{task}\n\nStart by proposing an execution strategy and one immediate next step."
+        );
+        let mut previous_normalized: Option<String> = None;
+        let mut convergence_hits = 0usize;
+        let mut turns = 0usize;
+        let mut converged = false;
+
+        'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
+            for idx in 0..ordered_agents.len() {
+                let to = ordered_agents[idx].clone();
+                let from = if idx == 0 {
+                    if round == 1 {
+                        "user".to_string()
+                    } else {
+                        ordered_agents[ordered_agents.len() - 1].clone()
+                    }
+                } else {
+                    ordered_agents[idx - 1].clone()
+                };
+
+                turns += 1;
+                relay.send_handoff(&from, &to, &baton);
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "[relay {} • round {}] {} → @{}",
+                        relay.relay_id(),
+                        round,
+                        from,
+                        to
+                    ),
+                ));
+
+                let output = match self.prompt_spawned_agent_sync(&to, &baton).await {
+                    Ok(text) => text,
+                    Err(err) => {
+                        self.messages.push(ChatMessage::new(
+                            "system",
+                            format!("Relay agent @{to} failed: {err}"),
+                        ));
+                        break 'relay_loop;
+                    }
+                };
+
+                let normalized = normalize_for_convergence(&output);
+                if previous_normalized.as_deref() == Some(normalized.as_str()) {
+                    convergence_hits += 1;
+                } else {
+                    convergence_hits = 0;
+                }
+                previous_normalized = Some(normalized);
+
+                let (next_handoff, used_rlm) = self
+                    .prepare_autochat_handoff(&task, &to, &output, &model_ref)
+                    .await;
+                if used_rlm {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("RLM compressed handoff from @{to} before the next relay step."),
+                    ));
+                }
+
+                baton = next_handoff;
+
+                if convergence_hits >= 2 {
+                    converged = true;
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Relay convergence reached after {turns} turns."),
+                    ));
+                    break 'relay_loop;
+                }
+            }
+        }
+
+        let status = if converged {
+            "converged"
+        } else {
+            "max_rounds_reached"
+        };
+        self.messages.push(ChatMessage::new(
+            "assistant",
+            format!(
+                "Autochat complete ({status}) — relay {} with {} agents over {} turns.\n\nFinal relay handoff:\n{}",
+                relay.relay_id(),
+                ordered_agents.len(),
+                turns,
+                truncate_with_ellipsis(&baton, 4_000)
+            ),
+        ));
+        self.scroll = SCROLL_BOTTOM;
+    }
+
     async fn submit_message(&mut self, config: &Config) {
         if self.input.is_empty() {
             return;
@@ -529,11 +976,7 @@ impl App {
 
         // Backward-compatible /agent command aliases
         if message.trim().starts_with("/agent") {
-            let rest = message
-                .trim()
-                .strip_prefix("/agent")
-                .unwrap_or("")
-                .trim();
+            let rest = message.trim().strip_prefix("/agent").unwrap_or("").trim();
 
             if rest.is_empty() {
                 self.open_agent_picker();
@@ -552,10 +995,8 @@ impl App {
                         format!("Exited focused sub-agent chat (@{target})."),
                     ));
                 } else {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        "Already in main chat mode.",
-                    ));
+                    self.messages
+                        .push(ChatMessage::new("system", "Already in main chat mode."));
                 }
                 return;
             }
@@ -607,10 +1048,8 @@ impl App {
                 let target = name.trim().trim_start_matches('@');
                 let content = content.trim();
                 if target.is_empty() || content.is_empty() {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        "Usage: /agent <name> <message>",
-                    ));
+                    self.messages
+                        .push(ChatMessage::new("system", "Usage: /agent <name> <message>"));
                     return;
                 }
                 message = format!("@{target} {content}");
@@ -621,6 +1060,42 @@ impl App {
                 ));
                 return;
             }
+        }
+
+        // Check for /autochat command
+        if let Some(rest) = command_with_optional_args(&message, "/autochat") {
+            let mut parts = rest.splitn(2, char::is_whitespace);
+            let count_str = parts.next().unwrap_or("").trim();
+            let task = parts.next().unwrap_or("").trim();
+
+            if count_str.is_empty() || task.is_empty() {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "Usage: /autochat <count> <task>\nExample: /autochat 4 implement protocol-first relay with tests\ncount range: 2-{}",
+                        AUTOCHAT_MAX_AGENTS
+                    ),
+                ));
+                return;
+            }
+
+            let count = match count_str.parse::<usize>() {
+                Ok(value) => value,
+                Err(_) => {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!(
+                            "Invalid count '{}'. Use a number between 2 and {}.",
+                            count_str, AUTOCHAT_MAX_AGENTS
+                        ),
+                    ));
+                    return;
+                }
+            };
+
+            self.start_autochat_execution(count, task.to_string(), config)
+                .await;
+            return;
         }
 
         // Check for /swarm command
@@ -707,7 +1182,8 @@ impl App {
                 | ViewMode::SessionPicker
                 | ViewMode::ModelPicker
                 | ViewMode::AgentPicker
-                | ViewMode::BusLog => ViewMode::Swarm,
+                | ViewMode::BusLog
+                | ViewMode::Protocol => ViewMode::Swarm,
                 ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
             };
             return;
@@ -866,7 +1342,8 @@ impl App {
         // Check for /kill command - remove a spawned agent
         if let Some(name) = command_with_optional_args(&message, "/kill") {
             if name.is_empty() {
-                self.messages.push(ChatMessage::new("system", "Usage: /kill <name>"));
+                self.messages
+                    .push(ChatMessage::new("system", "Usage: /kill <name>"));
                 return;
             }
 
@@ -2325,6 +2802,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         }
 
         if let Event::Key(key) = ev {
+            // Only handle key press events (not release or repeat-release).
+            // Crossterm 0.29+ emits Press, Repeat, and Release events;
+            // processing all of them causes double character entry.
+            if !matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
+                continue;
+            }
+
             // Help overlay
             if app.show_help {
                 if matches!(key.code, KeyCode::Esc | KeyCode::Char('?')) {
@@ -2986,10 +3470,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         .iter()
                         .rev()
                         .find(|m| m.role == "assistant" && !m.content.trim().is_empty())
-                        .or_else(|| app.messages.iter().rev().find(|m| !m.content.trim().is_empty()));
+                        .or_else(|| {
+                            app.messages
+                                .iter()
+                                .rev()
+                                .find(|m| !m.content.trim().is_empty())
+                        });
 
                     let Some(msg) = msg else {
-                        app.messages.push(ChatMessage::new("system", "Nothing to copy yet."));
+                        app.messages
+                            .push(ChatMessage::new("system", "Nothing to copy yet."));
                         app.scroll = SCROLL_BOTTOM;
                         continue;
                     };
@@ -3981,17 +4471,19 @@ fn render_protocol_registry(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         for (idx, card) in cards.iter().enumerate() {
             let marker = if idx == selected { "▶" } else { " " };
             let style = if idx == selected {
-                Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Blue)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
             let transport = card.preferred_transport.as_deref().unwrap_or("JSONRPC");
+            list_lines.push(Line::styled(format!(" {marker} {}", card.name), style));
             list_lines.push(Line::styled(
-                format!(" {marker} {}", card.name),
-                style,
-            ));
-            list_lines.push(Line::styled(
-                format!("    {transport} • {}", truncate_with_ellipsis(&card.url, 22)),
+                format!(
+                    "    {transport} • {}",
+                    truncate_with_ellipsis(&card.url, 22)
+                ),
                 Style::default().fg(Color::DarkGray),
             ));
         }
@@ -4012,7 +4504,10 @@ fn render_protocol_registry(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         let label_style = Style::default().fg(Color::DarkGray);
         detail_lines.push(Line::from(vec![
             Span::styled("Name: ", label_style),
-            Span::styled(card.name.clone(), Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled(
+                card.name.clone(),
+                Style::default().add_modifier(Modifier::BOLD),
+            ),
         ]));
         detail_lines.push(Line::from(vec![
             Span::styled("Description: ", label_style),
@@ -4024,7 +4519,10 @@ fn render_protocol_registry(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         ]));
         detail_lines.push(Line::from(vec![
             Span::styled("Version: ", label_style),
-            Span::raw(format!("{} (protocol {})", card.version, card.protocol_version)),
+            Span::raw(format!(
+                "{} (protocol {})",
+                card.version, card.protocol_version
+            )),
         ]));
 
         let preferred_transport = card.preferred_transport.as_deref().unwrap_or("JSONRPC");
@@ -4986,6 +5484,7 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
 fn match_slash_command_hint(input: &str) -> String {
     let commands = [
         ("/spawn ", "Create a named sub-agent"),
+        ("/autochat ", "Run protocol-first multi-agent relay chat"),
         ("/agents", "List spawned sub-agents"),
         ("/kill ", "Remove a spawned sub-agent"),
         ("/agent ", "Focus or message a spawned sub-agent"),
@@ -5035,6 +5534,27 @@ fn command_with_optional_args<'a>(input: &'a str, command: &str) -> Option<&'a s
     } else {
         None
     }
+}
+
+fn normalize_for_convergence(text: &str) -> String {
+    let mut normalized = String::with_capacity(text.len().min(512));
+    let mut last_was_space = false;
+
+    for ch in text.chars() {
+        if ch.is_ascii_alphanumeric() {
+            normalized.push(ch.to_ascii_lowercase());
+            last_was_space = false;
+        } else if ch.is_whitespace() && !last_was_space {
+            normalized.push(' ');
+            last_was_space = true;
+        }
+
+        if normalized.len() >= 280 {
+            break;
+        }
+    }
+
+    normalized.trim().to_string()
 }
 
 fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
@@ -5176,9 +5696,7 @@ fn copy_text_to_clipboard_best_effort(text: &str) -> Result<&'static str, String
     }
 
     // 1) Try system clipboard first (works locally when a clipboard provider is available)
-    match arboard::Clipboard::new()
-        .and_then(|mut clipboard| clipboard.set_text(text.to_string()))
-    {
+    match arboard::Clipboard::new().and_then(|mut clipboard| clipboard.set_text(text.to_string())) {
         Ok(()) => return Ok("system clipboard"),
         Err(e) => {
             tracing::debug!(error = %e, "System clipboard unavailable; falling back to OSC52");
@@ -5257,15 +5775,13 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "".to_string(),
         "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
         "  /spawn <name> <instructions>  Create a named sub-agent".to_string(),
+        "  /autochat <count> <task>  Protocol-first auto multi-agent relay".to_string(),
         "  /agents        List spawned sub-agents".to_string(),
         "  /kill <name>   Remove a spawned sub-agent".to_string(),
         "  /agent <name>  Focus chat on a spawned sub-agent".to_string(),
-        "  /agent <name> <message>  Send one message to a spawned sub-agent"
-            .to_string(),
-        "  /agent            Open spawned-agent picker"
-            .to_string(),
-        "  /agent main|off  Exit focused sub-agent chat"
-            .to_string(),
+        "  /agent <name> <message>  Send one message to a spawned sub-agent".to_string(),
+        "  /agent            Open spawned-agent picker".to_string(),
+        "  /agent main|off  Exit focused sub-agent chat".to_string(),
         "  /swarm <task>   Run task in parallel swarm mode".to_string(),
         "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
         "  /undo           Undo last message and response".to_string(),
@@ -5348,7 +5864,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 #[cfg(test)]
 mod tests {
-    use super::{command_with_optional_args, match_slash_command_hint};
+    use super::{command_with_optional_args, match_slash_command_hint, normalize_for_convergence};
 
     #[test]
     fn command_with_optional_args_handles_bare_command() {
@@ -5380,5 +5896,18 @@ mod tests {
     fn slash_hint_includes_protocol_command() {
         let hint = match_slash_command_hint("/protocol");
         assert!(hint.contains("/protocol"));
+    }
+
+    #[test]
+    fn slash_hint_includes_autochat_command() {
+        let hint = match_slash_command_hint("/autochat");
+        assert!(hint.contains("/autochat"));
+    }
+
+    #[test]
+    fn normalize_for_convergence_ignores_case_and_punctuation() {
+        let a = normalize_for_convergence("Done! Next Step: Add tests.");
+        let b = normalize_for_convergence("done next step add tests");
+        assert_eq!(a, b);
     }
 }

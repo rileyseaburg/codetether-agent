@@ -120,7 +120,11 @@ pub async fn save_state(
         attention_queue: attention_snap,
         workspace: workspace_snap,
         evidence_events,
-        recent_snapshots: snapshots_snap.into_iter().rev().take(MAX_RECENT_SNAPSHOTS).collect(),
+        recent_snapshots: snapshots_snap
+            .into_iter()
+            .rev()
+            .take(MAX_RECENT_SNAPSHOTS)
+            .collect(),
     };
 
     let path = state_path();
