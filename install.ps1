@@ -104,15 +104,25 @@ function Compare-SemVer {
         }
         if ($xNum -and -not $yNum) { return -1 }
         if (-not $xNum -and $yNum) { return 1 }
-        return [string]::CompareOrdinal($x, $y) -gt 0 ? 1 : -1
+        if ([string]::CompareOrdinal($x, $y) -gt 0) { return 1 }
+        return -1
     }
 
     $ap = Parse-Version -v $A
     $bp = Parse-Version -v $B
 
-    if ($ap[0] -ne $bp[0]) { return ($ap[0] -gt $bp[0]) ? 1 : -1 }
-    if ($ap[1] -ne $bp[1]) { return ($ap[1] -gt $bp[1]) ? 1 : -1 }
-    if ($ap[2] -ne $bp[2]) { return ($ap[2] -gt $bp[2]) ? 1 : -1 }
+    if ($ap[0] -ne $bp[0]) {
+        if ($ap[0] -gt $bp[0]) { return 1 }
+        return -1
+    }
+    if ($ap[1] -ne $bp[1]) {
+        if ($ap[1] -gt $bp[1]) { return 1 }
+        return -1
+    }
+    if ($ap[2] -ne $bp[2]) {
+        if ($ap[2] -gt $bp[2]) { return 1 }
+        return -1
+    }
 
     $aPre = [string]$ap[3]
     $bPre = [string]$bp[3]
