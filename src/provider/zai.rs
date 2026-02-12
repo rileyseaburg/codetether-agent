@@ -103,16 +103,22 @@ impl ZaiProvider {
                                     name,
                                     arguments,
                                 } => {
-                                    // Z.AI expects arguments as an object, but we store as string.
-                                    // Try to parse as JSON; fall back to wrapping in a string field.
-                                    let args_value = serde_json::from_str::<Value>(arguments)
-                                        .unwrap_or_else(|_| json!({"input": arguments}));
+                                    // Z.AI request schema expects assistant.tool_calls[*].function.arguments
+                                    // to be a JSON-format string. Normalize to a valid JSON string.
+                                    let args_string = serde_json::from_str::<Value>(arguments)
+                                        .map(|parsed| {
+                                            serde_json::to_string(&parsed)
+                                                .unwrap_or_else(|_| "{}".to_string())
+                                        })
+                                        .unwrap_or_else(|_| {
+                                            json!({"input": arguments}).to_string()
+                                        });
                                     Some(json!({
                                         "id": id,
                                         "type": "function",
                                         "function": {
                                             "name": name,
-                                            "arguments": args_value
+                                            "arguments": args_string
                                         }
                                     }))
                                 }
@@ -655,5 +661,49 @@ impl Provider for ZaiProvider {
                 futures::stream::iter(chunks)
             })
             .boxed())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn convert_messages_serializes_tool_arguments_as_json_string() {
+        let messages = vec![Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolCall {
+                id: "call_1".to_string(),
+                name: "get_weather".to_string(),
+                arguments: "{\"city\":\"Beijing\"}".to_string(),
+            }],
+        }];
+
+        let converted = ZaiProvider::convert_messages(&messages);
+        let args = converted[0]["tool_calls"][0]["function"]["arguments"]
+            .as_str()
+            .expect("arguments must be a string");
+
+        assert_eq!(args, "{\"city\":\"Beijing\"}");
+    }
+
+    #[test]
+    fn convert_messages_wraps_invalid_tool_arguments_as_json_string() {
+        let messages = vec![Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolCall {
+                id: "call_1".to_string(),
+                name: "get_weather".to_string(),
+                arguments: "city=Beijing".to_string(),
+            }],
+        }];
+
+        let converted = ZaiProvider::convert_messages(&messages);
+        let args = converted[0]["tool_calls"][0]["function"]["arguments"]
+            .as_str()
+            .expect("arguments must be a string");
+        let parsed: Value = serde_json::from_str(args).expect("arguments must contain valid JSON");
+
+        assert_eq!(parsed, json!({"input": "city=Beijing"}));
     }
 }
