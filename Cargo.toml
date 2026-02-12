@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "1.1.6-alpha-8.1"
+version = "1.1.6-alpha-8.2"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
