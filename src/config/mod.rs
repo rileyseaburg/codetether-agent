@@ -296,7 +296,7 @@ impl TelemetryConfig {
 }
 
 fn default_crash_report_endpoint() -> String {
-    "https://telemetry.codetether.run/v1/crash-reports".to_string()
+    "https://api.codetether.run/v1/crash-reports".to_string()
 }
 
 impl Config {
