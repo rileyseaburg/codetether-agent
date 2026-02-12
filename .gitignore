@@ -30,3 +30,6 @@ nohup.out
 progress.txt
 .env.sccache
 jenkins-quantum-forge*.pem
+
+Jenkinsfile.sh
+
