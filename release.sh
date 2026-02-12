@@ -143,12 +143,12 @@ cargo generate-lockfile --quiet
 echo "==> Running cargo check..."
 if ! cargo check --quiet 2>&1; then
     echo "Error: cargo check failed after version bump. Reverting."
-    git checkout -- Cargo.toml Cargo.lock
+    git checkout -- Cargo.toml
     exit 1
 fi
 
 # Step 5: Commit the version bump
-git add Cargo.toml Cargo.lock
+git add Cargo.toml
 git commit -m "chore: bump version to $new_version"
 git push origin main
 
