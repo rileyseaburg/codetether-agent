@@ -42,6 +42,10 @@ async fn main() -> Result<()> {
         candle_repeat_penalty: 1.1,
         candle_repeat_last_n: 64,
         candle_seed: 42,
+        bedrock_region: std::env::var("CODETETHER_COGNITION_THINKER_BEDROCK_REGION")
+            .unwrap_or_else(|_| {
+                std::env::var("AWS_DEFAULT_REGION").unwrap_or_else(|_| "us-west-2".to_string())
+            }),
     };
 
     println!("Creating thinker client...");

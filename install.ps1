@@ -2,15 +2,14 @@
 # Usage: irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
 #
 # Installs the latest release of codetether to a directory on PATH.
-# By default, also downloads the FunctionGemma model for local tool-call routing.
 # No Rust toolchain required.
 #
 # Options:
-#   -NoFunctionGemma    Skip FunctionGemma model download
+#   -FunctionGemma      Download the FunctionGemma model for local tool-call routing (optional)
 #   -FunctionGemmaOnly  Only download the FunctionGemma model (skip binary install)
 
 param(
-    [switch]$NoFunctionGemma,
+    [switch]$FunctionGemma,
     [switch]$FunctionGemmaOnly,
     [switch]$Help
 )
@@ -214,7 +213,7 @@ CodeTether Agent Installer for Windows
 Usage: .\install.ps1 [OPTIONS]
 
 Options:
-  -NoFunctionGemma    Skip FunctionGemma model download
+  -FunctionGemma      Download the FunctionGemma model for local tool-call routing
   -FunctionGemmaOnly  Only download the FunctionGemma model
   -Help               Show this help message
 "@
@@ -310,13 +309,12 @@ try {
     Write-Host "  codetether --help    " -ForegroundColor Cyan -NoNewline; Write-Host "- all commands"
     Write-Host ""
 
-    # Install FunctionGemma model
-    if (-not $NoFunctionGemma) {
+    # Install FunctionGemma model (optional, opt-in)
+    if ($FunctionGemma) {
         Install-FunctionGemma
     }
     else {
-        Write-Info "skipping FunctionGemma model download (-NoFunctionGemma)"
-        Write-Info "you can install it later: .\install.ps1 -FunctionGemmaOnly"
+        Write-Info "skipping FunctionGemma model (use -FunctionGemma to install)"
     }
 }
 finally {

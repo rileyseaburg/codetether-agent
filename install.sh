@@ -3,11 +3,10 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 #
 # Installs the latest release of codetether to /usr/local/bin (or ~/.local/bin if no sudo).
-# By default, also downloads the FunctionGemma model for local tool-call routing.
 # No Rust toolchain required.
 #
 # Options:
-#   --no-functiongemma   Skip FunctionGemma model download
+#   --functiongemma      Download the FunctionGemma model for local tool-call routing (optional)
 #   --functiongemma-only Only download the FunctionGemma model (skip binary install)
 
 set -e
@@ -16,7 +15,7 @@ REPO="rileyseaburg/codetether-agent"
 BINARY_NAME="codetether"
 INSTALL_DIR="/usr/local/bin"
 USE_SUDO="true"
-INSTALL_FUNCTIONGEMMA="true"
+INSTALL_FUNCTIONGEMMA="false"
 FUNCTIONGEMMA_ONLY="false"
 
 # FunctionGemma model configuration
@@ -270,8 +269,8 @@ main() {
     # Parse arguments
     for arg in "$@"; do
         case "$arg" in
-            --no-functiongemma)
-                INSTALL_FUNCTIONGEMMA="false"
+            --functiongemma)
+                INSTALL_FUNCTIONGEMMA="true"
                 ;;
             --functiongemma-only)
                 FUNCTIONGEMMA_ONLY="true"
@@ -279,9 +278,9 @@ main() {
             --help|-h)
                 printf "Usage: $0 [OPTIONS]\n\n"
                 printf "Options:\n"
-                printf "  --no-functiongemma    Skip FunctionGemma model download\n"
-                printf "  --functiongemma-only  Only download the FunctionGemma model\n"
-                printf "  --help, -h            Show this help message\n"
+                printf "  --functiongemma      Download the FunctionGemma model for tool-call routing\n"
+                printf "  --functiongemma-only Only download the FunctionGemma model\n"
+                printf "  --help, -h           Show this help message\n"
                 exit 0
                 ;;
         esac
@@ -394,12 +393,11 @@ main() {
     printf "  ${CYAN}codetether run \"...\"${NC} — single prompt\n"
     printf "  ${CYAN}codetether --help${NC}    — all commands\n\n"
 
-    # Install FunctionGemma model (default: on)
+    # Install FunctionGemma model (opt-in)
     if [ "$INSTALL_FUNCTIONGEMMA" = "true" ]; then
         install_functiongemma
     else
-        info "skipping FunctionGemma model download (--no-functiongemma)"
-        info "you can install it later: $0 --functiongemma-only"
+        info "skipping FunctionGemma model (use --functiongemma to install)"
     fi
 }
 

@@ -44,6 +44,10 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install the rustls crypto provider before any TLS usage (reqwest, hyper-rustls, etc.)
+    // Both aws-lc-rs and ring are in the dependency tree, so rustls cannot auto-detect.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let cli = Cli::parse();
 
     // Check if we're running TUI - if so, redirect logs to file instead of stderr

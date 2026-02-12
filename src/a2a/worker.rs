@@ -331,6 +331,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "zhipuai" | "zai" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
+            "bedrock" => "amazon.nova-lite-v1:0".to_string(),
             _ => "glm-5".to_string(),
         },
         "heavy" | "deep" => match provider {
@@ -341,6 +342,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "zhipuai" | "zai" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
+            "bedrock" => "us.anthropic.claude-sonnet-4-20250514-v1:0".to_string(),
             _ => "glm-5".to_string(),
         },
         _ => match provider {
@@ -351,6 +353,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "zhipuai" | "zai" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
+            "bedrock" => "amazon.nova-lite-v1:0".to_string(),
             _ => "glm-5".to_string(),
         },
     }

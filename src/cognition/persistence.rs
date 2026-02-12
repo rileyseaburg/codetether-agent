@@ -30,6 +30,8 @@ pub struct PersistedCognitionState {
 
 const SCHEMA_VERSION: u32 = 1;
 const TAIL_EVENTS: usize = 200;
+const MAX_RECENT_SNAPSHOTS: usize = 50;
+const MAX_STATE_FILE_BYTES: u64 = 100 * 1024 * 1024; // 100 MB
 
 /// Get the persistence file path.
 fn state_path() -> PathBuf {
@@ -118,7 +120,7 @@ pub async fn save_state(
         attention_queue: attention_snap,
         workspace: workspace_snap,
         evidence_events,
-        recent_snapshots: snapshots_snap.into_iter().collect(),
+        recent_snapshots: snapshots_snap.into_iter().rev().take(MAX_RECENT_SNAPSHOTS).collect(),
     };
 
     let path = state_path();
@@ -153,6 +155,24 @@ pub fn load_state() -> Option<PersistedCognitionState> {
     let path = state_path();
     if !path.exists() {
         return None;
+    }
+
+    // Guard against bloated state files that would OOM the process
+    match std::fs::metadata(&path) {
+        Ok(meta) if meta.len() > MAX_STATE_FILE_BYTES => {
+            tracing::warn!(
+                size_mb = meta.len() / (1024 * 1024),
+                max_mb = MAX_STATE_FILE_BYTES / (1024 * 1024),
+                "Persisted cognition state too large, starting fresh"
+            );
+            let _ = std::fs::rename(&path, path.with_extension("json.bloated"));
+            return None;
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to stat persisted cognition state");
+            return None;
+        }
+        _ => {}
     }
 
     let data = match std::fs::read_to_string(&path) {

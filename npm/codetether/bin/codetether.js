@@ -1,34 +1,14 @@
 #!/usr/bin/env node
 
 const { spawn } = require('node:child_process');
-const path = require('node:path');
-const fs = require('node:fs');
 
-const { ensureInstalled, platformTriple } = require('../lib/installer');
-
-function binPath() {
-  const triple = platformTriple();
-  const name = process.platform === 'win32' ? 'codetether.exe' : 'codetether';
-  return path.join(__dirname, '..', 'vendor', triple, name);
-}
-
-function exists(p) {
-  try {
-    fs.accessSync(p, fs.constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const { ensureInstalled } = require('../lib/installer');
 
 (async () => {
   try {
-    const p = binPath();
-    if (!exists(p)) {
-      await ensureInstalled({ allowLatestFallback: true });
-    }
+    const { destPath } = await ensureInstalled({ allowLatestFallback: true });
 
-    const child = spawn(binPath(), process.argv.slice(2), {
+    const child = spawn(destPath, process.argv.slice(2), {
       stdio: 'inherit',
       windowsHide: true,
     });
