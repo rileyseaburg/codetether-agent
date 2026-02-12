@@ -1,20 +1,23 @@
-# v1.1.6-alpha-8.4
+# v1.1.6-alpha-8.5
 
 ## What's New
 
-- **DevOps Automation Scripts**: Added `commit.sh`, `release.sh`, and `jenkinsfile.sh` scripts for streamlined release workflows
-- **Automatic Version Bumping**: `release.sh` now supports automatic version incrementing and pre-release tagging
+- **Protocol-first autochat relay** — New relay infrastructure (`src/bus/relay.rs`) enables protocol-first communication patterns for improved agent orchestration
+- **Installer version checking** — Install scripts now validate and report version information during setup
+- **Model discovery in installer** — Installers can discover and configure available models during installation
+- **Protocol registry UX** — Enhanced user experience for protocol registration and management in the TUI
 
 ## Bug Fixes
 
-- Hardened `commit.sh` and `release.sh` scripts with improved error handling
-- Updated Jenkinsfile to correctly generate release notes
-- Added `jenkinsfile.sh` to `.gitignore` to prevent accidental commits
+- Removed accidentally committed secrets from `jenkinsfile.sh`
+- Fixed case sensitivity issue in `.gitignore`
 
 ## Changes
 
-- Improved output filtering in commit script
-- Updated Jenkinsfile with enhanced release automation
-- Version bumped to 1.1.6-alpha-8.4
+- **TUI improvements** — Major TUI expansion with 1000+ new lines for enhanced terminal interface capabilities
+- **Installer script updates** — Significant improvements to both `install.sh` and `install.ps1` with better error handling and model configuration
+- **Bus infrastructure** — New `registry.rs` module for managing protocol endpoints and message routing
+- **Cognition system refinements** — Updated persistence and thinker modules for improved agent reasoning
+- **Server and provider updates** — Minor adjustments to server routing and Bedrock provider integration
 
-**Stats**: 6 files changed, 331 insertions(+), 2 deletions(-)
+**Stats:** 14 files changed, 1,965 insertions(+), 221 deletions(-)
