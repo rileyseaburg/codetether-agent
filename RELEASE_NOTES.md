@@ -1,19 +1,14 @@
-# v1.1.7
+# v1.1.8
 
 ## What's New
 
-- **Easy-mode slash commands**: Added convenient slash commands in the TUI for streamlined interactions
-- **Improved autochat UX**: Enhanced the autochat experience with better interface and workflow
+No new features in this release.
 
 ## Bug Fixes
 
-- Fixed PowerShell compatibility by replacing ternary operators with if/else statements in `install.ps1`, ensuring support for older PowerShell versions
+- **ZAI Provider**: Fixed tool call argument serialization to properly convert arguments to JSON strings before sending to the ZAI API. This resolves issues where tool calls with complex argument structures were failing.
 
 ## Changes
 
-**2 files changed**, 251 insertions(+), 57 deletions(-)
-
-| File | Changes |
-|------|---------|
-| `install.ps1` | PowerShell compatibility improvements |
-| `src/tui/mod.rs` | Slash commands and autochat enhancements |
+- Updated ZAI provider implementation with improved argument handling
+- 1 file changed: `src/provider/zai.rs` (+55/-5)
