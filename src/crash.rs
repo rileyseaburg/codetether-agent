@@ -24,6 +24,11 @@ const MAX_PANIC_MESSAGE_CHARS: usize = 2048;
 const MAX_BACKTRACE_CHARS: usize = 32_000;
 const MAX_COMMAND_CHARS: usize = 1024;
 
+const CRASH_UPLOAD_STATE_FILE: &str = "crash-upload-state.json";
+const MIN_UPLOAD_BACKOFF_SECS: u64 = 5 * 60; // 5 minutes
+const MAX_UPLOAD_BACKOFF_SECS: u64 = 24 * 60 * 60; // 24 hours
+const MAX_STATUS_FAILURES_PER_FLUSH: usize = 3;
+
 const ENV_CRASH_REPORT_AUTH_TOKEN: &str = "CODETETHER_CRASH_REPORT_AUTH_TOKEN";
 const ENV_CRASH_REPORT_API_KEY: &str = "CODETETHER_CRASH_REPORT_API_KEY";
 
@@ -120,6 +125,18 @@ struct CrashEnvelope<'a> {
     sent_at: DateTime<Utc>,
     install_id: &'a str,
     report: &'a CrashReport,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct CrashUploadState {
+    /// Number of consecutive flush attempts that failed without sending any reports.
+    consecutive_failures: u32,
+    /// Do not attempt upload again until this time (UTC).
+    next_attempt_at: Option<DateTime<Utc>>,
+    /// Last attempt timestamp.
+    last_attempt_at: Option<DateTime<Utc>>,
+    /// Last error (truncated) for diagnostics.
+    last_error: Option<String>,
 }
 
 pub async fn maybe_prompt_for_consent(config: &Config, allow_prompt: bool) -> Config {
@@ -294,6 +311,12 @@ fn pending_report_paths(report_dir: &Path) -> Result<Vec<PathBuf>> {
 }
 
 async fn flush_pending_reports(settings: &CrashReporterSettings) -> Result<()> {
+    // Persistent backoff: if the endpoint is down / network is unavailable, don't
+    // spam the logs by retrying every queued crash report on every startup.
+    if should_skip_upload_due_to_backoff(settings).await {
+        return Ok(());
+    }
+
     let paths = pending_report_paths(&settings.report_dir)?;
     if paths.is_empty() {
         return Ok(());
@@ -307,6 +330,8 @@ async fn flush_pending_reports(settings: &CrashReporterSettings) -> Result<()> {
 
     let mut sent = 0usize;
     let mut failed = 0usize;
+    let mut status_failures = 0usize;
+    let mut transport_error: Option<anyhow::Error> = None;
 
     for path in paths {
         let raw = match tokio::fs::read_to_string(&path).await {
@@ -345,16 +370,53 @@ async fn flush_pending_reports(settings: &CrashReporterSettings) -> Result<()> {
             }
             Ok(false) => {
                 failed += 1;
+                status_failures += 1;
+                if status_failures >= MAX_STATUS_FAILURES_PER_FLUSH {
+                    tracing::warn!(
+                        failures = status_failures,
+                        endpoint = %settings.endpoint,
+                        "Crash report uploads are being rejected; stopping this flush to avoid log spam"
+                    );
+                    break;
+                }
             }
             Err(err) => {
                 failed += 1;
-                tracing::warn!(
-                    path = %path.display(),
-                    report_id = %report.report_id,
-                    error = %err,
-                    "Crash report upload request failed"
-                );
+                // Transport errors (DNS/TLS/timeout) will repeat for every queued report.
+                // Log once and stop trying until the next backoff window.
+                transport_error = Some(err);
+                break;
             }
+        }
+    }
+
+    // Update persistent backoff state.
+    // - If we sent at least one report, reset failures.
+    // - If we sent none and had transport failure or repeated rejections, increase backoff.
+    if sent > 0 {
+        let _ = save_upload_state(
+            CrashUploadState {
+                consecutive_failures: 0,
+                next_attempt_at: None,
+                last_attempt_at: Some(Utc::now()),
+                last_error: None,
+            },
+            settings,
+        )
+        .await;
+    } else if failed > 0 {
+        let err_str = transport_error
+            .as_ref()
+            .map(|e| truncate_with_ellipsis(&format!("{e}"), 300));
+
+        let _ = bump_upload_backoff(err_str, settings).await;
+
+        if let Some(err) = transport_error {
+            tracing::warn!(
+                endpoint = %settings.endpoint,
+                error = %err,
+                "Crash report upload failed (transport). Backing off and will retry later."
+            );
         }
     }
 
@@ -366,6 +428,84 @@ async fn flush_pending_reports(settings: &CrashReporterSettings) -> Result<()> {
     );
 
     Ok(())
+}
+
+async fn should_skip_upload_due_to_backoff(settings: &CrashReporterSettings) -> bool {
+    let Some(state) = load_upload_state(settings).await else {
+        return false;
+    };
+
+    let Some(next) = state.next_attempt_at else {
+        return false;
+    };
+
+    let now = Utc::now();
+    if next > now {
+        let secs = (next - now).num_seconds().max(0);
+        tracing::info!(
+            endpoint = %settings.endpoint,
+            retry_in_secs = secs,
+            consecutive_failures = state.consecutive_failures,
+            "Skipping crash report upload due to backoff"
+        );
+        return true;
+    }
+
+    false
+}
+
+async fn load_upload_state(settings: &CrashReporterSettings) -> Option<CrashUploadState> {
+    let path = crash_upload_state_path(settings);
+    let raw = tokio::fs::read_to_string(&path).await.ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
+async fn save_upload_state(state: CrashUploadState, settings: &CrashReporterSettings) -> Result<()> {
+    let path = crash_upload_state_path(settings);
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .with_context(|| format!("create crash telemetry dir {}", parent.display()))?;
+    }
+    let raw = serde_json::to_string_pretty(&state).context("serialize crash upload state")?;
+    tokio::fs::write(&path, raw)
+        .await
+        .with_context(|| format!("write crash upload state {}", path.display()))?;
+    Ok(())
+}
+
+async fn bump_upload_backoff(last_error: Option<String>, settings: &CrashReporterSettings) -> Result<()> {
+    let mut state = load_upload_state(settings).await.unwrap_or_default();
+    state.consecutive_failures = state.consecutive_failures.saturating_add(1);
+    state.last_attempt_at = Some(Utc::now());
+    state.last_error = last_error;
+
+    let backoff = compute_backoff_secs(state.consecutive_failures);
+    state.next_attempt_at = Some(Utc::now() + chrono::Duration::seconds(backoff as i64));
+
+    save_upload_state(state, settings).await
+}
+
+fn compute_backoff_secs(consecutive_failures: u32) -> u64 {
+    // Exponential backoff: 5m, 10m, 20m, ... capped at 24h
+    // Clamp exponent so we don't overflow.
+    let exp = consecutive_failures.saturating_sub(1).min(10);
+    let factor = 1u64.checked_shl(exp).unwrap_or(u64::MAX);
+    let backoff = MIN_UPLOAD_BACKOFF_SECS.saturating_mul(factor);
+    backoff.clamp(MIN_UPLOAD_BACKOFF_SECS, MAX_UPLOAD_BACKOFF_SECS)
+}
+
+fn crash_upload_state_path(settings: &CrashReporterSettings) -> PathBuf {
+    // Keep it next to install_id under telemetry/ so it's easy to find.
+    // Use settings.report_dir's sibling to avoid depending on OS-specific paths.
+    // report_dir = <data>/crash-reports
+    // state_dir  = <data>/telemetry
+    let data_dir = settings
+        .report_dir
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| codetether_data_dir());
+    data_dir.join("telemetry").join(CRASH_UPLOAD_STATE_FILE)
 }
 
 async fn upload_report(
@@ -559,5 +699,20 @@ fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
         format!("{output}...")
     } else {
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn backoff_increases_and_clamps() {
+        // First failure uses the minimum.
+        assert_eq!(compute_backoff_secs(1), MIN_UPLOAD_BACKOFF_SECS);
+        // Second failure doubles.
+        assert_eq!(compute_backoff_secs(2), MIN_UPLOAD_BACKOFF_SECS * 2);
+        // A larger number should never exceed the max cap.
+        assert_eq!(compute_backoff_secs(10_000), MAX_UPLOAD_BACKOFF_SECS);
     }
 }
