@@ -45,7 +45,7 @@ impl ZaiProvider {
         })
     }
 
-    fn convert_messages(messages: &[Message]) -> Vec<Value> {
+    fn convert_messages(messages: &[Message], include_reasoning_content: bool) -> Vec<Value> {
         messages
             .iter()
             .map(|msg| {
@@ -78,17 +78,6 @@ impl ZaiProvider {
                             .iter()
                             .filter_map(|p| match p {
                                 ContentPart::Text { text } => Some(text.clone()),
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                            .join("");
-
-                        // Preserve reasoning_content for interleaved/preserved thinking
-                        let reasoning: String = msg
-                            .content
-                            .iter()
-                            .filter_map(|p| match p {
-                                ContentPart::Thinking { text } => Some(text.clone()),
                                 _ => None,
                             })
                             .collect::<Vec<_>>()
@@ -130,9 +119,19 @@ impl ZaiProvider {
                             "role": "assistant",
                             "content": if text.is_empty() { "".to_string() } else { text },
                         });
-                        // Return reasoning_content for preserved thinking (clear_thinking: false)
-                        if !reasoning.is_empty() {
-                            msg_json["reasoning_content"] = json!(reasoning);
+                        if include_reasoning_content {
+                            let reasoning: String = msg
+                                .content
+                                .iter()
+                                .filter_map(|p| match p {
+                                    ContentPart::Thinking { text } => Some(text.clone()),
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>()
+                                .join("");
+                            if !reasoning.is_empty() {
+                                msg_json["reasoning_content"] = json!(reasoning);
+                            }
                         }
                         if !tool_calls.is_empty() {
                             msg_json["tool_calls"] = json!(tool_calls);
@@ -171,6 +170,10 @@ impl ZaiProvider {
                 })
             })
             .collect()
+    }
+
+    fn model_supports_tool_stream(model: &str) -> bool {
+        model.contains("glm-5") || model.contains("glm-4.7") || model.contains("glm-4.6")
     }
 }
 
@@ -350,7 +353,10 @@ impl Provider for ZaiProvider {
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        let messages = Self::convert_messages(&request.messages);
+        // Compatibility-first mode: omit historical reasoning_content from
+        // request messages to avoid strict parameter validation errors on some
+        // endpoint variants.
+        let messages = Self::convert_messages(&request.messages, false);
         let tools = Self::convert_tools(&request.tools);
 
         // GLM-5 and GLM-4.7 default to temperature 1.0
@@ -362,12 +368,10 @@ impl Provider for ZaiProvider {
             "temperature": temperature,
         });
 
-        // Enable thinking with preserved reasoning for coding/agent workflows.
-        // clear_thinking: false retains reasoning_content across turns for better
-        // coherence and improved cache hit rates.
+        // Keep thinking enabled, but avoid provider-specific sub-fields that
+        // may be rejected by stricter API variants.
         body["thinking"] = json!({
-            "type": "enabled",
-            "clear_thinking": false
+            "type": "enabled"
         });
 
         if !tools.is_empty() {
@@ -505,7 +509,10 @@ impl Provider for ZaiProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
-        let messages = Self::convert_messages(&request.messages);
+        // Compatibility-first mode: omit historical reasoning_content from
+        // request messages to avoid strict parameter validation errors on some
+        // endpoint variants.
+        let messages = Self::convert_messages(&request.messages, false);
         let tools = Self::convert_tools(&request.tools);
 
         let temperature = request.temperature.unwrap_or(1.0);
@@ -518,14 +525,15 @@ impl Provider for ZaiProvider {
         });
 
         body["thinking"] = json!({
-            "type": "enabled",
-            "clear_thinking": false
+            "type": "enabled"
         });
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
-            // Enable streaming tool calls (supported by glm-4.6+)
-            body["tool_stream"] = json!(true);
+            if Self::model_supports_tool_stream(&request.model) {
+                // Enable streaming tool calls only on known-compatible models.
+                body["tool_stream"] = json!(true);
+            }
         }
         if let Some(max) = request.max_tokens {
             body["max_tokens"] = json!(max);
@@ -679,7 +687,7 @@ mod tests {
             }],
         }];
 
-        let converted = ZaiProvider::convert_messages(&messages);
+        let converted = ZaiProvider::convert_messages(&messages, true);
         let args = converted[0]["tool_calls"][0]["function"]["arguments"]
             .as_str()
             .expect("arguments must be a string");
@@ -698,7 +706,7 @@ mod tests {
             }],
         }];
 
-        let converted = ZaiProvider::convert_messages(&messages);
+        let converted = ZaiProvider::convert_messages(&messages, true);
         let args = converted[0]["tool_calls"][0]["function"]["arguments"]
             .as_str()
             .expect("arguments must be a string");

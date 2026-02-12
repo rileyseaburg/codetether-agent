@@ -175,13 +175,14 @@ const POLICY_RULES: &[PolicyRule] = &[
         permission: "agent:read",
     },
     // Session management
-    PolicyRule {
-        pattern: "/api/session",
-        methods: Some(&["POST"]),
-        permission: "sessions:write",
-    },
+    // Session prompt execution — requires execute permission
     PolicyRule {
         pattern: "/api/session/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/api/session",
         methods: Some(&["POST"]),
         permission: "sessions:write",
     },
@@ -189,6 +190,12 @@ const POLICY_RULES: &[PolicyRule] = &[
         pattern: "/api/session",
         methods: Some(&["GET"]),
         permission: "sessions:read",
+    },
+    // Proposal approval — governance action
+    PolicyRule {
+        pattern: "/v1/cognition/proposals/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
     },
     // Config, version, providers, agents — read
     PolicyRule {
@@ -218,7 +225,7 @@ const POLICY_RULES: &[PolicyRule] = &[
 fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
     for rule in POLICY_RULES {
         let matches = if rule.pattern.ends_with('/') {
-            path.starts_with(rule.pattern) || path == &rule.pattern[..rule.pattern.len() - 1]
+            path.starts_with(rule.pattern)
         } else {
             path == rule.pattern || path.starts_with(&format!("{}/", rule.pattern))
         };
@@ -1007,4 +1014,27 @@ fn env_bool(name: &str, default: bool) -> bool {
             _ => None,
         })
         .unwrap_or(default)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::match_policy_rule;
+
+    #[test]
+    fn policy_prompt_session_requires_execute_permission() {
+        let permission = match_policy_rule("/api/session/abc123/prompt", "POST");
+        assert_eq!(permission, Some("agent:execute"));
+    }
+
+    #[test]
+    fn policy_create_session_keeps_sessions_write_permission() {
+        let permission = match_policy_rule("/api/session", "POST");
+        assert_eq!(permission, Some("sessions:write"));
+    }
+
+    #[test]
+    fn policy_proposal_approval_requires_execute_permission() {
+        let permission = match_policy_rule("/v1/cognition/proposals/p1/approve", "POST");
+        assert_eq!(permission, Some("agent:execute"));
+    }
 }

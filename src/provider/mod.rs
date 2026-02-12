@@ -411,7 +411,7 @@ impl ProviderRegistry {
                         let base_url = secrets
                             .base_url
                             .clone()
-                            .unwrap_or_else(|| "https://api.z.ai/api/coding/paas/v4".to_string());
+                            .unwrap_or_else(|| "https://api.z.ai/api/paas/v4".to_string());
                         match zai::ZaiProvider::with_base_url(api_key, base_url) {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init zai: {}", e),

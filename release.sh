@@ -201,6 +201,15 @@ echo "==> Jenkins will build and create the GitHub release automatically."
 echo ""
 echo "===> Telling Jenkins to scan for new tag and create release..."
 # Trigger Jenkins multibranch scan to detect the new tag and create the GitHub release
-"$SCRIPT_DIR/jenkinsfile.sh" scan
+if [ -x "$SCRIPT_DIR/jenkinsfile.sh" ]; then
+    if ! "$SCRIPT_DIR/jenkinsfile.sh" scan; then
+        echo "Warning: Jenkins scan trigger failed."
+        echo "Release artifacts/tag were already pushed."
+        echo "Run '$SCRIPT_DIR/jenkinsfile.sh health' to diagnose, then retry '$SCRIPT_DIR/jenkinsfile.sh scan'."
+    fi
+else
+    echo "Warning: $SCRIPT_DIR/jenkinsfile.sh not found/executable."
+    echo "Release artifacts/tag were already pushed. Trigger Jenkins scan manually."
+fi
 
 echo "==> Done."

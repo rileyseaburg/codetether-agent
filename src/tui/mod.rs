@@ -25,6 +25,11 @@ const AUTOCHAT_MAX_AGENTS: usize = 8;
 const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
 const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
+const AUTOCHAT_QUICK_DEMO_TASK: &str = "Introduce yourselves with your role/personality, then relay one concrete implementation plan with clear next handoffs.";
+const AGENT_AVATARS: [&str; 12] = [
+    "[o_o]", "[^_^]", "[>_<]", "[._.]", "[+_+]", "[~_~]", "[x_x]", "[0_0]", "[*_*]", "[=_=]",
+    "[T_T]", "[u_u]",
+];
 
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::config::Config;
@@ -60,7 +65,7 @@ use ratatui::{
         Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
     },
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -181,6 +186,8 @@ struct App {
     processing_started_at: Option<Instant>,
     /// Partial streaming text being assembled (shown with typing indicator)
     streaming_text: Option<String>,
+    /// Partial streaming text per spawned agent (shown live in chat)
+    streaming_agent_texts: HashMap<String, String>,
     /// Total tool calls in this session for inspector
     tool_call_count: usize,
     response_rx: Option<mpsc::Receiver<SessionEvent>>,
@@ -222,6 +229,10 @@ struct App {
     active_spawned_agent: Option<String>,
     spawned_agents: HashMap<String, SpawnedAgent>,
     agent_response_rxs: Vec<(String, mpsc::Receiver<SessionEvent>)>,
+    autochat_rx: Option<mpsc::Receiver<AutochatUiEvent>>,
+    autochat_running: bool,
+    autochat_started_at: Option<Instant>,
+    autochat_status: Option<String>,
     // Cached max scroll for key handlers
     last_max_scroll: usize,
 }
@@ -251,6 +262,15 @@ struct SpawnedAgent {
     is_processing: bool,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct AgentProfile {
+    codename: &'static str,
+    profile: &'static str,
+    personality: &'static str,
+    collaboration_style: &'static str,
+    signature_move: &'static str,
+}
+
 /// Token usage + cost + latency for one LLM round-trip
 #[derive(Debug, Clone)]
 struct UsageMeta {
@@ -258,6 +278,18 @@ struct UsageMeta {
     completion_tokens: usize,
     duration_ms: u64,
     cost_usd: Option<f64>,
+}
+
+enum AutochatUiEvent {
+    Progress(String),
+    SystemMessage(String),
+    AgentEvent {
+        agent_name: String,
+        event: SessionEvent,
+    },
+    Completed {
+        summary: String,
+    },
 }
 
 /// Estimate USD cost from model name and token counts.
@@ -296,6 +328,17 @@ fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) ->
     let cost =
         (prompt_tokens as f64 * input_rate + completion_tokens as f64 * output_rate) / 1_000_000.0;
     Some(cost)
+}
+
+fn current_spinner_frame() -> &'static str {
+    const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let idx = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        / 100) as usize
+        % SPINNER.len();
+    SPINNER[idx]
 }
 
 impl ChatMessage {
@@ -420,6 +463,359 @@ fn detect_git_dirty_files(root: &Path) -> usize {
         .count()
 }
 
+fn resolve_provider_for_model_autochat(
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+    model_ref: &str,
+) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
+    let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
+    if let Some(provider_name) = provider_name
+        && let Some(provider) = registry.get(provider_name)
+    {
+        return Some((provider, model_name.to_string()));
+    }
+
+    let fallbacks = [
+        "zai",
+        "openai",
+        "github-copilot",
+        "anthropic",
+        "openrouter",
+        "novita",
+        "moonshotai",
+        "google",
+    ];
+
+    for provider_name in fallbacks {
+        if let Some(provider) = registry.get(provider_name) {
+            return Some((provider, model_ref.to_string()));
+        }
+    }
+
+    registry
+        .list()
+        .first()
+        .copied()
+        .and_then(|name| registry.get(name))
+        .map(|provider| (provider, model_ref.to_string()))
+}
+
+async fn prepare_autochat_handoff_with_registry(
+    task: &str,
+    from_agent: &str,
+    output: &str,
+    model_ref: &str,
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+) -> (String, bool) {
+    let mut used_rlm = false;
+    let mut relay_payload = output.to_string();
+
+    if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
+        relay_payload = truncate_with_ellipsis(output, 3_500);
+
+        if let Some((provider, model_name)) =
+            resolve_provider_for_model_autochat(registry, model_ref)
+        {
+            let mut executor =
+                RlmExecutor::new(output.to_string(), provider, model_name).with_max_iterations(2);
+
+            let query = "Summarize this agent output for the next specialist in a relay. Keep:\n\
+                         1) key conclusions, 2) unresolved risks, 3) exact next action.\n\
+                         Keep it concise and actionable.";
+            match executor.analyze(query).await {
+                Ok(result) => {
+                    relay_payload = result.answer;
+                    used_rlm = true;
+                }
+                Err(err) => {
+                    tracing::warn!(error = %err, "RLM handoff summarization failed; using truncation fallback");
+                }
+            }
+        }
+    }
+
+    (
+        format!(
+            "Relay task:\n{task}\n\nIncoming handoff from @{from_agent}:\n{relay_payload}\n\n\
+             Continue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent."
+        ),
+        used_rlm,
+    )
+}
+
+async fn run_autochat_worker(
+    tx: mpsc::Sender<AutochatUiEvent>,
+    bus: std::sync::Arc<crate::bus::AgentBus>,
+    profiles: Vec<(String, String, Vec<String>)>,
+    task: String,
+    model_ref: String,
+) {
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Loading providers from Vault…".to_string(),
+        ))
+        .await;
+
+    let registry = match crate::provider::ProviderRegistry::from_vault().await {
+        Ok(registry) => std::sync::Arc::new(registry),
+        Err(err) => {
+            let _ = tx
+                .send(AutochatUiEvent::SystemMessage(format!(
+                    "Failed to load providers for /autochat: {err}"
+                )))
+                .await;
+            let _ = tx
+                .send(AutochatUiEvent::Completed {
+                    summary: "Autochat aborted: provider registry unavailable.".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let relay = ProtocolRelayRuntime::new(bus);
+    let mut relay_profiles = Vec::with_capacity(profiles.len());
+    let mut ordered_agents = Vec::with_capacity(profiles.len());
+    let mut sessions: HashMap<String, Session> = HashMap::new();
+    let mut setup_errors: Vec<String> = Vec::new();
+
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Initializing relay agent sessions…".to_string(),
+        ))
+        .await;
+
+    for (name, instructions, capabilities) in profiles {
+        match Session::new().await {
+            Ok(mut session) => {
+                session.metadata.model = Some(model_ref.clone());
+                session.agent = name.clone();
+                session.add_message(crate::provider::Message {
+                    role: Role::System,
+                    content: vec![ContentPart::Text {
+                        text: instructions.clone(),
+                    }],
+                });
+
+                relay_profiles.push(RelayAgentProfile {
+                    name: name.clone(),
+                    capabilities,
+                });
+                ordered_agents.push(name.clone());
+                sessions.insert(name, session);
+            }
+            Err(err) => {
+                setup_errors.push(format!(
+                    "Failed creating relay agent session @{name}: {err}"
+                ));
+            }
+        }
+    }
+
+    if !setup_errors.is_empty() {
+        let _ = tx
+            .send(AutochatUiEvent::SystemMessage(format!(
+                "Relay setup warnings:\n{}",
+                setup_errors.join("\n")
+            )))
+            .await;
+    }
+
+    if ordered_agents.len() < 2 {
+        let _ = tx
+            .send(AutochatUiEvent::SystemMessage(
+                "Autochat needs at least 2 agents to relay.".to_string(),
+            ))
+            .await;
+        let _ = tx
+            .send(AutochatUiEvent::Completed {
+                summary: "Autochat aborted: insufficient relay participants.".to_string(),
+            })
+            .await;
+        return;
+    }
+
+    relay.register_agents(&relay_profiles);
+
+    let _ = tx
+        .send(AutochatUiEvent::Progress(format!(
+            "Relay {} registered {} agents. Starting handoffs…",
+            relay.relay_id(),
+            ordered_agents.len()
+        )))
+        .await;
+
+    let roster_profiles = ordered_agents
+        .iter()
+        .map(|name| {
+            format!(
+                "• {} — {}",
+                format_agent_identity(name),
+                format_agent_profile_summary(name)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let _ = tx
+        .send(AutochatUiEvent::SystemMessage(format!(
+            "Relay {id} started • model: {model_ref}\n\nTeam personalities:\n{roster_profiles}",
+            id = relay.relay_id()
+        )))
+        .await;
+
+    let mut baton = format!(
+        "Task:\n{task}\n\nStart by proposing an execution strategy and one immediate next step."
+    );
+    let mut previous_normalized: Option<String> = None;
+    let mut convergence_hits = 0usize;
+    let mut turns = 0usize;
+    let mut rlm_handoff_count = 0usize;
+    let mut status = "max_rounds_reached";
+    let mut failure_note: Option<String> = None;
+
+    'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
+        for idx in 0..ordered_agents.len() {
+            let to = ordered_agents[idx].clone();
+            let from = if idx == 0 {
+                if round == 1 {
+                    "user".to_string()
+                } else {
+                    ordered_agents[ordered_agents.len() - 1].clone()
+                }
+            } else {
+                ordered_agents[idx - 1].clone()
+            };
+
+            turns += 1;
+            relay.send_handoff(&from, &to, &baton);
+            let _ = tx
+                .send(AutochatUiEvent::Progress(format!(
+                    "Round {round}/{AUTOCHAT_MAX_ROUNDS} • @{from} → @{to}"
+                )))
+                .await;
+
+            let Some(mut session) = sessions.remove(&to) else {
+                status = "agent_error";
+                failure_note = Some(format!("Relay agent @{to} session was unavailable."));
+                break 'relay_loop;
+            };
+
+            let (event_tx, mut event_rx) = mpsc::channel(256);
+            let registry_for_prompt = registry.clone();
+            let baton_for_prompt = baton.clone();
+
+            let join = tokio::spawn(async move {
+                let result = session
+                    .prompt_with_events(&baton_for_prompt, event_tx, registry_for_prompt)
+                    .await;
+                (session, result)
+            });
+
+            while !join.is_finished() {
+                while let Ok(event) = event_rx.try_recv() {
+                    if !matches!(event, SessionEvent::SessionSync(_)) {
+                        let _ = tx
+                            .send(AutochatUiEvent::AgentEvent {
+                                agent_name: to.clone(),
+                                event,
+                            })
+                            .await;
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+
+            let (updated_session, result) = match join.await {
+                Ok(value) => value,
+                Err(err) => {
+                    status = "agent_error";
+                    failure_note = Some(format!("Relay agent @{to} task join error: {err}"));
+                    break 'relay_loop;
+                }
+            };
+
+            while let Ok(event) = event_rx.try_recv() {
+                if !matches!(event, SessionEvent::SessionSync(_)) {
+                    let _ = tx
+                        .send(AutochatUiEvent::AgentEvent {
+                            agent_name: to.clone(),
+                            event,
+                        })
+                        .await;
+                }
+            }
+
+            sessions.insert(to.clone(), updated_session);
+
+            let output = match result {
+                Ok(response) => response.text,
+                Err(err) => {
+                    status = "agent_error";
+                    failure_note = Some(format!("Relay agent @{to} failed: {err}"));
+                    let _ = tx
+                        .send(AutochatUiEvent::SystemMessage(format!(
+                            "Relay agent @{to} failed: {err}"
+                        )))
+                        .await;
+                    break 'relay_loop;
+                }
+            };
+
+            let normalized = normalize_for_convergence(&output);
+            if previous_normalized.as_deref() == Some(normalized.as_str()) {
+                convergence_hits += 1;
+            } else {
+                convergence_hits = 0;
+            }
+            previous_normalized = Some(normalized);
+
+            let (next_handoff, used_rlm) =
+                prepare_autochat_handoff_with_registry(&task, &to, &output, &model_ref, &registry)
+                    .await;
+            if used_rlm {
+                rlm_handoff_count += 1;
+            }
+
+            baton = next_handoff;
+
+            if convergence_hits >= 2 {
+                status = "converged";
+                break 'relay_loop;
+            }
+        }
+    }
+
+    relay.shutdown_agents(&ordered_agents);
+
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Finalizing relay summary…".to_string(),
+        ))
+        .await;
+
+    let mut summary = format!(
+        "Autochat complete ({status}) — relay {} with {} agents over {} turns.",
+        relay.relay_id(),
+        ordered_agents.len(),
+        turns,
+    );
+    if let Some(note) = failure_note {
+        summary.push_str(&format!("\n\nFailure detail: {note}"));
+    }
+    if rlm_handoff_count > 0 {
+        summary.push_str(&format!("\n\nRLM compressed handoffs: {rlm_handoff_count}"));
+    }
+    summary.push_str(&format!(
+        "\n\nFinal relay handoff:\n{}",
+        truncate_with_ellipsis(&baton, 4_000)
+    ));
+    summary.push_str(&format!(
+        "\n\nCleanup: deregistered relay agents and disposed {} autochat worker session(s).",
+        sessions.len()
+    ));
+
+    let _ = tx.send(AutochatUiEvent::Completed { summary }).await;
+}
+
 impl App {
     fn new() -> Self {
         let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -445,6 +841,7 @@ impl App {
             current_tool: None,
             processing_started_at: None,
             streaming_text: None,
+            streaming_agent_texts: HashMap::new(),
             tool_call_count: 0,
             response_rx: None,
             provider_registry: None,
@@ -475,6 +872,10 @@ impl App {
             active_spawned_agent: None,
             spawned_agents: HashMap::new(),
             agent_response_rxs: Vec::new(),
+            autochat_rx: None,
+            autochat_running: false,
+            autochat_started_at: None,
+            autochat_status: None,
             last_max_scroll: 0,
         }
     }
@@ -535,37 +936,6 @@ impl App {
         }
     }
 
-    fn cleanup_autochat_agents(
-        &mut self,
-        relay: &ProtocolRelayRuntime,
-        agent_names: &[String],
-    ) -> usize {
-        if agent_names.is_empty() {
-            return 0;
-        }
-
-        relay.shutdown_agents(agent_names);
-
-        let names: HashSet<&str> = agent_names.iter().map(String::as_str).collect();
-        self.agent_response_rxs
-            .retain(|(name, _)| !names.contains(name.as_str()));
-
-        if let Some(active) = self.active_spawned_agent.as_deref()
-            && names.contains(active)
-        {
-            self.active_spawned_agent = None;
-        }
-
-        let mut removed = 0usize;
-        for name in agent_names {
-            if self.spawned_agents.remove(name).is_some() {
-                removed += 1;
-            }
-        }
-
-        removed
-    }
-
     fn build_autochat_profiles(&self, count: usize) -> Vec<(String, String, Vec<String>)> {
         let templates = [
             (
@@ -619,14 +989,26 @@ impl App {
                 format!("auto-{slug}-{}", idx + 1)
             };
             let name = self.unique_spawned_name(&base);
+            let profile = agent_profile(&name);
             let instructions = format!(
-                "You are @{name}, a specialist in {specialty}. {mission}\n\n
+                "You are @{name}, codename {codename}.\n\
+                 Profile: {profile_line}.\n\
+                 Personality: {personality}.\n\
+                 Collaboration style: {collaboration_style}.\n\
+                 Signature move: {signature_move}.\n\
+                 Specialty: {specialty}. {mission}\n\n
                  This is a protocol-first relay conversation. Treat the incoming handoff as the authoritative context.\n\
                  Keep your response concise, concrete, and useful for the next specialist.\n\
-                 Include one clear recommendation for what the next agent should do."
+                 Include one clear recommendation for what the next agent should do.",
+                codename = profile.codename,
+                profile_line = profile.profile,
+                personality = profile.personality,
+                collaboration_style = profile.collaboration_style,
+                signature_move = profile.signature_move,
             );
             let capabilities = vec![
                 specialty.to_string(),
+                profile.codename.to_ascii_lowercase(),
                 "relay".to_string(),
                 "context-handoff".to_string(),
                 "rlm-aware".to_string(),
@@ -638,144 +1020,6 @@ impl App {
 
         profiles
     }
-
-    fn resolve_provider_for_model(
-        &self,
-        registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
-        model_ref: &str,
-    ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
-        let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
-        if let Some(provider_name) = provider_name
-            && let Some(provider) = registry.get(provider_name)
-        {
-            return Some((provider, model_name.to_string()));
-        }
-
-        let fallbacks = [
-            "zai",
-            "openai",
-            "github-copilot",
-            "anthropic",
-            "openrouter",
-            "novita",
-            "moonshotai",
-            "google",
-        ];
-
-        for provider_name in fallbacks {
-            if let Some(provider) = registry.get(provider_name) {
-                return Some((provider, model_ref.to_string()));
-            }
-        }
-
-        registry
-            .list()
-            .first()
-            .copied()
-            .and_then(|name| registry.get(name))
-            .map(|provider| (provider, model_ref.to_string()))
-    }
-
-    async fn prepare_autochat_handoff(
-        &self,
-        task: &str,
-        from_agent: &str,
-        output: &str,
-        model_ref: &str,
-    ) -> (String, bool) {
-        let mut used_rlm = false;
-        let mut relay_payload = output.to_string();
-
-        if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
-            relay_payload = truncate_with_ellipsis(output, 3_500);
-
-            if let Some(registry) = self.provider_registry.as_ref()
-                && let Some((provider, model_name)) =
-                    self.resolve_provider_for_model(registry, model_ref)
-            {
-                let mut executor = RlmExecutor::new(output.to_string(), provider, model_name)
-                    .with_max_iterations(2);
-
-                let query = "Summarize this agent output for the next specialist in a relay. Keep:\n\
-                             1) key conclusions, 2) unresolved risks, 3) exact next action.\n\
-                             Keep it concise and actionable.";
-                match executor.analyze(query).await {
-                    Ok(result) => {
-                        relay_payload = result.answer;
-                        used_rlm = true;
-                    }
-                    Err(err) => {
-                        tracing::warn!(error = %err, "RLM handoff summarization failed; using truncation fallback");
-                    }
-                }
-            }
-        }
-
-        (
-            format!(
-                "Relay task:\n{task}\n\nIncoming handoff from @{from_agent}:\n{relay_payload}\n\n\
-                 Continue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent."
-            ),
-            used_rlm,
-        )
-    }
-
-    async fn prompt_spawned_agent_sync(
-        &mut self,
-        agent_name: &str,
-        message: &str,
-    ) -> Result<String> {
-        if self.provider_registry.is_none() {
-            let registry = crate::provider::ProviderRegistry::from_vault().await?;
-            self.provider_registry = Some(std::sync::Arc::new(registry));
-        }
-
-        let registry = self
-            .provider_registry
-            .clone()
-            .ok_or_else(|| anyhow::anyhow!("Provider registry unavailable"))?;
-
-        let mut session = self
-            .spawned_agents
-            .get(agent_name)
-            .map(|agent| agent.session.clone())
-            .ok_or_else(|| anyhow::anyhow!("Spawned agent '{}' not found", agent_name))?;
-
-        if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
-            agent.is_processing = true;
-        }
-
-        let (tx, mut rx) = mpsc::channel(256);
-        let prompt_text = message.to_string();
-
-        let join = tokio::spawn(async move {
-            let result = session.prompt_with_events(&prompt_text, tx, registry).await;
-            (session, result)
-        });
-
-        while !join.is_finished() {
-            while let Ok(event) = rx.try_recv() {
-                self.handle_agent_response(agent_name, event);
-            }
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-
-        let (updated_session, result) = join
-            .await
-            .map_err(|err| anyhow::anyhow!("Autochat agent task join error: {err}"))?;
-
-        while let Ok(event) = rx.try_recv() {
-            self.handle_agent_response(agent_name, event);
-        }
-
-        if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
-            agent.session = updated_session;
-            agent.is_processing = false;
-        }
-
-        Ok(result?.text)
-    }
-
     async fn start_autochat_execution(
         &mut self,
         agent_count: usize,
@@ -792,6 +1036,27 @@ impl App {
             return;
         }
 
+        if self.autochat_running {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Autochat relay already running. Wait for it to finish before starting another.",
+            ));
+            return;
+        }
+
+        self.messages.push(ChatMessage::new(
+            "user",
+            format!("/autochat {agent_count} {task}"),
+        ));
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Preparing relay with {agent_count} agents…\nTask: {}\n(Compact mode: live agent streaming here, detailed relay envelopes in /buslog)",
+                truncate_with_ellipsis(&task, 180)
+            ),
+        ));
+        self.scroll = SCROLL_BOTTOM;
+
         let Some(bus) = self.bus.clone() else {
             self.messages.push(ChatMessage::new(
                 "system",
@@ -806,22 +1071,6 @@ impl App {
             .or_else(|| config.default_model.clone())
             .unwrap_or_else(|| "zai/glm-5".to_string());
 
-        if self.provider_registry.is_none() {
-            match crate::provider::ProviderRegistry::from_vault().await {
-                Ok(registry) => {
-                    self.provider_registry = Some(std::sync::Arc::new(registry));
-                }
-                Err(err) => {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        format!("Failed to load providers for /autochat: {err}"),
-                    ));
-                    return;
-                }
-            }
-        }
-
-        let relay = ProtocolRelayRuntime::new(bus);
         let profiles = self.build_autochat_profiles(agent_count);
         if profiles.is_empty() {
             self.messages.push(ChatMessage::new(
@@ -831,180 +1080,16 @@ impl App {
             return;
         }
 
-        let mut relay_profiles = Vec::with_capacity(profiles.len());
-        let mut ordered_agents = Vec::with_capacity(profiles.len());
-
-        for (name, instructions, capabilities) in profiles {
-            match Session::new().await {
-                Ok(mut session) => {
-                    session.metadata.model = Some(model_ref.clone());
-                    session.agent = name.clone();
-                    session.add_message(crate::provider::Message {
-                        role: Role::System,
-                        content: vec![ContentPart::Text {
-                            text: instructions.clone(),
-                        }],
-                    });
-
-                    self.spawned_agents.insert(
-                        name.clone(),
-                        SpawnedAgent {
-                            name: name.clone(),
-                            instructions,
-                            session,
-                            is_processing: false,
-                        },
-                    );
-                    relay_profiles.push(RelayAgentProfile {
-                        name: name.clone(),
-                        capabilities,
-                    });
-                    ordered_agents.push(name);
-                }
-                Err(err) => {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        format!("Failed creating relay agent session: {err}"),
-                    ));
-                }
-            }
-        }
-
-        if ordered_agents.len() < 2 {
-            self.agent_response_rxs
-                .retain(|(name, _)| !ordered_agents.iter().any(|n| n == name));
-            for name in &ordered_agents {
-                self.spawned_agents.remove(name);
-            }
-
-            self.messages.push(ChatMessage::new(
-                "system",
-                "Autochat needs at least 2 agents to relay.",
-            ));
-            return;
-        }
-
-        relay.register_agents(&relay_profiles);
+        let (tx, rx) = mpsc::channel(512);
+        self.autochat_rx = Some(rx);
+        self.autochat_running = true;
+        self.autochat_started_at = Some(Instant::now());
+        self.autochat_status = Some("Preparing relay…".to_string());
         self.active_spawned_agent = None;
 
-        self.messages.push(ChatMessage::new(
-            "user",
-            format!("/autochat {agent_count} {task}"),
-        ));
-        self.messages.push(ChatMessage::new(
-            "system",
-            format!(
-                "Starting protocol-first relay {id} with agents: {agents}\nModel: {model_ref}",
-                id = relay.relay_id(),
-                agents = ordered_agents
-                    .iter()
-                    .map(|name| format!("@{name}"))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            ),
-        ));
-
-        let mut baton = format!(
-            "Task:\n{task}\n\nStart by proposing an execution strategy and one immediate next step."
-        );
-        let mut previous_normalized: Option<String> = None;
-        let mut convergence_hits = 0usize;
-        let mut turns = 0usize;
-        let mut status = "max_rounds_reached";
-        let mut failure_note: Option<String> = None;
-
-        'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
-            for idx in 0..ordered_agents.len() {
-                let to = ordered_agents[idx].clone();
-                let from = if idx == 0 {
-                    if round == 1 {
-                        "user".to_string()
-                    } else {
-                        ordered_agents[ordered_agents.len() - 1].clone()
-                    }
-                } else {
-                    ordered_agents[idx - 1].clone()
-                };
-
-                turns += 1;
-                relay.send_handoff(&from, &to, &baton);
-                self.messages.push(ChatMessage::new(
-                    "system",
-                    format!(
-                        "[relay {} • round {}] {} → @{}",
-                        relay.relay_id(),
-                        round,
-                        from,
-                        to
-                    ),
-                ));
-
-                let output = match self.prompt_spawned_agent_sync(&to, &baton).await {
-                    Ok(text) => text,
-                    Err(err) => {
-                        status = "agent_error";
-                        failure_note = Some(format!("Relay agent @{to} failed: {err}"));
-                        self.messages.push(ChatMessage::new(
-                            "system",
-                            format!("Relay agent @{to} failed: {err}"),
-                        ));
-                        break 'relay_loop;
-                    }
-                };
-
-                let normalized = normalize_for_convergence(&output);
-                if previous_normalized.as_deref() == Some(normalized.as_str()) {
-                    convergence_hits += 1;
-                } else {
-                    convergence_hits = 0;
-                }
-                previous_normalized = Some(normalized);
-
-                let (next_handoff, used_rlm) = self
-                    .prepare_autochat_handoff(&task, &to, &output, &model_ref)
-                    .await;
-                if used_rlm {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        format!("RLM compressed handoff from @{to} before the next relay step."),
-                    ));
-                }
-
-                baton = next_handoff;
-
-                if convergence_hits >= 2 {
-                    status = "converged";
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        format!("Relay convergence reached after {turns} turns."),
-                    ));
-                    break 'relay_loop;
-                }
-            }
-        }
-
-        let removed_agents = self.cleanup_autochat_agents(&relay, &ordered_agents);
-
-        let mut summary = format!(
-            "Autochat complete ({status}) — relay {} with {} agents over {} turns.",
-            relay.relay_id(),
-            ordered_agents.len(),
-            turns,
-        );
-        if let Some(note) = failure_note {
-            summary.push_str(&format!("\n\nFailure detail: {note}"));
-        }
-        summary.push_str(&format!(
-            "\n\nFinal relay handoff:\n{}",
-            truncate_with_ellipsis(&baton, 4_000)
-        ));
-        summary.push_str(&format!(
-            "\n\nCleanup: deregistered relay agents and removed {} autochat participant(s) from active roster.",
-            removed_agents
-        ));
-
-        self.messages.push(ChatMessage::new("assistant", summary));
-        self.scroll = SCROLL_BOTTOM;
+        tokio::spawn(async move {
+            run_autochat_worker(tx, bus, profiles, task, model_ref).await;
+        });
     }
 
     async fn submit_message(&mut self, config: &Config) {
@@ -1242,8 +1327,19 @@ impl App {
         // Check for /spawn command - create a named sub-agent
         if let Some(rest) = command_with_optional_args(&message, "/spawn") {
             let default_instructions = |agent_name: &str| {
+                let profile = agent_profile(agent_name);
                 format!(
-                    "You are @{agent_name}, a helpful teammate. Explain things in simple words, short steps, and a friendly tone."
+                    "You are @{agent_name}, codename {codename}.\n\
+                     Profile: {profile_line}.\n\
+                     Personality: {personality}.\n\
+                     Collaboration style: {style}.\n\
+                     Signature move: {signature}.\n\
+                     Be a helpful teammate: explain in simple words, short steps, and a friendly tone.",
+                    codename = profile.codename,
+                    profile_line = profile.profile,
+                    personality = profile.personality,
+                    style = profile.collaboration_style,
+                    signature = profile.signature_move,
                 )
             };
 
@@ -1322,11 +1418,14 @@ impl App {
                     } else {
                         "Protocol registration: ⚠ unavailable (bus not connected)".to_string()
                     };
+                    let profile_summary = format_agent_profile_summary(&name);
 
                     self.messages.push(ChatMessage::new(
                         "system",
                         format!(
-                            "Spawned agent @{name}: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>.\n{protocol_line}{}",
+                            "Spawned agent {}\nProfile: {}\nInstructions: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>.\n{protocol_line}{}",
+                            format_agent_identity(&name),
+                            profile_summary,
                             if used_default_instructions {
                                 "\nTip: I used friendly default instructions. You can customize with /add <name> <instructions>."
                             } else {
@@ -1378,8 +1477,11 @@ impl App {
                     } else {
                         ""
                     };
+                    let profile_summary = format_agent_profile_summary(name);
                     lines.push(format!(
-                        "  @{name} [{status}] {protocol_status}{focused} — {}",
+                        "  {} @{name} [{status}] {protocol_status}{focused} — {} | {}",
+                        agent_avatar(name),
+                        profile_summary,
                         agent.instructions
                     ));
                 }
@@ -1405,6 +1507,7 @@ impl App {
             if self.spawned_agents.remove(&name).is_some() {
                 // Remove its response channels
                 self.agent_response_rxs.retain(|(n, _)| n != &name);
+                self.streaming_agent_texts.remove(&name);
                 if self.active_spawned_agent.as_deref() == Some(name.as_str()) {
                     self.active_spawned_agent = None;
                 }
@@ -2038,6 +2141,7 @@ impl App {
         };
 
         agent.is_processing = true;
+        self.streaming_agent_texts.remove(agent_name);
         let session_clone = agent.session.clone();
         let msg_clone = message.to_string();
         let agent_name_owned = agent_name.to_string();
@@ -2086,6 +2190,7 @@ impl App {
                 }
             }
             SessionEvent::ToolCallStart { name, arguments } => {
+                self.streaming_agent_texts.remove(agent_name);
                 let (preview, truncated) = build_tool_arguments_preview(
                     &name,
                     &arguments,
@@ -2093,14 +2198,17 @@ impl App {
                     TOOL_ARGS_PREVIEW_MAX_BYTES,
                 );
                 self.messages.push(
-                    ChatMessage::new("tool", format!("🔧 @{agent_name} → {name}"))
-                        .with_message_type(MessageType::ToolCall {
-                            name,
-                            arguments_preview: preview,
-                            arguments_len: arguments.len(),
-                            truncated,
-                        })
-                        .with_agent_name(agent_name),
+                    ChatMessage::new(
+                        "tool",
+                        format!("🔧 {} → {name}", format_agent_identity(agent_name)),
+                    )
+                    .with_message_type(MessageType::ToolCall {
+                        name,
+                        arguments_preview: preview,
+                        arguments_len: arguments.len(),
+                        truncated,
+                    })
+                    .with_agent_name(agent_name),
                 );
             }
             SessionEvent::ToolCallComplete {
@@ -2108,6 +2216,7 @@ impl App {
                 output,
                 success,
             } => {
+                self.streaming_agent_texts.remove(agent_name);
                 let icon = if success { "✓" } else { "✗" };
                 let (preview, truncated) = build_text_preview(
                     &output,
@@ -2115,20 +2224,29 @@ impl App {
                     TOOL_OUTPUT_PREVIEW_MAX_BYTES,
                 );
                 self.messages.push(
-                    ChatMessage::new("tool", format!("{icon} @{agent_name} → {name}"))
-                        .with_message_type(MessageType::ToolResult {
-                            name,
-                            output_preview: preview,
-                            output_len: output.len(),
-                            truncated,
-                        })
-                        .with_agent_name(agent_name),
+                    ChatMessage::new(
+                        "tool",
+                        format!("{icon} {} → {name}", format_agent_identity(agent_name)),
+                    )
+                    .with_message_type(MessageType::ToolResult {
+                        name,
+                        output_preview: preview,
+                        output_len: output.len(),
+                        truncated,
+                    })
+                    .with_agent_name(agent_name),
                 );
             }
-            SessionEvent::TextChunk(_text) => {
-                // For spawned agents, we could show streaming but for now just wait for complete
+            SessionEvent::TextChunk(text) => {
+                if text.is_empty() {
+                    self.streaming_agent_texts.remove(agent_name);
+                } else {
+                    self.streaming_agent_texts
+                        .insert(agent_name.to_string(), text);
+                }
             }
             SessionEvent::ThinkingComplete(text) => {
+                self.streaming_agent_texts.remove(agent_name);
                 if !text.is_empty() {
                     self.messages.push(
                         ChatMessage::new("assistant", &text)
@@ -2138,6 +2256,7 @@ impl App {
                 }
             }
             SessionEvent::TextComplete(text) => {
+                self.streaming_agent_texts.remove(agent_name);
                 if !text.is_empty() {
                     self.messages
                         .push(ChatMessage::new("assistant", &text).with_agent_name(agent_name));
@@ -2170,15 +2289,49 @@ impl App {
                 }
             }
             SessionEvent::Error(err) => {
+                self.streaming_agent_texts.remove(agent_name);
                 self.messages.push(
                     ChatMessage::new("assistant", format!("Error: {err}"))
                         .with_agent_name(agent_name),
                 );
             }
             SessionEvent::Done => {
+                self.streaming_agent_texts.remove(agent_name);
                 if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
                     agent.is_processing = false;
                 }
+            }
+        }
+    }
+
+    fn handle_autochat_event(&mut self, event: AutochatUiEvent) -> bool {
+        match event {
+            AutochatUiEvent::Progress(status) => {
+                self.autochat_status = Some(status);
+                false
+            }
+            AutochatUiEvent::SystemMessage(text) => {
+                self.autochat_status = Some(
+                    text.lines()
+                        .next()
+                        .unwrap_or("Relay update")
+                        .trim()
+                        .to_string(),
+                );
+                self.messages.push(ChatMessage::new("system", text));
+                self.scroll = SCROLL_BOTTOM;
+                false
+            }
+            AutochatUiEvent::AgentEvent { agent_name, event } => {
+                self.autochat_status = Some(format!("Streaming from @{agent_name}…"));
+                self.handle_agent_response(&agent_name, event);
+                false
+            }
+            AutochatUiEvent::Completed { summary } => {
+                self.autochat_status = Some("Completed".to_string());
+                self.messages.push(ChatMessage::new("assistant", summary));
+                self.scroll = SCROLL_BOTTOM;
+                true
             }
         }
     }
@@ -2678,6 +2831,35 @@ impl App {
             }
         }
     }
+
+    fn autochat_status_label(&self) -> Option<String> {
+        if !self.autochat_running {
+            return None;
+        }
+
+        let elapsed = self
+            .autochat_started_at
+            .map(|started| {
+                let elapsed = started.elapsed();
+                if elapsed.as_secs() >= 60 {
+                    format!("{}m{:02}s", elapsed.as_secs() / 60, elapsed.as_secs() % 60)
+                } else {
+                    format!("{:.1}s", elapsed.as_secs_f64())
+                }
+            })
+            .unwrap_or_else(|| "0.0s".to_string());
+
+        let phase = self
+            .autochat_status
+            .as_deref()
+            .unwrap_or("Relay is running…")
+            .to_string();
+
+        Some(format!(
+            "{} Autochat {elapsed} • {phase}",
+            current_spinner_frame()
+        ))
+    }
 }
 
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
@@ -2818,6 +3000,32 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 } else {
                     i += 1;
                 }
+            }
+        }
+
+        // Drain all pending background autochat events
+        if let Some(mut rx) = app.autochat_rx.take() {
+            let mut completed = false;
+            while let Ok(event) = rx.try_recv() {
+                if app.handle_autochat_event(event) {
+                    completed = true;
+                }
+            }
+
+            if completed || rx.is_closed() {
+                if !completed && app.autochat_running {
+                    app.messages.push(ChatMessage::new(
+                        "system",
+                        "Autochat relay worker stopped unexpectedly.",
+                    ));
+                    app.scroll = SCROLL_BOTTOM;
+                }
+                app.autochat_running = false;
+                app.autochat_started_at = None;
+                app.autochat_status = None;
+                app.autochat_rx = None;
+            } else {
+                app.autochat_rx = Some(rx);
             }
         }
 
@@ -4240,6 +4448,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 let focused_marker = if is_focused { " ✓" } else { "" };
                 let status = if *is_processing { "⚡" } else { "●" };
                 let protocol = if *is_registered { "🔗" } else { "⚠" };
+                let avatar = agent_avatar(name);
 
                 let style = if is_selected {
                     Style::default()
@@ -4252,11 +4461,16 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 };
 
                 list_lines.push(Line::styled(
-                    format!("  {marker} {status} {protocol} @{name}{focused_marker}"),
+                    format!("  {marker} {status} {protocol} {avatar} @{name}{focused_marker}"),
                     style,
                 ));
 
                 if is_selected {
+                    let profile = agent_profile(name);
+                    list_lines.push(Line::styled(
+                        format!("     profile: {} — {}", profile.codename, profile.profile),
+                        Style::default().fg(Color::Cyan),
+                    ));
                     list_lines.push(Line::styled(
                         format!("     {}", instructions),
                         Style::default().fg(Color::DarkGray),
@@ -4371,6 +4585,12 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         } else {
             " Message (Processing...) ".to_string()
         }
+    } else if app.autochat_running {
+        format!(
+            " {} ",
+            app.autochat_status_label()
+                .unwrap_or_else(|| "Autochat running…".to_string())
+        )
     } else if app.input.starts_with('/') {
         let hint = match_slash_command_hint(&app.input);
         format!(" {} ", hint)
@@ -4384,6 +4604,8 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         .title(input_title)
         .border_style(Style::default().fg(if app.is_processing {
             Color::Yellow
+        } else if app.autochat_running {
+            Color::Cyan
         } else if app.input.starts_with('/') {
             Color::Magenta
         } else {
@@ -4423,6 +4645,17 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         0,
         Span::styled(model_status, Style::default().fg(Color::Cyan)),
     );
+    if let Some(autochat_status) = app.autochat_status_label() {
+        status_line.spans.insert(
+            0,
+            Span::styled(
+                format!(" {autochat_status} "),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+    }
     let status = Paragraph::new(status_line);
     f.render_widget(status, chunks[2]);
 
@@ -4491,6 +4724,17 @@ fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
         0,
         Span::styled(model_status, Style::default().fg(Color::Cyan)),
     );
+    if let Some(autochat_status) = app.autochat_status_label() {
+        status_line.spans.insert(
+            0,
+            Span::styled(
+                format!(" {autochat_status} "),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+    }
     let status = Paragraph::new(status_line);
     f.render_widget(status, main_chunks[3]);
 
@@ -4944,12 +5188,18 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
 
     let status_label = if app.is_processing {
         "Processing"
+    } else if app.autochat_running {
+        "Autochat"
     } else {
         "Idle"
     };
     let status_style = if app.is_processing {
         Style::default()
             .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    } else if app.autochat_running {
+        Style::default()
+            .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Green)
@@ -5000,6 +5250,15 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
                     .add_modifier(Modifier::BOLD),
             ),
         ]));
+    }
+
+    if app.autochat_running {
+        if let Some(status) = app.autochat_status_label() {
+            lines.push(Line::from(vec![
+                Span::styled("Relay: ", label_style),
+                Span::styled(status, Style::default().fg(Color::Cyan)),
+            ]));
+        }
     }
 
     lines.push(Line::from(vec![
@@ -5077,7 +5336,10 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
                 ""
             };
             lines.push(Line::styled(
-                format!("{status} {protocol} @{name}{focused}"),
+                format!(
+                    "{status} {protocol} {} @{name}{focused}",
+                    agent_avatar(name)
+                ),
                 if focused.is_empty() {
                     Style::default().fg(Color::Magenta)
                 } else {
@@ -5085,6 +5347,11 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
                         .fg(Color::Magenta)
                         .add_modifier(Modifier::BOLD)
                 },
+            ));
+            let profile = agent_profile(name);
+            lines.push(Line::styled(
+                format!("   {} — {}", profile.codename, profile.profile),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::DIM),
             ));
             lines.push(Line::styled(
                 format!("   {}", agent.instructions),
@@ -5152,6 +5419,12 @@ fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
         } else {
             " Message (Processing...) ".to_string()
         }
+    } else if app.autochat_running {
+        format!(
+            " {} ",
+            app.autochat_status_label()
+                .unwrap_or_else(|| "Autochat running…".to_string())
+        )
     } else if app.input.starts_with('/') {
         // Show matching slash commands as hints
         let hint = match_slash_command_hint(&app.input);
@@ -5167,6 +5440,8 @@ fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
         .title(title)
         .border_style(Style::default().fg(if app.is_processing {
             Color::Yellow
+        } else if app.autochat_running {
+            Color::Cyan
         } else if app.input.starts_with('/') {
             Color::Magenta
         } else {
@@ -5223,8 +5498,9 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 Span::styled(message.role.clone(), role_style),
             ];
             if let Some(ref agent) = message.agent_name {
+                let profile = agent_profile(agent);
                 spans.push(Span::styled(
-                    format!(" @{agent}"),
+                    format!(" {} @{agent} ‹{}›", agent_avatar(agent), profile.codename),
                     Style::default()
                         .fg(Color::Magenta)
                         .add_modifier(Modifier::BOLD),
@@ -5467,14 +5743,52 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
         }
     }
 
+    let mut agent_streams = app.streaming_agent_texts.iter().collect::<Vec<_>>();
+    agent_streams.sort_by(|(a, _), (b, _)| a.to_lowercase().cmp(&b.to_lowercase()));
+    for (agent, streaming) in agent_streams {
+        if streaming.is_empty() {
+            continue;
+        }
+
+        let profile = agent_profile(agent);
+
+        message_lines.push(Line::from(Span::styled(
+            "─".repeat(separator_width),
+            Style::default()
+                .fg(theme.timestamp_color.to_color())
+                .add_modifier(Modifier::DIM),
+        )));
+        message_lines.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", chrono::Local::now().format("%H:%M")),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::styled("◆ ", theme.get_role_style("assistant")),
+            Span::styled("assistant", theme.get_role_style("assistant")),
+            Span::styled(
+                format!(" {} @{} ‹{}›", agent_avatar(agent), agent, profile.codename),
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " (streaming...)",
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+        ]));
+
+        let formatter = MessageFormatter::new(max_width);
+        let formatted = formatter.format_content(streaming, "assistant");
+        message_lines.extend(formatted);
+        message_lines.push(Line::from(""));
+    }
+
     if app.is_processing {
-        let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        let spinner_idx = (std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()
-            / 100) as usize
-            % spinner.len();
+        let spinner = current_spinner_frame();
 
         // Elapsed time display
         let elapsed_str = if let Some(started) = app.processing_started_at {
@@ -5507,15 +5821,12 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
         message_lines.push(processing_line);
 
         let (status_text, status_color) = if let Some(ref tool) = app.current_tool {
-            (
-                format!("  {} Running: {}", spinner[spinner_idx], tool),
-                Color::Cyan,
-            )
+            (format!("  {spinner} Running: {}", tool), Color::Cyan)
         } else {
             (
                 format!(
                     "  {} {}",
-                    spinner[spinner_idx],
+                    spinner,
                     app.processing_message.as_deref().unwrap_or("Thinking...")
                 ),
                 Color::Yellow,
@@ -5529,6 +5840,34 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 .add_modifier(Modifier::BOLD),
         )]);
         message_lines.push(indicator_line);
+        message_lines.push(Line::from(""));
+    }
+
+    if app.autochat_running {
+        let status_text = app
+            .autochat_status_label()
+            .unwrap_or_else(|| "Autochat running…".to_string());
+        message_lines.push(Line::from(Span::styled(
+            "─".repeat(separator_width),
+            Style::default()
+                .fg(theme.timestamp_color.to_color())
+                .add_modifier(Modifier::DIM),
+        )));
+        message_lines.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", chrono::Local::now().format("%H:%M")),
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+            Span::styled("⚙ ", theme.get_role_style("system")),
+            Span::styled(
+                status_text,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
         message_lines.push(Line::from(""));
     }
 
@@ -5565,7 +5904,18 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/protocol", "Show protocol registry"),
     ];
 
-    let input_lower = input.to_lowercase();
+    let trimmed = input.trim_start();
+    let input_lower = trimmed.to_lowercase();
+
+    // Exact command (or command + args) should always resolve to one hint.
+    if let Some((cmd, desc)) = commands.iter().find(|(cmd, _)| {
+        let key = cmd.trim_end().to_ascii_lowercase();
+        input_lower == key || input_lower.starts_with(&(key + " "))
+    }) {
+        return format!("{} — {}", cmd.trim(), desc);
+    }
+
+    // Fallback to prefix matching while the user is still typing.
     let matches: Vec<_> = commands
         .iter()
         .filter(|(cmd, _)| cmd.starts_with(&input_lower))
@@ -5616,7 +5966,18 @@ fn normalize_easy_command(input: &str) -> String {
             if args.is_empty() {
                 "/autochat".to_string()
             } else {
-                format!("/autochat {AUTOCHAT_DEFAULT_AGENTS} {args}")
+                let mut parts = args.splitn(2, char::is_whitespace);
+                let first = parts.next().unwrap_or("").trim();
+                if let Ok(count) = first.parse::<usize>() {
+                    let rest = parts.next().unwrap_or("").trim();
+                    if rest.is_empty() {
+                        format!("/autochat {count} {AUTOCHAT_QUICK_DEMO_TASK}")
+                    } else {
+                        format!("/autochat {count} {rest}")
+                    }
+                } else {
+                    format!("/autochat {AUTOCHAT_DEFAULT_AGENTS} {args}")
+                }
             }
         }
         "/add" => {
@@ -5669,7 +6030,7 @@ fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
     if let Ok(count) = first.parse::<usize>() {
         let task = parts.next().unwrap_or("").trim();
         if task.is_empty() {
-            None
+            Some((count, AUTOCHAT_QUICK_DEMO_TASK))
         } else {
             Some((count, task))
         }
@@ -5697,6 +6058,169 @@ fn normalize_for_convergence(text: &str) -> String {
     }
 
     normalized.trim().to_string()
+}
+
+fn agent_profile(agent_name: &str) -> AgentProfile {
+    let normalized = agent_name.to_ascii_lowercase();
+
+    if normalized.contains("planner") {
+        return AgentProfile {
+            codename: "Strategist",
+            profile: "Goal decomposition specialist",
+            personality: "calm, methodical, and dependency-aware",
+            collaboration_style: "opens with numbered plans and explicit priorities",
+            signature_move: "turns vague goals into concrete execution ladders",
+        };
+    }
+
+    if normalized.contains("research") {
+        return AgentProfile {
+            codename: "Archivist",
+            profile: "Evidence and assumptions analyst",
+            personality: "curious, skeptical, and detail-focused",
+            collaboration_style: "validates claims and cites edge-case evidence",
+            signature_move: "surfaces blind spots before implementation starts",
+        };
+    }
+
+    if normalized.contains("coder") || normalized.contains("implement") {
+        return AgentProfile {
+            codename: "Forge",
+            profile: "Implementation architect",
+            personality: "pragmatic, direct, and execution-heavy",
+            collaboration_style: "proposes concrete code-level actions quickly",
+            signature_move: "translates plans into shippable implementation steps",
+        };
+    }
+
+    if normalized.contains("review") {
+        return AgentProfile {
+            codename: "Sentinel",
+            profile: "Quality and regression guardian",
+            personality: "disciplined, assertive, and standards-driven",
+            collaboration_style: "challenges weak reasoning and hardens quality",
+            signature_move: "detects brittle assumptions and failure modes",
+        };
+    }
+
+    if normalized.contains("tester") || normalized.contains("test") {
+        return AgentProfile {
+            codename: "Probe",
+            profile: "Verification strategist",
+            personality: "adversarial in a good way, systematic, and precise",
+            collaboration_style: "designs checks around failure-first thinking",
+            signature_move: "builds test matrices that catch hidden breakage",
+        };
+    }
+
+    if normalized.contains("integrat") {
+        return AgentProfile {
+            codename: "Conductor",
+            profile: "Cross-stream synthesis lead",
+            personality: "balanced, diplomatic, and outcome-oriented",
+            collaboration_style: "reconciles competing inputs into one plan",
+            signature_move: "merges parallel work into coherent delivery",
+        };
+    }
+
+    if normalized.contains("skeptic") || normalized.contains("risk") {
+        return AgentProfile {
+            codename: "Radar",
+            profile: "Risk and threat analyst",
+            personality: "blunt, anticipatory, and protective",
+            collaboration_style: "flags downside scenarios and mitigation paths",
+            signature_move: "turns uncertainty into explicit risk registers",
+        };
+    }
+
+    if normalized.contains("summary") || normalized.contains("summarizer") {
+        return AgentProfile {
+            codename: "Beacon",
+            profile: "Decision synthesis specialist",
+            personality: "concise, clear, and action-first",
+            collaboration_style: "compresses complexity into executable next steps",
+            signature_move: "creates crisp briefings that unblock teams quickly",
+        };
+    }
+
+    let fallback_profiles = [
+        AgentProfile {
+            codename: "Navigator",
+            profile: "Generalist coordinator",
+            personality: "adaptable and context-aware",
+            collaboration_style: "balances speed with clarity",
+            signature_move: "keeps team momentum aligned",
+        },
+        AgentProfile {
+            codename: "Vector",
+            profile: "Execution operator",
+            personality: "focused and deadline-driven",
+            collaboration_style: "prefers direct action and feedback loops",
+            signature_move: "drives ambiguous tasks toward decisions",
+        },
+        AgentProfile {
+            codename: "Signal",
+            profile: "Communication specialist",
+            personality: "clear, friendly, and structured",
+            collaboration_style: "frames updates for quick handoffs",
+            signature_move: "turns noisy context into clean status",
+        },
+        AgentProfile {
+            codename: "Kernel",
+            profile: "Core-systems thinker",
+            personality: "analytical and stable",
+            collaboration_style: "organizes work around constraints and invariants",
+            signature_move: "locks down the critical path early",
+        },
+    ];
+
+    let mut hash: u64 = 2_166_136_261;
+    for byte in normalized.bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(16_777_619);
+    }
+    fallback_profiles[hash as usize % fallback_profiles.len()]
+}
+
+fn format_agent_profile_summary(agent_name: &str) -> String {
+    let profile = agent_profile(agent_name);
+    format!(
+        "{} — {} ({})",
+        profile.codename, profile.profile, profile.personality
+    )
+}
+
+fn agent_avatar(agent_name: &str) -> &'static str {
+    let mut hash: u64 = 2_166_136_261;
+    for byte in agent_name.bytes() {
+        hash = (hash ^ u64::from(byte.to_ascii_lowercase())).wrapping_mul(16_777_619);
+    }
+    AGENT_AVATARS[hash as usize % AGENT_AVATARS.len()]
+}
+
+fn format_agent_identity(agent_name: &str) -> String {
+    let profile = agent_profile(agent_name);
+    format!(
+        "{} @{} ‹{}›",
+        agent_avatar(agent_name),
+        agent_name,
+        profile.codename
+    )
+}
+
+fn format_relay_participant(participant: &str) -> String {
+    if participant.eq_ignore_ascii_case("user") {
+        "[you]".to_string()
+    } else {
+        format_agent_identity(participant)
+    }
+}
+
+fn format_relay_handoff_line(relay_id: &str, round: usize, from: &str, to: &str) -> String {
+    format!(
+        "[relay {relay_id} • round {round}] {} → {}",
+        format_relay_participant(from),
+        format_relay_participant(to)
+    )
 }
 
 fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
@@ -6017,8 +6541,9 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::{
-        command_with_optional_args, match_slash_command_hint, normalize_easy_command,
-        normalize_for_convergence, parse_autochat_args,
+        AUTOCHAT_QUICK_DEMO_TASK, agent_avatar, agent_profile, command_with_optional_args,
+        format_agent_identity, format_relay_handoff_line, match_slash_command_hint,
+        normalize_easy_command, normalize_for_convergence, parse_autochat_args,
     };
 
     #[test]
@@ -6073,6 +6598,28 @@ mod tests {
     }
 
     #[test]
+    fn normalize_easy_command_maps_go_count_and_task() {
+        assert_eq!(
+            normalize_easy_command("/go 4 build a calculator"),
+            "/autochat 4 build a calculator"
+        );
+    }
+
+    #[test]
+    fn normalize_easy_command_maps_go_count_only_to_demo_task() {
+        assert_eq!(
+            normalize_easy_command("/go 4"),
+            format!("/autochat 4 {AUTOCHAT_QUICK_DEMO_TASK}")
+        );
+    }
+
+    #[test]
+    fn slash_hint_handles_command_with_args() {
+        let hint = match_slash_command_hint("/go 4");
+        assert!(hint.contains("/go"));
+    }
+
+    #[test]
     fn parse_autochat_args_supports_default_count() {
         assert_eq!(
             parse_autochat_args("build a calculator"),
@@ -6089,9 +6636,55 @@ mod tests {
     }
 
     #[test]
+    fn parse_autochat_args_count_only_uses_quick_demo_task() {
+        assert_eq!(
+            parse_autochat_args("4"),
+            Some((4, AUTOCHAT_QUICK_DEMO_TASK))
+        );
+    }
+
+    #[test]
     fn normalize_for_convergence_ignores_case_and_punctuation() {
         let a = normalize_for_convergence("Done! Next Step: Add tests.");
         let b = normalize_for_convergence("done next step add tests");
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn agent_avatar_is_stable_and_ascii() {
+        let avatar = agent_avatar("planner");
+        assert_eq!(avatar, agent_avatar("planner"));
+        assert!(avatar.is_ascii());
+        assert!(avatar.starts_with('[') && avatar.ends_with(']'));
+    }
+
+    #[test]
+    fn relay_handoff_line_shows_avatar_labels() {
+        let line = format_relay_handoff_line("relay-1", 2, "planner", "coder");
+        assert!(line.contains("relay relay-1"));
+        assert!(line.contains("@planner"));
+        assert!(line.contains("@coder"));
+        assert!(line.contains('['));
+    }
+
+    #[test]
+    fn relay_handoff_line_formats_user_sender() {
+        let line = format_relay_handoff_line("relay-2", 1, "user", "planner");
+        assert!(line.contains("[you]"));
+        assert!(line.contains("@planner"));
+    }
+
+    #[test]
+    fn planner_profile_has_expected_personality() {
+        let profile = agent_profile("auto-planner");
+        assert_eq!(profile.codename, "Strategist");
+        assert!(profile.profile.contains("decomposition"));
+    }
+
+    #[test]
+    fn formatted_identity_includes_codename() {
+        let identity = format_agent_identity("auto-coder");
+        assert!(identity.contains("@auto-coder"));
+        assert!(identity.contains("‹Forge›"));
     }
 }
