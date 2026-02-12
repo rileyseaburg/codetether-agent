@@ -2,6 +2,8 @@
 // - Multibranch Pipeline: Add "Discover tags" behavior in Branch Sources → Git → Behaviors
 // - Or configure GitHub webhook to trigger builds on tag push events
 // - The "Package & Release" and "Publish to crates.io" stages only run when building tags
+// - Windows cross-compilation requires: mingw-w64 (gcc + g++), rustup target x86_64-pc-windows-gnu
+// - macOS builds are handled by GitHub Actions (.github/workflows/macos-release.yml)
 
 pipeline {
     agent any
@@ -24,7 +26,7 @@ pipeline {
 
     options {
         timestamps()
-        timeout(time: 30, unit: 'MINUTES')
+        timeout(time: 60, unit: 'MINUTES')
         disableConcurrentBuilds()
     }
 
@@ -37,20 +39,37 @@ pipeline {
             }
         }
 
-        stage('Build Release') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                        rustc --version
-                        sccache --start-server 2>/dev/null || true
-                        sccache --show-stats 2>&1 | grep "Cache location" || true
-                        cargo build --release --features functiongemma
-                        echo "=== sccache stats ==="
-                        sccache --show-stats || true
-                    '''
+        stage('Build') {
+            parallel {
+                stage('Linux x86_64') {
+                    steps {
+                        withCredentials([
+                            string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                            string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                        ]) {
+                            sh '''
+                                rustc --version
+                                sccache --start-server 2>/dev/null || true
+                                sccache --show-stats 2>&1 | grep "Cache location" || true
+                                cargo build --release --features functiongemma
+                                echo "=== sccache stats ==="
+                                sccache --show-stats || true
+                            '''
+                        }
+                    }
+                }
+                stage('Windows x86_64') {
+                    steps {
+                        withCredentials([
+                            string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                            string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                        ]) {
+                            sh '''
+                                echo "Cross-compiling for Windows..."
+                                cargo build --target x86_64-pc-windows-gnu --release --features functiongemma
+                            '''
+                        }
+                    }
                 }
             }
         }
@@ -62,32 +81,40 @@ pipeline {
             steps {
                 script {
                     env.VERSION = env.TAG_NAME
-                    env.PLATFORM = 'x86_64-unknown-linux-gnu'
-                    env.ARTIFACT = "${BINARY_NAME}-${VERSION}-${PLATFORM}"
                 }
                 sh """
                     mkdir -p dist
-                    cp target/release/${BINARY_NAME} dist/${env.ARTIFACT}
-                    cd dist && tar czf ${env.ARTIFACT}.tar.gz ${env.ARTIFACT}
-                    sha256sum ${env.ARTIFACT}.tar.gz ${env.ARTIFACT} > SHA256SUMS-${env.VERSION}.txt
+
+                    # Linux x86_64
+                    LINUX_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-unknown-linux-gnu"
+                    cp target/release/${BINARY_NAME} "dist/\${LINUX_ARTIFACT}"
+                    cd dist && tar czf "\${LINUX_ARTIFACT}.tar.gz" "\${LINUX_ARTIFACT}" && cd ..
+
+                    # Windows x86_64
+                    WIN_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-pc-windows-gnu.exe"
+                    cp target/x86_64-pc-windows-gnu/release/${BINARY_NAME}.exe "dist/\${WIN_ARTIFACT}"
+                    cd dist && tar czf "\${WIN_ARTIFACT%.exe}.tar.gz" "\${WIN_ARTIFACT}" && cd ..
+
+                    # Checksums for all artifacts
+                    cd dist && sha256sum *.tar.gz *.exe > SHA256SUMS-${VERSION}.txt && cd ..
                 """
-                archiveArtifacts artifacts: "dist/${env.ARTIFACT}.tar.gz, dist/SHA256SUMS-${env.VERSION}.txt", fingerprint: true
+                archiveArtifacts artifacts: 'dist/*.tar.gz, dist/*.exe, dist/SHA256SUMS-*.txt', fingerprint: true
 
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh """
                         gh release create ${env.TAG_NAME} \
-                            dist/${env.ARTIFACT}.tar.gz \
-                            dist/${env.ARTIFACT} \
-                            dist/SHA256SUMS-${env.VERSION}.txt \
+                            dist/*.tar.gz \
+                            dist/*.exe \
+                            dist/SHA256SUMS-${VERSION}.txt \
                             --repo ${REPO} \
                             --title "${env.TAG_NAME} - CodeTether Agent" \
                             --generate-notes \
                             --latest \
                             --verify-tag || \
                         gh release upload ${env.TAG_NAME} \
-                            dist/${env.ARTIFACT}.tar.gz \
-                            dist/${env.ARTIFACT} \
-                            dist/SHA256SUMS-${env.VERSION}.txt \
+                            dist/*.tar.gz \
+                            dist/*.exe \
+                            dist/SHA256SUMS-${VERSION}.txt \
                             --repo ${REPO} --clobber
                     """
                 }

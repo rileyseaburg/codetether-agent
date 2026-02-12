@@ -275,11 +275,16 @@ async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Respons
 
 /// Start the HTTP server
 pub async fn serve(args: ServeArgs) -> Result<()> {
+    let t0 = std::time::Instant::now();
+    tracing::info!("[startup] begin");
     let config = Config::load().await?;
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] config loaded");
     let mut cognition = CognitionRuntime::new_from_env();
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] cognition runtime created");
 
     // Set up tool registry for cognition execution engine.
     cognition.set_tools(Arc::new(crate::tool::ToolRegistry::with_defaults()));
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] tools registered");
     let cognition = Arc::new(cognition);
 
     // Initialize audit log.
@@ -287,7 +292,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let _ = audit::init_audit_log(audit_log.clone());
 
     // Initialize K8s manager.
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] pre-k8s");
     let k8s = Arc::new(K8sManager::new().await);
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] k8s done");
     if k8s.is_available() {
         tracing::info!("K8s self-deployment enabled");
     }
@@ -305,8 +312,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
     // Create agent bus for in-process communication
     let bus = AgentBus::new().into_arc();
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] bus created");
 
     if cognition.is_enabled() && env_bool("CODETETHER_COGNITION_AUTO_START", true) {
+        tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] auto-starting cognition");
         if let Err(error) = cognition.start(None).await {
             tracing::warn!(%error, "Failed to auto-start cognition loop");
         } else {
@@ -314,6 +323,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         }
     }
 
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] building routes");
     let addr = format!("{}:{}", args.hostname, args.port);
 
     // Build the agent card
@@ -422,8 +432,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         )
         .layer(TraceLayer::new_for_http());
 
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] router built, binding");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    tracing::info!("Server listening on http://{}", addr);
+    tracing::info!(elapsed_ms = t0.elapsed().as_millis(), "[startup] listening on http://{}", addr);
 
     axum::serve(listener, app).await?;
 

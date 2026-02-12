@@ -1,0 +1,59 @@
+name: macOS Release Builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macos-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            target: x86_64-apple-darwin
+            arch: x86_64
+          - os: macos-14
+            target: aarch64-apple-darwin
+            arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} --features functiongemma
+
+      - name: Package artifact
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          VERSION="${GITHUB_REF_NAME}"
+          ARTIFACT="codetether-${VERSION}-${{ matrix.target }}"
+          cp "target/${{ matrix.target }}/release/codetether" "dist/${ARTIFACT}"
+          chmod 755 "dist/${ARTIFACT}"
+          cd dist
+          tar czf "${ARTIFACT}.tar.gz" "${ARTIFACT}"
+          shasum -a 256 "${ARTIFACT}.tar.gz" "${ARTIFACT}" > "SHA256SUMS-${VERSION}-${{ matrix.target }}.txt"
+
+      - name: Upload to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS-*

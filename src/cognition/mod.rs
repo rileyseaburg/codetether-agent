@@ -538,6 +538,7 @@ impl CognitionRuntime {
         let thinker_timeout_default = match thinker_backend {
             thinker::ThinkerBackend::OpenAICompat => 30_000,
             thinker::ThinkerBackend::Candle => 12_000,
+            thinker::ThinkerBackend::Bedrock => 60_000,
         };
         let thinker_config = ThinkerConfig {
             enabled: env_bool("CODETETHER_COGNITION_THINKER_ENABLED", true),
@@ -578,6 +579,9 @@ impl CognitionRuntime {
                 64,
             ),
             candle_seed: env_u64("CODETETHER_COGNITION_THINKER_CANDLE_SEED", 42),
+            bedrock_region: std::env::var("CODETETHER_COGNITION_THINKER_BEDROCK_REGION")
+                .unwrap_or_else(|_| std::env::var("AWS_DEFAULT_REGION")
+                    .unwrap_or_else(|_| "us-west-2".to_string())),
         };
 
         let mut runtime = Self::new_with_options(options);
@@ -636,6 +640,33 @@ impl CognitionRuntime {
             }
         });
 
+        // Load persisted state before construction to avoid blocking_write()
+        // inside a tokio runtime (which panics).
+        let (init_personas, init_beliefs, init_proposals, init_attention, init_workspace) =
+            if let Some(persisted) = persistence::load_state() {
+                tracing::info!(
+                    personas = persisted.personas.len(),
+                    beliefs = persisted.beliefs.len(),
+                    persisted_at = %persisted.persisted_at,
+                    "Restoring persisted cognition state"
+                );
+                (
+                    persisted.personas,
+                    persisted.beliefs,
+                    persisted.proposals,
+                    persisted.attention_queue,
+                    persisted.workspace,
+                )
+            } else {
+                (
+                    HashMap::new(),
+                    HashMap::new(),
+                    HashMap::new(),
+                    Vec::new(),
+                    GlobalWorkspace::default(),
+                )
+            };
+
         let runtime = Self {
             enabled: options.enabled,
             max_events: options.max_events.max(32),
@@ -645,36 +676,21 @@ impl CognitionRuntime {
             loop_interval_ms: Arc::new(RwLock::new(options.loop_interval_ms.max(100))),
             started_at: Arc::new(RwLock::new(None)),
             last_tick_at: Arc::new(RwLock::new(None)),
-            personas: Arc::new(RwLock::new(HashMap::new())),
-            proposals: Arc::new(RwLock::new(HashMap::new())),
+            personas: Arc::new(RwLock::new(init_personas)),
+            proposals: Arc::new(RwLock::new(init_proposals)),
             events: Arc::new(RwLock::new(VecDeque::new())),
             snapshots: Arc::new(RwLock::new(VecDeque::new())),
             loop_handle: Arc::new(Mutex::new(None)),
             event_tx,
             thinker,
-            beliefs: Arc::new(RwLock::new(HashMap::new())),
-            attention_queue: Arc::new(RwLock::new(Vec::new())),
+            beliefs: Arc::new(RwLock::new(init_beliefs)),
+            attention_queue: Arc::new(RwLock::new(init_attention)),
             governance: Arc::new(RwLock::new(SwarmGovernance::default())),
-            workspace: Arc::new(RwLock::new(GlobalWorkspace::default())),
+            workspace: Arc::new(RwLock::new(init_workspace)),
             tools: None,
             receipts: Arc::new(RwLock::new(Vec::new())),
             pending_approvals: Arc::new(RwLock::new(HashMap::new())),
         };
-
-        // Attempt to restore persisted state from disk.
-        if let Some(persisted) = persistence::load_state() {
-            tracing::info!(
-                personas = persisted.personas.len(),
-                beliefs = persisted.beliefs.len(),
-                persisted_at = %persisted.persisted_at,
-                "Restoring persisted cognition state"
-            );
-            *runtime.personas.blocking_write() = persisted.personas;
-            *runtime.beliefs.blocking_write() = persisted.beliefs;
-            *runtime.proposals.blocking_write() = persisted.proposals;
-            *runtime.attention_queue.blocking_write() = persisted.attention_queue;
-            *runtime.workspace.blocking_write() = persisted.workspace;
-        }
 
         runtime
     }

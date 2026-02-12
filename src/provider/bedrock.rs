@@ -215,6 +215,17 @@ impl BedrockProvider {
         })
     }
 
+    /// Public wrapper for sending a signed Converse API request.
+    /// Used by the thinker backend.
+    pub async fn send_converse_request(
+        &self,
+        url: &str,
+        body: &[u8],
+    ) -> Result<reqwest::Response> {
+        self.send_request("POST", url, Some(body), "bedrock-runtime")
+            .await
+    }
+
     fn validate_auth(&self) -> Result<()> {
         match &self.auth {
             BedrockAuth::BearerToken(key) => {

@@ -15,10 +15,13 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokenizers::Tokenizer;
 
+use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThinkerBackend {
     OpenAICompat,
     Candle,
+    Bedrock,
 }
 
 impl ThinkerBackend {
@@ -26,6 +29,7 @@ impl ThinkerBackend {
         match value.trim().to_ascii_lowercase().as_str() {
             "candle" => Self::Candle,
             "openai" | "openai_compat" | "openai-compatible" | "http" => Self::OpenAICompat,
+            "bedrock" | "aws" | "aws_bedrock" => Self::Bedrock,
             _ => Self::OpenAICompat,
         }
     }
@@ -67,6 +71,7 @@ pub struct ThinkerConfig {
     pub candle_repeat_penalty: f32,
     pub candle_repeat_last_n: usize,
     pub candle_seed: u64,
+    pub bedrock_region: String,
 }
 
 impl Default for ThinkerConfig {
@@ -89,6 +94,7 @@ impl Default for ThinkerConfig {
             candle_repeat_penalty: 1.1,
             candle_repeat_last_n: 64,
             candle_seed: 42,
+            bedrock_region: "us-west-2".to_string(),
         }
     }
 }
@@ -122,6 +128,7 @@ impl std::fmt::Debug for ThinkerClient {
 enum ThinkerClientBackend {
     OpenAICompat { http: Client },
     Candle { runtime: Arc<Mutex<CandleThinker>> },
+    Bedrock { provider: Arc<BedrockProvider> },
 }
 
 impl ThinkerClient {
@@ -141,6 +148,12 @@ impl ThinkerClient {
                     runtime: Arc::new(Mutex::new(runtime)),
                 }
             }
+            ThinkerBackend::Bedrock => {
+                let creds = AwsCredentials::from_environment()
+                    .ok_or_else(|| anyhow!("Bedrock thinker requires AWS credentials (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or ~/.aws/credentials)"))?;
+                let provider = BedrockProvider::with_credentials(creds, config.bedrock_region.clone())?;
+                ThinkerClientBackend::Bedrock { provider: Arc::new(provider) }
+            }
         };
 
         Ok(Self { config, backend })
@@ -155,6 +168,9 @@ impl ThinkerClient {
             ThinkerClientBackend::OpenAICompat { http } => {
                 self.think_openai_compat(http, system_prompt, user_prompt)
                     .await
+            }
+            ThinkerClientBackend::Bedrock { provider } => {
+                self.think_bedrock(provider, system_prompt, user_prompt).await
             }
             ThinkerClientBackend::Candle { runtime } => {
                 let runtime = Arc::clone(runtime);
@@ -176,6 +192,79 @@ impl ThinkerClient {
                 .context("candle thinker task join failed")?
             }
         }
+    }
+
+    async fn think_bedrock(
+        &self,
+        provider: &BedrockProvider,
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> Result<ThinkerOutput> {
+        let started_at = Instant::now();
+        let model_id = &self.config.model;
+
+        // Build Bedrock Converse request body
+        let body = serde_json::json!({
+            "system": [{"text": system_prompt}],
+            "messages": [{
+                "role": "user",
+                "content": [{"text": user_prompt}]
+            }],
+            "inferenceConfig": {
+                "maxTokens": self.config.max_tokens,
+                "temperature": self.config.temperature
+            }
+        });
+
+        let body_bytes = serde_json::to_vec(&body)?;
+        let encoded_model_id = model_id.replace(':', "%3A");
+        let url = format!(
+            "https://bedrock-runtime.{}.amazonaws.com/model/{}/converse",
+            self.config.bedrock_region, encoded_model_id
+        );
+
+        let response = provider
+            .send_converse_request(&url, &body_bytes)
+            .await
+            .context("Bedrock thinker converse request failed")?;
+
+        let status = response.status();
+        let text = response.text().await.context("Failed to read Bedrock thinker response")?;
+
+        if !status.is_success() {
+            return Err(anyhow!("Bedrock thinker error ({}): {}", status, &text[..text.len().min(500)]));
+        }
+
+        let parsed: serde_json::Value = serde_json::from_str(&text)
+            .context("Failed to parse Bedrock thinker response")?;
+
+        let output_text = parsed["output"]["message"]["content"]
+            .as_array()
+            .and_then(|arr| arr.first())
+            .and_then(|c| c["text"].as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let usage = &parsed["usage"];
+        let prompt_tokens = usage["inputTokens"].as_u64().map(|v| v as u32);
+        let completion_tokens = usage["outputTokens"].as_u64().map(|v| v as u32);
+
+        tracing::debug!(
+            model = model_id,
+            latency_ms = started_at.elapsed().as_millis(),
+            prompt_tokens = ?prompt_tokens,
+            completion_tokens = ?completion_tokens,
+            "bedrock thinker generated thought"
+        );
+
+        Ok(ThinkerOutput {
+            model: model_id.clone(),
+            finish_reason: parsed["stopReason"].as_str().map(|s| s.to_string()),
+            text: output_text,
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens.zip(completion_tokens).map(|(p, c)| p + c),
+        })
     }
 
     async fn think_openai_compat(

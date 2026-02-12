@@ -1,9 +1,8 @@
 name: Publish npm (codetether npx wrapper)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
   workflow_dispatch: {}
 
 jobs:
@@ -27,7 +26,8 @@ jobs:
         working-directory: npm/codetether
         run: |
           set -euo pipefail
-          ver="${GITHUB_REF_NAME#v}"
+          tag="${{ github.event.release.tag_name || github.ref_name }}"
+          ver="${tag#v}"
           npm version "$ver" --no-git-tag-version
 
       - name: Install dependencies

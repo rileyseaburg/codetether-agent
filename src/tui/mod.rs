@@ -34,6 +34,7 @@ use crate::tui::swarm_view::{SwarmEvent, SwarmViewState, render_swarm_view};
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
 use anyhow::Result;
+use base64::Engine;
 use crossterm::{
     event::{
         DisableBracketedPaste, EnableBracketedPaste, Event, EventStream, KeyCode, KeyModifiers,
@@ -414,7 +415,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -2590,19 +2591,37 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     app.show_inspector = !app.show_inspector;
                 }
 
-                // Copy last message to clipboard (Ctrl+Y)
+                // Copy latest assistant message to clipboard (Ctrl+Y)
                 KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    if let Some(last_msg) = app.messages.last() {
-                        let text = &last_msg.content;
-                        match arboard::Clipboard::new() {
-                            Ok(mut clipboard) => {
-                                if let Err(e) = clipboard.set_text(text) {
-                                    tracing::warn!("Failed to copy to clipboard: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                tracing::warn!("Failed to access clipboard: {}", e);
-                            }
+                    let msg = app
+                        .messages
+                        .iter()
+                        .rev()
+                        .find(|m| m.role == "assistant" && !m.content.trim().is_empty())
+                        .or_else(|| app.messages.iter().rev().find(|m| !m.content.trim().is_empty()));
+
+                    let Some(msg) = msg else {
+                        app.messages.push(ChatMessage::new("system", "Nothing to copy yet."));
+                        app.scroll = SCROLL_BOTTOM;
+                        continue;
+                    };
+
+                    let text = message_clipboard_text(msg);
+                    match copy_text_to_clipboard_best_effort(&text) {
+                        Ok(method) => {
+                            app.messages.push(ChatMessage::new(
+                                "system",
+                                format!("Copied latest reply ({method})."),
+                            ));
+                            app.scroll = SCROLL_BOTTOM;
+                        }
+                        Err(err) => {
+                            tracing::warn!(error = %err, "Copy to clipboard failed");
+                            app.messages.push(ChatMessage::new(
+                                "system",
+                                "Could not copy to clipboard in this environment.",
+                            ));
+                            app.scroll = SCROLL_BOTTOM;
                         }
                     }
                 }
@@ -3747,6 +3766,10 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("Layout", Style::default().fg(Color::DarkGray)),
     ]));
     lines.push(Line::from(vec![
+        Span::styled("Ctrl+Y  ", Style::default().fg(Color::Yellow)),
+        Span::styled("Copy", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
         Span::styled("Ctrl+M  ", Style::default().fg(Color::Yellow)),
         Span::styled("Model", Style::default().fg(Color::DarkGray)),
     ]));
@@ -4294,6 +4317,63 @@ fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
     }
 }
 
+fn message_clipboard_text(message: &ChatMessage) -> String {
+    let mut prefix = String::new();
+    if let Some(agent) = &message.agent_name {
+        prefix = format!("@{agent}\n");
+    }
+
+    match &message.message_type {
+        MessageType::Text(text) => format!("{prefix}{text}"),
+        MessageType::Thinking(text) => format!("{prefix}{text}"),
+        MessageType::Image { url, .. } => format!("{prefix}{url}"),
+        MessageType::File { path, .. } => format!("{prefix}{path}"),
+        MessageType::ToolCall {
+            name,
+            arguments_preview,
+            ..
+        } => format!("{prefix}Tool call: {name}\n{arguments_preview}"),
+        MessageType::ToolResult {
+            name,
+            output_preview,
+            ..
+        } => format!("{prefix}Tool result: {name}\n{output_preview}"),
+    }
+}
+
+fn copy_text_to_clipboard_best_effort(text: &str) -> Result<&'static str, String> {
+    if text.trim().is_empty() {
+        return Err("empty text".to_string());
+    }
+
+    // 1) Try system clipboard first (works locally when a clipboard provider is available)
+    match arboard::Clipboard::new()
+        .and_then(|mut clipboard| clipboard.set_text(text.to_string()))
+    {
+        Ok(()) => return Ok("system clipboard"),
+        Err(e) => {
+            tracing::debug!(error = %e, "System clipboard unavailable; falling back to OSC52");
+        }
+    }
+
+    // 2) Fallback: OSC52 (works in many terminals, including remote SSH sessions)
+    osc52_copy(text).map_err(|e| format!("osc52 copy failed: {e}"))?;
+    Ok("OSC52")
+}
+
+fn osc52_copy(text: &str) -> std::io::Result<()> {
+    // OSC52 format: ESC ] 52 ; c ; <base64> BEL
+    // Some terminals may disable OSC52 for security; we treat this as best-effort.
+    let payload = base64::engine::general_purpose::STANDARD.encode(text.as_bytes());
+    let seq = format!("\u{1b}]52;c;{payload}\u{07}");
+
+    let mut stdout = std::io::stdout();
+    crossterm::execute!(stdout, crossterm::style::Print(seq))?;
+    use std::io::Write;
+    stdout.flush()?;
+    Ok(())
+}
+
 fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
     if !app.show_help {
         return;
@@ -4339,6 +4419,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Ctrl+L       Protocol bus log".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
         "  Ctrl+B       Toggle webview layout".to_string(),
+        "  Ctrl+Y       Copy latest assistant reply".to_string(),
         "  F3           Toggle inspector pane".to_string(),
         "  Ctrl+C       Quit".to_string(),
         "  ?            Toggle this help".to_string(),
