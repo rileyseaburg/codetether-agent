@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows Installer** (`install.ps1`):
+  - Now tries multiple artifact formats to support both GitHub Actions releases (msvc + zip) and Jenkins releases (gnu + tar.gz)
+  - Automatically detects and downloads the correct binary format
+  - Improved error messages when no binary is available
+
 ## [1.1.0] - 2026-02-10
 
 ### Added
