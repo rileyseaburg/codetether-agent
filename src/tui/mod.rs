@@ -22,6 +22,7 @@ const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
 const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
 const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
 const AUTOCHAT_MAX_AGENTS: usize = 8;
+const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
 const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
 
@@ -59,7 +60,7 @@ use ratatui::{
         Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
     },
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -430,7 +431,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /spawn <name> <instructions> - create a sub-agent\n• /autochat <count> <task> - protocol-first relay chat\n• /agent <name> - focus chat on a spawned sub-agent\n• /agent <name> <message> - send one message to a spawned sub-agent\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /protocol - inspect registered AgentCards (or Ctrl+P)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - run team relay on your task (easy /autochat)\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode still works: /autochat, /spawn, /agent, /swarm, /ralph, /protocol",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -532,6 +533,37 @@ impl App {
             }
             suffix += 1;
         }
+    }
+
+    fn cleanup_autochat_agents(
+        &mut self,
+        relay: &ProtocolRelayRuntime,
+        agent_names: &[String],
+    ) -> usize {
+        if agent_names.is_empty() {
+            return 0;
+        }
+
+        relay.shutdown_agents(agent_names);
+
+        let names: HashSet<&str> = agent_names.iter().map(String::as_str).collect();
+        self.agent_response_rxs
+            .retain(|(name, _)| !names.contains(name.as_str()));
+
+        if let Some(active) = self.active_spawned_agent.as_deref()
+            && names.contains(active)
+        {
+            self.active_spawned_agent = None;
+        }
+
+        let mut removed = 0usize;
+        for name in agent_names {
+            if self.spawned_agents.remove(name).is_some() {
+                removed += 1;
+            }
+        }
+
+        removed
     }
 
     fn build_autochat_profiles(&self, count: usize) -> Vec<(String, String, Vec<String>)> {
@@ -839,6 +871,12 @@ impl App {
         }
 
         if ordered_agents.len() < 2 {
+            self.agent_response_rxs
+                .retain(|(name, _)| !ordered_agents.iter().any(|n| n == name));
+            for name in &ordered_agents {
+                self.spawned_agents.remove(name);
+            }
+
             self.messages.push(ChatMessage::new(
                 "system",
                 "Autochat needs at least 2 agents to relay.",
@@ -872,7 +910,8 @@ impl App {
         let mut previous_normalized: Option<String> = None;
         let mut convergence_hits = 0usize;
         let mut turns = 0usize;
-        let mut converged = false;
+        let mut status = "max_rounds_reached";
+        let mut failure_note: Option<String> = None;
 
         'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
             for idx in 0..ordered_agents.len() {
@@ -903,6 +942,8 @@ impl App {
                 let output = match self.prompt_spawned_agent_sync(&to, &baton).await {
                     Ok(text) => text,
                     Err(err) => {
+                        status = "agent_error";
+                        failure_note = Some(format!("Relay agent @{to} failed: {err}"));
                         self.messages.push(ChatMessage::new(
                             "system",
                             format!("Relay agent @{to} failed: {err}"),
@@ -932,7 +973,7 @@ impl App {
                 baton = next_handoff;
 
                 if convergence_hits >= 2 {
-                    converged = true;
+                    status = "converged";
                     self.messages.push(ChatMessage::new(
                         "system",
                         format!("Relay convergence reached after {turns} turns."),
@@ -942,21 +983,27 @@ impl App {
             }
         }
 
-        let status = if converged {
-            "converged"
-        } else {
-            "max_rounds_reached"
-        };
-        self.messages.push(ChatMessage::new(
-            "assistant",
-            format!(
-                "Autochat complete ({status}) — relay {} with {} agents over {} turns.\n\nFinal relay handoff:\n{}",
-                relay.relay_id(),
-                ordered_agents.len(),
-                turns,
-                truncate_with_ellipsis(&baton, 4_000)
-            ),
+        let removed_agents = self.cleanup_autochat_agents(&relay, &ordered_agents);
+
+        let mut summary = format!(
+            "Autochat complete ({status}) — relay {} with {} agents over {} turns.",
+            relay.relay_id(),
+            ordered_agents.len(),
+            turns,
+        );
+        if let Some(note) = failure_note {
+            summary.push_str(&format!("\n\nFailure detail: {note}"));
+        }
+        summary.push_str(&format!(
+            "\n\nFinal relay handoff:\n{}",
+            truncate_with_ellipsis(&baton, 4_000)
         ));
+        summary.push_str(&format!(
+            "\n\nCleanup: deregistered relay agents and removed {} autochat participant(s) from active roster.",
+            removed_agents
+        ));
+
+        self.messages.push(ChatMessage::new("assistant", summary));
         self.scroll = SCROLL_BOTTOM;
     }
 
@@ -972,6 +1019,14 @@ impl App {
         if !message.trim().is_empty() {
             self.command_history.push(message.clone());
             self.history_index = None;
+        }
+
+        // Easy-mode slash aliases (/go, /add, /talk, /list, ...)
+        message = normalize_easy_command(&message);
+
+        if message.trim() == "/help" {
+            self.show_help = true;
+            return;
         }
 
         // Backward-compatible /agent command aliases
@@ -1064,33 +1119,16 @@ impl App {
 
         // Check for /autochat command
         if let Some(rest) = command_with_optional_args(&message, "/autochat") {
-            let mut parts = rest.splitn(2, char::is_whitespace);
-            let count_str = parts.next().unwrap_or("").trim();
-            let task = parts.next().unwrap_or("").trim();
-
-            if count_str.is_empty() || task.is_empty() {
+            let Some((count, task)) = parse_autochat_args(rest) else {
                 self.messages.push(ChatMessage::new(
                     "system",
                     format!(
-                        "Usage: /autochat <count> <task>\nExample: /autochat 4 implement protocol-first relay with tests\ncount range: 2-{}",
-                        AUTOCHAT_MAX_AGENTS
+                        "Usage: /autochat [count] <task>\nEasy mode: /go <task>\nExamples:\n  /autochat implement protocol-first relay with tests\n  /autochat 4 implement protocol-first relay with tests\ncount range: 2-{} (default: {})",
+                        AUTOCHAT_MAX_AGENTS,
+                        AUTOCHAT_DEFAULT_AGENTS,
                     ),
                 ));
                 return;
-            }
-
-            let count = match count_str.parse::<usize>() {
-                Ok(value) => value,
-                Err(_) => {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        format!(
-                            "Invalid count '{}'. Use a number between 2 and {}.",
-                            count_str, AUTOCHAT_MAX_AGENTS
-                        ),
-                    ));
-                    return;
-                }
             };
 
             self.start_autochat_execution(count, task.to_string(), config)
@@ -1203,22 +1241,33 @@ impl App {
 
         // Check for /spawn command - create a named sub-agent
         if let Some(rest) = command_with_optional_args(&message, "/spawn") {
-            let (name, instructions) = if rest.is_empty() {
+            let default_instructions = |agent_name: &str| {
+                format!(
+                    "You are @{agent_name}, a helpful teammate. Explain things in simple words, short steps, and a friendly tone."
+                )
+            };
+
+            let (name, instructions, used_default_instructions) = if rest.is_empty() {
                 self.messages.push(ChatMessage::new(
                     "system",
-                    "Usage: /spawn <name> <instructions>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
+                    "Usage: /spawn <name> [instructions]\nEasy mode: /add <name>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
                 ));
                 return;
             } else {
-                match rest.split_once(' ') {
-                    Some((n, i)) => (n.to_string(), i.to_string()),
-                    None => {
-                        self.messages.push(ChatMessage::new(
-                            "system",
-                            "Usage: /spawn <name> <instructions>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
-                        ));
-                        return;
-                    }
+                let mut parts = rest.splitn(2, char::is_whitespace);
+                let name = parts.next().unwrap_or("").trim();
+                if name.is_empty() {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        "Usage: /spawn <name> [instructions]\nEasy mode: /add <name>",
+                    ));
+                    return;
+                }
+
+                let instructions = parts.next().map(str::trim).filter(|s| !s.is_empty());
+                match instructions {
+                    Some(custom) => (name.to_string(), custom.to_string(), false),
+                    None => (name.to_string(), default_instructions(name), true),
                 }
             };
 
@@ -1277,7 +1326,12 @@ impl App {
                     self.messages.push(ChatMessage::new(
                         "system",
                         format!(
-                            "Spawned agent @{name}: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>.\n{protocol_line}"
+                            "Spawned agent @{name}: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>.\n{protocol_line}{}",
+                            if used_default_instructions {
+                                "\nTip: I used friendly default instructions. You can customize with /add <name> <instructions>."
+                            } else {
+                                ""
+                            }
                         ),
                     ));
                 }
@@ -5483,6 +5537,13 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
 
 fn match_slash_command_hint(input: &str) -> String {
     let commands = [
+        ("/go ", "Easy mode: run relay chat with default team size"),
+        ("/add ", "Easy mode: create a teammate"),
+        ("/talk ", "Easy mode: message or focus a teammate"),
+        ("/list", "Easy mode: list teammates"),
+        ("/remove ", "Easy mode: remove a teammate"),
+        ("/home", "Easy mode: return to main chat"),
+        ("/help", "Open help"),
         ("/spawn ", "Create a named sub-agent"),
         ("/autochat ", "Run protocol-first multi-agent relay chat"),
         ("/agents", "List spawned sub-agents"),
@@ -5533,6 +5594,87 @@ fn command_with_optional_args<'a>(input: &'a str, command: &str) -> Option<&'a s
         Some(rest.trim())
     } else {
         None
+    }
+}
+
+fn normalize_easy_command(input: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    if !trimmed.starts_with('/') {
+        return input.to_string();
+    }
+
+    let mut parts = trimmed.splitn(2, char::is_whitespace);
+    let command = parts.next().unwrap_or("");
+    let args = parts.next().unwrap_or("").trim();
+
+    match command.to_ascii_lowercase().as_str() {
+        "/go" | "/team" => {
+            if args.is_empty() {
+                "/autochat".to_string()
+            } else {
+                format!("/autochat {AUTOCHAT_DEFAULT_AGENTS} {args}")
+            }
+        }
+        "/add" => {
+            if args.is_empty() {
+                "/spawn".to_string()
+            } else {
+                format!("/spawn {args}")
+            }
+        }
+        "/list" | "/ls" => "/agents".to_string(),
+        "/remove" | "/rm" => {
+            if args.is_empty() {
+                "/kill".to_string()
+            } else {
+                format!("/kill {args}")
+            }
+        }
+        "/talk" | "/say" => {
+            if args.is_empty() {
+                "/agent".to_string()
+            } else {
+                format!("/agent {args}")
+            }
+        }
+        "/focus" => {
+            if args.is_empty() {
+                "/agent".to_string()
+            } else {
+                format!("/agent {}", args.trim_start_matches('@'))
+            }
+        }
+        "/home" | "/main" => "/agent main".to_string(),
+        "/h" | "/?" => "/help".to_string(),
+        _ => trimmed.to_string(),
+    }
+}
+
+fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
+    let rest = rest.trim();
+    if rest.is_empty() {
+        return None;
+    }
+
+    let mut parts = rest.splitn(2, char::is_whitespace);
+    let first = parts.next().unwrap_or("").trim();
+    if first.is_empty() {
+        return None;
+    }
+
+    if let Ok(count) = first.parse::<usize>() {
+        let task = parts.next().unwrap_or("").trim();
+        if task.is_empty() {
+            None
+        } else {
+            Some((count, task))
+        }
+    } else {
+        Some((AUTOCHAT_DEFAULT_AGENTS, rest))
     }
 }
 
@@ -5774,8 +5916,18 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  ?            Toggle this help".to_string(),
         "".to_string(),
         "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
+        "  EASY MODE".to_string(),
+        "  /go <task>      Start relay chat with default team size".to_string(),
+        "  /add <name>     Create a helper teammate".to_string(),
+        "  /talk <name> <message>  Message teammate".to_string(),
+        "  /list           List teammates".to_string(),
+        "  /remove <name>  Remove teammate".to_string(),
+        "  /home           Return to main chat".to_string(),
+        "  /help           Open this help".to_string(),
+        "".to_string(),
+        "  ADVANCED MODE".to_string(),
         "  /spawn <name> <instructions>  Create a named sub-agent".to_string(),
-        "  /autochat <count> <task>  Protocol-first auto multi-agent relay".to_string(),
+        "  /autochat [count] <task>  Protocol-first auto multi-agent relay".to_string(),
         "  /agents        List spawned sub-agents".to_string(),
         "  /kill <name>   Remove a spawned sub-agent".to_string(),
         "  /agent <name>  Focus chat on a spawned sub-agent".to_string(),
@@ -5864,7 +6016,10 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 #[cfg(test)]
 mod tests {
-    use super::{command_with_optional_args, match_slash_command_hint, normalize_for_convergence};
+    use super::{
+        command_with_optional_args, match_slash_command_hint, normalize_easy_command,
+        normalize_for_convergence, parse_autochat_args,
+    };
 
     #[test]
     fn command_with_optional_args_handles_bare_command() {
@@ -5885,6 +6040,11 @@ mod tests {
     }
 
     #[test]
+    fn command_with_optional_args_ignores_autochat_prefix_collisions() {
+        assert_eq!(command_with_optional_args("/autochatty", "/autochat"), None);
+    }
+
+    #[test]
     fn command_with_optional_args_trims_leading_whitespace_in_args() {
         assert_eq!(
             command_with_optional_args("/kill    local-agent-1", "/kill"),
@@ -5902,6 +6062,30 @@ mod tests {
     fn slash_hint_includes_autochat_command() {
         let hint = match_slash_command_hint("/autochat");
         assert!(hint.contains("/autochat"));
+    }
+
+    #[test]
+    fn normalize_easy_command_maps_go_to_autochat() {
+        assert_eq!(
+            normalize_easy_command("/go build a calculator"),
+            "/autochat 3 build a calculator"
+        );
+    }
+
+    #[test]
+    fn parse_autochat_args_supports_default_count() {
+        assert_eq!(
+            parse_autochat_args("build a calculator"),
+            Some((3, "build a calculator"))
+        );
+    }
+
+    #[test]
+    fn parse_autochat_args_supports_explicit_count() {
+        assert_eq!(
+            parse_autochat_args("4 build a calculator"),
+            Some((4, "build a calculator"))
+        );
     }
 
     #[test]
