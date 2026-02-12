@@ -28,6 +28,57 @@ impl AgentRegistry {
         self.cards.insert(id, card);
     }
 
+    /// Register an agent from a protocol-level ready announcement.
+    ///
+    /// This normalizes the ready payload into an `AgentCard` so all components
+    /// (TUI, worker, swarm) can rely on the bus registry as source of truth.
+    pub fn register_ready(&self, agent_id: &str, capabilities: &[String]) -> AgentCard {
+        let skills = capabilities
+            .iter()
+            .map(|capability| {
+                let id = sanitize_skill_id(capability);
+                AgentSkill {
+                    id,
+                    name: capability.clone(),
+                    description: format!("Capability: {capability}"),
+                    tags: vec!["protocol".to_string(), "bus".to_string()],
+                    examples: vec![],
+                    input_modes: vec!["text".to_string()],
+                    output_modes: vec!["text".to_string()],
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let card = AgentCard {
+            name: agent_id.to_string(),
+            description: format!("In-process agent {agent_id} (registered via AgentReady)"),
+            url: format!("bus://local/{agent_id}"),
+            version: "ephemeral".to_string(),
+            protocol_version: "0.3.0".to_string(),
+            preferred_transport: Some("BUS".to_string()),
+            additional_interfaces: vec![],
+            capabilities: AgentCapabilities {
+                streaming: true,
+                push_notifications: false,
+                state_transition_history: false,
+                extensions: vec![],
+            },
+            skills,
+            default_input_modes: vec!["text".to_string()],
+            default_output_modes: vec!["text".to_string()],
+            provider: None,
+            icon_url: None,
+            documentation_url: None,
+            security_schemes: Default::default(),
+            security: vec![],
+            supports_authenticated_extended_card: false,
+            signatures: vec![],
+        };
+
+        self.register(card.clone());
+        card
+    }
+
     /// Deregister an agent by id.
     pub fn deregister(&self, agent_id: &str) -> Option<AgentCard> {
         tracing::info!(agent_id = %agent_id, "Agent deregistered from bus");
@@ -103,6 +154,24 @@ impl AgentRegistry {
     }
 }
 
+fn sanitize_skill_id(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+        } else if !out.ends_with('-') {
+            out.push('-');
+        }
+    }
+
+    let trimmed = out.trim_matches('-');
+    if trimmed.is_empty() {
+        "capability".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 impl Default for AgentRegistry {
     fn default() -> Self {
         Self::new()
@@ -149,5 +218,17 @@ mod tests {
         let mut ids = reg.agent_ids();
         ids.sort();
         assert_eq!(ids, vec!["alpha", "beta"]);
+    }
+
+    #[test]
+    fn test_register_ready_creates_card_with_skills() {
+        let reg = AgentRegistry::new();
+        let caps = vec!["plan.tasks".to_string(), "tool.call".to_string()];
+        let card = reg.register_ready("agent-ready-1", &caps);
+
+        assert_eq!(card.name, "agent-ready-1");
+        assert_eq!(card.url, "bus://local/agent-ready-1");
+        assert_eq!(card.skills.len(), 2);
+        assert!(reg.get("agent-ready-1").is_some());
     }
 }

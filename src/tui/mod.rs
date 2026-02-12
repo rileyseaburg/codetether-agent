@@ -123,6 +123,7 @@ enum ViewMode {
     Swarm,
     Ralph,
     BusLog,
+    Protocol,
     SessionPicker,
     ModelPicker,
     AgentPicker,
@@ -206,6 +207,9 @@ struct App {
     // Agent picker state
     agent_picker_selected: usize,
     agent_picker_filter: String,
+    // Protocol registry view state
+    protocol_selected: usize,
+    protocol_scroll: usize,
     active_model: Option<String>,
     // Spawned sub-agents state
     active_spawned_agent: Option<String>,
@@ -420,7 +424,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /spawn <name> <instructions> - create a sub-agent\n• /agent <name> - focus chat on a spawned sub-agent\n• /agent <name> <message> - send one message to a spawned sub-agent\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /spawn <name> <instructions> - create a sub-agent\n• /agent <name> - focus chat on a spawned sub-agent\n• /agent <name> <message> - send one message to a spawned sub-agent\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /protocol - inspect registered AgentCards (or Ctrl+P)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -458,6 +462,8 @@ impl App {
             model_picker_filter: String::new(),
             agent_picker_selected: 0,
             agent_picker_filter: String::new(),
+            protocol_selected: 0,
+            protocol_scroll: 0,
             active_model: None,
             active_spawned_agent: None,
             spawned_agents: HashMap::new(),
@@ -476,6 +482,35 @@ impl App {
         if self.session_picker_selected >= self.session_picker_list.len() {
             self.session_picker_selected = self.session_picker_list.len().saturating_sub(1);
         }
+    }
+
+    fn is_agent_protocol_registered(&self, agent_name: &str) -> bool {
+        self.bus
+            .as_ref()
+            .is_some_and(|bus| bus.registry.get(agent_name).is_some())
+    }
+
+    fn protocol_registered_count(&self) -> usize {
+        self.bus.as_ref().map_or(0, |bus| bus.registry.len())
+    }
+
+    fn protocol_cards(&self) -> Vec<crate::a2a::types::AgentCard> {
+        let Some(bus) = &self.bus else {
+            return Vec::new();
+        };
+
+        let mut ids = bus.registry.agent_ids();
+        ids.sort_by_key(|id| id.to_lowercase());
+
+        ids.into_iter()
+            .filter_map(|id| bus.registry.get(&id))
+            .collect()
+    }
+
+    fn open_protocol_view(&mut self) {
+        self.protocol_selected = 0;
+        self.protocol_scroll = 0;
+        self.view_mode = ViewMode::Protocol;
     }
 
     async fn submit_message(&mut self, config: &Config) {
@@ -589,12 +624,7 @@ impl App {
         }
 
         // Check for /swarm command
-        if message.trim().starts_with("/swarm ") {
-            let task = message
-                .trim()
-                .strip_prefix("/swarm ")
-                .unwrap_or("")
-                .to_string();
+        if let Some(task) = command_with_optional_args(&message, "/swarm") {
             if task.is_empty() {
                 self.messages.push(ChatMessage::new(
                     "system",
@@ -602,7 +632,7 @@ impl App {
                 ));
                 return;
             }
-            self.start_swarm_execution(task, config).await;
+            self.start_swarm_execution(task.to_string(), config).await;
             return;
         }
 
@@ -671,7 +701,7 @@ impl App {
         }
 
         // Check for /view command to toggle views
-        if message.trim() == "/view" || message.trim() == "/swarm" {
+        if message.trim() == "/view" {
             self.view_mode = match self.view_mode {
                 ViewMode::Chat
                 | ViewMode::SessionPicker
@@ -689,17 +719,30 @@ impl App {
             return;
         }
 
+        // Check for /protocol command to inspect registered AgentCards
+        if message.trim() == "/protocol" || message.trim() == "/registry" {
+            self.open_protocol_view();
+            return;
+        }
+
         // Check for /spawn command - create a named sub-agent
-        if message.trim().starts_with("/spawn ") {
-            let rest = message.trim().strip_prefix("/spawn ").unwrap_or("").trim();
-            let (name, instructions) = match rest.split_once(' ') {
-                Some((n, i)) => (n.to_string(), i.to_string()),
-                None => {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        "Usage: /spawn <name> <instructions>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
-                    ));
-                    return;
+        if let Some(rest) = command_with_optional_args(&message, "/spawn") {
+            let (name, instructions) = if rest.is_empty() {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "Usage: /spawn <name> <instructions>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
+                ));
+                return;
+            } else {
+                match rest.split_once(' ') {
+                    Some((n, i)) => (n.to_string(), i.to_string()),
+                    None => {
+                        self.messages.push(ChatMessage::new(
+                            "system",
+                            "Usage: /spawn <name> <instructions>\nExample: /spawn planner You are a planning agent. Break tasks into steps.",
+                        ));
+                        return;
+                    }
                 }
             };
 
@@ -733,9 +776,11 @@ impl App {
                     });
 
                     // Announce on bus
+                    let mut protocol_registered = false;
                     if let Some(ref bus) = self.bus {
                         let handle = bus.handle(&name);
-                        handle.announce_ready(vec![name.clone()]);
+                        handle.announce_ready(vec!["sub-agent".to_string(), name.clone()]);
+                        protocol_registered = bus.registry.get(&name).is_some();
                     }
 
                     let agent = SpawnedAgent {
@@ -746,9 +791,18 @@ impl App {
                     };
                     self.spawned_agents.insert(name.clone(), agent);
                     self.active_spawned_agent = Some(name.clone());
+
+                    let protocol_line = if protocol_registered {
+                        format!("Protocol registration: ✅ bus://local/{name}")
+                    } else {
+                        "Protocol registration: ⚠ unavailable (bus not connected)".to_string()
+                    };
+
                     self.messages.push(ChatMessage::new(
                         "system",
-                        format!("Spawned agent @{name}: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>."),
+                        format!(
+                            "Spawned agent @{name}: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>.\n{protocol_line}"
+                        ),
                     ));
                 }
                 Err(e) => {
@@ -769,12 +823,25 @@ impl App {
                     "No agents spawned. Use /spawn <name> <instructions> to create one.",
                 ));
             } else {
-                let mut lines = vec!["Active agents:".to_string()];
-                for (name, agent) in &self.spawned_agents {
+                let mut lines = vec![format!(
+                    "Active agents: {} (protocol registered: {})",
+                    self.spawned_agents.len(),
+                    self.protocol_registered_count()
+                )];
+
+                let mut agents = self.spawned_agents.iter().collect::<Vec<_>>();
+                agents.sort_by(|(a, _), (b, _)| a.to_lowercase().cmp(&b.to_lowercase()));
+
+                for (name, agent) in agents {
                     let status = if agent.is_processing {
                         "⚡ working"
                     } else {
                         "● idle"
+                    };
+                    let protocol_status = if self.is_agent_protocol_registered(name) {
+                        "🔗 protocol"
+                    } else {
+                        "⚠ protocol-pending"
                     };
                     let focused = if self.active_spawned_agent.as_deref() == Some(name.as_str()) {
                         " [focused]"
@@ -782,7 +849,7 @@ impl App {
                         ""
                     };
                     lines.push(format!(
-                        "  @{name} [{status}]{focused} — {}",
+                        "  @{name} [{status}] {protocol_status}{focused} — {}",
                         agent.instructions
                     ));
                 }
@@ -797,13 +864,13 @@ impl App {
         }
 
         // Check for /kill command - remove a spawned agent
-        if message.trim().starts_with("/kill ") {
-            let name = message
-                .trim()
-                .strip_prefix("/kill ")
-                .unwrap_or("")
-                .trim()
-                .to_string();
+        if let Some(name) = command_with_optional_args(&message, "/kill") {
+            if name.is_empty() {
+                self.messages.push(ChatMessage::new("system", "Usage: /kill <name>"));
+                return;
+            }
+
+            let name = name.to_string();
             if self.spawned_agents.remove(&name).is_some() {
                 // Remove its response channels
                 self.agent_response_rxs.retain(|(n, _)| n != &name);
@@ -813,12 +880,7 @@ impl App {
                 // Announce shutdown on bus
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&name);
-                    handle.send(
-                        "broadcast",
-                        crate::bus::BusMessage::AgentShutdown {
-                            agent_id: name.clone(),
-                        },
-                    );
+                    handle.announce_shutdown();
                 }
                 self.messages.push(ChatMessage::new(
                     "system",
@@ -1957,15 +2019,17 @@ impl App {
     }
 
     /// Get filtered spawned agents list (sorted by name)
-    fn filtered_spawned_agents(&self) -> Vec<(String, String, bool)> {
-        let mut agents: Vec<(String, String, bool)> = self
+    fn filtered_spawned_agents(&self) -> Vec<(String, String, bool, bool)> {
+        let mut agents: Vec<(String, String, bool, bool)> = self
             .spawned_agents
             .iter()
             .map(|(name, agent)| {
+                let protocol_registered = self.is_agent_protocol_registered(name);
                 (
                     name.clone(),
                     agent.instructions.clone(),
                     agent.is_processing,
+                    protocol_registered,
                 )
             })
             .collect();
@@ -1978,7 +2042,7 @@ impl App {
             let filter = self.agent_picker_filter.to_lowercase();
             agents
                 .into_iter()
-                .filter(|(name, instructions, _)| {
+                .filter(|(name, instructions, _, _)| {
                     name.to_lowercase().contains(&filter)
                         || instructions.to_lowercase().contains(&filter)
                 })
@@ -2001,7 +2065,7 @@ impl App {
         self.agent_picker_selected = if let Some(active) = &self.active_spawned_agent {
             filtered
                 .iter()
-                .position(|(name, _, _)| name == active)
+                .position(|(name, _, _, _)| name == active)
                 .unwrap_or(0)
         } else {
             0
@@ -2603,7 +2667,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     KeyCode::Enter => {
                         let filtered = app.filtered_spawned_agents();
-                        if let Some((name, _, _)) = filtered.get(app.agent_picker_selected) {
+                        if let Some((name, _, _, _)) = filtered.get(app.agent_picker_selected) {
                             app.active_spawned_agent = Some(name.clone());
                             app.messages.push(ChatMessage::new(
                                 "system",
@@ -2830,6 +2894,48 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 continue;
             }
 
+            // Protocol registry view key handling
+            if app.view_mode == ViewMode::Protocol {
+                match key.code {
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Esc => {
+                        app.view_mode = ViewMode::Chat;
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if app.protocol_selected > 0 {
+                            app.protocol_selected -= 1;
+                        }
+                        app.protocol_scroll = 0;
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let len = app.protocol_cards().len();
+                        if app.protocol_selected < len.saturating_sub(1) {
+                            app.protocol_selected += 1;
+                        }
+                        app.protocol_scroll = 0;
+                    }
+                    KeyCode::PageDown => {
+                        app.protocol_scroll = app.protocol_scroll.saturating_add(10);
+                    }
+                    KeyCode::PageUp => {
+                        app.protocol_scroll = app.protocol_scroll.saturating_sub(10);
+                    }
+                    KeyCode::Char('g') => {
+                        app.protocol_scroll = 0;
+                    }
+                    KeyCode::Char('?') => {
+                        app.show_help = true;
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+
             match key.code {
                 // Quit
                 KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -2851,6 +2957,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         | ViewMode::SessionPicker
                         | ViewMode::ModelPicker
                         | ViewMode::AgentPicker
+                        | ViewMode::Protocol
                         | ViewMode::BusLog => ViewMode::Swarm,
                         ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                     };
@@ -2861,6 +2968,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         | ViewMode::SessionPicker
                         | ViewMode::ModelPicker
                         | ViewMode::AgentPicker
+                        | ViewMode::Protocol
                         | ViewMode::BusLog => ViewMode::Swarm,
                         ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                     };
@@ -2919,6 +3027,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     if app.view_mode == ViewMode::Swarm
                         || app.view_mode == ViewMode::Ralph
                         || app.view_mode == ViewMode::BusLog
+                        || app.view_mode == ViewMode::Protocol
                         || app.view_mode == ViewMode::SessionPicker
                         || app.view_mode == ViewMode::ModelPicker
                         || app.view_mode == ViewMode::AgentPicker
@@ -2940,6 +3049,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 // Bus protocol log (Ctrl+L)
                 KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     app.view_mode = ViewMode::BusLog;
+                }
+
+                // Protocol registry view (Ctrl+P)
+                KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.open_protocol_view();
                 }
 
                 // Switch agent
@@ -3270,6 +3384,48 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         return;
     }
 
+    // Protocol registry view
+    if app.view_mode == ViewMode::Protocol {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(1),    // Protocol details
+                Constraint::Length(3), // Input
+                Constraint::Length(1), // Status bar
+            ])
+            .split(f.area());
+
+        render_protocol_registry(f, app, theme, chunks[0]);
+
+        let input_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Press Esc to return to chat ")
+            .border_style(Style::default().fg(Color::Blue));
+
+        let input = Paragraph::new(app.input.as_str())
+            .block(input_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(input, chunks[1]);
+
+        let cards = app.protocol_cards();
+        let status_line = Line::from(vec![
+            Span::styled(
+                " PROTOCOL REGISTRY ",
+                Style::default().fg(Color::Black).bg(Color::Blue),
+            ),
+            Span::raw(format!(" {} cards | ", cards.len())),
+            Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+            Span::raw(": Select | "),
+            Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
+            Span::raw(": Scroll detail | "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": Back"),
+        ]);
+        let status = Paragraph::new(status_line);
+        f.render_widget(status, chunks[2]);
+        return;
+    }
+
     // Model picker view
     if app.view_mode == ViewMode::ModelPicker {
         let area = centered_rect(70, 70, f.area());
@@ -3531,12 +3687,15 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 Style::default().fg(Color::DarkGray),
             ));
         } else {
-            for (display_idx, (name, instructions, is_processing)) in filtered.iter().enumerate() {
+            for (display_idx, (name, instructions, is_processing, is_registered)) in
+                filtered.iter().enumerate()
+            {
                 let is_selected = display_idx == app.agent_picker_selected;
                 let is_focused = app.active_spawned_agent.as_deref() == Some(name.as_str());
                 let marker = if is_selected { "▶" } else { " " };
                 let focused_marker = if is_focused { " ✓" } else { "" };
                 let status = if *is_processing { "⚡" } else { "●" };
+                let protocol = if *is_registered { "🔗" } else { "⚠" };
 
                 let style = if is_selected {
                     Style::default()
@@ -3549,7 +3708,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 };
 
                 list_lines.push(Line::styled(
-                    format!("  {marker} {status} @{name}{focused_marker}"),
+                    format!("  {marker} {status} {protocol} @{name}{focused_marker}"),
                     style,
                 ));
 
@@ -3557,6 +3716,21 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                     list_lines.push(Line::styled(
                         format!("     {}", instructions),
                         Style::default().fg(Color::DarkGray),
+                    ));
+                    list_lines.push(Line::styled(
+                        format!(
+                            "     protocol: {}",
+                            if *is_registered {
+                                "registered"
+                            } else {
+                                "not registered"
+                            }
+                        ),
+                        if *is_registered {
+                            Style::default().fg(Color::Green)
+                        } else {
+                            Style::default().fg(Color::Yellow)
+                        },
                     ));
                 }
             }
@@ -3777,6 +3951,197 @@ fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
     f.render_widget(status, main_chunks[3]);
 
     true
+}
+
+fn render_protocol_registry(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+    let cards = app.protocol_cards();
+    let selected = app.protocol_selected.min(cards.len().saturating_sub(1));
+
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(34), Constraint::Min(30)])
+        .split(area);
+
+    let list_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Registered Agents ")
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let mut list_lines: Vec<Line> = Vec::new();
+    if cards.is_empty() {
+        list_lines.push(Line::styled(
+            "No protocol-registered agents.",
+            Style::default().fg(Color::DarkGray),
+        ));
+        list_lines.push(Line::styled(
+            "Spawn an agent with /spawn.",
+            Style::default().fg(Color::DarkGray),
+        ));
+    } else {
+        for (idx, card) in cards.iter().enumerate() {
+            let marker = if idx == selected { "▶" } else { " " };
+            let style = if idx == selected {
+                Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            let transport = card.preferred_transport.as_deref().unwrap_or("JSONRPC");
+            list_lines.push(Line::styled(
+                format!(" {marker} {}", card.name),
+                style,
+            ));
+            list_lines.push(Line::styled(
+                format!("    {transport} • {}", truncate_with_ellipsis(&card.url, 22)),
+                Style::default().fg(Color::DarkGray),
+            ));
+        }
+    }
+
+    let list = Paragraph::new(list_lines)
+        .block(list_block)
+        .wrap(Wrap { trim: false });
+    f.render_widget(list, chunks[0]);
+
+    let detail_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Agent Card Detail ")
+        .border_style(Style::default().fg(theme.border_color.to_color()));
+
+    let mut detail_lines: Vec<Line> = Vec::new();
+    if let Some(card) = cards.get(selected) {
+        let label_style = Style::default().fg(Color::DarkGray);
+        detail_lines.push(Line::from(vec![
+            Span::styled("Name: ", label_style),
+            Span::styled(card.name.clone(), Style::default().add_modifier(Modifier::BOLD)),
+        ]));
+        detail_lines.push(Line::from(vec![
+            Span::styled("Description: ", label_style),
+            Span::raw(card.description.clone()),
+        ]));
+        detail_lines.push(Line::from(vec![
+            Span::styled("URL: ", label_style),
+            Span::styled(card.url.clone(), Style::default().fg(Color::Cyan)),
+        ]));
+        detail_lines.push(Line::from(vec![
+            Span::styled("Version: ", label_style),
+            Span::raw(format!("{} (protocol {})", card.version, card.protocol_version)),
+        ]));
+
+        let preferred_transport = card.preferred_transport.as_deref().unwrap_or("JSONRPC");
+        detail_lines.push(Line::from(vec![
+            Span::styled("Transport: ", label_style),
+            Span::raw(preferred_transport.to_string()),
+        ]));
+        if !card.additional_interfaces.is_empty() {
+            detail_lines.push(Line::from(vec![
+                Span::styled("Interfaces: ", label_style),
+                Span::raw(format!("{} additional", card.additional_interfaces.len())),
+            ]));
+            for iface in &card.additional_interfaces {
+                detail_lines.push(Line::styled(
+                    format!("  • {} -> {}", iface.transport, iface.url),
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+        }
+
+        detail_lines.push(Line::from(""));
+        detail_lines.push(Line::styled(
+            "Capabilities",
+            Style::default().add_modifier(Modifier::BOLD),
+        ));
+        detail_lines.push(Line::styled(
+            format!(
+                "  streaming={} push_notifications={} state_history={}",
+                card.capabilities.streaming,
+                card.capabilities.push_notifications,
+                card.capabilities.state_transition_history
+            ),
+            Style::default().fg(Color::DarkGray),
+        ));
+        if !card.capabilities.extensions.is_empty() {
+            detail_lines.push(Line::styled(
+                format!(
+                    "  extensions: {}",
+                    card.capabilities
+                        .extensions
+                        .iter()
+                        .map(|e| e.uri.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Style::default().fg(Color::DarkGray),
+            ));
+        }
+
+        detail_lines.push(Line::from(""));
+        detail_lines.push(Line::styled(
+            format!("Skills ({})", card.skills.len()),
+            Style::default().add_modifier(Modifier::BOLD),
+        ));
+        if card.skills.is_empty() {
+            detail_lines.push(Line::styled("  none", Style::default().fg(Color::DarkGray)));
+        } else {
+            for skill in &card.skills {
+                let tags = if skill.tags.is_empty() {
+                    "".to_string()
+                } else {
+                    format!(" [{}]", skill.tags.join(","))
+                };
+                detail_lines.push(Line::styled(
+                    format!("  • {}{}", skill.name, tags),
+                    Style::default().fg(Color::Green),
+                ));
+                if !skill.description.is_empty() {
+                    detail_lines.push(Line::styled(
+                        format!("    {}", skill.description),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+            }
+        }
+
+        detail_lines.push(Line::from(""));
+        detail_lines.push(Line::styled(
+            "Security",
+            Style::default().add_modifier(Modifier::BOLD),
+        ));
+        if card.security_schemes.is_empty() {
+            detail_lines.push(Line::styled(
+                "  schemes: none",
+                Style::default().fg(Color::DarkGray),
+            ));
+        } else {
+            let mut names = card.security_schemes.keys().cloned().collect::<Vec<_>>();
+            names.sort();
+            detail_lines.push(Line::styled(
+                format!("  schemes: {}", names.join(", ")),
+                Style::default().fg(Color::DarkGray),
+            ));
+        }
+        detail_lines.push(Line::styled(
+            format!("  requirements: {}", card.security.len()),
+            Style::default().fg(Color::DarkGray),
+        ));
+        detail_lines.push(Line::styled(
+            format!(
+                "  authenticated_extended_card: {}",
+                card.supports_authenticated_extended_card
+            ),
+            Style::default().fg(Color::DarkGray),
+        ));
+    } else {
+        detail_lines.push(Line::styled(
+            "No card selected.",
+            Style::default().fg(Color::DarkGray),
+        ));
+    }
+
+    let detail = Paragraph::new(detail_lines)
+        .block(detail_block)
+        .wrap(Wrap { trim: false })
+        .scroll((app.protocol_scroll as u16, 0));
+    f.render_widget(detail, chunks[1]);
 }
 
 fn render_webview_header(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
@@ -4132,6 +4497,13 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("Tools used: ", label_style),
         Span::styled(app.tool_call_count.to_string(), Style::default()),
     ]));
+    lines.push(Line::from(vec![
+        Span::styled("Protocol: ", label_style),
+        Span::styled(
+            format!("{} registered", app.protocol_registered_count()),
+            Style::default().fg(Color::Cyan),
+        ),
+    ]));
     lines.push(Line::from(""));
     lines.push(Line::styled(
         "Sub-agents",
@@ -4145,13 +4517,15 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
     } else {
         for (name, agent) in app.spawned_agents.iter().take(4) {
             let status = if agent.is_processing { "⚡" } else { "●" };
+            let is_registered = app.is_agent_protocol_registered(name);
+            let protocol = if is_registered { "🔗" } else { "⚠" };
             let focused = if app.active_spawned_agent.as_deref() == Some(name.as_str()) {
                 " [focused]"
             } else {
                 ""
             };
             lines.push(Line::styled(
-                format!("{status} @{name}{focused}"),
+                format!("{status} {protocol} @{name}{focused}"),
                 if focused.is_empty() {
                     Style::default().fg(Color::Magenta)
                 } else {
@@ -4166,6 +4540,14 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
                     .fg(Color::DarkGray)
                     .add_modifier(Modifier::DIM),
             ));
+            if is_registered {
+                lines.push(Line::styled(
+                    format!("   bus://local/{name}"),
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::DIM),
+                ));
+            }
         }
         if app.spawned_agents.len() > 4 {
             lines.push(Line::styled(
@@ -4620,6 +5002,7 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/refresh", "Refresh workspace"),
         ("/view", "Toggle swarm view"),
         ("/buslog", "Show protocol bus log"),
+        ("/protocol", "Show protocol registry"),
     ];
 
     let input_lower = input.to_lowercase();
@@ -4635,6 +5018,22 @@ fn match_slash_command_hint(input: &str) -> String {
     } else {
         let cmds: Vec<_> = matches.iter().map(|(cmd, _)| cmd.trim()).collect();
         cmds.join(" | ")
+    }
+}
+
+fn command_with_optional_args<'a>(input: &'a str, command: &str) -> Option<&'a str> {
+    let trimmed = input.trim();
+    let rest = trimmed.strip_prefix(command)?;
+
+    if rest.is_empty() {
+        return Some("");
+    }
+
+    let first = rest.chars().next()?;
+    if first.is_whitespace() {
+        Some(rest.trim())
+    } else {
+        None
     }
 }
 
@@ -4848,6 +5247,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Ctrl+A       Open spawned-agent picker".to_string(),
         "  Ctrl+M       Open model picker".to_string(),
         "  Ctrl+L       Protocol bus log".to_string(),
+        "  Ctrl+P       Protocol registry".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
         "  Ctrl+B       Toggle webview layout".to_string(),
         "  Ctrl+Y       Copy latest assistant reply".to_string(),
@@ -4876,6 +5276,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /model          Open model picker (or /model <name>)".to_string(),
         "  /view           Toggle swarm view".to_string(),
         "  /buslog         Show protocol bus log".to_string(),
+        "  /protocol       Show protocol registry and AgentCards".to_string(),
         "  /webview        Web dashboard layout".to_string(),
         "  /classic        Single-pane layout".to_string(),
         "  /inspector      Toggle inspector pane".to_string(),
@@ -4943,4 +5344,41 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{command_with_optional_args, match_slash_command_hint};
+
+    #[test]
+    fn command_with_optional_args_handles_bare_command() {
+        assert_eq!(command_with_optional_args("/spawn", "/spawn"), Some(""));
+    }
+
+    #[test]
+    fn command_with_optional_args_handles_arguments() {
+        assert_eq!(
+            command_with_optional_args("/spawn planner you plan", "/spawn"),
+            Some("planner you plan")
+        );
+    }
+
+    #[test]
+    fn command_with_optional_args_ignores_prefix_collisions() {
+        assert_eq!(command_with_optional_args("/spawned", "/spawn"), None);
+    }
+
+    #[test]
+    fn command_with_optional_args_trims_leading_whitespace_in_args() {
+        assert_eq!(
+            command_with_optional_args("/kill    local-agent-1", "/kill"),
+            Some("local-agent-1")
+        );
+    }
+
+    #[test]
+    fn slash_hint_includes_protocol_command() {
+        let hint = match_slash_command_hint("/protocol");
+        assert!(hint.contains("/protocol"));
+    }
 }

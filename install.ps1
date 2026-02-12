@@ -192,6 +192,135 @@ function Install-FunctionGemma {
     Write-Info "environment variables set for current and future sessions"
 }
 
+function Show-CoreEnvInstructions {
+    Write-Host "`nSet required environment variables:" -ForegroundColor White
+    Write-Host "  `$env:VAULT_ADDR = 'https://vault.example.com:8200'"
+    Write-Host "  `$env:VAULT_TOKEN = 'hvs.your-token'"
+    Write-Host "  `$env:CODETETHER_DEFAULT_MODEL = 'zai/glm-5'"
+    Write-Host ""
+    Write-Host "To persist across sessions, add those lines to `$PROFILE." -ForegroundColor Gray
+    Write-Host ""
+}
+
+function Discover-DefaultModel {
+    param(
+        [string]$CodetetherPath
+    )
+
+    $commandsToTry = @()
+    if ($CodetetherPath -and (Test-Path $CodetetherPath)) {
+        $commandsToTry += $CodetetherPath
+    }
+
+    $resolved = Get-Command codetether -ErrorAction SilentlyContinue
+    if ($resolved -and $resolved.Source) {
+        $commandsToTry += $resolved.Source
+    }
+
+    foreach ($cmd in ($commandsToTry | Select-Object -Unique)) {
+        try {
+            Write-Info "discovering default model from Vault-configured providers..."
+            $json = & $cmd models --json 2>$null
+            if (-not $json) { continue }
+
+            $models = $json | ConvertFrom-Json
+            if (-not $models) { continue }
+
+            $first = if ($models -is [System.Array]) {
+                if ($models.Count -gt 0) { $models[0] } else { $null }
+            }
+            else {
+                $models
+            }
+
+            if ($first -and $first.provider -and $first.id) {
+                return "$($first.provider)/$($first.id)"
+            }
+        }
+        catch {
+            continue
+        }
+    }
+
+    return $null
+}
+
+function Setup-CoreEnvironment {
+    param(
+        [string]$CodetetherPath
+    )
+
+    if ($env:VAULT_ADDR -and $env:VAULT_TOKEN -and $env:CODETETHER_DEFAULT_MODEL) {
+        Write-Ok "core environment variables already set in current session"
+        return
+    }
+
+    Write-Host "`nCodeTether Core Environment Setup`n" -ForegroundColor White
+    Write-Info "Vault-backed providers require VAULT_ADDR and VAULT_TOKEN."
+    Write-Info "After Vault setup, the installer will try to auto-discover CODETETHER_DEFAULT_MODEL."
+
+    $canPrompt = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
+    if (-not $canPrompt) {
+        Write-Warn "non-interactive install detected; skipping prompts"
+        Show-CoreEnvInstructions
+        return
+    }
+
+    $choice = Read-Host "Configure these variables now and persist them for your user profile? [Y/n]"
+    if ($choice -match '^(n|no)$') {
+        Show-CoreEnvInstructions
+        return
+    }
+
+    $vaultAddr = if ($env:VAULT_ADDR) { $env:VAULT_ADDR } else { 'https://vault.example.com:8200' }
+    $defaultModel = if ($env:CODETETHER_DEFAULT_MODEL) { $env:CODETETHER_DEFAULT_MODEL } else { 'zai/glm-5' }
+
+    $vaultAddrInput = Read-Host "VAULT_ADDR [$vaultAddr]"
+    if ($vaultAddrInput) { $vaultAddr = $vaultAddrInput }
+
+    $tokenHint = if ($env:VAULT_TOKEN) { 'current-session-token' } else { 'hvs.your-token' }
+    $vaultTokenInput = Read-Host "VAULT_TOKEN [$tokenHint]"
+    if ($vaultTokenInput) {
+        $vaultToken = $vaultTokenInput
+    }
+    elseif ($env:VAULT_TOKEN) {
+        $vaultToken = $env:VAULT_TOKEN
+    }
+    else {
+        $vaultToken = 'hvs.your-token'
+    }
+
+    Set-Item -Path 'Env:VAULT_ADDR' -Value $vaultAddr
+    Set-Item -Path 'Env:VAULT_TOKEN' -Value $vaultToken
+
+    $discoveredModel = Discover-DefaultModel -CodetetherPath $CodetetherPath
+    if ($discoveredModel) {
+        $defaultModel = $discoveredModel
+        Write-Ok "discovered default model: $defaultModel"
+    }
+    else {
+        Write-Warn "could not auto-discover a model (no provider keys in Vault yet, or provider model listing failed)"
+        $defaultModelInput = Read-Host "CODETETHER_DEFAULT_MODEL [$defaultModel]"
+        if ($defaultModelInput) { $defaultModel = $defaultModelInput }
+    }
+
+    $envVars = @{
+        'VAULT_ADDR'                = $vaultAddr
+        'VAULT_TOKEN'               = $vaultToken
+        'CODETETHER_DEFAULT_MODEL'  = $defaultModel
+    }
+
+    foreach ($kv in $envVars.GetEnumerator()) {
+        [System.Environment]::SetEnvironmentVariable($kv.Key, $kv.Value, 'User')
+        Set-Item -Path "Env:$($kv.Key)" -Value $kv.Value
+    }
+
+    Write-Ok "saved core environment variables for current and future sessions"
+    if ($vaultToken -eq 'hvs.your-token') {
+        Write-Warn "VAULT_TOKEN is still a placeholder. Update it before running provider-backed commands."
+    }
+}
+
 function Add-ToUserPath {
     param([string]$Dir)
 
@@ -356,6 +485,8 @@ try {
     else {
         Write-Warn "$BinaryName may not be available until you restart your terminal"
     }
+
+    Setup-CoreEnvironment -CodetetherPath $destPath
 
     Write-Host "`nGet started:" -ForegroundColor White
     Write-Host "  codetether tui       " -ForegroundColor Cyan -NoNewline; Write-Host "- interactive TUI"

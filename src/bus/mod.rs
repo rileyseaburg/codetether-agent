@@ -145,6 +145,19 @@ impl AgentBus {
 
     /// Publish an envelope directly (low-level).
     pub fn publish(&self, envelope: BusEnvelope) -> usize {
+        match &envelope.message {
+            BusMessage::AgentReady {
+                agent_id,
+                capabilities,
+            } => {
+                self.registry.register_ready(agent_id, capabilities);
+            }
+            BusMessage::AgentShutdown { agent_id } => {
+                self.registry.deregister(agent_id);
+            }
+            _ => {}
+        }
+
         // Returns the number of receivers that got the message.
         // If there are no receivers the message is silently dropped.
         self.tx.send(envelope).unwrap_or(0)
@@ -210,6 +223,16 @@ impl BusHandle {
             BusMessage::AgentReady {
                 agent_id: self.agent_id.clone(),
                 capabilities,
+            },
+        )
+    }
+
+    /// Announce this agent is shutting down.
+    pub fn announce_shutdown(&self) -> usize {
+        self.send(
+            "broadcast",
+            BusMessage::AgentShutdown {
+                agent_id: self.agent_id.clone(),
             },
         )
     }
@@ -435,5 +458,17 @@ mod tests {
             BusMessage::TaskUpdate { task_id, .. } => assert_eq!(task_id, "2"),
             other => panic!("unexpected: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_ready_shutdown_syncs_registry() {
+        let bus = AgentBus::new().into_arc();
+        let handle = bus.handle("planner-1");
+
+        handle.announce_ready(vec!["plan".to_string(), "review".to_string()]);
+        assert!(bus.registry.get("planner-1").is_some());
+
+        handle.announce_shutdown();
+        assert!(bus.registry.get("planner-1").is_none());
     }
 }
