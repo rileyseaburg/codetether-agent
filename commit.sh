@@ -23,12 +23,16 @@ DIFF="$(git diff --cached --stat; echo '---'; git diff --cached)"
 
 # Ask codetether to generate a commit message
 echo "Generating commit message..."
-COMMIT_MSG="$(codetether run "You are a commit message generator. Based on the following git diff, produce ONLY a single-line conventional commit message (type: description). No explanation, no markdown, no quotes. Just the commit message.
+RAW_OUTPUT="$(codetether run "You are a commit message generator. Based on the following git diff, produce ONLY a single-line conventional commit message (type: description). No explanation, no markdown, no quotes. Just the commit message.
 
-${DIFF}")"
+${DIFF}" 2>/dev/null)"
 
-# Strip any surrounding quotes or whitespace
-COMMIT_MSG="$(echo "$COMMIT_MSG" | head -1 | sed 's/^["'\'']*//;s/["'\'']*$//' | xargs)"
+# Filter out tracing/log lines and session info, keep only the actual response
+COMMIT_MSG="$(echo "$RAW_OUTPUT" \
+  | grep -vE '^\[Session:|^[0-9]{4}-[0-9]{2}-[0-9]{2}T|^ *INFO |^ *WARN |^ *DEBUG |^ *ERROR |^codetether::|^$' \
+  | head -1 \
+  | sed 's/^["'\'']*//;s/["'\'']*$//' \
+  | xargs)"
 
 if [ -z "$COMMIT_MSG" ]; then
     echo "Error: codetether failed to generate a commit message."
