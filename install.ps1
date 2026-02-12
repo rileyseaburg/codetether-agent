@@ -4,6 +4,8 @@
 # Installs the latest release of codetether to a directory on PATH.
 # No Rust toolchain required.
 #
+# Tries multiple artifact formats to support both GitHub Actions (msvc+zip) and Jenkins (gnu+tar.gz) releases.
+#
 # Options:
 #   -FunctionGemma      Download the FunctionGemma model for local tool-call routing (optional)
 #   -FunctionGemmaOnly  Only download the FunctionGemma model (skip binary install)
@@ -40,7 +42,11 @@ function Get-Platform {
         'ARM64' { $archStr = 'aarch64' }
         default { Write-Err "Unsupported architecture: $arch"; exit 1 }
     }
-    return "$archStr-pc-windows-msvc"
+    # Return array of targets to try (native first, then cross-compiled)
+    return @(
+        "$archStr-pc-windows-msvc",  # GitHub Actions native build
+        "$archStr-pc-windows-gnu"     # Jenkins MinGW cross-compile
+    )
 }
 
 function Get-LatestVersion {
@@ -227,9 +233,9 @@ if ($FunctionGemmaOnly) {
 
 Write-Host "`nCodeTether Agent Installer`n" -ForegroundColor White
 
-# Detect platform
-$platform = Get-Platform
-Write-Info "detected platform: $platform"
+# Detect platform targets to try
+$platforms = Get-Platform
+Write-Info "detected architecture: $($platforms[0].Split('-')[0])"
 
 # Get latest version
 Write-Info "fetching latest release..."
@@ -240,40 +246,88 @@ if (-not $version) {
 }
 Write-Info "latest version: $version"
 
-# Build download URL
-$artifactName = "codetether-$version-$platform"
-$zipName = "$artifactName.zip"
-$url = "https://github.com/$Repo/releases/download/$version/$zipName"
-
 # Create temp directory
 $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "codetether-install-$([guid]::NewGuid().ToString('N').Substring(0,8))"
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 
+$downloadSuccess = $false
+$exePath = $null
+
 try {
-    # Download
-    Write-Info "downloading $zipName..."
-    $zipPath = Join-Path $tmpDir $zipName
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+    # Try each platform + archive combination
+    foreach ($platform in $platforms) {
+        foreach ($archiveExt in @('zip', 'tar.gz')) {
+            $artifactName = "codetether-$version-$platform"
+            $archiveName = "$artifactName.$archiveExt"
+            $url = "https://github.com/$Repo/releases/download/$version/$archiveName"
+            
+            Write-Info "trying $archiveName..."
+            $archivePath = Join-Path $tmpDir $archiveName
+            
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing -ErrorAction Stop
+                Write-Ok "downloaded $archiveName"
+                $downloadSuccess = $true
+            }
+            catch {
+                continue
+            }
+
+            # Extract based on archive type
+            Write-Info "extracting..."
+            try {
+                if ($archiveExt -eq 'zip') {
+                    Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
+                }
+                else {
+                    # .tar.gz - use Windows built-in tar
+                    $tarCmd = Get-Command tar -ErrorAction SilentlyContinue
+                    if (-not $tarCmd) {
+                        Write-Warn "tar command not found - skipping $archiveName"
+                        continue
+                    }
+                    & tar -xzf $archivePath -C $tmpDir
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Warn "tar extraction failed - skipping $archiveName"
+                        continue
+                    }
+                }
+            }
+            catch {
+                Write-Warn "extraction failed for $archiveName - skipping"
+                continue
+            }
+
+            # Find the binary
+            $expectedExe = "$artifactName.exe"
+            $exePath = Get-ChildItem -Path $tmpDir -Filter $expectedExe -Recurse | Select-Object -First 1
+            if (-not $exePath) {
+                # Fallback: try finding any .exe
+                $exePath = Get-ChildItem -Path $tmpDir -Filter "codetether*.exe" -Recurse | Select-Object -First 1
+            }
+            
+            if ($exePath) {
+                Write-Ok "found binary: $($exePath.Name)"
+                break
+            }
+        }
+        
+        if ($exePath) {
+            break
+        }
     }
-    catch {
-        Write-Err "download failed - no pre-built binary for $platform"
+
+    if (-not $downloadSuccess) {
+        Write-Err "download failed - no pre-built binary available"
+        Write-Err "tried platforms: $($platforms -join ', ')"
         Write-Err "you can build from source: cargo install codetether-agent"
         exit 1
     }
 
-    # Extract
-    Write-Info "extracting..."
-    Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
-
-    # Find the binary (might be in a subfolder or at root)
-    $exePath = Get-ChildItem -Path $tmpDir -Filter "$BinaryName.exe" -Recurse | Select-Object -First 1
-    if (-not $exePath) {
-        # Try the artifact name as the binary name
-        $exePath = Get-ChildItem -Path $tmpDir -Filter "$artifactName.exe" -Recurse | Select-Object -First 1
-    }
     if (-not $exePath) {
         Write-Err "expected binary not found in archive"
+        Write-Info "archive contents:"
+        Get-ChildItem -Path $tmpDir -Recurse | ForEach-Object { Write-Info "  $($_.Name)" }
         exit 1
     }
 

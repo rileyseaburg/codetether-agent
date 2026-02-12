@@ -125,6 +125,7 @@ enum ViewMode {
     BusLog,
     SessionPicker,
     ModelPicker,
+    AgentPicker,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,8 +203,12 @@ struct App {
     model_picker_list: Vec<(String, String, String)>, // (display label, provider/model value, human name)
     model_picker_selected: usize,
     model_picker_filter: String,
+    // Agent picker state
+    agent_picker_selected: usize,
+    agent_picker_filter: String,
     active_model: Option<String>,
     // Spawned sub-agents state
+    active_spawned_agent: Option<String>,
     spawned_agents: HashMap<String, SpawnedAgent>,
     agent_response_rxs: Vec<(String, mpsc::Receiver<SessionEvent>)>,
     // Cached max scroll for key handlers
@@ -415,7 +420,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
+                    "Quick start:\n• Type a message to chat with the AI\n• Ctrl+Y - copy latest assistant reply\n• /model - pick a model (or Ctrl+M)\n• /spawn <name> <instructions> - create a sub-agent\n• /agent <name> - focus chat on a spawned sub-agent\n• /agent <name> <message> - send one message to a spawned sub-agent\n• /swarm <task> - parallel execution\n• /ralph [prd.json] - autonomous PRD loop\n• /buslog - protocol bus log (or Ctrl+L)\n• /sessions - pick a session to resume\n• /resume - continue last session\n• Tab - switch agents | ? - help",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -451,7 +456,10 @@ impl App {
             model_picker_list: Vec::new(),
             model_picker_selected: 0,
             model_picker_filter: String::new(),
+            agent_picker_selected: 0,
+            agent_picker_filter: String::new(),
             active_model: None,
+            active_spawned_agent: None,
             spawned_agents: HashMap::new(),
             agent_response_rxs: Vec::new(),
             last_max_scroll: 0,
@@ -475,13 +483,109 @@ impl App {
             return;
         }
 
-        let message = std::mem::take(&mut self.input);
+        let mut message = std::mem::take(&mut self.input);
         self.cursor_position = 0;
 
         // Save to command history
         if !message.trim().is_empty() {
             self.command_history.push(message.clone());
             self.history_index = None;
+        }
+
+        // Backward-compatible /agent command aliases
+        if message.trim().starts_with("/agent") {
+            let rest = message
+                .trim()
+                .strip_prefix("/agent")
+                .unwrap_or("")
+                .trim();
+
+            if rest.is_empty() {
+                self.open_agent_picker();
+                return;
+            }
+
+            if rest == "pick" || rest == "picker" || rest == "select" {
+                self.open_agent_picker();
+                return;
+            }
+
+            if rest == "main" || rest == "off" {
+                if let Some(target) = self.active_spawned_agent.take() {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Exited focused sub-agent chat (@{target})."),
+                    ));
+                } else {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        "Already in main chat mode.",
+                    ));
+                }
+                return;
+            }
+
+            if rest == "build" || rest == "plan" {
+                self.current_agent = rest.to_string();
+                self.active_spawned_agent = None;
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Switched main agent to '{rest}'. (Tab also works.)"),
+                ));
+                return;
+            }
+
+            if rest == "list" || rest == "ls" {
+                message = "/agents".to_string();
+            } else if let Some(args) = rest
+                .strip_prefix("spawn ")
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+            {
+                message = format!("/spawn {args}");
+            } else if let Some(name) = rest
+                .strip_prefix("kill ")
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+            {
+                message = format!("/kill {name}");
+            } else if !rest.contains(' ') {
+                let target = rest.trim_start_matches('@');
+                if self.spawned_agents.contains_key(target) {
+                    self.active_spawned_agent = Some(target.to_string());
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!(
+                            "Focused chat on @{target}. Type messages directly; use /agent main to exit focus."
+                        ),
+                    ));
+                } else {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!(
+                            "No agent named @{target}. Use /agents to list, or /spawn <name> <instructions> to create one."
+                        ),
+                    ));
+                }
+                return;
+            } else if let Some((name, content)) = rest.split_once(' ') {
+                let target = name.trim().trim_start_matches('@');
+                let content = content.trim();
+                if target.is_empty() || content.is_empty() {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        "Usage: /agent <name> <message>",
+                    ));
+                    return;
+                }
+                message = format!("@{target} {content}");
+            } else {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "Unknown /agent usage. Try /agent, /agent <name>, /agent <name> <message>, or /agent list.",
+                ));
+                return;
+            }
         }
 
         // Check for /swarm command
@@ -572,6 +676,7 @@ impl App {
                 ViewMode::Chat
                 | ViewMode::SessionPicker
                 | ViewMode::ModelPicker
+                | ViewMode::AgentPicker
                 | ViewMode::BusLog => ViewMode::Swarm,
                 ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
             };
@@ -640,9 +745,10 @@ impl App {
                         is_processing: false,
                     };
                     self.spawned_agents.insert(name.clone(), agent);
+                    self.active_spawned_agent = Some(name.clone());
                     self.messages.push(ChatMessage::new(
                         "system",
-                        format!("Spawned agent @{name}: {instructions}\nUse @{name} <message> to talk to it."),
+                        format!("Spawned agent @{name}: {instructions}\nFocused chat on @{name}. Type directly, or use @{name} <message>."),
                     ));
                 }
                 Err(e) => {
@@ -670,10 +776,22 @@ impl App {
                     } else {
                         "● idle"
                     };
-                    lines.push(format!("  @{name} [{status}] — {}", agent.instructions));
+                    let focused = if self.active_spawned_agent.as_deref() == Some(name.as_str()) {
+                        " [focused]"
+                    } else {
+                        ""
+                    };
+                    lines.push(format!(
+                        "  @{name} [{status}]{focused} — {}",
+                        agent.instructions
+                    ));
                 }
                 self.messages
                     .push(ChatMessage::new("system", lines.join("\n")));
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "Tip: use /agent to open the picker, /agent <name> to focus, or Ctrl+A.",
+                ));
             }
             return;
         }
@@ -689,6 +807,9 @@ impl App {
             if self.spawned_agents.remove(&name).is_some() {
                 // Remove its response channels
                 self.agent_response_rxs.retain(|(n, _)| n != &name);
+                if self.active_spawned_agent.as_deref() == Some(name.as_str()) {
+                    self.active_spawned_agent = None;
+                }
                 // Announce shutdown on bus
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&name);
@@ -776,6 +897,44 @@ impl App {
             }
 
             // Send the message to the target agent's session
+            self.send_to_agent(&target, &content, config).await;
+            return;
+        }
+
+        // If a spawned agent is focused, route plain messages there automatically.
+        if !message.trim().starts_with('/')
+            && let Some(target) = self.active_spawned_agent.clone()
+        {
+            if !self.spawned_agents.contains_key(&target) {
+                self.active_spawned_agent = None;
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "Focused agent @{target} is no longer available. Use /agents or /spawn to continue."
+                    ),
+                ));
+                return;
+            }
+
+            let content = message.trim().to_string();
+            if content.is_empty() {
+                return;
+            }
+
+            self.messages
+                .push(ChatMessage::new("user", format!("@{target} {content}")));
+            self.scroll = SCROLL_BOTTOM;
+
+            if let Some(ref bus) = self.bus {
+                let handle = bus.handle("user");
+                handle.send_to_agent(
+                    &target,
+                    vec![crate::a2a::types::Part::Text {
+                        text: content.clone(),
+                    }],
+                );
+            }
+
             self.send_to_agent(&target, &content, config).await;
             return;
         }
@@ -1051,8 +1210,8 @@ impl App {
                     .get(&current_agent)
                     .and_then(|agent| agent.model.clone())
             })
-            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
-            .or_else(|| config.default_model.clone());
+            .or_else(|| config.default_model.clone())
+            .or_else(|| Some("zai/glm-5".to_string()));
 
         // Initialize session if needed
         if self.session.is_none() {
@@ -1506,7 +1665,7 @@ impl App {
             .active_model
             .clone()
             .or_else(|| config.default_model.clone())
-            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok());
+            .or_else(|| Some("zai/glm-5".to_string()));
 
         let model = match model {
             Some(m) => m,
@@ -1630,7 +1789,7 @@ impl App {
         let model = config
             .default_model
             .clone()
-            .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok());
+            .or_else(|| Some("zai/glm-5".to_string()));
 
         // Configure swarm
         let swarm_config = SwarmConfig {
@@ -1795,6 +1954,59 @@ impl App {
                 })
                 .collect()
         }
+    }
+
+    /// Get filtered spawned agents list (sorted by name)
+    fn filtered_spawned_agents(&self) -> Vec<(String, String, bool)> {
+        let mut agents: Vec<(String, String, bool)> = self
+            .spawned_agents
+            .iter()
+            .map(|(name, agent)| {
+                (
+                    name.clone(),
+                    agent.instructions.clone(),
+                    agent.is_processing,
+                )
+            })
+            .collect();
+
+        agents.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+
+        if self.agent_picker_filter.is_empty() {
+            agents
+        } else {
+            let filter = self.agent_picker_filter.to_lowercase();
+            agents
+                .into_iter()
+                .filter(|(name, instructions, _)| {
+                    name.to_lowercase().contains(&filter)
+                        || instructions.to_lowercase().contains(&filter)
+                })
+                .collect()
+        }
+    }
+
+    /// Open picker for choosing a spawned sub-agent to focus
+    fn open_agent_picker(&mut self) {
+        if self.spawned_agents.is_empty() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "No agents spawned yet. Use /spawn <name> <instructions> first.",
+            ));
+            return;
+        }
+
+        self.agent_picker_filter.clear();
+        let filtered = self.filtered_spawned_agents();
+        self.agent_picker_selected = if let Some(active) = &self.active_spawned_agent {
+            filtered
+                .iter()
+                .position(|(name, _, _)| name == active)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        self.view_mode = ViewMode::AgentPicker;
     }
 
     fn navigate_history(&mut self, direction: isize) {
@@ -2367,6 +2579,72 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 continue;
             }
 
+            // Agent picker overlay
+            if app.view_mode == ViewMode::AgentPicker {
+                match key.code {
+                    KeyCode::Esc => {
+                        app.agent_picker_filter.clear();
+                        app.view_mode = ViewMode::Chat;
+                    }
+                    KeyCode::Up | KeyCode::Char('k')
+                        if !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        if app.agent_picker_selected > 0 {
+                            app.agent_picker_selected -= 1;
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('j')
+                        if !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        let filtered = app.filtered_spawned_agents();
+                        if app.agent_picker_selected < filtered.len().saturating_sub(1) {
+                            app.agent_picker_selected += 1;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        let filtered = app.filtered_spawned_agents();
+                        if let Some((name, _, _)) = filtered.get(app.agent_picker_selected) {
+                            app.active_spawned_agent = Some(name.clone());
+                            app.messages.push(ChatMessage::new(
+                                "system",
+                                format!(
+                                    "Focused chat on @{name}. Type messages directly; use /agent main to exit focus."
+                                ),
+                            ));
+                            app.view_mode = ViewMode::Chat;
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        app.agent_picker_filter.pop();
+                        app.agent_picker_selected = 0;
+                    }
+                    KeyCode::Char('m') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.active_spawned_agent = None;
+                        app.messages
+                            .push(ChatMessage::new("system", "Returned to main chat mode."));
+                        app.view_mode = ViewMode::Chat;
+                    }
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char(c)
+                        if !key.modifiers.contains(KeyModifiers::CONTROL)
+                            && !key.modifiers.contains(KeyModifiers::ALT)
+                            && c != 'j'
+                            && c != 'k'
+                            && c != 'm' =>
+                    {
+                        app.agent_picker_filter.push(c);
+                        app.agent_picker_selected = 0;
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+
             // Swarm view key handling
             if app.view_mode == ViewMode::Swarm {
                 match key.code {
@@ -2572,6 +2850,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         ViewMode::Chat
                         | ViewMode::SessionPicker
                         | ViewMode::ModelPicker
+                        | ViewMode::AgentPicker
                         | ViewMode::BusLog => ViewMode::Swarm,
                         ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                     };
@@ -2581,6 +2860,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         ViewMode::Chat
                         | ViewMode::SessionPicker
                         | ViewMode::ModelPicker
+                        | ViewMode::AgentPicker
                         | ViewMode::BusLog => ViewMode::Swarm,
                         ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
                     };
@@ -2641,6 +2921,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         || app.view_mode == ViewMode::BusLog
                         || app.view_mode == ViewMode::SessionPicker
                         || app.view_mode == ViewMode::ModelPicker
+                        || app.view_mode == ViewMode::AgentPicker
                     {
                         app.view_mode = ViewMode::Chat;
                     }
@@ -2649,6 +2930,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 // Model picker (Ctrl+M)
                 KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     app.open_model_picker(&config).await;
+                }
+
+                // Agent picker (Ctrl+A)
+                KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.open_agent_picker();
                 }
 
                 // Bus protocol log (Ctrl+L)
@@ -3206,6 +3492,83 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         return;
     }
 
+    // Agent picker view
+    if app.view_mode == ViewMode::AgentPicker {
+        let area = centered_rect(70, 70, f.area());
+        f.render_widget(Clear, area);
+
+        let filter_display = if app.agent_picker_filter.is_empty() {
+            "type to filter".to_string()
+        } else {
+            format!("filter: {}", app.agent_picker_filter)
+        };
+
+        let picker_block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(
+                " Select Agent (↑↓ navigate, Enter focus, m main chat, Esc cancel) [{}] ",
+                filter_display
+            ))
+            .border_style(Style::default().fg(Color::Magenta));
+
+        let filtered = app.filtered_spawned_agents();
+        let mut list_lines: Vec<Line> = Vec::new();
+        list_lines.push(Line::from(""));
+
+        if let Some(ref active) = app.active_spawned_agent {
+            list_lines.push(Line::styled(
+                format!("  Current focus: @{}", active),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::DIM),
+            ));
+            list_lines.push(Line::from(""));
+        }
+
+        if filtered.is_empty() {
+            list_lines.push(Line::styled(
+                "  No spawned agents match filter",
+                Style::default().fg(Color::DarkGray),
+            ));
+        } else {
+            for (display_idx, (name, instructions, is_processing)) in filtered.iter().enumerate() {
+                let is_selected = display_idx == app.agent_picker_selected;
+                let is_focused = app.active_spawned_agent.as_deref() == Some(name.as_str());
+                let marker = if is_selected { "▶" } else { " " };
+                let focused_marker = if is_focused { " ✓" } else { "" };
+                let status = if *is_processing { "⚡" } else { "●" };
+
+                let style = if is_selected {
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::BOLD)
+                } else if is_focused {
+                    Style::default().fg(Color::Green)
+                } else {
+                    Style::default()
+                };
+
+                list_lines.push(Line::styled(
+                    format!("  {marker} {status} @{name}{focused_marker}"),
+                    style,
+                ));
+
+                if is_selected {
+                    list_lines.push(Line::styled(
+                        format!("     {}", instructions),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+            }
+        }
+
+        let list = Paragraph::new(list_lines)
+            .block(picker_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(list, area);
+        return;
+    }
+
     if app.chat_layout == ChatLayoutMode::Webview {
         if render_webview_chat(f, app, theme) {
             render_help_overlay_if_needed(f, app, theme);
@@ -3226,11 +3589,16 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     // Messages area with theme-based styling
     let messages_area = chunks[0];
     let model_label = app.active_model.as_deref().unwrap_or("auto");
+    let target_label = app
+        .active_spawned_agent
+        .as_ref()
+        .map(|name| format!(" @{}", name))
+        .unwrap_or_default();
     let messages_block = Block::default()
         .borders(Borders::ALL)
         .title(format!(
-            " CodeTether Agent [{}] model:{} ",
-            app.current_agent, model_label
+            " CodeTether Agent [{}{}] model:{} ",
+            app.current_agent, target_label, model_label
         ))
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
@@ -3288,6 +3656,8 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     } else if app.input.starts_with('/') {
         let hint = match_slash_command_hint(&app.input);
         format!(" {} ", hint)
+    } else if let Some(target) = &app.active_spawned_agent {
+        format!(" Message to @{target} (use /agent main to exit) ")
     } else {
         " Message (Enter to send, / for commands) ".to_string()
     };
@@ -3599,9 +3969,14 @@ fn render_webview_sidebar(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
 
 fn render_webview_chat_center(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
     let messages_area = area;
+    let focused_suffix = app
+        .active_spawned_agent
+        .as_ref()
+        .map(|name| format!(" → @{name}"))
+        .unwrap_or_default();
     let messages_block = Block::default()
         .borders(Borders::ALL)
-        .title(format!(" Chat [{}] ", app.current_agent))
+        .title(format!(" Chat [{}{}] ", app.current_agent, focused_suffix))
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
     let max_width = messages_area.width.saturating_sub(4) as usize;
@@ -3736,9 +4111,14 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("Model: ", label_style),
         Span::styled(model_label.to_string(), Style::default().fg(Color::Green)),
     ]));
+    let agent_display = if let Some(target) = &app.active_spawned_agent {
+        format!("{} → @{} (focused)", app.current_agent, target)
+    } else {
+        app.current_agent.clone()
+    };
     lines.push(Line::from(vec![
         Span::styled("Agent: ", label_style),
-        Span::styled(app.current_agent.clone(), Style::default()),
+        Span::styled(agent_display, Style::default()),
     ]));
     lines.push(Line::from(vec![
         Span::styled("Messages: ", label_style),
@@ -3752,6 +4132,50 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("Tools used: ", label_style),
         Span::styled(app.tool_call_count.to_string(), Style::default()),
     ]));
+    lines.push(Line::from(""));
+    lines.push(Line::styled(
+        "Sub-agents",
+        Style::default().add_modifier(Modifier::BOLD),
+    ));
+    if app.spawned_agents.is_empty() {
+        lines.push(Line::styled(
+            "None (use /spawn <name> <instructions>)",
+            Style::default().fg(Color::DarkGray),
+        ));
+    } else {
+        for (name, agent) in app.spawned_agents.iter().take(4) {
+            let status = if agent.is_processing { "⚡" } else { "●" };
+            let focused = if app.active_spawned_agent.as_deref() == Some(name.as_str()) {
+                " [focused]"
+            } else {
+                ""
+            };
+            lines.push(Line::styled(
+                format!("{status} @{name}{focused}"),
+                if focused.is_empty() {
+                    Style::default().fg(Color::Magenta)
+                } else {
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::BOLD)
+                },
+            ));
+            lines.push(Line::styled(
+                format!("   {}", agent.instructions),
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ));
+        }
+        if app.spawned_agents.len() > 4 {
+            lines.push(Line::styled(
+                format!("… and {} more", app.spawned_agents.len() - 4),
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::DIM),
+            ));
+        }
+    }
     lines.push(Line::from(""));
     lines.push(Line::styled(
         "Shortcuts",
@@ -3798,6 +4222,8 @@ fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
         // Show matching slash commands as hints
         let hint = match_slash_command_hint(&app.input);
         format!(" {} ", hint)
+    } else if let Some(target) = &app.active_spawned_agent {
+        format!(" Message to @{target} (use /agent main to exit) ")
     } else {
         " Message (Enter to send, / for commands) ".to_string()
     };
@@ -4177,6 +4603,10 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
 
 fn match_slash_command_hint(input: &str) -> String {
     let commands = [
+        ("/spawn ", "Create a named sub-agent"),
+        ("/agents", "List spawned sub-agents"),
+        ("/kill ", "Remove a spawned sub-agent"),
+        ("/agent ", "Focus or message a spawned sub-agent"),
         ("/swarm ", "Run task in parallel swarm mode"),
         ("/ralph", "Start autonomous PRD loop"),
         ("/undo", "Undo last message and response"),
@@ -4415,6 +4845,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "".to_string(),
         "  Enter        Send message".to_string(),
         "  Tab          Switch between build/plan agents".to_string(),
+        "  Ctrl+A       Open spawned-agent picker".to_string(),
         "  Ctrl+M       Open model picker".to_string(),
         "  Ctrl+L       Protocol bus log".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
@@ -4425,6 +4856,16 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  ?            Toggle this help".to_string(),
         "".to_string(),
         "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
+        "  /spawn <name> <instructions>  Create a named sub-agent".to_string(),
+        "  /agents        List spawned sub-agents".to_string(),
+        "  /kill <name>   Remove a spawned sub-agent".to_string(),
+        "  /agent <name>  Focus chat on a spawned sub-agent".to_string(),
+        "  /agent <name> <message>  Send one message to a spawned sub-agent"
+            .to_string(),
+        "  /agent            Open spawned-agent picker"
+            .to_string(),
+        "  /agent main|off  Exit focused sub-agent chat"
+            .to_string(),
         "  /swarm <task>   Run task in parallel swarm mode".to_string(),
         "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
         "  /undo           Undo last message and response".to_string(),

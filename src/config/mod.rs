@@ -325,6 +325,7 @@ impl Config {
 
         // Apply environment overrides
         config.apply_env();
+        config.normalize_legacy_defaults();
 
         Ok(config)
     }
@@ -479,6 +480,49 @@ impl Config {
             self.telemetry.crash_report_endpoint = Some(val);
         }
     }
+
+    /// Normalize legacy provider/model defaults from older releases.
+    ///
+    /// Historical versions defaulted to Moonshot Kimi K2.5. The current
+    /// product default is Z.AI GLM-5, so we migrate only known legacy default
+    /// values while preserving all other explicit user choices.
+    fn normalize_legacy_defaults(&mut self) {
+        if let Some(provider) = self.default_provider.as_deref()
+            && provider.trim().eq_ignore_ascii_case("zhipuai")
+        {
+            self.default_provider = Some("zai".to_string());
+        }
+
+        if let Some(model) = self.default_model.as_deref() {
+            let model_trimmed = model.trim();
+
+            if model_trimmed.eq_ignore_ascii_case("zhipuai/glm-5") {
+                self.default_model = Some("zai/glm-5".to_string());
+                return;
+            }
+
+            let is_legacy_kimi_default = model_trimmed
+                .eq_ignore_ascii_case("moonshotai/kimi-k2.5")
+                || model_trimmed.eq_ignore_ascii_case("kimi-k2.5");
+
+            if is_legacy_kimi_default {
+                tracing::info!(
+                    from = %model_trimmed,
+                    to = "zai/glm-5",
+                    "Migrating legacy default model to current Z.AI GLM-5 default"
+                );
+                self.default_model = Some("zai/glm-5".to_string());
+
+                let should_update_provider = self.default_provider.as_deref().is_none_or(|p| {
+                    let p = p.trim();
+                    p.eq_ignore_ascii_case("moonshotai") || p.eq_ignore_ascii_case("zhipuai")
+                });
+                if should_update_provider {
+                    self.default_provider = Some("zai".to_string());
+                }
+            }
+        }
+    }
 }
 
 fn parse_bool(value: &str) -> Result<bool> {
@@ -487,5 +531,52 @@ fn parse_bool(value: &str) -> Result<bool> {
         "1" | "true" | "yes" | "on" => Ok(true),
         "0" | "false" | "no" | "off" => Ok(false),
         _ => anyhow::bail!("Invalid boolean value: {}", value),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+
+    #[test]
+    fn migrates_legacy_kimi_default_to_zai_glm5() {
+        let mut cfg = Config {
+            default_provider: Some("moonshotai".to_string()),
+            default_model: Some("moonshotai/kimi-k2.5".to_string()),
+            ..Default::default()
+        };
+
+        cfg.normalize_legacy_defaults();
+
+        assert_eq!(cfg.default_provider.as_deref(), Some("zai"));
+        assert_eq!(cfg.default_model.as_deref(), Some("zai/glm-5"));
+    }
+
+    #[test]
+    fn preserves_explicit_non_legacy_default_model() {
+        let mut cfg = Config {
+            default_provider: Some("openai".to_string()),
+            default_model: Some("openai/gpt-4o".to_string()),
+            ..Default::default()
+        };
+
+        cfg.normalize_legacy_defaults();
+
+        assert_eq!(cfg.default_provider.as_deref(), Some("openai"));
+        assert_eq!(cfg.default_model.as_deref(), Some("openai/gpt-4o"));
+    }
+
+    #[test]
+    fn normalizes_zhipuai_aliases_to_zai() {
+        let mut cfg = Config {
+            default_provider: Some("zhipuai".to_string()),
+            default_model: Some("zhipuai/glm-5".to_string()),
+            ..Default::default()
+        };
+
+        cfg.normalize_legacy_defaults();
+
+        assert_eq!(cfg.default_provider.as_deref(), Some("zai"));
+        assert_eq!(cfg.default_model.as_deref(), Some("zai/glm-5"));
     }
 }
