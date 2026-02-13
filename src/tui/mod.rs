@@ -476,14 +476,11 @@ fn vault_extra_string(secrets: &crate::secrets::ProviderSecrets, keys: &[&str]) 
 
 fn vault_extra_bool(secrets: &crate::secrets::ProviderSecrets, keys: &[&str]) -> Option<bool> {
     keys.iter().find_map(|key| {
-        secrets
-            .extra
-            .get(*key)
-            .and_then(|value| match value {
-                serde_json::Value::Bool(flag) => Some(*flag),
-                serde_json::Value::String(text) => parse_bool_str(text),
-                _ => None,
-            })
+        secrets.extra.get(*key).and_then(|value| match value {
+            serde_json::Value::Bool(flag) => Some(*flag),
+            serde_json::Value::String(text) => parse_bool_str(text),
+            _ => None,
+        })
     })
 }
 
@@ -6979,10 +6976,7 @@ fn is_glm5_model(model: &str) -> bool {
 
 fn is_minimax_m25_model(model: &str) -> bool {
     let normalized = model.trim().to_ascii_lowercase();
-    matches!(
-        normalized.as_str(),
-        "minimax/minimax-m2.5" | "minimax-m2.5"
-    )
+    matches!(normalized.as_str(), "minimax/minimax-m2.5" | "minimax-m2.5")
 }
 
 fn next_go_model(current_model: Option<&str>) -> String {
@@ -7523,8 +7517,8 @@ mod tests {
         AUTOCHAT_QUICK_DEMO_TASK, agent_avatar, agent_profile, command_with_optional_args,
         estimate_cost, format_agent_identity, format_relay_handoff_line, is_easy_go_command,
         is_secure_environment_from_values, match_slash_command_hint, minio_fallback_endpoint,
-        next_go_model, normalize_easy_command, normalize_for_convergence,
-        normalize_minio_endpoint, parse_autochat_args,
+        next_go_model, normalize_easy_command, normalize_for_convergence, normalize_minio_endpoint,
+        parse_autochat_args,
     };
 
     #[test]
@@ -7740,10 +7734,7 @@ mod tests {
     fn next_go_model_toggles_between_glm_and_minimax() {
         assert_eq!(next_go_model(Some("zai/glm-5")), "minimax/MiniMax-M2.5");
         assert_eq!(next_go_model(Some("z-ai/glm-5")), "minimax/MiniMax-M2.5");
-        assert_eq!(
-            next_go_model(Some("minimax/MiniMax-M2.5")),
-            "zai/glm-5"
-        );
+        assert_eq!(next_go_model(Some("minimax/MiniMax-M2.5")), "zai/glm-5");
         assert_eq!(next_go_model(Some("unknown/model")), "minimax/MiniMax-M2.5");
     }
 }

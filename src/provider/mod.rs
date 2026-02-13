@@ -208,9 +208,16 @@ impl ProviderRegistry {
         // Initialize Anthropic
         if let Some(provider_config) = config.providers.get("anthropic") {
             if let Some(api_key) = &provider_config.api_key {
-                registry.register(Arc::new(anthropic::AnthropicProvider::new(
-                    api_key.clone(),
-                )?));
+                let provider = if let Some(base_url) = provider_config.base_url.clone() {
+                    anthropic::AnthropicProvider::with_base_url(
+                        api_key.clone(),
+                        base_url,
+                        "anthropic",
+                    )?
+                } else {
+                    anthropic::AnthropicProvider::new(api_key.clone())?
+                };
+                registry.register(Arc::new(provider));
             }
         } else if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
             registry.register(Arc::new(anthropic::AnthropicProvider::new(api_key)?));
@@ -331,7 +338,15 @@ impl ProviderRegistry {
                 match provider_id.as_str() {
                     // Native providers
                     "anthropic" | "anthropic-eu" | "anthropic-asia" => {
-                        match anthropic::AnthropicProvider::new(api_key) {
+                        let base_url = secrets
+                            .base_url
+                            .clone()
+                            .unwrap_or_else(|| "https://api.anthropic.com".to_string());
+                        match anthropic::AnthropicProvider::with_base_url(
+                            api_key,
+                            base_url,
+                            &provider_id,
+                        ) {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                         }
@@ -428,13 +443,16 @@ impl ProviderRegistry {
                             Err(e) => tracing::warn!("Failed to init cerebras: {}", e),
                         }
                     }
-                    // MiniMax - OpenAI-compatible API
+                    // MiniMax - Anthropic-compatible API harness (recommended by MiniMax docs)
                     "minimax" => {
                         let base_url = secrets
                             .base_url
                             .clone()
-                            .unwrap_or_else(|| "https://api.minimax.io/v1".to_string());
-                        match openai::OpenAIProvider::with_base_url(api_key, base_url, "minimax") {
+                            .unwrap_or_else(|| "https://api.minimax.io/anthropic".to_string());
+                        let base_url = normalize_minimax_anthropic_base_url(&base_url);
+                        match anthropic::AnthropicProvider::with_base_url(
+                            api_key, base_url, "minimax",
+                        ) {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init minimax: {}", e),
                         }
@@ -531,6 +549,15 @@ impl ProviderRegistry {
             registry.providers.len()
         );
         Ok(registry)
+    }
+}
+
+fn normalize_minimax_anthropic_base_url(base_url: &str) -> String {
+    let trimmed = base_url.trim().trim_end_matches('/');
+    if trimmed.eq_ignore_ascii_case("https://api.minimax.io/v1") {
+        "https://api.minimax.io/anthropic".to_string()
+    } else {
+        trimmed.to_string()
     }
 }
 

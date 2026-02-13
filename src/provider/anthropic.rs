@@ -20,6 +20,9 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 pub struct AnthropicProvider {
     client: Client,
     api_key: String,
+    base_url: String,
+    provider_name: String,
+    enable_prompt_caching: bool,
 }
 
 impl std::fmt::Debug for AnthropicProvider {
@@ -27,20 +30,43 @@ impl std::fmt::Debug for AnthropicProvider {
         f.debug_struct("AnthropicProvider")
             .field("api_key", &"<REDACTED>")
             .field("api_key_len", &self.api_key.len())
+            .field("base_url", &self.base_url)
+            .field("provider_name", &self.provider_name)
+            .field("enable_prompt_caching", &self.enable_prompt_caching)
             .finish()
     }
 }
 
 impl AnthropicProvider {
     pub fn new(api_key: String) -> Result<Self> {
+        Self::with_base_url(api_key, ANTHROPIC_API_BASE.to_string(), "anthropic")
+    }
+
+    pub fn with_base_url(
+        api_key: String,
+        base_url: String,
+        provider_name: impl Into<String>,
+    ) -> Result<Self> {
+        let provider_name = provider_name.into();
+        let enable_prompt_caching = std::env::var("CODETETHER_ANTHROPIC_PROMPT_CACHING")
+            .ok()
+            .and_then(|v| parse_bool_env(&v))
+            .unwrap_or_else(|| provider_name.eq_ignore_ascii_case("minimax"));
+
         tracing::debug!(
-            provider = "anthropic",
+            provider = %provider_name,
             api_key_len = api_key.len(),
+            base_url = %base_url,
+            enable_prompt_caching,
             "Creating Anthropic provider"
         );
+
         Ok(Self {
             client: Client::new(),
             api_key,
+            base_url,
+            provider_name,
+            enable_prompt_caching,
         })
     }
 
@@ -57,40 +83,59 @@ impl AnthropicProvider {
     /// - system prompt is a top-level field, not a message
     /// - tool results go in user messages with type "tool_result"
     /// - tool calls appear in assistant messages with type "tool_use"
-    fn convert_messages(messages: &[Message]) -> (Option<String>, Vec<Value>) {
-        let mut system_prompt = None;
+    fn convert_messages(
+        messages: &[Message],
+        enable_prompt_caching: bool,
+    ) -> (Option<Vec<Value>>, Vec<Value>) {
+        let mut system_blocks: Vec<Value> = Vec::new();
         let mut api_messages: Vec<Value> = Vec::new();
 
         for msg in messages {
             match msg.role {
                 Role::System => {
-                    let text: String = msg
-                        .content
-                        .iter()
-                        .filter_map(|p| match p {
-                            ContentPart::Text { text } => Some(text.clone()),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    system_prompt = Some(match system_prompt {
-                        Some(existing) => format!("{}\n{}", existing, text),
-                        None => text,
-                    });
+                    for part in &msg.content {
+                        match part {
+                            ContentPart::Text { text } => {
+                                system_blocks.push(json!({
+                                    "type": "text",
+                                    "text": text,
+                                }));
+                            }
+                            ContentPart::Thinking { text } => {
+                                system_blocks.push(json!({
+                                    "type": "thinking",
+                                    "thinking": text,
+                                }));
+                            }
+                            _ => {}
+                        }
+                    }
                 }
                 Role::User => {
-                    let text: String = msg
-                        .content
-                        .iter()
-                        .filter_map(|p| match p {
-                            ContentPart::Text { text } => Some(text.clone()),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                    let mut content_parts: Vec<Value> = Vec::new();
+                    for part in &msg.content {
+                        match part {
+                            ContentPart::Text { text } => {
+                                content_parts.push(json!({
+                                    "type": "text",
+                                    "text": text,
+                                }));
+                            }
+                            ContentPart::Thinking { text } => {
+                                content_parts.push(json!({
+                                    "type": "thinking",
+                                    "thinking": text,
+                                }));
+                            }
+                            _ => {}
+                        }
+                    }
+                    if content_parts.is_empty() {
+                        content_parts.push(json!({"type": "text", "text": " "}));
+                    }
                     api_messages.push(json!({
                         "role": "user",
-                        "content": text
+                        "content": content_parts
                     }));
                 }
                 Role::Assistant => {
@@ -99,12 +144,16 @@ impl AnthropicProvider {
                     for part in &msg.content {
                         match part {
                             ContentPart::Text { text } => {
-                                if !text.is_empty() {
-                                    content_parts.push(json!({
-                                        "type": "text",
-                                        "text": text
-                                    }));
-                                }
+                                content_parts.push(json!({
+                                    "type": "text",
+                                    "text": text
+                                }));
+                            }
+                            ContentPart::Thinking { text } => {
+                                content_parts.push(json!({
+                                    "type": "thinking",
+                                    "thinking": text
+                                }));
                             }
                             ContentPart::ToolCall {
                                 id,
@@ -158,11 +207,30 @@ impl AnthropicProvider {
             }
         }
 
-        (system_prompt, api_messages)
+        if enable_prompt_caching {
+            if let Some(last_tool_or_text_msg) = api_messages.iter_mut().rev().find_map(|msg| {
+                msg.get_mut("content")
+                    .and_then(Value::as_array_mut)
+                    .and_then(|parts| parts.last_mut())
+            }) {
+                Self::add_ephemeral_cache_control(last_tool_or_text_msg);
+            }
+            if let Some(last_system) = system_blocks.last_mut() {
+                Self::add_ephemeral_cache_control(last_system);
+            }
+        }
+
+        let system = if system_blocks.is_empty() {
+            None
+        } else {
+            Some(system_blocks)
+        };
+
+        (system, api_messages)
     }
 
-    fn convert_tools(tools: &[ToolDefinition]) -> Vec<Value> {
-        tools
+    fn convert_tools(tools: &[ToolDefinition], enable_prompt_caching: bool) -> Vec<Value> {
+        let mut converted: Vec<Value> = tools
             .iter()
             .map(|t| {
                 json!({
@@ -171,7 +239,19 @@ impl AnthropicProvider {
                     "input_schema": t.parameters
                 })
             })
-            .collect()
+            .collect();
+
+        if enable_prompt_caching && let Some(last_tool) = converted.last_mut() {
+            Self::add_ephemeral_cache_control(last_tool);
+        }
+
+        converted
+    }
+
+    fn add_ephemeral_cache_control(block: &mut Value) {
+        if let Some(obj) = block.as_object_mut() {
+            obj.insert("cache_control".to_string(), json!({ "type": "ephemeral" }));
+        }
     }
 }
 
@@ -193,12 +273,21 @@ struct AnthropicResponse {
 enum AnthropicContent {
     #[serde(rename = "text")]
     Text { text: String },
+    #[serde(rename = "thinking")]
+    Thinking {
+        #[serde(default)]
+        thinking: Option<String>,
+        #[serde(default)]
+        text: Option<String>,
+    },
     #[serde(rename = "tool_use")]
     ToolUse {
         id: String,
         name: String,
         input: Value,
     },
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Deserialize)]
@@ -228,17 +317,82 @@ struct AnthropicErrorDetail {
 #[async_trait]
 impl Provider for AnthropicProvider {
     fn name(&self) -> &str {
-        "anthropic"
+        &self.provider_name
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         self.validate_api_key()?;
 
+        if self.provider_name.eq_ignore_ascii_case("minimax") {
+            return Ok(vec![
+                ModelInfo {
+                    id: "MiniMax-M2.5".to_string(),
+                    name: "MiniMax M2.5".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.3),
+                    output_cost_per_million: Some(1.2),
+                },
+                ModelInfo {
+                    id: "MiniMax-M2.5-lightning".to_string(),
+                    name: "MiniMax M2.5 Lightning".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.3),
+                    output_cost_per_million: Some(2.4),
+                },
+                ModelInfo {
+                    id: "MiniMax-M2.1".to_string(),
+                    name: "MiniMax M2.1".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.3),
+                    output_cost_per_million: Some(1.2),
+                },
+                ModelInfo {
+                    id: "MiniMax-M2.1-lightning".to_string(),
+                    name: "MiniMax M2.1 Lightning".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.3),
+                    output_cost_per_million: Some(2.4),
+                },
+                ModelInfo {
+                    id: "MiniMax-M2".to_string(),
+                    name: "MiniMax M2".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.3),
+                    output_cost_per_million: Some(1.2),
+                },
+            ]);
+        }
+
         Ok(vec![
             ModelInfo {
                 id: "claude-sonnet-4-20250514".to_string(),
                 name: "Claude Sonnet 4".to_string(),
-                provider: "anthropic".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 200_000,
                 max_output_tokens: Some(64_000),
                 supports_vision: true,
@@ -250,7 +404,7 @@ impl Provider for AnthropicProvider {
             ModelInfo {
                 id: "claude-opus-4-20250514".to_string(),
                 name: "Claude Opus 4".to_string(),
-                provider: "anthropic".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 200_000,
                 max_output_tokens: Some(32_000),
                 supports_vision: true,
@@ -262,7 +416,7 @@ impl Provider for AnthropicProvider {
             ModelInfo {
                 id: "claude-haiku-3-5-20241022".to_string(),
                 name: "Claude 3.5 Haiku".to_string(),
-                provider: "anthropic".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 200_000,
                 max_output_tokens: Some(8_192),
                 supports_vision: true,
@@ -276,7 +430,7 @@ impl Provider for AnthropicProvider {
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         tracing::debug!(
-            provider = "anthropic",
+            provider = %self.provider_name,
             model = %request.model,
             message_count = request.messages.len(),
             tool_count = request.tools.len(),
@@ -285,8 +439,9 @@ impl Provider for AnthropicProvider {
 
         self.validate_api_key()?;
 
-        let (system_prompt, messages) = Self::convert_messages(&request.messages);
-        let tools = Self::convert_tools(&request.tools);
+        let (system_prompt, messages) =
+            Self::convert_messages(&request.messages, self.enable_prompt_caching);
+        let tools = Self::convert_tools(&request.tools, self.enable_prompt_caching);
 
         let mut body = json!({
             "model": request.model,
@@ -311,7 +466,10 @@ impl Provider for AnthropicProvider {
 
         let response = self
             .client
-            .post(format!("{}/v1/messages", ANTHROPIC_API_BASE))
+            .post(format!(
+                "{}/v1/messages",
+                self.base_url.trim_end_matches('/')
+            ))
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", ANTHROPIC_VERSION)
             .header("content-type", "application/json")
@@ -359,6 +517,17 @@ impl Provider for AnthropicProvider {
                         content.push(ContentPart::Text { text: text.clone() });
                     }
                 }
+                AnthropicContent::Thinking { thinking, text } => {
+                    let reasoning = thinking
+                        .as_deref()
+                        .or(text.as_deref())
+                        .unwrap_or_default()
+                        .trim()
+                        .to_string();
+                    if !reasoning.is_empty() {
+                        content.push(ContentPart::Thinking { text: reasoning });
+                    }
+                }
                 AnthropicContent::ToolUse { id, name, input } => {
                     has_tool_calls = true;
                     content.push(ContentPart::ToolCall {
@@ -367,6 +536,7 @@ impl Provider for AnthropicProvider {
                         arguments: serde_json::to_string(input).unwrap_or_default(),
                     });
                 }
+                AnthropicContent::Unknown => {}
             }
         }
 
@@ -420,5 +590,85 @@ impl Provider for AnthropicProvider {
         Ok(Box::pin(futures::stream::once(async move {
             StreamChunk::Text(text)
         })))
+    }
+}
+
+fn parse_bool_env(value: &str) -> Option<bool> {
+    let normalized = value.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "1" | "true" | "yes" | "on" | "enabled" => Some(true),
+        "0" | "false" | "no" | "off" | "disabled" => Some(false),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adds_cache_control_to_last_tool_system_and_message_block() {
+        let messages = vec![
+            Message {
+                role: Role::System,
+                content: vec![ContentPart::Text {
+                    text: "static instruction".to_string(),
+                }],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "dynamic input".to_string(),
+                }],
+            },
+        ];
+
+        let (system, converted_messages) = AnthropicProvider::convert_messages(&messages, true);
+        let mut converted_tools = AnthropicProvider::convert_tools(
+            &[ToolDefinition {
+                name: "get_weather".to_string(),
+                description: "Get weather".to_string(),
+                parameters: json!({"type": "object"}),
+            }],
+            true,
+        );
+
+        let system = system.expect("system blocks should be present");
+        let system_cache = system
+            .last()
+            .and_then(|v| v.get("cache_control"))
+            .and_then(|v| v.get("type"))
+            .and_then(Value::as_str);
+        assert_eq!(system_cache, Some("ephemeral"));
+
+        let message_cache = converted_messages
+            .last()
+            .and_then(|msg| msg.get("content"))
+            .and_then(Value::as_array)
+            .and_then(|parts| parts.last())
+            .and_then(|part| part.get("cache_control"))
+            .and_then(|v| v.get("type"))
+            .and_then(Value::as_str);
+        assert_eq!(message_cache, Some("ephemeral"));
+
+        let tool_cache = converted_tools
+            .pop()
+            .and_then(|tool| tool.get("cache_control").cloned())
+            .and_then(|v| v.get("type").cloned())
+            .and_then(|v| v.as_str().map(str::to_string));
+        assert_eq!(tool_cache.as_deref(), Some("ephemeral"));
+    }
+
+    #[test]
+    fn minimax_provider_name_enables_prompt_caching_by_default() {
+        let provider = AnthropicProvider::with_base_url(
+            "test-key".to_string(),
+            "https://api.minimax.io/anthropic".to_string(),
+            "minimax",
+        )
+        .expect("provider should initialize");
+
+        assert_eq!(provider.name(), "minimax");
+        assert!(provider.enable_prompt_caching);
     }
 }

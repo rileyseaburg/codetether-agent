@@ -361,9 +361,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
 
 fn prefers_temperature_one(model: &str) -> bool {
     let normalized = model.to_ascii_lowercase();
-    normalized.contains("kimi-k2")
-        || normalized.contains("glm-")
-        || normalized.contains("minimax")
+    normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
 }
 
 fn is_swarm_agent(agent_type: &str) -> bool {

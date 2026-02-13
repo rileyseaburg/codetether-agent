@@ -30,6 +30,7 @@ fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
         "openai",
         "github-copilot",
         "anthropic",
+        "minimax",
         "openrouter",
         "novita",
         "moonshotai",
@@ -45,9 +46,7 @@ fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
 
 fn prefers_temperature_one(model: &str) -> bool {
     let normalized = model.to_ascii_lowercase();
-    normalized.contains("kimi-k2")
-        || normalized.contains("glm-")
-        || normalized.contains("minimax")
+    normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
 }
 
 /// A conversation session
@@ -77,6 +76,7 @@ impl Session {
         match provider {
             "moonshotai" => "kimi-k2.5".to_string(),
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
+            "minimax" => "MiniMax-M2.5".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
             "zhipuai" | "zai" => "glm-5".to_string(),
