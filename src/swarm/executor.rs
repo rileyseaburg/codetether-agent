@@ -419,6 +419,10 @@ impl SwarmExecutor {
     }
     /// Get the coordinator agent if set
     pub fn coordinator_agent(&self) -> Option<&Arc<tokio::sync::Mutex<Agent>>> {
+        tracing::debug!(
+            has_coordinator = self.coordinator_agent.is_some(),
+            "Getting coordinator agent"
+        );
         self.coordinator_agent.as_ref()
     }
 

@@ -39,6 +39,11 @@ impl SkillTool {
         }
     }
 
+    /// Get the skill cache for internal tracking
+    pub fn cache(&self) -> &HashMap<String, String> {
+        &self.cache
+    }
+
     async fn list_skills(&self) -> Result<Vec<String>> {
         let mut skills = Vec::new();
 

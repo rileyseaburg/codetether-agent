@@ -16,6 +16,7 @@ pub mod image;
 pub mod invalid;
 pub mod lsp;
 pub mod mcp_bridge;
+pub mod memory;
 pub mod multiedit;
 pub mod patch;
 pub mod plan;
@@ -219,6 +220,7 @@ impl ToolRegistry {
         registry.register(Arc::new(plan::PlanEnterTool::new()));
         registry.register(Arc::new(plan::PlanExitTool::new()));
         registry.register(Arc::new(skill::SkillTool::new()));
+        registry.register(Arc::new(memory::MemoryTool::new()));
         registry.register(Arc::new(rlm::RlmTool::new()));
         registry.register(Arc::new(ralph::RalphTool::new()));
         registry.register(Arc::new(prd::PrdTool::new()));
@@ -267,6 +269,7 @@ impl ToolRegistry {
         registry.register(Arc::new(plan::PlanEnterTool::new()));
         registry.register(Arc::new(plan::PlanExitTool::new()));
         registry.register(Arc::new(skill::SkillTool::new()));
+        registry.register(Arc::new(memory::MemoryTool::new()));
         registry.register(Arc::new(rlm::RlmTool::new()));
         // RalphTool with provider for autonomous execution
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));

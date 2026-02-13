@@ -6,13 +6,15 @@ use crate::config::Config;
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
 use anyhow::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
 
 const AUTOCHAT_MAX_AGENTS: usize = 8;
 const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
 const AUTOCHAT_MAX_ROUNDS: usize = 3;
-const AUTOCHAT_QUICK_DEMO_TASK: &str = "Introduce yourselves with your role/personality, then relay one concrete implementation plan with clear next handoffs.";
+const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
+const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
+const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
 const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M2.5";
 
 #[derive(Debug, Clone)]
@@ -20,6 +22,34 @@ struct RelayProfile {
     name: String,
     instructions: String,
     capabilities: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct PlannedRelayProfile {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    specialty: String,
+    #[serde(default)]
+    mission: String,
+    #[serde(default)]
+    capabilities: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct PlannedRelayResponse {
+    #[serde(default)]
+    profiles: Vec<PlannedRelayProfile>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RelaySpawnDecision {
+    #[serde(default)]
+    spawn: bool,
+    #[serde(default)]
+    reason: String,
+    #[serde(default)]
+    profile: Option<PlannedRelayProfile>,
 }
 
 #[derive(Debug, Serialize)]
@@ -33,6 +63,327 @@ struct AutochatCliResult {
     final_handoff: String,
     summary: String,
     failure: Option<String>,
+}
+
+fn slugify_label(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut last_dash = false;
+
+    for ch in value.chars() {
+        let ch = ch.to_ascii_lowercase();
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch);
+            last_dash = false;
+        } else if !last_dash {
+            out.push('-');
+            last_dash = true;
+        }
+    }
+
+    out.trim_matches('-').to_string()
+}
+
+fn sanitize_relay_agent_name(value: &str) -> String {
+    let raw = slugify_label(value);
+    let base = if raw.is_empty() {
+        "auto-specialist".to_string()
+    } else if raw.starts_with("auto-") {
+        raw
+    } else {
+        format!("auto-{raw}")
+    };
+
+    truncate_with_ellipsis(&base, 48)
+        .trim_end_matches("...")
+        .to_string()
+}
+
+fn unique_relay_agent_name(base: &str, existing: &[String]) -> String {
+    if !existing.iter().any(|name| name == base) {
+        return base.to_string();
+    }
+
+    let mut suffix = 2usize;
+    loop {
+        let candidate = format!("{base}-{suffix}");
+        if !existing.iter().any(|name| name == &candidate) {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+fn relay_instruction_from_plan(name: &str, specialty: &str, mission: &str) -> String {
+    format!(
+        "You are @{name}.\n\
+         Specialty: {specialty}.\n\
+         Mission: {mission}\n\n\
+         This is a protocol-first relay conversation. Treat incoming handoffs as authoritative context.\n\
+         Keep responses concise, concrete, and useful for the next specialist.\n\
+         Include one clear recommendation for what the next agent should do.\n\
+         If the task is too large for the current team, explicitly call out missing specialties and handoff boundaries.",
+    )
+}
+
+fn build_runtime_profile_from_plan(
+    profile: PlannedRelayProfile,
+    existing: &[String],
+) -> Option<RelayProfile> {
+    let specialty = if profile.specialty.trim().is_empty() {
+        "generalist".to_string()
+    } else {
+        profile.specialty.trim().to_string()
+    };
+
+    let mission = if profile.mission.trim().is_empty() {
+        "Advance the relay with concrete next actions and clear handoffs.".to_string()
+    } else {
+        profile.mission.trim().to_string()
+    };
+
+    let base_name = if profile.name.trim().is_empty() {
+        format!("auto-{}", slugify_label(&specialty))
+    } else {
+        profile.name.trim().to_string()
+    };
+
+    let sanitized = sanitize_relay_agent_name(&base_name);
+    let name = unique_relay_agent_name(&sanitized, existing);
+    if name.trim().is_empty() {
+        return None;
+    }
+
+    let mut capabilities: Vec<String> = Vec::new();
+    let specialty_cap = slugify_label(&specialty);
+    if !specialty_cap.is_empty() {
+        capabilities.push(specialty_cap);
+    }
+
+    for capability in profile.capabilities {
+        let normalized = slugify_label(&capability);
+        if !normalized.is_empty() && !capabilities.contains(&normalized) {
+            capabilities.push(normalized);
+        }
+    }
+
+    for required in ["relay", "context-handoff", "autochat"] {
+        if !capabilities.iter().any(|capability| capability == required) {
+            capabilities.push(required.to_string());
+        }
+    }
+
+    Some(RelayProfile {
+        name: name.clone(),
+        instructions: relay_instruction_from_plan(&name, &specialty, &mission),
+        capabilities,
+    })
+}
+
+fn extract_json_payload<T: DeserializeOwned>(text: &str) -> Option<T> {
+    let trimmed = text.trim();
+    if let Ok(value) = serde_json::from_str::<T>(trimmed) {
+        return Some(value);
+    }
+
+    if let (Some(start), Some(end)) = (trimmed.find('{'), trimmed.rfind('}'))
+        && start < end
+        && let Ok(value) = serde_json::from_str::<T>(&trimmed[start..=end])
+    {
+        return Some(value);
+    }
+
+    if let (Some(start), Some(end)) = (trimmed.find('['), trimmed.rfind(']'))
+        && start < end
+        && let Ok(value) = serde_json::from_str::<T>(&trimmed[start..=end])
+    {
+        return Some(value);
+    }
+
+    None
+}
+
+fn resolve_provider_for_model_autochat(
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+    model_ref: &str,
+) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
+    let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
+    if let Some(provider_name) = provider_name
+        && let Some(provider) = registry.get(provider_name)
+    {
+        return Some((provider, model_name.to_string()));
+    }
+
+    let fallbacks = [
+        "zai",
+        "openai",
+        "github-copilot",
+        "anthropic",
+        "openrouter",
+        "novita",
+        "moonshotai",
+        "google",
+    ];
+
+    for provider_name in fallbacks {
+        if let Some(provider) = registry.get(provider_name) {
+            return Some((provider, model_ref.to_string()));
+        }
+    }
+
+    registry
+        .list()
+        .first()
+        .copied()
+        .and_then(|name| registry.get(name))
+        .map(|provider| (provider, model_ref.to_string()))
+}
+
+async fn plan_relay_profiles_with_registry(
+    task: &str,
+    model_ref: &str,
+    requested_agents: usize,
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+) -> Option<Vec<RelayProfile>> {
+    let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+    let requested_agents = requested_agents.clamp(2, AUTOCHAT_MAX_AGENTS);
+
+    let request = crate::provider::CompletionRequest {
+        model: model_name,
+        messages: vec![
+            crate::provider::Message {
+                role: crate::provider::Role::System,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: "You are a relay-team architect. Return ONLY valid JSON.".to_string(),
+                }],
+            },
+            crate::provider::Message {
+                role: crate::provider::Role::User,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: format!(
+                        "Task:\n{task}\n\nDesign a task-specific relay team.\n\
+                         Respond with JSON object only:\n\
+                         {{\n  \"profiles\": [\n    {{\"name\":\"auto-...\",\"specialty\":\"...\",\"mission\":\"...\",\"capabilities\":[\"...\"]}}\n  ]\n}}\n\
+                         Requirements:\n\
+                         - Return {} profiles\n\
+                         - Names must be short kebab-case\n\
+                         - Capabilities must be concise skill tags\n\
+                         - Missions should be concrete and handoff-friendly",
+                        requested_agents
+                    ),
+                }],
+            },
+        ],
+        tools: Vec::new(),
+        temperature: Some(1.0),
+        top_p: Some(0.9),
+        max_tokens: Some(1200),
+        stop: Vec::new(),
+    };
+
+    let response = provider.complete(request).await.ok()?;
+    let text = response
+        .message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text }
+            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let planned = extract_json_payload::<PlannedRelayResponse>(&text)?;
+    let mut existing = Vec::<String>::new();
+    let mut runtime = Vec::<RelayProfile>::new();
+
+    for profile in planned.profiles.into_iter().take(AUTOCHAT_MAX_AGENTS) {
+        if let Some(runtime_profile) = build_runtime_profile_from_plan(profile, &existing) {
+            existing.push(runtime_profile.name.clone());
+            runtime.push(runtime_profile);
+        }
+    }
+
+    if runtime.len() >= 2 {
+        Some(runtime)
+    } else {
+        None
+    }
+}
+
+async fn decide_dynamic_spawn_with_registry(
+    task: &str,
+    model_ref: &str,
+    latest_output: &str,
+    round: usize,
+    ordered_agents: &[String],
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+) -> Option<(RelayProfile, String)> {
+    let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+    let team = ordered_agents
+        .iter()
+        .map(|name| format!("@{name}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let output_excerpt = truncate_with_ellipsis(latest_output, 2200);
+
+    let request = crate::provider::CompletionRequest {
+        model: model_name,
+        messages: vec![
+            crate::provider::Message {
+                role: crate::provider::Role::System,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: "You are a relay scaling controller. Return ONLY valid JSON.".to_string(),
+                }],
+            },
+            crate::provider::Message {
+                role: crate::provider::Role::User,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: format!(
+                        "Task:\n{task}\n\nRound: {round}\nCurrent team: {team}\n\
+                         Latest handoff excerpt:\n{output_excerpt}\n\n\
+                         Decide whether the team needs one additional specialist right now.\n\
+                         Respond with JSON object only:\n\
+                         {{\n  \"spawn\": true|false,\n  \"reason\": \"...\",\n  \"profile\": {{\"name\":\"auto-...\",\"specialty\":\"...\",\"mission\":\"...\",\"capabilities\":[\"...\"]}}\n}}\n\
+                         If spawn=false, profile may be null or omitted."
+                    ),
+                }],
+            },
+        ],
+        tools: Vec::new(),
+        temperature: Some(1.0),
+        top_p: Some(0.9),
+        max_tokens: Some(420),
+        stop: Vec::new(),
+    };
+
+    let response = provider.complete(request).await.ok()?;
+    let text = response
+        .message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text }
+            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let decision = extract_json_payload::<RelaySpawnDecision>(&text)?;
+    if !decision.spawn {
+        return None;
+    }
+
+    let profile = decision.profile?;
+    let runtime_profile = build_runtime_profile_from_plan(profile, ordered_agents)?;
+    let reason = if decision.reason.trim().is_empty() {
+        "Model requested additional specialist for task scope.".to_string()
+    } else {
+        decision.reason.trim().to_string()
+    };
+
+    Some((runtime_profile, reason))
 }
 
 pub async fn execute(args: RunArgs) -> Result<()> {
@@ -286,67 +637,22 @@ fn resolve_autochat_model(
 }
 
 fn build_relay_profiles(count: usize) -> Vec<RelayProfile> {
-    let templates = [
-        (
-            "planner",
-            "Decompose objectives into precise, sequenced steps.",
-            "planning",
-        ),
-        (
-            "researcher",
-            "Validate assumptions, surface edge cases, and gather critical evidence.",
-            "research",
-        ),
-        (
-            "coder",
-            "Propose concrete implementation details and practical code-level direction.",
-            "implementation",
-        ),
-        (
-            "reviewer",
-            "Challenge weak spots, enforce quality, and reduce regressions.",
-            "review",
-        ),
-        (
-            "tester",
-            "Design verification strategy, tests, and failure-oriented checks.",
-            "testing",
-        ),
-        (
-            "integrator",
-            "Synthesize contributions into a coherent delivery plan.",
-            "integration",
-        ),
-        (
-            "skeptic",
-            "Stress-test confidence and call out hidden risks early.",
-            "risk-analysis",
-        ),
-        (
-            "summarizer",
-            "Produce concise, actionable final guidance.",
-            "summarization",
-        ),
-    ];
-
     let mut profiles = Vec::with_capacity(count);
     for idx in 0..count {
-        let (slug, mission, specialty) = templates[idx % templates.len()];
-        let name = if idx < templates.len() {
-            format!("auto-{slug}")
-        } else {
-            format!("auto-{slug}-{}", idx + 1)
-        };
+        let name = format!("auto-agent-{}", idx + 1);
 
         let instructions = format!(
             "You are @{name}.\n\
-             Specialty: {specialty}. {mission}\n\n\
+             Role policy: self-organize from task context and current handoff instead of assuming a fixed persona.\n\
+             Mission: advance the relay with concrete, high-signal next actions and clear ownership boundaries.\n\n\
              This is a protocol-first relay conversation. Treat the incoming handoff as authoritative context.\n\
              Keep your response concise, concrete, and useful for the next specialist.\n\
-             Include one clear recommendation for what the next agent should do.",
+             Include one clear recommendation for what the next agent should do.\n\
+             If the task scope is too large, explicitly call out missing specialties and handoff boundaries.",
         );
         let capabilities = vec![
-            specialty.to_string(),
+            "generalist".to_string(),
+            "self-organizing".to_string(),
             "relay".to_string(),
             "context-handoff".to_string(),
             "autochat".to_string(),
@@ -412,7 +718,25 @@ async fn run_protocol_first_relay(
     let bus = AgentBus::new().into_arc();
     let relay = ProtocolRelayRuntime::new(bus);
 
-    let profiles = build_relay_profiles(agent_count);
+    let registry = crate::provider::ProviderRegistry::from_vault()
+        .await
+        .ok()
+        .map(std::sync::Arc::new);
+
+    let mut planner_used = false;
+    let profiles = if let Some(registry) = &registry {
+        if let Some(planned) =
+            plan_relay_profiles_with_registry(task, model_ref, agent_count, registry).await
+        {
+            planner_used = true;
+            planned
+        } else {
+            build_relay_profiles(agent_count)
+        }
+    } else {
+        build_relay_profiles(agent_count)
+    };
+
     let relay_profiles: Vec<RelayAgentProfile> = profiles
         .iter()
         .map(|profile| RelayAgentProfile {
@@ -421,7 +745,7 @@ async fn run_protocol_first_relay(
         })
         .collect();
 
-    let ordered_agents: Vec<String> = profiles
+    let mut ordered_agents: Vec<String> = profiles
         .iter()
         .map(|profile| profile.name.clone())
         .collect();
@@ -452,11 +776,13 @@ async fn run_protocol_first_relay(
     let mut previous_normalized: Option<String> = None;
     let mut convergence_hits = 0usize;
     let mut turns = 0usize;
+    let mut dynamic_spawn_count = 0usize;
     let mut status = "max_rounds_reached".to_string();
     let mut failure_note: Option<String> = None;
 
     'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
-        for idx in 0..ordered_agents.len() {
+        let mut idx = 0usize;
+        while idx < ordered_agents.len() {
             let to = ordered_agents[idx].clone();
             let from = if idx == 0 {
                 if round == 1 {
@@ -502,10 +828,64 @@ async fn run_protocol_first_relay(
                 truncate_with_ellipsis(&output, 3_500)
             );
 
+            let can_attempt_spawn = dynamic_spawn_count < AUTOCHAT_MAX_DYNAMIC_SPAWNS
+                && ordered_agents.len() < AUTOCHAT_MAX_AGENTS
+                && output.len() >= AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
+
+            if can_attempt_spawn
+                && let Some(registry) = &registry
+                && let Some((profile, reason)) = decide_dynamic_spawn_with_registry(
+                    task,
+                    model_ref,
+                    &output,
+                    round,
+                    &ordered_agents,
+                    registry,
+                )
+                .await
+            {
+                match Session::new().await {
+                    Ok(mut spawned_session) => {
+                        spawned_session.metadata.model = Some(model_ref.to_string());
+                        spawned_session.agent = profile.name.clone();
+                        spawned_session.add_message(Message {
+                            role: Role::System,
+                            content: vec![ContentPart::Text {
+                                text: profile.instructions.clone(),
+                            }],
+                        });
+
+                        relay.register_agents(&[RelayAgentProfile {
+                            name: profile.name.clone(),
+                            capabilities: profile.capabilities.clone(),
+                        }]);
+
+                        ordered_agents.insert(idx + 1, profile.name.clone());
+                        sessions.insert(profile.name.clone(), spawned_session);
+                        dynamic_spawn_count += 1;
+
+                        tracing::info!(
+                            agent = %profile.name,
+                            reason = %reason,
+                            "Dynamic relay spawn accepted"
+                        );
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            agent = %profile.name,
+                            error = %err,
+                            "Dynamic relay spawn requested but failed"
+                        );
+                    }
+                }
+            }
+
             if convergence_hits >= 2 {
                 status = "converged".to_string();
                 break 'relay_loop;
             }
+
+            idx += 1;
         }
     }
 
@@ -520,6 +900,14 @@ async fn run_protocol_first_relay(
     );
     if let Some(note) = &failure_note {
         summary.push_str(&format!("\n\nFailure detail: {note}"));
+    }
+    if planner_used {
+        summary.push_str("\n\nTeam planning: model-organized profiles.");
+    } else {
+        summary.push_str("\n\nTeam planning: fallback self-organizing profiles.");
+    }
+    if dynamic_spawn_count > 0 {
+        summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
     }
 
     Ok(AutochatCliResult {
@@ -537,8 +925,10 @@ async fn run_protocol_first_relay(
 
 #[cfg(test)]
 mod tests {
+    use super::PlannedRelayProfile;
     use super::{
-        AUTOCHAT_QUICK_DEMO_TASK, command_with_optional_args, is_easy_go_command,
+        AUTOCHAT_QUICK_DEMO_TASK, PlannedRelayResponse, build_runtime_profile_from_plan,
+        command_with_optional_args, extract_json_payload, is_easy_go_command,
         normalize_cli_go_command, parse_autochat_args, resolve_autochat_model,
     };
 
@@ -600,5 +990,32 @@ mod tests {
             resolve_autochat_model(Some("zai/glm-5"), None, None, true),
             "zai/glm-5"
         );
+    }
+
+    #[test]
+    fn extract_json_payload_parses_markdown_wrapped_json() {
+        let wrapped = "Here is the plan:\n```json\n{\"profiles\":[{\"name\":\"auto-db\",\"specialty\":\"database\",\"mission\":\"Own schema and queries\",\"capabilities\":[\"sql\",\"indexing\"]}]}\n```";
+        let parsed: PlannedRelayResponse =
+            extract_json_payload(wrapped).expect("should parse wrapped JSON");
+        assert_eq!(parsed.profiles.len(), 1);
+        assert_eq!(parsed.profiles[0].name, "auto-db");
+    }
+
+    #[test]
+    fn build_runtime_profile_normalizes_and_deduplicates_name() {
+        let planned = PlannedRelayProfile {
+            name: "Data Specialist".to_string(),
+            specialty: "data engineering".to_string(),
+            mission: "Prepare datasets for downstream coding".to_string(),
+            capabilities: vec!["ETL".to_string(), "sql".to_string()],
+        };
+
+        let profile =
+            build_runtime_profile_from_plan(planned, &["auto-data-specialist".to_string()])
+                .expect("profile should be built");
+
+        assert_eq!(profile.name, "auto-data-specialist-2");
+        assert!(profile.capabilities.iter().any(|cap| cap == "relay"));
+        assert!(profile.capabilities.iter().any(|cap| cap == "autochat"));
     }
 }

@@ -65,10 +65,19 @@ impl ToolRouterConfig {
     /// | `CODETETHER_TOOL_ROUTER_DEVICE` | `auto` / `cpu` / `cuda` |
     /// | `CODETETHER_TOOL_ROUTER_MAX_TOKENS` | Max decode tokens (default: 512) |
     /// | `CODETETHER_TOOL_ROUTER_TEMPERATURE` | Sampling temp (default: 0.1) |
+    /// | `CODETETHER_FUNCTIONGEMMA_DISABLED` | Emergency kill switch. Defaults to `true` |
     pub fn from_env() -> Self {
-        let enabled = std::env::var("CODETETHER_TOOL_ROUTER_ENABLED")
+        let enabled_requested = std::env::var("CODETETHER_TOOL_ROUTER_ENABLED")
             .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
             .unwrap_or(false);
+
+        // Temporary safety default: keep FunctionGemma disabled unless explicitly
+        // unblocked. This prevents local CPU/GPU contention in normal CLI/TUI runs.
+        let disabled = std::env::var("CODETETHER_FUNCTIONGEMMA_DISABLED")
+            .map(|v| matches!(v.as_str(), "1" | "true" | "yes"))
+            .unwrap_or(true);
+
+        let enabled = enabled_requested && !disabled;
 
         Self {
             enabled,
