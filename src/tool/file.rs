@@ -80,7 +80,10 @@ impl Tool for ReadTool {
         let content = fs::read_to_string(path).await?;
 
         let lines: Vec<&str> = content.lines().collect();
-        let start_line = offset.map(|o| o.saturating_sub(1)).unwrap_or(0);
+        let start_line = offset
+            .map(|o| o.saturating_sub(1))
+            .unwrap_or(0)
+            .min(lines.len());
         let end_line = limit
             .map(|l| (start_line + l).min(lines.len()))
             .unwrap_or(lines.len());

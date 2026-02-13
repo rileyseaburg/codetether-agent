@@ -899,14 +899,20 @@ async fn replay_session_events(
         .map(PathBuf::from)
         .ok()
         .ok_or_else(|| {
-            (StatusCode::SERVICE_UNAVAILABLE, "Event stream not configured. Set CODETETHER_EVENT_STREAM_PATH.".to_string())
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Event stream not configured. Set CODETETHER_EVENT_STREAM_PATH.".to_string(),
+            )
         })?;
 
     let session_dir = base_dir.join(&query.session_id);
-    
+
     // Check if session directory exists
     if !session_dir.exists() {
-        return Err((StatusCode::NOT_FOUND, format!("Session not found: {}", query.session_id)));
+        return Err((
+            StatusCode::NOT_FOUND,
+            format!("Session not found: {}", query.session_id),
+        ));
     }
 
     let mut all_events: Vec<(u64, u64, serde_json::Value)> = Vec::new();
@@ -918,22 +924,26 @@ async fn replay_session_events(
     for entry in entries {
         let entry = entry.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         let path = entry.path();
-        
+
         if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
             continue;
         }
 
         // Parse byte range from filename: {timestamp}-chat-events-{start}-{end}.jsonl
-        let filename = path.file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
 
-        if let Some(offsets) = filename.strip_prefix("T").or_else(|| filename.strip_prefix("202")) {
+        if let Some(offsets) = filename
+            .strip_prefix("T")
+            .or_else(|| filename.strip_prefix("202"))
+        {
             // Extract start and end offsets from filename
             let parts: Vec<&str> = offsets.split('-').collect();
             if parts.len() >= 4 {
                 let start: u64 = parts[parts.len() - 2].parse().unwrap_or(0);
-                let end: u64 = parts[parts.len() - 1].trim_end_matches(".jsonl").parse().unwrap_or(0);
+                let end: u64 = parts[parts.len() - 1]
+                    .trim_end_matches(".jsonl")
+                    .parse()
+                    .unwrap_or(0);
 
                 // Filter by byte range if specified
                 if let Some(query_start) = query.start_offset {
@@ -950,7 +960,7 @@ async fn replay_session_events(
                 // Read and parse events from this file
                 let content = std::fs::read_to_string(&path)
                     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-                
+
                 for line in content.lines() {
                     if line.trim().is_empty() {
                         continue;
@@ -958,7 +968,9 @@ async fn replay_session_events(
                     if let Ok(event) = serde_json::from_str::<serde_json::Value>(line) {
                         // Filter by tool name if specified
                         if let Some(ref tool_filter) = query.tool_name {
-                            if let Some(event_tool) = event.get("tool_name").and_then(|v| v.as_str()) {
+                            if let Some(event_tool) =
+                                event.get("tool_name").and_then(|v| v.as_str())
+                            {
                                 if event_tool != tool_filter {
                                     continue;
                                 }
@@ -978,7 +990,11 @@ async fn replay_session_events(
 
     // Apply limit
     let limit = query.limit.unwrap_or(1000).min(10000);
-    let events: Vec<_> = all_events.into_iter().take(limit).map(|(_, _, e)| e).collect();
+    let events: Vec<_> = all_events
+        .into_iter()
+        .take(limit)
+        .map(|(_, _, e)| e)
+        .collect();
 
     Ok(Json(events))
 }
@@ -993,16 +1009,22 @@ async fn list_session_event_files(
         .map(PathBuf::from)
         .ok()
         .ok_or_else(|| {
-            (StatusCode::SERVICE_UNAVAILABLE, "Event stream not configured. Set CODETETHER_EVENT_STREAM_PATH.".to_string())
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Event stream not configured. Set CODETETHER_EVENT_STREAM_PATH.".to_string(),
+            )
         })?;
 
     let session_dir = base_dir.join(&query.session_id);
     if !session_dir.exists() {
-        return Err((StatusCode::NOT_FOUND, format!("Session not found: {}", query.session_id)));
+        return Err((
+            StatusCode::NOT_FOUND,
+            format!("Session not found: {}", query.session_id),
+        ));
     }
 
     let mut files: Vec<EventFileMeta> = Vec::new();
-    
+
     // Use std::fs for simplicity
     let entries = std::fs::read_dir(&session_dir)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -1010,21 +1032,25 @@ async fn list_session_event_files(
     for entry in entries {
         let entry = entry.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         let path = entry.path();
-        
+
         if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
             continue;
         }
 
-        let filename = path.file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
 
         // Parse byte range from filename
-        if let Some(offsets) = filename.strip_prefix("T").or_else(|| filename.strip_prefix("202")) {
+        if let Some(offsets) = filename
+            .strip_prefix("T")
+            .or_else(|| filename.strip_prefix("202"))
+        {
             let parts: Vec<&str> = offsets.split('-').collect();
             if parts.len() >= 4 {
                 let start: u64 = parts[parts.len() - 2].parse().unwrap_or(0);
-                let end: u64 = parts[parts.len() - 1].trim_end_matches(".jsonl").parse().unwrap_or(0);
+                let end: u64 = parts[parts.len() - 1]
+                    .trim_end_matches(".jsonl")
+                    .parse()
+                    .unwrap_or(0);
 
                 let metadata = std::fs::metadata(&path)
                     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

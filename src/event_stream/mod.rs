@@ -27,6 +27,18 @@
 //! `{timestamp}-chat-events-{start_byte}-{end_byte}.jsonl`
 //!
 //! This allows seeking to any point in a session without reading the entire log.
+//!
+//! ## S3/R2 Archival
+//!
+//! The module supports automatic archival to S3-compatible storage:
+//! ```rust,ignore
+//! use codetether_agent::event_stream::s3_sink::S3Sink;
+//!
+//! let sink = S3Sink::from_env().await?;
+//! sink.upload_file(&local_path, &session_id).await?;
+//! ```
+
+pub mod s3_sink;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -123,7 +135,11 @@ impl ChatEvent {
         // Truncate content if too long (object storage optimization)
         let max_content_len = 10_000;
         let truncated_content = if content.len() > max_content_len {
-            format!("{}...[truncated {} bytes]", &content[..max_content_len], content.len())
+            format!(
+                "{}...[truncated {} bytes]",
+                &content[..max_content_len],
+                content.len()
+            )
         } else {
             content.to_string()
         };
@@ -232,7 +248,11 @@ impl EventStreamWriter {
 
         // Generate filename if first file
         if self.current_path.is_none() {
-            let filename = EventFile::filename(&self.session_id, self.current_offset, self.current_offset + event_size);
+            let filename = EventFile::filename(
+                &self.session_id,
+                self.current_offset,
+                self.current_offset + event_size,
+            );
             self.current_path = Some(self.workspace.join(filename));
         }
 
@@ -309,7 +329,10 @@ mod tests {
         let filename = EventFile::filename("session-123", 1000, 2500);
         assert!(filename.contains("chat-events-"));
         // Filename ends with .jsonl, so we check for the offset followed by .jsonl
-        assert!(filename.contains("-00000000000000001000-") || filename.contains("-00000000000000001000."));
+        assert!(
+            filename.contains("-00000000000000001000-")
+                || filename.contains("-00000000000000001000.")
+        );
         assert!(filename.contains("-00000000000000002500.jsonl"));
     }
 }

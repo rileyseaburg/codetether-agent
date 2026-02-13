@@ -342,6 +342,73 @@ enum ChatSyncUiEvent {
     Error(String),
 }
 
+/// Persistent checkpoint for an in-flight autochat relay.
+///
+/// Saved after each successful agent turn so that a crashed TUI can resume
+/// the relay from exactly where it left off.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RelayCheckpoint {
+    /// Original user task
+    task: String,
+    /// Model reference used for all agents
+    model_ref: String,
+    /// Ordered list of agent names in relay order
+    ordered_agents: Vec<String>,
+    /// Session IDs for each agent (agent name → session UUID)
+    agent_session_ids: HashMap<String, String>,
+    /// Agent profiles: (name, system instructions, capabilities)
+    agent_profiles: Vec<(String, String, Vec<String>)>,
+    /// Current round (1-based)
+    round: usize,
+    /// Current agent index within the round
+    idx: usize,
+    /// The baton text to pass to the next agent
+    baton: String,
+    /// Total turns completed so far
+    turns: usize,
+    /// Convergence hit count
+    convergence_hits: usize,
+    /// Dynamic spawn count
+    dynamic_spawn_count: usize,
+    /// RLM handoff count
+    rlm_handoff_count: usize,
+    /// Workspace directory
+    workspace_dir: PathBuf,
+    /// When the relay was started
+    started_at: String,
+}
+
+impl RelayCheckpoint {
+    fn checkpoint_path() -> Option<PathBuf> {
+        crate::config::Config::data_dir().map(|d| d.join("relay_checkpoint.json"))
+    }
+
+    async fn save(&self) -> Result<()> {
+        if let Some(path) = Self::checkpoint_path() {
+            if let Some(parent) = path.parent() {
+                tokio::fs::create_dir_all(parent).await?;
+            }
+            let content = serde_json::to_string_pretty(self)?;
+            tokio::fs::write(&path, content).await?;
+            tracing::debug!("Relay checkpoint saved");
+        }
+        Ok(())
+    }
+
+    async fn load() -> Option<Self> {
+        let path = Self::checkpoint_path()?;
+        let content = tokio::fs::read_to_string(&path).await.ok()?;
+        serde_json::from_str(&content).ok()
+    }
+
+    async fn delete() {
+        if let Some(path) = Self::checkpoint_path() {
+            let _ = tokio::fs::remove_file(&path).await;
+            tracing::debug!("Relay checkpoint deleted");
+        }
+    }
+}
+
 /// Estimate USD cost from model name and token counts.
 /// Uses approximate per-million-token pricing for well-known models.
 fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) -> Option<f64> {
@@ -1553,6 +1620,7 @@ async fn run_autochat_worker(
     let mut ordered_agents = Vec::with_capacity(planned_profiles.len());
     let mut sessions: HashMap<String, Session> = HashMap::new();
     let mut setup_errors: Vec<String> = Vec::new();
+    let mut checkpoint_profiles: Vec<(String, String, Vec<String>)> = Vec::new();
 
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1574,8 +1642,9 @@ async fn run_autochat_worker(
 
                 relay_profiles.push(RelayAgentProfile {
                     name: name.clone(),
-                    capabilities,
+                    capabilities: capabilities.clone(),
                 });
+                checkpoint_profiles.push((name.clone(), instructions, capabilities));
                 ordered_agents.push(name.clone());
                 sessions.insert(name, session);
             }
@@ -1794,6 +1863,7 @@ async fn run_autochat_worker(
                         }]);
 
                         ordered_agents.insert(idx + 1, name.clone());
+                        checkpoint_profiles.push((name.clone(), instructions, capabilities));
                         sessions.insert(name.clone(), spawned_session);
                         dynamic_spawn_count += 1;
 
@@ -1819,11 +1889,47 @@ async fn run_autochat_worker(
                 break 'relay_loop;
             }
 
+            // Save relay checkpoint so a crash can resume from here
+            {
+                let agent_session_ids: HashMap<String, String> = sessions
+                    .iter()
+                    .map(|(name, s)| (name.clone(), s.id.clone()))
+                    .collect();
+                let next_idx = idx + 1;
+                let (ck_round, ck_idx) = if next_idx >= ordered_agents.len() {
+                    (round + 1, 0)
+                } else {
+                    (round, next_idx)
+                };
+                let checkpoint = RelayCheckpoint {
+                    task: task.clone(),
+                    model_ref: model_ref.clone(),
+                    ordered_agents: ordered_agents.clone(),
+                    agent_session_ids,
+                    agent_profiles: checkpoint_profiles.clone(),
+                    round: ck_round,
+                    idx: ck_idx,
+                    baton: baton.clone(),
+                    turns,
+                    convergence_hits,
+                    dynamic_spawn_count,
+                    rlm_handoff_count,
+                    workspace_dir: std::env::current_dir().unwrap_or_default(),
+                    started_at: chrono::Utc::now().to_rfc3339(),
+                };
+                if let Err(err) = checkpoint.save().await {
+                    tracing::warn!("Failed to save relay checkpoint: {err}");
+                }
+            }
+
             idx += 1;
         }
     }
 
     relay.shutdown_agents(&ordered_agents);
+
+    // Relay completed normally — delete the checkpoint
+    RelayCheckpoint::delete().await;
 
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1853,6 +1959,344 @@ async fn run_autochat_worker(
     summary.push_str(&format!(
         "\n\nCleanup: deregistered relay agents and disposed {} autochat worker session(s).",
         sessions.len()
+    ));
+
+    let _ = tx.send(AutochatUiEvent::Completed { summary }).await;
+}
+
+/// Resume an autochat relay from a persisted checkpoint.
+///
+/// Reloads agent sessions from disk, reconstructs the relay, and continues
+/// from the exact round/index where the previous run was interrupted.
+async fn resume_autochat_worker(
+    tx: mpsc::Sender<AutochatUiEvent>,
+    bus: std::sync::Arc<crate::bus::AgentBus>,
+    checkpoint: RelayCheckpoint,
+) {
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Resuming relay — loading providers…".to_string(),
+        ))
+        .await;
+
+    let registry = match crate::provider::ProviderRegistry::from_vault().await {
+        Ok(registry) => std::sync::Arc::new(registry),
+        Err(err) => {
+            let _ = tx
+                .send(AutochatUiEvent::SystemMessage(format!(
+                    "Failed to load providers for relay resume: {err}"
+                )))
+                .await;
+            let _ = tx
+                .send(AutochatUiEvent::Completed {
+                    summary: "Relay resume aborted: provider registry unavailable.".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let relay = ProtocolRelayRuntime::new(bus);
+    let task = checkpoint.task;
+    let model_ref = checkpoint.model_ref;
+    let mut ordered_agents = checkpoint.ordered_agents;
+    let mut checkpoint_profiles = checkpoint.agent_profiles;
+    let mut baton = checkpoint.baton;
+    let mut turns = checkpoint.turns;
+    let mut convergence_hits = checkpoint.convergence_hits;
+    let mut rlm_handoff_count = checkpoint.rlm_handoff_count;
+    let mut dynamic_spawn_count = checkpoint.dynamic_spawn_count;
+    let start_round = checkpoint.round;
+    let start_idx = checkpoint.idx;
+
+    // Reload agent sessions from disk
+    let mut sessions: HashMap<String, Session> = HashMap::new();
+    let mut load_errors: Vec<String> = Vec::new();
+
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Reloading agent sessions from disk…".to_string(),
+        ))
+        .await;
+
+    for (agent_name, session_id) in &checkpoint.agent_session_ids {
+        match Session::load(session_id).await {
+            Ok(session) => {
+                sessions.insert(agent_name.clone(), session);
+            }
+            Err(err) => {
+                load_errors.push(format!(
+                    "Failed to reload @{agent_name} ({session_id}): {err}"
+                ));
+            }
+        }
+    }
+
+    if !load_errors.is_empty() {
+        let _ = tx
+            .send(AutochatUiEvent::SystemMessage(format!(
+                "Session reload warnings:\n{}",
+                load_errors.join("\n")
+            )))
+            .await;
+    }
+
+    // Re-register agents with the relay
+    let relay_profiles: Vec<RelayAgentProfile> = checkpoint_profiles
+        .iter()
+        .map(|(name, _, capabilities)| RelayAgentProfile {
+            name: name.clone(),
+            capabilities: capabilities.clone(),
+        })
+        .collect();
+    relay.register_agents(&relay_profiles);
+
+    let _ = tx
+        .send(AutochatUiEvent::SystemMessage(format!(
+            "Resuming relay from round {start_round}, agent index {start_idx}\n\
+             Task: {}\n\
+             Agents: {}\n\
+             Turns completed so far: {turns}",
+            truncate_with_ellipsis(&task, 120),
+            ordered_agents.join(", ")
+        )))
+        .await;
+
+    let mut previous_normalized: Option<String> = None;
+    let mut status = "max_rounds_reached";
+    let mut failure_note: Option<String> = None;
+
+    'relay_loop: for round in start_round..=AUTOCHAT_MAX_ROUNDS {
+        let first_idx = if round == start_round { start_idx } else { 0 };
+        let mut idx = first_idx;
+        while idx < ordered_agents.len() {
+            let to = ordered_agents[idx].clone();
+            let from = if idx == 0 {
+                if round == 1 {
+                    "user".to_string()
+                } else {
+                    ordered_agents[ordered_agents.len() - 1].clone()
+                }
+            } else {
+                ordered_agents[idx - 1].clone()
+            };
+
+            turns += 1;
+            relay.send_handoff(&from, &to, &baton);
+            let _ = tx
+                .send(AutochatUiEvent::Progress(format!(
+                    "Round {round}/{AUTOCHAT_MAX_ROUNDS} • @{from} → @{to} (resumed)"
+                )))
+                .await;
+
+            let Some(mut session) = sessions.remove(&to) else {
+                status = "agent_error";
+                failure_note = Some(format!("Relay agent @{to} session was unavailable."));
+                break 'relay_loop;
+            };
+
+            let (event_tx, mut event_rx) = mpsc::channel(256);
+            let registry_for_prompt = registry.clone();
+            let baton_for_prompt = baton.clone();
+
+            let join = tokio::spawn(async move {
+                let result = session
+                    .prompt_with_events(&baton_for_prompt, event_tx, registry_for_prompt)
+                    .await;
+                (session, result)
+            });
+
+            while !join.is_finished() {
+                while let Ok(event) = event_rx.try_recv() {
+                    if !matches!(event, SessionEvent::SessionSync(_)) {
+                        let _ = tx
+                            .send(AutochatUiEvent::AgentEvent {
+                                agent_name: to.clone(),
+                                event,
+                            })
+                            .await;
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+
+            let (updated_session, result) = match join.await {
+                Ok(value) => value,
+                Err(err) => {
+                    status = "agent_error";
+                    failure_note = Some(format!("Relay agent @{to} task join error: {err}"));
+                    break 'relay_loop;
+                }
+            };
+
+            while let Ok(event) = event_rx.try_recv() {
+                if !matches!(event, SessionEvent::SessionSync(_)) {
+                    let _ = tx
+                        .send(AutochatUiEvent::AgentEvent {
+                            agent_name: to.clone(),
+                            event,
+                        })
+                        .await;
+                }
+            }
+
+            sessions.insert(to.clone(), updated_session);
+
+            let output = match result {
+                Ok(response) => response.text,
+                Err(err) => {
+                    status = "agent_error";
+                    failure_note = Some(format!("Relay agent @{to} failed: {err}"));
+                    let _ = tx
+                        .send(AutochatUiEvent::SystemMessage(format!(
+                            "Relay agent @{to} failed: {err}"
+                        )))
+                        .await;
+                    break 'relay_loop;
+                }
+            };
+
+            let normalized = normalize_for_convergence(&output);
+            if previous_normalized.as_deref() == Some(normalized.as_str()) {
+                convergence_hits += 1;
+            } else {
+                convergence_hits = 0;
+            }
+            previous_normalized = Some(normalized);
+
+            let (next_handoff, used_rlm) =
+                prepare_autochat_handoff_with_registry(&task, &to, &output, &model_ref, &registry)
+                    .await;
+            if used_rlm {
+                rlm_handoff_count += 1;
+            }
+
+            baton = next_handoff;
+
+            let can_attempt_spawn = dynamic_spawn_count < AUTOCHAT_MAX_DYNAMIC_SPAWNS
+                && ordered_agents.len() < AUTOCHAT_MAX_AGENTS
+                && output.len() >= AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
+
+            if can_attempt_spawn
+                && let Some((name, instructions, capabilities, reason)) =
+                    decide_dynamic_spawn_with_registry(
+                        &task,
+                        &model_ref,
+                        &output,
+                        round,
+                        &ordered_agents,
+                        &registry,
+                    )
+                    .await
+            {
+                match Session::new().await {
+                    Ok(mut spawned_session) => {
+                        spawned_session.metadata.model = Some(model_ref.clone());
+                        spawned_session.agent = name.clone();
+                        spawned_session.add_message(crate::provider::Message {
+                            role: Role::System,
+                            content: vec![ContentPart::Text {
+                                text: instructions.clone(),
+                            }],
+                        });
+
+                        relay.register_agents(&[RelayAgentProfile {
+                            name: name.clone(),
+                            capabilities: capabilities.clone(),
+                        }]);
+
+                        ordered_agents.insert(idx + 1, name.clone());
+                        checkpoint_profiles.push((name.clone(), instructions, capabilities));
+                        sessions.insert(name.clone(), spawned_session);
+                        dynamic_spawn_count += 1;
+
+                        let _ = tx
+                            .send(AutochatUiEvent::SystemMessage(format!(
+                                "Dynamic spawn: {} joined relay after @{to}.\nReason: {reason}",
+                                format_agent_identity(&name)
+                            )))
+                            .await;
+                    }
+                    Err(err) => {
+                        let _ = tx
+                            .send(AutochatUiEvent::SystemMessage(format!(
+                                "Dynamic spawn requested but failed to create @{name}: {err}"
+                            )))
+                            .await;
+                    }
+                }
+            }
+
+            if convergence_hits >= 2 {
+                status = "converged";
+                break 'relay_loop;
+            }
+
+            // Save relay checkpoint
+            {
+                let agent_session_ids: HashMap<String, String> = sessions
+                    .iter()
+                    .map(|(name, s)| (name.clone(), s.id.clone()))
+                    .collect();
+                let next_idx = idx + 1;
+                let (ck_round, ck_idx) = if next_idx >= ordered_agents.len() {
+                    (round + 1, 0)
+                } else {
+                    (round, next_idx)
+                };
+                let ck = RelayCheckpoint {
+                    task: task.clone(),
+                    model_ref: model_ref.clone(),
+                    ordered_agents: ordered_agents.clone(),
+                    agent_session_ids,
+                    agent_profiles: checkpoint_profiles.clone(),
+                    round: ck_round,
+                    idx: ck_idx,
+                    baton: baton.clone(),
+                    turns,
+                    convergence_hits,
+                    dynamic_spawn_count,
+                    rlm_handoff_count,
+                    workspace_dir: std::env::current_dir().unwrap_or_default(),
+                    started_at: chrono::Utc::now().to_rfc3339(),
+                };
+                if let Err(err) = ck.save().await {
+                    tracing::warn!("Failed to save relay checkpoint: {err}");
+                }
+            }
+
+            idx += 1;
+        }
+    }
+
+    relay.shutdown_agents(&ordered_agents);
+
+    // Relay completed normally — delete the checkpoint
+    RelayCheckpoint::delete().await;
+
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Finalizing resumed relay summary…".to_string(),
+        ))
+        .await;
+
+    let mut summary = format!(
+        "Resumed relay complete ({status}) — {} agents over {} turns.",
+        ordered_agents.len(),
+        turns,
+    );
+    if let Some(note) = failure_note {
+        summary.push_str(&format!("\n\nFailure detail: {note}"));
+    }
+    if rlm_handoff_count > 0 {
+        summary.push_str(&format!("\n\nRLM compressed handoffs: {rlm_handoff_count}"));
+    }
+    if dynamic_spawn_count > 0 {
+        summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
+    }
+    summary.push_str(&format!(
+        "\n\nFinal relay handoff:\n{}",
+        truncate_with_ellipsis(&baton, 4_000)
     ));
 
     let _ = tx.send(AutochatUiEvent::Completed { summary }).await;
@@ -2088,6 +2532,49 @@ impl App {
 
         tokio::spawn(async move {
             run_autochat_worker(tx, bus, profiles, task, model_ref).await;
+        });
+    }
+
+    /// Resume an interrupted autochat relay from a checkpoint.
+    async fn resume_autochat_relay(&mut self, checkpoint: RelayCheckpoint) {
+        if self.autochat_running {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Autochat relay already running. Wait for it to finish before resuming.",
+            ));
+            return;
+        }
+
+        let Some(bus) = self.bus.clone() else {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Protocol bus unavailable; cannot resume relay.",
+            ));
+            return;
+        };
+
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Resuming interrupted relay…\nTask: {}\nAgents: {}\nResuming from round {}, agent index {}\nTurns completed: {}",
+                truncate_with_ellipsis(&checkpoint.task, 120),
+                checkpoint.ordered_agents.join(" → "),
+                checkpoint.round,
+                checkpoint.idx,
+                checkpoint.turns,
+            ),
+        ));
+        self.scroll = SCROLL_BOTTOM;
+
+        let (tx, rx) = mpsc::channel(512);
+        self.autochat_rx = Some(rx);
+        self.autochat_running = true;
+        self.autochat_started_at = Some(Instant::now());
+        self.autochat_status = Some("Resuming relay…".to_string());
+        self.active_spawned_agent = None;
+
+        tokio::spawn(async move {
+            resume_autochat_worker(tx, bus, checkpoint).await;
         });
     }
 
@@ -2693,13 +3180,23 @@ impl App {
             return;
         }
 
-        // Check for /resume command to load a session
+        // Check for /resume command to load a session or resume an interrupted relay
         if message.trim() == "/resume" || message.trim().starts_with("/resume ") {
             let session_id = message
                 .trim()
                 .strip_prefix("/resume")
                 .map(|s| s.trim())
                 .filter(|s| !s.is_empty());
+
+            // If no specific session ID, check for an interrupted relay checkpoint first
+            if session_id.is_none() {
+                if let Some(checkpoint) = RelayCheckpoint::load().await {
+                    self.messages.push(ChatMessage::new("user", "/resume"));
+                    self.resume_autochat_relay(checkpoint).await;
+                    return;
+                }
+            }
+
             let loaded = if let Some(id) = session_id {
                 if let Some(oc_id) = id.strip_prefix("opencode_") {
                     if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
@@ -4167,6 +4664,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
             }
         });
+    }
+
+    // Check for an interrupted relay checkpoint and notify the user
+    if let Some(checkpoint) = RelayCheckpoint::load().await {
+        app.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Interrupted relay detected!\nTask: {}\nAgents: {}\nCompleted {} turns, was at round {}, index {}\n\nType /resume to continue the relay from where it left off.",
+                truncate_with_ellipsis(&checkpoint.task, 120),
+                checkpoint.ordered_agents.join(" → "),
+                checkpoint.turns,
+                checkpoint.round,
+                checkpoint.idx,
+            ),
+        ));
     }
 
     loop {
@@ -7208,7 +7720,7 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/ralph", "Start autonomous PRD loop"),
         ("/undo", "Undo last message and response"),
         ("/sessions", "Open session picker"),
-        ("/resume", "Resume a session"),
+        ("/resume", "Resume session or interrupted relay"),
         ("/new", "Start a new session"),
         ("/model", "Select or set model"),
         ("/webview", "Switch to webview layout"),
@@ -7811,7 +8323,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
         "  /undo           Undo last message and response".to_string(),
         "  /sessions       Open session picker (filter, delete, load)".to_string(),
-        "  /resume         Resume most recent session".to_string(),
+        "  /resume         Resume interrupted relay or most recent session".to_string(),
         "  /resume <id>    Resume specific session by ID".to_string(),
         "  /new            Start a fresh session".to_string(),
         "  /model          Open model picker (or /model <name>)".to_string(),

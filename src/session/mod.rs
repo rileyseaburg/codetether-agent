@@ -5,6 +5,7 @@
 use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
+use crate::event_stream::s3_sink::S3Sink;
 use crate::provider::{Message, Usage};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
@@ -534,10 +535,56 @@ impl Session {
         // Save session after each prompt to persist messages
         self.save().await?;
 
+        // Archive event stream to S3/R2 if configured (for compliance: SOC 2, FedRAMP, ATO)
+        self.archive_event_stream_to_s3().await;
+
         Ok(SessionResult {
             text: final_output.trim().to_string(),
             session_id: self.id.clone(),
         })
+    }
+
+    /// Archive event stream files to S3/R2 for immutable compliance logging
+    async fn archive_event_stream_to_s3(&self) {
+        // Check if S3 is configured
+        if !S3Sink::is_configured() {
+            return;
+        }
+
+        let Some(base_dir) = Self::event_stream_path() else {
+            return;
+        };
+
+        let session_event_dir = base_dir.join(&self.id);
+        if !session_event_dir.exists() {
+            return;
+        }
+
+        // Try to create S3 sink
+        let Ok(sink) = S3Sink::from_env().await else {
+            tracing::warn!("Failed to create S3 sink for archival");
+            return;
+        };
+
+        // Upload all event files in the session directory
+        let session_id = self.id.clone();
+        tokio::spawn(async move {
+            if let Ok(mut entries) = tokio::fs::read_dir(&session_event_dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let path = entry.path();
+                    if path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                        match sink.upload_file(&path, &session_id).await {
+                            Ok(url) => {
+                                tracing::info!(url = %url, "Archived event stream to S3/R2");
+                            }
+                            Err(e) => {
+                                tracing::warn!(error = %e, "Failed to archive event file to S3");
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /// Process a user message with real-time event streaming for UI updates.
@@ -894,8 +941,8 @@ impl Session {
                     let filename = format!(
                         "{}-chat-events-{:020}-{:020}.jsonl",
                         timestamp,
-                        seq * 10000, // approximated start offset
-                        (seq + 1) * 10000 // approximated end offset
+                        seq * 10000,       // approximated start offset
+                        (seq + 1) * 10000  // approximated end offset
                     );
                     let event_path = base_dir.join(&self.id).join(filename);
 
@@ -938,6 +985,9 @@ impl Session {
         }
 
         self.save().await?;
+
+        // Archive event stream to S3/R2 if configured (for compliance: SOC 2, FedRAMP, ATO)
+        self.archive_event_stream_to_s3().await;
 
         // Text was already sent per-step via TextComplete events.
         // Send updated session state so the caller can sync back.
