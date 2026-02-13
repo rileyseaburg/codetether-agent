@@ -1,26 +1,18 @@
-# v2.0.2
+# v2.0.3
 
 ## What's New
 
-- **Memory Tool** — New persistent knowledge storage across sessions. Save insights, search memories, and maintain context between conversations with support for tags, importance levels, and scoped storage.
+- **Event Stream Module**: New `event_stream` module with JSONL audit logging and replay API for robust event tracking
+- **S3/R2 Event Archival**: Configurable archival of audit events to S3/R2-compatible storage with relay checkpoint persistence for crash recovery
+- **Replay API**: Ability to replay archived events for auditing and debugging workflows
 
-- **Self-Organizing Relay Teams** — Model-driven agent orchestration that dynamically organizes relay teams for complex multi-step workflows. Agents can now coordinate and hand off tasks autonomously.
+## Bug Fixes
 
-## Changes
-
-- Enhanced `run` command with expanded capabilities for relay team coordination
-- Major TUI improvements for better interaction with memory and team features
-- Updated tool routing to support new cognitive capabilities
-- Integrated memory and skill tools with swarm executor for seamless agent workflows
-## What's New
-
-- **Memory Tool** — New persistent knowledge storage that works across sessions. Save important insights, search through past memories, and maintain context between conversations using tags and importance levels.
-
-- **Self-Organizing Relay Teams** — Intelligent agent coordination for complex workflows. Agents can now dynamically organize into teams and hand off tasks to each other automatically, making multi-step projects more efficient.
+- **Memory Tool Performance**: Fixed a performance regression where the memory tool unnecessarily reloaded disk state on every execute call
 
 ## Changes
 
-- Significant improvements to the `run` command for better workflow coordination
-- Major TUI enhancements for smoother interaction with new features
-- Better tool routing and integration with agent execution
-- 1,593 lines added across 10 files
+- Added 1,737 lines across 10 files with new event stream infrastructure
+- Integrated event streaming into server, session, and TUI modules
+- Added end-to-end tests for event stream functionality
+- Session module now supports event stream integration for session lifecycle tracking
