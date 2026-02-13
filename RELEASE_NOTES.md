@@ -1,14 +1,22 @@
-# v1.1.8
+# v2.0.0
 
 ## What's New
 
-No new features in this release.
+- **Minio Chat Archive Sync** — Automatically sync conversation archives to Minio object storage for backup and cross-instance sharing
+- **Agent Profiles in TUI** — Add configurable agent personalities/profiles for TUI autochat mode, enabling diverse conversation styles
+- **MiniMax Provider** — Improvements and refinements to the MiniMax LLM provider integration
+- **Enhanced Policy Routes** — Expanded and updated authorization policy routes for server endpoints
 
 ## Bug Fixes
 
-- **ZAI Provider**: Fixed tool call argument serialization to properly convert arguments to JSON strings before sending to the ZAI API. This resolves issues where tool calls with complex argument structures were failing.
+- **ZAI API Compatibility** — Fixed compatibility issues with the Z AI (ZAI) provider API
 
 ## Changes
 
-- Updated ZAI provider implementation with improved argument handling
-- 1 file changed: `src/provider/zai.rs` (+55/-5)
+- Major TUI overhaul with significant UI enhancements and refactor (2,200+ lines)
+- Updated OpenAI and ZAI provider implementations
+- Session management improvements for archive sync
+- A2A worker and swarm orchestrator refinements
+- Build and release script updates
+
+**Full Changelog**: `v1.1.8...v2.0.0`
