@@ -26,6 +26,13 @@ const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
 const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = "Introduce yourselves with your role/personality, then relay one concrete implementation plan with clear next handoffs.";
+const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
+const GO_SWAP_MODEL_MINIMAX: &str = "minimax/MiniMax-M2.5";
+const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
+const CHAT_SYNC_MAX_INTERVAL_SECS: u64 = 300;
+const CHAT_SYNC_MAX_BATCH_BYTES: usize = 512 * 1024;
+const CHAT_SYNC_DEFAULT_BUCKET: &str = "codetether-chat-archive";
+const CHAT_SYNC_DEFAULT_PREFIX: &str = "sessions";
 const AGENT_AVATARS: [&str; 12] = [
     "[o_o]", "[^_^]", "[>_<]", "[._.]", "[+_+]", "[~_~]", "[x_x]", "[0_0]", "[*_*]", "[=_=]",
     "[T_T]", "[u_u]",
@@ -55,6 +62,11 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use futures::StreamExt;
+use minio::s3::builders::ObjectContent;
+use minio::s3::creds::StaticProvider;
+use minio::s3::http::BaseUrl;
+use minio::s3::types::S3Api;
+use minio::s3::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
@@ -65,8 +77,9 @@ use ratatui::{
         Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
     },
 };
+use serde::Serialize;
 use std::collections::HashMap;
-use std::io;
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -120,6 +133,8 @@ enum MessageType {
         output_preview: String,
         output_len: usize,
         truncated: bool,
+        success: bool,
+        duration_ms: Option<u64>,
     },
     File {
         path: String,
@@ -182,6 +197,7 @@ struct App {
     is_processing: bool,
     processing_message: Option<String>,
     current_tool: Option<String>,
+    current_tool_started_at: Option<Instant>,
     /// Tracks when processing started for elapsed timer display
     processing_started_at: Option<Instant>,
     /// Partial streaming text being assembled (shown with typing indicator)
@@ -229,10 +245,20 @@ struct App {
     active_spawned_agent: Option<String>,
     spawned_agents: HashMap<String, SpawnedAgent>,
     agent_response_rxs: Vec<(String, mpsc::Receiver<SessionEvent>)>,
+    agent_tool_started_at: HashMap<String, Instant>,
     autochat_rx: Option<mpsc::Receiver<AutochatUiEvent>>,
     autochat_running: bool,
     autochat_started_at: Option<Instant>,
     autochat_status: Option<String>,
+    chat_archive_path: Option<PathBuf>,
+    archived_message_count: usize,
+    chat_sync_rx: Option<mpsc::Receiver<ChatSyncUiEvent>>,
+    chat_sync_status: Option<String>,
+    chat_sync_last_success: Option<String>,
+    chat_sync_last_error: Option<String>,
+    chat_sync_uploaded_bytes: u64,
+    chat_sync_uploaded_batches: usize,
+    secure_environment: bool,
     // Cached max scroll for key handlers
     last_max_scroll: usize,
 }
@@ -292,11 +318,35 @@ enum AutochatUiEvent {
     },
 }
 
+#[derive(Debug, Clone)]
+struct ChatSyncConfig {
+    endpoint: String,
+    fallback_endpoint: Option<String>,
+    access_key: String,
+    secret_key: String,
+    bucket: String,
+    prefix: String,
+    interval_secs: u64,
+    ignore_cert_check: bool,
+}
+
+enum ChatSyncUiEvent {
+    Status(String),
+    BatchUploaded {
+        bytes: u64,
+        records: usize,
+        object_key: String,
+    },
+    Error(String),
+}
+
 /// Estimate USD cost from model name and token counts.
 /// Uses approximate per-million-token pricing for well-known models.
 fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) -> Option<f64> {
+    let normalized_model = model.to_ascii_lowercase();
+
     // (input $/M, output $/M)
-    let (input_rate, output_rate) = match model {
+    let (input_rate, output_rate) = match normalized_model.as_str() {
         // Anthropic - Claude
         m if m.contains("claude-opus") => (15.0, 75.0),
         m if m.contains("claude-sonnet") => (3.0, 15.0),
@@ -314,6 +364,12 @@ fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) ->
         m if m.contains("kimi-k2") => (0.35, 1.40),
         m if m.contains("deepseek") => (0.80, 2.0),
         m if m.contains("llama") => (0.50, 1.50),
+        // MiniMax
+        // Based on MiniMax M2.5 announcement (2026-02-12):
+        // Lightning: $0.3/M input, $2.4/M output
+        // M2.5: half of Lightning pricing
+        m if m.contains("minimax") && m.contains("m2.5-lightning") => (0.30, 2.40),
+        m if m.contains("minimax") && m.contains("m2.5") => (0.15, 1.20),
         // Amazon Nova
         m if m.contains("nova-pro") => (0.80, 3.20),
         m if m.contains("nova-lite") => (0.06, 0.24),
@@ -339,6 +395,562 @@ fn current_spinner_frame() -> &'static str {
         / 100) as usize
         % SPINNER.len();
     SPINNER[idx]
+}
+
+fn format_duration_ms(duration_ms: u64) -> String {
+    if duration_ms >= 60_000 {
+        format!(
+            "{}m{:02}s",
+            duration_ms / 60_000,
+            (duration_ms % 60_000) / 1000
+        )
+    } else if duration_ms >= 1000 {
+        format!("{:.1}s", duration_ms as f64 / 1000.0)
+    } else {
+        format!("{duration_ms}ms")
+    }
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+
+    if bytes < 1024 {
+        format!("{bytes}B")
+    } else if (bytes as f64) < MB {
+        format!("{:.1}KB", bytes as f64 / KB)
+    } else if (bytes as f64) < GB {
+        format!("{:.1}MB", bytes as f64 / MB)
+    } else {
+        format!("{:.2}GB", bytes as f64 / GB)
+    }
+}
+
+fn env_non_empty(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn env_bool(name: &str) -> Option<bool> {
+    let value = env_non_empty(name)?;
+    let value = value.to_ascii_lowercase();
+    match value.as_str() {
+        "1" | "true" | "yes" | "on" => Some(true),
+        "0" | "false" | "no" | "off" => Some(false),
+        _ => None,
+    }
+}
+
+fn parse_bool_str(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => Some(true),
+        "0" | "false" | "no" | "off" => Some(false),
+        _ => None,
+    }
+}
+
+fn is_placeholder_secret(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "replace-me" | "changeme" | "change-me" | "your-token" | "your-key"
+    )
+}
+
+fn env_non_placeholder(name: &str) -> Option<String> {
+    env_non_empty(name).filter(|value| !is_placeholder_secret(value))
+}
+
+fn vault_extra_string(secrets: &crate::secrets::ProviderSecrets, keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|key| {
+        secrets
+            .extra
+            .get(*key)
+            .and_then(|value| value.as_str())
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+    })
+}
+
+fn vault_extra_bool(secrets: &crate::secrets::ProviderSecrets, keys: &[&str]) -> Option<bool> {
+    keys.iter().find_map(|key| {
+        secrets
+            .extra
+            .get(*key)
+            .and_then(|value| match value {
+                serde_json::Value::Bool(flag) => Some(*flag),
+                serde_json::Value::String(text) => parse_bool_str(text),
+                _ => None,
+            })
+    })
+}
+
+fn is_secure_environment_from_values(
+    secure_environment: Option<bool>,
+    secure_env: Option<bool>,
+    environment_name: Option<&str>,
+) -> bool {
+    if let Some(value) = secure_environment {
+        return value;
+    }
+
+    if let Some(value) = secure_env {
+        return value;
+    }
+
+    environment_name.is_some_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "secure" | "production" | "prod"
+        )
+    })
+}
+
+fn is_secure_environment() -> bool {
+    is_secure_environment_from_values(
+        env_bool("CODETETHER_SECURE_ENVIRONMENT"),
+        env_bool("CODETETHER_SECURE_ENV"),
+        env_non_empty("CODETETHER_ENV").as_deref(),
+    )
+}
+
+fn normalize_minio_endpoint(endpoint: &str) -> String {
+    let mut normalized = endpoint.trim().trim_end_matches('/').to_string();
+    if let Some(stripped) = normalized.strip_suffix("/login") {
+        normalized = stripped.trim_end_matches('/').to_string();
+    }
+    if !normalized.starts_with("http://") && !normalized.starts_with("https://") {
+        normalized = format!("http://{normalized}");
+    }
+    normalized
+}
+
+fn minio_fallback_endpoint(endpoint: &str) -> Option<String> {
+    if endpoint.contains(":9001") {
+        Some(endpoint.replacen(":9001", ":9000", 1))
+    } else {
+        None
+    }
+}
+
+fn sanitize_s3_key_segment(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for ch in value.chars() {
+        if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.') {
+            out.push(ch);
+        } else {
+            out.push('-');
+        }
+    }
+    let cleaned = out.trim_matches('-').to_string();
+    if cleaned.is_empty() {
+        "unknown".to_string()
+    } else {
+        cleaned
+    }
+}
+
+async fn parse_chat_sync_config(
+    require_chat_sync: bool,
+) -> std::result::Result<Option<ChatSyncConfig>, String> {
+    let enabled = env_bool("CODETETHER_CHAT_SYNC_ENABLED").unwrap_or(false);
+    if !enabled {
+        if require_chat_sync {
+            return Err(
+                "CODETETHER_CHAT_SYNC_ENABLED must be true in secure environment".to_string(),
+            );
+        }
+        return Ok(None);
+    }
+
+    let vault_secrets = crate::secrets::get_provider_secrets("chat-sync-minio").await;
+
+    let endpoint_raw = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_ENDPOINT")
+        .or_else(|| {
+            vault_secrets.as_ref().and_then(|secrets| {
+                secrets
+                    .base_url
+                    .clone()
+                    .filter(|value| !value.trim().is_empty())
+                    .or_else(|| vault_extra_string(secrets, &["endpoint", "minio_endpoint"]))
+            })
+        })
+        .ok_or_else(|| {
+            "CODETETHER_CHAT_SYNC_MINIO_ENDPOINT is required when chat sync is enabled (env or Vault: codetether/providers/chat-sync-minio.base_url)".to_string()
+        })?;
+    let endpoint = normalize_minio_endpoint(&endpoint_raw);
+    let fallback_endpoint = minio_fallback_endpoint(&endpoint);
+
+    let access_key = env_non_placeholder("CODETETHER_CHAT_SYNC_MINIO_ACCESS_KEY")
+        .or_else(|| {
+            vault_secrets.as_ref().and_then(|secrets| {
+                vault_extra_string(
+                    secrets,
+                    &[
+                        "access_key",
+                        "minio_access_key",
+                        "username",
+                        "key",
+                        "api_key",
+                    ],
+                )
+                .or_else(|| {
+                    secrets
+                        .api_key
+                        .as_ref()
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty())
+                })
+            })
+        })
+        .ok_or_else(|| {
+            "CODETETHER_CHAT_SYNC_MINIO_ACCESS_KEY is required when chat sync is enabled (env or Vault: codetether/providers/chat-sync-minio.access_key/api_key)".to_string()
+        })?;
+    let secret_key = env_non_placeholder("CODETETHER_CHAT_SYNC_MINIO_SECRET_KEY")
+        .or_else(|| {
+            vault_secrets.as_ref().and_then(|secrets| {
+                vault_extra_string(
+                    secrets,
+                    &[
+                        "secret_key",
+                        "minio_secret_key",
+                        "password",
+                        "secret",
+                        "api_secret",
+                    ],
+                )
+            })
+        })
+        .ok_or_else(|| {
+            "CODETETHER_CHAT_SYNC_MINIO_SECRET_KEY is required when chat sync is enabled (env or Vault: codetether/providers/chat-sync-minio.secret_key)".to_string()
+        })?;
+
+    let bucket = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_BUCKET")
+        .or_else(|| {
+            vault_secrets
+                .as_ref()
+                .and_then(|secrets| vault_extra_string(secrets, &["bucket", "minio_bucket"]))
+        })
+        .unwrap_or_else(|| CHAT_SYNC_DEFAULT_BUCKET.to_string());
+    let prefix = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_PREFIX")
+        .or_else(|| {
+            vault_secrets
+                .as_ref()
+                .and_then(|secrets| vault_extra_string(secrets, &["prefix", "minio_prefix"]))
+        })
+        .unwrap_or_else(|| CHAT_SYNC_DEFAULT_PREFIX.to_string())
+        .trim_matches('/')
+        .to_string();
+
+    let interval_secs = env_non_empty("CODETETHER_CHAT_SYNC_INTERVAL_SECS")
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(CHAT_SYNC_DEFAULT_INTERVAL_SECS)
+        .clamp(1, CHAT_SYNC_MAX_INTERVAL_SECS);
+
+    let ignore_cert_check = env_bool("CODETETHER_CHAT_SYNC_MINIO_INSECURE_SKIP_TLS_VERIFY")
+        .or_else(|| {
+            vault_secrets.as_ref().and_then(|secrets| {
+                vault_extra_bool(
+                    secrets,
+                    &[
+                        "insecure_skip_tls_verify",
+                        "ignore_cert_check",
+                        "skip_tls_verify",
+                    ],
+                )
+            })
+        })
+        .unwrap_or(false);
+
+    Ok(Some(ChatSyncConfig {
+        endpoint,
+        fallback_endpoint,
+        access_key,
+        secret_key,
+        bucket,
+        prefix,
+        interval_secs,
+        ignore_cert_check,
+    }))
+}
+
+fn chat_sync_checkpoint_path(archive_path: &Path, config: &ChatSyncConfig) -> PathBuf {
+    let endpoint_tag = sanitize_s3_key_segment(&config.endpoint.replace("://", "-"));
+    let bucket_tag = sanitize_s3_key_segment(&config.bucket);
+    archive_path.with_file_name(format!(
+        "chat_events.minio-sync.{endpoint_tag}.{bucket_tag}.offset"
+    ))
+}
+
+fn load_chat_sync_offset(checkpoint_path: &Path) -> u64 {
+    std::fs::read_to_string(checkpoint_path)
+        .ok()
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .unwrap_or(0)
+}
+
+fn store_chat_sync_offset(checkpoint_path: &Path, offset: u64) {
+    if let Some(parent) = checkpoint_path.parent()
+        && let Err(err) = std::fs::create_dir_all(parent)
+    {
+        tracing::warn!(error = %err, path = %parent.display(), "Failed to create chat sync checkpoint directory");
+        return;
+    }
+
+    if let Err(err) = std::fs::write(checkpoint_path, offset.to_string()) {
+        tracing::warn!(error = %err, path = %checkpoint_path.display(), "Failed to persist chat sync checkpoint");
+    }
+}
+
+fn build_minio_client(endpoint: &str, config: &ChatSyncConfig) -> Result<MinioClient> {
+    let base_url: BaseUrl = endpoint.parse()?;
+    let provider = StaticProvider::new(&config.access_key, &config.secret_key, None);
+    let client = MinioClientBuilder::new(base_url)
+        .provider(Some(Box::new(provider)))
+        .ignore_cert_check(Some(config.ignore_cert_check))
+        .build()?;
+    Ok(client)
+}
+
+async fn ensure_minio_bucket(client: &MinioClient, bucket: &str) -> Result<()> {
+    let exists = client.bucket_exists(bucket).send().await?;
+    if !exists.exists {
+        match client.create_bucket(bucket).send().await {
+            Ok(_) => {}
+            Err(err) => {
+                let error_text = err.to_string();
+                if !error_text.contains("BucketAlreadyOwnedByYou")
+                    && !error_text.contains("BucketAlreadyExists")
+                {
+                    return Err(anyhow::anyhow!(error_text));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn read_chat_archive_batch(archive_path: &Path, offset: u64) -> Result<(Vec<u8>, u64, usize)> {
+    let metadata = std::fs::metadata(archive_path)?;
+    let file_len = metadata.len();
+    if offset >= file_len {
+        return Ok((Vec::new(), offset, 0));
+    }
+
+    let mut file = std::fs::File::open(archive_path)?;
+    file.seek(SeekFrom::Start(offset))?;
+
+    let target_bytes = (file_len - offset).min(CHAT_SYNC_MAX_BATCH_BYTES as u64) as usize;
+    let mut buffer = vec![0_u8; target_bytes];
+    let read = file.read(&mut buffer)?;
+    buffer.truncate(read);
+
+    if read == 0 {
+        return Ok((Vec::new(), offset, 0));
+    }
+
+    // Try to end batches on a newline when there is still more data pending.
+    if offset + (read as u64) < file_len {
+        if let Some(last_newline) = buffer.iter().rposition(|byte| *byte == b'\n') {
+            buffer.truncate(last_newline + 1);
+        }
+
+        if buffer.is_empty() {
+            let mut rolling = Vec::new();
+            let mut temp = [0_u8; 4096];
+            loop {
+                let n = file.read(&mut temp)?;
+                if n == 0 {
+                    break;
+                }
+                rolling.extend_from_slice(&temp[..n]);
+                if let Some(pos) = rolling.iter().position(|byte| *byte == b'\n') {
+                    rolling.truncate(pos + 1);
+                    break;
+                }
+                if rolling.len() >= CHAT_SYNC_MAX_BATCH_BYTES {
+                    break;
+                }
+            }
+            buffer = rolling;
+        }
+    }
+
+    let next_offset = offset + buffer.len() as u64;
+    let records = buffer.iter().filter(|byte| **byte == b'\n').count();
+    Ok((buffer, next_offset, records))
+}
+
+#[derive(Debug)]
+struct ChatSyncBatch {
+    bytes: u64,
+    records: usize,
+    object_key: String,
+    next_offset: u64,
+}
+
+async fn sync_chat_archive_batch(
+    client: &MinioClient,
+    archive_path: &Path,
+    config: &ChatSyncConfig,
+    host_tag: &str,
+    offset: u64,
+) -> Result<Option<ChatSyncBatch>> {
+    if !archive_path.exists() {
+        return Ok(None);
+    }
+
+    ensure_minio_bucket(client, &config.bucket).await?;
+
+    let (payload, next_offset, records) = read_chat_archive_batch(archive_path, offset)?;
+    if payload.is_empty() {
+        return Ok(None);
+    }
+
+    let timestamp = chrono::Utc::now().format("%Y%m%dT%H%M%SZ");
+    let key_prefix = config.prefix.trim_matches('/');
+    let object_key = if key_prefix.is_empty() {
+        format!("{host_tag}/{timestamp}-chat-events-{offset:020}-{next_offset:020}.jsonl")
+    } else {
+        format!(
+            "{key_prefix}/{host_tag}/{timestamp}-chat-events-{offset:020}-{next_offset:020}.jsonl"
+        )
+    };
+
+    let bytes = payload.len() as u64;
+    let content = ObjectContent::from(payload);
+    client
+        .put_object_content(&config.bucket, &object_key, content)
+        .send()
+        .await?;
+
+    Ok(Some(ChatSyncBatch {
+        bytes,
+        records,
+        object_key,
+        next_offset,
+    }))
+}
+
+async fn run_chat_sync_worker(
+    tx: mpsc::Sender<ChatSyncUiEvent>,
+    archive_path: PathBuf,
+    config: ChatSyncConfig,
+) {
+    let checkpoint_path = chat_sync_checkpoint_path(&archive_path, &config);
+    let mut offset = load_chat_sync_offset(&checkpoint_path);
+    let host_tag = sanitize_s3_key_segment(
+        &std::env::var("HOSTNAME").unwrap_or_else(|_| "localhost".to_string()),
+    );
+
+    let fallback_label = config
+        .fallback_endpoint
+        .as_ref()
+        .map(|fallback| format!(" (fallback: {fallback})"))
+        .unwrap_or_default();
+
+    let _ = tx
+        .send(ChatSyncUiEvent::Status(format!(
+            "Archive sync enabled → {} / {} every {}s{}",
+            config.endpoint, config.bucket, config.interval_secs, fallback_label
+        )))
+        .await;
+
+    let mut interval = tokio::time::interval(Duration::from_secs(config.interval_secs));
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    loop {
+        interval.tick().await;
+
+        let primary_client = match build_minio_client(&config.endpoint, &config) {
+            Ok(client) => client,
+            Err(err) => {
+                let _ = tx
+                    .send(ChatSyncUiEvent::Error(format!(
+                        "Chat sync client init failed for {}: {err}",
+                        config.endpoint
+                    )))
+                    .await;
+                continue;
+            }
+        };
+
+        let outcome = match sync_chat_archive_batch(
+            &primary_client,
+            &archive_path,
+            &config,
+            &host_tag,
+            offset,
+        )
+        .await
+        {
+            Ok(result) => Ok(result),
+            Err(primary_err) => {
+                if let Some(fallback_endpoint) = &config.fallback_endpoint {
+                    let fallback_client = build_minio_client(fallback_endpoint, &config);
+                    match fallback_client {
+                        Ok(client) => {
+                            let _ = tx
+                                .send(ChatSyncUiEvent::Status(format!(
+                                    "Primary endpoint failed; retrying with fallback {}",
+                                    fallback_endpoint
+                                )))
+                                .await;
+                            sync_chat_archive_batch(
+                                &client,
+                                &archive_path,
+                                &config,
+                                &host_tag,
+                                offset,
+                            )
+                            .await
+                        }
+                        Err(err) => Err(anyhow::anyhow!(
+                            "Primary sync error: {primary_err}; fallback init failed: {err}"
+                        )),
+                    }
+                } else {
+                    Err(primary_err)
+                }
+            }
+        };
+
+        match outcome {
+            Ok(Some(batch)) => {
+                offset = batch.next_offset;
+                store_chat_sync_offset(&checkpoint_path, offset);
+                let _ = tx
+                    .send(ChatSyncUiEvent::BatchUploaded {
+                        bytes: batch.bytes,
+                        records: batch.records,
+                        object_key: batch.object_key,
+                    })
+                    .await;
+            }
+            Ok(None) => {}
+            Err(err) => {
+                let _ = tx
+                    .send(ChatSyncUiEvent::Error(format!("Chat sync failed: {err}")))
+                    .await;
+            }
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct ChatArchiveRecord {
+    recorded_at: String,
+    workspace: String,
+    session_id: Option<String>,
+    role: String,
+    agent_name: Option<String>,
+    message_type: String,
+    content: String,
+    tool_name: Option<String>,
+    tool_success: Option<bool>,
+    tool_duration_ms: Option<u64>,
 }
 
 impl ChatMessage {
@@ -819,6 +1431,8 @@ async fn run_autochat_worker(
 impl App {
     fn new() -> Self {
         let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let chat_archive_path = directories::ProjectDirs::from("com", "codetether", "codetether")
+            .map(|dirs| dirs.data_local_dir().join("chat_events.jsonl"));
 
         Self {
             input: String::new(),
@@ -839,6 +1453,7 @@ impl App {
             is_processing: false,
             processing_message: None,
             current_tool: None,
+            current_tool_started_at: None,
             processing_started_at: None,
             streaming_text: None,
             streaming_agent_texts: HashMap::new(),
@@ -872,10 +1487,20 @@ impl App {
             active_spawned_agent: None,
             spawned_agents: HashMap::new(),
             agent_response_rxs: Vec::new(),
+            agent_tool_started_at: HashMap::new(),
             autochat_rx: None,
             autochat_running: false,
             autochat_started_at: None,
             autochat_status: None,
+            chat_archive_path,
+            archived_message_count: 0,
+            chat_sync_rx: None,
+            chat_sync_status: None,
+            chat_sync_last_success: None,
+            chat_sync_last_error: None,
+            chat_sync_uploaded_bytes: 0,
+            chat_sync_uploaded_batches: 0,
+            secure_environment: false,
             last_max_scroll: 0,
         }
     }
@@ -1098,6 +1723,7 @@ impl App {
         }
 
         let mut message = std::mem::take(&mut self.input);
+        let easy_go_requested = is_easy_go_command(&message);
         self.cursor_position = 0;
 
         // Save to command history
@@ -1216,6 +1842,22 @@ impl App {
                 return;
             };
 
+            if easy_go_requested {
+                let current_model = self
+                    .active_model
+                    .as_deref()
+                    .or(config.default_model.as_deref());
+                let next_model = next_go_model(current_model);
+                self.active_model = Some(next_model.clone());
+                if let Some(session) = self.session.as_mut() {
+                    session.metadata.model = Some(next_model.clone());
+                }
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("/go model swap → {next_model}"),
+                ));
+            }
+
             self.start_autochat_execution(count, task.to_string(), config)
                 .await;
             return;
@@ -1295,6 +1937,25 @@ impl App {
                 "system",
                 "Workspace and session cache refreshed.",
             ));
+            return;
+        }
+
+        if message.trim() == "/archive" {
+            let details = if let Some(path) = &self.chat_archive_path {
+                format!(
+                    "Chat archive: {}\nCaptured records in this run: {}\n{}",
+                    path.display(),
+                    self.archived_message_count,
+                    self.chat_sync_summary(),
+                )
+            } else {
+                format!(
+                    "Chat archive path unavailable in this environment.\n{}",
+                    self.chat_sync_summary()
+                )
+            };
+            self.messages.push(ChatMessage::new("system", details));
+            self.scroll = SCROLL_BOTTOM;
             return;
         }
 
@@ -1759,6 +2420,8 @@ impl App {
                                             output_preview: preview,
                                             output_len: content.len(),
                                             truncated: preview_truncated,
+                                            success: true,
+                                            duration_ms: None,
                                         }),
                                     );
                                 }
@@ -1945,6 +2608,7 @@ impl App {
         self.is_processing = true;
         self.processing_message = Some("Thinking...".to_string());
         self.current_tool = None;
+        self.current_tool_started_at = None;
         self.processing_started_at = Some(Instant::now());
         self.streaming_text = None;
 
@@ -1997,6 +2661,7 @@ impl App {
             SessionEvent::Thinking => {
                 self.processing_message = Some("Thinking...".to_string());
                 self.current_tool = None;
+                self.current_tool_started_at = None;
                 if self.processing_started_at.is_none() {
                     self.processing_started_at = Some(Instant::now());
                 }
@@ -2010,6 +2675,7 @@ impl App {
                 }
                 self.processing_message = Some(format!("Running {}...", name));
                 self.current_tool = Some(name.clone());
+                self.current_tool_started_at = Some(Instant::now());
                 self.tool_call_count += 1;
 
                 let (preview, truncated) = build_tool_arguments_preview(
@@ -2035,6 +2701,10 @@ impl App {
                 success,
             } => {
                 let icon = if success { "✓" } else { "✗" };
+                let duration_ms = self
+                    .current_tool_started_at
+                    .take()
+                    .map(|started| started.elapsed().as_millis() as u64);
 
                 let (preview, truncated) = build_text_preview(
                     &output,
@@ -2048,6 +2718,8 @@ impl App {
                             output_preview: preview,
                             output_len: output.len(),
                             truncated,
+                            success,
+                            duration_ms,
                         },
                     ),
                 );
@@ -2102,6 +2774,7 @@ impl App {
                 self.session = Some(session);
             }
             SessionEvent::Error(err) => {
+                self.current_tool_started_at = None;
                 self.messages
                     .push(ChatMessage::new("assistant", format!("Error: {}", err)));
             }
@@ -2109,6 +2782,7 @@ impl App {
                 self.is_processing = false;
                 self.processing_message = None;
                 self.current_tool = None;
+                self.current_tool_started_at = None;
                 self.processing_started_at = None;
                 self.streaming_text = None;
                 self.response_rx = None;
@@ -2191,6 +2865,8 @@ impl App {
             }
             SessionEvent::ToolCallStart { name, arguments } => {
                 self.streaming_agent_texts.remove(agent_name);
+                self.agent_tool_started_at
+                    .insert(agent_name.to_string(), Instant::now());
                 let (preview, truncated) = build_tool_arguments_preview(
                     &name,
                     &arguments,
@@ -2218,6 +2894,10 @@ impl App {
             } => {
                 self.streaming_agent_texts.remove(agent_name);
                 let icon = if success { "✓" } else { "✗" };
+                let duration_ms = self
+                    .agent_tool_started_at
+                    .remove(agent_name)
+                    .map(|started| started.elapsed().as_millis() as u64);
                 let (preview, truncated) = build_text_preview(
                     &output,
                     TOOL_OUTPUT_PREVIEW_MAX_LINES,
@@ -2233,6 +2913,8 @@ impl App {
                         output_preview: preview,
                         output_len: output.len(),
                         truncated,
+                        success,
+                        duration_ms,
                     })
                     .with_agent_name(agent_name),
                 );
@@ -2290,6 +2972,7 @@ impl App {
             }
             SessionEvent::Error(err) => {
                 self.streaming_agent_texts.remove(agent_name);
+                self.agent_tool_started_at.remove(agent_name);
                 self.messages.push(
                     ChatMessage::new("assistant", format!("Error: {err}"))
                         .with_agent_name(agent_name),
@@ -2297,6 +2980,7 @@ impl App {
             }
             SessionEvent::Done => {
                 self.streaming_agent_texts.remove(agent_name);
+                self.agent_tool_started_at.remove(agent_name);
                 if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
                     agent.is_processing = false;
                 }
@@ -2860,6 +3544,159 @@ impl App {
             current_spinner_frame()
         ))
     }
+
+    fn chat_sync_summary(&self) -> String {
+        if self.chat_sync_rx.is_none() && self.chat_sync_status.is_none() {
+            if self.secure_environment {
+                return "Remote sync: REQUIRED in secure environment (not running)".to_string();
+            }
+            return "Remote sync: disabled (set CODETETHER_CHAT_SYNC_ENABLED=true)".to_string();
+        }
+
+        let status = self
+            .chat_sync_status
+            .as_deref()
+            .unwrap_or("Remote sync active")
+            .to_string();
+        let last_success = self
+            .chat_sync_last_success
+            .as_deref()
+            .unwrap_or("never")
+            .to_string();
+        let last_error = self
+            .chat_sync_last_error
+            .as_deref()
+            .unwrap_or("none")
+            .to_string();
+
+        format!(
+            "Remote sync: {status}\nUploaded batches: {} ({})\nLast success: {last_success}\nLast error: {last_error}",
+            self.chat_sync_uploaded_batches,
+            format_bytes(self.chat_sync_uploaded_bytes)
+        )
+    }
+
+    fn handle_chat_sync_event(&mut self, event: ChatSyncUiEvent) {
+        match event {
+            ChatSyncUiEvent::Status(status) => {
+                self.chat_sync_status = Some(status);
+            }
+            ChatSyncUiEvent::BatchUploaded {
+                bytes,
+                records,
+                object_key,
+            } => {
+                self.chat_sync_uploaded_bytes = self.chat_sync_uploaded_bytes.saturating_add(bytes);
+                self.chat_sync_uploaded_batches = self.chat_sync_uploaded_batches.saturating_add(1);
+                let when = chrono::Local::now().format("%H:%M:%S").to_string();
+                self.chat_sync_last_success = Some(format!(
+                    "{} • {} records • {} • {}",
+                    when,
+                    records,
+                    format_bytes(bytes),
+                    object_key
+                ));
+                self.chat_sync_last_error = None;
+                self.chat_sync_status =
+                    Some(format!("Synced {} ({})", records, format_bytes(bytes)));
+            }
+            ChatSyncUiEvent::Error(error) => {
+                self.chat_sync_last_error = Some(error.clone());
+                self.chat_sync_status = Some("Sync error (will retry)".to_string());
+            }
+        }
+    }
+
+    fn to_archive_record(
+        message: &ChatMessage,
+        workspace: &str,
+        session_id: Option<String>,
+    ) -> ChatArchiveRecord {
+        let (message_type, tool_name, tool_success, tool_duration_ms) = match &message.message_type
+        {
+            MessageType::Text(_) => ("text".to_string(), None, None, None),
+            MessageType::Image { .. } => ("image".to_string(), None, None, None),
+            MessageType::ToolCall { name, .. } => {
+                ("tool_call".to_string(), Some(name.clone()), None, None)
+            }
+            MessageType::ToolResult {
+                name,
+                success,
+                duration_ms,
+                ..
+            } => (
+                "tool_result".to_string(),
+                Some(name.clone()),
+                Some(*success),
+                *duration_ms,
+            ),
+            MessageType::File { .. } => ("file".to_string(), None, None, None),
+            MessageType::Thinking(_) => ("thinking".to_string(), None, None, None),
+        };
+
+        ChatArchiveRecord {
+            recorded_at: chrono::Utc::now().to_rfc3339(),
+            workspace: workspace.to_string(),
+            session_id,
+            role: message.role.clone(),
+            agent_name: message.agent_name.clone(),
+            message_type,
+            content: message.content.clone(),
+            tool_name,
+            tool_success,
+            tool_duration_ms,
+        }
+    }
+
+    fn flush_chat_archive(&mut self) {
+        let Some(path) = self.chat_archive_path.clone() else {
+            self.archived_message_count = self.messages.len();
+            return;
+        };
+
+        if self.archived_message_count >= self.messages.len() {
+            return;
+        }
+
+        let workspace = self.workspace_dir.to_string_lossy().to_string();
+        let session_id = self.session.as_ref().map(|session| session.id.clone());
+        let records: Vec<ChatArchiveRecord> = self.messages[self.archived_message_count..]
+            .iter()
+            .map(|message| Self::to_archive_record(message, &workspace, session_id.clone()))
+            .collect();
+
+        if let Some(parent) = path.parent()
+            && let Err(err) = std::fs::create_dir_all(parent)
+        {
+            tracing::warn!(error = %err, path = %parent.display(), "Failed to create chat archive directory");
+            return;
+        }
+
+        let mut file = match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+        {
+            Ok(file) => file,
+            Err(err) => {
+                tracing::warn!(error = %err, path = %path.display(), "Failed to open chat archive file");
+                return;
+            }
+        };
+
+        for record in records {
+            if let Err(err) = serde_json::to_writer(&mut file, &record) {
+                tracing::warn!(error = %err, path = %path.display(), "Failed to serialize chat archive record");
+                return;
+            }
+            if let Err(err) = writeln!(&mut file) {
+                tracing::warn!(error = %err, path = %path.display(), "Failed to write chat archive newline");
+                return;
+            }
+        }
+
+        self.archived_message_count = self.messages.len();
+    }
 }
 
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
@@ -2892,6 +3729,42 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     // Load configuration and theme
     let mut config = Config::load().await?;
     let mut theme = crate::tui::theme_utils::validate_theme(&config.load_theme());
+
+    let secure_environment = is_secure_environment();
+    app.secure_environment = secure_environment;
+
+    match parse_chat_sync_config(secure_environment).await {
+        Ok(Some(sync_config)) => {
+            if let Some(archive_path) = app.chat_archive_path.clone() {
+                let (chat_sync_tx, chat_sync_rx) = mpsc::channel::<ChatSyncUiEvent>(64);
+                app.chat_sync_rx = Some(chat_sync_rx);
+                app.chat_sync_status = Some("Starting remote archive sync worker…".to_string());
+                tokio::spawn(async move {
+                    run_chat_sync_worker(chat_sync_tx, archive_path, sync_config).await;
+                });
+            } else {
+                let message = "Remote chat sync is enabled, but local archive path is unavailable.";
+                if secure_environment {
+                    return Err(anyhow::anyhow!(
+                        "{message} Secure environment requires remote chat sync."
+                    ));
+                }
+                app.messages.push(ChatMessage::new("system", message));
+            }
+        }
+        Ok(None) => {}
+        Err(err) => {
+            if secure_environment {
+                return Err(anyhow::anyhow!(
+                    "Secure environment requires remote chat sync: {err}"
+                ));
+            }
+            app.messages.push(ChatMessage::new(
+                "system",
+                format!("Remote chat sync disabled due to configuration error: {err}"),
+            ));
+        }
+    }
 
     // Track last config modification time for hot-reloading
     let _config_paths = vec![
@@ -3028,6 +3901,28 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 app.autochat_rx = Some(rx);
             }
         }
+
+        // Drain all pending background chat sync events
+        if let Some(mut rx) = app.chat_sync_rx.take() {
+            while let Ok(event) = rx.try_recv() {
+                app.handle_chat_sync_event(event);
+            }
+
+            if rx.is_closed() {
+                app.chat_sync_status = Some("Remote archive sync worker stopped.".to_string());
+                app.chat_sync_rx = None;
+                if app.secure_environment {
+                    return Err(anyhow::anyhow!(
+                        "Remote archive sync worker stopped in secure environment"
+                    ));
+                }
+            } else {
+                app.chat_sync_rx = Some(rx);
+            }
+        }
+
+        // Persist any newly appended chat messages for durable post-hoc analysis.
+        app.flush_chat_archive();
 
         // Wait for terminal events asynchronously (no blocking!)
         let ev = tokio::select! {
@@ -3320,6 +4215,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                                                 output_preview: preview,
                                                                 output_len: content.len(),
                                                                 truncated: preview_truncated,
+                                                                success: true,
+                                                                duration_ms: None,
                                                             },
                                                         ),
                                                     );
@@ -5315,6 +6212,30 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
             Style::default().fg(Color::Cyan),
         ),
     ]));
+    lines.push(Line::from(vec![
+        Span::styled("Archive: ", label_style),
+        Span::styled(
+            format!("{} records", app.archived_message_count),
+            Style::default(),
+        ),
+    ]));
+    let sync_style = if app.chat_sync_last_error.is_some() {
+        Style::default().fg(Color::Red)
+    } else if app.chat_sync_rx.is_some() {
+        Style::default().fg(Color::Green)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+    lines.push(Line::from(vec![
+        Span::styled("Remote sync: ", label_style),
+        Span::styled(
+            app.chat_sync_status
+                .as_deref()
+                .unwrap_or("disabled")
+                .to_string(),
+            sync_style,
+        ),
+    ]));
     lines.push(Line::from(""));
     lines.push(Line::styled(
         "Sub-agents",
@@ -5566,17 +6487,38 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
                 output_preview,
                 output_len,
                 truncated,
+                success,
+                duration_ms,
             } => {
+                let icon = if *success { "✅" } else { "❌" };
                 let result_header = Line::from(vec![
-                    Span::styled("  ✅ ", Style::default().fg(Color::Green)),
+                    Span::styled(
+                        format!("  {icon} "),
+                        Style::default().fg(if *success { Color::Green } else { Color::Red }),
+                    ),
                     Span::styled(
                         format!("Result from {}", name),
                         Style::default()
-                            .fg(Color::Green)
+                            .fg(if *success { Color::Green } else { Color::Red })
                             .add_modifier(Modifier::BOLD),
                     ),
                 ]);
                 message_lines.push(result_header);
+
+                let status_line = format!(
+                    "  │ status: {}{}",
+                    if *success { "success" } else { "failure" },
+                    duration_ms
+                        .map(|ms| format!(" • {}", format_duration_ms(ms)))
+                        .unwrap_or_default()
+                );
+                message_lines.push(Line::from(vec![
+                    Span::styled("  │ ", Style::default().fg(Color::DarkGray)),
+                    Span::styled(
+                        status_line.trim_start_matches("  │ ").to_string(),
+                        Style::default().fg(Color::DarkGray),
+                    ),
+                ]));
 
                 if output_preview.trim().is_empty() {
                     message_lines.push(Line::from(vec![
@@ -5899,6 +6841,7 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/classic", "Switch to classic layout"),
         ("/inspector", "Toggle inspector pane"),
         ("/refresh", "Refresh workspace"),
+        ("/archive", "Show persistent chat archive path"),
         ("/view", "Toggle swarm view"),
         ("/buslog", "Show protocol bus log"),
         ("/protocol", "Show protocol registry"),
@@ -6012,6 +6955,41 @@ fn normalize_easy_command(input: &str) -> String {
         "/home" | "/main" => "/agent main".to_string(),
         "/h" | "/?" => "/help".to_string(),
         _ => trimmed.to_string(),
+    }
+}
+
+fn is_easy_go_command(input: &str) -> bool {
+    let command = input
+        .trim_start()
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    matches!(command.as_str(), "/go" | "/team")
+}
+
+fn is_glm5_model(model: &str) -> bool {
+    let normalized = model.trim().to_ascii_lowercase();
+    matches!(
+        normalized.as_str(),
+        "zai/glm-5" | "z-ai/glm-5" | "openrouter/z-ai/glm-5"
+    )
+}
+
+fn is_minimax_m25_model(model: &str) -> bool {
+    let normalized = model.trim().to_ascii_lowercase();
+    matches!(
+        normalized.as_str(),
+        "minimax/minimax-m2.5" | "minimax-m2.5"
+    )
+}
+
+fn next_go_model(current_model: Option<&str>) -> String {
+    match current_model {
+        Some(model) if is_glm5_model(model) => GO_SWAP_MODEL_MINIMAX.to_string(),
+        Some(model) if is_minimax_m25_model(model) => GO_SWAP_MODEL_GLM.to_string(),
+        _ => GO_SWAP_MODEL_MINIMAX.to_string(),
     }
 }
 
@@ -6473,6 +7451,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /classic        Single-pane layout".to_string(),
         "  /inspector      Toggle inspector pane".to_string(),
         "  /refresh        Refresh workspace and sessions".to_string(),
+        "  /archive        Show persistent chat archive path".to_string(),
         "".to_string(),
         "  SESSION PICKER".to_string(),
         "  ↑/↓/j/k      Navigate sessions".to_string(),
@@ -6542,8 +7521,10 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 mod tests {
     use super::{
         AUTOCHAT_QUICK_DEMO_TASK, agent_avatar, agent_profile, command_with_optional_args,
-        format_agent_identity, format_relay_handoff_line, match_slash_command_hint,
-        normalize_easy_command, normalize_for_convergence, parse_autochat_args,
+        estimate_cost, format_agent_identity, format_relay_handoff_line, is_easy_go_command,
+        is_secure_environment_from_values, match_slash_command_hint, minio_fallback_endpoint,
+        next_go_model, normalize_easy_command, normalize_for_convergence,
+        normalize_minio_endpoint, parse_autochat_args,
     };
 
     #[test]
@@ -6686,5 +7667,83 @@ mod tests {
         let identity = format_agent_identity("auto-coder");
         assert!(identity.contains("@auto-coder"));
         assert!(identity.contains("‹Forge›"));
+    }
+
+    #[test]
+    fn normalize_minio_endpoint_strips_login_path() {
+        assert_eq!(
+            normalize_minio_endpoint("http://192.168.50.223:9001/login"),
+            "http://192.168.50.223:9001"
+        );
+    }
+
+    #[test]
+    fn normalize_minio_endpoint_adds_default_scheme() {
+        assert_eq!(
+            normalize_minio_endpoint("192.168.50.223:9000"),
+            "http://192.168.50.223:9000"
+        );
+    }
+
+    #[test]
+    fn fallback_endpoint_maps_console_port_to_s3_port() {
+        assert_eq!(
+            minio_fallback_endpoint("http://192.168.50.223:9001"),
+            Some("http://192.168.50.223:9000".to_string())
+        );
+        assert_eq!(minio_fallback_endpoint("http://192.168.50.223:9000"), None);
+    }
+
+    #[test]
+    fn secure_environment_detection_respects_explicit_flags() {
+        assert!(is_secure_environment_from_values(Some(true), None, None));
+        assert!(!is_secure_environment_from_values(
+            Some(false),
+            Some(true),
+            Some("secure")
+        ));
+    }
+
+    #[test]
+    fn secure_environment_detection_uses_environment_name_fallback() {
+        assert!(is_secure_environment_from_values(None, None, Some("PROD")));
+        assert!(is_secure_environment_from_values(
+            None,
+            None,
+            Some("production")
+        ));
+        assert!(!is_secure_environment_from_values(None, None, Some("dev")));
+    }
+
+    #[test]
+    fn minimax_m25_pricing_estimate_matches_announcement_rates() {
+        let cost = estimate_cost("minimax/MiniMax-M2.5", 1_000_000, 1_000_000)
+            .expect("MiniMax M2.5 cost should be available");
+        assert!((cost - 1.35).abs() < 1e-9);
+    }
+
+    #[test]
+    fn minimax_m25_lightning_pricing_is_case_insensitive() {
+        let cost = estimate_cost("MiniMax-M2.5-Lightning", 1_000_000, 1_000_000)
+            .expect("MiniMax M2.5 Lightning cost should be available");
+        assert!((cost - 2.7).abs() < 1e-9);
+    }
+
+    #[test]
+    fn easy_go_command_detects_go_and_team_aliases() {
+        assert!(is_easy_go_command("/go build indexing"));
+        assert!(is_easy_go_command("/team 4 implement auth"));
+        assert!(!is_easy_go_command("/autochat build indexing"));
+    }
+
+    #[test]
+    fn next_go_model_toggles_between_glm_and_minimax() {
+        assert_eq!(next_go_model(Some("zai/glm-5")), "minimax/MiniMax-M2.5");
+        assert_eq!(next_go_model(Some("z-ai/glm-5")), "minimax/MiniMax-M2.5");
+        assert_eq!(
+            next_go_model(Some("minimax/MiniMax-M2.5")),
+            "zai/glm-5"
+        );
+        assert_eq!(next_go_model(Some("unknown/model")), "minimax/MiniMax-M2.5");
     }
 }

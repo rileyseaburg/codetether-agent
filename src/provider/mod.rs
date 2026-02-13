@@ -433,7 +433,7 @@ impl ProviderRegistry {
                         let base_url = secrets
                             .base_url
                             .clone()
-                            .unwrap_or_else(|| "https://api.minimax.chat/v1".to_string());
+                            .unwrap_or_else(|| "https://api.minimax.io/v1".to_string());
                         match openai::OpenAIProvider::with_base_url(api_key, base_url, "minimax") {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init minimax: {}", e),

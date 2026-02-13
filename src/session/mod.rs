@@ -43,6 +43,13 @@ fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
     providers.first().copied()
 }
 
+fn prefers_temperature_one(model: &str) -> bool {
+    let normalized = model.to_ascii_lowercase();
+    normalized.contains("kimi-k2")
+        || normalized.contains("glm-")
+        || normalized.contains("minimax")
+}
+
 /// A conversation session
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
@@ -269,7 +276,7 @@ impl Session {
         // - Kimi K2.x requires temperature=1.0
         // - GLM (Z.AI) defaults to temperature 1.0 for coding workflows
         // Use contains() to match both short aliases and provider-qualified IDs.
-        let temperature = if model.contains("kimi-k2") || model.contains("glm-") {
+        let temperature = if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)
@@ -563,7 +570,7 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        let temperature = if model.contains("kimi-k2") || model.contains("glm-") {
+        let temperature = if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)

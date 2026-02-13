@@ -76,8 +76,11 @@ impl OpenAIProvider {
             ],
 
             "minimax" => vec![
-                ("MiniMax-M1-80k", "MiniMax M1 80k"),
-                ("MiniMax-Text-01", "MiniMax Text 01"),
+                ("MiniMax-M2.5", "MiniMax M2.5"),
+                ("MiniMax-M2.5-lightning", "MiniMax M2.5 Lightning"),
+                ("MiniMax-M2.1", "MiniMax M2.1"),
+                ("MiniMax-M2.1-lightning", "MiniMax M2.1 Lightning"),
+                ("MiniMax-M2", "MiniMax M2"),
             ],
             "zhipuai" => vec![],
             "novita" => vec![
@@ -204,6 +207,14 @@ impl OpenAIProvider {
         }
         Ok(result)
     }
+
+    fn is_minimax_chat_setting_error(error: &str) -> bool {
+        let normalized = error.to_ascii_lowercase();
+        normalized.contains("invalid chat setting")
+            || normalized.contains("(2013)")
+            || normalized.contains("code: 2013")
+            || normalized.contains("\"2013\"")
+    }
 }
 
 #[async_trait]
@@ -266,7 +277,7 @@ impl Provider for OpenAIProvider {
         let tools = Self::convert_tools(&request.tools)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
-        req_builder.model(&request.model).messages(messages);
+        req_builder.model(&request.model).messages(messages.clone());
 
         // Pass tools to the API if provided
         if !tools.is_empty() {
@@ -275,11 +286,36 @@ impl Provider for OpenAIProvider {
         if let Some(temp) = request.temperature {
             req_builder.temperature(temp);
         }
+        if let Some(top_p) = request.top_p {
+            req_builder.top_p(top_p);
+        }
         if let Some(max) = request.max_tokens {
-            req_builder.max_completion_tokens(max as u32);
+            if self.provider_name == "openai" {
+                req_builder.max_completion_tokens(max as u32);
+            } else {
+                req_builder.max_tokens(max as u32);
+            }
         }
 
-        let response = self.client.chat().create(req_builder.build()?).await?;
+        let primary_request = req_builder.build()?;
+        let response = match self.client.chat().create(primary_request).await {
+            Ok(response) => response,
+            Err(err)
+                if self.provider_name == "minimax"
+                    && Self::is_minimax_chat_setting_error(&err.to_string()) =>
+            {
+                tracing::warn!(
+                    provider = "minimax",
+                    error = %err,
+                    "MiniMax rejected chat settings; retrying with conservative defaults"
+                );
+
+                let mut fallback_builder = CreateChatCompletionRequestArgs::default();
+                fallback_builder.model(&request.model).messages(messages);
+                self.client.chat().create(fallback_builder.build()?).await?
+            }
+            Err(err) => return Err(err.into()),
+        };
 
         let choice = response
             .choices
@@ -387,5 +423,23 @@ impl Provider for OpenAIProvider {
                 Err(e) => StreamChunk::Error(e.to_string()),
             })
             .boxed())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OpenAIProvider;
+
+    #[test]
+    fn detects_minimax_chat_setting_error_variants() {
+        assert!(OpenAIProvider::is_minimax_chat_setting_error(
+            "bad_request_error: invalid params, invalid chat setting (2013)"
+        ));
+        assert!(OpenAIProvider::is_minimax_chat_setting_error(
+            "code: 2013 invalid params"
+        ));
+        assert!(!OpenAIProvider::is_minimax_chat_setting_error(
+            "rate limit exceeded"
+        ));
     }
 }

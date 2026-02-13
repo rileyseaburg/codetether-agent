@@ -359,6 +359,13 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
     }
 }
 
+fn prefers_temperature_one(model: &str) -> bool {
+    let normalized = model.to_ascii_lowercase();
+    normalized.contains("kimi-k2")
+        || normalized.contains("glm-")
+        || normalized.contains("minimax")
+}
+
 fn is_swarm_agent(agent_type: &str) -> bool {
     matches!(
         agent_type.trim().to_ascii_lowercase().as_str(),
@@ -1490,7 +1497,7 @@ where
         create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve);
     let tool_definitions = tool_registry.definitions();
 
-    let temperature = if model.contains("kimi-k2") {
+    let temperature = if prefers_temperature_one(&model) {
         Some(1.0)
     } else {
         Some(0.7)

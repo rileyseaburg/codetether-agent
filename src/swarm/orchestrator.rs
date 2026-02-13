@@ -107,6 +107,13 @@ impl Orchestrator {
         }
     }
 
+    fn prefers_temperature_one(model: &str) -> bool {
+        let normalized = model.to_ascii_lowercase();
+        normalized.contains("kimi-k2")
+            || normalized.contains("glm-")
+            || normalized.contains("minimax")
+    }
+
     /// Decompose a complex task into subtasks
     pub async fn decompose(
         &mut self,
@@ -128,7 +135,7 @@ impl Orchestrator {
             .get(&self.provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", self.provider))?;
 
-        let temperature = if self.model.contains("kimi-k2") || self.model.contains("glm-") {
+        let temperature = if Self::prefers_temperature_one(&self.model) {
             1.0
         } else {
             0.7
