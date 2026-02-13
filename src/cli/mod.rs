@@ -183,6 +183,18 @@ pub struct RunArgs {
     pub file: Vec<PathBuf>,
 }
 
+/// Arguments for standalone worker HTTP server (testing/debugging)
+#[derive(Parser, Debug, Clone)]
+pub struct WorkerServerArgs {
+    /// Hostname to bind
+    #[arg(long, default_value = "0.0.0.0")]
+    pub hostname: String,
+
+    /// Port to bind
+    #[arg(short, long, default_value = "8080")]
+    pub port: u16,
+}
+
 #[derive(Parser, Debug, Clone)]
 pub struct A2aArgs {
     /// A2A server URL
@@ -212,6 +224,18 @@ pub struct A2aArgs {
     /// Push notification endpoint URL
     #[arg(long)]
     pub push_url: Option<String>,
+
+    /// Hostname to bind the worker HTTP server
+    #[arg(long, default_value = "0.0.0.0", env = "CODETETHER_WORKER_HOST")]
+    pub hostname: String,
+
+    /// Port for the worker HTTP server (for health/readiness probes)
+    #[arg(long, default_value = "8080", env = "CODETETHER_WORKER_PORT")]
+    pub port: u16,
+
+    /// Disable the worker HTTP server (for environments without K8s)
+    #[arg(long, env = "CODETETHER_WORKER_HTTP_DISABLED")]
+    pub no_http_server: bool,
 }
 
 #[derive(Parser, Debug, Clone)]

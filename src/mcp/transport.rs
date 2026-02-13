@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::io::{BufRead, Write};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, trace, warn};
 
 /// Transport trait for MCP communication
 #[async_trait]
@@ -257,7 +257,7 @@ impl ProcessTransport {
             .args(args)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::piped())
             .spawn()?;
 
         let stdout = child
@@ -268,9 +268,32 @@ impl ProcessTransport {
             .stdin
             .take()
             .ok_or_else(|| anyhow::anyhow!("No stdin"))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No stderr"))?;
 
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
         let (read_tx, read_rx) = mpsc::channel::<String>(100);
+
+        // Stderr drain task — capture instead of inheriting so it doesn't corrupt the TUI
+        tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr);
+            let mut line = String::new();
+            loop {
+                line.clear();
+                match reader.read_line(&mut line).await {
+                    Ok(0) => break,
+                    Ok(_) => {
+                        let trimmed = line.trim();
+                        if !trimmed.is_empty() {
+                            warn!(target: "mcp_subprocess", "{trimmed}");
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
 
         // Writer task
         tokio::spawn(async move {
