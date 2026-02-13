@@ -216,6 +216,7 @@ pub struct MemoryStats {
 /// Memory Tool - Store and retrieve persistent knowledge
 pub struct MemoryTool {
     store: tokio::sync::Mutex<MemoryStore>,
+    initialized: std::sync::atomic::AtomicBool,
 }
 
 impl Default for MemoryTool {
@@ -228,13 +229,23 @@ impl MemoryTool {
     pub fn new() -> Self {
         Self {
             store: tokio::sync::Mutex::new(MemoryStore::default()),
+            initialized: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
-    /// Initialize store from disk
+    /// Initialize store from disk (once)
     pub async fn init(&self) -> Result<()> {
+        use std::sync::atomic::Ordering;
+
+        if self.initialized.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
         let mut store = self.store.lock().await;
-        *store = MemoryStore::load().await?;
+        if let Ok(loaded) = MemoryStore::load().await {
+            *store = loaded;
+        }
+        self.initialized.store(true, Ordering::SeqCst);
         Ok(())
     }
 
@@ -303,8 +314,16 @@ impl Tool for MemoryTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        // Ensure store is loaded
-        self.init().await.ok();
+        // Initialize store from disk if not already loaded
+        // Use a flag to avoid reloading on every call
+        let needs_init = {
+            let store = self.store.lock().await;
+            store.entries.is_empty()
+        };
+
+        if needs_init {
+            self.init().await.ok();
+        }
 
         let action = args["action"]
             .as_str()
@@ -555,10 +574,13 @@ impl MemoryTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::Ordering;
 
     #[tokio::test]
     async fn test_memory_save_and_get() {
         let tool = MemoryTool::new();
+        // Mark as initialized to prevent loading from disk (isolated test)
+        tool.initialized.store(true, Ordering::SeqCst);
 
         // Save a memory
         let result = tool
@@ -600,6 +622,8 @@ mod tests {
     #[tokio::test]
     async fn test_memory_search() {
         let tool = MemoryTool::new();
+        // Mark as initialized to prevent loading from disk (isolated test)
+        tool.initialized.store(true, Ordering::SeqCst);
 
         // Save with specific tags
         tool.execute(json!({
