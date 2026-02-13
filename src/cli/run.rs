@@ -3,11 +3,14 @@
 use super::RunArgs;
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
 use crate::config::Config;
+use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun, OkrRunStatus};
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
+use std::io::Write;
+use uuid::Uuid;
 
 const AUTOCHAT_MAX_AGENTS: usize = 8;
 const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
@@ -16,6 +19,23 @@ const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
 const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
 const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M2.5";
+
+/// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
+/// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
+fn parse_uuid_guarded(s: &str, context: &str) -> Option<Uuid> {
+    match s.parse::<Uuid>() {
+        Ok(uuid) => Some(uuid),
+        Err(e) => {
+            tracing::warn!(
+                context,
+                uuid_str = %s,
+                error = %e,
+                "Invalid UUID string - skipping operation"
+            );
+            None
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 struct RelayProfile {
@@ -427,7 +447,75 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             easy_go_requested,
         );
 
-        let relay_result = run_protocol_first_relay(agent_count, task, &model).await?;
+        // For /go commands (not /autochat), require OKR approval
+        let (okr_id, okr_run_id) = if easy_go_requested {
+            // Create OKR draft
+            let okr_id = Uuid::new_v4();
+            let mut okr = Okr::new(
+                format!("Relay: {}", truncate_with_ellipsis(&task, 60)),
+                format!("Execute relay task: {}", task),
+            );
+            okr.id = okr_id;
+
+            // Add default key results
+            let kr1 = KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%");
+            let kr2 = KeyResult::new(okr_id, "Team produces actionable handoff", 1.0, "count");
+            let kr3 = KeyResult::new(okr_id, "No critical errors", 0.0, "count");
+            okr.add_key_result(kr1);
+            okr.add_key_result(kr2);
+            okr.add_key_result(kr3);
+
+            // Create run
+            let mut run = OkrRun::new(
+                okr_id,
+                format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
+            );
+            run.status = OkrRunStatus::PendingApproval;
+
+            // Show OKR draft
+            println!("\n⚠️  /go OKR Draft\n");
+            println!("Task: {}", truncate_with_ellipsis(&task, 80));
+            println!("Agents: {} | Model: {}", agent_count, model);
+            println!("\nObjective: {}", okr.title);
+            println!("\nKey Results:");
+            for kr in &okr.key_results {
+                println!("  • {} (target: {} {})", kr.title, kr.target_value, kr.unit);
+            }
+            println!("\n");
+
+            // Prompt for approval
+            print!("Approve OKR and start relay? [y/n]: ");
+            std::io::stdout().flush()?;
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+
+            let input = input.trim().to_lowercase();
+            if input != "y" && input != "yes" {
+                println!("❌ OKR denied. Relay not started.");
+                println!("Use /autochat for tactical execution without OKR tracking.");
+                return Ok(());
+            }
+
+            println!("✅ OKR approved! Starting relay execution...\n");
+
+            // Save OKR and run
+            if let Ok(repo) = OkrRepository::from_config().await {
+                let _ = repo.create_okr(okr).await;
+                let mut approved_run = run;
+                approved_run.status = OkrRunStatus::Approved;
+                approved_run.correlation_id = Some(format!("relay-{}", Uuid::new_v4()));
+                let _ = repo.create_run(approved_run.clone()).await;
+                tracing::info!(okr_id = %okr_id, okr_run_id = %approved_run.id, "OKR run approved and saved");
+                (Some(okr_id), Some(approved_run.id))
+            } else {
+                (Some(okr_id), Some(run.id))
+            }
+        } else {
+            (None, None)
+        };
+
+        let relay_result =
+            run_protocol_first_relay(agent_count, task, &model, okr_id, okr_run_id).await?;
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
             _ => {
@@ -714,6 +802,8 @@ async fn run_protocol_first_relay(
     agent_count: usize,
     task: &str,
     model_ref: &str,
+    okr_id: Option<Uuid>,
+    okr_run_id: Option<Uuid>,
 ) -> Result<AutochatCliResult> {
     let bus = AgentBus::new().into_arc();
     let relay = ProtocolRelayRuntime::new(bus);
@@ -769,6 +859,27 @@ async fn run_protocol_first_relay(
     }
 
     relay.register_agents(&relay_profiles);
+
+    // Load KR targets if OKR is associated
+    let kr_targets: std::collections::HashMap<String, f64> =
+        if let (Some(okr_id_val), Some(_run_id)) = (okr_id, okr_run_id) {
+            if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                if let Ok(Some(okr)) = repo.get_okr(okr_id_val).await {
+                    okr.key_results
+                        .iter()
+                        .map(|kr| (kr.id.to_string(), kr.target_value))
+                        .collect()
+                } else {
+                    std::collections::HashMap::new()
+                }
+            } else {
+                std::collections::HashMap::new()
+            }
+        } else {
+            std::collections::HashMap::new()
+        };
+
+    let mut kr_progress: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
 
     let mut baton = format!(
         "Task:\n{task}\n\nStart by proposing an execution strategy and one immediate next step."
@@ -827,6 +938,34 @@ async fn run_protocol_first_relay(
                 "Relay task:\n{task}\n\nIncoming handoff from @{to}:\n{}\n\nContinue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent.",
                 truncate_with_ellipsis(&output, 3_500)
             );
+
+            // Update KR progress after each turn
+            if !kr_targets.is_empty() {
+                let max_turns = ordered_agents.len() * AUTOCHAT_MAX_ROUNDS;
+                let progress_ratio = (turns as f64 / max_turns as f64).min(1.0);
+
+                for (kr_id, target) in &kr_targets {
+                    let current = progress_ratio * target;
+                    let existing = kr_progress.get(kr_id).copied().unwrap_or(0.0);
+                    if current > existing {
+                        kr_progress.insert(kr_id.clone(), current);
+                    }
+                }
+
+                // Persist mid-run (best-effort)
+                if let Some(run_id) = okr_run_id {
+                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                        if let Ok(Some(mut run)) = repo.get_run(run_id).await {
+                            run.iterations = turns as u32;
+                            for (kr_id, value) in &kr_progress {
+                                run.update_kr_progress(kr_id, *value);
+                            }
+                            run.status = crate::okr::OkrRunStatus::Running;
+                            let _ = repo.update_run(run).await;
+                        }
+                    }
+                }
+            }
 
             let can_attempt_spawn = dynamic_spawn_count < AUTOCHAT_MAX_DYNAMIC_SPAWNS
                 && ordered_agents.len() < AUTOCHAT_MAX_AGENTS
@@ -890,6 +1029,69 @@ async fn run_protocol_first_relay(
     }
 
     relay.shutdown_agents(&ordered_agents);
+
+    // Update OKR run with final progress if associated
+    if let Some(run_id) = okr_run_id {
+        if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+            if let Ok(Some(mut run)) = repo.get_run(run_id).await {
+                // Update KR progress from execution
+                for (kr_id, value) in &kr_progress {
+                    run.update_kr_progress(kr_id, *value);
+                }
+
+                // Create outcomes per KR with progress (link to actual KR IDs)
+                let base_evidence = vec![
+                    format!("relay:{}", relay.relay_id()),
+                    format!("turns:{}", turns),
+                    format!("agents:{}", ordered_agents.len()),
+                    format!("status:{}", status),
+                ];
+
+                let outcome_type = if status == "converged" {
+                    crate::okr::KrOutcomeType::FeatureDelivered
+                } else {
+                    crate::okr::KrOutcomeType::Evidence
+                };
+
+                // Create one outcome per KR, linked to the actual KR ID
+                for (kr_id_str, value) in &kr_progress {
+                    // Parse KR ID with guardrail to prevent NIL UUID linkage
+                    if let Some(kr_uuid) =
+                        parse_uuid_guarded(kr_id_str, "cli_relay_outcome_kr_link")
+                    {
+                        let kr_description = format!(
+                            "CLI relay outcome for KR {}: {} agents, {} turns, status={}",
+                            kr_id_str,
+                            ordered_agents.len(),
+                            turns,
+                            status
+                        );
+                        run.outcomes.push(crate::okr::KrOutcome {
+                            id: uuid::Uuid::new_v4(),
+                            kr_id: kr_uuid,
+                            run_id: Some(run.id),
+                            description: kr_description,
+                            outcome_type,
+                            value: Some(*value),
+                            evidence: base_evidence.clone(),
+                            source: "cli relay".to_string(),
+                            created_at: chrono::Utc::now(),
+                        });
+                    }
+                }
+
+                // Mark complete or update status based on execution result
+                if status == "converged" {
+                    run.complete();
+                } else if status == "agent_error" {
+                    run.status = crate::okr::OkrRunStatus::Failed;
+                } else {
+                    run.status = crate::okr::OkrRunStatus::Completed;
+                }
+                let _ = repo.update_run(run).await;
+            }
+        }
+    }
 
     let mut summary = format!(
         "Autochat complete ({status}) — relay {} with {} agents over {} turns.\n\nFinal relay handoff:\n{}",

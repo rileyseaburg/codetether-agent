@@ -433,13 +433,17 @@ impl Session {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
                             if let Some(audit) = try_audit_log() {
-                                audit.log(
-                                    AuditCategory::ToolExecution,
-                                    format!("tool:{}", tool_name),
-                                    if result.success { AuditOutcome::Success } else { AuditOutcome::Failure },
-                                    None,
-                                    Some(json!({ "duration_ms": duration_ms, "output_len": result.output.len() })),
-                                ).await;
+                                audit.log_with_correlation(
+                                        AuditCategory::ToolExecution,
+                                        format!("tool:{}", tool_name),
+                                        if result.success { AuditOutcome::Success } else { AuditOutcome::Failure },
+                                        None,
+                                        Some(json!({ "duration_ms": duration_ms, "output_len": result.output.len() })),
+                                        None,  // okr_id
+                                        None,  // okr_run_id
+                                        None,  // relay_id
+                                        Some(self.id.clone()),  // session_id
+                                    ).await;
                             }
                             result.output
                         }
@@ -447,13 +451,17 @@ impl Session {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
                             if let Some(audit) = try_audit_log() {
-                                audit.log(
-                                    AuditCategory::ToolExecution,
-                                    format!("tool:{}", tool_name),
-                                    AuditOutcome::Failure,
-                                    None,
-                                    Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
-                                ).await;
+                                audit.log_with_correlation(
+                                        AuditCategory::ToolExecution,
+                                        format!("tool:{}", tool_name),
+                                        AuditOutcome::Failure,
+                                        None,
+                                        Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
+                                        None,  // okr_id
+                                        None,  // okr_run_id
+                                        None,  // relay_id
+                                        Some(self.id.clone()),  // session_id
+                                    ).await;
                             }
                             format!("Error: {}", e)
                         }
@@ -462,12 +470,16 @@ impl Session {
                     tracing::warn!(tool = %tool_name, "Tool not found");
                     if let Some(audit) = try_audit_log() {
                         audit
-                            .log(
+                            .log_with_correlation(
                                 AuditCategory::ToolExecution,
                                 format!("tool:{}", tool_name),
                                 AuditOutcome::Failure,
                                 None,
                                 Some(json!({ "error": "unknown_tool" })),
+                                None,                  // okr_id
+                                None,                  // okr_run_id
+                                None,                  // relay_id
+                                Some(self.id.clone()), // session_id
                             )
                             .await;
                     }
@@ -870,13 +882,17 @@ impl Session {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
                             if let Some(audit) = try_audit_log() {
-                                audit.log(
-                                    AuditCategory::ToolExecution,
-                                    format!("tool:{}", tool_name),
-                                    if result.success { AuditOutcome::Success } else { AuditOutcome::Failure },
-                                    None,
-                                    Some(json!({ "duration_ms": duration_ms, "output_len": result.output.len() })),
-                                ).await;
+                                audit.log_with_correlation(
+                                        AuditCategory::ToolExecution,
+                                        format!("tool:{}", tool_name),
+                                        if result.success { AuditOutcome::Success } else { AuditOutcome::Failure },
+                                        None,
+                                        Some(json!({ "duration_ms": duration_ms, "output_len": result.output.len() })),
+                                        None,  // okr_id
+                                        None,  // okr_run_id
+                                        None,  // relay_id
+                                        Some(self.id.clone()),  // session_id
+                                    ).await;
                             }
                             (result.output, result.success)
                         }
@@ -884,13 +900,17 @@ impl Session {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
                             if let Some(audit) = try_audit_log() {
-                                audit.log(
-                                    AuditCategory::ToolExecution,
-                                    format!("tool:{}", tool_name),
-                                    AuditOutcome::Failure,
-                                    None,
-                                    Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
-                                ).await;
+                                audit.log_with_correlation(
+                                        AuditCategory::ToolExecution,
+                                        format!("tool:{}", tool_name),
+                                        AuditOutcome::Failure,
+                                        None,
+                                        Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
+                                        None,  // okr_id
+                                        None,  // okr_run_id
+                                        None,  // relay_id
+                                        Some(self.id.clone()),  // session_id
+                                    ).await;
                             }
                             (format!("Error: {}", e), false)
                         }
@@ -899,12 +919,16 @@ impl Session {
                     tracing::warn!(tool = %tool_name, "Tool not found");
                     if let Some(audit) = try_audit_log() {
                         audit
-                            .log(
+                            .log_with_correlation(
                                 AuditCategory::ToolExecution,
                                 format!("tool:{}", tool_name),
                                 AuditOutcome::Failure,
                                 None,
                                 Some(json!({ "error": "unknown_tool" })),
+                                None,                  // okr_id
+                                None,                  // okr_run_id
+                                None,                  // relay_id
+                                Some(self.id.clone()), // session_id
                             )
                             .await;
                     }
@@ -1276,6 +1300,52 @@ pub async fn list_sessions_with_opencode(dir: &std::path::Path) -> Result<Vec<Se
     // Re-sort merged list by updated_at descending
     sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(sessions)
+}
+
+/// List sessions including OpenCode sessions for a directory with pagination.
+///
+/// This is more efficient than `list_sessions_with_opencode` when you only need
+/// a subset of sessions (e.g., for the TUI session picker).
+///
+/// - `limit`: Maximum number of sessions to return (default: 100)
+/// - `offset`: Number of sessions to skip (default: 0)
+pub async fn list_sessions_with_opencode_paged(
+    dir: &std::path::Path,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<SessionSummary>> {
+    let mut sessions = list_sessions_for_directory(dir).await?;
+
+    // Also include OpenCode sessions if available
+    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
+        if storage.exists() {
+            if let Ok(oc_sessions) = storage.list_sessions_for_directory(dir).await {
+                for oc in oc_sessions {
+                    // Skip if we already have a CodeTether import of this session
+                    let import_id = format!("opencode_{}", oc.id);
+                    if sessions.iter().any(|s| s.id == import_id) {
+                        continue;
+                    }
+
+                    sessions.push(SessionSummary {
+                        id: import_id,
+                        title: Some(format!("[opencode] {}", oc.title)),
+                        created_at: oc.created_at,
+                        updated_at: oc.updated_at,
+                        message_count: oc.message_count,
+                        agent: "build".to_string(),
+                        directory: Some(PathBuf::from(&oc.directory)),
+                    });
+                }
+            }
+        }
+    }
+
+    // Re-sort merged list by updated_at descending
+    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+
+    // Apply pagination
+    Ok(sessions.into_iter().skip(offset).take(limit).collect())
 }
 
 /// Summary of a session for listing

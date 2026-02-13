@@ -70,6 +70,18 @@ pub struct AuditEntry {
     /// Duration of the action in milliseconds, if measured.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
+    /// OKR ID if this action is part of an OKR-gated operation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub okr_id: Option<String>,
+    /// OKR run ID if this action is part of an OKR run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub okr_run_id: Option<String>,
+    /// Relay ID if this action is part of a relay execution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_id: Option<String>,
+    /// Session ID for correlation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
 }
 
 /// Thread-safe, append-only audit log.
@@ -175,6 +187,40 @@ impl AuditLog {
             outcome,
             detail,
             duration_ms: None,
+            okr_id: None,
+            okr_run_id: None,
+            relay_id: None,
+            session_id: None,
+        })
+        .await;
+    }
+
+    /// Convenience: record an action with OKR/relay correlation.
+    pub async fn log_with_correlation(
+        &self,
+        category: AuditCategory,
+        action: impl Into<String>,
+        outcome: AuditOutcome,
+        principal: Option<String>,
+        detail: Option<serde_json::Value>,
+        okr_id: Option<String>,
+        okr_run_id: Option<String>,
+        relay_id: Option<String>,
+        session_id: Option<String>,
+    ) {
+        self.record(AuditEntry {
+            id: Uuid::new_v4().to_string(),
+            timestamp: Utc::now(),
+            category,
+            action: action.into(),
+            principal,
+            outcome,
+            detail,
+            duration_ms: None,
+            okr_id,
+            okr_run_id,
+            relay_id,
+            session_id,
         })
         .await;
     }

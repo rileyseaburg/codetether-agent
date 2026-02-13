@@ -20,13 +20,13 @@ use tokio::time::Instant;
 
 /// Worker status for heartbeat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum WorkerStatus {
+pub enum WorkerStatus {
     Idle,
     Processing,
 }
 
 impl WorkerStatus {
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             WorkerStatus::Idle => "idle",
             WorkerStatus::Processing => "processing",
@@ -36,15 +36,15 @@ impl WorkerStatus {
 
 /// Heartbeat state shared between the heartbeat task and the main worker
 #[derive(Clone)]
-struct HeartbeatState {
+pub struct HeartbeatState {
     worker_id: String,
-    agent_name: String,
-    status: Arc<Mutex<WorkerStatus>>,
-    active_task_count: Arc<Mutex<usize>>,
+    pub agent_name: String,
+    pub status: Arc<Mutex<WorkerStatus>>,
+    pub active_task_count: Arc<Mutex<usize>>,
 }
 
 impl HeartbeatState {
-    fn new(worker_id: String, agent_name: String) -> Self {
+    pub fn new(worker_id: String, agent_name: String) -> Self {
         Self {
             worker_id,
             agent_name,
@@ -53,11 +53,11 @@ impl HeartbeatState {
         }
     }
 
-    async fn set_status(&self, status: WorkerStatus) {
+    pub async fn set_status(&self, status: WorkerStatus) {
         *self.status.lock().await = status;
     }
 
-    async fn set_task_count(&self, count: usize) {
+    pub async fn set_task_count(&self, count: usize) {
         *self.active_task_count.lock().await = count;
     }
 }
@@ -206,6 +206,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
             &processing,
             &auto_approve,
             &bus,
+            None, // No task notification channel in simple run mode
         )
         .await
         {
@@ -216,6 +217,148 @@ pub async fn run(args: A2aArgs) -> Result<()> {
                 tracing::error!("Stream error: {}, reconnecting...", e);
             }
         }
+
+        // Cancel heartbeat on disconnection
+        heartbeat_handle.abort();
+        tracing::debug!("Heartbeat cancelled for reconnection");
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    }
+}
+
+/// Run the A2A worker with shared state for HTTP server integration
+/// This variant accepts a WorkerServerState to communicate with the HTTP server
+pub async fn run_with_state(
+    args: A2aArgs,
+    server_state: crate::worker_server::WorkerServerState,
+) -> Result<()> {
+    let server = args.server.trim_end_matches('/');
+    let name = args
+        .name
+        .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
+    let worker_id = generate_worker_id();
+
+    // Share worker_id with HTTP server
+    server_state.set_worker_id(worker_id.clone()).await;
+
+    let codebases: Vec<String> = args
+        .codebases
+        .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
+
+    tracing::info!("Starting A2A worker: {} ({})", name, worker_id);
+    tracing::info!("Server: {}", server);
+    tracing::info!("Codebases: {:?}", codebases);
+
+    let client = Client::new();
+    let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
+    if cognition_heartbeat.enabled {
+        tracing::info!(
+            source = %cognition_heartbeat.source_base_url,
+            include_thoughts = cognition_heartbeat.include_thought_summary,
+            max_chars = cognition_heartbeat.summary_max_chars,
+            timeout_ms = cognition_heartbeat.request_timeout_ms,
+            "Cognition heartbeat sharing enabled (set CODETETHER_WORKER_COGNITION_SHARE_ENABLED=false to disable)"
+        );
+    } else {
+        tracing::warn!(
+            "Cognition heartbeat sharing disabled; worker thought state will not be shared upstream"
+        );
+    }
+
+    let auto_approve = match args.auto_approve.as_str() {
+        "all" => AutoApprove::All,
+        "safe" => AutoApprove::Safe,
+        _ => AutoApprove::None,
+    };
+
+    // Create heartbeat state
+    let heartbeat_state = HeartbeatState::new(worker_id.clone(), name.clone());
+
+    // Share heartbeat state with HTTP server
+    server_state
+        .set_heartbeat_state(Arc::new(heartbeat_state.clone()))
+        .await;
+
+    // Create agent bus for in-process sub-agent communication
+    let bus = AgentBus::new().into_arc();
+    {
+        let handle = bus.handle(&worker_id);
+        handle.announce_ready(WORKER_CAPABILITIES.iter().map(|s| s.to_string()).collect());
+    }
+
+    // Register worker
+    register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+
+    // Mark as connected
+    server_state.set_connected(true).await;
+
+    // Fetch pending tasks before entering reconnection loop
+    fetch_pending_tasks(
+        &client,
+        server,
+        &args.token,
+        &worker_id,
+        &processing,
+        &auto_approve,
+        &bus,
+    )
+    .await?;
+
+    // Connect to SSE stream
+    loop {
+        // Create task notification channel for CloudEvent-triggered task execution
+        // Recreate on each reconnection since the receiver is moved into connect_stream
+        let (task_notify_tx, task_notify_rx) = mpsc::channel::<String>(32);
+        server_state
+            .set_task_notification_channel(task_notify_tx)
+            .await;
+
+        // Mark as connected on each reconnection
+        server_state.set_connected(true).await;
+
+        // Re-register worker on each reconnection to report updated models/capabilities
+        if let Err(e) =
+            register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await
+        {
+            tracing::warn!("Failed to re-register worker on reconnection: {}", e);
+        }
+
+        // Start heartbeat task for this connection
+        let heartbeat_handle = start_heartbeat(
+            client.clone(),
+            server.to_string(),
+            args.token.clone(),
+            heartbeat_state.clone(),
+            processing.clone(),
+            cognition_heartbeat.clone(),
+        );
+
+        match connect_stream(
+            &client,
+            server,
+            &args.token,
+            &worker_id,
+            &name,
+            &codebases,
+            &processing,
+            &auto_approve,
+            &bus,
+            Some(task_notify_rx),
+        )
+        .await
+        {
+            Ok(()) => {
+                tracing::warn!("Stream ended, reconnecting...");
+            }
+            Err(e) => {
+                tracing::error!("Stream error: {}, reconnecting...", e);
+            }
+        }
+
+        // Mark as disconnected
+        server_state.set_connected(false).await;
 
         // Cancel heartbeat on disconnection
         heartbeat_handle.abort();
@@ -852,6 +995,7 @@ async fn connect_stream(
     processing: &Arc<Mutex<HashSet<String>>>,
     auto_approve: &AutoApprove,
     bus: &Arc<AgentBus>,
+    task_notify_rx: Option<mpsc::Receiver<String>>,
 ) -> Result<()> {
     let url = format!(
         "{}/v1/worker/tasks/stream?agent_name={}&worker_id={}",
@@ -883,8 +1027,31 @@ async fn connect_stream(
     let mut poll_interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
     poll_interval.tick().await; // consume the initial immediate tick
 
+    // Pin the optional receiver so we can use it in the loop
+    let mut task_notify_rx = task_notify_rx;
+
     loop {
         tokio::select! {
+            // Handle task notification from CloudEvent (Knative Eventing)
+            // Only if the channel was provided (i.e., running with HTTP server)
+            task_id = async {
+                if let Some(ref mut rx) = task_notify_rx {
+                    rx.recv().await
+                } else {
+                    // Never ready when None - use pending to skip this branch
+                    futures::future::pending().await
+                }
+            } => {
+                if let Some(task_id) = task_id {
+                    tracing::info!("Received task notification via CloudEvent: {}", task_id);
+                    // Immediately poll for and process this task
+                    if let Err(e) = poll_pending_tasks(
+                        client, server, token, worker_id, processing, auto_approve, bus,
+                    ).await {
+                        tracing::warn!("Task notification poll failed: {}", e);
+                    }
+                }
+            }
             chunk = stream.next() => {
                 match chunk {
                     Some(Ok(chunk)) => {

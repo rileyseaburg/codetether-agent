@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CloudEvent Task Notification**: Worker now receives task notifications via Knative Eventing
+  - `/task` endpoint extracts `task_id` from CloudEvent payload
+  - Worker loop immediately polls for pending tasks when notified
+  - Enables real-time task dispatch without SSE polling delay
+
+### Deprecated
+
+- **opencode API endpoints**: The `/v1/opencode/*` endpoints are deprecated
+  - Use `/v1/tasks/dispatch` for task creation with Knative integration
+  - Use `/v1/worker/tasks/*` endpoints for worker operations
+  - Migration guide will be provided before removal in v3.0.0
+
 ### Fixed
 
 - **Windows Installer** (`install.ps1`):

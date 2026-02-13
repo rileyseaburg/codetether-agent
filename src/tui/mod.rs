@@ -42,10 +42,11 @@ const AGENT_AVATARS: [&str; 12] = [
 
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::config::Config;
+use crate::okr::{KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRepository, OkrRun, OkrRunStatus};
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
 use crate::rlm::RlmExecutor;
-use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_with_opencode};
+use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_with_opencode_paged};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::bus_log::{BusLogState, render_bus_log};
 use crate::tui::message_formatter::MessageFormatter;
@@ -86,6 +87,25 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
+use uuid::Uuid;
+
+/// Safely parse a UUID string with explicit skip/warn behavior.
+/// Returns None and logs a warning if the string is not a valid UUID,
+/// preventing silent NIL UUID fallback that could corrupt data linkage.
+fn parse_uuid_guarded(s: &str, context: &str) -> Option<Uuid> {
+    match s.parse::<Uuid>() {
+        Ok(uuid) => Some(uuid),
+        Err(e) => {
+            tracing::warn!(
+                context,
+                uuid_str = %s,
+                error = %e,
+                "Invalid UUID string - skipping operation to prevent NIL UUID corruption"
+            );
+            None
+        }
+    }
+}
 
 /// Run the TUI
 pub async fn run(project: Option<PathBuf>) -> Result<()> {
@@ -232,6 +252,7 @@ struct App {
     session_picker_selected: usize,
     session_picker_filter: String,
     session_picker_confirm_delete: bool,
+    session_picker_offset: usize, // Pagination offset
     // Model picker state
     model_picker_list: Vec<(String, String, String)>, // (display label, provider/model value, human name)
     model_picker_selected: usize,
@@ -261,6 +282,9 @@ struct App {
     chat_sync_uploaded_bytes: u64,
     chat_sync_uploaded_batches: usize,
     secure_environment: bool,
+    // OKR approval gate state
+    pending_okr_approval: Option<PendingOkrApproval>,
+    okr_repository: Option<std::sync::Arc<OkrRepository>>,
     // Cached max scroll for key handlers
     last_max_scroll: usize,
 }
@@ -317,6 +341,9 @@ enum AutochatUiEvent {
     },
     Completed {
         summary: String,
+        okr_id: Option<String>,
+        okr_run_id: Option<String>,
+        relay_id: Option<String>,
     },
 }
 
@@ -376,6 +403,15 @@ struct RelayCheckpoint {
     workspace_dir: PathBuf,
     /// When the relay was started
     started_at: String,
+    /// OKR ID this relay is associated with (if any)
+    #[serde(default)]
+    okr_id: Option<String>,
+    /// OKR run ID this relay is associated with (if any)
+    #[serde(default)]
+    okr_run_id: Option<String>,
+    /// Key result progress cursor: map of kr_id -> current value
+    #[serde(default)]
+    kr_progress: HashMap<String, f64>,
 }
 
 impl RelayCheckpoint {
@@ -1070,6 +1106,82 @@ impl ChatMessage {
     }
 }
 
+/// Pending OKR approval gate state for /go commands
+struct PendingOkrApproval {
+    /// The OKR being proposed
+    okr: Okr,
+    /// The OKR run being proposed
+    run: OkrRun,
+    /// Original task that triggered the OKR
+    task: String,
+    /// Agent count for the relay
+    agent_count: usize,
+    /// Model to use
+    model: String,
+}
+
+impl PendingOkrApproval {
+    /// Create a new pending approval from a task
+    fn new(task: String, agent_count: usize, model: String) -> Self {
+        let okr_id = Uuid::new_v4();
+
+        // Create OKR with default key results based on task
+        let mut okr = Okr::new(
+            format!("Relay: {}", truncate_with_ellipsis(&task, 60)),
+            format!("Execute relay task: {}", task),
+        );
+        okr.id = okr_id;
+
+        // Add default key results for relay execution
+        let kr1 = KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%");
+        let kr2 = KeyResult::new(okr_id, "Team produces actionable handoff", 1.0, "count");
+        let kr3 = KeyResult::new(okr_id, "No critical errors", 0.0, "count");
+
+        okr.add_key_result(kr1);
+        okr.add_key_result(kr2);
+        okr.add_key_result(kr3);
+
+        // Create the run
+        let mut run = OkrRun::new(
+            okr_id,
+            format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
+        );
+        run.status = OkrRunStatus::PendingApproval;
+
+        Self {
+            okr,
+            run,
+            task,
+            agent_count,
+            model,
+        }
+    }
+
+    /// Get the approval prompt text
+    fn approval_prompt(&self) -> String {
+        let krs: Vec<String> = self
+            .okr
+            .key_results
+            .iter()
+            .map(|kr| format!("  • {} (target: {} {})", kr.title, kr.target_value, kr.unit))
+            .collect();
+
+        format!(
+            "⚠️  /go OKR Draft\n\n\
+            Task: {}\n\
+            Agents: {} | Model: {}\n\n\
+            Objective: {}\n\n\
+            Key Results:\n{}\n\n\
+            Press [A] to approve or [D] to deny",
+            truncate_with_ellipsis(&self.task, 100),
+            self.agent_count,
+            self.model,
+            self.okr.title,
+            krs.join("\n")
+        )
+    }
+}
+
 impl WorkspaceSnapshot {
     fn capture(root: &Path, max_entries: usize) -> Self {
         let mut entries: Vec<WorkspaceEntry> = Vec::new();
@@ -1561,6 +1673,8 @@ async fn run_autochat_worker(
     fallback_profiles: Vec<(String, String, Vec<String>)>,
     task: String,
     model_ref: String,
+    okr_id: Option<Uuid>,
+    okr_run_id: Option<Uuid>,
 ) {
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1579,6 +1693,9 @@ async fn run_autochat_worker(
             let _ = tx
                 .send(AutochatUiEvent::Completed {
                     summary: "Autochat aborted: provider registry unavailable.".to_string(),
+                    okr_id: None,
+                    okr_run_id: None,
+                    relay_id: None,
                 })
                 .await;
             return;
@@ -1621,6 +1738,34 @@ async fn run_autochat_worker(
     let mut sessions: HashMap<String, Session> = HashMap::new();
     let mut setup_errors: Vec<String> = Vec::new();
     let mut checkpoint_profiles: Vec<(String, String, Vec<String>)> = Vec::new();
+    let mut kr_progress: HashMap<String, f64> = HashMap::new();
+
+    // Convert Uuid to String for checkpoint storage
+    let okr_id_str = okr_id.map(|id| id.to_string());
+    let okr_run_id_str = okr_run_id.map(|id| id.to_string());
+
+    // Load KR targets if OKR is associated
+    let kr_targets: HashMap<String, f64> =
+        if let (Some(okr_id_val), Some(_run_id)) = (&okr_id_str, &okr_run_id_str) {
+            if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                if let Ok(okr_uuid) = okr_id_val.parse::<Uuid>() {
+                    if let Ok(Some(okr)) = repo.get_okr(okr_uuid).await {
+                        okr.key_results
+                            .iter()
+                            .map(|kr| (kr.id.to_string(), kr.target_value))
+                            .collect()
+                    } else {
+                        HashMap::new()
+                    }
+                } else {
+                    HashMap::new()
+                }
+            } else {
+                HashMap::new()
+            }
+        } else {
+            HashMap::new()
+        };
 
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1674,6 +1819,9 @@ async fn run_autochat_worker(
         let _ = tx
             .send(AutochatUiEvent::Completed {
                 summary: "Autochat aborted: insufficient relay participants.".to_string(),
+                okr_id: None,
+                okr_run_id: None,
+                relay_id: None,
             })
             .await;
         return;
@@ -1830,6 +1978,38 @@ async fn run_autochat_worker(
 
             baton = next_handoff;
 
+            // Update KR progress after each turn
+            if !kr_targets.is_empty() {
+                let max_turns = ordered_agents.len() * AUTOCHAT_MAX_ROUNDS;
+                let progress_ratio = (turns as f64 / max_turns as f64).min(1.0);
+
+                for (kr_id, target) in &kr_targets {
+                    let current = progress_ratio * target;
+                    let existing = kr_progress.get(kr_id).copied().unwrap_or(0.0);
+                    // Only update if progress increased (idempotent)
+                    if current > existing {
+                        kr_progress.insert(kr_id.clone(), current);
+                    }
+                }
+
+                // Persist mid-run for real-time visibility (best-effort)
+                if let Some(ref run_id_str) = okr_run_id_str {
+                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                        if let Some(run_uuid) =
+                            parse_uuid_guarded(run_id_str, "relay_mid_run_persist")
+                        {
+                            if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
+                                run.iterations = turns as u32;
+                                for (kr_id, value) in &kr_progress {
+                                    run.update_kr_progress(kr_id, *value);
+                                }
+                                run.status = crate::okr::OkrRunStatus::Running;
+                                let _ = repo.update_run(run).await;
+                            }
+                        }
+                    }
+                }
+            }
             let can_attempt_spawn = dynamic_spawn_count < AUTOCHAT_MAX_DYNAMIC_SPAWNS
                 && ordered_agents.len() < AUTOCHAT_MAX_AGENTS
                 && output.len() >= AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
@@ -1916,6 +2096,9 @@ async fn run_autochat_worker(
                     rlm_handoff_count,
                     workspace_dir: std::env::current_dir().unwrap_or_default(),
                     started_at: chrono::Utc::now().to_rfc3339(),
+                    okr_id: okr_id_str.clone(),
+                    okr_run_id: okr_run_id_str.clone(),
+                    kr_progress: kr_progress.clone(),
                 };
                 if let Err(err) = checkpoint.save().await {
                     tracing::warn!("Failed to save relay checkpoint: {err}");
@@ -1930,6 +2113,82 @@ async fn run_autochat_worker(
 
     // Relay completed normally — delete the checkpoint
     RelayCheckpoint::delete().await;
+
+    // Update OKR run with progress if associated
+    if let Some(ref run_id_str) = okr_run_id_str {
+        if let Some(repo) = crate::okr::persistence::OkrRepository::from_config()
+            .await
+            .ok()
+        {
+            if let Some(run_uuid) = parse_uuid_guarded(run_id_str, "relay_completion_persist") {
+                if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
+                    // Update KR progress from checkpoint
+                    for (kr_id, value) in &kr_progress {
+                        run.update_kr_progress(kr_id, *value);
+                    }
+
+                    // Create outcomes per KR with progress (link to actual KR IDs)
+                    let relay_id = relay.relay_id().to_string();
+                    let base_evidence = vec![
+                        format!("relay:{}", relay_id),
+                        format!("turns:{}", turns),
+                        format!("agents:{}", ordered_agents.len()),
+                        format!("status:{}", status),
+                        format!("rlm_handoffs:{}", rlm_handoff_count),
+                        format!("dynamic_spawns:{}", dynamic_spawn_count),
+                    ];
+
+                    // Set outcome type based on status
+                    let outcome_type = if status == "converged" {
+                        KrOutcomeType::FeatureDelivered
+                    } else if status == "max_rounds" {
+                        KrOutcomeType::Evidence
+                    } else {
+                        KrOutcomeType::Evidence
+                    };
+
+                    // Create one outcome per KR, linked to the actual KR ID
+                    for (kr_id_str, value) in &kr_progress {
+                        // Parse KR ID with guardrail to prevent NIL UUID linkage
+                        if let Some(kr_uuid) =
+                            parse_uuid_guarded(kr_id_str, "relay_outcome_kr_link")
+                        {
+                            let kr_description = format!(
+                                "Relay outcome for KR {}: {} agents, {} turns, status={}",
+                                kr_id_str,
+                                ordered_agents.len(),
+                                turns,
+                                status
+                            );
+                            run.outcomes.push(KrOutcome {
+                                id: uuid::Uuid::new_v4(),
+                                kr_id: kr_uuid,
+                                run_id: Some(run.id),
+                                description: kr_description,
+                                outcome_type,
+                                value: Some(*value),
+                                evidence: base_evidence.clone(),
+                                source: "autochat relay".to_string(),
+                                created_at: chrono::Utc::now(),
+                            });
+                        }
+                    }
+
+                    // Mark complete or update status based on execution result
+                    if status == "converged" {
+                        run.complete();
+                    } else if status == "agent_error" {
+                        run.status = crate::okr::OkrRunStatus::Failed;
+                    } else {
+                        run.status = crate::okr::OkrRunStatus::Completed;
+                    }
+                    // Clear checkpoint ID at completion - checkpoint lifecycle complete
+                    run.relay_checkpoint_id = None;
+                    let _ = repo.update_run(run).await;
+                }
+            }
+        }
+    }
 
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1961,7 +2220,17 @@ async fn run_autochat_worker(
         sessions.len()
     ));
 
-    let _ = tx.send(AutochatUiEvent::Completed { summary }).await;
+    let relay_id = relay.relay_id().to_string();
+    let okr_id_for_completion = okr_id_str.clone();
+    let okr_run_id_for_completion = okr_run_id_str.clone();
+    let _ = tx
+        .send(AutochatUiEvent::Completed {
+            summary,
+            okr_id: okr_id_for_completion,
+            okr_run_id: okr_run_id_for_completion,
+            relay_id: Some(relay_id),
+        })
+        .await;
 }
 
 /// Resume an autochat relay from a persisted checkpoint.
@@ -1990,6 +2259,9 @@ async fn resume_autochat_worker(
             let _ = tx
                 .send(AutochatUiEvent::Completed {
                     summary: "Relay resume aborted: provider registry unavailable.".to_string(),
+                    okr_id: checkpoint.okr_id.clone(),
+                    okr_run_id: checkpoint.okr_run_id.clone(),
+                    relay_id: None,
                 })
                 .await;
             return;
@@ -2008,6 +2280,49 @@ async fn resume_autochat_worker(
     let mut dynamic_spawn_count = checkpoint.dynamic_spawn_count;
     let start_round = checkpoint.round;
     let start_idx = checkpoint.idx;
+    let okr_run_id_str = checkpoint.okr_run_id.clone();
+    let mut kr_progress = checkpoint.kr_progress.clone();
+
+    // Load KR targets if OKR is associated
+    let kr_targets: HashMap<String, f64> =
+        if let (Some(okr_id_val), Some(_run_id)) = (&checkpoint.okr_id, &checkpoint.okr_run_id) {
+            if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                if let Ok(okr_uuid) = okr_id_val.parse::<uuid::Uuid>() {
+                    if let Ok(Some(okr)) = repo.get_okr(okr_uuid).await {
+                        okr.key_results
+                            .iter()
+                            .map(|kr| (kr.id.to_string(), kr.target_value))
+                            .collect()
+                    } else {
+                        HashMap::new()
+                    }
+                } else {
+                    HashMap::new()
+                }
+            } else {
+                HashMap::new()
+            }
+        } else {
+            HashMap::new()
+        };
+
+    // Persist KR progress immediately after resuming from checkpoint
+    if !kr_progress.is_empty() {
+        if let Some(ref run_id_str) = okr_run_id_str {
+            if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                if let Some(run_uuid) = parse_uuid_guarded(run_id_str, "resume_mid_run_persist") {
+                    if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
+                        run.iterations = turns as u32;
+                        for (kr_id, value) in &kr_progress {
+                            run.update_kr_progress(kr_id, *value);
+                        }
+                        run.status = crate::okr::OkrRunStatus::Running;
+                        let _ = repo.update_run(run).await;
+                    }
+                }
+            }
+        }
+    }
 
     // Reload agent sessions from disk
     let mut sessions: HashMap<String, Session> = HashMap::new();
@@ -2173,6 +2488,39 @@ async fn resume_autochat_worker(
 
             baton = next_handoff;
 
+            // Update KR progress after each turn
+            if !kr_targets.is_empty() {
+                let max_turns = ordered_agents.len() * AUTOCHAT_MAX_ROUNDS;
+                let progress_ratio = (turns as f64 / max_turns as f64).min(1.0);
+
+                for (kr_id, target) in &kr_targets {
+                    let current = progress_ratio * target;
+                    let existing = kr_progress.get(kr_id).copied().unwrap_or(0.0);
+                    // Only update if progress increased (idempotent)
+                    if current > existing {
+                        kr_progress.insert(kr_id.clone(), current);
+                    }
+                }
+
+                // Persist mid-run for real-time visibility (best-effort)
+                if let Some(ref run_id_str) = okr_run_id_str {
+                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
+                        if let Some(run_uuid) =
+                            parse_uuid_guarded(run_id_str, "resumed_relay_mid_run_persist")
+                        {
+                            if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
+                                run.iterations = turns as u32;
+                                for (kr_id, value) in &kr_progress {
+                                    run.update_kr_progress(kr_id, *value);
+                                }
+                                run.status = crate::okr::OkrRunStatus::Running;
+                                let _ = repo.update_run(run).await;
+                            }
+                        }
+                    }
+                }
+            }
+
             let can_attempt_spawn = dynamic_spawn_count < AUTOCHAT_MAX_DYNAMIC_SPAWNS
                 && ordered_agents.len() < AUTOCHAT_MAX_AGENTS
                 && output.len() >= AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
@@ -2259,6 +2607,9 @@ async fn resume_autochat_worker(
                     rlm_handoff_count,
                     workspace_dir: std::env::current_dir().unwrap_or_default(),
                     started_at: chrono::Utc::now().to_rfc3339(),
+                    okr_id: checkpoint.okr_id.clone(),
+                    okr_run_id: checkpoint.okr_run_id.clone(),
+                    kr_progress: kr_progress.clone(),
                 };
                 if let Err(err) = ck.save().await {
                     tracing::warn!("Failed to save relay checkpoint: {err}");
@@ -2273,6 +2624,78 @@ async fn resume_autochat_worker(
 
     // Relay completed normally — delete the checkpoint
     RelayCheckpoint::delete().await;
+
+    // Update OKR run with progress if associated
+    if let Some(ref run_id_str) = okr_run_id_str {
+        if let Some(repo) = crate::okr::persistence::OkrRepository::from_config()
+            .await
+            .ok()
+        {
+            if let Some(run_uuid) =
+                parse_uuid_guarded(run_id_str, "resumed_relay_completion_persist")
+            {
+                if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
+                    // Update KR progress from checkpoint
+                    for (kr_id, value) in &kr_progress {
+                        run.update_kr_progress(kr_id, *value);
+                    }
+
+                    // Create outcomes per KR with progress (link to actual KR IDs)
+                    let base_evidence = vec![
+                        format!("turns:{}", turns),
+                        format!("agents:{}", ordered_agents.len()),
+                        format!("status:{}", status),
+                        "resumed:true".to_string(),
+                    ];
+
+                    let outcome_type = if status == "converged" {
+                        KrOutcomeType::FeatureDelivered
+                    } else {
+                        KrOutcomeType::Evidence
+                    };
+
+                    // Create one outcome per KR, linked to the actual KR ID
+                    for (kr_id_str, value) in &kr_progress {
+                        // Parse KR ID with guardrail to prevent NIL UUID linkage
+                        if let Some(kr_uuid) =
+                            parse_uuid_guarded(kr_id_str, "resumed_relay_outcome_kr_link")
+                        {
+                            let kr_description = format!(
+                                "Resumed relay outcome for KR {}: {} agents, {} turns, status={}",
+                                kr_id_str,
+                                ordered_agents.len(),
+                                turns,
+                                status
+                            );
+                            run.outcomes.push(KrOutcome {
+                                id: uuid::Uuid::new_v4(),
+                                kr_id: kr_uuid,
+                                run_id: Some(run.id),
+                                description: kr_description,
+                                outcome_type,
+                                value: Some(*value),
+                                evidence: base_evidence.clone(),
+                                source: "autochat relay (resumed)".to_string(),
+                                created_at: chrono::Utc::now(),
+                            });
+                        }
+                    }
+
+                    // Mark complete or update status based on execution result
+                    if status == "converged" {
+                        run.complete();
+                    } else if status == "agent_error" {
+                        run.status = crate::okr::OkrRunStatus::Failed;
+                    } else {
+                        run.status = crate::okr::OkrRunStatus::Completed;
+                    }
+                    // Clear checkpoint ID at completion - checkpoint lifecycle complete
+                    run.relay_checkpoint_id = None;
+                    let _ = repo.update_run(run).await;
+                }
+            }
+        }
+    }
 
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -2299,7 +2722,14 @@ async fn resume_autochat_worker(
         truncate_with_ellipsis(&baton, 4_000)
     ));
 
-    let _ = tx.send(AutochatUiEvent::Completed { summary }).await;
+    let _ = tx
+        .send(AutochatUiEvent::Completed {
+            summary,
+            okr_id: checkpoint.okr_id.clone(),
+            okr_run_id: checkpoint.okr_run_id.clone(),
+            relay_id: Some(relay.relay_id().to_string()),
+        })
+        .await;
 }
 
 impl App {
@@ -2315,7 +2745,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - run team relay on your task (easy /autochat)\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode still works: /autochat, /spawn, /agent, /swarm, /ralph, /protocol",
+                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR-gated relay (requires approval, tracks outcomes)\n• /autochat <task> - tactical relay (fast path, no OKR)\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -2350,6 +2780,7 @@ impl App {
             session_picker_selected: 0,
             session_picker_filter: String::new(),
             session_picker_confirm_delete: false,
+            session_picker_offset: 0,
             model_picker_list: Vec::new(),
             model_picker_selected: 0,
             model_picker_filter: String::new(),
@@ -2375,6 +2806,8 @@ impl App {
             chat_sync_uploaded_bytes: 0,
             chat_sync_uploaded_batches: 0,
             secure_environment: false,
+            pending_okr_approval: None,
+            okr_repository: None,
             last_max_scroll: 0,
         }
     }
@@ -2385,7 +2818,12 @@ impl App {
     }
 
     fn update_cached_sessions(&mut self, sessions: Vec<SessionSummary>) {
-        self.session_picker_list = sessions.into_iter().take(16).collect();
+        // Default to 100 sessions, configurable via CODETETHER_SESSION_PICKER_LIMIT env var
+        let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100);
+        self.session_picker_list = sessions.into_iter().take(limit).collect();
         if self.session_picker_selected >= self.session_picker_list.len() {
             self.session_picker_selected = self.session_picker_list.len().saturating_sub(1);
         }
@@ -2468,6 +2906,8 @@ impl App {
         agent_count: usize,
         task: String,
         config: &Config,
+        okr_id: Option<Uuid>,
+        okr_run_id: Option<Uuid>,
     ) {
         if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
             self.messages.push(ChatMessage::new(
@@ -2487,17 +2927,23 @@ impl App {
             return;
         }
 
+        let status_msg = if okr_id.is_some() {
+            format!(
+                "Preparing OKR-gated relay with {agent_count} agents…\nTask: {}\n(Approval-granted execution)",
+                truncate_with_ellipsis(&task, 160)
+            )
+        } else {
+            format!(
+                "Preparing relay with {agent_count} agents…\nTask: {}\n(Compact mode: live agent streaming here, detailed relay envelopes in /buslog)",
+                truncate_with_ellipsis(&task, 180)
+            )
+        };
+
         self.messages.push(ChatMessage::new(
             "user",
             format!("/autochat {agent_count} {task}"),
         ));
-        self.messages.push(ChatMessage::new(
-            "system",
-            format!(
-                "Preparing relay with {agent_count} agents…\nTask: {}\n(Compact mode: live agent streaming here, detailed relay envelopes in /buslog)",
-                truncate_with_ellipsis(&task, 180)
-            ),
-        ));
+        self.messages.push(ChatMessage::new("system", status_msg));
         self.scroll = SCROLL_BOTTOM;
 
         let Some(bus) = self.bus.clone() else {
@@ -2531,7 +2977,7 @@ impl App {
         self.active_spawned_agent = None;
 
         tokio::spawn(async move {
-            run_autochat_worker(tx, bus, profiles, task, model_ref).await;
+            run_autochat_worker(tx, bus, profiles, task, model_ref, okr_id, okr_run_id).await;
         });
     }
 
@@ -2586,6 +3032,91 @@ impl App {
         let mut message = std::mem::take(&mut self.input);
         let easy_go_requested = is_easy_go_command(&message);
         self.cursor_position = 0;
+
+        // Check for pending OKR approval gate response FIRST
+        // This must be before any command normalization
+        if let Some(pending) = self.pending_okr_approval.take() {
+            let response = message.trim().to_lowercase();
+            let approved = matches!(
+                response.as_str(),
+                "a" | "approve" | "y" | "yes" | "A" | "Approve" | "Y" | "Yes"
+            );
+            let denied = matches!(
+                response.as_str(),
+                "d" | "deny" | "n" | "no" | "D" | "Deny" | "N" | "No"
+            );
+
+            if approved {
+                // User approved - save OKR and run, then execute
+                let okr_id = pending.okr.id;
+                let run_id = pending.run.id;
+                let task = pending.task.clone();
+                let agent_count = pending.agent_count;
+                let _model = pending.model.clone();
+
+                // Update run status to approved
+                let mut approved_run = pending.run;
+                approved_run.status = OkrRunStatus::Approved;
+
+                // Save to repository if available
+                if let Some(ref repo) = self.okr_repository {
+                    let repo = std::sync::Arc::clone(repo);
+                    let okr_to_save = pending.okr;
+                    let run_to_save = approved_run;
+                    tokio::spawn(async move {
+                        if let Err(e) = repo.create_okr(okr_to_save).await {
+                            tracing::error!(error = %e, "Failed to save approved OKR");
+                        }
+                        if let Err(e) = repo.create_run(run_to_save).await {
+                            tracing::error!(error = %e, "Failed to save approved OKR run");
+                        }
+                    });
+                }
+
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "✅ OKR approved. Starting OKR-gated relay (ID: {})...",
+                        okr_id
+                    ),
+                ));
+                self.scroll = SCROLL_BOTTOM;
+
+                // Start execution with OKR IDs
+                self.start_autochat_execution(
+                    agent_count,
+                    task,
+                    config,
+                    Some(okr_id),
+                    Some(run_id),
+                )
+                .await;
+                return;
+            } else if denied {
+                // User denied - cancel the operation
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "❌ OKR denied. Relay cancelled.",
+                ));
+                self.scroll = SCROLL_BOTTOM;
+                return;
+            } else {
+                // Invalid response - re-prompt
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "Invalid response. {}\n\nPress [A] to approve or [D] to deny.",
+                        pending.approval_prompt()
+                    ),
+                ));
+                self.scroll = SCROLL_BOTTOM;
+                // Put the pending approval back
+                self.pending_okr_approval = Some(pending);
+                // Put the input back so user can try again
+                self.input = message;
+                return;
+            }
+        }
 
         // Save to command history
         if !message.trim().is_empty() {
@@ -2713,13 +3244,29 @@ impl App {
                 if let Some(session) = self.session.as_mut() {
                     session.metadata.model = Some(next_model.clone());
                 }
-                self.messages.push(ChatMessage::new(
-                    "system",
-                    format!("/go model swap → {next_model}"),
-                ));
+
+                // Initialize OKR repository if not already done
+                if self.okr_repository.is_none() {
+                    if let Ok(repo) =
+                        tokio::runtime::Handle::current().block_on(OkrRepository::from_config())
+                    {
+                        self.okr_repository = Some(std::sync::Arc::new(repo));
+                    }
+                }
+
+                // Create pending OKR approval gate
+                let pending = PendingOkrApproval::new(task.to_string(), count, next_model.clone());
+
+                self.messages
+                    .push(ChatMessage::new("system", pending.approval_prompt()));
+                self.scroll = SCROLL_BOTTOM;
+
+                // Store pending approval and wait for user input
+                self.pending_okr_approval = Some(pending);
+                return;
             }
 
-            self.start_autochat_execution(count, task.to_string(), config)
+            self.start_autochat_execution(count, task.to_string(), config, None, None)
                 .await;
             return;
         }
@@ -2784,7 +3331,13 @@ impl App {
 
         if message.trim() == "/refresh" {
             self.refresh_workspace();
-            match list_sessions_with_opencode(&self.workspace_dir).await {
+            let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(100);
+            // Reset offset on refresh
+            self.session_picker_offset = 0;
+            match list_sessions_with_opencode_paged(&self.workspace_dir, limit, 0).await {
                 Ok(sessions) => self.update_cached_sessions(sessions),
                 Err(err) => self.messages.push(ChatMessage::new(
                     "system",
@@ -3159,7 +3712,13 @@ impl App {
 
         // Check for /sessions command - open session picker
         if message.trim() == "/sessions" {
-            match list_sessions_with_opencode(&self.workspace_dir).await {
+            let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(100);
+            // Reset offset when opening session picker
+            self.session_picker_offset = 0;
+            match list_sessions_with_opencode_paged(&self.workspace_dir, limit, 0).await {
                 Ok(sessions) => {
                     if sessions.is_empty() {
                         self.messages
@@ -3882,9 +4441,29 @@ impl App {
                 self.handle_agent_response(&agent_name, event);
                 false
             }
-            AutochatUiEvent::Completed { summary } => {
+            AutochatUiEvent::Completed {
+                summary,
+                okr_id,
+                okr_run_id,
+                relay_id,
+            } => {
                 self.autochat_status = Some("Completed".to_string());
-                self.messages.push(ChatMessage::new("assistant", summary));
+
+                // Add OKR correlation info to the completion message if present
+                let mut full_summary = summary.clone();
+                if let (Some(okr_id), Some(okr_run_id)) = (&okr_id, &okr_run_id) {
+                    full_summary.push_str(&format!(
+                        "\n\n📊 OKR Tracking: okr_id={} run_id={}",
+                        &okr_id[..8.min(okr_id.len())],
+                        &okr_run_id[..8.min(okr_run_id.len())]
+                    ));
+                }
+                if let Some(rid) = &relay_id {
+                    full_summary.push_str(&format!("\n🔗 Relay: {}", rid));
+                }
+
+                self.messages
+                    .push(ChatMessage::new("assistant", full_summary));
                 self.scroll = SCROLL_BOTTOM;
                 true
             }
@@ -4572,7 +5151,12 @@ impl App {
 
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     let mut app = App::new();
-    if let Ok(sessions) = list_sessions_with_opencode(&app.workspace_dir).await {
+    // Use paginated session loading - default 100, configurable via CODETETHER_SESSION_PICKER_LIMIT
+    let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(100);
+    if let Ok(sessions) = list_sessions_with_opencode_paged(&app.workspace_dir, limit, 0).await {
         app.update_cached_sessions(sessions);
     }
 
@@ -4653,11 +5237,15 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let (session_tx, mut session_rx) = mpsc::channel::<Vec<crate::session::SessionSummary>>(1);
     {
         let workspace_dir = app.workspace_dir.clone();
+        let session_limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(5));
             loop {
                 interval.tick().await;
-                if let Ok(sessions) = list_sessions_with_opencode(&workspace_dir).await {
+                if let Ok(sessions) = list_sessions_with_opencode_paged(&workspace_dir, session_limit, 0).await {
                     if session_tx.send(sessions).await.is_err() {
                         break; // TUI closed
                     }
@@ -4929,6 +5517,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             app.session_picker_confirm_delete = false;
                         } else {
                             app.session_picker_filter.clear();
+                            app.session_picker_offset = 0;
                             app.view_mode = ViewMode::Chat;
                         }
                     }
@@ -4993,6 +5582,49 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.session_picker_filter.pop();
                         app.session_picker_selected = 0;
                         app.session_picker_confirm_delete = false;
+                    }
+                    // Pagination: 'n' = next page, 'p' = previous page
+                    KeyCode::Char('n') => {
+                        let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+                            .ok()
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(100);
+                        let new_offset = app.session_picker_offset + limit;
+                        app.session_picker_offset = new_offset;
+                        match list_sessions_with_opencode_paged(&app.workspace_dir, limit, new_offset).await {
+                            Ok(sessions) => {
+                                app.update_cached_sessions(sessions);
+                                app.session_picker_selected = 0;
+                            }
+                            Err(e) => {
+                                app.messages.push(ChatMessage::new(
+                                    "system",
+                                    format!("Failed to load more sessions: {}", e),
+                                ));
+                            }
+                        }
+                    }
+                    KeyCode::Char('p') => {
+                        if app.session_picker_offset > 0 {
+                            let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+                                .ok()
+                                .and_then(|v| v.parse().ok())
+                                .unwrap_or(100);
+                            let new_offset = app.session_picker_offset.saturating_sub(limit);
+                            app.session_picker_offset = new_offset;
+                            match list_sessions_with_opencode_paged(&app.workspace_dir, limit, new_offset).await {
+                                Ok(sessions) => {
+                                    app.update_cached_sessions(sessions);
+                                    app.session_picker_selected = 0;
+                                }
+                                Err(e) => {
+                                    app.messages.push(ChatMessage::new(
+                                        "system",
+                                        format!("Failed to load previous sessions: {}", e),
+                                    ));
+                                }
+                            }
+                        }
                     }
                     KeyCode::Char('/') => {
                         // Focus filter (no-op, just signals we're in filter mode)
@@ -5477,6 +6109,60 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 // Help
                 KeyCode::Char('?') => {
                     app.show_help = true;
+                }
+
+                // OKR approval gate: 'a' to approve, 'd' to deny
+                KeyCode::Char('a') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    if let Some(pending) = app.pending_okr_approval.take() {
+                        // Approve: save OKR and run, then start relay
+                        app.messages.push(ChatMessage::new(
+                            "system",
+                            "✅ OKR approved! Starting relay execution...",
+                        ));
+                        app.scroll = SCROLL_BOTTOM;
+
+                        let task = pending.task.clone();
+                        let agent_count = pending.agent_count;
+                        let config = config.clone();
+
+                        // Save OKR and run to repository asynchronously
+                        let okr_id = pending.okr.id;
+                        let okr_run_id = pending.run.id;
+
+                        tokio::spawn(async move {
+                            if let Ok(repo) = OkrRepository::from_config().await {
+                                let _ = repo.create_okr(pending.okr).await;
+                                let mut run = pending.run;
+                                run.status = OkrRunStatus::Approved;
+                                run.correlation_id = Some(format!("relay-{}", Uuid::new_v4()));
+                                let _ = repo.create_run(run).await;
+                                tracing::info!(okr_id = %okr_id, okr_run_id = %okr_run_id, "OKR run approved and saved");
+                            }
+                        });
+
+                        // Start the relay with OKR IDs
+                        app.start_autochat_execution(
+                            agent_count,
+                            task,
+                            &config,
+                            Some(okr_id),
+                            Some(okr_run_id),
+                        )
+                        .await;
+                        continue;
+                    }
+                }
+
+                KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    if let Some(pending) = app.pending_okr_approval.take() {
+                        // Deny: show denial message
+                        app.messages.push(ChatMessage::new(
+                            "system",
+                            "❌ OKR denied. Relay not started.\n\nUse /autochat for tactical execution without OKR tracking.",
+                        ));
+                        app.scroll = SCROLL_BOTTOM;
+                        continue;
+                    }
                 }
 
                 // Toggle view mode (F2 or Ctrl+S)
@@ -6169,11 +6855,29 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             status_spans.push(Span::styled("Type", Style::default().fg(Color::Yellow)));
             status_spans.push(Span::raw(": Filter "));
         }
+        let limit = std::env::var("CODETETHER_SESSION_PICKER_LIMIT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(100);
+        // Pagination info
+        if app.session_picker_offset > 0 || app.session_picker_list.len() >= limit {
+            status_spans.push(Span::styled("n", Style::default().fg(Color::Yellow)));
+            status_spans.push(Span::raw(": Next "));
+            if app.session_picker_offset > 0 {
+                status_spans.push(Span::styled("p", Style::default().fg(Color::Yellow)));
+                status_spans.push(Span::raw(": Prev "));
+            }
+        }
         let total = app.session_picker_list.len();
         let showing = filtered.len();
+        let offset_display = if app.session_picker_offset > 0 {
+            format!("+{}", app.session_picker_offset)
+        } else {
+            String::new()
+        };
         if showing < total {
             status_spans.push(Span::styled(
-                format!("{}/{}", showing, total),
+                format!("{}{}/{}", offset_display, showing, total),
                 Style::default().fg(Color::DarkGray),
             ));
         }
@@ -7704,7 +8408,10 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
 
 fn match_slash_command_hint(input: &str) -> String {
     let commands = [
-        ("/go ", "Easy mode: run relay chat with default team size"),
+        (
+            "/go ",
+            "OKR-gated relay (requires approval, tracks outcomes)",
+        ),
         ("/add ", "Easy mode: create a teammate"),
         ("/talk ", "Easy mode: message or focus a teammate"),
         ("/list", "Easy mode: list teammates"),
@@ -7712,7 +8419,7 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/home", "Easy mode: return to main chat"),
         ("/help", "Open help"),
         ("/spawn ", "Create a named sub-agent"),
-        ("/autochat ", "Run protocol-first multi-agent relay chat"),
+        ("/autochat ", "Tactical relay (fast path, no OKR tracking)"),
         ("/agents", "List spawned sub-agents"),
         ("/kill ", "Remove a spawned sub-agent"),
         ("/agent ", "Focus or message a spawned sub-agent"),
@@ -8301,8 +9008,15 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  ?            Toggle this help".to_string(),
         "".to_string(),
         "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
+        "  OKR-GATED MODE (requires approval, tracks measurable outcomes)".to_string(),
+        "  /go <task>      OKR-gated relay: draft → approve → execute → track KR progress"
+            .to_string(),
+        "".to_string(),
+        "  TACTICAL MODE (fast path, no OKR tracking)".to_string(),
+        "  /autochat [count] <task>  Immediate relay: no approval needed, no outcome tracking"
+            .to_string(),
+        "".to_string(),
         "  EASY MODE".to_string(),
-        "  /go <task>      Start relay chat with default team size".to_string(),
         "  /add <name>     Create a helper teammate".to_string(),
         "  /talk <name> <message>  Message teammate".to_string(),
         "  /list           List teammates".to_string(),
@@ -8312,7 +9026,6 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "".to_string(),
         "  ADVANCED MODE".to_string(),
         "  /spawn <name> <instructions>  Create a named sub-agent".to_string(),
-        "  /autochat [count] <task>  Protocol-first auto multi-agent relay".to_string(),
         "  /agents        List spawned sub-agents".to_string(),
         "  /kill <name>   Remove a spawned sub-agent".to_string(),
         "  /agent <name>  Focus chat on a spawned sub-agent".to_string(),
@@ -8322,7 +9035,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /swarm <task>   Run task in parallel swarm mode".to_string(),
         "  /ralph [path]   Start Ralph PRD loop (default: prd.json)".to_string(),
         "  /undo           Undo last message and response".to_string(),
-        "  /sessions       Open session picker (filter, delete, load)".to_string(),
+        "  /sessions       Open session picker (filter, delete, load, n/p paginate)".to_string(),
         "  /resume         Resume interrupted relay or most recent session".to_string(),
         "  /resume <id>    Resume specific session by ID".to_string(),
         "  /new            Start a fresh session".to_string(),

@@ -6,7 +6,27 @@
 
 A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
 
-## v1.1.6-alpha-2 — Agent Bus & gRPC Transport
+## v2.0.3 — Major Release: Strategic Execution + Durable Replay
+
+CodeTether Agent `v2.0.3` is a major release focused on long-running agent operations, measurable outcomes, and audit-ready replay.
+
+- **OKR-Gated `/go` Workflow** — `/go` now supports strategic execution with draft → approve/deny → run semantics and persisted OKR run tracking. Use `/autochat` for tactical fast-path relay runs.
+- **OKR CLI & Reporting** — New `codetether okr` command group for `list`, `status`, `create`, `runs`, `export`, `stats`, and `report` workflows.
+- **Relay Checkpointing + Resume** — In-flight relay state is checkpointed for crash recovery and exact-order continuation.
+- **Event Stream Module** — Structured JSONL event sourcing with byte-range offsets for efficient replay and session reconstruction.
+- **S3/R2 Archival** — Optional archival pipeline for event streams and chat artifacts to S3-compatible object storage.
+- **Correlation-Rich Observability** — Audit/event models now include `okr_id`, `okr_run_id`, `relay_id`, and `session_id` fields for end-to-end traceability.
+- **Worker HTTP Probe Server** — Worker mode now supports health/readiness/status endpoints (`/health`, `/ready`, `/worker/status`) for Kubernetes and platform integration.
+
+### Upgrading to v2.x
+
+- `/go` is strategic and approval-gated; use `/autochat` when you want immediate relay execution without OKR lifecycle tracking.
+- `codetether worker` can expose an HTTP probe/status server by default (`--hostname`, `--port`, `--no-http-server`).
+- Event/audit payloads include additional correlation fields; update downstream parsers if they assume a legacy schema.
+
+## Notable Prior Milestones
+
+### v1.1.6-alpha-2 — Agent Bus & gRPC Transport
 
 This release adds the inter-agent communication backbone — a broadcast-based in-process message bus and a gRPC transport layer implementing the full A2A protocol, enabling high-frequency agent-to-agent communication both locally and across the network.
 
@@ -119,11 +139,15 @@ codetether run "explain this codebase"
 ```bash
 codetether tui                           # Interactive terminal UI
 codetether run "prompt"                  # Single prompt (chat, no tools)
+codetether run "/go <task>"               # Strategic relay (OKR-gated execution)
+codetether run "/autochat <task>"         # Tactical relay (fast path)
 codetether swarm "complex task"          # Parallel sub-agent execution
 codetether ralph run --prd prd.json      # Autonomous PRD-driven development
 codetether ralph create-prd --feature X  # Generate a PRD template
 codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
-codetether worker --server URL           # A2A worker mode
+codetether worker --server URL           # A2A worker mode (+ HTTP probes on :8080 by default)
+codetether okr list                      # List OKRs
+codetether okr report --id <uuid>        # Show OKR or run report
 codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn real A2A agent with auto-discovery
 codetether config --show                 # Show config
 ```
@@ -225,6 +249,100 @@ $ codetether rlm "What are the 3 main functions?" -f src/chunker.rs --json
 }
 ```
 
+### OKR-Driven Execution: From Strategy to Shipped Code
+
+CodeTether uses **OKRs (Objectives and Key Results)** as the bridge between business strategy and autonomous agent execution. Instead of giving agents a task and hoping for the best, you state your intent, approve a structured plan, and get measurable outcomes.
+
+#### What's an OKR?
+
+An **Objective** is what you want to achieve. **Key Results** are the measurable outcomes that prove you achieved it.
+
+```
+Business Strategy
+  └── Objective: "Make the QR-to-booking pipeline production-ready"
+        ├── KR 1: Landing page loads in <2s on mobile
+        ├── KR 2: QR scan → booking flow has zero broken links
+        └── KR 3: Worker audit dashboard deployed and capturing data
+```
+
+OKRs aren't tasks — they're success criteria. The agent decides *how* to achieve the Key Results. You decide *what* success looks like.
+
+#### The `/go` Lifecycle
+
+When you type `/go` in the TUI or CLI, you're launching a **strategic execution** — not just running a prompt. Here's the full lifecycle:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        /go Lifecycle                             │
+│                                                                  │
+│  1. You state intent                                             │
+│     └─ "/go audit the bin cleaning system for Q3 readiness"      │
+│                                                                  │
+│  2. System reframes as OKR                                       │
+│     └─ Objective + Key Results generated from your prompt        │
+│                                                                  │
+│  3. You approve or deny                                          │
+│     └─ TUI: press A (approve) or D (deny)                        │
+│     └─ CLI: y/n prompt                                           │
+│     └─ Deny → re-prompt with different intent                    │
+│                                                                  │
+│  4. Autonomous relay execution                                   │
+│     └─ Swarms, tools, sequential agent turns — whatever it takes │
+│                                                                  │
+│  5. KR progress updates (per relay turn)                         │
+│     └─ Key Results evaluated and persisted after each turn       │
+│     └─ Live progress visible in TUI or via `codetether okr`      │
+│                                                                  │
+│  6. Completion + outcome                                         │
+│     └─ Final KR outcomes recorded                                │
+│     └─ Full lifecycle stored for audit and reporting             │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+The approve/deny gate is the critical human-in-the-loop moment. The system structures your intent into measurable outcomes; you verify that those outcomes actually match what you meant. Two minutes of strategic review, then the swarm owns execution.
+
+#### `/go` vs `/autochat`
+
+| Command | Purpose | OKR Gate | Best For |
+|---------|---------|----------|----------|
+| `/go` | Strategic execution | Yes — draft → approve → run | Epics, business goals, anything you want tracked and measurable |
+| `/autochat` | Tactical execution | No — runs immediately | Quick tasks, bug fixes, "just do this now" work |
+
+Think of `/go` as deploying a mission with objectives. `/autochat` is giving a direct order. Both use the same relay execution engine underneath — the difference is whether the work is wrapped in an OKR lifecycle with approval, progress tracking, and outcome recording.
+
+#### Long-Running Epics
+
+OKRs naturally support long-running work:
+
+- **Persisted to disk** — OKR runs survive restarts. If a relay crashes, resume from the last checkpoint.
+- **Cumulative KR progress** — Key Results track progress across relay turns, so you see how far along an epic is while it's still running.
+- **Checkpointed state** — In-flight relay state (including which KRs have been attempted, current progress, and context) is saved for crash recovery and exact-order continuation.
+- **Correlation across systems** — Every audit event and event stream entry carries `okr_id`, `okr_run_id`, `relay_id`, and `session_id` fields, so you can trace any piece of work back to the strategic objective that spawned it.
+
+#### OKR CLI
+
+```bash
+codetether okr list                     # List all OKRs and their status
+codetether okr status --id <uuid>       # Detailed status of a specific OKR
+codetether okr create                   # Create a new OKR interactively
+codetether okr runs --id <uuid>         # List runs for an OKR
+codetether okr report --id <uuid>       # Full report — objective, KRs, outcomes
+codetether okr export --id <uuid>       # Export OKR data as JSON
+codetether okr stats                    # Aggregate stats across all OKRs
+```
+
+#### Why This Matters
+
+Without OKRs, autonomous agents are powerful but opaque — you tell them what to do and hope for the best. With OKRs, every piece of autonomous work has:
+
+- A **stated objective** (what are we trying to achieve?)
+- **Measurable key results** (how do we know we achieved it?)
+- An **approval gate** (did a human agree this plan makes sense?)
+- **Progress tracking** (how far along are we?)
+- A **completion record** (what was the outcome?)
+
+That's the difference between "I ran some agents" and "I deployed a strategic initiative with measurable outcomes." It's how you go from managing tasks to directing intent — your job becomes approving the right objectives and letting the swarms handle everything else.
+
 ### Swarm: Parallel Sub-Agent Execution
 
 Decomposes complex tasks into subtasks and executes them concurrently with real-time progress in the TUI.
@@ -249,9 +367,9 @@ codetether ralph run --prd prd.json --max-iterations 10
 
 The terminal UI includes a webview layout, model selector, session picker, swarm view with per-agent detail, Ralph view with per-story progress, and theme support with hot-reload.
 
-**Slash Commands**: `/swarm`, `/ralph`, `/model`, `/sessions`, `/resume`, `/new`, `/webview`, `/classic`, `/inspector`, `/refresh`, `/view`
+**Slash Commands**: `/go`, `/autochat`, `/swarm`, `/ralph`, `/model`, `/sessions`, `/resume`, `/new`, `/webview`, `/classic`, `/inspector`, `/refresh`, `/view`
 
-**Keyboard**: `Ctrl+M` model selector, `Ctrl+B` toggle layout, `Ctrl+S`/`F2` swarm view, `Tab` switch agents, `Alt+j/k` scroll, `?` help
+**Keyboard**: `Ctrl+M` model selector, `Ctrl+B` toggle layout, `Ctrl+S`/`F2` swarm view, `Tab` switch agents, `Alt+j/k` scroll, `?` help, plus `A`/`D` for OKR approve/deny prompts in `/go` flow
 
 ## Providers
 
@@ -371,7 +489,7 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
 {
   "name": "CodeTether Agent",
   "description": "A2A-native AI coding agent",
-  "version": "1.1.6-alpha-1",
+  "version": "2.0.3",
   "preferred_transport": "GRPC",
   "skills": [
     { "id": "code-generation", "name": "Code Generation" },

@@ -23,6 +23,7 @@ mod k8s;
 mod lsp;
 pub mod mcp;
 mod moltbook;
+mod okr;
 mod opencode;
 mod provider;
 pub mod ralph;
@@ -34,6 +35,7 @@ pub mod swarm;
 pub mod telemetry;
 mod tool;
 mod tui;
+mod worker_server;
 mod worktree;
 
 use clap::Parser;
@@ -178,7 +180,54 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
-        Some(Command::Worker(args)) => a2a::worker::run(args).await,
+        Some(Command::Worker(mut args)) => {
+            // Auto-load saved credentials if no token provided
+            if args.token.is_none() {
+                if let Some(creds) = cli::auth::load_saved_credentials() {
+                    let target = args.server.trim_end_matches('/');
+                    let saved = creds.server.trim_end_matches('/');
+                    if saved == target {
+                        tracing::info!(email = %creds.email, server = %saved, "Using saved credentials from `codetether auth login`");
+                        args.token = Some(creds.access_token);
+                    } else {
+                        tracing::warn!(saved_server = %saved, target_server = %target, "Ignoring saved credentials for different server");
+                    }
+                }
+            }
+
+            // Create shared state for worker and HTTP server communication
+            let worker_state = worker_server::WorkerServerState::new();
+
+            // Start the worker HTTP server in the background if not disabled
+            let http_server_handle = if args.no_http_server {
+                None
+            } else {
+                let http_args = cli::WorkerServerArgs {
+                    hostname: args.hostname.clone(),
+                    port: args.port,
+                };
+                // Clone the state so both worker and HTTP server share the same underlying state
+                let shared_state = worker_state.clone();
+                Some(tokio::spawn(async move {
+                    // Use the same state as the worker - it will receive updates via set_connected/set_worker_id
+                    if let Err(e) =
+                        worker_server::start_worker_server_with_state(http_args, shared_state).await
+                    {
+                        tracing::error!("Worker HTTP server error: {}", e);
+                    }
+                }))
+            };
+
+            // Run the SSE worker with the shared state
+            let result = a2a::worker::run_with_state(args, worker_state).await;
+
+            // Wait for HTTP server if it was started
+            if let Some(handle) = http_server_handle {
+                handle.abort();
+            }
+
+            result
+        }
         Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
         Some(Command::Swarm(args)) => {
@@ -938,6 +987,384 @@ async fn main() -> anyhow::Result<()> {
                     let results = client.search(&s.query, s.limit).await?;
                     println!("{}", serde_json::to_string_pretty(&results)?);
                     Ok(())
+                }
+            }
+        }
+
+        // OKR commands
+        Some(Command::Okr(args)) => {
+            use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun, OkrRunStatus, OkrStatus};
+            use uuid::Uuid;
+
+            let repo = OkrRepository::from_config().await?;
+
+            match args.action.as_str() {
+                "list" => {
+                    let okrs = if let Some(status) = &args.status {
+                        let status = match status.as_str() {
+                            "draft" => OkrStatus::Draft,
+                            "active" => OkrStatus::Active,
+                            "completed" => OkrStatus::Completed,
+                            "cancelled" => OkrStatus::Cancelled,
+                            "on_hold" => OkrStatus::OnHold,
+                            _ => anyhow::bail!("Invalid status: {}", status),
+                        };
+                        repo.query_okrs_by_status(status).await?
+                    } else if let Some(owner) = &args.owner {
+                        repo.query_okrs_by_owner(owner).await?
+                    } else {
+                        repo.list_okrs().await?
+                    };
+
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&okrs)?);
+                    } else {
+                        println!("\n=== OKRs ===\n");
+                        for okr in &okrs {
+                            let progress = okr.progress() * 100.0;
+                            println!("[{}] {} - {:.1}% complete", okr.id, okr.title, progress);
+                            println!("  Status: {:?}", okr.status);
+                            if let Some(owner) = &okr.owner {
+                                println!("  Owner: {}", owner);
+                            }
+                            for kr in &okr.key_results {
+                                let kr_progress = kr.progress() * 100.0;
+                                println!(
+                                    "  - {}: {:.1}/{} {} ({:.1}%)",
+                                    kr.title,
+                                    kr.current_value,
+                                    kr.target_value,
+                                    kr.unit,
+                                    kr_progress
+                                );
+                                if args.evidence && !kr.outcomes.is_empty() {
+                                    for outcome in &kr.outcomes {
+                                        println!("    Evidence: {}", outcome.description);
+                                        for ev in &outcome.evidence {
+                                            println!("      - {}", ev);
+                                        }
+                                    }
+                                }
+                            }
+                            println!();
+                        }
+                    }
+                    Ok(())
+                }
+
+                "status" => {
+                    let id = args
+                        .id
+                        .ok_or_else(|| anyhow::anyhow!("--id required for status"))?;
+                    let uuid = Uuid::parse_str(&id)?;
+
+                    let okr = repo
+                        .get_okr(uuid)
+                        .await?
+                        .ok_or_else(|| anyhow::anyhow!("OKR not found"))?;
+
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&okr)?);
+                    } else {
+                        println!("\n=== OKR: {} ===\n", okr.title);
+                        println!("Description: {}", okr.description);
+                        println!("Status: {:?}", okr.status);
+                        println!("Progress: {:.1}%\n", okr.progress() * 100.0);
+
+                        println!("Key Results:");
+                        for kr in &okr.key_results {
+                            let kr_progress = kr.progress() * 100.0;
+                            println!("\n  [{}] {}", kr.id, kr.title);
+                            println!(
+                                "  Progress: {:.1}/{} {} ({:.1}%)",
+                                kr.current_value, kr.target_value, kr.unit, kr_progress
+                            );
+                            println!("  Status: {:?}", kr.status);
+
+                            if !kr.outcomes.is_empty() {
+                                println!("  Outcomes:");
+                                for outcome in &kr.outcomes {
+                                    println!(
+                                        "    - {} ({:?})",
+                                        outcome.description, outcome.outcome_type
+                                    );
+                                    if let Some(value) = outcome.value {
+                                        println!("      Value: {}", value);
+                                    }
+                                    for ev in &outcome.evidence {
+                                        println!("      Evidence: {}", ev);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Show runs
+                        let runs = repo.query_runs_by_okr(uuid).await?;
+                        if !runs.is_empty() {
+                            println!("\nRuns:");
+                            for run in &runs {
+                                println!("  [{}] {} - {:?}", run.id, run.name, run.status);
+                                if let Some(corr) = &run.correlation_id {
+                                    println!("    Correlation: {}", corr);
+                                }
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+
+                "create" => {
+                    let title = args
+                        .title
+                        .ok_or_else(|| anyhow::anyhow!("--title required"))?;
+                    let description = args.description.unwrap_or_default();
+
+                    let mut okr = Okr::new(title, description);
+
+                    // Add key result if target specified
+                    if let Some(target) = args.target {
+                        let kr = KeyResult::new(okr.id, "Key Result 1", target, args.unit);
+                        okr.add_key_result(kr);
+                    }
+
+                    let created = repo.create_okr(okr).await?;
+                    println!("Created OKR: {} ({})", created.title, created.id);
+                    Ok(())
+                }
+
+                "runs" => {
+                    let okrs = repo.list_okrs().await?;
+                    let runs = repo.list_runs().await?;
+
+                    if args.json {
+                        #[derive(serde::Serialize)]
+                        struct RunsOutput {
+                            okrs: Vec<crate::okr::Okr>,
+                            runs: Vec<crate::okr::OkrRun>,
+                        }
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&RunsOutput { okrs, runs })?
+                        );
+                    } else {
+                        println!("\n=== OKR Runs ===\n");
+                        for run in &runs {
+                            let okr_title = okrs
+                                .iter()
+                                .find(|o| o.id == run.okr_id)
+                                .map(|o| o.title.as_str())
+                                .unwrap_or("Unknown");
+
+                            println!("[{}] {} -> {}", run.id, okr_title, run.name);
+                            println!("  Status: {:?}", run.status);
+                            if let Some(corr) = &run.correlation_id {
+                                println!("  Correlation: {}", corr);
+                            }
+                            if let Some(session) = &run.session_id {
+                                println!("  Session: {}", session);
+                            }
+                            println!();
+                        }
+                    }
+                    Ok(())
+                }
+
+                "export" => {
+                    let okrs = repo.list_okrs().await?;
+                    let runs = repo.list_runs().await?;
+
+                    #[derive(serde::Serialize)]
+                    struct ExportData {
+                        okrs: Vec<crate::okr::Okr>,
+                        runs: Vec<crate::okr::OkrRun>,
+                        exported_at: chrono::DateTime<chrono::Utc>,
+                    }
+
+                    let export = ExportData {
+                        okrs,
+                        runs,
+                        exported_at: chrono::Utc::now(),
+                    };
+
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&export)?);
+                    } else {
+                        println!(
+                            "Exported {} OKRs and {} runs",
+                            export.okrs.len(),
+                            export.runs.len()
+                        );
+                    }
+                    Ok(())
+                }
+
+                "stats" => {
+                    let stats = repo.stats().await?;
+
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&stats)?);
+                    } else {
+                        println!("\n=== OKR Statistics ===\n");
+                        println!("Total OKRs: {}", stats.total_okrs);
+                        println!("Total Runs: {}", stats.total_runs);
+
+                        println!("\nOKR Status:");
+                        for (status, count) in &stats.okr_status_counts {
+                            println!("  {:?}: {}", status, count);
+                        }
+
+                        println!("\nRun Status:");
+                        for (status, count) in &stats.run_status_counts {
+                            println!("  {:?}: {}", status, count);
+                        }
+                    }
+                    Ok(())
+                }
+
+                "report" => {
+                    let id = args
+                        .id
+                        .ok_or_else(|| anyhow::anyhow!("--id required for report"))?;
+                    let uuid = Uuid::parse_str(&id)?;
+
+                    // Try to find as OKR first, then as run
+                    let okr = repo.get_okr(uuid).await?;
+                    let run = repo.get_run(uuid).await?;
+
+                    if let Some(okr) = okr {
+                        // Report on an OKR
+                        if args.json {
+                            #[derive(serde::Serialize)]
+                            struct OkrReport {
+                                okr: crate::okr::Okr,
+                                runs: Vec<crate::okr::OkrRun>,
+                                total_progress: f64,
+                            }
+                            let runs = repo.query_runs_by_okr(uuid).await?;
+                            let report = OkrReport {
+                                okr: okr.clone(),
+                                runs,
+                                total_progress: okr.progress() * 100.0,
+                            };
+                            println!("{}", serde_json::to_string_pretty(&report)?);
+                        } else {
+                            println!("\n=== OKR Report: {} ===\n", okr.title);
+                            println!("Description: {}", okr.description);
+                            println!("Status: {:?}", okr.status);
+                            println!("Overall Progress: {:.1}%\n", okr.progress() * 100.0);
+
+                            println!("Key Results:");
+                            for kr in &okr.key_results {
+                                let kr_progress = kr.progress() * 100.0;
+                                println!("\n  [{}] {}", kr.id, kr.title);
+                                println!(
+                                    "  Progress: {:.1}/{} {} ({:.1}%)",
+                                    kr.current_value, kr.target_value, kr.unit, kr_progress
+                                );
+                                println!("  Status: {:?}", kr.status);
+
+                                if !kr.outcomes.is_empty() {
+                                    println!("  Outcomes:");
+                                    for outcome in &kr.outcomes {
+                                        println!(
+                                            "    - {} ({:?})",
+                                            outcome.description, outcome.outcome_type
+                                        );
+                                        if let Some(value) = outcome.value {
+                                            println!("      Value: {}", value);
+                                        }
+                                        if args.evidence {
+                                            for ev in &outcome.evidence {
+                                                println!("      Evidence: {}", ev);
+                                            }
+                                        }
+                                    }
+                                } else if args.evidence {
+                                    println!("  (No outcomes recorded)");
+                                }
+                            }
+
+                            // Show runs for this OKR
+                            let runs = repo.query_runs_by_okr(uuid).await?;
+                            if !runs.is_empty() {
+                                println!("\nExecution Runs:");
+                                for run in &runs {
+                                    println!("\n  [{}] {}", run.id, run.name);
+                                    println!("  Status: {:?}", run.status);
+                                    if let Some(corr) = &run.correlation_id {
+                                        println!("  Correlation ID: {}", corr);
+                                    }
+                                    if let Some(session) = &run.session_id {
+                                        println!("  Session: {}", session);
+                                    }
+                                    if let Some(checkpoint) = &run.relay_checkpoint_id {
+                                        println!("  Relay Checkpoint: {}", checkpoint);
+                                    }
+                                    if !run.kr_progress.is_empty() {
+                                        println!("  KR Progress:");
+                                        for (kr_id, progress) in &run.kr_progress {
+                                            println!("    {}: {:.1}%", kr_id, progress * 100.0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Ok(())
+                    } else if let Some(run) = run {
+                        // Report on a specific run
+                        if args.json {
+                            // Get the associated OKR
+                            let okr = repo.get_okr(run.okr_id).await?;
+                            #[derive(serde::Serialize)]
+                            struct RunReport {
+                                run: crate::okr::OkrRun,
+                                okr: Option<crate::okr::Okr>,
+                            }
+                            let report = RunReport {
+                                run: run.clone(),
+                                okr,
+                            };
+                            println!("{}", serde_json::to_string_pretty(&report)?);
+                        } else {
+                            println!("\n=== OKR Run Report: {} ===\n", run.name);
+                            println!("OKR ID: {}", run.okr_id);
+                            println!("Status: {:?}", run.status);
+
+                            if let Some(corr) = &run.correlation_id {
+                                println!("Correlation ID: {}", corr);
+                            }
+                            if let Some(session) = &run.session_id {
+                                println!("Session ID: {}", session);
+                            }
+                            if let Some(checkpoint) = &run.relay_checkpoint_id {
+                                println!("Relay Checkpoint ID: {}", checkpoint);
+                            }
+                            println!("  Started: {}", run.started_at);
+                            if let Some(completed) = run.completed_at {
+                                println!("Completed: {}", completed);
+                            }
+
+                            if !run.kr_progress.is_empty() {
+                                println!("\nKR Progress:");
+                                for (kr_id, progress) in &run.kr_progress {
+                                    println!("  {}: {:.1}%", kr_id, progress * 100.0);
+                                }
+                            }
+
+                            // Show the parent OKR
+                            if let Some(okr) = repo.get_okr(run.okr_id).await? {
+                                println!("\nParent OKR: {}", okr.title);
+                                println!("OKR Status: {:?}", okr.status);
+                            }
+                        }
+                        Ok(())
+                    } else {
+                        anyhow::bail!("OKR or Run not found: {}", id)
+                    }
+                }
+
+                _ => {
+                    anyhow::bail!("Unknown OKR action: {}", args.action)
                 }
             }
         }

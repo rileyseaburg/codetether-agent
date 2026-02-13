@@ -93,6 +93,9 @@ pub enum Command {
 
     /// Moltbook — social network for AI agents
     Moltbook(MoltbookArgs),
+
+    /// Manage OKRs (Objectives and Key Results)
+    Okr(OkrArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -106,8 +109,34 @@ pub enum AuthCommand {
     /// Authenticate with GitHub Copilot using device flow
     Copilot(CopilotAuthArgs),
 
+    /// Register a new CodeTether account with email/password
+    Register(RegisterAuthArgs),
+
     /// Login to a CodeTether server with email/password
     Login(LoginAuthArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct RegisterAuthArgs {
+    /// CodeTether server URL (e.g., https://api.codetether.run)
+    #[arg(short, long, env = "CODETETHER_SERVER")]
+    pub server: String,
+
+    /// Email address
+    #[arg(short, long)]
+    pub email: Option<String>,
+
+    /// First name (optional)
+    #[arg(long)]
+    pub first_name: Option<String>,
+
+    /// Last name (optional)
+    #[arg(long)]
+    pub last_name: Option<String>,
+
+    /// Referral source (optional)
+    #[arg(long)]
+    pub referral_source: Option<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -598,4 +627,47 @@ pub struct BenchmarkArgs {
     /// Output as JSON to stdout
     #[arg(long)]
     pub json: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct OkrArgs {
+    /// Action to perform
+    #[arg(value_parser = ["list", "status", "create", "runs", "export", "stats", "report"])]
+    pub action: String,
+
+    /// OKR ID (UUID)
+    #[arg(short, long)]
+    pub id: Option<String>,
+
+    /// OKR title (for create)
+    #[arg(short, long)]
+    pub title: Option<String>,
+
+    /// OKR description (for create)
+    #[arg(short, long)]
+    pub description: Option<String>,
+
+    /// Target value for key result (for create)
+    #[arg(long)]
+    pub target: Option<f64>,
+
+    /// Unit for key result (for create)
+    #[arg(long, default_value = "%")]
+    pub unit: String,
+
+    /// Filter by status: draft, active, completed, cancelled, on_hold
+    #[arg(long)]
+    pub status: Option<String>,
+
+    /// Filter by owner
+    #[arg(long)]
+    pub owner: Option<String>,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+
+    /// Include evidence links in output
+    #[arg(long)]
+    pub evidence: bool,
 }

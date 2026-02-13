@@ -369,5 +369,33 @@
     "status": "pending",
     "priority": "low",
     "created_at": "2026-02-08T09:43:19.870605213+00:00"
+  },
+  {
+    "id": "todo_1771012689524",
+    "content": "Added 22 regression tests in tests/okr_correctness_tests.rs covering status mapping, checkpoint correlation, UUID guard, and KR outcome linkage",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-13T19:58:09.524848803+00:00"
+  },
+  {
+    "id": "todo_1771012689525",
+    "content": "Add regression test: Checkpoint correlation queryability (relay_checkpoint_id)",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-02-13T19:58:09.525188848+00:00"
+  },
+  {
+    "id": "todo_1771012689525",
+    "content": "Add regression test: UUID guard behavior (no NIL UUID silent drops)",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-13T19:58:09.525552995+00:00"
+  },
+  {
+    "id": "todo_1771012689525",
+    "content": "Add regression test: KR outcome linkage integrity (real KR IDs)",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-02-13T19:58:09.525774915+00:00"
   }
 ]

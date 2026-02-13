@@ -1,6 +1,6 @@
 //! Provider authentication commands.
 
-use super::{AuthArgs, AuthCommand, CopilotAuthArgs, LoginAuthArgs};
+use super::{AuthArgs, AuthCommand, CopilotAuthArgs, LoginAuthArgs, RegisterAuthArgs};
 use crate::provider::copilot::normalize_enterprise_domain;
 use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
@@ -9,6 +9,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::path::PathBuf;
 use tokio::time::{Duration, sleep};
 
 const DEFAULT_GITHUB_DOMAIN: &str = "github.com";
@@ -40,8 +41,203 @@ struct AccessTokenResponse {
 pub async fn execute(args: AuthArgs) -> Result<()> {
     match args.command {
         AuthCommand::Copilot(copilot_args) => authenticate_copilot(copilot_args).await,
+        AuthCommand::Register(register_args) => authenticate_register(register_args).await,
         AuthCommand::Login(login_args) => authenticate_login(login_args).await,
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct LoginResponsePayload {
+    access_token: String,
+    expires_at: String,
+    user: serde_json::Value,
+}
+
+async fn login_with_password(
+    client: &Client,
+    server_url: &str,
+    email: &str,
+    password: &str,
+) -> Result<LoginResponsePayload> {
+    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
+
+    let resp = client
+        .post(format!("{}/v1/users/login", server_url))
+        .header("User-Agent", &user_agent)
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "email": email,
+            "password": password,
+        }))
+        .send()
+        .await
+        .context("Failed to connect to CodeTether server")?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+        let detail = body
+            .get("detail")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Authentication failed");
+        anyhow::bail!("Login failed ({}): {}", status, detail);
+    }
+
+    let login: LoginResponsePayload = resp
+        .json()
+        .await
+        .context("Failed to parse login response")?;
+
+    Ok(login)
+}
+
+fn write_saved_credentials(
+    server_url: &str,
+    email: &str,
+    login: &LoginResponsePayload,
+) -> Result<PathBuf> {
+    // Store token to ~/.config/codetether-agent/credentials.json
+    let cred_path = credential_file_path()?;
+    if let Some(parent) = cred_path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create config dir: {}", parent.display()))?;
+    }
+
+    let creds = json!({
+        "server": server_url,
+        "access_token": login.access_token,
+        "expires_at": login.expires_at,
+        "email": email,
+    });
+
+    // Write with restrictive permissions (owner-only read/write)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&cred_path)
+            .with_context(|| {
+                format!("Failed to write credentials to {}", cred_path.display())
+            })?;
+        serde_json::to_writer_pretty(file, &creds)?;
+    }
+    #[cfg(not(unix))]
+    {
+        let file = std::fs::File::create(&cred_path)
+            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
+        serde_json::to_writer_pretty(file, &creds)?;
+    }
+
+    Ok(cred_path)
+}
+
+async fn authenticate_register(args: RegisterAuthArgs) -> Result<()> {
+    #[derive(Debug, Deserialize)]
+    struct RegisterResponse {
+        user_id: String,
+        email: String,
+        message: String,
+        #[serde(default)]
+        instance_url: Option<String>,
+        #[serde(default)]
+        instance_namespace: Option<String>,
+        #[serde(default)]
+        provisioning_status: Option<String>,
+    }
+
+    let server_url = args.server.trim_end_matches('/').to_string();
+
+    let email = match args.email {
+        Some(e) => e,
+        None => {
+            print!("Email: ");
+            io::stdout().flush()?;
+            let mut email = String::new();
+            io::stdin().read_line(&mut email)?;
+            email.trim().to_string()
+        }
+    };
+
+    if email.is_empty() {
+        anyhow::bail!("Email is required");
+    }
+
+    let password = rpassword_prompt("Password (min 8 chars): ")?;
+    if password.trim().len() < 8 {
+        anyhow::bail!("Password must be at least 8 characters");
+    }
+    let confirm = rpassword_prompt("Confirm password: ")?;
+    if password != confirm {
+        anyhow::bail!("Passwords do not match");
+    }
+
+    println!("Registering with {}...", server_url);
+
+    let client = Client::new();
+    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
+
+    let resp = client
+        .post(format!("{}/v1/users/register", server_url))
+        .header("User-Agent", &user_agent)
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "email": email,
+            "password": password,
+            "first_name": args.first_name,
+            "last_name": args.last_name,
+            "referral_source": args.referral_source,
+        }))
+        .send()
+        .await
+        .context("Failed to connect to CodeTether server")?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+        let detail = body
+            .get("detail")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Registration failed");
+        anyhow::bail!("Registration failed ({}): {}", status, detail);
+    }
+
+    let reg: RegisterResponse = resp
+        .json()
+        .await
+        .context("Failed to parse registration response")?;
+
+    println!("Account created for {} (user_id={})", reg.email, reg.user_id);
+    println!("{}", reg.message);
+    if let Some(status) = reg.provisioning_status.as_deref() {
+        println!("Provisioning status: {}", status);
+    }
+    if let Some(url) = reg.instance_url.as_deref() {
+        println!("Instance URL: {}", url);
+    }
+    if let Some(ns) = reg.instance_namespace.as_deref() {
+        println!("Instance namespace: {}", ns);
+    }
+
+    // Auto-login and save credentials for the worker.
+    println!("Logging in...");
+    let login = login_with_password(&client, &server_url, &reg.email, &password).await?;
+    let cred_path = write_saved_credentials(&server_url, &reg.email, &login)?;
+
+    let user_email = login
+        .user
+        .get("email")
+        .and_then(|v| v.as_str())
+        .unwrap_or(&reg.email);
+
+    println!("Logged in as {} (expires {})", user_email, login.expires_at);
+    println!("Credentials saved to {}", cred_path.display());
+    println!("\nThe CLI will automatically use these credentials for `codetether worker`.");
+
+    Ok(())
 }
 
 async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
@@ -72,75 +268,9 @@ async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
     println!("Authenticating with {}...", server_url);
 
     let client = Client::new();
-    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
 
-    let resp = client
-        .post(format!("{}/v1/users/login", server_url))
-        .header("User-Agent", &user_agent)
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "email": email,
-            "password": password,
-        }))
-        .send()
-        .await
-        .context("Failed to connect to CodeTether server")?;
-
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body: serde_json::Value = resp.json().await.unwrap_or_default();
-        let detail = body
-            .get("detail")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Authentication failed");
-        anyhow::bail!("Login failed ({}): {}", status, detail);
-    }
-
-    #[derive(Deserialize)]
-    struct LoginResponse {
-        access_token: String,
-        expires_at: String,
-        user: serde_json::Value,
-    }
-
-    let login: LoginResponse = resp
-        .json()
-        .await
-        .context("Failed to parse login response")?;
-
-    // Store token to ~/.config/codetether-agent/credentials.json
-    let cred_path = credential_file_path()?;
-    if let Some(parent) = cred_path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create config dir: {}", parent.display()))?;
-    }
-
-    let creds = json!({
-        "server": server_url,
-        "access_token": login.access_token,
-        "expires_at": login.expires_at,
-        "email": email,
-    });
-
-    // Write with restrictive permissions (owner-only read/write)
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        let file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(&cred_path)
-            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
-        serde_json::to_writer_pretty(file, &creds)?;
-    }
-    #[cfg(not(unix))]
-    {
-        let file = std::fs::File::create(&cred_path)
-            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
-        serde_json::to_writer_pretty(file, &creds)?;
-    }
+    let login = login_with_password(&client, &server_url, &email, &password).await?;
+    let cred_path = write_saved_credentials(&server_url, &email, &login)?;
 
     let user_email = login
         .user
@@ -150,11 +280,7 @@ async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
 
     println!("Logged in as {} (expires {})", user_email, login.expires_at);
     println!("Credentials saved to {}", cred_path.display());
-    println!(
-        "\nUse the token with: export CODETETHER_TOKEN={}",
-        &login.access_token[..login.access_token.len().min(20)]
-    );
-    println!("Or run commands directly — the CLI reads credentials automatically.");
+    println!("\nThe CLI will automatically use these credentials for `codetether worker`.");
 
     Ok(())
 }
@@ -210,6 +336,34 @@ fn credential_file_path() -> Result<std::path::PathBuf> {
     let dirs = ProjectDirs::from("ai", "codetether", "codetether-agent")
         .ok_or_else(|| anyhow::anyhow!("Cannot determine config directory"))?;
     Ok(dirs.config_dir().join("credentials.json"))
+}
+
+/// Stored credentials from `codetether auth login`.
+#[derive(Debug, Deserialize)]
+pub struct SavedCredentials {
+    pub server: String,
+    pub access_token: String,
+    pub expires_at: String,
+    #[serde(default)]
+    pub email: String,
+}
+
+/// Load saved credentials from disk, returning `None` if the file doesn't exist,
+/// is malformed, or the token has expired.
+pub fn load_saved_credentials() -> Option<SavedCredentials> {
+    let path = credential_file_path().ok()?;
+    let data = std::fs::read_to_string(&path).ok()?;
+    let creds: SavedCredentials = serde_json::from_str(&data).ok()?;
+
+    // Check expiry if parseable
+    if let Ok(expires) = chrono::DateTime::parse_from_rfc3339(&creds.expires_at) {
+        if expires < chrono::Utc::now() {
+            tracing::warn!("Saved credentials have expired — run `codetether auth login` to refresh");
+            return None;
+        }
+    }
+
+    Some(creds)
 }
 
 async fn authenticate_copilot(args: CopilotAuthArgs) -> Result<()> {

@@ -95,6 +95,15 @@ pub struct ChatEvent {
     pub parent_event_id: Option<String>,
     /// Sequence number in the session
     pub sequence: u64,
+    /// OKR ID if this event is part of an OKR-gated operation
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub okr_id: Option<String>,
+    /// OKR run ID if this event is part of an OKR run
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub okr_run_id: Option<String>,
+    /// Relay ID if this event is part of a relay execution
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_id: Option<String>,
 }
 
 impl ChatEvent {
@@ -119,7 +128,23 @@ impl ChatEvent {
             tool_duration_ms: None,
             parent_event_id: None,
             sequence,
+            okr_id: None,
+            okr_run_id: None,
+            relay_id: None,
         }
+    }
+
+    /// Create a chat event with OKR correlation
+    pub fn with_okr(
+        mut self,
+        okr_id: Option<String>,
+        okr_run_id: Option<String>,
+        relay_id: Option<String>,
+    ) -> Self {
+        self.okr_id = okr_id;
+        self.okr_run_id = okr_run_id;
+        self.relay_id = relay_id;
+        self
     }
 
     /// Create a tool result event
@@ -157,7 +182,38 @@ impl ChatEvent {
             tool_duration_ms: Some(duration_ms),
             parent_event_id: None,
             sequence,
+            okr_id: None,
+            okr_run_id: None,
+            relay_id: None,
         }
+    }
+
+    /// Create a tool result event with OKR correlation
+    pub fn tool_result_with_okr(
+        workspace: PathBuf,
+        session_id: String,
+        tool_name: &str,
+        success: bool,
+        duration_ms: u64,
+        content: &str,
+        sequence: u64,
+        okr_id: Option<String>,
+        okr_run_id: Option<String>,
+        relay_id: Option<String>,
+    ) -> Self {
+        let mut event = Self::tool_result(
+            workspace,
+            session_id,
+            tool_name,
+            success,
+            duration_ms,
+            content,
+            sequence,
+        );
+        event.okr_id = okr_id;
+        event.okr_run_id = okr_run_id;
+        event.relay_id = relay_id;
+        event
     }
 
     /// Serialize to JSON for JSONL output

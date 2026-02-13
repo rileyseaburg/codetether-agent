@@ -35,8 +35,72 @@ use futures::stream;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
+
+/// Task received from Knative Eventing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KnativeTask {
+    pub task_id: String,
+    pub title: String,
+    pub description: String,
+    pub agent_type: String,
+    pub priority: i32,
+    pub received_at: chrono::DateTime<chrono::Utc>,
+    pub status: String,
+}
+
+/// Queue for Knative tasks waiting to be processed
+#[derive(Clone)]
+pub struct KnativeTaskQueue {
+    tasks: Arc<Mutex<Vec<KnativeTask>>>,
+}
+
+impl KnativeTaskQueue {
+    pub fn new() -> Self {
+        Self {
+            tasks: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    pub async fn push(&self, task: KnativeTask) {
+        self.tasks.lock().await.push(task);
+    }
+
+    pub async fn pop(&self) -> Option<KnativeTask> {
+        self.tasks.lock().await.pop()
+    }
+
+    pub async fn list(&self) -> Vec<KnativeTask> {
+        self.tasks.lock().await.clone()
+    }
+
+    pub async fn get(&self, task_id: &str) -> Option<KnativeTask> {
+        self.tasks
+            .lock()
+            .await
+            .iter()
+            .find(|t| t.task_id == task_id)
+            .cloned()
+    }
+
+    pub async fn update_status(&self, task_id: &str, status: &str) -> bool {
+        let mut tasks = self.tasks.lock().await;
+        if let Some(task) = tasks.iter_mut().find(|t| t.task_id == task_id) {
+            task.status = status.to_string();
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl Default for KnativeTaskQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Server state shared across handlers
 #[derive(Clone)]
@@ -47,6 +111,7 @@ pub struct AppState {
     pub k8s: Arc<K8sManager>,
     pub auth: AuthState,
     pub bus: Arc<AgentBus>,
+    pub knative_tasks: KnativeTaskQueue,
 }
 
 /// Audit middleware — logs every request/response to the audit trail.
@@ -82,6 +147,10 @@ async fn audit_middleware(
             outcome,
             detail: Some(serde_json::json!({ "status": status })),
             duration_ms: Some(duration_ms),
+            okr_id: None,
+            okr_run_id: None,
+            relay_id: None,
+            session_id: None,
         })
         .await;
 
@@ -100,6 +169,16 @@ const POLICY_RULES: &[PolicyRule] = &[
     // Public / exempt
     PolicyRule {
         pattern: "/health",
+        methods: None,
+        permission: "",
+    },
+    PolicyRule {
+        pattern: "/task",
+        methods: None,
+        permission: "",
+    },
+    PolicyRule {
+        pattern: "/v1/knative/",
         methods: None,
         permission: "",
     },
@@ -390,11 +469,25 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         k8s,
         auth: auth_state.clone(),
         bus,
+        knative_tasks: KnativeTaskQueue::new(),
     };
 
     let app = Router::new()
         // Health check (public — auth exempt)
         .route("/health", get(health))
+        // CloudEvent receiver for Knative Eventing (public — auth exempt)
+        .route("/task", post(receive_task_event))
+        // Knative task queue APIs
+        .route("/v1/knative/tasks", get(list_knative_tasks))
+        .route("/v1/knative/tasks/{task_id}", get(get_knative_task))
+        .route(
+            "/v1/knative/tasks/{task_id}/claim",
+            post(claim_knative_task),
+        )
+        .route(
+            "/v1/knative/tasks/{task_id}/complete",
+            post(complete_knative_task),
+        )
         // API routes
         .route("/api/version", get(get_version))
         .route("/api/session", get(list_sessions).post(create_session))
@@ -453,9 +546,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             state.clone(),
             audit_middleware,
         ))
-        .layer(axum::Extension(state.auth.clone()))
         .layer(middleware::from_fn(policy_middleware))
         .layer(middleware::from_fn(auth::require_auth))
+        .layer(axum::Extension(state.auth.clone()))
         // CORS + tracing
         .layer(
             CorsLayer::new()
@@ -487,6 +580,184 @@ async fn health() -> &'static str {
     "ok"
 }
 
+/// List all Knative tasks in queue
+async fn list_knative_tasks(State(state): State<AppState>) -> Json<Vec<KnativeTask>> {
+    Json(state.knative_tasks.list().await)
+}
+
+/// Get a specific Knative task by ID
+async fn get_knative_task(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Json<KnativeTask>, (StatusCode, String)> {
+    state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .map(Json)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+}
+
+/// Claim/start processing a Knative task
+async fn claim_knative_task(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Json<KnativeTask>, (StatusCode, String)> {
+    // Update status to processing
+    let updated = state
+        .knative_tasks
+        .update_status(&task_id, "processing")
+        .await;
+    if !updated {
+        return Err((StatusCode::NOT_FOUND, format!("Task {} not found", task_id)));
+    }
+
+    state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .map(Json)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+}
+
+/// Complete a Knative task
+async fn complete_knative_task(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Json<KnativeTask>, (StatusCode, String)> {
+    // Update status to completed
+    let updated = state
+        .knative_tasks
+        .update_status(&task_id, "completed")
+        .await;
+    if !updated {
+        return Err((StatusCode::NOT_FOUND, format!("Task {} not found", task_id)));
+    }
+
+    state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .map(Json)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+}
+
+/// CloudEvent handler for Knative Eventing
+/// Receives task events from Knative Broker and triggers execution
+async fn receive_task_event(
+    State(state): State<AppState>,
+    Json(event): Json<CloudEvent>,
+) -> Result<Json<CloudEventResponse>, (StatusCode, String)> {
+    tracing::info!(
+        event_type = %event.event_type,
+        event_id = %event.id,
+        "Received CloudEvent from Knative"
+    );
+
+    // Log the incoming event for audit
+    state
+        .audit_log
+        .log(
+            audit::AuditCategory::Api,
+            format!("cloudevents:{}", event.event_type),
+            AuditOutcome::Success,
+            None,
+            None,
+        )
+        .await;
+
+    // Process based on event type
+    match event.event_type.as_str() {
+        "codetether.task.created" | "task.created" => {
+            // Extract task data and queue for execution
+            if let Some(data) = event.data {
+                let task_id = data
+                    .get("task_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                let title = data
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let description = data
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let agent_type = data
+                    .get("agent_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("build")
+                    .to_string();
+                let priority = data.get("priority").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+
+                let task = KnativeTask {
+                    task_id: task_id.clone(),
+                    title,
+                    description,
+                    agent_type,
+                    priority,
+                    received_at: chrono::Utc::now(),
+                    status: "queued".to_string(),
+                };
+
+                state.knative_tasks.push(task).await;
+                tracing::info!(task_id = %task_id, "Task queued for execution");
+            }
+        }
+        "codetether.task.cancelled" => {
+            tracing::info!("Task cancellation event received");
+            // Update task status if we have the task_id
+            if let Some(data) = event.data {
+                if let Some(task_id) = data.get("task_id").and_then(|v| v.as_str()) {
+                    let _ = state
+                        .knative_tasks
+                        .update_status(task_id, "cancelled")
+                        .await;
+                    tracing::info!(task_id = %task_id, "Task cancelled");
+                }
+            }
+        }
+        _ => {
+            tracing::warn!(event_type = %event.event_type, "Unknown CloudEvent type");
+        }
+    }
+
+    Ok(Json(CloudEventResponse {
+        status: "accepted".to_string(),
+        event_id: event.id,
+    }))
+}
+
+/// CloudEvent structure (CloudEvents v1.0 spec)
+#[derive(Deserialize, Serialize)]
+struct CloudEvent {
+    /// Event unique identifier
+    id: String,
+    /// Event source (e.g., knative://broker/a2a-server)
+    source: String,
+    /// Event type (e.g., codetether.task.created)
+    #[serde(rename = "type")]
+    event_type: String,
+    /// Event timestamp (RFC 3339)
+    #[serde(rename = "time")]
+    timestamp: Option<String>,
+    /// CloudEvents spec version
+    #[serde(rename = "specversion")]
+    spec_version: Option<String>,
+    /// Event data payload
+    data: Option<serde_json::Value>,
+}
+
+/// Response to CloudEvent acknowledgment
+#[derive(Serialize)]
+struct CloudEventResponse {
+    status: String,
+    event_id: String,
+}
+
 /// Version info
 #[derive(Serialize)]
 struct VersionInfo {
@@ -510,6 +781,7 @@ async fn get_version() -> Json<VersionInfo> {
 #[derive(Deserialize)]
 struct ListSessionsQuery {
     limit: Option<usize>,
+    offset: Option<usize>,
 }
 
 async fn list_sessions(
@@ -519,8 +791,9 @@ async fn list_sessions(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let limit = query.limit.unwrap_or(50);
-    Ok(Json(sessions.into_iter().take(limit).collect()))
+    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(100);
+    Ok(Json(sessions.into_iter().skip(offset).take(limit).collect()))
 }
 
 /// Create a new session
