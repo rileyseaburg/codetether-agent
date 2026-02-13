@@ -18,6 +18,7 @@ mod cli;
 mod cognition;
 mod config;
 mod crash;
+mod event_stream;
 mod k8s;
 mod lsp;
 pub mod mcp;

@@ -11,6 +11,7 @@ pub mod bus;
 pub mod cli;
 pub mod cognition;
 pub mod config;
+pub mod event_stream;
 pub mod k8s;
 pub mod lsp;
 pub mod mcp;

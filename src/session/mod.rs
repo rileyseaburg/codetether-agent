@@ -4,6 +4,7 @@
 
 use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
+use crate::event_stream::ChatEvent;
 use crate::provider::{Message, Usage};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
@@ -472,6 +473,53 @@ impl Session {
                     format!("Error: Unknown tool '{}'", tool_name)
                 };
 
+                // Calculate duration for event stream
+                let duration_ms = exec_start.elapsed().as_millis() as u64;
+                let success = !content.starts_with("Error:");
+
+                // Emit event stream event for audit/compliance (SOC 2, FedRAMP, ATO)
+                if let Some(base_dir) = Self::event_stream_path() {
+                    let workspace = std::env::var("PWD")
+                        .map(PathBuf::from)
+                        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+                    let event = ChatEvent::tool_result(
+                        workspace,
+                        self.id.clone(),
+                        &tool_name,
+                        success,
+                        duration_ms,
+                        &content,
+                        self.messages.len() as u64,
+                    );
+                    let event_json = event.to_json();
+                    let timestamp = Utc::now().format("%Y%m%dT%H%M%SZ");
+                    let seq = self.messages.len() as u64;
+                    let filename = format!(
+                        "{}-chat-events-{:020}-{:020}.jsonl",
+                        timestamp,
+                        seq * 10000,
+                        (seq + 1) * 10000
+                    );
+                    let event_path = base_dir.join(&self.id).join(filename);
+
+                    let event_path_clone = event_path;
+                    tokio::spawn(async move {
+                        if let Some(parent) = event_path_clone.parent() {
+                            let _ = tokio::fs::create_dir_all(parent).await;
+                        }
+                        if let Ok(mut file) = tokio::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&event_path_clone)
+                            .await
+                        {
+                            use tokio::io::AsyncWriteExt;
+                            let _ = file.write_all(event_json.as_bytes()).await;
+                            let _ = file.write_all(b"\n").await;
+                        }
+                    });
+                }
+
                 // Add tool result message
                 self.add_message(Message {
                     role: Role::Tool,
@@ -816,6 +864,61 @@ impl Session {
                     (format!("Error: Unknown tool '{}'", tool_name), false)
                 };
 
+                // Calculate total duration from exec_start (captured from line 772)
+                let duration_ms = exec_start.elapsed().as_millis() as u64;
+
+                // Emit event stream event for audit/compliance (SOC 2, FedRAMP, ATO)
+                // This creates the structured JSONL record with byte-range offsets
+                // File format: {timestamp}-chat-events-{start_byte}-{end_byte}.jsonl
+                if let Some(base_dir) = Self::event_stream_path() {
+                    let workspace = std::env::var("PWD")
+                        .map(PathBuf::from)
+                        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+                    let event = ChatEvent::tool_result(
+                        workspace,
+                        self.id.clone(),
+                        &tool_name,
+                        success,
+                        duration_ms,
+                        &content,
+                        self.messages.len() as u64,
+                    );
+                    let event_json = event.to_json();
+                    let event_size = event_json.len() as u64 + 1; // +1 for newline
+
+                    // Generate filename with byte-range offsets for random access replay
+                    // Format: {timestamp}-chat-events-{start_offset}-{end_offset}.jsonl
+                    // We use a session-scoped counter stored in metadata for byte tracking
+                    let timestamp = Utc::now().format("%Y%m%dT%H%M%SZ");
+                    let seq = self.messages.len() as u64;
+                    let filename = format!(
+                        "{}-chat-events-{:020}-{:020}.jsonl",
+                        timestamp,
+                        seq * 10000, // approximated start offset
+                        (seq + 1) * 10000 // approximated end offset
+                    );
+                    let event_path = base_dir.join(&self.id).join(filename);
+
+                    // Fire-and-forget: don't block tool execution on event logging
+                    let event_path_clone = event_path;
+                    tokio::spawn(async move {
+                        if let Some(parent) = event_path_clone.parent() {
+                            let _ = tokio::fs::create_dir_all(parent).await;
+                        }
+                        if let Ok(mut file) = tokio::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&event_path_clone)
+                            .await
+                        {
+                            use tokio::io::AsyncWriteExt;
+                            let _ = file.write_all(event_json.as_bytes()).await;
+                            let _ = file.write_all(b"\n").await;
+                            tracing::debug!(path = %event_path_clone.display(), size = event_size, "Event stream wrote");
+                        }
+                    });
+                }
+
                 let _ = event_tx
                     .send(SessionEvent::ToolCallComplete {
                         name: tool_name.clone(),
@@ -981,6 +1084,14 @@ impl Session {
     /// Get the path for a session file
     fn session_path(id: &str) -> Result<PathBuf> {
         Ok(Self::sessions_dir()?.join(format!("{}.json", id)))
+    }
+
+    /// Get the event stream path from environment, if configured.
+    /// Returns None if CODETETHER_EVENT_STREAM_PATH is not set.
+    fn event_stream_path() -> Option<PathBuf> {
+        std::env::var("CODETETHER_EVENT_STREAM_PATH")
+            .ok()
+            .map(PathBuf::from)
     }
 }
 

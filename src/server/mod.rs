@@ -142,6 +142,12 @@ const POLICY_RULES: &[PolicyRule] = &[
         methods: None,
         permission: "admin:access",
     },
+    // Event stream replay — admin (compliance feature)
+    PolicyRule {
+        pattern: "/v1/audit/replay",
+        methods: Some(&["GET"]),
+        permission: "admin:access",
+    },
     // Cognition — write operations
     PolicyRule {
         pattern: "/v1/cognition/start",
@@ -423,6 +429,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/cognition/personas/{id}", get(get_persona))
         // Audit trail API
         .route("/v1/audit", get(list_audit_entries))
+        // Event stream replay API (for SOC 2, FedRAMP, ATO compliance)
+        .route("/v1/audit/replay", get(replay_session_events))
+        .route("/v1/audit/replay/index", get(list_session_event_files))
         // K8s self-deployment APIs
         .route("/v1/k8s/status", get(get_k8s_status))
         .route("/v1/k8s/scale", post(k8s_scale))
@@ -858,6 +867,188 @@ async fn list_audit_entries(
     };
 
     Ok(Json(entries))
+}
+
+// ── Event Stream Replay API ──
+// Enables auditors to reconstruct sessions from byte-range offsets.
+// This is the key compliance feature for SOC 2, FedRAMP, and ATO processes.
+
+#[derive(Deserialize)]
+struct ReplayQuery {
+    /// Session ID to replay
+    session_id: String,
+    /// Optional: starting byte offset (for seeking to specific point)
+    start_offset: Option<u64>,
+    /// Optional: ending byte offset
+    end_offset: Option<u64>,
+    /// Optional: limit number of events to return
+    limit: Option<usize>,
+    /// Optional: filter by tool name
+    tool_name: Option<String>,
+}
+
+/// Replay session events from the JSONL event stream by byte-range offsets.
+/// This allows auditors to reconstruct exactly what happened in a session,
+/// including tool execution durations and success/failure status.
+async fn replay_session_events(
+    Query(query): Query<ReplayQuery>,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, String)> {
+    use std::path::PathBuf;
+
+    let base_dir = std::env::var("CODETETHER_EVENT_STREAM_PATH")
+        .map(PathBuf::from)
+        .ok()
+        .ok_or_else(|| {
+            (StatusCode::SERVICE_UNAVAILABLE, "Event stream not configured. Set CODETETHER_EVENT_STREAM_PATH.".to_string())
+        })?;
+
+    let session_dir = base_dir.join(&query.session_id);
+    
+    // Check if session directory exists
+    if !session_dir.exists() {
+        return Err((StatusCode::NOT_FOUND, format!("Session not found: {}", query.session_id)));
+    }
+
+    let mut all_events: Vec<(u64, u64, serde_json::Value)> = Vec::new();
+
+    // Read all event files in the session directory using std::fs for simplicity
+    let entries = std::fs::read_dir(&session_dir)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let path = entry.path();
+        
+        if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
+            continue;
+        }
+
+        // Parse byte range from filename: {timestamp}-chat-events-{start}-{end}.jsonl
+        let filename = path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        if let Some(offsets) = filename.strip_prefix("T").or_else(|| filename.strip_prefix("202")) {
+            // Extract start and end offsets from filename
+            let parts: Vec<&str> = offsets.split('-').collect();
+            if parts.len() >= 4 {
+                let start: u64 = parts[parts.len() - 2].parse().unwrap_or(0);
+                let end: u64 = parts[parts.len() - 1].trim_end_matches(".jsonl").parse().unwrap_or(0);
+
+                // Filter by byte range if specified
+                if let Some(query_start) = query.start_offset {
+                    if end <= query_start {
+                        continue;
+                    }
+                }
+                if let Some(query_end) = query.end_offset {
+                    if start >= query_end {
+                        continue;
+                    }
+                }
+
+                // Read and parse events from this file
+                let content = std::fs::read_to_string(&path)
+                    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+                
+                for line in content.lines() {
+                    if line.trim().is_empty() {
+                        continue;
+                    }
+                    if let Ok(event) = serde_json::from_str::<serde_json::Value>(line) {
+                        // Filter by tool name if specified
+                        if let Some(ref tool_filter) = query.tool_name {
+                            if let Some(event_tool) = event.get("tool_name").and_then(|v| v.as_str()) {
+                                if event_tool != tool_filter {
+                                    continue;
+                                }
+                            } else {
+                                continue;
+                            }
+                        }
+                        all_events.push((start, end, event));
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by start offset
+    all_events.sort_by_key(|(s, _, _)| *s);
+
+    // Apply limit
+    let limit = query.limit.unwrap_or(1000).min(10000);
+    let events: Vec<_> = all_events.into_iter().take(limit).map(|(_, _, e)| e).collect();
+
+    Ok(Json(events))
+}
+
+/// Get session event files metadata (for audit index)
+async fn list_session_event_files(
+    Query(query): Query<ReplayQuery>,
+) -> Result<Json<Vec<EventFileMeta>>, (StatusCode, String)> {
+    use std::path::PathBuf;
+
+    let base_dir = std::env::var("CODETETHER_EVENT_STREAM_PATH")
+        .map(PathBuf::from)
+        .ok()
+        .ok_or_else(|| {
+            (StatusCode::SERVICE_UNAVAILABLE, "Event stream not configured. Set CODETETHER_EVENT_STREAM_PATH.".to_string())
+        })?;
+
+    let session_dir = base_dir.join(&query.session_id);
+    if !session_dir.exists() {
+        return Err((StatusCode::NOT_FOUND, format!("Session not found: {}", query.session_id)));
+    }
+
+    let mut files: Vec<EventFileMeta> = Vec::new();
+    
+    // Use std::fs for simplicity
+    let entries = std::fs::read_dir(&session_dir)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let path = entry.path();
+        
+        if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
+            continue;
+        }
+
+        let filename = path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        // Parse byte range from filename
+        if let Some(offsets) = filename.strip_prefix("T").or_else(|| filename.strip_prefix("202")) {
+            let parts: Vec<&str> = offsets.split('-').collect();
+            if parts.len() >= 4 {
+                let start: u64 = parts[parts.len() - 2].parse().unwrap_or(0);
+                let end: u64 = parts[parts.len() - 1].trim_end_matches(".jsonl").parse().unwrap_or(0);
+
+                let metadata = std::fs::metadata(&path)
+                    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+                files.push(EventFileMeta {
+                    filename: filename.to_string(),
+                    start_offset: start,
+                    end_offset: end,
+                    size_bytes: metadata.len(),
+                });
+            }
+        }
+    }
+
+    files.sort_by_key(|f| f.start_offset);
+    Ok(Json(files))
+}
+
+#[derive(Serialize)]
+struct EventFileMeta {
+    filename: String,
+    start_offset: u64,
+    end_offset: u64,
+    size_bytes: u64,
 }
 
 // ── K8s self-deployment endpoints ──
