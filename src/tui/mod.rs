@@ -3247,9 +3247,7 @@ impl App {
 
                 // Initialize OKR repository if not already done
                 if self.okr_repository.is_none() {
-                    if let Ok(repo) =
-                        tokio::runtime::Handle::current().block_on(OkrRepository::from_config())
-                    {
+                    if let Ok(repo) = OkrRepository::from_config().await {
                         self.okr_repository = Some(std::sync::Arc::new(repo));
                     }
                 }

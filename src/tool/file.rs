@@ -383,11 +383,47 @@ impl Tool for GlobTool {
 
         let mut matches = Vec::new();
 
-        for entry in glob::glob(pattern)? {
+        // Determine the base directory from the pattern for WalkBuilder.
+        // E.g. "src/**/*.rs" → walk "src/", "**/*.ts" → walk ".".
+        let (base_dir, match_pattern) = {
+            let p = std::path::Path::new(pattern);
+            let mut prefix = std::path::PathBuf::new();
+            let mut found_meta = false;
+            for component in p.components() {
+                let s = component.as_os_str().to_string_lossy();
+                if !found_meta && glob::Pattern::escape(&s) == *s {
+                    prefix.push(component);
+                } else {
+                    found_meta = true;
+                }
+            }
+            let base = if prefix.as_os_str().is_empty() {
+                ".".to_string()
+            } else {
+                prefix.display().to_string()
+            };
+            (base, pattern.to_string())
+        };
+
+        let compiled = glob::Pattern::new(&match_pattern)?;
+
+        let walker = ignore::WalkBuilder::new(&base_dir)
+            .hidden(false)
+            .git_ignore(true)
+            .follow_links(false) // prevent symlink loops
+            .max_depth(Some(30)) // hard depth cap
+            .build();
+
+        for entry in walker {
             if matches.len() >= limit {
                 break;
             }
-            if let Ok(path) = entry {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            let path = entry.path();
+            if compiled.matches_path(path) || compiled.matches(path.to_string_lossy().as_ref()) {
                 matches.push(path.display().to_string());
             }
         }
