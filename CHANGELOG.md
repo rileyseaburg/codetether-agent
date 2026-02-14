@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Worker loop immediately polls for pending tasks when notified
   - Enables real-time task dispatch without SSE polling delay
 
+### Updated
+
+- **Claude Opus 4.6 Bedrock Pricing**: Updated token pricing to reflect new Amazon Bedrock rates
+  - Input: $15.00 → $5.00 per 1M tokens (67% cost reduction)
+  - Output: $75.00 → $25.00 per 1M tokens (67% cost reduction)
+  - Added 200k context limit for Opus 4.6 model
+  - Updated TUI token display to show new pricing
+
 ### Deprecated
 
 - **opencode API endpoints**: The `/v1/opencode/*` endpoints are deprecated
