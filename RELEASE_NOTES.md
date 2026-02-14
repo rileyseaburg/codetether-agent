@@ -1,18 +1,29 @@
-# v2.0.3
+# v2.1.0
 
 ## What's New
 
-- **Event Stream Module**: New `event_stream` module with JSONL audit logging and replay API for robust event tracking
-- **S3/R2 Event Archival**: Configurable archival of audit events to S3/R2-compatible storage with relay checkpoint persistence for crash recovery
-- **Replay API**: Ability to replay archived events for auditing and debugging workflows
+**RLM Integration for Session Context Management** — Sessions now automatically use Recursive Language Model (RLM) processing to compress and manage context, enabling longer conversations without hitting token limits.
+
+**Auth Registration & Credential Auto-Load** — New `auth register` command streamlines setup by automatically detecting and loading credentials from environment variables and configuration files.
+
+**OKR Correctness Hardening** — Enhanced Objectives and Key Results (OKR) tracking with comprehensive validation and persistence layer, improving reliability of goal-tracking workflows.
+
+**Worker HTTP Server for Kubernetes** — Workers now expose an HTTP server with `/health` and `/ready` endpoints, enabling native Kubernetes liveness/readiness probes and Knative integration.
+
+**Container Support** — Added Dockerfile and GitHub Actions workflow for building and publishing container images, simplifying cloud deployments.
 
 ## Bug Fixes
 
-- **Memory Tool Performance**: Fixed a performance regression where the memory tool unnecessarily reloaded disk state on every execute call
+- Improved MCP transport reliability with enhanced error handling
 
 ## Changes
 
-- Added 1,737 lines across 10 files with new event stream infrastructure
-- Integrated event streaming into server, session, and TUI modules
-- Added end-to-end tests for event stream functionality
-- Session module now supports event stream integration for session lifecycle tracking
+- **TUI**: Significant expansion with 700+ new lines of functionality
+- **Session**: Enhanced session management with RLM integration
+- **Server**: Extended server capabilities with additional endpoints
+- **Tests**: Added comprehensive test suites for OKR correctness and model resolution
+- **Documentation**: Updated README with expanded deployment and usage examples
+
+---
+
+**Stats**: 24 files changed, 4,932 insertions(+), 263 deletions(-)
