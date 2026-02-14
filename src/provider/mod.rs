@@ -6,6 +6,7 @@ pub mod anthropic;
 pub mod bedrock;
 pub mod copilot;
 pub mod google;
+pub mod metrics;
 pub mod models;
 pub mod moonshot;
 pub mod openai;
@@ -177,9 +178,11 @@ impl ProviderRegistry {
         }
     }
 
-    /// Register a provider
+    /// Register a provider (automatically wrapped with metrics instrumentation)
     pub fn register(&mut self, provider: Arc<dyn Provider>) {
-        self.providers.insert(provider.name().to_string(), provider);
+        let name = provider.name().to_string();
+        let wrapped = metrics::MetricsProvider::wrap(provider);
+        self.providers.insert(name, wrapped);
     }
 
     /// Get a provider by name
@@ -444,17 +447,19 @@ impl ProviderRegistry {
                         }
                     }
                     // MiniMax - Anthropic-compatible API harness (recommended by MiniMax docs)
-                    "minimax" => {
+                    // "minimax" uses the coding-plan key (regular models)
+                    // "minimax-credits" uses the credits-based key (highspeed models)
+                    "minimax" | "minimax-credits" => {
                         let base_url = secrets
                             .base_url
                             .clone()
                             .unwrap_or_else(|| "https://api.minimax.io/anthropic".to_string());
                         let base_url = normalize_minimax_anthropic_base_url(&base_url);
                         match anthropic::AnthropicProvider::with_base_url(
-                            api_key, base_url, "minimax",
+                            api_key, base_url, &provider_id,
                         ) {
                             Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init minimax: {}", e),
+                            Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                         }
                     }
                     // OpenAI-compatible providers (with custom base_url)

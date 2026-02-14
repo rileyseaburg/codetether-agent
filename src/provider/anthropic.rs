@@ -51,7 +51,7 @@ impl AnthropicProvider {
         let enable_prompt_caching = std::env::var("CODETETHER_ANTHROPIC_PROMPT_CACHING")
             .ok()
             .and_then(|v| parse_bool_env(&v))
-            .unwrap_or_else(|| provider_name.eq_ignore_ascii_case("minimax"));
+            .unwrap_or_else(|| provider_name.eq_ignore_ascii_case("minimax") || provider_name.eq_ignore_ascii_case("minimax-credits"));
 
         tracing::debug!(
             provider = %provider_name,
@@ -323,7 +323,38 @@ impl Provider for AnthropicProvider {
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         self.validate_api_key()?;
 
+        if self.provider_name.eq_ignore_ascii_case("minimax-credits") {
+            // Credits-based key: highspeed models only (not on coding plan)
+            return Ok(vec![
+                ModelInfo {
+                    id: "MiniMax-M2.5-highspeed".to_string(),
+                    name: "MiniMax M2.5 Highspeed".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.6),
+                    output_cost_per_million: Some(2.4),
+                },
+                ModelInfo {
+                    id: "MiniMax-M2.1-highspeed".to_string(),
+                    name: "MiniMax M2.1 Highspeed".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(65_536),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.6),
+                    output_cost_per_million: Some(2.4),
+                },
+            ]);
+        }
+
         if self.provider_name.eq_ignore_ascii_case("minimax") {
+            // Coding plan key: regular (non-highspeed) models
             return Ok(vec![
                 ModelInfo {
                     id: "MiniMax-M2.5".to_string(),
@@ -338,18 +369,6 @@ impl Provider for AnthropicProvider {
                     output_cost_per_million: Some(1.2),
                 },
                 ModelInfo {
-                    id: "MiniMax-M2.5-lightning".to_string(),
-                    name: "MiniMax M2.5 Lightning".to_string(),
-                    provider: self.provider_name.clone(),
-                    context_window: 200_000,
-                    max_output_tokens: Some(65_536),
-                    supports_vision: false,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: Some(0.3),
-                    output_cost_per_million: Some(2.4),
-                },
-                ModelInfo {
                     id: "MiniMax-M2.1".to_string(),
                     name: "MiniMax M2.1".to_string(),
                     provider: self.provider_name.clone(),
@@ -360,18 +379,6 @@ impl Provider for AnthropicProvider {
                     supports_streaming: true,
                     input_cost_per_million: Some(0.3),
                     output_cost_per_million: Some(1.2),
-                },
-                ModelInfo {
-                    id: "MiniMax-M2.1-lightning".to_string(),
-                    name: "MiniMax M2.1 Lightning".to_string(),
-                    provider: self.provider_name.clone(),
-                    context_window: 200_000,
-                    max_output_tokens: Some(65_536),
-                    supports_vision: false,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: Some(0.3),
-                    output_cost_per_million: Some(2.4),
                 },
                 ModelInfo {
                     id: "MiniMax-M2".to_string(),

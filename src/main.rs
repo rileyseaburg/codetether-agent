@@ -598,16 +598,47 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
                 "list-tools" => {
-                    // Run as MCP server but just list tools
-                    let _server = mcp::McpServer::new_stdio();
-                    // In a real implementation, we'd query a connected server
-                    println!("# Available MCP Tools\n");
-                    println!("- **run_command**: Execute shell commands");
-                    println!("- **read_file**: Read file contents");
-                    println!("- **write_file**: Write to files");
-                    println!("- **list_directory**: List directory contents");
-                    println!("- **search_files**: Search for files");
-                    println!("- **grep_search**: Search file contents");
+                    if let Some(command) = args.command.as_ref() {
+                        // Connect to external MCP server and list its tools
+                        let parts: Vec<&str> = command.split_whitespace().collect();
+                        if parts.is_empty() {
+                            anyhow::bail!("Empty command");
+                        }
+                        let cmd = parts[0];
+                        let cmd_args: Vec<&str> = parts[1..].to_vec();
+                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                        let tools = client.tools().await;
+                        if args.json {
+                            println!("{}", serde_json::to_string_pretty(&tools)?);
+                        } else {
+                            println!("# Available MCP Tools\n");
+                            for tool in &tools {
+                                println!(
+                                    "- **{}**: {}",
+                                    tool.name,
+                                    tool.description.as_deref().unwrap_or("")
+                                );
+                            }
+                        }
+                        client.close().await?;
+                    } else {
+                        // List built-in tools from the MCP server registry
+                        let server = mcp::McpServer::new_local();
+                        server.setup_tools_public().await;
+                        let tools = server.get_all_tool_metadata().await;
+                        if args.json {
+                            println!("{}", serde_json::to_string_pretty(&tools)?);
+                        } else {
+                            println!("# Available MCP Tools\n");
+                            for tool in &tools {
+                                println!(
+                                    "- **{}**: {}",
+                                    tool.name,
+                                    tool.description.as_deref().unwrap_or("")
+                                );
+                            }
+                        }
+                    }
                     Ok(())
                 }
                 "call" => {
@@ -615,15 +646,72 @@ async fn main() -> anyhow::Result<()> {
                         .tool
                         .as_ref()
                         .ok_or_else(|| anyhow::anyhow!("--tool required for call action"))?;
-                    let arguments = args
+                    let arguments: serde_json::Value = args
                         .arguments
                         .as_ref()
                         .map(|s| serde_json::from_str(s))
                         .transpose()?
                         .unwrap_or(serde_json::json!({}));
 
-                    // For now, just show what would be called
-                    println!("Would call tool: {} with arguments: {}", tool, arguments);
+                    if let Some(command) = args.command.as_ref() {
+                        // Call tool on external MCP server
+                        let parts: Vec<&str> = command.split_whitespace().collect();
+                        if parts.is_empty() {
+                            anyhow::bail!("Empty command");
+                        }
+                        let cmd = parts[0];
+                        let cmd_args: Vec<&str> = parts[1..].to_vec();
+                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                        let result = client.call_tool(tool, arguments).await?;
+                        client.close().await?;
+
+                        let output: String = result
+                            .content
+                            .iter()
+                            .map(|c| match c {
+                                mcp::ToolContent::Text { text } => text.clone(),
+                                mcp::ToolContent::Image { data, mime_type } => {
+                                    format!("[image: {} ({} bytes)]", mime_type, data.len())
+                                }
+                                mcp::ToolContent::Resource { resource } => {
+                                    serde_json::to_string(resource).unwrap_or_default()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+
+                        if result.is_error {
+                            eprintln!("Error: {}", output);
+                        } else {
+                            println!("{}", output);
+                        }
+                    } else {
+                        // Call built-in tool directly via MCP server
+                        let server = mcp::McpServer::new_local();
+                        server.setup_tools_public().await;
+                        let result = server.call_tool_direct(tool, arguments).await?;
+
+                        let output: String = result
+                            .content
+                            .iter()
+                            .map(|c| match c {
+                                mcp::ToolContent::Text { text } => text.clone(),
+                                mcp::ToolContent::Image { data, mime_type } => {
+                                    format!("[image: {} ({} bytes)]", mime_type, data.len())
+                                }
+                                mcp::ToolContent::Resource { resource } => {
+                                    serde_json::to_string(resource).unwrap_or_default()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+
+                        if result.is_error {
+                            eprintln!("Error: {}", output);
+                        } else {
+                            println!("{}", output);
+                        }
+                    }
                     Ok(())
                 }
                 _ => {

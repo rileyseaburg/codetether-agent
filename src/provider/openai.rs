@@ -77,9 +77,9 @@ impl OpenAIProvider {
 
             "minimax" => vec![
                 ("MiniMax-M2.5", "MiniMax M2.5"),
-                ("MiniMax-M2.5-lightning", "MiniMax M2.5 Lightning"),
+                ("MiniMax-M2.5-highspeed", "MiniMax M2.5 Highspeed"),
                 ("MiniMax-M2.1", "MiniMax M2.1"),
-                ("MiniMax-M2.1-lightning", "MiniMax M2.1 Lightning"),
+                ("MiniMax-M2.1-highspeed", "MiniMax M2.1 Highspeed"),
                 ("MiniMax-M2", "MiniMax M2"),
             ],
             "zhipuai" => vec![],

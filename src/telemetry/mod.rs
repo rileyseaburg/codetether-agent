@@ -1150,3 +1150,334 @@ impl SwarmTelemetryCollector {
         metrics
     }
 }
+
+// ============================================================================
+// Provider Performance Metrics (latency, throughput, TPS)
+// ============================================================================
+
+/// A single recorded provider request
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderRequestRecord {
+    /// Provider name (e.g. "openrouter", "anthropic")
+    pub provider: String,
+    /// Model used
+    pub model: String,
+    /// Total latency in milliseconds (request to response)
+    pub latency_ms: u64,
+    /// Time to first token in milliseconds (for streaming, 0 for non-streaming)
+    pub ttft_ms: u64,
+    /// Input tokens
+    pub input_tokens: u64,
+    /// Output tokens
+    pub output_tokens: u64,
+    /// Whether the request succeeded
+    pub success: bool,
+    /// Timestamp (Unix ms)
+    pub timestamp: u64,
+}
+
+impl ProviderRequestRecord {
+    /// Tokens per second (output tokens / latency)
+    pub fn tokens_per_second(&self) -> f64 {
+        if self.latency_ms == 0 {
+            return 0.0;
+        }
+        (self.output_tokens as f64) / (self.latency_ms as f64 / 1000.0)
+    }
+}
+
+/// Per-provider performance tracker using atomics for fast concurrent updates
+#[derive(Debug)]
+pub struct ProviderPerformanceTracker {
+    /// Provider name
+    name: String,
+    /// Total request count
+    request_count: AtomicU64,
+    /// Total successful requests
+    success_count: AtomicU64,
+    /// Total failed requests
+    error_count: AtomicU64,
+    /// Sum of all latencies (ms) for average calculation
+    total_latency_ms: AtomicU64,
+    /// Minimum latency (ms)
+    min_latency_ms: AtomicU64,
+    /// Maximum latency (ms)
+    max_latency_ms: AtomicU64,
+    /// Sum of all TTFT values (ms)
+    total_ttft_ms: AtomicU64,
+    /// Total output tokens (for TPS calculation)
+    total_output_tokens: AtomicU64,
+    /// Total input tokens
+    total_input_tokens: AtomicU64,
+    /// Recent request records (for percentile calculations)
+    recent_records: RwLock<Vec<ProviderRequestRecord>>,
+    /// Max recent records to retain
+    max_recent: usize,
+}
+
+impl ProviderPerformanceTracker {
+    /// Create a new tracker for a named provider
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            request_count: AtomicU64::new(0),
+            success_count: AtomicU64::new(0),
+            error_count: AtomicU64::new(0),
+            total_latency_ms: AtomicU64::new(0),
+            min_latency_ms: AtomicU64::new(u64::MAX),
+            max_latency_ms: AtomicU64::new(0),
+            total_ttft_ms: AtomicU64::new(0),
+            total_output_tokens: AtomicU64::new(0),
+            total_input_tokens: AtomicU64::new(0),
+            recent_records: RwLock::new(Vec::with_capacity(200)),
+            max_recent: 200,
+        }
+    }
+
+    /// Record a completed provider request
+    pub fn record(&self, record: ProviderRequestRecord) {
+        self.request_count.fetch_add(1, Ordering::Relaxed);
+        self.total_latency_ms
+            .fetch_add(record.latency_ms, Ordering::Relaxed);
+        self.total_output_tokens
+            .fetch_add(record.output_tokens, Ordering::Relaxed);
+        self.total_input_tokens
+            .fetch_add(record.input_tokens, Ordering::Relaxed);
+        self.total_ttft_ms
+            .fetch_add(record.ttft_ms, Ordering::Relaxed);
+
+        if record.success {
+            self.success_count.fetch_add(1, Ordering::Relaxed);
+        } else {
+            self.error_count.fetch_add(1, Ordering::Relaxed);
+        }
+
+        // Update min/max latency
+        self.min_latency_ms
+            .fetch_min(record.latency_ms, Ordering::Relaxed);
+        self.max_latency_ms
+            .fetch_max(record.latency_ms, Ordering::Relaxed);
+
+        // Store recent record
+        let mut records = self.recent_records.write();
+        if records.len() >= self.max_recent {
+            records.remove(0);
+        }
+        records.push(record);
+    }
+
+    /// Get a performance snapshot
+    pub fn snapshot(&self) -> ProviderPerformanceSnapshot {
+        let request_count = self.request_count.load(Ordering::Relaxed);
+        let total_latency = self.total_latency_ms.load(Ordering::Relaxed);
+        let total_output = self.total_output_tokens.load(Ordering::Relaxed);
+        let total_input = self.total_input_tokens.load(Ordering::Relaxed);
+        let total_ttft = self.total_ttft_ms.load(Ordering::Relaxed);
+        let min_latency = self.min_latency_ms.load(Ordering::Relaxed);
+        let max_latency = self.max_latency_ms.load(Ordering::Relaxed);
+
+        let avg_latency_ms = if request_count > 0 {
+            total_latency as f64 / request_count as f64
+        } else {
+            0.0
+        };
+
+        let avg_tps = if total_latency > 0 {
+            (total_output as f64) / (total_latency as f64 / 1000.0)
+        } else {
+            0.0
+        };
+
+        let avg_ttft_ms = if request_count > 0 {
+            total_ttft as f64 / request_count as f64
+        } else {
+            0.0
+        };
+
+        // Calculate p50 and p95 from recent records
+        let (p50_latency_ms, p95_latency_ms, p50_tps, p95_tps) = {
+            let records = self.recent_records.read();
+            if records.is_empty() {
+                (0.0, 0.0, 0.0, 0.0)
+            } else {
+                let mut latencies: Vec<u64> =
+                    records.iter().map(|r| r.latency_ms).collect();
+                latencies.sort_unstable();
+                let p50_idx = (latencies.len() as f64 * 0.50) as usize;
+                let p95_idx = (latencies.len() as f64 * 0.95).min((latencies.len() - 1) as f64)
+                    as usize;
+                let p50_lat = latencies[p50_idx] as f64;
+                let p95_lat = latencies[p95_idx] as f64;
+
+                let mut tps_values: Vec<f64> = records
+                    .iter()
+                    .filter(|r| r.latency_ms > 0)
+                    .map(|r| r.tokens_per_second())
+                    .collect();
+                tps_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                let (p50_tps, p95_tps) = if tps_values.is_empty() {
+                    (0.0, 0.0)
+                } else {
+                    let p50_i = (tps_values.len() as f64 * 0.50) as usize;
+                    let p95_i = (tps_values.len() as f64 * 0.95)
+                        .min((tps_values.len() - 1) as f64)
+                        as usize;
+                    (tps_values[p50_i], tps_values[p95_i])
+                };
+
+                (p50_lat, p95_lat, p50_tps, p95_tps)
+            }
+        };
+
+        ProviderPerformanceSnapshot {
+            provider: self.name.clone(),
+            request_count,
+            success_count: self.success_count.load(Ordering::Relaxed),
+            error_count: self.error_count.load(Ordering::Relaxed),
+            avg_latency_ms,
+            min_latency_ms: if min_latency == u64::MAX {
+                0
+            } else {
+                min_latency
+            },
+            max_latency_ms: max_latency,
+            p50_latency_ms,
+            p95_latency_ms,
+            avg_ttft_ms,
+            avg_tps,
+            p50_tps,
+            p95_tps,
+            total_input_tokens: total_input,
+            total_output_tokens: total_output,
+        }
+    }
+}
+
+/// Immutable snapshot of provider performance
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderPerformanceSnapshot {
+    pub provider: String,
+    pub request_count: u64,
+    pub success_count: u64,
+    pub error_count: u64,
+    /// Average latency in ms
+    pub avg_latency_ms: f64,
+    /// Minimum observed latency in ms
+    pub min_latency_ms: u64,
+    /// Maximum observed latency in ms
+    pub max_latency_ms: u64,
+    /// p50 (median) latency in ms
+    pub p50_latency_ms: f64,
+    /// p95 latency in ms
+    pub p95_latency_ms: f64,
+    /// Average time to first token (ms)
+    pub avg_ttft_ms: f64,
+    /// Average tokens per second (output_tokens / seconds)
+    pub avg_tps: f64,
+    /// p50 tokens per second
+    pub p50_tps: f64,
+    /// p95 tokens per second
+    pub p95_tps: f64,
+    /// Total input tokens processed
+    pub total_input_tokens: u64,
+    /// Total output tokens generated
+    pub total_output_tokens: u64,
+}
+
+impl ProviderPerformanceSnapshot {
+    /// Format as a compact summary line
+    pub fn summary(&self) -> String {
+        format!(
+            "{}: {} reqs, avg {:.0}ms (p50 {:.0}ms, p95 {:.0}ms), {:.1} tok/s, {} errors",
+            self.provider,
+            self.request_count,
+            self.avg_latency_ms,
+            self.p50_latency_ms,
+            self.p95_latency_ms,
+            self.avg_tps,
+            self.error_count,
+        )
+    }
+
+    /// Format as detailed multi-line report
+    pub fn detailed(&self) -> String {
+        let success_rate = if self.request_count > 0 {
+            (self.success_count as f64 / self.request_count as f64) * 100.0
+        } else {
+            100.0
+        };
+
+        format!(
+            "{provider}:\n  Requests: {reqs} ({rate:.1}% success)\n  Latency:  avg {avg:.0}ms | p50 {p50:.0}ms | p95 {p95:.0}ms | min {min}ms | max {max}ms\n  TTFT:     avg {ttft:.0}ms\n  TPS:      avg {tps:.1} | p50 {tps50:.1} | p95 {tps95:.1}\n  Tokens:   {input} in / {output} out",
+            provider = self.provider,
+            reqs = self.request_count,
+            rate = success_rate,
+            avg = self.avg_latency_ms,
+            p50 = self.p50_latency_ms,
+            p95 = self.p95_latency_ms,
+            min = self.min_latency_ms,
+            max = self.max_latency_ms,
+            ttft = self.avg_ttft_ms,
+            tps = self.avg_tps,
+            tps50 = self.p50_tps,
+            tps95 = self.p95_tps,
+            input = self.total_input_tokens,
+            output = self.total_output_tokens,
+        )
+    }
+}
+
+/// Registry of per-provider performance trackers
+#[derive(Debug)]
+pub struct ProviderMetricsRegistry {
+    trackers: RwLock<HashMap<String, Arc<ProviderPerformanceTracker>>>,
+}
+
+impl ProviderMetricsRegistry {
+    pub fn new() -> Self {
+        Self {
+            trackers: RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// Record a provider request
+    pub fn record(&self, record: ProviderRequestRecord) {
+        let provider = record.provider.clone();
+        let tracker = {
+            let mut trackers = self.trackers.write();
+            trackers
+                .entry(provider.clone())
+                .or_insert_with(|| Arc::new(ProviderPerformanceTracker::new(provider)))
+                .clone()
+        };
+        tracker.record(record);
+    }
+
+    /// Get snapshot for a specific provider
+    pub fn provider_snapshot(&self, provider: &str) -> Option<ProviderPerformanceSnapshot> {
+        let trackers = self.trackers.read();
+        trackers.get(provider).map(|t| t.snapshot())
+    }
+
+    /// Get snapshots for all providers
+    pub fn all_snapshots(&self) -> Vec<ProviderPerformanceSnapshot> {
+        let trackers = self.trackers.read();
+        trackers.values().map(|t| t.snapshot()).collect()
+    }
+
+    /// Get provider names
+    pub fn providers(&self) -> Vec<String> {
+        let trackers = self.trackers.read();
+        trackers.keys().cloned().collect()
+    }
+}
+
+impl Default for ProviderMetricsRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Global provider metrics registry
+pub static PROVIDER_METRICS: once_cell::sync::Lazy<ProviderMetricsRegistry> =
+    once_cell::sync::Lazy::new(ProviderMetricsRegistry::new);

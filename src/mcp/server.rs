@@ -45,7 +45,18 @@ type McpPromptHandler = Arc<dyn Fn(Value) -> Result<GetPromptResult> + Send + Sy
 impl McpServer {
     /// Create a new MCP server over stdio
     pub fn new_stdio() -> Self {
-        let transport = Arc::new(StdioTransport::new());
+        // Use Arc's unsized coercion to convert Arc<StdioTransport> -> Arc<dyn Transport>
+        let transport: Arc<dyn Transport> = Arc::new(StdioTransport::new());
+        Self::new(transport)
+    }
+
+    /// Create a new MCP server for in-process/local usage.
+    ///
+    /// Unlike [`Self::new_stdio`], this does not spawn any stdio reader/writer threads
+    /// and will not lock stdout. This is intended for CLI flows that need to query
+    /// tool metadata or invoke tools directly without running a long-lived stdio server.
+    pub fn new_local() -> Self {
+        let transport: Arc<dyn Transport> = Arc::new(super::transport::NullTransport::new());
         Self::new(transport)
     }
 
@@ -200,6 +211,22 @@ impl McpServer {
         }
 
         Ok(())
+    }
+
+    /// Setup default tools (public, for CLI use)
+    pub async fn setup_tools_public(&self) {
+        self.setup_tools().await;
+    }
+
+    /// Call a tool directly without going through the transport
+    pub async fn call_tool_direct(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
+        let tools = self.tools.read().await;
+        let handler = tools
+            .get(name)
+            .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", name))?
+            .clone();
+        drop(tools);
+        handler(arguments)
     }
 
     /// Setup default tools

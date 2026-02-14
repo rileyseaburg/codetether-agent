@@ -95,6 +95,38 @@ pub enum BusMessage {
     },
     /// Heartbeat (keep-alive / health signal)
     Heartbeat { agent_id: String, status: String },
+
+    // ── Ralph loop messages ──────────────────────────────────────────
+
+    /// An agent shares learnings from a Ralph iteration (insights,
+    /// blockers, patterns discovered) so subsequent iterations or
+    /// co-ordinating agents can build on them.
+    RalphLearning {
+        prd_id: String,
+        story_id: String,
+        iteration: usize,
+        learnings: Vec<String>,
+        context: serde_json::Value,
+    },
+
+    /// Context handoff between sequential Ralph stories.  The finishing
+    /// story publishes what the *next* story should know.
+    RalphHandoff {
+        prd_id: String,
+        from_story: String,
+        to_story: String,
+        context: serde_json::Value,
+        progress_summary: String,
+    },
+
+    /// PRD-level progress update (aggregated across all stories).
+    RalphProgress {
+        prd_id: String,
+        passed: usize,
+        total: usize,
+        iteration: usize,
+        status: String,
+    },
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────
@@ -290,6 +322,89 @@ impl BusHandle {
             format!("results.{}", &key),
             BusMessage::SharedResult { key, value, tags },
         )
+    }
+
+    // ── Ralph helpers ────────────────────────────────────────────────
+
+    /// Publish learnings from a Ralph iteration so other agents / future
+    /// iterations can build on them.
+    pub fn publish_ralph_learning(
+        &self,
+        prd_id: &str,
+        story_id: &str,
+        iteration: usize,
+        learnings: Vec<String>,
+        context: serde_json::Value,
+    ) -> usize {
+        self.send(
+            format!("ralph.{prd_id}"),
+            BusMessage::RalphLearning {
+                prd_id: prd_id.to_string(),
+                story_id: story_id.to_string(),
+                iteration,
+                learnings,
+                context,
+            },
+        )
+    }
+
+    /// Publish a context handoff between sequential Ralph stories.
+    pub fn publish_ralph_handoff(
+        &self,
+        prd_id: &str,
+        from_story: &str,
+        to_story: &str,
+        context: serde_json::Value,
+        progress_summary: &str,
+    ) -> usize {
+        self.send(
+            format!("ralph.{prd_id}"),
+            BusMessage::RalphHandoff {
+                prd_id: prd_id.to_string(),
+                from_story: from_story.to_string(),
+                to_story: to_story.to_string(),
+                context,
+                progress_summary: progress_summary.to_string(),
+            },
+        )
+    }
+
+    /// Publish PRD-level progress.
+    pub fn publish_ralph_progress(
+        &self,
+        prd_id: &str,
+        passed: usize,
+        total: usize,
+        iteration: usize,
+        status: &str,
+    ) -> usize {
+        self.send(
+            format!("ralph.{prd_id}"),
+            BusMessage::RalphProgress {
+                prd_id: prd_id.to_string(),
+                passed,
+                total,
+                iteration,
+                status: status.to_string(),
+            },
+        )
+    }
+
+    /// Drain all accumulated Ralph learnings for a PRD (non-blocking).
+    pub fn drain_ralph_learnings(&mut self, prd_id: &str) -> Vec<BusEnvelope> {
+        let prefix = format!("ralph.{prd_id}");
+        let mut out = Vec::new();
+        while let Some(env) = self.try_recv() {
+            if env.topic.starts_with(&prefix) {
+                if matches!(
+                    &env.message,
+                    BusMessage::RalphLearning { .. } | BusMessage::RalphHandoff { .. }
+                ) {
+                    out.push(env);
+                }
+            }
+        }
+        out
     }
 
     /// Receive the next envelope (blocks until available).

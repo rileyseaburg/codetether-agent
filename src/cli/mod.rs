@@ -2,6 +2,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod go_ralph;
 pub mod run;
 
 use clap::{Parser, Subcommand};

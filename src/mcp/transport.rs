@@ -66,6 +66,21 @@ pub struct StdioTransport {
     rx: tokio::sync::Mutex<mpsc::Receiver<String>>,
 }
 
+/// Null transport for local/in-process MCP usage.
+///
+/// This transport intentionally does **not** spawn any stdio reader/writer threads
+/// and does not lock stdout. It is suitable for CLI commands that want to reuse the
+/// MCP tool registry (e.g. `codetether mcp list-tools` and `codetether mcp call`)
+/// without running a stdio server.
+#[derive(Debug, Default, Clone)]
+pub struct NullTransport;
+
+impl NullTransport {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
 impl Default for StdioTransport {
     fn default() -> Self {
         Self::new()
@@ -156,6 +171,29 @@ impl Transport for StdioTransport {
 
     async fn close(&self) -> Result<()> {
         // Channel will close when transport is dropped
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Transport for NullTransport {
+    async fn send_request(&self, _request: JsonRpcRequest) -> Result<()> {
+        Ok(())
+    }
+
+    async fn send_response(&self, _response: JsonRpcResponse) -> Result<()> {
+        Ok(())
+    }
+
+    async fn send_notification(&self, _notification: JsonRpcNotification) -> Result<()> {
+        Ok(())
+    }
+
+    async fn receive(&self) -> Result<Option<McpMessage>> {
+        Ok(None)
+    }
+
+    async fn close(&self) -> Result<()> {
         Ok(())
     }
 }

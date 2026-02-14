@@ -150,6 +150,49 @@ impl BusLogEntry {
                 format!("Agent: {agent_id}\nStatus: {status}"),
                 Color::DarkGray,
             ),
+            BusMessage::RalphLearning {
+                prd_id,
+                story_id,
+                iteration,
+                learnings,
+                ..
+            } => (
+                "LEARN".to_string(),
+                format!("{story_id} iter {iteration} ({} items)", learnings.len()),
+                format!(
+                    "PRD: {prd_id}\nStory: {story_id}\nIteration: {iteration}\nLearnings:\n{}",
+                    learnings.join("\n")
+                ),
+                Color::Cyan,
+            ),
+            BusMessage::RalphHandoff {
+                prd_id,
+                from_story,
+                to_story,
+                progress_summary,
+                ..
+            } => (
+                "HANDOFF".to_string(),
+                format!("{from_story} → {to_story}"),
+                format!(
+                    "PRD: {prd_id}\nFrom: {from_story}\nTo: {to_story}\nSummary: {progress_summary}"
+                ),
+                Color::Blue,
+            ),
+            BusMessage::RalphProgress {
+                prd_id,
+                passed,
+                total,
+                iteration,
+                status,
+            } => (
+                "PRD".to_string(),
+                format!("{passed}/{total} stories (iter {iteration}) [{status}]"),
+                format!(
+                    "PRD: {prd_id}\nPassed: {passed}/{total}\nIteration: {iteration}\nStatus: {status}"
+                ),
+                Color::Yellow,
+            ),
         };
 
         Self {

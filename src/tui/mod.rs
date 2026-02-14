@@ -29,7 +29,7 @@ const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
 const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
-const GO_SWAP_MODEL_MINIMAX: &str = "minimax/MiniMax-M2.5";
+const GO_SWAP_MODEL_MINIMAX: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
 const CHAT_SYNC_MAX_INTERVAL_SECS: u64 = 300;
 const CHAT_SYNC_MAX_BATCH_BYTES: usize = 512 * 1024;
@@ -42,7 +42,7 @@ const AGENT_AVATARS: [&str; 12] = [
 
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::config::Config;
-use crate::okr::{KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRepository, OkrRun, OkrRunStatus};
+use crate::okr::{ApprovalDecision, KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRepository, OkrRun, OkrRunStatus};
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
 use crate::rlm::RlmExecutor;
@@ -470,11 +470,10 @@ fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) ->
         m if m.contains("deepseek") => (0.80, 2.0),
         m if m.contains("llama") => (0.50, 1.50),
         // MiniMax
-        // Based on MiniMax M2.5 announcement (2026-02-12):
-        // Lightning: $0.3/M input, $2.4/M output
-        // M2.5: half of Lightning pricing
-        m if m.contains("minimax") && m.contains("m2.5-lightning") => (0.30, 2.40),
-        m if m.contains("minimax") && m.contains("m2.5") => (0.15, 1.20),
+        // Highspeed: $0.6/M input, $2.4/M output
+        // Regular: $0.3/M input, $1.2/M output
+        m if m.contains("minimax") && m.contains("highspeed") => (0.60, 2.40),
+        m if m.contains("minimax") && m.contains("m2") => (0.30, 1.20),
         // Amazon Nova
         m if m.contains("nova-pro") => (0.80, 3.20),
         m if m.contains("nova-lite") => (0.06, 0.24),
@@ -1146,7 +1145,7 @@ impl PendingOkrApproval {
             okr_id,
             format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
         );
-        run.status = OkrRunStatus::PendingApproval;
+        let _ = run.submit_for_approval();
 
         Self {
             okr,
@@ -1667,6 +1666,104 @@ async fn prepare_autochat_handoff_with_registry(
     )
 }
 
+/// Ralph worker for TUI `/go` approval flow.
+///
+/// Loads a provider, generates a PRD, runs the Ralph loop, and reports
+/// progress back to the TUI via the `AutochatUiEvent` channel.
+async fn run_go_ralph_worker(
+    tx: mpsc::Sender<AutochatUiEvent>,
+    mut okr: crate::okr::Okr,
+    mut run: crate::okr::OkrRun,
+    task: String,
+    model: String,
+    bus: Option<std::sync::Arc<crate::bus::AgentBus>>,
+) {
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Loading providers from Vault…".to_string(),
+        ))
+        .await;
+
+    let registry = match crate::provider::ProviderRegistry::from_vault().await {
+        Ok(r) => std::sync::Arc::new(r),
+        Err(err) => {
+            let _ = tx
+                .send(AutochatUiEvent::Completed {
+                    summary: format!("❌ Failed to load providers: {err}"),
+                    okr_id: Some(okr.id.to_string()),
+                    okr_run_id: Some(run.id.to_string()),
+                    relay_id: None,
+                })
+                .await;
+            return;
+        }
+    };
+
+    let (provider, resolved_model) =
+        match resolve_provider_for_model_autochat(&registry, &model) {
+            Some(pair) => pair,
+            None => {
+                let _ = tx
+                    .send(AutochatUiEvent::Completed {
+                        summary: format!(
+                            "❌ No provider available for model '{model}'"
+                        ),
+                        okr_id: Some(okr.id.to_string()),
+                        okr_run_id: Some(run.id.to_string()),
+                        relay_id: None,
+                    })
+                    .await;
+                return;
+            }
+        };
+
+    let _ = tx
+        .send(AutochatUiEvent::Progress(
+            "Generating PRD from task and key results…".to_string(),
+        ))
+        .await;
+
+    let okr_id_str = okr.id.to_string();
+    let run_id_str = run.id.to_string();
+
+    match crate::cli::go_ralph::execute_go_ralph(&task, &mut okr, &mut run, provider, &resolved_model, 10, bus)
+        .await
+    {
+        Ok(result) => {
+            // Persist final run state
+            if let Ok(repo) = crate::okr::OkrRepository::from_config().await {
+                let _ = repo.update_run(run).await;
+            }
+
+            let summary = crate::cli::go_ralph::format_go_ralph_result(&result, &task);
+            let _ = tx
+                .send(AutochatUiEvent::Completed {
+                    summary,
+                    okr_id: Some(okr_id_str),
+                    okr_run_id: Some(run_id_str),
+                    relay_id: None,
+                })
+                .await;
+        }
+        Err(err) => {
+            // Mark run as failed
+            run.status = crate::okr::OkrRunStatus::Failed;
+            if let Ok(repo) = crate::okr::OkrRepository::from_config().await {
+                let _ = repo.update_run(run).await;
+            }
+
+            let _ = tx
+                .send(AutochatUiEvent::Completed {
+                    summary: format!("❌ Ralph execution failed: {err}"),
+                    okr_id: Some(okr_id_str),
+                    okr_run_id: Some(run_id_str),
+                    relay_id: None,
+                })
+                .await;
+        }
+    }
+}
+
 async fn run_autochat_worker(
     tx: mpsc::Sender<AutochatUiEvent>,
     bus: std::sync::Arc<crate::bus::AgentBus>,
@@ -1999,12 +2096,14 @@ async fn run_autochat_worker(
                             parse_uuid_guarded(run_id_str, "relay_mid_run_persist")
                         {
                             if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                                run.iterations = turns as u32;
-                                for (kr_id, value) in &kr_progress {
-                                    run.update_kr_progress(kr_id, *value);
+                                if run.is_resumable() {
+                                    run.iterations = turns as u32;
+                                    for (kr_id, value) in &kr_progress {
+                                        run.update_kr_progress(kr_id, *value);
+                                    }
+                                    run.status = crate::okr::OkrRunStatus::Running;
+                                    let _ = repo.update_run(run).await;
                                 }
-                                run.status = crate::okr::OkrRunStatus::Running;
-                                let _ = repo.update_run(run).await;
                             }
                         }
                     }
@@ -2160,16 +2259,14 @@ async fn run_autochat_worker(
                                 turns,
                                 status
                             );
-                            run.outcomes.push(KrOutcome {
-                                id: uuid::Uuid::new_v4(),
-                                kr_id: kr_uuid,
-                                run_id: Some(run.id),
-                                description: kr_description,
-                                outcome_type,
-                                value: Some(*value),
-                                evidence: base_evidence.clone(),
-                                source: "autochat relay".to_string(),
-                                created_at: chrono::Utc::now(),
+                            run.outcomes.push({
+                                let mut outcome = KrOutcome::new(kr_uuid, kr_description)
+                                    .with_value(*value);
+                                outcome.run_id = Some(run.id);
+                                outcome.outcome_type = outcome_type;
+                                outcome.evidence = base_evidence.clone();
+                                outcome.source = "autochat relay".to_string();
+                                outcome
                             });
                         }
                     }
@@ -2312,12 +2409,14 @@ async fn resume_autochat_worker(
             if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
                 if let Some(run_uuid) = parse_uuid_guarded(run_id_str, "resume_mid_run_persist") {
                     if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                        run.iterations = turns as u32;
-                        for (kr_id, value) in &kr_progress {
-                            run.update_kr_progress(kr_id, *value);
+                        if run.is_resumable() {
+                            run.iterations = turns as u32;
+                            for (kr_id, value) in &kr_progress {
+                                run.update_kr_progress(kr_id, *value);
+                            }
+                            run.status = crate::okr::OkrRunStatus::Running;
+                            let _ = repo.update_run(run).await;
                         }
-                        run.status = crate::okr::OkrRunStatus::Running;
-                        let _ = repo.update_run(run).await;
                     }
                 }
             }
@@ -2509,12 +2608,14 @@ async fn resume_autochat_worker(
                             parse_uuid_guarded(run_id_str, "resumed_relay_mid_run_persist")
                         {
                             if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                                run.iterations = turns as u32;
-                                for (kr_id, value) in &kr_progress {
-                                    run.update_kr_progress(kr_id, *value);
+                                if run.is_resumable() {
+                                    run.iterations = turns as u32;
+                                    for (kr_id, value) in &kr_progress {
+                                        run.update_kr_progress(kr_id, *value);
+                                    }
+                                    run.status = crate::okr::OkrRunStatus::Running;
+                                    let _ = repo.update_run(run).await;
                                 }
-                                run.status = crate::okr::OkrRunStatus::Running;
-                                let _ = repo.update_run(run).await;
                             }
                         }
                     }
@@ -2667,16 +2768,14 @@ async fn resume_autochat_worker(
                                 turns,
                                 status
                             );
-                            run.outcomes.push(KrOutcome {
-                                id: uuid::Uuid::new_v4(),
-                                kr_id: kr_uuid,
-                                run_id: Some(run.id),
-                                description: kr_description,
-                                outcome_type,
-                                value: Some(*value),
-                                evidence: base_evidence.clone(),
-                                source: "autochat relay (resumed)".to_string(),
-                                created_at: chrono::Utc::now(),
+                            run.outcomes.push({
+                                let mut outcome = KrOutcome::new(kr_uuid, kr_description)
+                                    .with_value(*value);
+                                outcome.run_id = Some(run.id);
+                                outcome.outcome_type = outcome_type;
+                                outcome.evidence = base_evidence.clone();
+                                outcome.source = "autochat relay (resumed)".to_string();
+                                outcome
                             });
                         }
                     }
@@ -3056,7 +3155,7 @@ impl App {
 
                 // Update run status to approved
                 let mut approved_run = pending.run;
-                approved_run.status = OkrRunStatus::Approved;
+                approved_run.record_decision(ApprovalDecision::approve(approved_run.id, "User approved via TUI"));
 
                 // Save to repository if available
                 if let Some(ref repo) = self.okr_repository {
@@ -3093,7 +3192,9 @@ impl App {
                 .await;
                 return;
             } else if denied {
-                // User denied - cancel the operation
+                // User denied - record decision and cancel
+                let mut denied_run = pending.run;
+                denied_run.record_decision(ApprovalDecision::deny(denied_run.id, "User denied via TUI"));
                 self.messages.push(ChatMessage::new(
                     "system",
                     "❌ OKR denied. Relay cancelled.",
@@ -6124,50 +6225,64 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
 
                 // OKR approval gate: 'a' to approve, 'd' to deny
-                KeyCode::Char('a') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                KeyCode::Char('a') if !key.modifiers.contains(KeyModifiers::CONTROL) && app.pending_okr_approval.is_some() => {
                     if let Some(pending) = app.pending_okr_approval.take() {
-                        // Approve: save OKR and run, then start relay
+                        // Approve: save OKR and run, then execute via Ralph PRD loop
                         app.messages.push(ChatMessage::new(
                             "system",
-                            "✅ OKR approved! Starting relay execution...",
+                            "✅ OKR approved! Starting Ralph PRD execution...",
                         ));
                         app.scroll = SCROLL_BOTTOM;
 
                         let task = pending.task.clone();
-                        let agent_count = pending.agent_count;
                         let config = config.clone();
+                        let okr = pending.okr;
+                        let mut run = pending.run;
 
-                        // Save OKR and run to repository asynchronously
-                        let okr_id = pending.okr.id;
-                        let okr_run_id = pending.run.id;
+                        // Resolve model for Ralph execution
+                        let model = app
+                            .active_model
+                            .clone()
+                            .or_else(|| config.default_model.clone())
+                            .unwrap_or_else(|| GO_SWAP_MODEL_MINIMAX.to_string());
 
+                        let bus = app.bus.clone();
+
+                        // Save OKR to repository
+                        let okr_id = okr.id;
+                        let okr_run_id = run.id;
+                        run.record_decision(crate::okr::ApprovalDecision::approve(run.id, "User approved via TUI go command"));
+                        run.correlation_id = Some(format!("ralph-{}", Uuid::new_v4()));
+
+                        let okr_for_save = okr.clone();
+                        let run_for_save = run.clone();
                         tokio::spawn(async move {
                             if let Ok(repo) = OkrRepository::from_config().await {
-                                let _ = repo.create_okr(pending.okr).await;
-                                let mut run = pending.run;
-                                run.status = OkrRunStatus::Approved;
-                                run.correlation_id = Some(format!("relay-{}", Uuid::new_v4()));
-                                let _ = repo.create_run(run).await;
+                                let _ = repo.create_okr(okr_for_save).await;
+                                let _ = repo.create_run(run_for_save).await;
                                 tracing::info!(okr_id = %okr_id, okr_run_id = %okr_run_id, "OKR run approved and saved");
                             }
                         });
 
-                        // Start the relay with OKR IDs
-                        app.start_autochat_execution(
-                            agent_count,
-                            task,
-                            &config,
-                            Some(okr_id),
-                            Some(okr_run_id),
-                        )
-                        .await;
+                        // Reuse autochat UI channel for Ralph progress reporting
+                        let (tx, rx) = mpsc::channel(512);
+                        app.autochat_rx = Some(rx);
+                        app.autochat_running = true;
+                        app.autochat_started_at = Some(Instant::now());
+                        app.autochat_status = Some("Generating PRD from task…".to_string());
+
+                        tokio::spawn(async move {
+                            run_go_ralph_worker(tx, okr, run, task, model, bus).await;
+                        });
+
                         continue;
                     }
                 }
 
-                KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    if let Some(pending) = app.pending_okr_approval.take() {
-                        // Deny: show denial message
+                KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) && app.pending_okr_approval.is_some() => {
+                    if let Some(mut pending) = app.pending_okr_approval.take() {
+                        // Deny: record decision and show denial message
+                        pending.run.record_decision(crate::okr::ApprovalDecision::deny(pending.run.id, "User denied via TUI keypress"));
                         app.messages.push(ChatMessage::new(
                             "system",
                             "❌ OKR denied. Relay not started.\n\nUse /autochat for tactical execution without OKR tracking.",
@@ -8584,7 +8699,7 @@ fn is_glm5_model(model: &str) -> bool {
 
 fn is_minimax_m25_model(model: &str) -> bool {
     let normalized = model.trim().to_ascii_lowercase();
-    matches!(normalized.as_str(), "minimax/minimax-m2.5" | "minimax-m2.5")
+    matches!(normalized.as_str(), "minimax/minimax-m2.5" | "minimax-m2.5" | "minimax-credits/minimax-m2.5-highspeed" | "minimax-m2.5-highspeed")
 }
 
 fn next_go_model(current_model: Option<&str>) -> String {
@@ -9324,17 +9439,17 @@ mod tests {
     }
 
     #[test]
-    fn minimax_m25_pricing_estimate_matches_announcement_rates() {
+    fn minimax_m25_pricing_estimate_matches_rates() {
         let cost = estimate_cost("minimax/MiniMax-M2.5", 1_000_000, 1_000_000)
             .expect("MiniMax M2.5 cost should be available");
-        assert!((cost - 1.35).abs() < 1e-9);
+        assert!((cost - 1.5).abs() < 1e-9); // $0.3 + $1.2 = $1.5
     }
 
     #[test]
-    fn minimax_m25_lightning_pricing_is_case_insensitive() {
-        let cost = estimate_cost("MiniMax-M2.5-Lightning", 1_000_000, 1_000_000)
-            .expect("MiniMax M2.5 Lightning cost should be available");
-        assert!((cost - 2.7).abs() < 1e-9);
+    fn minimax_m25_highspeed_pricing() {
+        let cost = estimate_cost("MiniMax-M2.5-highspeed", 1_000_000, 1_000_000)
+            .expect("MiniMax M2.5 Highspeed cost should be available");
+        assert!((cost - 3.0).abs() < 1e-9); // $0.6 + $2.4 = $3.0
     }
 
     #[test]
@@ -9346,9 +9461,9 @@ mod tests {
 
     #[test]
     fn next_go_model_toggles_between_glm_and_minimax() {
-        assert_eq!(next_go_model(Some("zai/glm-5")), "minimax/MiniMax-M2.5");
-        assert_eq!(next_go_model(Some("z-ai/glm-5")), "minimax/MiniMax-M2.5");
-        assert_eq!(next_go_model(Some("minimax/MiniMax-M2.5")), "zai/glm-5");
-        assert_eq!(next_go_model(Some("unknown/model")), "minimax/MiniMax-M2.5");
+        assert_eq!(next_go_model(Some("zai/glm-5")), "minimax-credits/MiniMax-M2.5-highspeed");
+        assert_eq!(next_go_model(Some("z-ai/glm-5")), "minimax-credits/MiniMax-M2.5-highspeed");
+        assert_eq!(next_go_model(Some("minimax-credits/MiniMax-M2.5-highspeed")), "zai/glm-5");
+        assert_eq!(next_go_model(Some("unknown/model")), "minimax-credits/MiniMax-M2.5-highspeed");
     }
 }

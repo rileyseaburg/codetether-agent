@@ -3,7 +3,7 @@
 use super::RunArgs;
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
 use crate::config::Config;
-use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun, OkrRunStatus};
+use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun, OkrRunStatus};
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
 use anyhow::Result;
@@ -18,7 +18,7 @@ const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
 const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
-const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M2.5";
+const GO_DEFAULT_MODEL: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
@@ -447,8 +447,8 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             easy_go_requested,
         );
 
-        // For /go commands (not /autochat), require OKR approval
-        let (okr_id, okr_run_id) = if easy_go_requested {
+        // For /go commands (not /autochat), require OKR approval then execute via Ralph
+        if easy_go_requested {
             // Create OKR draft
             let okr_id = Uuid::new_v4();
             let mut okr = Okr::new(
@@ -470,7 +470,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 okr_id,
                 format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
             );
-            run.status = OkrRunStatus::PendingApproval;
+            let _ = run.submit_for_approval();
 
             // Show OKR draft
             println!("\n⚠️  /go OKR Draft\n");
@@ -491,31 +491,75 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
             let input = input.trim().to_lowercase();
             if input != "y" && input != "yes" {
+                run.record_decision(ApprovalDecision::deny(run.id, "User denied via CLI"));
                 println!("❌ OKR denied. Relay not started.");
                 println!("Use /autochat for tactical execution without OKR tracking.");
                 return Ok(());
             }
 
-            println!("✅ OKR approved! Starting relay execution...\n");
+            println!("✅ OKR approved! Starting Ralph PRD execution...\n");
 
             // Save OKR and run
+            let mut approved_run = run;
             if let Ok(repo) = OkrRepository::from_config().await {
-                let _ = repo.create_okr(okr).await;
-                let mut approved_run = run;
-                approved_run.status = OkrRunStatus::Approved;
-                approved_run.correlation_id = Some(format!("relay-{}", Uuid::new_v4()));
+                let _ = repo.create_okr(okr.clone()).await;
+                approved_run.record_decision(ApprovalDecision::approve(approved_run.id, "User approved via CLI"));
+                approved_run.correlation_id = Some(format!("ralph-{}", Uuid::new_v4()));
                 let _ = repo.create_run(approved_run.clone()).await;
                 tracing::info!(okr_id = %okr_id, okr_run_id = %approved_run.id, "OKR run approved and saved");
-                (Some(okr_id), Some(approved_run.id))
-            } else {
-                (Some(okr_id), Some(run.id))
             }
-        } else {
-            (None, None)
-        };
 
+            // Load provider for Ralph execution
+            let registry = std::sync::Arc::new(crate::provider::ProviderRegistry::from_vault().await?);
+            let (provider, resolved_model) = resolve_provider_for_model_autochat(&registry, &model)
+                .ok_or_else(|| anyhow::anyhow!("No provider available for model '{model}'"))?;
+
+            // Execute via Ralph PRD loop
+            let ralph_result = super::go_ralph::execute_go_ralph(
+                task,
+                &mut okr,
+                &mut approved_run,
+                provider,
+                &resolved_model,
+                10, // max iterations
+                None, // no bus in CLI mode
+            )
+            .await?;
+
+            // Persist final run state
+            if let Ok(repo) = OkrRepository::from_config().await {
+                let _ = repo.update_run(approved_run).await;
+            }
+
+            // Display results
+            match args.format.as_str() {
+                "json" => println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+                    "passed": ralph_result.passed,
+                    "total": ralph_result.total,
+                    "all_passed": ralph_result.all_passed,
+                    "iterations": ralph_result.iterations,
+                    "feature_branch": ralph_result.feature_branch,
+                    "prd_path": ralph_result.prd_path.display().to_string(),
+                    "status": format!("{:?}", ralph_result.status),
+                    "stories": ralph_result.stories.iter().map(|s| serde_json::json!({
+                        "id": s.id,
+                        "title": s.title,
+                        "passed": s.passed,
+                    })).collect::<Vec<_>>(),
+                }))?),
+                _ => {
+                    println!(
+                        "{}",
+                        super::go_ralph::format_go_ralph_result(&ralph_result, task)
+                    );
+                }
+            }
+            return Ok(());
+        }
+
+        // Plain /autochat (no OKR) — use traditional relay
         let relay_result =
-            run_protocol_first_relay(agent_count, task, &model, okr_id, okr_run_id).await?;
+            run_protocol_first_relay(agent_count, task, &model, None, None).await?;
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
             _ => {
@@ -956,12 +1000,14 @@ async fn run_protocol_first_relay(
                 if let Some(run_id) = okr_run_id {
                     if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
                         if let Ok(Some(mut run)) = repo.get_run(run_id).await {
-                            run.iterations = turns as u32;
-                            for (kr_id, value) in &kr_progress {
-                                run.update_kr_progress(kr_id, *value);
+                            if run.is_resumable() {
+                                run.iterations = turns as u32;
+                                for (kr_id, value) in &kr_progress {
+                                    run.update_kr_progress(kr_id, *value);
+                                }
+                                run.status = crate::okr::OkrRunStatus::Running;
+                                let _ = repo.update_run(run).await;
                             }
-                            run.status = crate::okr::OkrRunStatus::Running;
-                            let _ = repo.update_run(run).await;
                         }
                     }
                 }
@@ -1066,16 +1112,14 @@ async fn run_protocol_first_relay(
                             turns,
                             status
                         );
-                        run.outcomes.push(crate::okr::KrOutcome {
-                            id: uuid::Uuid::new_v4(),
-                            kr_id: kr_uuid,
-                            run_id: Some(run.id),
-                            description: kr_description,
-                            outcome_type,
-                            value: Some(*value),
-                            evidence: base_evidence.clone(),
-                            source: "cli relay".to_string(),
-                            created_at: chrono::Utc::now(),
+                        run.outcomes.push({
+                            let mut outcome = crate::okr::KrOutcome::new(kr_uuid, kr_description)
+                                .with_value(*value);
+                            outcome.run_id = Some(run.id);
+                            outcome.outcome_type = outcome_type;
+                            outcome.evidence = base_evidence.clone();
+                            outcome.source = "cli relay".to_string();
+                            outcome
                         });
                     }
                 }
@@ -1182,7 +1226,7 @@ mod tests {
     fn easy_go_defaults_to_minimax_when_model_not_set() {
         assert_eq!(
             resolve_autochat_model(None, None, Some("zai/glm-5"), true),
-            "minimax/MiniMax-M2.5"
+            "minimax-credits/MiniMax-M2.5-highspeed"
         );
     }
 
