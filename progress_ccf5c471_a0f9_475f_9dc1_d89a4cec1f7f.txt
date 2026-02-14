@@ -1,0 +1,9 @@
+I'll work on US-011: Dashboard shows tools from both sources. Let me start by exploring the codebase to understand the existing structure.
+
+Let me look at the tool module and the server to understand how tools are registered:
+
+Let me look at the AppState and the RegisteredTool struct:
+
+Now let me look at the MCP module to understand static tools:
+
+Now let me check if there's any existing TUI that displays tools and look at the cognition module:

@@ -438,6 +438,7 @@ pub mod convert {
                 shared: false,
                 share_url: None,
             },
+            bus: None,
         };
 
         Ok(session)

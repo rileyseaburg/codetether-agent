@@ -2,8 +2,11 @@
 
 use super::types::*;
 use crate::bus::AgentBus;
-use crate::provider::Provider;
+use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
+use crate::provider::{self, CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
+use crate::session::{Session, SessionEvent};
 use crate::swarm::run_agent_loop;
+use std::collections::HashMap;
 use crate::tool::ToolRegistry;
 use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use crate::tui::swarm_view::SwarmEvent;
@@ -22,6 +25,7 @@ pub struct RalphLoop {
     config: RalphConfig,
     event_tx: Option<mpsc::Sender<RalphEvent>>,
     bus: Option<Arc<AgentBus>>,
+    registry: Option<Arc<ProviderRegistry>>,
 }
 
 impl RalphLoop {
@@ -69,6 +73,7 @@ impl RalphLoop {
             config,
             event_tx: None,
             bus: None,
+            registry: None,
         })
     }
 
@@ -81,6 +86,12 @@ impl RalphLoop {
     /// Attach an agent bus for inter-iteration learning and context sharing
     pub fn with_bus(mut self, bus: Arc<AgentBus>) -> Self {
         self.bus = Some(bus);
+        self
+    }
+
+    /// Attach a provider registry for relay team planning
+    pub fn with_registry(mut self, registry: Arc<ProviderRegistry>) -> Self {
+        self.registry = Some(registry);
         self
     }
 
@@ -542,6 +553,10 @@ impl RalphLoop {
                 let ralph_tx = self.event_tx.clone();
                 let stage_learnings = accumulated_learnings.clone();
                 let bus = self.bus.clone();
+                let relay_enabled = self.config.relay_enabled;
+                let relay_max_agents = self.config.relay_max_agents;
+                let relay_max_rounds = self.config.relay_max_rounds;
+                let registry = self.registry.clone();
 
                 let handle = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
@@ -602,25 +617,61 @@ impl RalphLoop {
                         }
                     }
 
-                    // Create event bridge for this story's sub-agent
-                    let (bridge_tx, _bridge_handle) = if let Some(ref tx) = ralph_tx {
-                        let (btx, handle) = Self::create_swarm_event_bridge(tx, story.id.clone());
-                        (Some(btx), Some(handle))
+                    // Create event bridge for this story's sub-agent (used for single-agent mode)
+                    let (bridge_tx, _bridge_handle) = if !relay_enabled {
+                        if let Some(ref tx) = ralph_tx {
+                            let (btx, handle) = Self::create_swarm_event_bridge(tx, story.id.clone());
+                            (Some(btx), Some(handle))
+                        } else {
+                            (None, None)
+                        }
                     } else {
                         (None, None)
                     };
 
-                    // Call the LLM
-                    let result = Self::call_llm_static(
-                        &provider,
-                        &model,
-                        &prompt,
-                        &story_working_dir,
-                        bridge_tx,
-                        story.id.clone(),
-                        bus.clone(),
-                    )
-                    .await;
+                    // Execute story: relay team or single agent
+                    let result = if relay_enabled {
+                        if let Some(ref reg) = registry {
+                            Self::call_relay_static(
+                                reg,
+                                &model,
+                                &prompt,
+                                &story_working_dir,
+                                ralph_tx.clone(),
+                                story.id.clone(),
+                                bus.clone(),
+                                relay_max_agents,
+                                relay_max_rounds,
+                            )
+                            .await
+                        } else {
+                            warn!(
+                                story_id = %story.id,
+                                "Relay enabled but no registry available, using single agent"
+                            );
+                            Self::call_llm_static(
+                                &provider,
+                                &model,
+                                &prompt,
+                                &story_working_dir,
+                                bridge_tx,
+                                story.id.clone(),
+                                bus.clone(),
+                            )
+                            .await
+                        }
+                    } else {
+                        Self::call_llm_static(
+                            &provider,
+                            &model,
+                            &prompt,
+                            &story_working_dir,
+                            bridge_tx,
+                            story.id.clone(),
+                            bus.clone(),
+                        )
+                        .await
+                    };
 
                     let entry = match &result {
                         Ok(response) => {
@@ -1016,6 +1067,301 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         );
 
         Ok(output)
+    }
+
+    /// Build default relay profiles for code implementation tasks.
+    fn build_implementation_relay_profiles(
+        max_agents: usize,
+        working_dir: &std::path::Path,
+    ) -> Vec<(String, String, Vec<String>)> {
+        let wd = working_dir.display();
+        let mut profiles = vec![
+            (
+                "auto-planner".to_string(),
+                format!(
+                    "You are @auto-planner.\n\
+                     Specialty: Code analysis and implementation planning.\n\
+                     Mission: Read the codebase to understand existing patterns, then produce a concrete step-by-step implementation plan.\n\
+                     Working directory: {wd}\n\n\
+                     Read existing code first using the `read` tool. Identify all files that need changes.\n\
+                     Produce a numbered list of specific changes with file paths and code snippets.\n\
+                     Pass your plan in a clear format the next agent can follow step by step."
+                ),
+                vec!["planning".into(), "analysis".into(), "relay".into()],
+            ),
+            (
+                "auto-coder".to_string(),
+                format!(
+                    "You are @auto-coder.\n\
+                     Specialty: Code implementation.\n\
+                     Mission: Implement changes according to the plan, write production code, verify it compiles.\n\
+                     Working directory: {wd}\n\n\
+                     Follow the plan from the incoming handoff. Use `edit` and `write` tools to make changes.\n\
+                     After implementing, run `bash` with `cargo check 2>&1` (cwd: {wd}) to verify.\n\
+                     Fix any compilation errors. Report what you implemented."
+                ),
+                vec!["implementation".into(), "coding".into(), "relay".into()],
+            ),
+            (
+                "auto-reviewer".to_string(),
+                format!(
+                    "You are @auto-reviewer.\n\
+                     Specialty: Code review and quality verification.\n\
+                     Mission: Review implemented changes, run quality checks, fix remaining issues.\n\
+                     Working directory: {wd}\n\n\
+                     Review the code changes from the incoming handoff. Run `bash` with `cargo check 2>&1` (cwd: {wd}).\n\
+                     Fix any remaining issues. Verify the implementation meets the acceptance criteria.\n\
+                     If complete, include STORY_COMPLETE in your output. If blocked, include STORY_BLOCKED."
+                ),
+                vec!["review".into(), "verification".into(), "relay".into()],
+            ),
+        ];
+
+        if max_agents >= 4 {
+            profiles.push((
+                "auto-tester".to_string(),
+                format!(
+                    "You are @auto-tester.\n\
+                     Specialty: Test writing and verification.\n\
+                     Mission: Write tests for the implemented changes and ensure they pass.\n\
+                     Working directory: {wd}\n\n\
+                     Review the implementation, write appropriate tests, run them with `bash`.\n\
+                     Report test results and coverage gaps."
+                ),
+                vec!["testing".into(), "relay".into()],
+            ));
+        }
+
+        if max_agents >= 5 {
+            profiles.push((
+                "auto-refactorer".to_string(),
+                format!(
+                    "You are @auto-refactorer.\n\
+                     Specialty: Code quality and lint compliance.\n\
+                     Mission: Run clippy, fix warnings, improve code quality without changing behavior.\n\
+                     Working directory: {wd}\n\n\
+                     Run `bash` with `cargo clippy --all-features 2>&1` (cwd: {wd}).\n\
+                     Fix warnings and improve naming, structure, error handling."
+                ),
+                vec!["quality".into(), "relay".into()],
+            ));
+        }
+
+        profiles.truncate(max_agents);
+        profiles
+    }
+
+    /// Normalize text for convergence detection in relay loops.
+    fn normalize_for_relay(text: &str) -> String {
+        let mut normalized = String::with_capacity(text.len().min(512));
+        let mut last_was_space = false;
+        for ch in text.chars() {
+            if ch.is_ascii_alphanumeric() {
+                normalized.push(ch.to_ascii_lowercase());
+                last_was_space = false;
+            } else if ch.is_whitespace() && !last_was_space {
+                normalized.push(' ');
+                last_was_space = true;
+            }
+            if normalized.len() >= 280 {
+                break;
+            }
+        }
+        normalized.trim().to_string()
+    }
+
+    /// Format relay handoff text between agents.
+    fn prepare_relay_handoff(from_agent: &str, output: &str, original_task: &str) -> String {
+        let max_len = 6_000;
+        let relay_payload = if output.len() > max_len {
+            let truncated: String = output.chars().take(max_len).collect();
+            format!("{truncated}\n... (truncated)")
+        } else {
+            output.to_string()
+        };
+
+        format!(
+            "Original task:\n{original_task}\n\n\
+             Incoming handoff from @{from_agent}:\n{relay_payload}\n\n\
+             Continue the work from this handoff. Keep your response focused and provide concrete next steps."
+        )
+    }
+
+    /// Execute a story using a relay team of agents.
+    ///
+    /// Creates a team of specialist agents (planner, coder, reviewer, etc.),
+    /// each with its own Session and full tool access, and runs them in a
+    /// baton-passing relay loop. Each agent operates autonomously within its
+    /// turn, using tools to read/write code and run commands.
+    async fn call_relay_static(
+        registry: &Arc<ProviderRegistry>,
+        model: &str,
+        prompt: &str,
+        working_dir: &PathBuf,
+        ralph_tx: Option<mpsc::Sender<RalphEvent>>,
+        story_id: String,
+        bus: Option<Arc<AgentBus>>,
+        max_agents: usize,
+        max_rounds: usize,
+    ) -> anyhow::Result<String> {
+        let max_agents = max_agents.clamp(2, 8);
+        let max_rounds = max_rounds.clamp(1, 5);
+
+        let profiles = Self::build_implementation_relay_profiles(max_agents, working_dir);
+
+        // Create relay runtime (use existing bus or create a temporary one)
+        let relay_bus = bus.unwrap_or_else(|| Arc::new(AgentBus::new()));
+        let relay = ProtocolRelayRuntime::new(relay_bus.clone());
+
+        let mut sessions: HashMap<String, Session> = HashMap::new();
+        let mut ordered_agents: Vec<String> = Vec::new();
+        let mut relay_profiles: Vec<RelayAgentProfile> = Vec::new();
+
+        for (name, instructions, capabilities) in &profiles {
+            let mut session = Session::new().await?;
+            session.metadata.model = Some(model.to_string());
+            session.agent = name.clone();
+            session.bus = Some(relay_bus.clone());
+            session.add_message(Message {
+                role: Role::System,
+                content: vec![ContentPart::Text {
+                    text: instructions.clone(),
+                }],
+            });
+
+            relay_profiles.push(RelayAgentProfile {
+                name: name.clone(),
+                capabilities: capabilities.clone(),
+            });
+            ordered_agents.push(name.clone());
+            sessions.insert(name.clone(), session);
+        }
+
+        relay.register_agents(&relay_profiles);
+
+        info!(
+            story_id = %story_id,
+            agents = ordered_agents.len(),
+            rounds = max_rounds,
+            "Starting relay team for story"
+        );
+
+        let mut baton = prompt.to_string();
+        let mut previous_normalized: Option<String> = None;
+        let mut convergence_hits = 0usize;
+        let mut turns = 0usize;
+
+        'relay_loop: for round in 1..=max_rounds {
+            for idx in 0..ordered_agents.len() {
+                let to = ordered_agents[idx].clone();
+                let from = if idx == 0 {
+                    if round == 1 {
+                        "user".to_string()
+                    } else {
+                        ordered_agents[ordered_agents.len() - 1].clone()
+                    }
+                } else {
+                    ordered_agents[idx - 1].clone()
+                };
+
+                turns += 1;
+                relay.send_handoff(&from, &to, &baton);
+
+                if let Some(ref tx) = ralph_tx {
+                    let _ = tx
+                        .send(RalphEvent::StoryToolCall {
+                            story_id: story_id.clone(),
+                            tool_name: format!(
+                                "relay: @{from} → @{to} (round {round}/{max_rounds})"
+                            ),
+                        })
+                        .await;
+                }
+
+                let Some(mut session) = sessions.remove(&to) else {
+                    anyhow::bail!(
+                        "Relay agent @{to} session unavailable for story {story_id}"
+                    );
+                };
+
+                let (event_tx, mut event_rx) = mpsc::channel::<SessionEvent>(256);
+                let registry_clone = registry.clone();
+                let baton_clone = baton.clone();
+
+                let join = tokio::spawn(async move {
+                    let result = session
+                        .prompt_with_events(&baton_clone, event_tx, registry_clone)
+                        .await;
+                    (session, result)
+                });
+
+                // Forward tool call events to Ralph UI while agent works
+                while !join.is_finished() {
+                    while let Ok(event) = event_rx.try_recv() {
+                        if let Some(ref tx) = ralph_tx {
+                            if let SessionEvent::ToolCallStart { ref name, .. } = event {
+                                let _ = tx
+                                    .send(RalphEvent::StoryToolCall {
+                                        story_id: story_id.clone(),
+                                        tool_name: format!("@{to}: {name}"),
+                                    })
+                                    .await;
+                            }
+                        }
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                }
+
+                let (updated_session, result) = join
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Relay agent @{to} task error: {e}"))?;
+
+                // Drain remaining events
+                while event_rx.try_recv().is_ok() {}
+
+                sessions.insert(to.clone(), updated_session);
+
+                let output = result
+                    .map_err(|e| anyhow::anyhow!("Relay agent @{to} failed on story {story_id}: {e}"))?
+                    .text;
+
+                // Convergence detection
+                let normalized = Self::normalize_for_relay(&output);
+                if previous_normalized.as_deref() == Some(normalized.as_str()) {
+                    convergence_hits += 1;
+                } else {
+                    convergence_hits = 0;
+                }
+                previous_normalized = Some(normalized);
+
+                if convergence_hits >= 2 {
+                    info!(story_id = %story_id, turns, "Relay converged");
+                    baton = output;
+                    break 'relay_loop;
+                }
+
+                // Check if story reached terminal state
+                if output.contains("STORY_COMPLETE") || output.contains("STORY_BLOCKED") {
+                    info!(story_id = %story_id, turns, "Story reached terminal state via relay");
+                    baton = output;
+                    break 'relay_loop;
+                }
+
+                // Prepare handoff for next agent
+                baton = Self::prepare_relay_handoff(&to, &output, prompt);
+            }
+        }
+
+        relay.shutdown_agents(&ordered_agents);
+
+        info!(
+            story_id = %story_id,
+            turns,
+            convergence_hits,
+            "Relay team completed"
+        );
+
+        Ok(baton)
     }
 
     /// Resolve merge conflicts using a dedicated sub-agent

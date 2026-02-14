@@ -531,6 +531,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 10, // max iterations
                 None, // no bus in CLI mode
                 max_concurrent, // max concurrent stories
+                Some(registry.clone()), // relay registry
             )
             .await?;
 
@@ -646,6 +647,11 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         tracing::info!("Using model: {}", model);
         session.metadata.model = Some(model);
     }
+
+    // Wire bus for thinking capture + S3 training data
+    let bus = AgentBus::new().into_arc();
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+    session.bus = Some(bus);
 
     // Execute the prompt
     let result = session.prompt(message).await?;
@@ -858,7 +864,11 @@ async fn run_protocol_first_relay(
     okr_run_id: Option<Uuid>,
 ) -> Result<AutochatCliResult> {
     let bus = AgentBus::new().into_arc();
-    let relay = ProtocolRelayRuntime::new(bus);
+
+    // Auto-start S3 sink if MinIO is configured
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
+    let relay = ProtocolRelayRuntime::new(bus.clone());
 
     let registry = crate::provider::ProviderRegistry::from_vault()
         .await
@@ -897,6 +907,7 @@ async fn run_protocol_first_relay(
         let mut session = Session::new().await?;
         session.metadata.model = Some(model_ref.to_string());
         session.agent = profile.name.clone();
+        session.bus = Some(bus.clone());
         session.add_message(Message {
             role: Role::System,
             content: vec![ContentPart::Text {
@@ -1041,6 +1052,7 @@ async fn run_protocol_first_relay(
                     Ok(mut spawned_session) => {
                         spawned_session.metadata.model = Some(model_ref.to_string());
                         spawned_session.agent = profile.name.clone();
+                        spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(Message {
                             role: Role::System,
                             content: vec![ContentPart::Text {

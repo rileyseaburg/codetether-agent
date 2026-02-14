@@ -4,6 +4,9 @@
 //! **Auth cannot be disabled.** If no `CODETETHER_AUTH_TOKEN` is set the
 //! server generates a secure random token at startup and prints it to stderr
 //! so the operator can copy it — but the gates never open without a token.
+//!
+//! JWT support: If the Bearer token is a JWT, topic claims are extracted
+//! and stored in request extensions for use by the bus stream endpoint.
 
 use axum::{
     body::Body,
@@ -11,11 +14,62 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::RngExt;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Paths that are exempt from authentication.
 const PUBLIC_PATHS: &[&str] = &["/health"];
+
+/// JWT claims extracted from the Bearer token for topic filtering.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct JwtClaims {
+    /// Allowed topics for bus stream filtering.
+    #[serde(default)]
+    pub topics: Vec<String>,
+    /// Optional user identifier.
+    #[serde(default, rename = "sub")]
+    pub subject: Option<String>,
+    /// Additional scopes from the JWT.
+    #[serde(default)]
+    pub scopes: Vec<String>,
+}
+
+/// Request extension key for JWT claims.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct JwtClaimsKey;
+
+/// Application state that includes JWT claims for extraction in handlers.
+#[derive(Debug, Clone)]
+pub struct JwtAppState {
+    /// JWT claims extracted from the Bearer token.
+    pub jwt_claims: JwtClaims,
+}
+
+impl Default for JwtClaimsKey {
+    fn default() -> Self {
+        Self
+    }
+}
+
+/// Parse a JWT token and extract claims from the payload.
+/// Returns None if the token is not a valid JWT (e.g., it's a static token).
+pub fn extract_jwt_claims(token: &str) -> Option<JwtClaims> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        // Not a JWT - it's likely a static token
+        return None;
+    }
+
+    // Decode the payload (second part)
+    let payload = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+
+    // Parse JSON
+    let claims: JwtClaims = serde_json::from_slice(&payload).ok()?;
+
+    Some(claims)
+}
 
 /// Shared auth state.
 #[derive(Debug, Clone)]

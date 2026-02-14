@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use crate::bus::AgentBus;
 use crate::okr::{KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
-use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
+use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus, UserStory};
 
 /// Result of a `/go` execution via Ralph.
@@ -165,6 +165,7 @@ pub async fn execute_go_ralph(
     max_iterations: usize,
     bus: Option<Arc<AgentBus>>,
     max_concurrent_stories: usize,
+    registry: Option<Arc<ProviderRegistry>>,
 ) -> Result<GoRalphResult> {
     // Step 1: Generate PRD from task + KRs
     tracing::info!(task = %task, okr_id = %okr.id, "Generating PRD from task and key results");
@@ -228,6 +229,9 @@ pub async fn execute_go_ralph(
         worktree_enabled: true,
         story_timeout_secs: 300,
         conflict_timeout_secs: 120,
+        relay_enabled: false,
+        relay_max_agents: 8,
+        relay_max_rounds: 3,
     };
 
     let mut ralph = RalphLoop::new(prd_path.clone(), Arc::clone(&provider), model.to_string(), config)
@@ -237,6 +241,11 @@ pub async fn execute_go_ralph(
     // Attach bus for inter-iteration learning sharing
     if let Some(bus) = bus {
         ralph = ralph.with_bus(bus);
+    }
+
+    // Attach registry for relay team planning
+    if let Some(registry) = registry {
+        ralph = ralph.with_registry(registry);
     }
 
     let state = ralph.run().await.context("Ralph loop execution failed")?;

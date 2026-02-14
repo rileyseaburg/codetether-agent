@@ -646,85 +646,19 @@ impl McpServer {
         serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
     }
 
-    /// Handle list tools request
+    /// Handle list tools request - reads from ToolMetadata registry
     async fn handle_list_tools(&self, _params: Option<Value>) -> Result<Value, JsonRpcError> {
-        let _tools = self.tools.read().await;
+        // Read tools from the metadata registry instead of hardcoded list
+        let metadata = self.metadata.read().await;
 
-        let tool_list: Vec<McpTool> = vec![
-            McpTool {
-                name: "run_command".to_string(),
-                description: Some("Execute a shell command".to_string()),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "command": { "type": "string" },
-                        "cwd": { "type": "string" }
-                    },
-                    "required": ["command"]
-                }),
-            },
-            McpTool {
-                name: "read_file".to_string(),
-                description: Some("Read file contents".to_string()),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "path": { "type": "string" },
-                        "offset": { "type": "integer" },
-                        "limit": { "type": "integer" }
-                    },
-                    "required": ["path"]
-                }),
-            },
-            McpTool {
-                name: "write_file".to_string(),
-                description: Some("Write content to a file".to_string()),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "path": { "type": "string" },
-                        "content": { "type": "string" }
-                    },
-                    "required": ["path", "content"]
-                }),
-            },
-            McpTool {
-                name: "list_directory".to_string(),
-                description: Some("List directory contents".to_string()),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "path": { "type": "string" }
-                    },
-                    "required": ["path"]
-                }),
-            },
-            McpTool {
-                name: "search_files".to_string(),
-                description: Some("Search for files by name pattern".to_string()),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "pattern": { "type": "string" },
-                        "path": { "type": "string" }
-                    },
-                    "required": ["pattern"]
-                }),
-            },
-            McpTool {
-                name: "grep_search".to_string(),
-                description: Some("Search file contents".to_string()),
-                input_schema: json!({
-                    "type": "object",
-                    "properties": {
-                        "query": { "type": "string" },
-                        "path": { "type": "string" },
-                        "is_regex": { "type": "boolean" }
-                    },
-                    "required": ["query"]
-                }),
-            },
-        ];
+        let tool_list: Vec<McpTool> = metadata
+            .values()
+            .map(|tm| McpTool {
+                name: tm.name.clone(),
+                description: tm.description.clone(),
+                input_schema: tm.input_schema.clone(),
+            })
+            .collect();
 
         let result = ListToolsResult {
             tools: tool_list,

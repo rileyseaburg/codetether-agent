@@ -157,6 +157,10 @@ pub async fn run(args: A2aArgs) -> Result<()> {
 
     // Create agent bus for in-process sub-agent communication
     let bus = AgentBus::new().into_arc();
+
+    // Auto-start S3 sink if MinIO is configured
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
     {
         let handle = bus.handle(&worker_id);
         handle.announce_ready(WORKER_CAPABILITIES.iter().map(|s| s.to_string()).collect());
@@ -283,6 +287,10 @@ pub async fn run_with_state(
 
     // Create agent bus for in-process sub-agent communication
     let bus = AgentBus::new().into_arc();
+
+    // Auto-start S3 sink if MinIO is configured
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
     {
         let handle = bus.handle(&worker_id);
         handle.announce_ready(WORKER_CAPABILITIES.iter().map(|s| s.to_string()).collect());

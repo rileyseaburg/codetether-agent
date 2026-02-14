@@ -1727,7 +1727,7 @@ async fn run_go_ralph_worker(
     let okr_id_str = okr.id.to_string();
     let run_id_str = run.id.to_string();
 
-    match crate::cli::go_ralph::execute_go_ralph(&task, &mut okr, &mut run, provider, &resolved_model, 10, bus, max_concurrent_stories)
+    match crate::cli::go_ralph::execute_go_ralph(&task, &mut okr, &mut run, provider, &resolved_model, 10, bus, max_concurrent_stories, Some(registry.clone()))
         .await
     {
         Ok(result) => {
@@ -1800,7 +1800,7 @@ async fn run_autochat_worker(
         }
     };
 
-    let relay = ProtocolRelayRuntime::new(bus);
+    let relay = ProtocolRelayRuntime::new(bus.clone());
     let requested_agents = fallback_profiles.len().clamp(2, AUTOCHAT_MAX_AGENTS);
 
     let planned_profiles = match plan_relay_profiles_with_registry(
@@ -1876,6 +1876,7 @@ async fn run_autochat_worker(
             Ok(mut session) => {
                 session.metadata.model = Some(model_ref.clone());
                 session.agent = name.clone();
+                session.bus = Some(bus.clone());
                 session.add_message(crate::provider::Message {
                     role: Role::System,
                     content: vec![ContentPart::Text {
@@ -2130,6 +2131,7 @@ async fn run_autochat_worker(
                     Ok(mut spawned_session) => {
                         spawned_session.metadata.model = Some(model_ref.clone());
                         spawned_session.agent = name.clone();
+                        spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(crate::provider::Message {
                             role: Role::System,
                             content: vec![ContentPart::Text {
@@ -2366,7 +2368,7 @@ async fn resume_autochat_worker(
         }
     };
 
-    let relay = ProtocolRelayRuntime::new(bus);
+    let relay = ProtocolRelayRuntime::new(bus.clone());
     let task = checkpoint.task;
     let model_ref = checkpoint.model_ref;
     let mut ordered_agents = checkpoint.ordered_agents;
@@ -2643,6 +2645,7 @@ async fn resume_autochat_worker(
                     Ok(mut spawned_session) => {
                         spawned_session.metadata.model = Some(model_ref.clone());
                         spawned_session.agent = name.clone();
+                        spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(crate::provider::Message {
                             role: Role::System,
                             content: vec![ContentPart::Text {
@@ -3564,6 +3567,9 @@ impl App {
                         .clone()
                         .or_else(|| config.default_model.clone());
                     session.agent = name.clone();
+                    if let Some(ref b) = self.bus {
+                        session.bus = Some(b.clone());
+                    }
 
                     // Add system message with the agent's instructions
                     session.add_message(crate::provider::Message {
@@ -4111,7 +4117,10 @@ impl App {
         // Initialize session if needed
         if self.session.is_none() {
             match Session::new().await {
-                Ok(session) => {
+                Ok(mut session) => {
+                    if let Some(ref b) = self.bus {
+                        session.bus = Some(b.clone());
+                    }
                     self.session = Some(session);
                 }
                 Err(err) => {
@@ -4690,12 +4699,15 @@ impl App {
             quality_checks_enabled: true,
             auto_commit: true,
             model: Some(model.clone()),
-            use_rlm: false,
+            use_rlm: true,
             parallel_enabled: true,
             max_concurrent_stories: 100,
             worktree_enabled: true,
             story_timeout_secs: 300,
             conflict_timeout_secs: 120,
+            relay_enabled: true,
+            relay_max_agents: 8,
+            relay_max_rounds: 3,
         };
 
         // Parse provider/model from the model string
@@ -5272,6 +5284,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let (bus_tx, bus_rx) = mpsc::channel::<crate::bus::BusEnvelope>(512);
     app.bus_log_rx = Some(bus_rx);
     app.bus = Some(bus.clone());
+
+    // Auto-start S3 sink if MinIO is configured (set MINIO_ENDPOINT to enable)
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
 
     // Spawn a forwarder task: bus broadcast → mpsc channel for the TUI event loop
     tokio::spawn(async move {

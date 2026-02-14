@@ -34,6 +34,9 @@ pub async fn run(args: SpawnArgs) -> Result<()> {
     }
 
     let bus = AgentBus::new().into_arc();
+
+    // Auto-start S3 sink if MinIO is configured
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
     bus.registry.register(card.clone());
     let handle = bus.handle(&agent_name);
     let capabilities = card.skills.iter().map(|skill| skill.id.clone()).collect();

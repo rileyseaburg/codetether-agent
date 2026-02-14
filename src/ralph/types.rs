@@ -319,6 +319,18 @@ pub struct RalphConfig {
     /// Timeout in seconds per step for conflict resolution sub-agents
     #[serde(default = "default_conflict_timeout_secs")]
     pub conflict_timeout_secs: u64,
+
+    /// Enable per-story relay teams (multi-agent collaboration per story)
+    #[serde(default)]
+    pub relay_enabled: bool,
+
+    /// Maximum agents per relay team (2-8)
+    #[serde(default = "default_relay_max_agents")]
+    pub relay_max_agents: usize,
+
+    /// Maximum relay rounds per story
+    #[serde(default = "default_relay_max_rounds")]
+    pub relay_max_rounds: usize,
 }
 
 fn default_prd_path() -> String {
@@ -351,6 +363,12 @@ fn default_story_timeout_secs() -> u64 {
 fn default_conflict_timeout_secs() -> u64 {
     120
 }
+fn default_relay_max_agents() -> usize {
+    8
+}
+fn default_relay_max_rounds() -> usize {
+    3
+}
 
 impl Default for RalphConfig {
     fn default() -> Self {
@@ -361,12 +379,15 @@ impl Default for RalphConfig {
             auto_commit: default_auto_commit(),
             quality_checks_enabled: default_quality_checks_enabled(),
             model: None,
-            use_rlm: false,
+            use_rlm: true,
             parallel_enabled: default_parallel_enabled(),
             max_concurrent_stories: default_max_concurrent_stories(),
             worktree_enabled: default_worktree_enabled(),
             story_timeout_secs: default_story_timeout_secs(),
             conflict_timeout_secs: default_conflict_timeout_secs(),
+            relay_enabled: true,
+            relay_max_agents: default_relay_max_agents(),
+            relay_max_rounds: default_relay_max_rounds(),
         }
     }
 }

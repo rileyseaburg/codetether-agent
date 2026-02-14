@@ -89,6 +89,9 @@ pub struct Session {
     pub usage: Usage,
     pub agent: String,
     pub metadata: SessionMetadata,
+    /// Optional bus for publishing agent thinking/reasoning to training pipeline
+    #[serde(skip)]
+    pub bus: Option<Arc<crate::bus::AgentBus>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -134,7 +137,14 @@ impl Session {
                 directory: Some(std::env::current_dir()?),
                 ..Default::default()
             },
+            bus: None,
         })
+    }
+
+    /// Attach a bus for publishing agent thinking/reasoning
+    pub fn with_bus(mut self, bus: Arc<crate::bus::AgentBus>) -> Self {
+        self.bus = Some(bus);
+        self
     }
 
     /// Load an existing session
@@ -463,13 +473,27 @@ impl Session {
                 })
                 .collect();
 
-            // Collect text output
+            // Collect text output and publish thinking to bus
             for part in &response.message.content {
-                if let ContentPart::Text { text } = part {
-                    if !text.is_empty() {
+                match part {
+                    ContentPart::Text { text } if !text.is_empty() => {
                         final_output.push_str(text);
                         final_output.push('\n');
                     }
+                    ContentPart::Thinking { text } if !text.is_empty() => {
+                        if let Some(ref bus) = self.bus {
+                            let handle = bus.handle(&self.agent);
+                            handle.send(
+                                format!("agent.{}.thinking", self.agent),
+                                crate::bus::BusMessage::AgentThinking {
+                                    agent_id: self.agent.clone(),
+                                    thinking: text.clone(),
+                                    step,
+                                },
+                            );
+                        }
+                    }
+                    _ => {}
                 }
             }
 
@@ -1017,6 +1041,17 @@ impl Session {
                         thinking_text.trim().to_string(),
                     ))
                     .await;
+                if let Some(ref bus) = self.bus {
+                    let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.thinking", self.agent),
+                        crate::bus::BusMessage::AgentThinking {
+                            agent_id: self.agent.clone(),
+                            thinking: thinking_text.trim().to_string(),
+                            step,
+                        },
+                    );
+                }
             }
 
             // Emit this step's text BEFORE tool calls so it appears in correct

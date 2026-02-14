@@ -19,6 +19,8 @@ use crate::config::Config;
 use crate::k8s::K8sManager;
 use crate::tool::{PluginManifest, SigningKey, hash_bytes, hash_file};
 use anyhow::Result;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 use auth::AuthState;
 use axum::{
     Router,
@@ -102,6 +104,82 @@ impl Default for KnativeTaskQueue {
     }
 }
 
+/// A registered tool with TTL tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisteredTool {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub version: String,
+    pub endpoint: String,
+    pub capabilities: Vec<String>,
+    pub registered_at: chrono::DateTime<chrono::Utc>,
+    pub last_heartbeat: chrono::DateTime<chrono::Utc>,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Tool registry with TTL-based expiry
+#[derive(Clone)]
+pub struct ToolRegistry {
+    tools: Arc<tokio::sync::RwLock<HashMap<String, RegisteredTool>>>,
+}
+
+impl Default for ToolRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ToolRegistry {
+    pub fn new() -> Self {
+        Self {
+            tools: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Register a new tool
+    pub async fn register(&self, tool: RegisteredTool) {
+        let mut tools = self.tools.write().await;
+        tools.insert(tool.id.clone(), tool);
+    }
+
+    /// Get a tool by ID
+    pub async fn get(&self, id: &str) -> Option<RegisteredTool> {
+        let tools = self.tools.read().await;
+        tools.get(id).cloned()
+    }
+
+    /// List all tools (excluding expired)
+    pub async fn list(&self) -> Vec<RegisteredTool> {
+        let tools = self.tools.read().await;
+        let now = chrono::Utc::now();
+        tools
+            .values()
+            .filter(|t| t.expires_at > now)
+            .cloned()
+            .collect()
+    }
+
+    /// Update heartbeat for a tool (extends TTL by 30s)
+    pub async fn heartbeat(&self, id: &str) -> Option<RegisteredTool> {
+        let mut tools = self.tools.write().await;
+        if let Some(tool) = tools.get_mut(id) {
+            let now = chrono::Utc::now();
+            tool.last_heartbeat = now;
+            tool.expires_at = now + Duration::from_secs(90);
+            return Some(tool.clone());
+        }
+        None
+    }
+
+    /// Clean up expired tools
+    pub async fn cleanup(&self) {
+        let mut tools = self.tools.write().await;
+        let now = chrono::Utc::now();
+        tools.retain(|_, t| t.expires_at > now);
+    }
+}
+
 /// Server state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
@@ -112,6 +190,7 @@ pub struct AppState {
     pub auth: AuthState,
     pub bus: Arc<AgentBus>,
     pub knative_tasks: KnativeTaskQueue,
+    pub tool_registry: ToolRegistry,
 }
 
 /// Audit middleware — logs every request/response to the audit trail.
@@ -181,6 +260,22 @@ const POLICY_RULES: &[PolicyRule] = &[
         pattern: "/v1/knative/",
         methods: None,
         permission: "",
+    },
+    // Tool registry — read/write
+    PolicyRule {
+        pattern: "/v1/tools",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/v1/tools/register",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/tools/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
     },
     PolicyRule {
         pattern: "/a2a/",
@@ -413,6 +508,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
     // Create agent bus for in-process communication
     let bus = AgentBus::new().into_arc();
+
+    // Auto-start S3 sink if MinIO is configured (set MINIO_ENDPOINT to enable)
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
     tracing::info!(
         elapsed_ms = t0.elapsed().as_millis(),
         "[startup] bus created"
@@ -470,6 +569,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         auth: auth_state.clone(),
         bus,
         knative_tasks: KnativeTaskQueue::new(),
+        tool_registry: ToolRegistry::new(),
     };
 
     let app = Router::new()
@@ -538,6 +638,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         )
         // Plugin registry API
         .route("/v1/plugins", get(list_plugins))
+        // Tool registry API
+        .route("/v1/tools", get(list_tools))
+        .route("/v1/tools/register", post(register_tool))
+        .route("/v1/tools/{id}/heartbeat", post(tool_heartbeat))
         .with_state(state.clone())
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)
@@ -1465,6 +1569,73 @@ async fn k8s_delete_subagent(
         .await
         .map(Json)
         .map_err(internal_error)
+}
+
+/// Request to register a tool
+#[derive(Debug, Deserialize)]
+pub struct RegisterToolRequest {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub version: String,
+    pub endpoint: String,
+    pub capabilities: Vec<String>,
+}
+
+/// Response from registering a tool
+#[derive(Serialize)]
+struct RegisterToolResponse {
+    tool: RegisteredTool,
+    message: String,
+}
+
+/// List all registered tools (active, non-expired)
+async fn list_tools(State(state): State<AppState>) -> Json<Vec<RegisteredTool>> {
+    Json(state.tool_registry.list().await)
+}
+
+/// Register a new tool
+async fn register_tool(
+    State(state): State<AppState>,
+    Json(req): Json<RegisterToolRequest>,
+) -> Result<Json<RegisterToolResponse>, (StatusCode, String)> {
+    let now = chrono::Utc::now();
+    let tool = RegisteredTool {
+        id: req.id.clone(),
+        name: req.name,
+        description: req.description,
+        version: req.version,
+        endpoint: req.endpoint,
+        capabilities: req.capabilities,
+        registered_at: now,
+        last_heartbeat: now,
+        expires_at: now + Duration::from_secs(90),
+    };
+
+    state.tool_registry.register(tool.clone()).await;
+
+    tracing::info!(tool_id = %tool.id, "Tool registered");
+
+    Ok(Json(RegisterToolResponse {
+        tool,
+        message: "Tool registered successfully. Heartbeat required every 30s.".to_string(),
+    }))
+}
+
+/// Heartbeat endpoint to extend tool TTL
+async fn tool_heartbeat(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<RegisteredTool>, (StatusCode, String)> {
+    state
+        .tool_registry
+        .heartbeat(&id)
+        .await
+        .map(|tool| {
+            tracing::info!(tool_id = %id, "Tool heartbeat received");
+            Json(tool)
+        })
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Tool {} not found", id)))
 }
 
 /// List registered plugins.

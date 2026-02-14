@@ -1,0 +1,271 @@
+{
+  "project": "codetether-platform",
+  "feature": "Tool Registry, gRPC-Web, Bus Gateway, and Build Pipeline",
+  "branch_name": "feature/tool-registry-grpc-bus-build",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Fix MCP tools/list to return dynamic ToolMetadata",
+      "description": "Update codetether-agent MCP tools/list implementation to read from ToolMetadata registry instead of hardcoded static list, enabling dynamic tool registration at runtime.",
+      "acceptance_criteria": [
+        "tools/list returns tools registered in ToolMetadata registry",
+        "ToolMetadata struct contains name, description, endpoint, and metadata fields",
+        "Registry is queryable by MCP server at runtime"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-002",
+      "title": "CLI mcp list-tools shows full registry",
+      "description": "Ensure the CLI command `mcp list-tools` displays all tools from the ToolMetadata registry, not just hardcoded entries.",
+      "acceptance_criteria": [
+        "CLI output includes all registered tools from registry",
+        "Output shows tool name, description, and status",
+        "Command works without errors"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-003",
+      "title": "Add clap subcommand codetether go build",
+      "description": "Implement `codetether go build \"<request>\"` subcommand that triggers OKR→PRD→Ralph pipeline with PRD approval gate, supporting --yes and --dry-run flags.",
+      "acceptance_criteria": [
+        "Subcommand accepts request string argument",
+        "--yes flag bypasses approval prompt",
+        "--dry-run shows what would happen without executing",
+        "Pipeline runs OKR→PRD→Ralph workflow"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "US-004",
+      "title": "Enable gRPC-Web with tonic-web",
+      "description": "Add tonic-web dependency, wrap tonic gRPC service with tonic_web::enable, configure accept_http1(true), and add CORS support.",
+      "acceptance_criteria": [
+        "tonic-web dependency added to Cargo.toml",
+        "gRPC service wrapped with tonic_web::enable",
+        "HTTP/1.1 fallback enabled",
+        "CORS configured for web clients"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-005",
+      "title": "Switch TypeScript client to Connect-ES",
+      "description": "Update TypeScript gRPC client generation to use Connect-ES protocol and implement Connect-Web client for marketing-site.",
+      "acceptance_criteria": [
+        "Connect-ES codegen produces TypeScript client",
+        "marketing-site updated with Connect-Web client",
+        "Client can communicate with gRPC-Web endpoint"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-004"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Implement Bus Gateway token endpoint",
+      "description": "Create POST /v1/bus/token that mints agent-scoped JWT with 5-minute TTL and OPA topic authorization.",
+      "acceptance_criteria": [
+        "POST /v1/bus/token accepts agent identity",
+        "Returns JWT with 5min TTL",
+        "OPA policy validates topic permissions",
+        "Token includes allowed topics claim"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "US-007",
+      "title": "Implement Bus Gateway SSE stream endpoint",
+      "description": "Create GET /v1/bus/stream SSE endpoint that filters AgentBus envelopes by allowed topics from JWT.",
+      "acceptance_criteria": [
+        "GET /v1/bus/stream returns Server-Sent Events",
+        "Filters envelopes based on topic claims in JWT",
+        "Connection closes cleanly on client disconnect",
+        "Handles reconnection gracefully"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-006"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Bus Gateway publish endpoint",
+      "description": "Create POST /v1/bus/publish that accepts scoped JWT and publishes messages to authorized topics.",
+      "acceptance_criteria": [
+        "POST /v1/bus/publish validates JWT",
+        "Publishes only to topics in token scope",
+        "Returns success/error status",
+        "Rate limiting applied"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-006"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-009",
+      "title": "Implement Tool Registry API",
+      "description": "Add GET /v1/tools and POST /v1/tools/register endpoints with 30s heartbeat and 90s TTL expiry mechanism.",
+      "acceptance_criteria": [
+        "GET /v1/tools returns all registered tools",
+        "POST /v1/tools/register creates tool entry",
+        "Heartbeat endpoint updates TTL (30s)",
+        "Tools expire after 90s without heartbeat"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-010",
+      "title": "Python MCP server registers/deregisters tools",
+      "description": "Integrate Python MCP server to call Tool Registry API for registration and deregistration.",
+      "acceptance_criteria": [
+        "Python server calls POST /v1/tools/register on startup",
+        "Sends heartbeat every 30s",
+        "Calls deregister on shutdown",
+        "Handles network errors gracefully"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-009"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-011",
+      "title": "Dashboard shows tools from both sources",
+      "description": "Update dashboard to aggregate and display tools from both static MCP and dynamic ToolRegistry sources.",
+      "acceptance_criteria": [
+        "Dashboard fetches from /v1/tools",
+        "Merges with static MCP tools",
+        "Displays tool source (static/registry)",
+        "Shows tool status (online/offline)"
+      ],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-001",
+        "US-009"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-012",
+      "title": "Ensure relay completes all rounds",
+      "description": "Verify that the system completes all relay rounds successfully without failures, achieving 100% completion.",
+      "acceptance_criteria": [
+        "All relay rounds complete successfully",
+        "No timeout or connection drops",
+        "End-to-end test validates full pipeline",
+        "KR-1: 100% relay completion"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-003",
+        "US-006",
+        "US-007",
+        "US-008"
+      ],
+      "complexity": 5
+    },
+    {
+      "id": "US-013",
+      "title": "Produce actionable handoff",
+      "description": "Ensure team produces a complete, actionable handoff document for the implemented features.",
+      "acceptance_criteria": [
+        "Handoff document includes API specs",
+        "Deployment instructions included",
+        "Runbooks for operations created",
+        "KR-2: 1 actionable handoff produced"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-004",
+        "US-005",
+        "US-009"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-014",
+      "title": "Zero critical errors",
+      "description": "Ensure all implemented features pass testing with zero critical errors.",
+      "acceptance_criteria": [
+        "cargo test passes without errors",
+        "npm tests pass without errors",
+        "No critical runtime errors in logs",
+        "KR-3: 0 critical errors"
+      ],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006",
+        "US-007",
+        "US-008",
+        "US-009",
+        "US-010",
+        "US-011"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [
+    "Rust backend with tonic for gRPC",
+    "tonic-web for gRPC-Web support",
+    "Connect-ES for TypeScript client generation",
+    "JWT with 5-minute TTL for bus tokens",
+    "OPA for authorization policy enforcement",
+    "SSE for streaming updates",
+    "ToolMetadata registry with heartbeat mechanism",
+    "Clap CLI for build subcommand",
+    "PostgreSQL or Redis for tool registry storage",
+    "CORS configuration for web clients"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-features",
+    "build": "cargo build"
+  },
+  "created_at": "2026-02-14T18:50:41.802735140+00:00",
+  "updated_at": "2026-02-14T18:50:41.802735140+00:00"
+}

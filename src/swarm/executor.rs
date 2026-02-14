@@ -1438,12 +1438,16 @@ pub async fn run_agent_loop(
 
         // Extract text from response
         let mut text_parts = Vec::new();
+        let mut thinking_parts = Vec::new();
         let mut tool_calls = Vec::new();
 
         for part in &response.message.content {
             match part {
                 ContentPart::Text { text } => {
                     text_parts.push(text.clone());
+                }
+                ContentPart::Thinking { text } if !text.is_empty() => {
+                    thinking_parts.push(text.clone());
                 }
                 ContentPart::ToolCall {
                     id,
@@ -1453,6 +1457,22 @@ pub async fn run_agent_loop(
                     tool_calls.push((id.clone(), name.clone(), arguments.clone()));
                 }
                 _ => {}
+            }
+        }
+
+        // Publish thinking/reasoning to bus for training data capture
+        if !thinking_parts.is_empty() {
+            if let Some(ref bus) = bus {
+                let thinking_text = thinking_parts.join("\n");
+                let handle = bus.handle(&subtask_id);
+                handle.send(
+                    format!("agent.{subtask_id}.thinking"),
+                    BusMessage::AgentThinking {
+                        agent_id: subtask_id.clone(),
+                        thinking: thinking_text,
+                        step: steps,
+                    },
+                );
             }
         }
 

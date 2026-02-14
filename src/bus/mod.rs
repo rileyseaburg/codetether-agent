@@ -20,6 +20,7 @@
 
 pub mod registry;
 pub mod relay;
+pub mod s3_sink;
 
 use crate::a2a::types::{Artifact, Part, TaskState};
 use chrono::{DateTime, Utc};
@@ -140,6 +141,15 @@ pub enum BusMessage {
         success: bool,
         step: usize,
     },
+
+    /// Internal reasoning / chain-of-thought from an agent step.
+    /// Published so the training pipeline captures the model's
+    /// thinking process alongside its actions.
+    AgentThinking {
+        agent_id: String,
+        thinking: String,
+        step: usize,
+    },
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────
@@ -158,6 +168,14 @@ pub struct AgentBus {
     tx: broadcast::Sender<BusEnvelope>,
     /// Registry of connected agents
     pub registry: Arc<registry::AgentRegistry>,
+}
+
+impl std::fmt::Debug for AgentBus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AgentBus")
+            .field("subscribers", &self.tx.receiver_count())
+            .finish()
+    }
 }
 
 impl AgentBus {

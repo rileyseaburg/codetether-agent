@@ -211,6 +211,21 @@ impl BusLogEntry {
                     if *success { Color::Green } else { Color::Red },
                 )
             }
+            BusMessage::AgentThinking {
+                agent_id,
+                thinking,
+                step,
+            } => {
+                let preview = truncate(thinking, 120);
+                (
+                    "THINK".to_string(),
+                    format!("{agent_id} step {step}: {preview}"),
+                    format!(
+                        "Agent: {agent_id}\nStep: {step}\n\n--- Reasoning ---\n{thinking}"
+                    ),
+                    Color::LightMagenta,
+                )
+            }
         };
 
         Self {
