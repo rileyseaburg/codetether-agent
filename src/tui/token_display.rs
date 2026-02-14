@@ -22,6 +22,7 @@ impl TokenDisplay {
         limits.insert("claude-3-5-sonnet".to_string(), 200_000);
         limits.insert("claude-3-5-haiku".to_string(), 200_000);
         limits.insert("claude-3-opus".to_string(), 200_000);
+        limits.insert("claude-opus-4-6".to_string(), 200_000);
         limits.insert("gemini-2.0-flash".to_string(), 1_000_000);
         limits.insert("gemini-1.5-flash".to_string(), 1_000_000);
         limits.insert("gemini-1.5-pro".to_string(), 2_000_000);
@@ -47,14 +48,14 @@ impl TokenDisplay {
             m if m.contains("gpt-4") => (30.00, 60.00),     // $30 / $60 per million
             m if m.contains("claude-3-5-sonnet") => (3.00, 15.00), // $3 / $15 per million
             m if m.contains("claude-3-5-haiku") => (0.80, 4.00), // $0.80 / $4 per million
-            m if m.contains("claude-3-opus") => (15.00, 75.00), // $15 / $75 per million
+            m if m.contains("claude-opus") => (5.00, 25.00), // $5 / $25 per million (Bedrock Opus 4.6)
             m if m.contains("gemini-2.0-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
             m if m.contains("gemini-1.5-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
             m if m.contains("gemini-1.5-pro") => (1.25, 5.00), // $1.25 / $5 per million
-            m if m.contains("glm-4") => (0.50, 0.50),       // ZhipuAI GLM-4 ~$0.50/million
-            m if m.contains("k1.5") => (8.00, 8.00),        // Moonshot K1.5
-            m if m.contains("k1.6") => (6.00, 6.00),        // Moonshot K1.6
-            _ => (1.00, 3.00),                              // Default fallback
+            m if m.contains("glm-4") => (0.50, 0.50),        // ZhipuAI GLM-4 ~$0.50/million
+            m if m.contains("k1.5") => (8.00, 8.00),         // Moonshot K1.5
+            m if m.contains("k1.6") => (6.00, 6.00),         // Moonshot K1.6
+            _ => (1.00, 3.00),                               // Default fallback
         }
     }
 

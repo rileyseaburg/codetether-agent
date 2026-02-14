@@ -452,8 +452,8 @@ fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) ->
 
     // (input $/M, output $/M)
     let (input_rate, output_rate) = match normalized_model.as_str() {
-        // Anthropic - Claude
-        m if m.contains("claude-opus") => (15.0, 75.0),
+        // Anthropic - Claude (Bedrock Opus 4.6 pricing: $5/$25)
+        m if m.contains("claude-opus") => (5.0, 25.0),
         m if m.contains("claude-sonnet") => (3.0, 15.0),
         m if m.contains("claude-haiku") => (0.25, 1.25),
         // OpenAI
@@ -5243,7 +5243,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             let mut interval = tokio::time::interval(Duration::from_secs(5));
             loop {
                 interval.tick().await;
-                if let Ok(sessions) = list_sessions_with_opencode_paged(&workspace_dir, session_limit, 0).await {
+                if let Ok(sessions) =
+                    list_sessions_with_opencode_paged(&workspace_dir, session_limit, 0).await
+                {
                     if session_tx.send(sessions).await.is_err() {
                         break; // TUI closed
                     }
@@ -5589,7 +5591,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             .unwrap_or(100);
                         let new_offset = app.session_picker_offset + limit;
                         app.session_picker_offset = new_offset;
-                        match list_sessions_with_opencode_paged(&app.workspace_dir, limit, new_offset).await {
+                        match list_sessions_with_opencode_paged(
+                            &app.workspace_dir,
+                            limit,
+                            new_offset,
+                        )
+                        .await
+                        {
                             Ok(sessions) => {
                                 app.update_cached_sessions(sessions);
                                 app.session_picker_selected = 0;
@@ -5610,7 +5618,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 .unwrap_or(100);
                             let new_offset = app.session_picker_offset.saturating_sub(limit);
                             app.session_picker_offset = new_offset;
-                            match list_sessions_with_opencode_paged(&app.workspace_dir, limit, new_offset).await {
+                            match list_sessions_with_opencode_paged(
+                                &app.workspace_dir,
+                                limit,
+                                new_offset,
+                            )
+                            .await
+                            {
                                 Ok(sessions) => {
                                     app.update_cached_sessions(sessions);
                                     app.session_picker_selected = 0;
