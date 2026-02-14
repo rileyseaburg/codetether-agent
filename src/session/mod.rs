@@ -7,6 +7,8 @@ use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
 use crate::provider::{Message, Usage};
+use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
+use crate::rlm::router::AutoProcessContext;
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -49,6 +51,30 @@ fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
 fn prefers_temperature_one(model: &str) -> bool {
     let normalized = model.to_ascii_lowercase();
     normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
+}
+
+/// Return the context window size (in tokens) for known models.
+fn context_window_for_model(model: &str) -> usize {
+    let m = model.to_ascii_lowercase();
+    if m.contains("kimi-k2") {
+        256_000
+    } else if m.contains("glm-5") || m.contains("glm5") {
+        200_000
+    } else if m.contains("gpt-4o") {
+        128_000
+    } else if m.contains("gpt-5") {
+        256_000
+    } else if m.contains("claude") {
+        200_000
+    } else if m.contains("gemini") {
+        1_000_000
+    } else if m.contains("minimax") || m.contains("m2.5") {
+        256_000
+    } else if m.contains("qwen") {
+        131_072
+    } else {
+        128_000 // conservative default
+    }
 }
 
 /// A conversation session
@@ -265,6 +291,61 @@ impl Session {
         } else {
             Self::default_model_for_provider(selected_provider)
         };
+
+        // Compress oversized user message via RLM if it exceeds the context threshold
+        {
+            let ctx_window = context_window_for_model(&model);
+            let msg_tokens = RlmChunker::estimate_tokens(message);
+            let threshold = (ctx_window as f64 * 0.35) as usize;
+            if msg_tokens > threshold {
+                tracing::info!(
+                    msg_tokens,
+                    threshold,
+                    ctx_window,
+                    "RLM: User message exceeds context threshold, compressing"
+                );
+                let auto_ctx = AutoProcessContext {
+                    tool_id: "session_context",
+                    tool_args: serde_json::json!({}),
+                    session_id: &self.id,
+                    abort: None,
+                    on_progress: None,
+                    provider: Arc::clone(&provider),
+                    model: model.clone(),
+                };
+                let rlm_config = RlmConfig::default();
+                match RlmRouter::auto_process(message, auto_ctx, &rlm_config).await {
+                    Ok(result) => {
+                        tracing::info!(
+                            input_tokens = result.stats.input_tokens,
+                            output_tokens = result.stats.output_tokens,
+                            "RLM: User message compressed"
+                        );
+                        // Replace the last message (user message we just added)
+                        if let Some(last) = self.messages.last_mut() {
+                            last.content = vec![ContentPart::Text {
+                                text: format!(
+                                    "[Original message: {} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
+                                    msg_tokens,
+                                    result.processed,
+                                    message.chars().take(500).collect::<String>()
+                                ),
+                            }];
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "RLM: Failed to compress user message, using truncation");
+                        let max_chars = threshold * 4;
+                        let truncated = RlmChunker::compress(message, max_chars / 4, None);
+                        if let Some(last) = self.messages.last_mut() {
+                            last.content = vec![ContentPart::Text {
+                                text: truncated,
+                            }];
+                        }
+                    }
+                }
+            }
+        }
 
         // Create tool registry with all available tools
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
@@ -533,6 +614,63 @@ impl Session {
                     });
                 }
 
+                // Route large tool outputs through RLM
+                let content = {
+                    let ctx_window = context_window_for_model(&model);
+                    let total_chars: usize = self.messages.iter().map(|m| m.content.iter().map(|p| match p {
+                        ContentPart::Text { text } => text.len(),
+                        ContentPart::ToolResult { content, .. } => content.len(),
+                        _ => 0,
+                    }).sum::<usize>()).sum();
+                    let current_tokens = total_chars / 4; // ~4 chars per token
+                    let routing_ctx = RoutingContext {
+                        tool_id: tool_name.clone(),
+                        session_id: self.id.clone(),
+                        call_id: Some(tool_id.clone()),
+                        model_context_limit: ctx_window,
+                        current_context_tokens: Some(current_tokens),
+                    };
+                    let rlm_config = RlmConfig::default();
+                    let routing = RlmRouter::should_route(&content, &routing_ctx, &rlm_config);
+                    if routing.should_route {
+                        tracing::info!(
+                            tool = %tool_name,
+                            reason = %routing.reason,
+                            estimated_tokens = routing.estimated_tokens,
+                            "RLM: Routing large tool output"
+                        );
+                        let auto_ctx = AutoProcessContext {
+                            tool_id: &tool_name,
+                            tool_args: tool_input.clone(),
+                            session_id: &self.id,
+                            abort: None,
+                            on_progress: None,
+                            provider: Arc::clone(&provider),
+                            model: model.clone(),
+                        };
+                        match RlmRouter::auto_process(&content, auto_ctx, &rlm_config).await {
+                            Ok(result) => {
+                                tracing::info!(
+                                    input_tokens = result.stats.input_tokens,
+                                    output_tokens = result.stats.output_tokens,
+                                    iterations = result.stats.iterations,
+                                    "RLM: Processing complete"
+                                );
+                                result.processed
+                            }
+                            Err(e) => {
+                                tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
+                                let (truncated, _, _) = RlmRouter::smart_truncate(
+                                    &content, &tool_name, &tool_input, ctx_window / 4,
+                                );
+                                truncated
+                            }
+                        }
+                    } else {
+                        content
+                    }
+                };
+
                 // Add tool result message
                 self.add_message(Message {
                     role: Role::Tool,
@@ -668,6 +806,60 @@ impl Session {
         } else {
             Self::default_model_for_provider(selected_provider)
         };
+
+        // Compress oversized user message via RLM if it exceeds the context threshold
+        {
+            let ctx_window = context_window_for_model(&model);
+            let msg_tokens = RlmChunker::estimate_tokens(message);
+            let threshold = (ctx_window as f64 * 0.35) as usize;
+            if msg_tokens > threshold {
+                tracing::info!(
+                    msg_tokens,
+                    threshold,
+                    ctx_window,
+                    "RLM: User message exceeds context threshold, compressing"
+                );
+                let auto_ctx = AutoProcessContext {
+                    tool_id: "session_context",
+                    tool_args: serde_json::json!({}),
+                    session_id: &self.id,
+                    abort: None,
+                    on_progress: None,
+                    provider: Arc::clone(&provider),
+                    model: model.clone(),
+                };
+                let rlm_config = RlmConfig::default();
+                match RlmRouter::auto_process(message, auto_ctx, &rlm_config).await {
+                    Ok(result) => {
+                        tracing::info!(
+                            input_tokens = result.stats.input_tokens,
+                            output_tokens = result.stats.output_tokens,
+                            "RLM: User message compressed"
+                        );
+                        if let Some(last) = self.messages.last_mut() {
+                            last.content = vec![ContentPart::Text {
+                                text: format!(
+                                    "[Original message: {} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
+                                    msg_tokens,
+                                    result.processed,
+                                    message.chars().take(500).collect::<String>()
+                                ),
+                            }];
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "RLM: Failed to compress user message, using truncation");
+                        let max_chars = threshold * 4;
+                        let truncated = RlmChunker::compress(message, max_chars / 4, None);
+                        if let Some(last) = self.messages.last_mut() {
+                            last.content = vec![ContentPart::Text {
+                                text: truncated,
+                            }];
+                        }
+                    }
+                }
+            }
+        }
 
         // Create tool registry
         let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
@@ -997,6 +1189,63 @@ impl Session {
                         success,
                     })
                     .await;
+
+                // Route large tool outputs through RLM
+                let content = {
+                    let ctx_window = context_window_for_model(&model);
+                    let total_chars: usize = self.messages.iter().map(|m| m.content.iter().map(|p| match p {
+                        ContentPart::Text { text } => text.len(),
+                        ContentPart::ToolResult { content, .. } => content.len(),
+                        _ => 0,
+                    }).sum::<usize>()).sum();
+                    let current_tokens = total_chars / 4;
+                    let routing_ctx = RoutingContext {
+                        tool_id: tool_name.clone(),
+                        session_id: self.id.clone(),
+                        call_id: Some(tool_id.clone()),
+                        model_context_limit: ctx_window,
+                        current_context_tokens: Some(current_tokens),
+                    };
+                    let rlm_config = RlmConfig::default();
+                    let routing = RlmRouter::should_route(&content, &routing_ctx, &rlm_config);
+                    if routing.should_route {
+                        tracing::info!(
+                            tool = %tool_name,
+                            reason = %routing.reason,
+                            estimated_tokens = routing.estimated_tokens,
+                            "RLM: Routing large tool output"
+                        );
+                        let auto_ctx = AutoProcessContext {
+                            tool_id: &tool_name,
+                            tool_args: tool_input.clone(),
+                            session_id: &self.id,
+                            abort: None,
+                            on_progress: None,
+                            provider: Arc::clone(&provider),
+                            model: model.clone(),
+                        };
+                        match RlmRouter::auto_process(&content, auto_ctx, &rlm_config).await {
+                            Ok(result) => {
+                                tracing::info!(
+                                    input_tokens = result.stats.input_tokens,
+                                    output_tokens = result.stats.output_tokens,
+                                    iterations = result.stats.iterations,
+                                    "RLM: Processing complete"
+                                );
+                                result.processed
+                            }
+                            Err(e) => {
+                                tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
+                                let (truncated, _, _) = RlmRouter::smart_truncate(
+                                    &content, &tool_name, &tool_input, ctx_window / 4,
+                                );
+                                truncated
+                            }
+                        }
+                    } else {
+                        content
+                    }
+                };
 
                 self.add_message(Message {
                     role: Role::Tool,

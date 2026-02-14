@@ -221,7 +221,6 @@ impl ToolRegistry {
         registry.register(Arc::new(plan::PlanExitTool::new()));
         registry.register(Arc::new(skill::SkillTool::new()));
         registry.register(Arc::new(memory::MemoryTool::new()));
-        registry.register(Arc::new(rlm::RlmTool::new()));
         registry.register(Arc::new(ralph::RalphTool::new()));
         registry.register(Arc::new(prd::PrdTool::new()));
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
@@ -270,7 +269,7 @@ impl ToolRegistry {
         registry.register(Arc::new(plan::PlanExitTool::new()));
         registry.register(Arc::new(skill::SkillTool::new()));
         registry.register(Arc::new(memory::MemoryTool::new()));
-        registry.register(Arc::new(rlm::RlmTool::new()));
+        registry.register(Arc::new(rlm::RlmTool::new(Arc::clone(&provider), model.clone())));
         // RalphTool with provider for autonomous execution
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));

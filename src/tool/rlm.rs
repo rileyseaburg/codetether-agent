@@ -4,32 +4,24 @@
 //! the context window. It chunks, routes, and synthesizes results.
 
 use super::{Tool, ToolResult};
+use crate::rlm::{RlmChunker, RlmConfig, RlmRouter};
+use crate::rlm::router::AutoProcessContext;
+use crate::provider::Provider;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
+use std::sync::Arc;
 
 /// RLM Tool - Invoke the Recursive Language Model subsystem
 /// for analyzing large codebases that exceed the context window
 pub struct RlmTool {
-    max_chunk_size: usize,
-}
-
-impl Default for RlmTool {
-    fn default() -> Self {
-        Self::new()
-    }
+    provider: Arc<dyn Provider>,
+    model: String,
 }
 
 impl RlmTool {
-    pub fn new() -> Self {
-        Self {
-            max_chunk_size: 8192,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn with_chunk_size(max_chunk_size: usize) -> Self {
-        Self { max_chunk_size }
+    pub fn new(provider: Arc<dyn Provider>, model: String) -> Self {
+        Self { provider, model }
     }
 }
 
@@ -90,12 +82,13 @@ impl Tool for RlmTool {
             .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
             .unwrap_or_default();
         let content = args["content"].as_str();
-        let max_depth = args["max_depth"].as_u64().unwrap_or(3) as usize;
 
         match action {
-            "analyze" => {
-                if query.is_empty() {
-                    return Ok(ToolResult::error("query is required for 'analyze' action"));
+            "analyze" | "summarize" | "search" => {
+                if action != "summarize" && query.is_empty() {
+                    return Ok(ToolResult::error(format!(
+                        "query is required for '{}' action", action
+                    )));
                 }
 
                 // Collect content from paths or direct content
@@ -118,132 +111,54 @@ impl Tool for RlmTool {
                     return Ok(ToolResult::error("Either 'paths' or 'content' is required"));
                 };
 
-                // For now, return a chunked analysis placeholder
-                // Full implementation would invoke the RLM subsystem
-                let chunks = self.chunk_content(&all_content);
-                let first_chunk_preview = chunks
-                    .first()
-                    .map(|chunk| truncate_with_ellipsis(chunk, 500))
-                    .unwrap_or_default();
-                let output = format!(
-                    "RLM Analysis\n\
-                    Query: {}\n\
-                    Paths: {:?}\n\
-                    Content size: {} bytes\n\
-                    Chunks: {}\n\
-                    Max depth: {}\n\n\
-                    [Full RLM processing would analyze each chunk and synthesize results]\n\n\
-                    Content preview (first chunk):\n{}",
-                    query,
-                    paths,
-                    all_content.len(),
-                    chunks.len(),
-                    max_depth,
-                    first_chunk_preview
-                );
-
-                Ok(ToolResult::success(output))
-            }
-            "summarize" => {
-                if paths.is_empty() && content.is_none() {
-                    return Ok(ToolResult::error("Either 'paths' or 'content' is required"));
-                }
-
-                let all_content = if let Some(c) = content {
-                    c.to_string()
+                let input_tokens = RlmChunker::estimate_tokens(&all_content);
+                let effective_query = if query.is_empty() {
+                    format!("Summarize the content from: {:?}", paths)
                 } else {
-                    let mut collected = String::new();
-                    for path in &paths {
-                        match tokio::fs::read_to_string(path).await {
-                            Ok(c) => collected.push_str(&c),
-                            Err(e) => {
-                                collected.push_str(&format!("[Error reading {}: {}]\n", path, e))
-                            }
-                        }
-                    }
-                    collected
+                    query.to_string()
                 };
 
-                let chunks = self.chunk_content(&all_content);
-                let output = format!(
-                    "RLM Summary\n\
-                    Paths: {:?}\n\
-                    Content size: {} bytes\n\
-                    Chunks: {}\n\n\
-                    [Full RLM would summarize each chunk and combine summaries]",
-                    paths,
-                    all_content.len(),
-                    chunks.len()
-                );
+                // Use RlmRouter::auto_process for real analysis
+                let auto_ctx = AutoProcessContext {
+                    tool_id: action,
+                    tool_args: json!({ "query": effective_query, "paths": paths }),
+                    session_id: "rlm-tool",
+                    abort: None,
+                    on_progress: None,
+                    provider: Arc::clone(&self.provider),
+                    model: self.model.clone(),
+                };
+                let config = RlmConfig::default();
 
-                Ok(ToolResult::success(output))
-            }
-            "search" => {
-                if query.is_empty() {
-                    return Ok(ToolResult::error("query is required for 'search' action"));
+                match RlmRouter::auto_process(&all_content, auto_ctx, &config).await {
+                    Ok(result) => {
+                        let output = format!(
+                            "RLM {} complete ({} → {} tokens, {} iterations)\n\n{}",
+                            action,
+                            result.stats.input_tokens,
+                            result.stats.output_tokens,
+                            result.stats.iterations,
+                            result.processed
+                        );
+                        Ok(ToolResult::success(output))
+                    }
+                    Err(e) => {
+                        // Fallback to smart truncation
+                        tracing::warn!(error = %e, "RLM auto_process failed, falling back to truncation");
+                        let (truncated, _, _) = RlmRouter::smart_truncate(
+                            &all_content, action, &json!({}), input_tokens.min(8000),
+                        );
+                        Ok(ToolResult::success(format!(
+                            "RLM {} (fallback mode - auto_process failed: {})\n\n{}",
+                            action, e, truncated
+                        )))
+                    }
                 }
-
-                let output = format!(
-                    "RLM Semantic Search\n\
-                    Query: {}\n\
-                    Paths: {:?}\n\n\
-                    [Full RLM would perform semantic search across chunks]",
-                    query, paths
-                );
-
-                Ok(ToolResult::success(output))
             }
             _ => Ok(ToolResult::error(format!(
                 "Unknown action: {}. Use 'analyze', 'summarize', or 'search'.",
                 action
             ))),
         }
-    }
-}
-
-impl RlmTool {
-    fn chunk_content(&self, content: &str) -> Vec<String> {
-        let mut chunks = Vec::new();
-        let lines: Vec<&str> = content.lines().collect();
-        let mut current_chunk = String::new();
-
-        for line in lines {
-            if current_chunk.len() + line.len() + 1 > self.max_chunk_size
-                && !current_chunk.is_empty()
-            {
-                chunks.push(current_chunk);
-                current_chunk = String::new();
-            }
-            current_chunk.push_str(line);
-            current_chunk.push('\n');
-        }
-
-        if !current_chunk.is_empty() {
-            chunks.push(current_chunk);
-        }
-
-        chunks
-    }
-}
-
-fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-
-    let mut chars = value.chars();
-    let mut output = String::new();
-    for _ in 0..max_chars {
-        if let Some(ch) = chars.next() {
-            output.push(ch);
-        } else {
-            return value.to_string();
-        }
-    }
-
-    if chars.next().is_some() {
-        format!("{output}...")
-    } else {
-        output
     }
 }
