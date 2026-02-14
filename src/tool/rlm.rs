@@ -4,9 +4,9 @@
 //! the context window. It chunks, routes, and synthesizes results.
 
 use super::{Tool, ToolResult};
-use crate::rlm::{RlmChunker, RlmConfig, RlmRouter};
-use crate::rlm::router::AutoProcessContext;
 use crate::provider::Provider;
+use crate::rlm::router::AutoProcessContext;
+use crate::rlm::{RlmChunker, RlmConfig, RlmRouter};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -87,7 +87,8 @@ impl Tool for RlmTool {
             "analyze" | "summarize" | "search" => {
                 if action != "summarize" && query.is_empty() {
                     return Ok(ToolResult::error(format!(
-                        "query is required for '{}' action", action
+                        "query is required for '{}' action",
+                        action
                     )));
                 }
 
@@ -146,7 +147,10 @@ impl Tool for RlmTool {
                         // Fallback to smart truncation
                         tracing::warn!(error = %e, "RLM auto_process failed, falling back to truncation");
                         let (truncated, _, _) = RlmRouter::smart_truncate(
-                            &all_content, action, &json!({}), input_tokens.min(8000),
+                            &all_content,
+                            action,
+                            &json!({}),
+                            input_tokens.min(8000),
                         );
                         Ok(ToolResult::success(format!(
                             "RLM {} (fallback mode - auto_process failed: {})\n\n{}",

@@ -793,7 +793,9 @@ async fn list_sessions(
 
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit.unwrap_or(100);
-    Ok(Json(sessions.into_iter().skip(offset).take(limit).collect()))
+    Ok(Json(
+        sessions.into_iter().skip(offset).take(limit).collect(),
+    ))
 }
 
 /// Create a new session

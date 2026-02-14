@@ -120,9 +120,7 @@ fn write_saved_credentials(
             .truncate(true)
             .mode(0o600)
             .open(&cred_path)
-            .with_context(|| {
-                format!("Failed to write credentials to {}", cred_path.display())
-            })?;
+            .with_context(|| format!("Failed to write credentials to {}", cred_path.display()))?;
         serde_json::to_writer_pretty(file, &creds)?;
     }
     #[cfg(not(unix))]
@@ -210,7 +208,10 @@ async fn authenticate_register(args: RegisterAuthArgs) -> Result<()> {
         .await
         .context("Failed to parse registration response")?;
 
-    println!("Account created for {} (user_id={})", reg.email, reg.user_id);
+    println!(
+        "Account created for {} (user_id={})",
+        reg.email, reg.user_id
+    );
     println!("{}", reg.message);
     if let Some(status) = reg.provisioning_status.as_deref() {
         println!("Provisioning status: {}", status);
@@ -358,7 +359,9 @@ pub fn load_saved_credentials() -> Option<SavedCredentials> {
     // Check expiry if parseable
     if let Ok(expires) = chrono::DateTime::parse_from_rfc3339(&creds.expires_at) {
         if expires < chrono::Utc::now() {
-            tracing::warn!("Saved credentials have expired — run `codetether auth login` to refresh");
+            tracing::warn!(
+                "Saved credentials have expired — run `codetether auth login` to refresh"
+            );
             return None;
         }
     }

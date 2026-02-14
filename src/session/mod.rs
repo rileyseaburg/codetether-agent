@@ -7,8 +7,8 @@ use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
 use crate::provider::{Message, Usage};
-use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::rlm::router::AutoProcessContext;
+use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -338,9 +338,7 @@ impl Session {
                         let max_chars = threshold * 4;
                         let truncated = RlmChunker::compress(message, max_chars / 4, None);
                         if let Some(last) = self.messages.last_mut() {
-                            last.content = vec![ContentPart::Text {
-                                text: truncated,
-                            }];
+                            last.content = vec![ContentPart::Text { text: truncated }];
                         }
                     }
                 }
@@ -617,11 +615,20 @@ impl Session {
                 // Route large tool outputs through RLM
                 let content = {
                     let ctx_window = context_window_for_model(&model);
-                    let total_chars: usize = self.messages.iter().map(|m| m.content.iter().map(|p| match p {
-                        ContentPart::Text { text } => text.len(),
-                        ContentPart::ToolResult { content, .. } => content.len(),
-                        _ => 0,
-                    }).sum::<usize>()).sum();
+                    let total_chars: usize = self
+                        .messages
+                        .iter()
+                        .map(|m| {
+                            m.content
+                                .iter()
+                                .map(|p| match p {
+                                    ContentPart::Text { text } => text.len(),
+                                    ContentPart::ToolResult { content, .. } => content.len(),
+                                    _ => 0,
+                                })
+                                .sum::<usize>()
+                        })
+                        .sum();
                     let current_tokens = total_chars / 4; // ~4 chars per token
                     let routing_ctx = RoutingContext {
                         tool_id: tool_name.clone(),
@@ -661,7 +668,10 @@ impl Session {
                             Err(e) => {
                                 tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
                                 let (truncated, _, _) = RlmRouter::smart_truncate(
-                                    &content, &tool_name, &tool_input, ctx_window / 4,
+                                    &content,
+                                    &tool_name,
+                                    &tool_input,
+                                    ctx_window / 4,
                                 );
                                 truncated
                             }
@@ -852,9 +862,7 @@ impl Session {
                         let max_chars = threshold * 4;
                         let truncated = RlmChunker::compress(message, max_chars / 4, None);
                         if let Some(last) = self.messages.last_mut() {
-                            last.content = vec![ContentPart::Text {
-                                text: truncated,
-                            }];
+                            last.content = vec![ContentPart::Text { text: truncated }];
                         }
                     }
                 }
@@ -1193,11 +1201,20 @@ impl Session {
                 // Route large tool outputs through RLM
                 let content = {
                     let ctx_window = context_window_for_model(&model);
-                    let total_chars: usize = self.messages.iter().map(|m| m.content.iter().map(|p| match p {
-                        ContentPart::Text { text } => text.len(),
-                        ContentPart::ToolResult { content, .. } => content.len(),
-                        _ => 0,
-                    }).sum::<usize>()).sum();
+                    let total_chars: usize = self
+                        .messages
+                        .iter()
+                        .map(|m| {
+                            m.content
+                                .iter()
+                                .map(|p| match p {
+                                    ContentPart::Text { text } => text.len(),
+                                    ContentPart::ToolResult { content, .. } => content.len(),
+                                    _ => 0,
+                                })
+                                .sum::<usize>()
+                        })
+                        .sum();
                     let current_tokens = total_chars / 4;
                     let routing_ctx = RoutingContext {
                         tool_id: tool_name.clone(),
@@ -1237,7 +1254,10 @@ impl Session {
                             Err(e) => {
                                 tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
                                 let (truncated, _, _) = RlmRouter::smart_truncate(
-                                    &content, &tool_name, &tool_input, ctx_window / 4,
+                                    &content,
+                                    &tool_name,
+                                    &tool_input,
+                                    ctx_window / 4,
                                 );
                                 truncated
                             }

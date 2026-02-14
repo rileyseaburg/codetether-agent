@@ -1899,7 +1899,10 @@ fn create_filtered_registry(
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
         registry.register(Arc::new(plan::PlanExitTool::new()));
-        registry.register(Arc::new(rlm::RlmTool::new(Arc::clone(&provider), model.clone())));
+        registry.register(Arc::new(rlm::RlmTool::new(
+            Arc::clone(&provider),
+            model.clone(),
+        )));
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
