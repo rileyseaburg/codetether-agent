@@ -521,6 +521,10 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             let (provider, resolved_model) = resolve_provider_for_model_autochat(&registry, &model)
                 .ok_or_else(|| anyhow::anyhow!("No provider available for model '{model}'"))?;
 
+            // Wire bus for training data capture
+            let bus = crate::bus::AgentBus::new().into_arc();
+            crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
             // Execute via Ralph PRD loop — use max_concurrent as concurrency
             let ralph_result = super::go_ralph::execute_go_ralph(
                 task,
@@ -529,7 +533,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 provider,
                 &resolved_model,
                 10, // max iterations
-                None, // no bus in CLI mode
+                Some(bus), // bus for training data
                 max_concurrent, // max concurrent stories
                 Some(registry.clone()), // relay registry
             )

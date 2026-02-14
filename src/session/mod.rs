@@ -516,6 +516,20 @@ impl Session {
             for (tool_id, tool_name, tool_input) in tool_calls {
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
 
+                // Publish tool request to bus for training pipeline
+                if let Some(ref bus) = self.bus {
+                    let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.request", self.agent),
+                        crate::bus::BusMessage::ToolRequest {
+                            request_id: tool_id.clone(),
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            arguments: tool_input.clone(),
+                        },
+                    );
+                }
+
                 if is_interactive_tool(&tool_name) {
                     tracing::warn!(tool = %tool_name, "Blocking interactive tool in session loop");
                     self.add_message(Message {
@@ -592,6 +606,22 @@ impl Session {
                 // Calculate duration for event stream
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 let success = !content.starts_with("Error:");
+
+                // Publish full tool output to bus for training pipeline
+                // (before RLM truncation so we capture the complete output)
+                if let Some(ref bus) = self.bus {
+                    let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.output", self.agent),
+                        crate::bus::BusMessage::ToolOutputFull {
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            output: content.clone(),
+                            success,
+                            step,
+                        },
+                    );
+                }
 
                 // Emit event stream event for audit/compliance (SOC 2, FedRAMP, ATO)
                 if let Some(base_dir) = Self::event_stream_path() {
@@ -1090,6 +1120,20 @@ impl Session {
 
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
 
+                // Publish tool request to bus for training pipeline
+                if let Some(ref bus) = self.bus {
+                    let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.request", self.agent),
+                        crate::bus::BusMessage::ToolRequest {
+                            request_id: tool_id.clone(),
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            arguments: tool_input.clone(),
+                        },
+                    );
+                }
+
                 if is_interactive_tool(&tool_name) {
                     tracing::warn!(tool = %tool_name, "Blocking interactive tool in session loop");
                     let content = "Error: Interactive tool 'question' is disabled in this interface. Ask the user directly in assistant text.".to_string();
@@ -1172,6 +1216,21 @@ impl Session {
 
                 // Calculate total duration from exec_start (captured from line 772)
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
+
+                // Publish full tool output to bus for training pipeline
+                if let Some(ref bus) = self.bus {
+                    let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.output", self.agent),
+                        crate::bus::BusMessage::ToolOutputFull {
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            output: content.clone(),
+                            success,
+                            step,
+                        },
+                    );
+                }
 
                 // Emit event stream event for audit/compliance (SOC 2, FedRAMP, ATO)
                 // This creates the structured JSONL record with byte-range offsets

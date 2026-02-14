@@ -587,6 +587,17 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         tool_registry: ToolRegistry::new(),
     };
 
+    // Spawn the tool reaper background task (runs every 15s to clean up expired tools)
+    let tool_registry = state.tool_registry.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(15));
+        loop {
+            interval.tick().await;
+            tool_registry.cleanup().await;
+            tracing::debug!("Tool reaper ran cleanup");
+        }
+    });
+
     let app = Router::new()
         // Health check (public — auth exempt)
         .route("/health", get(health))

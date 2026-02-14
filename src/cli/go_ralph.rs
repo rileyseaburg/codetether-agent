@@ -110,7 +110,7 @@ Rules:
     let request = CompletionRequest {
         messages: vec![Message {
             role: Role::User,
-            content: vec![ContentPart::Text { text: prompt }],
+            content: vec![ContentPart::Text { text: prompt.clone() }],
         }],
         tools: vec![],
         model: model.to_string(),
@@ -120,39 +120,99 @@ Rules:
         stop: vec![],
     };
 
-    let response = provider
-        .complete(request)
-        .await
-        .context("Failed to generate PRD from LLM")?;
+    // Attempt up to 3 times: initial request + 2 repair attempts
+    let mut last_text = String::new();
+    let mut last_error = String::new();
 
-    let text = response
-        .message
-        .content
-        .iter()
-        .filter_map(|part| match part {
-            ContentPart::Text { text } => Some(text.as_str()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("");
+    for attempt in 0..3 {
+        let req = if attempt == 0 {
+            request.clone()
+        } else {
+            // Repair prompt: show the LLM its broken output and ask for clean JSON
+            tracing::warn!(
+                attempt,
+                error = %last_error,
+                "PRD JSON extraction failed, retrying with repair prompt"
+            );
+            let repair = format!(
+                "Your previous response was not valid JSON. Here is the error:\n{err}\n\n\
+                 Here is what you returned:\n```\n{text}\n```\n\n\
+                 Please output ONLY the corrected JSON object — no markdown fences, \
+                 no commentary, no trailing commas, no comments. Start with {{ and end with }}.",
+                err = last_error,
+                text = if last_text.len() > 2000 { &last_text[..2000] } else { &last_text },
+            );
+            CompletionRequest {
+                messages: vec![
+                    Message {
+                        role: Role::User,
+                        content: vec![ContentPart::Text { text: prompt.clone() }],
+                    },
+                    Message {
+                        role: Role::Assistant,
+                        content: vec![ContentPart::Text { text: last_text.clone() }],
+                    },
+                    Message {
+                        role: Role::User,
+                        content: vec![ContentPart::Text { text: repair }],
+                    },
+                ],
+                tools: vec![],
+                model: model.to_string(),
+                temperature: Some(0.1),
+                top_p: None,
+                max_tokens: Some(4096),
+                stop: vec![],
+            }
+        };
 
-    // Extract JSON from the response (may be wrapped in markdown code blocks)
-    let json_str = extract_json(&text).context("LLM response did not contain valid JSON")?;
+        let response = provider
+            .complete(req)
+            .await
+            .context("Failed to generate PRD from LLM")?;
 
-    let mut prd: Prd =
-        serde_json::from_str(&json_str).context("Failed to parse PRD JSON from LLM response")?;
+        last_text = response
+            .message
+            .content
+            .iter()
+            .filter_map(|part| match part {
+                ContentPart::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("");
 
-    // Ensure timestamps
-    let now = chrono::Utc::now().to_rfc3339();
-    prd.created_at = now.clone();
-    prd.updated_at = now;
-
-    // Detect quality checks from the working directory
-    if prd.quality_checks.typecheck.is_none() {
-        prd.quality_checks = detect_quality_checks();
+        // Extract and parse JSON
+        match extract_json(&last_text) {
+            Some(json_str) => match serde_json::from_str::<Prd>(&json_str) {
+                Ok(prd) => {
+                    if attempt > 0 {
+                        tracing::info!(attempt, "PRD JSON repair succeeded");
+                    }
+                    // Jump to the timestamp/quality-check block below
+                    let mut prd = prd;
+                    let now = chrono::Utc::now().to_rfc3339();
+                    prd.created_at = now.clone();
+                    prd.updated_at = now;
+                    if prd.quality_checks.typecheck.is_none() {
+                        prd.quality_checks = detect_quality_checks();
+                    }
+                    return Ok(prd);
+                }
+                Err(e) => {
+                    last_error = format!("JSON parses but doesn't match PRD schema: {e}");
+                }
+            },
+            None => {
+                last_error = "Response contains no valid JSON object".to_string();
+            }
+        }
     }
 
-    Ok(prd)
+    anyhow::bail!(
+        "Failed to extract valid PRD JSON after 3 attempts. Last error: {last_error}"
+    );
+
 }
 
 /// Run Ralph loop for a `/go` task, mapping results back to OKR.
@@ -448,47 +508,213 @@ pub fn format_go_ralph_result(result: &GoRalphResult, task: &str) -> String {
 
 /// Extract JSON object from text that may be wrapped in markdown code blocks.
 fn extract_json(text: &str) -> Option<String> {
-    // Try direct parse first
-    if serde_json::from_str::<serde_json::Value>(text.trim()).is_ok() {
-        return Some(text.trim().to_string());
-    }
-
-    // Try extracting from ```json ... ``` blocks
-    if let Some(start) = text.find("```json") {
-        let after_fence = &text[start + 7..];
-        if let Some(end) = after_fence.find("```") {
-            let json_str = after_fence[..end].trim();
-            if serde_json::from_str::<serde_json::Value>(json_str).is_ok() {
-                return Some(json_str.to_string());
-            }
+    // Try each extraction strategy, applying sanitization if raw parse fails
+    let candidates = gather_json_candidates(text);
+    for candidate in candidates {
+        // Try raw first
+        if serde_json::from_str::<serde_json::Value>(&candidate).is_ok() {
+            return Some(candidate);
+        }
+        // Try after sanitizing common LLM quirks
+        let sanitized = sanitize_json(&candidate);
+        if serde_json::from_str::<serde_json::Value>(&sanitized).is_ok() {
+            return Some(sanitized);
         }
     }
+    None
+}
 
-    // Try extracting from ``` ... ``` blocks
-    if let Some(start) = text.find("```") {
-        let after_fence = &text[start + 3..];
-        // Skip optional language tag on the same line
-        let content_start = after_fence.find('\n').unwrap_or(0);
-        let after_tag = &after_fence[content_start..];
+/// Gather candidate JSON strings from LLM output, ordered by likelihood.
+fn gather_json_candidates(text: &str) -> Vec<String> {
+    let mut candidates = Vec::new();
+    let trimmed = text.trim();
+
+    // 1. Direct: entire response is JSON
+    candidates.push(trimmed.to_string());
+
+    // 2. Inside ```json ... ``` fences
+    let mut search = text;
+    while let Some(start) = search.find("```json") {
+        let after = &search[start + 7..];
+        if let Some(end) = after.find("```") {
+            candidates.push(after[..end].trim().to_string());
+        }
+        search = &search[start + 7..];
+    }
+
+    // 3. Inside ``` ... ``` fences (any language tag)
+    search = text;
+    while let Some(start) = search.find("```") {
+        let after = &search[start + 3..];
+        let content_start = after.find('\n').unwrap_or(0);
+        let after_tag = &after[content_start..];
         if let Some(end) = after_tag.find("```") {
-            let json_str = after_tag[..end].trim();
-            if serde_json::from_str::<serde_json::Value>(json_str).is_ok() {
-                return Some(json_str.to_string());
-            }
+            candidates.push(after_tag[..end].trim().to_string());
         }
+        // Advance past this fence pair
+        let skip = start + 3 + content_start + after_tag.find("```").unwrap_or(after_tag.len()) + 3;
+        if skip >= search.len() {
+            break;
+        }
+        search = &search[skip..];
     }
 
-    // Try finding first { to last }
+    // 4. First `{` to last `}` (greedy brace match)
     if let (Some(start), Some(end)) = (text.find('{'), text.rfind('}')) {
         if start < end {
-            let json_str = &text[start..=end];
-            if serde_json::from_str::<serde_json::Value>(json_str).is_ok() {
-                return Some(json_str.to_string());
-            }
+            candidates.push(text[start..=end].to_string());
         }
     }
 
+    // 5. Balanced brace extraction starting from first `{`
+    if let Some(balanced) = extract_balanced_braces(text) {
+        candidates.push(balanced);
+    }
+
+    candidates
+}
+
+/// Extract the first balanced `{...}` block from text.
+fn extract_balanced_braces(text: &str) -> Option<String> {
+    let start = text.find('{')?;
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escape_next = false;
+    let bytes = text.as_bytes();
+
+    for i in start..bytes.len() {
+        let ch = bytes[i] as char;
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        if ch == '\\' && in_string {
+            escape_next = true;
+            continue;
+        }
+        if ch == '"' {
+            in_string = !in_string;
+            continue;
+        }
+        if in_string {
+            continue;
+        }
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(text[start..=i].to_string());
+                }
+            }
+            _ => {}
+        }
+    }
     None
+}
+
+/// Sanitize common LLM JSON mistakes.
+fn sanitize_json(text: &str) -> String {
+    let mut s = text.to_string();
+
+    // Replace unicode curly quotes with straight quotes
+    s = s.replace('\u{201c}', "\"")  // left double
+         .replace('\u{201d}', "\"")  // right double
+         .replace('\u{2018}', "'")   // left single
+         .replace('\u{2019}', "'");  // right single
+
+    // Remove single-line // comments (outside strings)
+    s = remove_line_comments(&s);
+
+    // Remove trailing commas before } or ]
+    s = remove_trailing_commas(&s);
+
+    s
+}
+
+/// Remove `//` line comments that aren't inside JSON strings.
+fn remove_line_comments(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut in_string = false;
+    let mut escape_next = false;
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        if escape_next {
+            result.push(chars[i]);
+            escape_next = false;
+            i += 1;
+            continue;
+        }
+        if chars[i] == '\\' && in_string {
+            result.push(chars[i]);
+            escape_next = true;
+            i += 1;
+            continue;
+        }
+        if chars[i] == '"' {
+            in_string = !in_string;
+            result.push(chars[i]);
+            i += 1;
+            continue;
+        }
+        if !in_string && i + 1 < chars.len() && chars[i] == '/' && chars[i + 1] == '/' {
+            // Skip to end of line
+            while i < chars.len() && chars[i] != '\n' {
+                i += 1;
+            }
+            continue;
+        }
+        result.push(chars[i]);
+        i += 1;
+    }
+    result
+}
+
+/// Remove trailing commas before `}` or `]`.
+fn remove_trailing_commas(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut in_string = false;
+    let mut escape_next = false;
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        if escape_next {
+            result.push(chars[i]);
+            escape_next = false;
+            i += 1;
+            continue;
+        }
+        if chars[i] == '\\' && in_string {
+            result.push(chars[i]);
+            escape_next = true;
+            i += 1;
+            continue;
+        }
+        if chars[i] == '"' {
+            in_string = !in_string;
+            result.push(chars[i]);
+            i += 1;
+            continue;
+        }
+        if !in_string && chars[i] == ',' {
+            // Look ahead past whitespace for } or ]
+            let mut j = i + 1;
+            while j < chars.len() && chars[j].is_whitespace() {
+                j += 1;
+            }
+            if j < chars.len() && (chars[j] == '}' || chars[j] == ']') {
+                // Skip the trailing comma
+                i += 1;
+                continue;
+            }
+        }
+        result.push(chars[i]);
+        i += 1;
+    }
+    result
 }
 
 /// Auto-detect quality checks from the working directory.
@@ -555,6 +781,37 @@ mod tests {
     #[test]
     fn extract_json_returns_none_for_no_json() {
         assert!(extract_json("no json here").is_none());
+    }
+
+    #[test]
+    fn extract_json_handles_trailing_commas() {
+        let text = r#"{"project": "test", "feature": "foo",}"#;
+        let result = extract_json(text).unwrap();
+        assert!(result.contains("test"));
+        // Verify it actually parses
+        serde_json::from_str::<serde_json::Value>(&result).unwrap();
+    }
+
+    #[test]
+    fn extract_json_handles_line_comments() {
+        let text = "{\n  \"project\": \"test\", // this is the project\n  \"feature\": \"foo\"\n}";
+        let result = extract_json(text).unwrap();
+        serde_json::from_str::<serde_json::Value>(&result).unwrap();
+    }
+
+    #[test]
+    fn extract_json_handles_curly_quotes() {
+        let text = "\u{201c}project\u{201d}: \u{201c}test\u{201d}";
+        let full = format!("{{{text}}}");
+        let result = extract_json(&full).unwrap();
+        serde_json::from_str::<serde_json::Value>(&result).unwrap();
+    }
+
+    #[test]
+    fn extract_json_handles_prose_wrapper() {
+        let text = "Sure! Here is the PRD:\n\n{\"project\": \"x\", \"feature\": \"y\"}\n\nLet me know if you need changes.";
+        let result = extract_json(text).unwrap();
+        assert!(result.contains("\"project\""));
     }
 
     #[test]

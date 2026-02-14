@@ -1524,12 +1524,77 @@ Working directory: {}
         Ok(())
     }
 
+    /// Find the directory containing Cargo.toml by walking down from the given directory.
+    /// Returns the original directory if no Cargo.toml is found.
+    ///
+    /// This handles monorepo setups where the worktree root isn't the crate root.
+    fn find_cargo_root(dir: &PathBuf) -> PathBuf {
+        fn has_cargo_toml(path: &PathBuf) -> bool {
+            path.join("Cargo.toml").exists()
+        }
+
+        // Check current directory first
+        if has_cargo_toml(dir) {
+            return dir.clone();
+        }
+
+        // Walk down into subdirectories (limited depth)
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            let mut subdirs: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().is_dir())
+                .map(|e| e.path())
+                .collect();
+
+            // Sort for deterministic behavior
+            subdirs.sort();
+
+            for subdir in subdirs {
+                if has_cargo_toml(&subdir) {
+                    return subdir;
+                }
+
+                // Check one level deeper
+                if let Ok(sub_entries) = std::fs::read_dir(&subdir) {
+                    let mut sub_subdirs: Vec<_> = sub_entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_dir())
+                        .map(|e| e.path())
+                        .collect();
+
+                    sub_subdirs.sort();
+
+                    for sub_subdir in sub_subdirs {
+                        if has_cargo_toml(&sub_subdir) {
+                            return sub_subdir;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fall back to original directory
+        warn!(
+            dir = %dir.display(),
+            "No Cargo.toml found, using worktree root for cargo commands"
+        );
+        dir.clone()
+    }
+
     /// Run quality gates in a specific directory with event emission
     async fn run_quality_gates_in_dir_with_events(
         &self,
         dir: &PathBuf,
         story_id: &str,
     ) -> anyhow::Result<bool> {
+        // Find the Cargo root (where Cargo.toml lives)
+        let cargo_root = Self::find_cargo_root(dir);
+        debug!(
+            worktree_dir = %dir.display(),
+            cargo_root = %cargo_root.display(),
+            "Running quality gates"
+        );
+
         let checks = &self.state.prd.quality_checks;
         let mut all_passed = true;
 
@@ -1540,11 +1605,11 @@ Working directory: {}
             ("build", &checks.build),
         ] {
             if let Some(command) = cmd {
-                debug!("Running {} check in {:?}: {}", name, dir, command);
+                debug!("Running {} check in {:?}: {}", name, cargo_root, command);
                 let output = Command::new("/bin/sh")
                     .arg("-c")
                     .arg(command)
-                    .current_dir(dir)
+                    .current_dir(&cargo_root)
                     .output()
                     .map_err(|e| {
                         anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
@@ -1573,11 +1638,11 @@ Working directory: {}
                         .join("\n");
                     warn!(
                         check = %name,
-                        dir = %dir.display(),
+                        cargo_root = %cargo_root.display(),
                         error_summary = %error_summary.chars().take(300).collect::<String>(),
                         "{} check failed in {:?}",
                         name,
-                        dir
+                        cargo_root
                     );
                     all_passed = false;
                 }
@@ -1688,6 +1753,14 @@ Respond with the implementation and any shell commands needed.
 
     /// Run quality gates and emit events for each check
     async fn run_quality_gates_with_events(&self, story_id: &str) -> anyhow::Result<bool> {
+        // Find the Cargo root (where Cargo.toml lives)
+        let cargo_root = Self::find_cargo_root(&self.state.working_dir);
+        debug!(
+            working_dir = %self.state.working_dir.display(),
+            cargo_root = %cargo_root.display(),
+            "Running quality gates"
+        );
+
         let checks = &self.state.prd.quality_checks;
         let mut all_passed = true;
 
@@ -1698,11 +1771,11 @@ Respond with the implementation and any shell commands needed.
             ("build", &checks.build),
         ] {
             if let Some(command) = cmd {
-                debug!("Running {} check: {}", name, command);
+                debug!("Running {} check in {:?}: {}", name, cargo_root, command);
                 let output = Command::new("/bin/sh")
                     .arg("-c")
                     .arg(command)
-                    .current_dir(&self.state.working_dir)
+                    .current_dir(&cargo_root)
                     .output()
                     .map_err(|e| {
                         anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
@@ -1731,9 +1804,10 @@ Respond with the implementation and any shell commands needed.
                         .join("\n");
                     warn!(
                         check = %name,
+                        cargo_root = %cargo_root.display(),
                         error_summary = %error_summary.chars().take(300).collect::<String>(),
-                        "{} check failed",
-                        name
+                        "{} check failed in {:?}",
+                        name, cargo_root
                     );
                     all_passed = false;
                     // Don't return early — run all checks so we can show all results
