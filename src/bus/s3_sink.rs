@@ -22,7 +22,7 @@
 //!     "http://localhost:9000",
 //!     "access-key",
 //!     "secret-key",
-//!     "codetether-bus",
+//!     "codetether-training",
 //!     "bus/",
 //! ).await?;
 //!
@@ -74,7 +74,7 @@ pub struct BusS3SinkConfig {
 }
 
 fn default_prefix() -> String {
-    "bus/".to_string()
+    "training/".to_string()
 }
 
 fn default_batch_size() -> usize {
@@ -94,7 +94,7 @@ impl BusS3SinkConfig {
     /// - `MINIO_SECRET_KEY` or `CODETETHER_BUS_S3_SECRET_KEY`
     ///
     /// Optional:
-    /// - `CODETETHER_BUS_S3_BUCKET` (default: "codetether-bus")
+    /// - `CODETETHER_BUS_S3_BUCKET` (default: "codetether-training")
     /// - `CODETETHER_BUS_S3_PREFIX` (default: "bus/")
     pub fn from_env() -> Result<Self> {
         let endpoint = std::env::var("MINIO_ENDPOINT")
@@ -114,9 +114,9 @@ impl BusS3SinkConfig {
             access_key,
             secret_key,
             bucket: std::env::var("CODETETHER_BUS_S3_BUCKET")
-                .unwrap_or_else(|_| "codetether-bus".to_string()),
+                .unwrap_or_else(|_| "codetether-training".to_string()),
             prefix: std::env::var("CODETETHER_BUS_S3_PREFIX")
-                .unwrap_or_else(|_| "bus/".to_string()),
+                .unwrap_or_else(|_| "training/".to_string()),
             batch_size: std::env::var("CODETETHER_BUS_S3_BATCH_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -159,9 +159,9 @@ impl BusS3SinkConfig {
                 access_key: ak,
                 secret_key: sk,
                 bucket: std::env::var("CODETETHER_BUS_S3_BUCKET")
-                    .unwrap_or_else(|_| "codetether-bus".to_string()),
+                    .unwrap_or_else(|_| "codetether-training".to_string()),
                 prefix: std::env::var("CODETETHER_BUS_S3_PREFIX")
-                    .unwrap_or_else(|_| "bus/".to_string()),
+                    .unwrap_or_else(|_| "training/".to_string()),
                 batch_size: 100,
                 flush_interval_secs: 30,
                 secure: false,
@@ -187,9 +187,9 @@ impl BusS3SinkConfig {
                     access_key: ak,
                     secret_key: sk,
                     bucket: std::env::var("CODETETHER_BUS_S3_BUCKET")
-                        .unwrap_or_else(|_| "codetether-bus".to_string()),
+                        .unwrap_or_else(|_| "codetether-training".to_string()),
                     prefix: std::env::var("CODETETHER_BUS_S3_PREFIX")
-                        .unwrap_or_else(|_| "bus/".to_string()),
+                        .unwrap_or_else(|_| "training/".to_string()),
                     batch_size: 100,
                     flush_interval_secs: 30,
                     secure: false,
