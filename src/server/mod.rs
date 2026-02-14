@@ -40,6 +40,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
+use tonic_web::GrpcWebLayer;
+use http::HeaderValue;
 
 /// Task received from Knative Eventing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,6 +115,7 @@ pub struct RegisteredTool {
     pub version: String,
     pub endpoint: String,
     pub capabilities: Vec<String>,
+    pub parameters: serde_json::Value,
     pub registered_at: chrono::DateTime<chrono::Utc>,
     pub last_heartbeat: chrono::DateTime<chrono::Utc>,
     pub expires_at: chrono::DateTime<chrono::Utc>,
@@ -552,7 +555,19 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let grpc_service = grpc_store.into_service();
     tokio::spawn(async move {
         tracing::info!("gRPC A2A server listening on {}", grpc_addr);
+        
+        // Configure CORS for marketing site
+        let cors = CorsLayer::new()
+            .allow_origin(AllowOrigin::exact(
+                HeaderValue::from_static("https://codetether.com"),
+            ))
+            .allow_methods(AllowMethods::any())
+            .allow_headers(AllowHeaders::any());
+        
         if let Err(e) = tonic::transport::Server::builder()
+            .accept_http1(true)
+            .layer(cors)
+            .layer(GrpcWebLayer::new())
             .add_service(grpc_service)
             .serve(grpc_addr)
             .await
@@ -1580,6 +1595,7 @@ pub struct RegisterToolRequest {
     pub version: String,
     pub endpoint: String,
     pub capabilities: Vec<String>,
+    pub parameters: serde_json::Value,
 }
 
 /// Response from registering a tool
@@ -1607,6 +1623,7 @@ async fn register_tool(
         version: req.version,
         endpoint: req.endpoint,
         capabilities: req.capabilities,
+        parameters: req.parameters,
         registered_at: now,
         last_heartbeat: now,
         expires_at: now + Duration::from_secs(90),

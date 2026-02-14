@@ -32,6 +32,7 @@
 
 use super::{AgentBus, BusEnvelope, BusMessage};
 use crate::a2a::types::Part;
+use crate::secrets;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use minio::s3::builders::ObjectContent;
@@ -134,6 +135,93 @@ impl BusS3SinkConfig {
                 .unwrap_or(false),
         })
     }
+
+    /// Create config by trying multiple credential sources in order:
+    ///
+    /// 1. Bus-specific env vars (`MINIO_ENDPOINT`, `CODETETHER_BUS_S3_ENDPOINT`)
+    /// 2. Chat-sync env vars (`CODETETHER_CHAT_SYNC_MINIO_ENDPOINT`)
+    /// 3. Vault secrets at `secret/codetether/providers/chat-sync-minio`
+    pub async fn from_env_or_vault() -> Result<Self> {
+        // Fast path: original env-only method
+        if let Ok(cfg) = Self::from_env() {
+            return Ok(cfg);
+        }
+
+        // Try chat-sync env vars
+        let endpoint = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_ENDPOINT");
+        let access_key = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_ACCESS_KEY");
+        let secret_key = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_SECRET_KEY");
+
+        if let (Some(ep), Some(ak), Some(sk)) = (endpoint.clone(), access_key.clone(), secret_key.clone()) {
+            info!("Bus S3 sink using chat-sync env vars");
+            return Ok(Self {
+                endpoint: ep,
+                access_key: ak,
+                secret_key: sk,
+                bucket: std::env::var("CODETETHER_BUS_S3_BUCKET")
+                    .unwrap_or_else(|_| "codetether-bus".to_string()),
+                prefix: std::env::var("CODETETHER_BUS_S3_PREFIX")
+                    .unwrap_or_else(|_| "bus/".to_string()),
+                batch_size: 100,
+                flush_interval_secs: 30,
+                secure: false,
+                ignore_cert: false,
+            });
+        }
+
+        // Try Vault: chat-sync-minio provider
+        if let Some(secrets) = secrets::get_provider_secrets("chat-sync-minio").await {
+            let ep = secrets.base_url.clone()
+                .or_else(|| vault_extra_str(&secrets, &["endpoint", "minio_endpoint", "url"]))
+                .filter(|s| !s.is_empty());
+            let ak = vault_extra_str(&secrets, &["access_key", "access_key_id", "minio_access_key"])
+                .or_else(|| secrets.api_key.clone())
+                .filter(|s| !s.is_empty());
+            let sk = vault_extra_str(&secrets, &["secret_key", "secret_access_key", "minio_secret_key"])
+                .filter(|s| !s.is_empty());
+
+            if let (Some(ep), Some(ak), Some(sk)) = (ep, ak, sk) {
+                info!("Bus S3 sink using Vault chat-sync-minio credentials");
+                return Ok(Self {
+                    endpoint: ep,
+                    access_key: ak,
+                    secret_key: sk,
+                    bucket: std::env::var("CODETETHER_BUS_S3_BUCKET")
+                        .unwrap_or_else(|_| "codetether-bus".to_string()),
+                    prefix: std::env::var("CODETETHER_BUS_S3_PREFIX")
+                        .unwrap_or_else(|_| "bus/".to_string()),
+                    batch_size: 100,
+                    flush_interval_secs: 30,
+                    secure: false,
+                    ignore_cert: false,
+                });
+            }
+        }
+
+        anyhow::bail!(
+            "No MinIO credentials found. Set MINIO_ENDPOINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY, \
+             CODETETHER_CHAT_SYNC_MINIO_* env vars, or configure chat-sync-minio in Vault."
+        )
+    }
+}
+
+/// Read an env var, returning `None` if unset or empty.
+fn env_non_empty(key: &str) -> Option<String> {
+    std::env::var(key).ok().filter(|s| !s.is_empty())
+}
+
+/// Extract a string value from `ProviderSecrets.extra`, trying multiple key names.
+fn vault_extra_str(secrets: &secrets::ProviderSecrets, keys: &[&str]) -> Option<String> {
+    for key in keys {
+        if let Some(val) = secrets.extra.get(*key) {
+            if let Some(s) = val.as_str() {
+                if !s.is_empty() {
+                    return Some(s.to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 // ─── LLM Pretraining Record ─────────────────────────────────────────────
@@ -728,16 +816,23 @@ fn normalize_endpoint(endpoint: &str, secure: bool) -> String {
 /// Errors are logged but do not crash the application.
 pub fn spawn_bus_s3_sink(bus: Arc<AgentBus>) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        match BusS3Sink::from_env(bus).await {
-            Ok(sink) => {
-                if let Err(e) = sink.run().await {
-                    error!(error = %e, "Bus S3 sink failed");
+        match BusS3SinkConfig::from_env_or_vault().await {
+            Ok(config) => {
+                match BusS3Sink::from_config(bus, config).await {
+                    Ok(sink) => {
+                        if let Err(e) = sink.run().await {
+                            error!(error = %e, "Bus S3 sink failed");
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Bus S3 sink failed to initialize");
+                    }
                 }
             }
             Err(e) => {
                 warn!(
                     error = %e,
-                    "Bus S3 sink not configured - set MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY to enable"
+                    "Bus S3 sink not configured - set MINIO_*/CODETETHER_CHAT_SYNC_MINIO_* env vars or configure chat-sync-minio in Vault"
                 );
             }
         }
