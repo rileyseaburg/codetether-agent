@@ -193,6 +193,24 @@ impl BusLogEntry {
                 ),
                 Color::Yellow,
             ),
+            BusMessage::ToolOutputFull {
+                agent_id,
+                tool_name,
+                output,
+                success,
+                step,
+            } => {
+                let icon = if *success { "✓" } else { "✗" };
+                let preview = truncate(output, 120);
+                (
+                    "TOOL•FULL".to_string(),
+                    format!("{icon} {agent_id} step {step} {tool_name}: {preview}"),
+                    format!(
+                        "Agent: {agent_id}\nTool: {tool_name}\nStep: {step}\nSuccess: {success}\n\n--- Full Output ---\n{output}"
+                    ),
+                    if *success { Color::Green } else { Color::Red },
+                )
+            }
         };
 
         Self {

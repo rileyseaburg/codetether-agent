@@ -164,6 +164,7 @@ pub async fn execute_go_ralph(
     model: &str,
     max_iterations: usize,
     bus: Option<Arc<AgentBus>>,
+    max_concurrent_stories: usize,
 ) -> Result<GoRalphResult> {
     // Step 1: Generate PRD from task + KRs
     tracing::info!(task = %task, okr_id = %okr.id, "Generating PRD from task and key results");
@@ -223,7 +224,7 @@ pub async fn execute_go_ralph(
         model: Some(model.to_string()),
         use_rlm: false,
         parallel_enabled: true,
-        max_concurrent_stories: 3,
+        max_concurrent_stories,
         worktree_enabled: true,
         story_timeout_secs: 300,
         conflict_timeout_secs: 120,

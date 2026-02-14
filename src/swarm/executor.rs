@@ -1014,6 +1014,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     timeout_secs,
                     event_tx.clone(),
                     subtask_id.clone(),
+                    None,
                 )
                 .await;
 
@@ -1359,6 +1360,7 @@ pub async fn run_agent_loop(
     timeout_secs: u64,
     event_tx: Option<mpsc::Sender<SwarmEvent>>,
     subtask_id: String,
+    bus: Option<Arc<AgentBus>>,
 ) -> Result<(String, usize, usize, AgentLoopExit)> {
     // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
     let temperature = 0.7;
@@ -1621,6 +1623,22 @@ pub async fn run_agent_loop(
                 result_len = result.len(),
                 "Tool result"
             );
+
+            // Publish full, untruncated tool output to the bus so other
+            // agents and the bus log see the complete result.
+            if let Some(ref bus) = bus {
+                let handle = bus.handle(&subtask_id);
+                handle.send(
+                    format!("tools.{tool_name}"),
+                    BusMessage::ToolOutputFull {
+                        agent_id: subtask_id.clone(),
+                        tool_name: tool_name.clone(),
+                        output: result.clone(),
+                        success: tool_success,
+                        step: steps,
+                    },
+                );
+            }
 
             // Process large results with RLM or truncate smaller ones
             let result = if result.len() > RLM_THRESHOLD_CHARS {

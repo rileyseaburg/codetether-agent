@@ -541,6 +541,7 @@ impl RalphLoop {
                 let progress_path = progress_path.clone();
                 let ralph_tx = self.event_tx.clone();
                 let stage_learnings = accumulated_learnings.clone();
+                let bus = self.bus.clone();
 
                 let handle = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
@@ -617,6 +618,7 @@ impl RalphLoop {
                         &story_working_dir,
                         bridge_tx,
                         story.id.clone(),
+                        bus.clone(),
                     )
                     .await;
 
@@ -722,6 +724,7 @@ impl RalphLoop {
                                                     &story,
                                                     &merge_result.conflicts,
                                                     &merge_result.conflict_diffs,
+                                                    self.bus.clone(),
                                                 )
                                                 .await
                                                 {
@@ -969,6 +972,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         working_dir: &PathBuf,
         event_tx: Option<mpsc::Sender<SwarmEvent>>,
         story_id: String,
+        bus: Option<Arc<AgentBus>>,
     ) -> anyhow::Result<String> {
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
@@ -1002,6 +1006,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             180,           // 3 minute timeout per story
             event_tx,
             story_id,
+            bus.clone(),
         )
         .await?;
 
@@ -1021,6 +1026,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         story: &UserStory,
         conflicts: &[String],
         conflict_diffs: &[(String, String)],
+        bus: Option<Arc<AgentBus>>,
     ) -> anyhow::Result<bool> {
         info!(
             story_id = %story.id,
@@ -1115,6 +1121,7 @@ Working directory: {}
             120, // 2 min per-step timeout (resets on progress)
             None,
             String::new(),
+            bus.clone(),
         )
         .await?;
 
@@ -1321,6 +1328,7 @@ Respond with the implementation and any shell commands needed.
             180,           // 3 minute timeout per story
             bridge_tx,
             story_id.to_string(),
+            self.bus.clone(),
         )
         .await?;
 

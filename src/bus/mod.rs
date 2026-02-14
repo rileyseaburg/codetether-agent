@@ -127,6 +127,19 @@ pub enum BusMessage {
         iteration: usize,
         status: String,
     },
+
+    // ── Full tool output ─────────────────────────────────────────────
+
+    /// Full, untruncated tool output from an agent loop step.
+    /// Published *before* the result is truncated for the LLM context
+    /// window, so other agents and the bus log see the complete output.
+    ToolOutputFull {
+        agent_id: String,
+        tool_name: String,
+        output: String,
+        success: bool,
+        step: usize,
+    },
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────

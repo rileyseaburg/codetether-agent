@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use uuid::Uuid;
 
-const AUTOCHAT_MAX_AGENTS: usize = 8;
+const AUTOCHAT_MAX_AGENTS: usize = 100;
 const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
 const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
@@ -449,6 +449,13 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
         // For /go commands (not /autochat), require OKR approval then execute via Ralph
         if easy_go_requested {
+            // For /go, default to max concurrency (run all stories in parallel)
+            // unless the user explicitly specified a count like "/go 5 task"
+            let max_concurrent = if rest.trim().starts_with(|c: char| c.is_ascii_digit()) {
+                agent_count
+            } else {
+                AUTOCHAT_MAX_AGENTS
+            };
             // Create OKR draft
             let okr_id = Uuid::new_v4();
             let mut okr = Okr::new(
@@ -514,7 +521,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             let (provider, resolved_model) = resolve_provider_for_model_autochat(&registry, &model)
                 .ok_or_else(|| anyhow::anyhow!("No provider available for model '{model}'"))?;
 
-            // Execute via Ralph PRD loop
+            // Execute via Ralph PRD loop — use max_concurrent as concurrency
             let ralph_result = super::go_ralph::execute_go_ralph(
                 task,
                 &mut okr,
@@ -523,6 +530,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 &resolved_model,
                 10, // max iterations
                 None, // no bus in CLI mode
+                max_concurrent, // max concurrent stories
             )
             .await?;
 

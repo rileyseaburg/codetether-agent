@@ -340,7 +340,7 @@ fn default_parallel_enabled() -> bool {
     true
 }
 fn default_max_concurrent_stories() -> usize {
-    3
+    100
 }
 fn default_worktree_enabled() -> bool {
     true

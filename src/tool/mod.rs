@@ -18,6 +18,7 @@ pub mod lsp;
 pub mod mcp_bridge;
 pub mod memory;
 pub mod multiedit;
+pub mod okr;
 pub mod patch;
 pub mod plan;
 pub mod podcast;
@@ -232,6 +233,7 @@ impl ToolRegistry {
         registry.register(Arc::new(avatar::AvatarTool::new()));
         registry.register(Arc::new(image::ImageTool::new()));
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
+        registry.register(Arc::new(okr::OkrTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool
@@ -283,6 +285,7 @@ impl ToolRegistry {
         registry.register(Arc::new(avatar::AvatarTool::new()));
         registry.register(Arc::new(image::ImageTool::new()));
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
+        registry.register(Arc::new(okr::OkrTool::new()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool

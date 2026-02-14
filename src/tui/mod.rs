@@ -1677,6 +1677,7 @@ async fn run_go_ralph_worker(
     task: String,
     model: String,
     bus: Option<std::sync::Arc<crate::bus::AgentBus>>,
+    max_concurrent_stories: usize,
 ) {
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1726,7 +1727,7 @@ async fn run_go_ralph_worker(
     let okr_id_str = okr.id.to_string();
     let run_id_str = run.id.to_string();
 
-    match crate::cli::go_ralph::execute_go_ralph(&task, &mut okr, &mut run, provider, &resolved_model, 10, bus)
+    match crate::cli::go_ralph::execute_go_ralph(&task, &mut okr, &mut run, provider, &resolved_model, 10, bus, max_concurrent_stories)
         .await
     {
         Ok(result) => {
@@ -3354,7 +3355,13 @@ impl App {
                 }
 
                 // Create pending OKR approval gate
-                let pending = PendingOkrApproval::new(task.to_string(), count, next_model.clone());
+                // For /go, default to max concurrency unless user specified a count
+                let go_count = if rest.trim().starts_with(|c: char| c.is_ascii_digit()) {
+                    count
+                } else {
+                    AUTOCHAT_MAX_AGENTS
+                };
+                let pending = PendingOkrApproval::new(task.to_string(), go_count, next_model.clone());
 
                 self.messages
                     .push(ChatMessage::new("system", pending.approval_prompt()));
@@ -4685,7 +4692,7 @@ impl App {
             model: Some(model.clone()),
             use_rlm: false,
             parallel_enabled: true,
-            max_concurrent_stories: 3,
+            max_concurrent_stories: 100,
             worktree_enabled: true,
             story_timeout_secs: 300,
             conflict_timeout_secs: 120,
@@ -6235,6 +6242,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.scroll = SCROLL_BOTTOM;
 
                         let task = pending.task.clone();
+                        let agent_count = pending.agent_count;
                         let config = config.clone();
                         let okr = pending.okr;
                         let mut run = pending.run;
@@ -6272,7 +6280,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.autochat_status = Some("Generating PRD from task…".to_string());
 
                         tokio::spawn(async move {
-                            run_go_ralph_worker(tx, okr, run, task, model, bus).await;
+                            run_go_ralph_worker(tx, okr, run, task, model, bus, agent_count).await;
                         });
 
                         continue;
