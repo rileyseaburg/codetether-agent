@@ -1,12 +1,20 @@
-# v3.0.0
+# v3.0.1
 
 ## What's New
 
-- **Glob tool improvements**: The `glob` tool now respects `.gitignore` patterns and supports configurable depth limits using `WalkBuilder`, providing more precise and efficient file discovery
+- **S3 Bus Sink**: Export training data directly to S3 with configurable bucket paths and automatic batching
+- **OKR Tool**: Track objectives and key results with support for runs, checkpoints, and execution stats
+- **Ralph `/go` Command**: Execute PRD-driven development workflows directly from the CLI with bus-based learning
+- **Telemetry Module**: Comprehensive telemetry collection with configurable export targets
+- **Provider Metrics**: Detailed usage and cost tracking across all LLM providers
+- **Tool Registry API**: Programmatic access to discover and invoke registered tools
+- **Relay Teams**: Team-based coordination and relay messaging support
+- **TUI Bus Log**: Real-time visualization of bus messages and events in the terminal UI
 
 ## Changes
 
-- Enhanced `glob` functionality in `src/tool/file.rs` with WalkBuilder integration for better directory traversal
-- Minor TUI cleanup in `src/tui/mod.rs`
-
-**Stats**: 2 files changed, 39 insertions(+), 5 deletions(-)
+- Updated Claude Opus 4.6 Bedrock pricing to $5/$25 per million tokens
+- Increased parallelism with new `ToolOutputFull` bus message type
+- Enhanced Ralph loop with extended PRD execution capabilities
+- Improved MCP server transport handling and type definitions
+- Version bump to 3.0.1
