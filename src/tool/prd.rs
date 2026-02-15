@@ -1,7 +1,7 @@
-//! PRD Tool - Generate PRD JSON from requirements via Q&A
+//! PRD Tool - Generate and validate PRD JSON
 //!
-//! When a task is complex, this tool asks clarifying questions
-//! to generate a structured PRD that can be used by ralph.
+//! This tool helps structure complex tasks into a PRD (Product Requirements
+//! Document) that can be executed by `ralph`.
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use super::{Tool, ToolResult};
-use crate::ralph::{Prd, QualityChecks, UserStory};
+use crate::ralph::{Prd, QualityChecks, UserStory, VerificationStep};
 
 /// Tool for generating PRDs from requirements
 pub struct PrdTool;
@@ -31,18 +31,26 @@ impl PrdTool {
 #[derive(Deserialize)]
 struct Params {
     action: String,
+
     #[serde(default)]
     task_description: Option<String>,
+
     #[serde(default)]
     project: Option<String>,
+
     #[serde(default)]
     feature: Option<String>,
+
     #[serde(default)]
     stories: Option<Vec<StoryInput>>,
+
     #[serde(default)]
     quality_checks: Option<QualityChecksInput>,
+
     #[serde(default)]
     prd_path: Option<String>,
+
+    /// Raw PRD JSON string (optional alternative to `prd_path`).
     #[serde(default)]
     prd_json: Option<String>,
 }
@@ -52,12 +60,20 @@ struct StoryInput {
     id: String,
     title: String,
     description: String,
+
     #[serde(default)]
     acceptance_criteria: Vec<String>,
+
+    /// Optional explicit story verification (BDD/TDD/E2E evidence).
+    #[serde(default)]
+    verification_steps: Vec<VerificationStep>,
+
     #[serde(default)]
     priority: Option<u8>,
+
     #[serde(default)]
     depends_on: Vec<String>,
+
     #[serde(default)]
     complexity: Option<u8>,
 }
@@ -79,6 +95,7 @@ impl Tool for PrdTool {
     fn id(&self) -> &str {
         "prd"
     }
+
     fn name(&self) -> &str {
         "PRD Generator"
     }
@@ -86,24 +103,16 @@ impl Tool for PrdTool {
     fn description(&self) -> &str {
         r#"Generate and validate structured PRDs (Product Requirements Documents) for complex tasks.
 
-Use this tool when you recognize a task is complex and needs to be broken down into user stories.
-
 Actions:
 - analyze: Analyze a task description and return what questions need answering
 - generate: Generate a PRD JSON from provided answers
-- validate: Validate a PRD before ralph execution (checks schema, dependencies, etc.)
-- save: Save a PRD to a file for ralph to execute
-
-The workflow is:
-1. Call analyze with the task_description to get questions
-2. Answer the questions and call generate with your answers
-3. Call validate to ensure the PRD is valid before saving
-4. Call save to write the PRD to prd.json
-5. Invoke ralph to execute the PRD
+- validate: Validate a PRD (schema, dependencies, etc.)
+- save: Save a PRD JSON to a file for ralph to execute
 "#
     }
 
     fn parameters(&self) -> Value {
+        // Keep `verification_steps` permissive; the enum is validated by serde when PRD JSON is parsed.
         json!({
             "type": "object",
             "properties": {
@@ -118,15 +127,15 @@ The workflow is:
                 },
                 "project": {
                     "type": "string",
-                    "description": "Project name (for generate/validate)"
+                    "description": "Project name (for generate/save)"
                 },
                 "feature": {
                     "type": "string",
-                    "description": "Feature name (for generate/validate)"
+                    "description": "Feature name (for generate/save)"
                 },
                 "stories": {
                     "type": "array",
-                    "description": "User stories (for generate/validate)",
+                    "description": "User stories (for generate/validate/save)",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -134,6 +143,7 @@ The workflow is:
                             "title": {"type": "string"},
                             "description": {"type": "string"},
                             "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+                            "verification_steps": {"type": "array", "items": {"type": "object"}},
                             "priority": {"type": "integer"},
                             "depends_on": {"type": "array", "items": {"type": "string"}},
                             "complexity": {"type": "integer"}
@@ -152,7 +162,7 @@ The workflow is:
                 },
                 "prd_path": {
                     "type": "string",
-                    "description": "Path to PRD file (for validate from file, or save destination)"
+                    "description": "Path to PRD file (validate from file, or save destination)"
                 },
                 "prd_json": {
                     "type": "string",
@@ -170,78 +180,62 @@ The workflow is:
             "analyze" => {
                 let task = p.task_description.unwrap_or_default();
                 if task.is_empty() {
-                    return Ok(ToolResult::error(
+                    return Ok(ToolResult::structured_error(
+                        "missing_field",
+                        self.id(),
                         "task_description is required for analyze",
+                        Some(vec!["task_description"]),
+                        Some(json!({"action":"analyze","task_description":"..."})),
                     ));
                 }
 
-                let questions = format!(
-                    r#"# Task Analysis
+                const VERIFICATION_EXAMPLE_JSON: &str = r#"{
+  \"verification_steps\": [
+    {
+      \"type\": \"shell\",
+      \"name\": \"cypress_e2e\",
+      \"command\": \"npx cypress run\",
+      \"expect_files_glob\": [\"cypress/videos/**/*.mp4\"]
+    },
+    {
+      \"type\": \"url\",
+      \"name\": \"deployment_live\",
+      \"url\": \"https://example.com/health\",
+      \"expect_status\": 200,
+      \"expect_body_contains\": [\"version:1.2.3\"],
+      \"timeout_secs\": 30
+    }
+  ]
+}"#;
 
-## Task Description
-{task}
-
-## Questions to Answer
-
-To generate a proper PRD for this task, please provide:
-
-1. **Project Name**: What is the name of this project?
-
-2. **Feature Name**: What specific feature or capability is being implemented?
-
-3. **User Stories**: Break down the task into discrete user stories. For each:
-   - ID (e.g., US-001)
-   - Title (short description)
-   - Description (detailed requirements)
-   - Acceptance Criteria (how to verify it's done)
-   - Priority (1=highest)
-   - Dependencies (which stories must complete first)
-   - Complexity (1-5)
-
-4. **Quality Checks**: What commands verify the work?
-   - Typecheck command (e.g., `cargo check`)
-   - Test command (e.g., `cargo test`)
-   - Lint command (e.g., `cargo clippy`)
-   - Build command (e.g., `cargo build`)
-
-## Example Response Format
-
-```json
-{{
-  "project": "codetether",
-  "feature": "LSP Integration", 
-  "stories": [
-    {{
-      "id": "US-001",
-      "title": "Add lsp-types dependency",
-      "description": "Add lsp-types crate to Cargo.toml",
-      "acceptance_criteria": ["Cargo.toml has lsp-types", "cargo check passes"],
-      "priority": 1,
-      "depends_on": [],
-      "complexity": 1
-    }},
-    {{
-      "id": "US-002",
-      "title": "Implement LSP client",
-      "description": "Create LSP client that can spawn language servers",
-      "acceptance_criteria": ["Can spawn rust-analyzer", "Can send initialize request"],
-      "priority": 2,
-      "depends_on": ["US-001"],
-      "complexity": 4
-    }}
-  ],
-  "quality_checks": {{
-    "typecheck": "cargo check",
-    "test": "cargo test",
-    "lint": "cargo clippy",
-    "build": "cargo build --release"
-  }}
-}}
-```
-
-Once you have the answers, call `prd({{action: 'generate', ...}})` with the data.
-"#
+                let mut questions = String::new();
+                questions.push_str("# Task Analysis\n\n");
+                questions.push_str("## Task Description\n");
+                questions.push_str(&task);
+                questions.push_str("\n\n");
+                questions.push_str("## Questions to Answer\n\n");
+                questions.push_str("1. **Project Name**\n");
+                questions.push_str("2. **Feature Name**\n");
+                questions.push_str(
+                    "3. **User Stories**: break down the task into discrete, independently verifiable stories.\n",
                 );
+                questions.push_str("   For each story:\n");
+                questions.push_str("   - ID (e.g., US-001)\n");
+                questions.push_str("   - Title\n");
+                questions.push_str("   - Description\n");
+                questions.push_str("   - Acceptance Criteria\n");
+                questions.push_str(
+                    "   - Verification Steps (machine-verifiable evidence; BDD/TDD/E2E/artifacts/URLs)\n",
+                );
+                questions.push_str("   - Priority (1=highest)\n");
+                questions.push_str("   - Dependencies\n");
+                questions.push_str("   - Complexity (1-5)\n\n");
+                questions.push_str("4. **Quality Checks** (repo-level gates; optional)\n\n");
+
+                questions.push_str("### Example story verification steps\n\n");
+                questions.push_str("```json\n");
+                questions.push_str(VERIFICATION_EXAMPLE_JSON);
+                questions.push_str("\n```\n");
 
                 Ok(ToolResult::success(questions))
             }
@@ -259,6 +253,7 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                         title: s.title,
                         description: s.description,
                         acceptance_criteria: s.acceptance_criteria,
+                        verification_steps: s.verification_steps,
                         passes: false,
                         priority: s.priority.unwrap_or(1),
                         depends_on: s.depends_on,
@@ -267,7 +262,13 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                     .collect();
 
                 if stories.is_empty() {
-                    return Ok(ToolResult::error("At least one story is required"));
+                    return Ok(ToolResult::structured_error(
+                        "missing_field",
+                        self.id(),
+                        "At least one story is required",
+                        Some(vec!["stories"]),
+                        None,
+                    ));
                 }
 
                 let quality_checks = match p.quality_checks {
@@ -292,46 +293,45 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                     updated_at: chrono::Utc::now().to_rfc3339(),
                 };
 
-                let json = serde_json::to_string_pretty(&prd)?;
-
+                let json_str = serde_json::to_string_pretty(&prd)?;
                 Ok(ToolResult::success(format!(
-                    "# Generated PRD\n\n```json\n{}\n```\n\nCall `prd({{action: 'validate'}})` to check for errors, then `prd({{action: 'save'}})` to write to file.",
-                    json
-                )).with_metadata("prd", serde_json::to_value(&prd)?))
+                    "# Generated PRD\n\n```json\n{}\n```\n",
+                    json_str
+                ))
+                .with_metadata("prd", serde_json::to_value(&prd)?))
             }
 
             "validate" => {
-                // Get PRD from: 1) prd_json string, 2) prd_path file, or 3) inline stories
                 let prd: Prd = if let Some(json_str) = p.prd_json {
                     serde_json::from_str(&json_str)
                         .context("Failed to parse prd_json - invalid JSON")?
                 } else if let Some(path) = &p.prd_path {
                     let prd_path = PathBuf::from(path);
                     if !prd_path.exists() {
-                        return Ok(ToolResult::error(format!("PRD file not found: {}", path)));
+                        return Ok(ToolResult::error(format!("PRD file not found: {path}")));
                     }
                     let content = tokio::fs::read_to_string(&prd_path).await?;
                     serde_json::from_str(&content)
                         .context("Failed to parse PRD file - invalid JSON")?
-                } else if p.stories.is_some() {
-                    // Build from inline params
+                } else if let Some(stories) = p.stories {
                     let project = p.project.clone().unwrap_or_else(|| "Project".to_string());
                     let feature = p.feature.clone().unwrap_or_else(|| "Feature".to_string());
-                    let stories: Vec<UserStory> = p
-                        .stories
-                        .unwrap_or_default()
+
+                    let stories: Vec<UserStory> = stories
                         .into_iter()
                         .map(|s| UserStory {
                             id: s.id,
                             title: s.title,
                             description: s.description,
                             acceptance_criteria: s.acceptance_criteria,
+                            verification_steps: s.verification_steps,
                             passes: false,
                             priority: s.priority.unwrap_or(1),
                             depends_on: s.depends_on,
                             complexity: s.complexity.unwrap_or(3),
                         })
                         .collect();
+
                     Prd {
                         project,
                         feature,
@@ -344,23 +344,20 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                         updated_at: String::new(),
                     }
                 } else {
-                    return Ok(ToolResult::error(
+                    return Ok(ToolResult::structured_error(
+                        "missing_field",
+                        self.id(),
                         "validate requires one of: prd_json, prd_path, or stories",
+                        Some(vec!["prd_json|prd_path|stories"]),
+                        None,
                     ));
                 };
 
-                // Run validation
                 let validation = validate_prd(&prd);
 
                 if validation.is_valid {
                     Ok(ToolResult::success(format!(
-                        "# PRD Validation: PASSED\n\n\
-                        Project: {}\n\
-                        Feature: {}\n\
-                        Stories: {}\n\
-                        Execution stages: {}\n\n\
-                        {}\n\n\
-                        Ready for: `prd({{action: 'save'}})` then `ralph({{action: 'run'}})`",
+                        "# PRD Validation: PASSED\n\nProject: {}\nFeature: {}\nStories: {}\nExecution stages: {}\n\n{}",
                         prd.project,
                         prd.feature,
                         prd.user_stories.len(),
@@ -369,8 +366,7 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                     )))
                 } else {
                     Ok(ToolResult::error(format!(
-                        "# PRD Validation: FAILED\n\n{}\n\n\
-                        Fix these issues before saving.",
+                        "# PRD Validation: FAILED\n\n{}",
                         validation.summary()
                     )))
                 }
@@ -390,6 +386,7 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                         title: s.title,
                         description: s.description,
                         acceptance_criteria: s.acceptance_criteria,
+                        verification_steps: s.verification_steps,
                         passes: false,
                         priority: s.priority.unwrap_or(1),
                         depends_on: s.depends_on,
@@ -398,7 +395,13 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                     .collect();
 
                 if stories.is_empty() {
-                    return Ok(ToolResult::error("At least one story is required for save"));
+                    return Ok(ToolResult::structured_error(
+                        "missing_field",
+                        self.id(),
+                        "At least one story is required for save",
+                        Some(vec!["stories"]),
+                        None,
+                    ));
                 }
 
                 let quality_checks = match p.quality_checks {
@@ -408,12 +411,7 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                         lint: qc.lint,
                         build: qc.build,
                     },
-                    None => QualityChecks {
-                        typecheck: Some("cargo check".to_string()),
-                        test: Some("cargo test".to_string()),
-                        lint: Some("cargo clippy".to_string()),
-                        build: Some("cargo build".to_string()),
-                    },
+                    None => QualityChecks::default(),
                 };
 
                 let prd = Prd {
@@ -429,23 +427,20 @@ Once you have the answers, call `prd({{action: 'generate', ...}})` with the data
                 };
 
                 prd.save(&prd_path).await.context("Failed to save PRD")?;
-
                 Ok(ToolResult::success(format!(
-                    "PRD saved to: {}\n\nRun with: ralph({{action: 'run', prd_path: '{}'}})",
-                    prd_path.display(),
+                    "PRD saved to: {}",
                     prd_path.display()
                 )))
             }
 
             _ => Ok(ToolResult::error(format!(
-                "Unknown action: {}. Use 'analyze', 'generate', 'validate', or 'save'",
+                "Unknown action: {}. Use analyze/generate/validate/save",
                 p.action
             ))),
         }
     }
 }
 
-/// Validation result for a PRD
 struct ValidationResult {
     is_valid: bool,
     errors: Vec<String>,
@@ -459,7 +454,7 @@ impl ValidationResult {
         if !self.errors.is_empty() {
             lines.push("## Errors".to_string());
             for err in &self.errors {
-                lines.push(format!("- ❌ {}", err));
+                lines.push(format!("- ❌ {err}"));
             }
         }
 
@@ -469,7 +464,7 @@ impl ValidationResult {
             }
             lines.push("## Warnings".to_string());
             for warn in &self.warnings {
-                lines.push(format!("- ⚠️ {}", warn));
+                lines.push(format!("- ⚠️ {warn}"));
             }
         }
 
@@ -481,12 +476,10 @@ impl ValidationResult {
     }
 }
 
-/// Validate a PRD before ralph execution
 fn validate_prd(prd: &Prd) -> ValidationResult {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    // 1. Required fields
     if prd.project.is_empty() {
         errors.push("Missing required field: project".to_string());
     }
@@ -497,44 +490,37 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
         errors.push("PRD must have at least one user story".to_string());
     }
 
-    // Collect all story IDs for reference checks
     let story_ids: HashSet<String> = prd.user_stories.iter().map(|s| s.id.clone()).collect();
 
-    // 2. Story-level validation
     let mut seen_ids = HashSet::new();
     for story in &prd.user_stories {
-        // Unique IDs
         if seen_ids.contains(&story.id) {
             errors.push(format!("Duplicate story ID: {}", story.id));
         }
         seen_ids.insert(story.id.clone());
 
-        // ID format
         if story.id.is_empty() {
             errors.push("Story has empty ID".to_string());
         }
-
-        // Title required
         if story.title.is_empty() {
             errors.push(format!("Story {} has empty title", story.id));
         }
-
-        // Description required
         if story.description.is_empty() {
             warnings.push(format!("Story {} has empty description", story.id));
         }
-
-        // Acceptance criteria
         if story.acceptance_criteria.is_empty() {
             warnings.push(format!("Story {} has no acceptance criteria", story.id));
         }
+        if story.verification_steps.is_empty() {
+            warnings.push(format!(
+                "Story {} has no verification_steps; it may pass on quality checks alone",
+                story.id
+            ));
+        }
 
-        // Priority range
         if story.priority == 0 {
             warnings.push(format!("Story {} has priority 0 (should be 1+)", story.id));
         }
-
-        // Complexity range
         if story.complexity == 0 || story.complexity > 5 {
             warnings.push(format!(
                 "Story {} has complexity {} (should be 1-5)",
@@ -542,7 +528,6 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
             ));
         }
 
-        // Dependencies reference valid stories
         for dep in &story.depends_on {
             if !story_ids.contains(dep) {
                 errors.push(format!(
@@ -556,23 +541,13 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
         }
     }
 
-    // 3. Check for circular dependencies
     if let Some(cycle) = detect_cycle(prd) {
-        errors.push(format!(
-            "Circular dependency detected: {}",
-            cycle.join(" → ")
-        ));
+        errors.push(format!("Circular dependency detected: {}", cycle.join(" → ")));
     }
 
-    // 4. Quality checks
     let qc = &prd.quality_checks;
     if qc.typecheck.is_none() && qc.test.is_none() && qc.lint.is_none() && qc.build.is_none() {
-        warnings.push("No quality checks defined - ralph won't verify work".to_string());
-    }
-
-    // 5. Branch name
-    if prd.branch_name.is_empty() {
-        warnings.push("No branch_name specified - will auto-generate from feature".to_string());
+        warnings.push("No quality checks defined - ralph won't run repo-level gates".to_string());
     }
 
     ValidationResult {
@@ -582,7 +557,6 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
     }
 }
 
-/// Detect circular dependencies using DFS
 fn detect_cycle(prd: &Prd) -> Option<Vec<String>> {
     let story_map: std::collections::HashMap<&str, &UserStory> = prd
         .user_stories
@@ -598,7 +572,6 @@ fn detect_cycle(prd: &Prd) -> Option<Vec<String>> {
         path: &mut Vec<&'a str>,
     ) -> Option<Vec<String>> {
         if visiting.contains(id) {
-            // Found cycle - extract it from path
             let start_idx = path.iter().position(|&x| x == id).unwrap_or(0);
             let mut cycle: Vec<String> = path[start_idx..].iter().map(|s| s.to_string()).collect();
             cycle.push(id.to_string());
@@ -623,17 +596,16 @@ fn detect_cycle(prd: &Prd) -> Option<Vec<String>> {
         path.pop();
         visiting.remove(id);
         visited.insert(id);
-
         None
     }
 
     let mut visited = HashSet::new();
+    let mut visiting = HashSet::new();
+    let mut path = Vec::new();
 
     for story in &prd.user_stories {
-        let mut visiting = HashSet::new();
-        let mut path = Vec::new();
         if let Some(cycle) = dfs(
-            &story.id,
+            story.id.as_str(),
             &story_map,
             &mut visiting,
             &mut visited,

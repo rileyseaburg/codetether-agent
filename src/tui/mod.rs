@@ -1113,6 +1113,8 @@ struct PendingOkrApproval {
     okr: Okr,
     /// The OKR run being proposed
     run: OkrRun,
+    /// Optional note when we had to fall back to a template draft
+    draft_note: Option<String>,
     /// Original task that triggered the OKR
     task: String,
     /// Agent count for the relay
@@ -1126,21 +1128,7 @@ impl PendingOkrApproval {
     fn new(task: String, agent_count: usize, model: String) -> Self {
         let okr_id = Uuid::new_v4();
 
-        // Create OKR with default key results based on task
-        let mut okr = Okr::new(
-            format!("Relay: {}", truncate_with_ellipsis(&task, 60)),
-            format!("Execute relay task: {}", task),
-        );
-        okr.id = okr_id;
-
-        // Add default key results for relay execution
-        let kr1 = KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%");
-        let kr2 = KeyResult::new(okr_id, "Team produces actionable handoff", 1.0, "count");
-        let kr3 = KeyResult::new(okr_id, "No critical errors", 0.0, "count");
-
-        okr.add_key_result(kr1);
-        okr.add_key_result(kr2);
-        okr.add_key_result(kr3);
+        let okr = default_relay_okr_template(okr_id, &task);
 
         // Create the run
         let mut run = OkrRun::new(
@@ -1152,6 +1140,47 @@ impl PendingOkrApproval {
         Self {
             okr,
             run,
+            draft_note: None,
+            task,
+            agent_count,
+            model,
+        }
+    }
+
+    /// Create a new pending approval by asking the configured model to draft the OKR.
+    /// Falls back to a safe template if providers are unavailable or the response can't be parsed.
+    async fn propose(task: String, agent_count: usize, model: String) -> Self {
+        let okr_id = Uuid::new_v4();
+        let registry = crate::provider::ProviderRegistry::from_vault()
+            .await
+            .ok()
+            .map(std::sync::Arc::new);
+
+        let (okr, draft_note) = if let Some(registry) = &registry {
+            match plan_okr_draft_with_registry(&task, &model, agent_count, registry).await {
+                Some(planned) => (okr_from_planned_draft(okr_id, &task, planned), None),
+                None => (
+                    default_relay_okr_template(okr_id, &task),
+                    Some("(OKR: fallback template — model draft parse failed)".to_string()),
+                ),
+            }
+        } else {
+            (
+                default_relay_okr_template(okr_id, &task),
+                Some("(OKR: fallback template — provider unavailable)".to_string()),
+            )
+        };
+
+        let mut run = OkrRun::new(
+            okr_id,
+            format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
+        );
+        let _ = run.submit_for_approval();
+
+        Self {
+            okr,
+            run,
+            draft_note,
             task,
             agent_count,
             model,
@@ -1167,18 +1196,26 @@ impl PendingOkrApproval {
             .map(|kr| format!("  • {} (target: {} {})", kr.title, kr.target_value, kr.unit))
             .collect();
 
+        let note_line = self
+            .draft_note
+            .as_deref()
+            .map(|note| format!("{}\n", note))
+            .unwrap_or_default();
+
         format!(
             "⚠️  /go OKR Draft\n\n\
-            Task: {}\n\
-            Agents: {} | Model: {}\n\n\
-            Objective: {}\n\n\
-            Key Results:\n{}\n\n\
+            Task: {task}\n\
+            Agents: {agents} | Model: {model}\n\n\
+            {note_line}\
+            Objective: {objective}\n\n\
+            Key Results:\n{key_results}\n\n\
             Press [A] to approve or [D] to deny",
-            truncate_with_ellipsis(&self.task, 100),
-            self.agent_count,
-            self.model,
-            self.okr.title,
-            krs.join("\n")
+            task = truncate_with_ellipsis(&self.task, 100),
+            agents = self.agent_count,
+            model = self.model,
+            note_line = note_line,
+            objective = self.okr.title,
+            key_results = krs.join("\n"),
         )
     }
 }
@@ -1340,6 +1377,30 @@ struct RelaySpawnDecision {
     profile: Option<PlannedRelayProfile>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct PlannedOkrKeyResult {
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    target_value: f64,
+    #[serde(default = "default_okr_unit")]
+    unit: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct PlannedOkrDraft {
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    key_results: Vec<PlannedOkrKeyResult>,
+}
+
+fn default_okr_unit() -> String {
+    "%".to_string()
+}
+
 fn slugify_label(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     let mut last_dash = false;
@@ -1472,6 +1533,124 @@ fn extract_json_payload<T: DeserializeOwned>(text: &str) -> Option<T> {
     }
 
     None
+}
+
+fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
+    let mut okr = Okr::new(
+        format!("Relay: {}", truncate_with_ellipsis(task, 60)),
+        format!("Execute relay task: {}", task),
+    );
+    okr.id = okr_id;
+
+    okr.add_key_result(KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%"));
+    okr.add_key_result(KeyResult::new(
+        okr_id,
+        "Team produces actionable handoff",
+        1.0,
+        "count",
+    ));
+    okr.add_key_result(KeyResult::new(okr_id, "No critical errors", 0.0, "count"));
+
+    okr
+}
+
+fn okr_from_planned_draft(okr_id: Uuid, task: &str, planned: PlannedOkrDraft) -> Okr {
+    let title = if planned.title.trim().is_empty() {
+        format!("Relay: {}", truncate_with_ellipsis(task, 60))
+    } else {
+        planned.title.trim().to_string()
+    };
+
+    let description = if planned.description.trim().is_empty() {
+        format!("Execute relay task: {}", task)
+    } else {
+        planned.description.trim().to_string()
+    };
+
+    let mut okr = Okr::new(title, description);
+    okr.id = okr_id;
+
+    for kr in planned.key_results.into_iter().take(7) {
+        if kr.title.trim().is_empty() {
+            continue;
+        }
+
+        let unit = if kr.unit.trim().is_empty() {
+            default_okr_unit()
+        } else {
+            kr.unit
+        };
+
+        okr.add_key_result(KeyResult::new(
+            okr_id,
+            kr.title.trim().to_string(),
+            kr.target_value.max(0.0),
+            unit,
+        ));
+    }
+
+    if okr.key_results.is_empty() {
+        default_relay_okr_template(okr_id, task)
+    } else {
+        okr
+    }
+}
+
+async fn plan_okr_draft_with_registry(
+    task: &str,
+    model_ref: &str,
+    agent_count: usize,
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+) -> Option<PlannedOkrDraft> {
+    let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+
+    let request = crate::provider::CompletionRequest {
+        model: model_name,
+        messages: vec![
+            crate::provider::Message {
+                role: crate::provider::Role::System,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: "You write OKRs for execution governance. Return ONLY valid JSON.".to_string(),
+                }],
+            },
+            crate::provider::Message {
+                role: crate::provider::Role::User,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: format!(
+                        "Task:\n{task}\n\nTeam size: {agent_count}\n\n\
+                         Propose ONE objective and 3-7 measurable key results for executing this task via an AI relay.\n\
+                         Key results must be quantitative (numeric target_value + unit).\n\n\
+                         Return JSON ONLY (no markdown):\n\
+                         {{\n  \"title\": \"...\",\n  \"description\": \"...\",\n  \"key_results\": [\n    {{\"title\":\"...\",\"target_value\":123,\"unit\":\"%|count|tests|files|items\"}}\n  ]\n}}\n\n\
+                         Rules:\n\
+                         - Avoid vague KRs like 'do better'\n\
+                         - Prefer engineering outcomes (tests passing, endpoints implemented, docs updated, errors=0)\n\
+                         - If unsure about a unit, use 'count'"
+                    ),
+                }],
+            },
+        ],
+        tools: Vec::new(),
+        temperature: Some(0.4),
+        top_p: Some(0.9),
+        max_tokens: Some(900),
+        stop: Vec::new(),
+    };
+
+    let response = provider.complete(request).await.ok()?;
+    let text = response
+        .message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text }
+            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    extract_json_payload::<PlannedOkrDraft>(&text)
 }
 
 async fn plan_relay_profiles_with_registry(
@@ -3378,7 +3557,8 @@ impl App {
                     AUTOCHAT_MAX_AGENTS
                 };
                 let pending =
-                    PendingOkrApproval::new(task.to_string(), go_count, next_model.clone());
+                    PendingOkrApproval::propose(task.to_string(), go_count, next_model.clone())
+                        .await;
 
                 self.messages
                     .push(ChatMessage::new("system", pending.approval_prompt()));

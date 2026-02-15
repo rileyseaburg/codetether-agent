@@ -1679,6 +1679,7 @@ Working directory: {}
                         cargo_root
                     );
                     all_passed = false;
+                    break; // Short-circuit: stop at first failure to save time
                 }
             }
         }
@@ -1865,7 +1866,7 @@ Respond with the implementation and any shell commands needed.
                         name, cargo_root
                     );
                     all_passed = false;
-                    // Don't return early — run all checks so we can show all results
+                    break; // Short-circuit: stop at first failure to save time
                 }
             }
         }

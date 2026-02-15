@@ -11,12 +11,11 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
-use uuid::Uuid;
 
 use crate::bus::AgentBus;
-use crate::okr::{KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
+use crate::okr::{KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
-use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus, UserStory};
+use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus};
 
 /// Result of a `/go` execution via Ralph.
 #[derive(Debug, Clone)]
@@ -89,10 +88,10 @@ Generate a PRD JSON with this exact structure (no markdown, no commentary, ONLY 
   ],
   "technical_requirements": ["<requirement>"],
   "quality_checks": {{
-    "typecheck": "cargo check",
-    "test": "cargo test",
-    "lint": "cargo clippy --all-features",
-    "build": "cargo build"
+        "typecheck": null,
+        "test": null,
+        "lint": null,
+        "build": null
   }}
 }}
 
@@ -102,7 +101,9 @@ Rules:
 - Use priority 1 for critical stories, 2 for important, 3 for nice-to-have
 - Set depends_on when stories have real dependencies
 - Complexity: 1=trivial, 2=simple, 3=moderate, 4=complex, 5=very complex
-- quality_checks should match the project's toolchain (default to cargo for Rust)
+- quality_checks should match the project's toolchain.
+    - If you can confidently infer the toolchain, fill in commands.
+    - If unsure, set fields to null (do NOT guess) and we will auto-detect.
 - Output ONLY the JSON object, nothing else"#,
         krs = kr_descriptions.join("\n"),
     );
@@ -204,9 +205,45 @@ Rules:
                     let now = chrono::Utc::now().to_rfc3339();
                     prd.created_at = now.clone();
                     prd.updated_at = now;
+
+                    // Normalize quality checks:
+                    // - If the model left them null, detect from the current directory.
+                    // - If the model guessed a toolchain that doesn't match the repo,
+                    //   override with detected checks (prevents cargo in Node/Go/Python repos).
+                    let cwd = std::env::current_dir().unwrap_or_default();
+                    let detected = detect_quality_checks();
+                    let looks_like_cargo = prd
+                        .quality_checks
+                        .typecheck
+                        .as_deref()
+                        .map(|c| c.to_ascii_lowercase().contains("cargo"))
+                        .unwrap_or(false);
+                    let looks_like_npm = prd
+                        .quality_checks
+                        .typecheck
+                        .as_deref()
+                        .map(|c| {
+                            let c = c.to_ascii_lowercase();
+                            c.contains("npm") || c.contains("pnpm") || c.contains("yarn") || c.contains("npx")
+                        })
+                        .unwrap_or(false);
+                    let looks_like_go = prd
+                        .quality_checks
+                        .typecheck
+                        .as_deref()
+                        .map(|c| c.to_ascii_lowercase().contains("go vet"))
+                        .unwrap_or(false);
+
                     if prd.quality_checks.typecheck.is_none() {
-                        prd.quality_checks = detect_quality_checks();
+                        prd.quality_checks = detected;
+                    } else if looks_like_cargo && !cwd.join("Cargo.toml").exists() {
+                        prd.quality_checks = detected;
+                    } else if looks_like_npm && !cwd.join("package.json").exists() {
+                        prd.quality_checks = detected;
+                    } else if looks_like_go && !cwd.join("go.mod").exists() {
+                        prd.quality_checks = detected;
                     }
+
                     return Ok(prd);
                 }
                 Err(e) => {
@@ -771,6 +808,9 @@ fn detect_quality_checks() -> QualityChecks {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::okr::KeyResult;
+    use crate::ralph::UserStory;
+    use uuid::Uuid;
 
     #[test]
     fn extract_json_handles_raw_json() {
@@ -859,6 +899,7 @@ mod tests {
                     title: "Story one".to_string(),
                     description: "First story".to_string(),
                     acceptance_criteria: vec![],
+                    verification_steps: vec![],
                     passes: true,
                     priority: 1,
                     depends_on: vec![],
@@ -869,6 +910,7 @@ mod tests {
                     title: "Story two".to_string(),
                     description: "Second story".to_string(),
                     acceptance_criteria: vec![],
+                    verification_steps: vec![],
                     passes: false,
                     priority: 2,
                     depends_on: vec![],
