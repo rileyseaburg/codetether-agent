@@ -3,7 +3,6 @@
 use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
 use serde_json::{Value, json};
 use std::path::PathBuf;
 
@@ -150,13 +149,6 @@ struct PatchHunk {
     new_lines: Vec<String>,
 }
 
-#[derive(Deserialize)]
-struct Params {
-    patch: String,
-    #[serde(default)]
-    dry_run: bool,
-}
-
 #[async_trait]
 impl Tool for ApplyPatchTool {
     fn id(&self) -> &str {
@@ -180,12 +172,39 @@ impl Tool for ApplyPatchTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+        let patch = match params.get("patch").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => s.to_string(),
+            _ => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "apply_patch",
+                    "patch is required and must be a non-empty string containing a unified diff",
+                    Some(vec!["patch"]),
+                    Some(json!({
+                        "patch": "--- a/file.rs\n+++ b/file.rs\n@@ -1,3 +1,3 @@\n line1\n-old line\n+new line\n line3",
+                        "dry_run": false
+                    })),
+                ));
+            }
+        };
+        let dry_run = params
+            .get("dry_run")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
-        let hunks = self.parse_patch(&p.patch)?;
+        let hunks = self.parse_patch(&patch)?;
 
         if hunks.is_empty() {
-            return Ok(ToolResult::error("No valid hunks found in patch"));
+            return Ok(ToolResult::structured_error(
+                "PARSE_ERROR",
+                "apply_patch",
+                "No valid hunks found in patch. Make sure the patch is in unified diff format with proper --- a/, +++ b/, and @@ headers.",
+                None,
+                Some(json!({
+                    "expected_format": "--- a/path/to/file\n+++ b/path/to/file\n@@ -start,count +start,count @@\n context line\n-removed line\n+added line\n context line",
+                    "hint": "Lines starting with - are removed, + are added, space are context"
+                })),
+            ));
         }
 
         let mut results = Vec::new();
@@ -222,7 +241,7 @@ impl Tool for ApplyPatchTool {
                 }
             }
 
-            if !p.dry_run {
+            if !dry_run {
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
@@ -231,11 +250,7 @@ impl Tool for ApplyPatchTool {
             }
         }
 
-        let action = if p.dry_run {
-            "Would modify"
-        } else {
-            "Modified"
-        };
+        let action = if dry_run { "Would modify" } else { "Modified" };
         let summary = format!(
             "{} {} files:\n{}",
             action,

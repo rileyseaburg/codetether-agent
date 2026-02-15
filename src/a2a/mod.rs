@@ -13,6 +13,7 @@ pub mod grpc;
 pub mod server;
 pub mod spawn;
 pub mod types;
+pub mod voice_grpc;
 pub mod worker;
 
 /// Generated protobuf/tonic types from `proto/a2a/v1/a2a.proto`.

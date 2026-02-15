@@ -37,7 +37,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::{Mutex, broadcast};
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
@@ -565,22 +565,31 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let grpc_addr: std::net::SocketAddr = format!("{}:{}", args.hostname, grpc_port).parse()?;
     let grpc_store = crate::a2a::grpc::GrpcTaskStore::with_bus(agent_card, bus.clone());
     let grpc_service = grpc_store.into_service();
+    let voice_service = crate::a2a::voice_grpc::VoiceServiceImpl::new(bus.clone()).into_service();
     tokio::spawn(async move {
         tracing::info!("gRPC A2A server listening on {}", grpc_addr);
 
-        // Configure CORS for marketing site
+        // Configure CORS for marketing site (production + local dev)
+        let allowed_origins = [
+            HeaderValue::from_static("https://codetether.com"),
+            HeaderValue::from_static("http://localhost:3000"),
+            HeaderValue::from_static("http://localhost:3001"),
+        ];
         let cors = CorsLayer::new()
-            .allow_origin(AllowOrigin::exact(HeaderValue::from_static(
-                "https://codetether.com",
-            )))
+            .allow_origin(AllowOrigin::list(allowed_origins))
             .allow_methods(AllowMethods::any())
-            .allow_headers(AllowHeaders::any());
+            .allow_headers(AllowHeaders::any())
+            .expose_headers(tower_http::cors::ExposeHeaders::list([
+                http::header::HeaderName::from_static("grpc-status"),
+                http::header::HeaderName::from_static("grpc-message"),
+            ]));
 
         if let Err(e) = tonic::transport::Server::builder()
             .accept_http1(true)
             .layer(cors)
             .layer(GrpcWebLayer::new())
             .add_service(grpc_service)
+            .add_service(voice_service)
             .serve(grpc_addr)
             .await
         {
@@ -1106,7 +1115,7 @@ async fn stream_bus_events(
 
     // Subscribe to the bus
     let bus_handle = state.bus.handle("stream_bus_events");
-    let mut rx = bus_handle.into_receiver();
+    let rx = bus_handle.into_receiver();
 
     let event_stream = stream::unfold(rx, move |mut rx: broadcast::Receiver<BusEnvelope>| {
         let allowed_topics = allowed_topics.clone();

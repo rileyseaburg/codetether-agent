@@ -292,6 +292,7 @@ struct App {
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 struct ChatMessage {
     role: String,
     content: String,
@@ -1150,11 +1151,16 @@ impl PendingOkrApproval {
     /// Create a new pending approval by asking the configured model to draft the OKR.
     /// Falls back to a safe template if providers are unavailable or the response can't be parsed.
     async fn propose(task: String, agent_count: usize, model: String) -> Self {
-        let okr_id = Uuid::new_v4();
+        let mut pending = Self::new(task, agent_count, model);
+        let okr_id = pending.okr.id;
         let registry = crate::provider::ProviderRegistry::from_vault()
             .await
             .ok()
             .map(std::sync::Arc::new);
+
+        let task = pending.task.clone();
+        let agent_count = pending.agent_count;
+        let model = pending.model.clone();
 
         let (okr, draft_note) = if let Some(registry) = &registry {
             match plan_okr_draft_with_registry(&task, &model, agent_count, registry).await {
@@ -1171,20 +1177,9 @@ impl PendingOkrApproval {
             )
         };
 
-        let mut run = OkrRun::new(
-            okr_id,
-            format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
-        );
-        let _ = run.submit_for_approval();
-
-        Self {
-            okr,
-            run,
-            draft_note,
-            task,
-            agent_count,
-            model,
-        }
+        pending.okr = okr;
+        pending.draft_note = draft_note;
+        pending
     }
 
     /// Get the approval prompt text
@@ -1542,7 +1537,12 @@ fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
     );
     okr.id = okr_id;
 
-    okr.add_key_result(KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%"));
+    okr.add_key_result(KeyResult::new(
+        okr_id,
+        "Relay completes all rounds",
+        100.0,
+        "%",
+    ));
     okr.add_key_result(KeyResult::new(
         okr_id,
         "Team produces actionable handoff",
@@ -1610,7 +1610,8 @@ async fn plan_okr_draft_with_registry(
             crate::provider::Message {
                 role: crate::provider::Role::System,
                 content: vec![crate::provider::ContentPart::Text {
-                    text: "You write OKRs for execution governance. Return ONLY valid JSON.".to_string(),
+                    text: "You write OKRs for execution governance. Return ONLY valid JSON."
+                        .to_string(),
                 }],
             },
             crate::provider::Message {
@@ -1936,7 +1937,7 @@ async fn run_go_ralph_worker(
         }
         Err(err) => {
             // Mark run as failed
-            run.status = crate::okr::OkrRunStatus::Failed;
+            run.status = OkrRunStatus::Failed;
             if let Ok(repo) = crate::okr::OkrRepository::from_config().await {
                 let _ = repo.update_run(run).await;
             }
@@ -2175,9 +2176,10 @@ async fn run_autochat_worker(
 
             turns += 1;
             relay.send_handoff(&from, &to, &baton);
+            let handoff_line = format_relay_handoff_line(relay.relay_id(), round, &from, &to);
             let _ = tx
                 .send(AutochatUiEvent::Progress(format!(
-                    "Round {round}/{AUTOCHAT_MAX_ROUNDS} • @{from} → @{to}"
+                    "Round {round}/{AUTOCHAT_MAX_ROUNDS} • {handoff_line}"
                 )))
                 .await;
 
@@ -2291,7 +2293,7 @@ async fn run_autochat_worker(
                                     for (kr_id, value) in &kr_progress {
                                         run.update_kr_progress(kr_id, *value);
                                     }
-                                    run.status = crate::okr::OkrRunStatus::Running;
+                                    run.status = OkrRunStatus::Running;
                                     let _ = repo.update_run(run).await;
                                 }
                             }
@@ -2466,9 +2468,9 @@ async fn run_autochat_worker(
                     if status == "converged" {
                         run.complete();
                     } else if status == "agent_error" {
-                        run.status = crate::okr::OkrRunStatus::Failed;
+                        run.status = OkrRunStatus::Failed;
                     } else {
-                        run.status = crate::okr::OkrRunStatus::Completed;
+                        run.status = OkrRunStatus::Completed;
                     }
                     // Clear checkpoint ID at completion - checkpoint lifecycle complete
                     run.relay_checkpoint_id = None;
@@ -2605,7 +2607,7 @@ async fn resume_autochat_worker(
                             for (kr_id, value) in &kr_progress {
                                 run.update_kr_progress(kr_id, *value);
                             }
-                            run.status = crate::okr::OkrRunStatus::Running;
+                            run.status = OkrRunStatus::Running;
                             let _ = repo.update_run(run).await;
                         }
                     }
@@ -2688,9 +2690,10 @@ async fn resume_autochat_worker(
 
             turns += 1;
             relay.send_handoff(&from, &to, &baton);
+            let handoff_line = format_relay_handoff_line(relay.relay_id(), round, &from, &to);
             let _ = tx
                 .send(AutochatUiEvent::Progress(format!(
-                    "Round {round}/{AUTOCHAT_MAX_ROUNDS} • @{from} → @{to} (resumed)"
+                    "Round {round}/{AUTOCHAT_MAX_ROUNDS} • {handoff_line} (resumed)"
                 )))
                 .await;
 
@@ -2804,7 +2807,7 @@ async fn resume_autochat_worker(
                                     for (kr_id, value) in &kr_progress {
                                         run.update_kr_progress(kr_id, *value);
                                     }
-                                    run.status = crate::okr::OkrRunStatus::Running;
+                                    run.status = OkrRunStatus::Running;
                                     let _ = repo.update_run(run).await;
                                 }
                             }
@@ -2976,9 +2979,9 @@ async fn resume_autochat_worker(
                     if status == "converged" {
                         run.complete();
                     } else if status == "agent_error" {
-                        run.status = crate::okr::OkrRunStatus::Failed;
+                        run.status = OkrRunStatus::Failed;
                     } else {
-                        run.status = crate::okr::OkrRunStatus::Completed;
+                        run.status = OkrRunStatus::Completed;
                     }
                     // Clear checkpoint ID at completion - checkpoint lifecycle complete
                     run.relay_checkpoint_id = None;
@@ -4504,7 +4507,7 @@ impl App {
                     .rev()
                     .find(|m| m.role == "assistant")
                 {
-                    msg.usage_meta = Some(meta);
+                    *msg = msg.clone().with_usage_meta(meta);
                 }
             }
             SessionEvent::SessionSync(session) => {
@@ -4701,7 +4704,7 @@ impl App {
                         m.role == "assistant" && m.agent_name.as_deref() == Some(agent_name)
                     })
                 {
-                    msg.usage_meta = Some(meta);
+                    *msg = msg.clone().with_usage_meta(meta);
                 }
             }
             SessionEvent::SessionSync(session) => {

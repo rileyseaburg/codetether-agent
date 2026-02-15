@@ -294,11 +294,10 @@ Actions:
                 };
 
                 let json_str = serde_json::to_string_pretty(&prd)?;
-                Ok(ToolResult::success(format!(
-                    "# Generated PRD\n\n```json\n{}\n```\n",
-                    json_str
-                ))
-                .with_metadata("prd", serde_json::to_value(&prd)?))
+                Ok(
+                    ToolResult::success(format!("# Generated PRD\n\n```json\n{}\n```\n", json_str))
+                        .with_metadata("prd", serde_json::to_value(&prd)?),
+                )
             }
 
             "validate" => {
@@ -542,7 +541,10 @@ fn validate_prd(prd: &Prd) -> ValidationResult {
     }
 
     if let Some(cycle) = detect_cycle(prd) {
-        errors.push(format!("Circular dependency detected: {}", cycle.join(" → ")));
+        errors.push(format!(
+            "Circular dependency detected: {}",
+            cycle.join(" → ")
+        ));
     }
 
     let qc = &prd.quality_checks;

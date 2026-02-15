@@ -4,7 +4,6 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use similar::{ChangeTag, TextDiff};
 use std::collections::HashMap;
@@ -13,14 +12,6 @@ use tokio::fs;
 
 use super::{Tool, ToolResult};
 use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persistent};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfirmEditInput {
-    pub path: String,
-    pub old_string: String,
-    pub new_string: String,
-    pub confirm: Option<bool>,
-}
 
 pub struct ConfirmEditTool;
 
@@ -71,17 +62,55 @@ impl Tool for ConfirmEditTool {
     }
 
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let params: ConfirmEditInput = serde_json::from_value(input)?;
-
-        let path = &params.path;
-        let old_string = &params.old_string;
-        let new_string = &params.new_string;
+        let path = match input.get("path").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "confirm_edit",
+                    "path is required (path to the file to edit)",
+                    Some(vec!["path"]),
+                    Some(
+                        json!({"path": "src/main.rs", "old_string": "old text", "new_string": "new text"}),
+                    ),
+                ));
+            }
+        };
+        let old_string = match input.get("old_string").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "confirm_edit",
+                    "old_string is required (the exact string to replace)",
+                    Some(vec!["old_string"]),
+                    Some(
+                        json!({"path": path, "old_string": "text to find", "new_string": "replacement"}),
+                    ),
+                ));
+            }
+        };
+        let new_string = match input.get("new_string").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "confirm_edit",
+                    "new_string is required (the replacement text)",
+                    Some(vec!["new_string"]),
+                    Some(
+                        json!({"path": path, "old_string": old_string, "new_string": "replacement"}),
+                    ),
+                ));
+            }
+        };
+        let confirm = input.get("confirm").and_then(|v| v.as_bool());
 
         // Read the file
-        let content = fs::read_to_string(path).await?;
+        let content = fs::read_to_string(&path).await?;
 
         // Count occurrences
-        let count = content.matches(old_string).count();
+        let count = content.matches(old_string.as_str()).count();
 
         if count == 0 {
             return Ok(ToolResult::structured_error(
@@ -115,7 +144,7 @@ impl Tool for ConfirmEditTool {
         }
 
         // Generate preview diff
-        let new_content = content.replacen(old_string, new_string, 1);
+        let new_content = content.replacen(old_string.as_str(), &new_string, 1);
         let diff = TextDiff::from_lines(&content, &new_content);
 
         let mut diff_output = String::new();
@@ -147,7 +176,7 @@ impl Tool for ConfirmEditTool {
         }
 
         // If no confirmation provided, return diff for review
-        if params.confirm.is_none() {
+        if confirm.is_none() {
             let mut metadata = HashMap::new();
             metadata.insert("requires_confirmation".to_string(), json!(true));
             metadata.insert("diff".to_string(), json!(diff_output.trim()));
@@ -165,37 +194,37 @@ impl Tool for ConfirmEditTool {
         }
 
         // Handle confirmation
-        if params.confirm == Some(true) {
+        if confirm == Some(true) {
             let start = Instant::now();
 
             // Calculate line range affected
             let lines_before = old_string.lines().count() as u32;
-            let start_line = content[..content.find(old_string).unwrap_or(0)]
+            let start_line = content[..content.find(old_string.as_str()).unwrap_or(0)]
                 .lines()
                 .count() as u32
                 + 1;
             let end_line = start_line + lines_before.saturating_sub(1);
 
             // Write the file
-            fs::write(path, &new_content).await?;
+            fs::write(&path, &new_content).await?;
 
             let duration = start.elapsed();
 
             // Record telemetry
             let file_change = FileChange::modify_with_diff(
-                path,
-                old_string,
-                new_string,
-                &diff_output,
+                path.as_str(),
+                old_string.as_str(),
+                new_string.as_str(),
+                diff_output.as_str(),
                 Some((start_line, end_line)),
             );
 
             let mut exec = ToolExecution::start(
                 "confirm_edit",
                 json!({
-                    "path": path,
-                    "old_string": old_string,
-                    "new_string": new_string,
+                    "path": path.as_str(),
+                    "old_string": old_string.as_str(),
+                    "new_string": new_string.as_str(),
                 }),
             );
             exec.add_file_change(file_change);

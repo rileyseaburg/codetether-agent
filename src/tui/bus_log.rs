@@ -224,6 +224,43 @@ impl BusLogEntry {
                     Color::LightMagenta,
                 )
             }
+            BusMessage::VoiceSessionStarted {
+                room_name,
+                agent_id,
+                voice_id,
+            } => (
+                "VOICE+".to_string(),
+                format!("{room_name} agent={agent_id} voice={voice_id}"),
+                format!("Room: {room_name}\nAgent: {agent_id}\nVoice: {voice_id}"),
+                Color::LightCyan,
+            ),
+            BusMessage::VoiceTranscript {
+                room_name,
+                text,
+                role,
+                is_final,
+            } => {
+                let fin = if *is_final { " [final]" } else { "" };
+                let preview = truncate(text, 100);
+                (
+                    "VOICE•T".to_string(),
+                    format!("{room_name} [{role}]{fin}: {preview}"),
+                    format!("Room: {room_name}\nRole: {role}\nFinal: {is_final}\n\n{text}"),
+                    Color::LightCyan,
+                )
+            }
+            BusMessage::VoiceAgentStateChanged { room_name, state } => (
+                "VOICE•S".to_string(),
+                format!("{room_name} → {state}"),
+                format!("Room: {room_name}\nState: {state}"),
+                Color::LightCyan,
+            ),
+            BusMessage::VoiceSessionEnded { room_name, reason } => (
+                "VOICE-".to_string(),
+                format!("{room_name} ended: {reason}"),
+                format!("Room: {room_name}\nReason: {reason}"),
+                Color::DarkGray,
+            ),
         };
 
         Self {

@@ -3,9 +3,7 @@
 use super::types::*;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
-use crate::provider::{
-    self, CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role,
-};
+use crate::provider::{ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::{Session, SessionEvent};
 use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
 use crate::tool::ToolRegistry;
@@ -2009,6 +2007,7 @@ pub fn create_prd_template(project: &str, feature: &str) -> Prd {
             title: "First user story".to_string(),
             description: "Description of what needs to be implemented".to_string(),
             acceptance_criteria: vec!["Criterion 1".to_string(), "Criterion 2".to_string()],
+            verification_steps: Vec::new(),
             passes: false,
             priority: 1,
             depends_on: Vec::new(),

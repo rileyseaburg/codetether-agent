@@ -1,9 +1,8 @@
 //! Advanced Edit Tool with multiple replacement strategies (port of opencode edit.ts)
 
 use super::{Tool, ToolResult};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
-use serde::Deserialize;
 use serde_json::{Value, json};
 use std::path::PathBuf;
 use tokio::fs;
@@ -20,18 +19,6 @@ impl AdvancedEditTool {
     pub fn new() -> Self {
         Self
     }
-}
-
-#[derive(Deserialize)]
-struct Params {
-    #[serde(rename = "filePath")]
-    file_path: String,
-    #[serde(rename = "oldString")]
-    old_string: String,
-    #[serde(rename = "newString")]
-    new_string: String,
-    #[serde(rename = "replaceAll", default)]
-    replace_all: bool,
 }
 
 /// Levenshtein distance for fuzzy matching
@@ -303,45 +290,108 @@ impl Tool for AdvancedEditTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid parameters")?;
-        let path = PathBuf::from(&p.file_path);
+        let example = json!({
+            "filePath": "/absolute/path/to/file.rs",
+            "oldString": "text to find",
+            "newString": "replacement text"
+        });
+
+        let file_path = match params.get("filePath").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => s.to_string(),
+            _ => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "edit",
+                    "filePath is required and must be a non-empty string (absolute path to the file)",
+                    Some(vec!["filePath"]),
+                    Some(example),
+                ));
+            }
+        };
+        let old_string = match params.get("oldString").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "edit",
+                    "oldString is required (the exact text to find and replace)",
+                    Some(vec!["oldString"]),
+                    Some(json!({
+                        "filePath": file_path,
+                        "oldString": "text to find in file",
+                        "newString": "replacement text"
+                    })),
+                ));
+            }
+        };
+        let new_string = match params.get("newString").and_then(|v| v.as_str()) {
+            Some(s) => s.to_string(),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "edit",
+                    "newString is required (the text to replace oldString with)",
+                    Some(vec!["newString"]),
+                    Some(json!({
+                        "filePath": file_path,
+                        "oldString": old_string,
+                        "newString": "replacement text"
+                    })),
+                ));
+            }
+        };
+        let replace_all = params
+            .get("replaceAll")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let path = PathBuf::from(&file_path);
         if !path.exists() {
-            return Ok(ToolResult::error(format!(
-                "File not found: {}",
-                p.file_path
-            )));
+            return Ok(ToolResult::structured_error(
+                "FILE_NOT_FOUND",
+                "edit",
+                &format!("File not found: {file_path}"),
+                None,
+                Some(json!({
+                    "hint": "Use an absolute path. List directory contents first to verify the file exists.",
+                    "filePath": file_path
+                })),
+            ));
         }
-        if p.old_string == p.new_string {
+        if old_string == new_string {
             return Ok(ToolResult::error(
                 "oldString and newString must be different",
             ));
         }
         // Creating new file
-        if p.old_string.is_empty() {
-            fs::write(&path, &p.new_string)
-                .await
-                .context("Failed to write file")?;
-            return Ok(ToolResult::success(format!(
-                "Created file: {}",
-                p.file_path
-            )));
+        if old_string.is_empty() {
+            fs::write(&path, &new_string).await?;
+            return Ok(ToolResult::success(format!("Created file: {file_path}")));
         }
-        let content = fs::read_to_string(&path)
-            .await
-            .context("Failed to read file")?;
-        let new_content = match replace(&content, &p.old_string, &p.new_string, p.replace_all) {
+        let content = fs::read_to_string(&path).await?;
+        let new_content = match replace(&content, &old_string, &new_string, replace_all) {
             Ok(c) => c,
-            Err(e) => return Ok(ToolResult::error(e.to_string())),
+            Err(_) => {
+                return Ok(ToolResult::structured_error(
+                    "NOT_FOUND",
+                    "edit",
+                    "oldString not found in file content. Provide more surrounding context or check for typos, whitespace, and indentation.",
+                    None,
+                    Some(json!({
+                        "hint": "Read the file first to see its exact content, then copy the text you want to replace verbatim including whitespace.",
+                        "filePath": file_path,
+                        "oldString": "<copy exact text from file including whitespace and indentation>",
+                        "newString": "replacement text"
+                    })),
+                ));
+            }
         };
-        fs::write(&path, &new_content)
-            .await
-            .context("Failed to write file")?;
-        let old_lines = p.old_string.lines().count();
-        let new_lines = p.new_string.lines().count();
+        fs::write(&path, &new_content).await?;
+        let old_lines = old_string.lines().count();
+        let new_lines = new_string.lines().count();
         Ok(ToolResult::success(format!(
-            "Edit applied: {} line(s) replaced with {} line(s) in {}",
-            old_lines, new_lines, p.file_path
+            "Edit applied: {old_lines} line(s) replaced with {new_lines} line(s) in {file_path}"
         ))
-        .with_metadata("file", json!(p.file_path)))
+        .with_metadata("file", json!(file_path)))
     }
 }

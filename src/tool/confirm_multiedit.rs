@@ -14,12 +14,6 @@ use tokio::fs;
 use super::{Tool, ToolResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfirmMultiEditInput {
-    pub edits: Vec<EditOperation>,
-    pub confirm: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditOperation {
     pub file: String,
     pub old_string: String,
@@ -93,9 +87,86 @@ impl Tool for ConfirmMultiEditTool {
     }
 
     async fn execute(&self, input: Value) -> Result<ToolResult> {
-        let params: ConfirmMultiEditInput = serde_json::from_value(input)?;
+        let edits_val = match input.get("edits").and_then(|v| v.as_array()) {
+            Some(arr) if !arr.is_empty() => arr,
+            Some(_) => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_FIELD",
+                    "confirm_multiedit",
+                    "edits array must contain at least one edit operation",
+                    Some(vec!["edits"]),
+                    Some(
+                        json!({"edits": [{"file": "path/to/file", "old_string": "old", "new_string": "new"}]}),
+                    ),
+                ));
+            }
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "confirm_multiedit",
+                    "edits is required and must be an array of edit objects with 'file', 'old_string', 'new_string' fields",
+                    Some(vec!["edits"]),
+                    Some(
+                        json!({"edits": [{"file": "path/to/file", "old_string": "old", "new_string": "new"}]}),
+                    ),
+                ));
+            }
+        };
 
-        if params.edits.is_empty() {
+        let mut edits = Vec::new();
+        for (i, edit_val) in edits_val.iter().enumerate() {
+            let file = match edit_val.get("file").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    return Ok(ToolResult::structured_error(
+                        "INVALID_FIELD",
+                        "confirm_multiedit",
+                        &format!("edits[{i}].file is required"),
+                        Some(vec!["file"]),
+                        Some(
+                            json!({"file": "path/to/file", "old_string": "old", "new_string": "new"}),
+                        ),
+                    ));
+                }
+            };
+            let old_string = match edit_val.get("old_string").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    return Ok(ToolResult::structured_error(
+                        "INVALID_FIELD",
+                        "confirm_multiedit",
+                        &format!("edits[{i}].old_string is required"),
+                        Some(vec!["old_string"]),
+                        Some(
+                            json!({"file": file, "old_string": "text to find", "new_string": "replacement"}),
+                        ),
+                    ));
+                }
+            };
+            let new_string = match edit_val.get("new_string").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    return Ok(ToolResult::structured_error(
+                        "INVALID_FIELD",
+                        "confirm_multiedit",
+                        &format!("edits[{i}].new_string is required"),
+                        Some(vec!["new_string"]),
+                        Some(
+                            json!({"file": file, "old_string": old_string, "new_string": "replacement"}),
+                        ),
+                    ));
+                }
+            };
+            edits.push(EditOperation {
+                file,
+                old_string,
+                new_string,
+            });
+        }
+
+        let confirm = input.get("confirm").and_then(|v| v.as_bool());
+
+        if edits.is_empty() {
             return Ok(ToolResult::error("No edits provided"));
         }
 
@@ -103,7 +174,7 @@ impl Tool for ConfirmMultiEditTool {
         let mut file_contents: Vec<(PathBuf, String, String, String)> = Vec::new();
         let mut previews: Vec<EditPreview> = Vec::new();
 
-        for edit in &params.edits {
+        for edit in &edits {
             let path = PathBuf::from(&edit.file);
 
             if !path.exists() {
@@ -192,7 +263,7 @@ impl Tool for ConfirmMultiEditTool {
         }
 
         // If no confirmation provided, return diffs for review
-        if params.confirm.is_none() {
+        if confirm.is_none() {
             let mut all_diffs = String::new();
             for preview in &previews {
                 all_diffs.push_str(&format!("\n=== {} ===\n{}", preview.file, preview.diff));
@@ -219,7 +290,7 @@ impl Tool for ConfirmMultiEditTool {
         }
 
         // Handle confirmation
-        if params.confirm == Some(true) {
+        if confirm == Some(true) {
             // Apply all changes
             for (path, content, old_string, new_string) in file_contents {
                 let new_content = content.replacen(&old_string, &new_string, 1);

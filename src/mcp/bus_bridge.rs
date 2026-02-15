@@ -11,8 +11,8 @@
 use crate::bus::BusEnvelope;
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -181,12 +181,7 @@ impl BusBridge {
     }
 
     /// Process a single SSE text line.
-    async fn process_sse_line(
-        &self,
-        line: &str,
-        event_type: &mut String,
-        data_buf: &mut String,
-    ) {
+    async fn process_sse_line(&self, line: &str, event_type: &mut String, data_buf: &mut String) {
         if line.is_empty() {
             // Empty line = end of event
             if event_type == "bus" && !data_buf.is_empty() {

@@ -290,7 +290,12 @@ fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
     okr.id = okr_id;
 
     // Default key results (fallback only)
-    okr.add_key_result(KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%"));
+    okr.add_key_result(KeyResult::new(
+        okr_id,
+        "Relay completes all rounds",
+        100.0,
+        "%",
+    ));
     okr.add_key_result(KeyResult::new(
         okr_id,
         "Team produces actionable handoff",
@@ -357,7 +362,8 @@ async fn plan_okr_draft_with_registry(
             crate::provider::Message {
                 role: crate::provider::Role::System,
                 content: vec![crate::provider::ContentPart::Text {
-                    text: "You write OKRs for execution governance. Return ONLY valid JSON.".to_string(),
+                    text: "You write OKRs for execution governance. Return ONLY valid JSON."
+                        .to_string(),
                 }],
             },
             crate::provider::Message {

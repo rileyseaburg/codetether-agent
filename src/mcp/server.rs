@@ -13,9 +13,10 @@
 //! - rlm: Analyze large content
 //! - ralph: Autonomous PRD-driven execution
 
+use super::bus_bridge::BusBridge;
 use super::transport::{McpMessage, StdioTransport, Transport};
 use super::types::*;
-use super::bus_bridge::BusBridge;
+use crate::tool::ToolRegistry;
 use anyhow::Result;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -39,6 +40,8 @@ pub struct McpServer {
     resource_metadata: RwLock<HashMap<String, ResourceMetadata>>,
     /// Optional bus bridge for live event monitoring
     bus: Option<Arc<BusBridge>>,
+    /// Optional tool registry bridging all CodeTether tools to MCP
+    tool_registry: Option<Arc<ToolRegistry>>,
 }
 
 type McpToolHandler = Arc<dyn Fn(Value) -> Result<CallToolResult> + Send + Sync>;
@@ -78,12 +81,22 @@ impl McpServer {
             metadata: RwLock::new(HashMap::new()),
             resource_metadata: RwLock::new(HashMap::new()),
             bus: None,
+            tool_registry: None,
         };
 
         // Register default tools
         server.register_default_tools();
 
         server
+    }
+
+    /// Attach the full CodeTether tool registry to the MCP server.
+    ///
+    /// All tools from the registry will be exposed as MCP tools, replacing
+    /// the hardcoded basic tool set. Call before [`Self::run`].
+    pub fn with_tool_registry(mut self, registry: Arc<ToolRegistry>) -> Self {
+        self.tool_registry = Some(registry);
+        self
     }
 
     /// Attach a bus bridge and register bus-aware tools + resources.
@@ -207,7 +220,9 @@ impl McpServer {
                         let passed = stories
                             .map(|arr| {
                                 arr.iter()
-                                    .filter(|s| s.get("passes").and_then(|v| v.as_bool()).unwrap_or(false))
+                                    .filter(|s| {
+                                        s.get("passes").and_then(|v| v.as_bool()).unwrap_or(false)
+                                    })
                                     .count()
                             })
                             .unwrap_or(0);
@@ -257,12 +272,11 @@ impl McpServer {
             Some("application/json"),
             Arc::new(move |_uri| {
                 let events = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        b.recent_events(None, 100, None).await
-                    })
+                    tokio::runtime::Handle::current()
+                        .block_on(async { b.recent_events(None, 100, None).await })
                 });
-                let text = serde_json::to_string_pretty(&events)
-                    .unwrap_or_else(|_| "[]".to_string());
+                let text =
+                    serde_json::to_string_pretty(&events).unwrap_or_else(|_| "[]".to_string());
                 Ok(ReadResourceResult {
                     contents: vec![ResourceContents {
                         uri: "codetether://bus/events/recent".to_string(),
@@ -466,6 +480,90 @@ impl McpServer {
 
     /// Setup default tools
     async fn setup_tools(&self) {
+        // If a ToolRegistry was provided, bridge ALL its tools into MCP
+        if let Some(registry) = &self.tool_registry {
+            self.register_registry_tools(registry).await;
+            info!("Registered {} MCP tools from ToolRegistry", self.tools.read().await.len());
+            return;
+        }
+
+        // Fallback: register basic hardcoded tools when no registry is available
+        self.register_fallback_tools().await;
+        info!("Registered {} MCP tools (fallback)", self.tools.read().await.len());
+    }
+
+    /// Bridge all tools from a ToolRegistry into MCP tool handlers.
+    async fn register_registry_tools(&self, registry: &Arc<ToolRegistry>) {
+        // Skip tools that don't make sense over MCP:
+        // - question: interactive TUI-only prompt
+        // - invalid: internal error handler
+        // - batch: needs weak registry reference, internal orchestration
+        // - confirm_edit / confirm_multiedit: dead TUI confirmation tools
+        // - plan_enter / plan_exit: session-state dependent TUI tools
+        // - voice / podcast / youtube / avatar / image: media generation tools
+        // - undo: git undo, dangerous without TUI context
+        let skip_tools = [
+            "question",
+            "invalid",
+            "batch",
+            "confirm_edit",
+            "confirm_multiedit",
+            "plan_enter",
+            "plan_exit",
+            "voice",
+            "podcast",
+            "youtube",
+            "avatar",
+            "image",
+            "undo",
+        ];
+
+        for tool_id in registry.list() {
+            if skip_tools.contains(&tool_id) {
+                continue;
+            }
+
+            let tool = match registry.get(tool_id) {
+                Some(t) => t,
+                None => continue,
+            };
+
+            let tool_clone = Arc::clone(&tool);
+
+            self.register_tool(
+                tool.id(),
+                tool.description(),
+                tool.parameters(),
+                Arc::new(move |args: Value| {
+                    let tool = Arc::clone(&tool_clone);
+                    let result = tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(async {
+                            tool.execute(args).await
+                        })
+                    });
+
+                    match result {
+                        Ok(tool_result) => Ok(CallToolResult {
+                            content: vec![ToolContent::Text {
+                                text: tool_result.output,
+                            }],
+                            is_error: !tool_result.success,
+                        }),
+                        Err(e) => Ok(CallToolResult {
+                            content: vec![ToolContent::Text {
+                                text: e.to_string(),
+                            }],
+                            is_error: true,
+                        }),
+                    }
+                }),
+            )
+            .await;
+        }
+    }
+
+    /// Fallback hardcoded tools for when no ToolRegistry is provided.
+    async fn register_fallback_tools(&self) {
         // run_command tool
         self.register_tool(
             "run_command",

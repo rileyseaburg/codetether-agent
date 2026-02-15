@@ -12,6 +12,7 @@ pub mod confirm_edit;
 pub mod confirm_multiedit;
 pub mod edit;
 pub mod file;
+pub mod go;
 pub mod image;
 pub mod invalid;
 pub mod lsp;
@@ -49,8 +50,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::provider::Provider;
-pub use sandbox::{PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file};
 pub use mcp_tools::{McpToolManager, McpToolWrapper};
+pub use sandbox::{PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file};
 
 /// A tool that can be executed by an agent
 #[async_trait]
@@ -159,6 +160,8 @@ impl std::fmt::Debug for ToolRegistry {
 
 impl ToolRegistry {
     pub fn new() -> Self {
+        let _ = std::any::TypeId::of::<McpToolManager>();
+        let _ = std::any::TypeId::of::<McpToolWrapper>();
         Self {
             tools: HashMap::new(),
             plugin_registry: PluginRegistry::from_env(),
@@ -255,8 +258,6 @@ impl ToolRegistry {
         registry.register(Arc::new(memory::MemoryTool::new()));
         registry.register(Arc::new(ralph::RalphTool::new()));
         registry.register(Arc::new(prd::PrdTool::new()));
-        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
         registry.register(Arc::new(undo::UndoTool));
         registry.register(Arc::new(voice::VoiceTool::new()));
         registry.register(Arc::new(podcast::PodcastTool::new()));
@@ -273,6 +274,8 @@ impl ToolRegistry {
         registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
         // Relay autochat tool for autonomous agent communication
         registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
+        // Go tool for autonomous OKR→PRD→Ralph pipeline
+        registry.register(Arc::new(go::GoTool::new()));
 
         registry
     }
@@ -329,6 +332,8 @@ impl ToolRegistry {
         registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
         // Relay autochat tool for autonomous agent communication
         registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
+        // Go tool for autonomous OKR→PRD→Ralph pipeline
+        registry.register(Arc::new(go::GoTool::new()));
 
         registry
     }

@@ -5,13 +5,11 @@
 //! agent handoffs and coordinate multi-agent workflows.
 
 use super::{Tool, ToolResult};
-use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
-use crate::bus::{AgentBus, BusMessage};
-use crate::a2a::types::Part;
-use anyhow::{Context, Result};
+use crate::bus::AgentBus;
+use crate::bus::relay::ProtocolRelayRuntime;
+use anyhow::Result;
 use async_trait::async_trait;
 use parking_lot::RwLock;
-use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -31,31 +29,6 @@ async fn get_agent_bus() -> Result<Arc<AgentBus>> {
         })
         .await?;
     Ok(bus.clone())
-}
-
-/// Input parameters for relay_autochat tool
-#[derive(Debug, Deserialize)]
-struct Params {
-    /// Action to perform: delegate, handoff, status, list_agents
-    action: String,
-    /// Target agent name for delegation/handoff
-    #[serde(default)]
-    target_agent: Option<String>,
-    /// Message to send to the target agent
-    #[serde(default)]
-    message: Option<String>,
-    /// Additional context to pass along
-    #[serde(default)]
-    context: Option<Value>,
-    /// Relay ID to use (auto-generated if not provided)
-    #[serde(default)]
-    relay_id: Option<String>,
-    /// Optional OKR ID to associate with this relay
-    #[serde(default)]
-    okr_id: Option<String>,
-    /// Task description for initializing a new relay
-    #[serde(default)]
-    task: Option<String>,
 }
 
 pub struct RelayAutoChatTool;
@@ -122,28 +95,85 @@ impl Tool for RelayAutoChatTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let p: Params = serde_json::from_value(params).context("Invalid params")?;
+        let action = match params.get("action").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => s.to_string(),
+            _ => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "action is required. Valid actions: init, delegate, handoff, status, list_agents, complete",
+                    Some(vec!["action"]),
+                    Some(json!({
+                        "action": "init",
+                        "task": "description of the relay task"
+                    })),
+                ));
+            }
+        };
 
-        match p.action.as_str() {
-            "init" => self.init_relay(p).await,
-            "delegate" => self.delegate_task(p).await,
-            "handoff" => self.handoff_context(p).await,
-            "status" => self.get_status(p).await,
-            "list_agents" => self.list_agents(p).await,
-            "complete" => self.complete_relay(p).await,
-            _ => Ok(ToolResult::error(format!(
-                "Unknown action: {}. Valid actions: init, delegate, handoff, status, list_agents, complete",
-                p.action
-            ))),
+        let relay_id = params
+            .get("relay_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let target_agent = params
+            .get("target_agent")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let message = params
+            .get("message")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let context = params.get("context").cloned();
+        let okr_id = params
+            .get("okr_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let task = params
+            .get("task")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        match action.as_str() {
+            "init" => self.init_relay(relay_id, task, context, okr_id).await,
+            "delegate" => {
+                self.delegate_task(relay_id, target_agent, message, context, okr_id)
+                    .await
+            }
+            "handoff" => {
+                self.handoff_context(relay_id, target_agent, message, context)
+                    .await
+            }
+            "status" => self.get_status(relay_id).await,
+            "list_agents" => self.list_agents(relay_id).await,
+            "complete" => self.complete_relay(relay_id).await,
+            _ => Ok(ToolResult::structured_error(
+                "INVALID_ACTION",
+                "relay_autochat",
+                &format!(
+                    "Unknown action: '{action}'. Valid actions: init, delegate, handoff, status, list_agents, complete"
+                ),
+                None,
+                Some(json!({
+                    "action": "init",
+                    "task": "description of the relay task"
+                })),
+            )),
         }
     }
 }
 
 impl RelayAutoChatTool {
     /// Initialize a new relay with a task
-    async fn init_relay(&self, params: Params) -> Result<ToolResult> {
-        let task = params.task.unwrap_or_else(|| "Unspecified task".to_string());
-        let relay_id = params.relay_id.unwrap_or_else(|| format!("relay-{}", &Uuid::new_v4().to_string()[..8]));
+    async fn init_relay(
+        &self,
+        relay_id: Option<String>,
+        task: Option<String>,
+        _context: Option<Value>,
+        okr_id: Option<String>,
+    ) -> Result<ToolResult> {
+        let task = task.unwrap_or_else(|| "Unspecified task".to_string());
+        let relay_id =
+            relay_id.unwrap_or_else(|| format!("relay-{}", &Uuid::new_v4().to_string()[..8]));
 
         let bus = get_agent_bus().await?;
         let runtime = ProtocolRelayRuntime::with_relay_id(bus, relay_id.clone());
@@ -158,20 +188,59 @@ impl RelayAutoChatTool {
             "status": "initialized",
             "relay_id": relay_id,
             "task": task,
+            "okr_id": okr_id,
             "message": "Relay initialized. Use 'delegate' to assign tasks to agents, or 'list_agents' to see available agents."
         });
 
-        Ok(ToolResult::success(
+        let mut result = ToolResult::success(
             serde_json::to_string_pretty(&response).unwrap_or_else(|_| format!("{:?}", response)),
-        ))
-        .with_metadata("relay_id", json!(relay_id))
+        )
+        .with_metadata("relay_id", json!(relay_id));
+        if let Some(okr_id) = response.get("okr_id").and_then(|v| v.as_str()) {
+            result = result.with_metadata("okr_id", json!(okr_id));
+        }
+
+        Ok(result)
     }
 
     /// Delegate a task to a target agent
-    async fn delegate_task(&self, params: Params) -> Result<ToolResult> {
-        let relay_id = params.relay_id.ok_or_else(|| anyhow::anyhow!("relay_id required for delegate"))?;
-        let target_agent = params.target_agent.ok_or_else(|| anyhow::anyhow!("target_agent required for delegate"))?;
-        let message = params.message.unwrap_or_else(|| "New task assigned".to_string());
+    async fn delegate_task(
+        &self,
+        relay_id: Option<String>,
+        target_agent: Option<String>,
+        message: Option<String>,
+        context: Option<Value>,
+        okr_id: Option<String>,
+    ) -> Result<ToolResult> {
+        let relay_id = match relay_id {
+            Some(id) => id,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "relay_id is required for delegate action",
+                    Some(vec!["relay_id"]),
+                    Some(
+                        json!({"action": "delegate", "relay_id": "relay-xxx", "target_agent": "agent-name", "message": "task description"}),
+                    ),
+                ));
+            }
+        };
+        let target_agent = match target_agent {
+            Some(a) => a,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "target_agent is required for delegate action",
+                    Some(vec!["target_agent"]),
+                    Some(
+                        json!({"action": "delegate", "relay_id": relay_id, "target_agent": "agent-name", "message": "task description"}),
+                    ),
+                ));
+            }
+        };
+        let message = message.unwrap_or_else(|| "New task assigned".to_string());
 
         // Get or create the runtime
         let runtime = {
@@ -195,8 +264,12 @@ impl RelayAutoChatTool {
         };
 
         // Build context payload if provided
-        let context_msg = if let Some(ref ctx) = params.context {
-            format!("{}\n\nContext: {}", message, serde_json::to_string_pretty(ctx).unwrap_or_default())
+        let context_msg = if let Some(ref ctx) = context {
+            format!(
+                "{}\n\nContext: {}",
+                message,
+                serde_json::to_string_pretty(ctx).unwrap_or_default()
+            )
         } else {
             message.clone()
         };
@@ -208,6 +281,7 @@ impl RelayAutoChatTool {
             "status": "delegated",
             "relay_id": relay_id,
             "target_agent": target_agent,
+            "okr_id": okr_id,
             "message": message,
             "initial_results": {
                 "task_assigned": true,
@@ -215,25 +289,81 @@ impl RelayAutoChatTool {
             }
         });
 
-        Ok(ToolResult::success(
+        let mut result = ToolResult::success(
             serde_json::to_string_pretty(&response).unwrap_or_else(|_| format!("{:?}", response)),
-        ))
+        )
         .with_metadata("relay_id", json!(relay_id))
-        .with_metadata("target_agent", json!(target_agent))
+        .with_metadata("target_agent", json!(target_agent));
+        if let Some(okr_id) = response.get("okr_id").and_then(|v| v.as_str()) {
+            result = result.with_metadata("okr_id", json!(okr_id));
+        }
+
+        Ok(result)
     }
 
     /// Hand off context between agents
-    async fn handoff_context(&self, params: Params) -> Result<ToolResult> {
-        let relay_id = params.relay_id.ok_or_else(|| anyhow::anyhow!("relay_id required for handoff"))?;
-        let target_agent = params.target_agent.ok_or_else(|| anyhow::anyhow!("target_agent required for handoff"))?;
-        let message = params.message.unwrap_or_else(|| "Context handoff".to_string());
+    async fn handoff_context(
+        &self,
+        relay_id: Option<String>,
+        target_agent: Option<String>,
+        message: Option<String>,
+        context: Option<Value>,
+    ) -> Result<ToolResult> {
+        let relay_id = match relay_id {
+            Some(id) => id,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "relay_id is required for handoff action",
+                    Some(vec!["relay_id"]),
+                    Some(
+                        json!({"action": "handoff", "relay_id": "relay-xxx", "target_agent": "agent-name"}),
+                    ),
+                ));
+            }
+        };
+        let target_agent = match target_agent {
+            Some(a) => a,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "target_agent is required for handoff action",
+                    Some(vec!["target_agent"]),
+                    Some(
+                        json!({"action": "handoff", "relay_id": relay_id, "target_agent": "agent-name"}),
+                    ),
+                ));
+            }
+        };
+        let message = message.unwrap_or_else(|| "Context handoff".to_string());
 
         let store = RELAY_STORE.read();
-        let runtime = store.get(&relay_id).context("Relay not found")?;
+        let runtime = match store.get(&relay_id) {
+            Some(r) => r.clone(),
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "NOT_FOUND",
+                    "relay_autochat",
+                    &format!(
+                        "Relay not found: {relay_id}. Use 'init' action to create a relay first."
+                    ),
+                    None,
+                    Some(json!({"action": "init", "task": "description of the relay task"})),
+                ));
+            }
+        };
+        // need to drop the lock before await
+        drop(store);
 
         // Build context payload
-        let context_msg = if let Some(ref ctx) = params.context {
-            format!("{}\n\nContext: {}", message, serde_json::to_string_pretty(ctx).unwrap_or_default())
+        let context_msg = if let Some(ref ctx) = context {
+            format!(
+                "{}\n\nContext: {}",
+                message,
+                serde_json::to_string_pretty(ctx).unwrap_or_default()
+            )
         } else {
             message
         };
@@ -254,20 +384,32 @@ impl RelayAutoChatTool {
     }
 
     /// Get status of a relay
-    async fn get_status(&self, params: Params) -> Result<ToolResult> {
-        let relay_id = params.relay_id.ok_or_else(|| anyhow::anyhow!("relay_id required for status"))?;
+    async fn get_status(&self, relay_id: Option<String>) -> Result<ToolResult> {
+        let relay_id = match relay_id {
+            Some(id) => id,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "relay_id is required for status action",
+                    Some(vec!["relay_id"]),
+                    Some(json!({"action": "status", "relay_id": "relay-xxx"})),
+                ));
+            }
+        };
 
         let store = RELAY_STORE.read();
-        
+
         if store.contains_key(&relay_id) {
             let response = json!({
                 "status": "active",
                 "relay_id": relay_id,
                 "message": "Relay is active"
             });
-            
+
             Ok(ToolResult::success(
-                serde_json::to_string_pretty(&response).unwrap_or_else(|_| format!("{:?}", response)),
+                serde_json::to_string_pretty(&response)
+                    .unwrap_or_else(|_| format!("{:?}", response)),
             ))
         } else {
             Ok(ToolResult::error(format!("Relay not found: {}", relay_id)))
@@ -275,16 +417,30 @@ impl RelayAutoChatTool {
     }
 
     /// List agents in a relay
-    async fn list_agents(&self, params: Params) -> Result<ToolResult> {
-        let relay_id = params.relay_id.ok_or_else(|| anyhow::anyhow!("relay_id required for list_agents"))?;
+    async fn list_agents(&self, relay_id: Option<String>) -> Result<ToolResult> {
+        let relay_id = match relay_id {
+            Some(id) => id,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "relay_id is required for list_agents action",
+                    Some(vec!["relay_id"]),
+                    Some(json!({"action": "list_agents", "relay_id": "relay-xxx"})),
+                ));
+            }
+        };
 
-        let store = RELAY_STORE.read();
-        
-        if store.contains_key(&relay_id) {
+        let relay_exists = {
+            let store = RELAY_STORE.read();
+            store.contains_key(&relay_id)
+        };
+
+        if relay_exists {
             let bus = get_agent_bus().await?;
             let agents: Vec<Value> = bus
                 .registry
-                .list()
+                .agent_ids()
                 .iter()
                 .map(|name| json!({ "name": name }))
                 .collect();
@@ -296,7 +452,8 @@ impl RelayAutoChatTool {
             });
 
             Ok(ToolResult::success(
-                serde_json::to_string_pretty(&response).unwrap_or_else(|_| format!("{:?}", response)),
+                serde_json::to_string_pretty(&response)
+                    .unwrap_or_else(|_| format!("{:?}", response)),
             ))
         } else {
             Ok(ToolResult::error(format!("Relay not found: {}", relay_id)))
@@ -304,8 +461,19 @@ impl RelayAutoChatTool {
     }
 
     /// Complete a relay and aggregate results
-    async fn complete_relay(&self, params: Params) -> Result<ToolResult> {
-        let relay_id = params.relay_id.ok_or_else(|| anyhow::anyhow!("relay_id required for complete"))?;
+    async fn complete_relay(&self, relay_id: Option<String>) -> Result<ToolResult> {
+        let relay_id = match relay_id {
+            Some(id) => id,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "MISSING_FIELD",
+                    "relay_autochat",
+                    "relay_id is required for complete action",
+                    Some(vec!["relay_id"]),
+                    Some(json!({"action": "complete", "relay_id": "relay-xxx"})),
+                ));
+            }
+        };
 
         // Get the runtime and shutdown agents
         let runtime = {

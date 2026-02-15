@@ -44,14 +44,11 @@ impl GrpcTaskStore {
 
     /// Create with an agent bus attached.
     pub fn with_bus(card: local::AgentCard, bus: Arc<AgentBus>) -> Arc<Self> {
-        let (update_tx, _) = broadcast::channel(256);
-        Arc::new(Self {
-            tasks: DashMap::new(),
-            push_configs: DashMap::new(),
-            card,
-            bus: Some(bus),
-            update_tx,
-        })
+        let mut store = Self::new(card);
+        Arc::get_mut(&mut store)
+            .expect("fresh Arc must be uniquely owned")
+            .bus = Some(bus);
+        store
     }
 
     /// Insert or update a task.

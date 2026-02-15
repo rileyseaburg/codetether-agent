@@ -195,38 +195,32 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            // Create shared state for worker and HTTP server communication
-            let worker_state = worker_server::WorkerServerState::new();
-
-            // Start the worker HTTP server in the background if not disabled
-            let http_server_handle = if args.no_http_server {
-                None
+            if args.no_http_server {
+                a2a::worker::run(args).await
             } else {
+                // Create shared state for worker and HTTP server communication
+                let worker_state = worker_server::WorkerServerState::new();
+
                 let http_args = cli::WorkerServerArgs {
                     hostname: args.hostname.clone(),
                     port: args.port,
                 };
                 // Clone the state so both worker and HTTP server share the same underlying state
                 let shared_state = worker_state.clone();
-                Some(tokio::spawn(async move {
+                let http_server_handle = tokio::spawn(async move {
                     // Use the same state as the worker - it will receive updates via set_connected/set_worker_id
                     if let Err(e) =
                         worker_server::start_worker_server_with_state(http_args, shared_state).await
                     {
                         tracing::error!("Worker HTTP server error: {}", e);
                     }
-                }))
-            };
+                });
 
-            // Run the SSE worker with the shared state
-            let result = a2a::worker::run_with_state(args, worker_state).await;
-
-            // Wait for HTTP server if it was started
-            if let Some(handle) = http_server_handle {
-                handle.abort();
+                // Run the SSE worker with the shared state
+                let result = a2a::worker::run_with_state(args, worker_state).await;
+                http_server_handle.abort();
+                result
             }
-
-            result
         }
         Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
@@ -552,7 +546,9 @@ async fn main() -> anyhow::Result<()> {
             match args.action.as_str() {
                 "serve" => {
                     tracing::info!("Starting MCP server over stdio...");
-                    let server = mcp::McpServer::new_stdio();
+                    let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
+                    let server = mcp::McpServer::new_stdio()
+                        .with_tool_registry(registry);
                     let server = if let Some(bus_url) = &args.bus_url {
                         tracing::info!(bus_url = %bus_url, "Connecting MCP server to agent bus");
                         server.with_bus(bus_url.clone()).await
@@ -629,7 +625,9 @@ async fn main() -> anyhow::Result<()> {
                         client.close().await?;
                     } else {
                         // List built-in tools from the MCP server registry
-                        let server = mcp::McpServer::new_local();
+                        let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
+                        let server = mcp::McpServer::new_local()
+                            .with_tool_registry(registry);
                         server.setup_tools_public().await;
                         let tools = server.get_all_tool_metadata().await;
                         if args.json {
@@ -693,7 +691,9 @@ async fn main() -> anyhow::Result<()> {
                         }
                     } else {
                         // Call built-in tool directly via MCP server
-                        let server = mcp::McpServer::new_local();
+                        let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
+                        let server = mcp::McpServer::new_local()
+                            .with_tool_registry(registry);
                         server.setup_tools_public().await;
                         let result = server.call_tool_direct(tool, arguments).await?;
 
@@ -1087,7 +1087,7 @@ async fn main() -> anyhow::Result<()> {
 
         // OKR commands
         Some(Command::Okr(args)) => {
-            use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun, OkrRunStatus, OkrStatus};
+            use crate::okr::{KeyResult, Okr, OkrRepository, OkrStatus};
             use uuid::Uuid;
 
             let repo = OkrRepository::from_config().await?;

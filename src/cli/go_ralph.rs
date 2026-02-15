@@ -224,7 +224,10 @@ Rules:
                         .as_deref()
                         .map(|c| {
                             let c = c.to_ascii_lowercase();
-                            c.contains("npm") || c.contains("pnpm") || c.contains("yarn") || c.contains("npx")
+                            c.contains("npm")
+                                || c.contains("pnpm")
+                                || c.contains("yarn")
+                                || c.contains("npx")
                         })
                         .unwrap_or(false);
                     let looks_like_go = prd
