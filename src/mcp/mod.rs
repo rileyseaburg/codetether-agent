@@ -23,8 +23,10 @@ mod client;
 mod server;
 mod transport;
 mod types;
+pub mod bus_bridge;
 
 pub use client::{McpClient, McpRegistry};
 pub use server::McpServer;
 pub use transport::{NullTransport, SseTransport, StdioTransport, Transport};
 pub use types::*;
+pub use bus_bridge::BusBridge;

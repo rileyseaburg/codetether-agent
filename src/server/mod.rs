@@ -680,6 +680,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/tools", get(list_tools))
         .route("/v1/tools/register", post(register_tool))
         .route("/v1/tools/{id}/heartbeat", post(tool_heartbeat))
+        // Agent Bus — SSE stream + publish
+        .route("/v1/bus/stream", get(stream_bus_events))
         .with_state(state.clone())
         // A2A routes (nested to work with different state type)
         .nest("/a2a", a2a_router)

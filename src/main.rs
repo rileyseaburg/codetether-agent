@@ -553,6 +553,12 @@ async fn main() -> anyhow::Result<()> {
                 "serve" => {
                     tracing::info!("Starting MCP server over stdio...");
                     let server = mcp::McpServer::new_stdio();
+                    let server = if let Some(bus_url) = &args.bus_url {
+                        tracing::info!(bus_url = %bus_url, "Connecting MCP server to agent bus");
+                        server.with_bus(bus_url.clone()).await
+                    } else {
+                        server
+                    };
                     server.run().await?;
                     Ok(())
                 }
