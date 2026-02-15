@@ -1,0 +1,16 @@
+# buf.gen.yaml - Connect-ES gRPC-Web client generation
+# Generates TypeScript/JavaScript clients from proto/a2a/v1/a2a.proto
+
+version: v1
+plugins:
+  # protoc-gen-es generates the base protocol buffer types
+  - plugin: buf.build/protoc-gen-es:v1.8.0
+    out: gen/es
+    opt:
+      - target=ts
+
+  # protoc-gen-connect-es generates Connect-ES gRPC-Web clients
+  - plugin: buf.build/protoc-gen-connect-es:v1.8.0
+    out: gen/es
+    opt:
+      - target=ts

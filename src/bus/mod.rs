@@ -98,7 +98,6 @@ pub enum BusMessage {
     Heartbeat { agent_id: String, status: String },
 
     // ── Ralph loop messages ──────────────────────────────────────────
-
     /// An agent shares learnings from a Ralph iteration (insights,
     /// blockers, patterns discovered) so subsequent iterations or
     /// co-ordinating agents can build on them.
@@ -130,7 +129,6 @@ pub enum BusMessage {
     },
 
     // ── Full tool output ─────────────────────────────────────────────
-
     /// Full, untruncated tool output from an agent loop step.
     /// Published *before* the result is truncated for the LLM context
     /// window, so other agents and the bus log see the complete output.
@@ -496,6 +494,12 @@ impl BusHandle {
     /// Access the agent registry.
     pub fn registry(&self) -> &Arc<registry::AgentRegistry> {
         &self.bus.registry
+    }
+
+    /// Get mutable access to the underlying receiver.
+    /// This allows consuming the receiver in stream operations.
+    pub fn into_receiver(self) -> broadcast::Receiver<BusEnvelope> {
+        self.rx
     }
 }
 

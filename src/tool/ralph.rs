@@ -153,6 +153,7 @@ Returns metadata: {all_passed, ready_to_merge, feature_branch, passed, total}
                     relay_enabled: false,
                     relay_max_agents: 8,
                     relay_max_rounds: 3,
+                    max_steps_per_story: 30,
                 };
 
                 let mut ralph = RalphLoop::new(

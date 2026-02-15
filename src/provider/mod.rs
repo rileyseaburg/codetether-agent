@@ -456,7 +456,9 @@ impl ProviderRegistry {
                             .unwrap_or_else(|| "https://api.minimax.io/anthropic".to_string());
                         let base_url = normalize_minimax_anthropic_base_url(&base_url);
                         match anthropic::AnthropicProvider::with_base_url(
-                            api_key, base_url, &provider_id,
+                            api_key,
+                            base_url,
+                            &provider_id,
                         ) {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),

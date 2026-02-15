@@ -51,7 +51,10 @@ impl AnthropicProvider {
         let enable_prompt_caching = std::env::var("CODETETHER_ANTHROPIC_PROMPT_CACHING")
             .ok()
             .and_then(|v| parse_bool_env(&v))
-            .unwrap_or_else(|| provider_name.eq_ignore_ascii_case("minimax") || provider_name.eq_ignore_ascii_case("minimax-credits"));
+            .unwrap_or_else(|| {
+                provider_name.eq_ignore_ascii_case("minimax")
+                    || provider_name.eq_ignore_ascii_case("minimax-credits")
+            });
 
         tracing::debug!(
             provider = %provider_name,

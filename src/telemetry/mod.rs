@@ -1300,12 +1300,11 @@ impl ProviderPerformanceTracker {
             if records.is_empty() {
                 (0.0, 0.0, 0.0, 0.0)
             } else {
-                let mut latencies: Vec<u64> =
-                    records.iter().map(|r| r.latency_ms).collect();
+                let mut latencies: Vec<u64> = records.iter().map(|r| r.latency_ms).collect();
                 latencies.sort_unstable();
                 let p50_idx = (latencies.len() as f64 * 0.50) as usize;
-                let p95_idx = (latencies.len() as f64 * 0.95).min((latencies.len() - 1) as f64)
-                    as usize;
+                let p95_idx =
+                    (latencies.len() as f64 * 0.95).min((latencies.len() - 1) as f64) as usize;
                 let p50_lat = latencies[p50_idx] as f64;
                 let p95_lat = latencies[p95_idx] as f64;
 
@@ -1319,8 +1318,7 @@ impl ProviderPerformanceTracker {
                     (0.0, 0.0)
                 } else {
                     let p50_i = (tps_values.len() as f64 * 0.50) as usize;
-                    let p95_i = (tps_values.len() as f64 * 0.95)
-                        .min((tps_values.len() - 1) as f64)
+                    let p95_i = (tps_values.len() as f64 * 0.95).min((tps_values.len() - 1) as f64)
                         as usize;
                     (tps_values[p50_i], tps_values[p95_i])
                 };

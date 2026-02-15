@@ -14,7 +14,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -123,7 +123,7 @@ impl AuthState {
 
 /// Axum middleware layer that enforces Bearer token auth on every request
 /// except public paths.
-pub async fn require_auth(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
+pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     let path = request.uri().path();
 
     // Allow public paths through without auth.
@@ -165,6 +165,11 @@ pub async fn require_auth(request: Request<Body>, next: Next) -> Result<Response
 
     // Constant-time comparison to prevent timing attacks.
     if constant_time_eq(provided_token.as_bytes(), auth_state.token.as_bytes()) {
+        // Extract JWT claims and add to request extensions for downstream handlers
+        let claims = extract_jwt_claims(provided_token);
+        if let Some(claims) = claims {
+            request.extensions_mut().insert(claims);
+        }
         Ok(next.run(request).await)
     } else {
         Err(StatusCode::UNAUTHORIZED)

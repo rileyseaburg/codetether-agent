@@ -37,12 +37,22 @@ pub enum AgentMode {
     All,
 }
 
+/// Metadata for a registered tool
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolMetadata {
+    pub name: String,
+    pub description: String,
+    pub parameters: serde_json::Value,
+}
+
 /// The main agent execution context
 pub struct Agent {
     pub info: AgentInfo,
     pub provider: Arc<dyn Provider>,
     pub tools: ToolRegistry,
     pub permissions: HashMap<String, PermissionAction>,
+    /// Tool metadata for registered tools
+    pub metadata: HashMap<String, ToolMetadata>,
     system_prompt: String,
 }
 
@@ -59,6 +69,7 @@ impl Agent {
             provider,
             tools,
             permissions: HashMap::new(),
+            metadata: HashMap::new(),
             system_prompt,
         }
     }

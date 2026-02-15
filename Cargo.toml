@@ -133,6 +133,9 @@ hex = "0.4"
 # Image encoding
 base64 = "0.22"
 
+# JWT token minting
+jsonwebtoken = "9"
+
 # Utilities
 anyhow = "1.0.101"
 thiserror = "2"

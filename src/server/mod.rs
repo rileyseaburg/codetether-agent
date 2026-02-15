@@ -7,7 +7,7 @@ pub mod policy;
 
 use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
-use crate::bus::AgentBus;
+use crate::bus::{AgentBus, BusEnvelope};
 use crate::cli::ServeArgs;
 use crate::cognition::{
     AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
@@ -19,8 +19,6 @@ use crate::config::Config;
 use crate::k8s::K8sManager;
 use crate::tool::{PluginManifest, SigningKey, hash_bytes, hash_file};
 use anyhow::Result;
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
 use auth::AuthState;
 use axum::{
     Router,
@@ -34,14 +32,16 @@ use axum::{
     routing::{get, post},
 };
 use futures::stream;
+use http::HeaderValue;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::time::{Duration, Instant};
+use tokio::sync::{Mutex, broadcast};
+use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tonic_web::GrpcWebLayer;
-use http::HeaderValue;
 
 /// Task received from Knative Eventing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -357,6 +357,18 @@ const POLICY_RULES: &[PolicyRule] = &[
         methods: Some(&["GET"]),
         permission: "agent:read",
     },
+    // Agent Bus — read access for stream, filtered by JWT topic claims
+    PolicyRule {
+        pattern: "/v1/bus/stream",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    // Agent Bus — publish messages (requires write permission)
+    PolicyRule {
+        pattern: "/v1/bus/publish",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
     // Session management
     // Session prompt execution — requires execute permission
     PolicyRule {
@@ -555,15 +567,15 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let grpc_service = grpc_store.into_service();
     tokio::spawn(async move {
         tracing::info!("gRPC A2A server listening on {}", grpc_addr);
-        
+
         // Configure CORS for marketing site
         let cors = CorsLayer::new()
-            .allow_origin(AllowOrigin::exact(
-                HeaderValue::from_static("https://codetether.com"),
-            ))
+            .allow_origin(AllowOrigin::exact(HeaderValue::from_static(
+                "https://codetether.com",
+            )))
             .allow_methods(AllowMethods::any())
             .allow_headers(AllowHeaders::any());
-        
+
         if let Err(e) = tonic::transport::Server::builder()
             .accept_http1(true)
             .layer(cors)
@@ -1072,6 +1084,78 @@ async fn stream_cognition(
     });
 
     Sse::new(event_stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+}
+
+/// Stream bus events as SSE, filtered by JWT topic claims.
+///
+/// The JWT must contain a `topics` claim with an array of topic patterns
+/// to subscribe to. Events are filtered to only include envelopes whose
+/// topic matches one of the allowed patterns.
+async fn stream_bus_events(
+    State(state): State<AppState>,
+    req: Request<Body>,
+) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
+    // Extract JWT claims from request extensions (set by auth middleware)
+    let allowed_topics: Vec<String> = req
+        .extensions()
+        .get::<crate::server::auth::JwtClaims>()
+        .map(|claims| claims.topics.clone())
+        .unwrap_or_default();
+
+    // Subscribe to the bus
+    let bus_handle = state.bus.handle("stream_bus_events");
+    let mut rx = bus_handle.into_receiver();
+
+    let event_stream = stream::unfold(rx, move |mut rx: broadcast::Receiver<BusEnvelope>| {
+        let allowed_topics = allowed_topics.clone();
+        async move {
+            match rx.recv().await {
+                Ok(envelope) => {
+                    // Filter by allowed topics if any are specified
+                    let should_send = allowed_topics.is_empty()
+                        || allowed_topics
+                            .iter()
+                            .any(|pattern| topic_matches(&envelope.topic, pattern));
+
+                    if should_send {
+                        let payload =
+                            serde_json::to_string(&envelope).unwrap_or_else(|_| "{}".to_string());
+                        let sse_event = Event::default().event("bus").data(payload);
+                        return Some((Ok(sse_event), rx));
+                    }
+
+                    // Skip this event but keep the receiver
+                    Some((Ok(Event::default().event("keepalive").data("")), rx))
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                    let lag_event = Event::default()
+                        .event("lag")
+                        .data(format!("skipped {}", skipped));
+                    Some((Ok(lag_event), rx))
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => None,
+            }
+        }
+    });
+
+    Sse::new(event_stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+}
+
+/// Check if a topic matches a pattern.
+/// Supports wildcards: `agent.*` matches `agent.123`, `agent.*.events` matches `agent.456.events`
+fn topic_matches(topic: &str, pattern: &str) -> bool {
+    if pattern == "*" {
+        return true;
+    }
+    if pattern.ends_with(".*") {
+        let prefix = &pattern[..pattern.len() - 2];
+        return topic.starts_with(prefix);
+    }
+    if pattern.starts_with(".*") {
+        let suffix = &pattern[2..];
+        return topic.ends_with(suffix);
+    }
+    topic == pattern
 }
 
 async fn get_latest_snapshot(

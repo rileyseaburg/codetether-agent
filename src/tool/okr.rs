@@ -93,7 +93,9 @@ fn parse_okr_status(s: &str) -> Result<OkrStatus> {
         "completed" => Ok(OkrStatus::Completed),
         "cancelled" => Ok(OkrStatus::Cancelled),
         "on_hold" => Ok(OkrStatus::OnHold),
-        _ => anyhow::bail!("Unknown OKR status: {s}. Use: draft, active, completed, cancelled, on_hold"),
+        _ => anyhow::bail!(
+            "Unknown OKR status: {s}. Use: draft, active, completed, cancelled, on_hold"
+        ),
     }
 }
 
@@ -191,9 +193,9 @@ impl Tool for OkrTool {
                     okr.tenant_id = Some(tid);
                 }
 
-                let krs = p.key_results.ok_or_else(|| {
-                    anyhow::anyhow!("key_results required (at least one)")
-                })?;
+                let krs = p
+                    .key_results
+                    .ok_or_else(|| anyhow::anyhow!("key_results required (at least one)"))?;
                 for kr_p in krs {
                     let kr = KeyResult::new(okr.id, &kr_p.title, kr_p.target_value, &kr_p.unit);
                     okr.add_key_result(kr);
@@ -206,7 +208,8 @@ impl Tool for OkrTool {
 
             "get_okr" => {
                 let id = parse_uuid(
-                    p.id.as_deref().ok_or_else(|| anyhow::anyhow!("id required"))?,
+                    p.id.as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("id required"))?,
                     "id",
                 )?;
                 match repo.get_okr(id).await? {
@@ -217,7 +220,8 @@ impl Tool for OkrTool {
 
             "update_okr" => {
                 let id = parse_uuid(
-                    p.id.as_deref().ok_or_else(|| anyhow::anyhow!("id required"))?,
+                    p.id.as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("id required"))?,
                     "id",
                 )?;
                 let mut okr = repo
@@ -247,7 +251,8 @@ impl Tool for OkrTool {
 
             "delete_okr" => {
                 let id = parse_uuid(
-                    p.id.as_deref().ok_or_else(|| anyhow::anyhow!("id required"))?,
+                    p.id.as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("id required"))?,
                     "id",
                 )?;
                 let deleted = repo.delete_okr(id).await?;
@@ -285,7 +290,9 @@ impl Tool for OkrTool {
             // ===== Run CRUD =====
             "create_run" => {
                 let okr_id = parse_uuid(
-                    p.okr_id.as_deref().ok_or_else(|| anyhow::anyhow!("okr_id required"))?,
+                    p.okr_id
+                        .as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("okr_id required"))?,
                     "okr_id",
                 )?;
                 let name = p.name.ok_or_else(|| anyhow::anyhow!("name required"))?;
@@ -305,7 +312,8 @@ impl Tool for OkrTool {
 
             "get_run" => {
                 let id = parse_uuid(
-                    p.id.as_deref().ok_or_else(|| anyhow::anyhow!("id required"))?,
+                    p.id.as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("id required"))?,
                     "id",
                 )?;
                 match repo.get_run(id).await? {
@@ -316,7 +324,8 @@ impl Tool for OkrTool {
 
             "update_run" => {
                 let id = parse_uuid(
-                    p.id.as_deref().ok_or_else(|| anyhow::anyhow!("id required"))?,
+                    p.id.as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("id required"))?,
                     "id",
                 )?;
                 let mut run = repo
@@ -343,7 +352,8 @@ impl Tool for OkrTool {
 
             "delete_run" => {
                 let id = parse_uuid(
-                    p.id.as_deref().ok_or_else(|| anyhow::anyhow!("id required"))?,
+                    p.id.as_deref()
+                        .ok_or_else(|| anyhow::anyhow!("id required"))?,
                     "id",
                 )?;
                 let deleted = repo.delete_run(id).await?;

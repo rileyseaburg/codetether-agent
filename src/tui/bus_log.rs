@@ -220,9 +220,7 @@ impl BusLogEntry {
                 (
                     "THINK".to_string(),
                     format!("{agent_id} step {step}: {preview}"),
-                    format!(
-                        "Agent: {agent_id}\nStep: {step}\n\n--- Reasoning ---\n{thinking}"
-                    ),
+                    format!("Agent: {agent_id}\nStep: {step}\n\n--- Reasoning ---\n{thinking}"),
                     Color::LightMagenta,
                 )
             }

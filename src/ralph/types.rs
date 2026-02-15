@@ -316,6 +316,11 @@ pub struct RalphConfig {
     #[serde(default = "default_story_timeout_secs")]
     pub story_timeout_secs: u64,
 
+    /// Maximum tool call steps per story sub-agent
+    /// Increase this for complex stories that need more iterations
+    #[serde(default = "default_max_steps_per_story")]
+    pub max_steps_per_story: usize,
+
     /// Timeout in seconds per step for conflict resolution sub-agents
     #[serde(default = "default_conflict_timeout_secs")]
     pub conflict_timeout_secs: u64,
@@ -360,6 +365,9 @@ fn default_worktree_enabled() -> bool {
 fn default_story_timeout_secs() -> u64 {
     300
 }
+fn default_max_steps_per_story() -> usize {
+    30
+}
 fn default_conflict_timeout_secs() -> u64 {
     120
 }
@@ -384,6 +392,7 @@ impl Default for RalphConfig {
             max_concurrent_stories: default_max_concurrent_stories(),
             worktree_enabled: default_worktree_enabled(),
             story_timeout_secs: default_story_timeout_secs(),
+            max_steps_per_story: default_max_steps_per_story(),
             conflict_timeout_secs: default_conflict_timeout_secs(),
             relay_enabled: true,
             relay_max_agents: default_relay_max_agents(),

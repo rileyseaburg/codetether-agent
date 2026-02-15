@@ -42,7 +42,9 @@ const AGENT_AVATARS: [&str; 12] = [
 
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::config::Config;
-use crate::okr::{ApprovalDecision, KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRepository, OkrRun, OkrRunStatus};
+use crate::okr::{
+    ApprovalDecision, KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRepository, OkrRun, OkrRunStatus,
+};
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
 use crate::rlm::RlmExecutor;
@@ -1700,23 +1702,20 @@ async fn run_go_ralph_worker(
         }
     };
 
-    let (provider, resolved_model) =
-        match resolve_provider_for_model_autochat(&registry, &model) {
-            Some(pair) => pair,
-            None => {
-                let _ = tx
-                    .send(AutochatUiEvent::Completed {
-                        summary: format!(
-                            "❌ No provider available for model '{model}'"
-                        ),
-                        okr_id: Some(okr.id.to_string()),
-                        okr_run_id: Some(run.id.to_string()),
-                        relay_id: None,
-                    })
-                    .await;
-                return;
-            }
-        };
+    let (provider, resolved_model) = match resolve_provider_for_model_autochat(&registry, &model) {
+        Some(pair) => pair,
+        None => {
+            let _ = tx
+                .send(AutochatUiEvent::Completed {
+                    summary: format!("❌ No provider available for model '{model}'"),
+                    okr_id: Some(okr.id.to_string()),
+                    okr_run_id: Some(run.id.to_string()),
+                    relay_id: None,
+                })
+                .await;
+            return;
+        }
+    };
 
     let _ = tx
         .send(AutochatUiEvent::Progress(
@@ -1727,8 +1726,18 @@ async fn run_go_ralph_worker(
     let okr_id_str = okr.id.to_string();
     let run_id_str = run.id.to_string();
 
-    match crate::cli::go_ralph::execute_go_ralph(&task, &mut okr, &mut run, provider, &resolved_model, 10, bus, max_concurrent_stories, Some(registry.clone()))
-        .await
+    match crate::cli::go_ralph::execute_go_ralph(
+        &task,
+        &mut okr,
+        &mut run,
+        provider,
+        &resolved_model,
+        10,
+        bus,
+        max_concurrent_stories,
+        Some(registry.clone()),
+    )
+    .await
     {
         Ok(result) => {
             // Persist final run state
@@ -2263,8 +2272,8 @@ async fn run_autochat_worker(
                                 status
                             );
                             run.outcomes.push({
-                                let mut outcome = KrOutcome::new(kr_uuid, kr_description)
-                                    .with_value(*value);
+                                let mut outcome =
+                                    KrOutcome::new(kr_uuid, kr_description).with_value(*value);
                                 outcome.run_id = Some(run.id);
                                 outcome.outcome_type = outcome_type;
                                 outcome.evidence = base_evidence.clone();
@@ -2773,8 +2782,8 @@ async fn resume_autochat_worker(
                                 status
                             );
                             run.outcomes.push({
-                                let mut outcome = KrOutcome::new(kr_uuid, kr_description)
-                                    .with_value(*value);
+                                let mut outcome =
+                                    KrOutcome::new(kr_uuid, kr_description).with_value(*value);
                                 outcome.run_id = Some(run.id);
                                 outcome.outcome_type = outcome_type;
                                 outcome.evidence = base_evidence.clone();
@@ -3159,7 +3168,10 @@ impl App {
 
                 // Update run status to approved
                 let mut approved_run = pending.run;
-                approved_run.record_decision(ApprovalDecision::approve(approved_run.id, "User approved via TUI"));
+                approved_run.record_decision(ApprovalDecision::approve(
+                    approved_run.id,
+                    "User approved via TUI",
+                ));
 
                 // Save to repository if available
                 if let Some(ref repo) = self.okr_repository {
@@ -3198,7 +3210,8 @@ impl App {
             } else if denied {
                 // User denied - record decision and cancel
                 let mut denied_run = pending.run;
-                denied_run.record_decision(ApprovalDecision::deny(denied_run.id, "User denied via TUI"));
+                denied_run
+                    .record_decision(ApprovalDecision::deny(denied_run.id, "User denied via TUI"));
                 self.messages.push(ChatMessage::new(
                     "system",
                     "❌ OKR denied. Relay cancelled.",
@@ -3364,7 +3377,8 @@ impl App {
                 } else {
                     AUTOCHAT_MAX_AGENTS
                 };
-                let pending = PendingOkrApproval::new(task.to_string(), go_count, next_model.clone());
+                let pending =
+                    PendingOkrApproval::new(task.to_string(), go_count, next_model.clone());
 
                 self.messages
                     .push(ChatMessage::new("system", pending.approval_prompt()));
@@ -4708,6 +4722,7 @@ impl App {
             relay_enabled: true,
             relay_max_agents: 8,
             relay_max_rounds: 3,
+            max_steps_per_story: 30,
         };
 
         // Parse provider/model from the model string
@@ -6247,7 +6262,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
 
                 // OKR approval gate: 'a' to approve, 'd' to deny
-                KeyCode::Char('a') if !key.modifiers.contains(KeyModifiers::CONTROL) && app.pending_okr_approval.is_some() => {
+                KeyCode::Char('a')
+                    if !key.modifiers.contains(KeyModifiers::CONTROL)
+                        && app.pending_okr_approval.is_some() =>
+                {
                     if let Some(pending) = app.pending_okr_approval.take() {
                         // Approve: save OKR and run, then execute via Ralph PRD loop
                         app.messages.push(ChatMessage::new(
@@ -6274,7 +6292,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         // Save OKR to repository
                         let okr_id = okr.id;
                         let okr_run_id = run.id;
-                        run.record_decision(crate::okr::ApprovalDecision::approve(run.id, "User approved via TUI go command"));
+                        run.record_decision(crate::okr::ApprovalDecision::approve(
+                            run.id,
+                            "User approved via TUI go command",
+                        ));
                         run.correlation_id = Some(format!("ralph-{}", Uuid::new_v4()));
 
                         let okr_for_save = okr.clone();
@@ -6302,10 +6323,18 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                 }
 
-                KeyCode::Char('d') if !key.modifiers.contains(KeyModifiers::CONTROL) && app.pending_okr_approval.is_some() => {
+                KeyCode::Char('d')
+                    if !key.modifiers.contains(KeyModifiers::CONTROL)
+                        && app.pending_okr_approval.is_some() =>
+                {
                     if let Some(mut pending) = app.pending_okr_approval.take() {
                         // Deny: record decision and show denial message
-                        pending.run.record_decision(crate::okr::ApprovalDecision::deny(pending.run.id, "User denied via TUI keypress"));
+                        pending
+                            .run
+                            .record_decision(crate::okr::ApprovalDecision::deny(
+                                pending.run.id,
+                                "User denied via TUI keypress",
+                            ));
                         app.messages.push(ChatMessage::new(
                             "system",
                             "❌ OKR denied. Relay not started.\n\nUse /autochat for tactical execution without OKR tracking.",
@@ -8722,7 +8751,13 @@ fn is_glm5_model(model: &str) -> bool {
 
 fn is_minimax_m25_model(model: &str) -> bool {
     let normalized = model.trim().to_ascii_lowercase();
-    matches!(normalized.as_str(), "minimax/minimax-m2.5" | "minimax-m2.5" | "minimax-credits/minimax-m2.5-highspeed" | "minimax-m2.5-highspeed")
+    matches!(
+        normalized.as_str(),
+        "minimax/minimax-m2.5"
+            | "minimax-m2.5"
+            | "minimax-credits/minimax-m2.5-highspeed"
+            | "minimax-m2.5-highspeed"
+    )
 }
 
 fn next_go_model(current_model: Option<&str>) -> String {
@@ -9484,9 +9519,21 @@ mod tests {
 
     #[test]
     fn next_go_model_toggles_between_glm_and_minimax() {
-        assert_eq!(next_go_model(Some("zai/glm-5")), "minimax-credits/MiniMax-M2.5-highspeed");
-        assert_eq!(next_go_model(Some("z-ai/glm-5")), "minimax-credits/MiniMax-M2.5-highspeed");
-        assert_eq!(next_go_model(Some("minimax-credits/MiniMax-M2.5-highspeed")), "zai/glm-5");
-        assert_eq!(next_go_model(Some("unknown/model")), "minimax-credits/MiniMax-M2.5-highspeed");
+        assert_eq!(
+            next_go_model(Some("zai/glm-5")),
+            "minimax-credits/MiniMax-M2.5-highspeed"
+        );
+        assert_eq!(
+            next_go_model(Some("z-ai/glm-5")),
+            "minimax-credits/MiniMax-M2.5-highspeed"
+        );
+        assert_eq!(
+            next_go_model(Some("minimax-credits/MiniMax-M2.5-highspeed")),
+            "zai/glm-5"
+        );
+        assert_eq!(
+            next_go_model(Some("unknown/model")),
+            "minimax-credits/MiniMax-M2.5-highspeed"
+        );
     }
 }

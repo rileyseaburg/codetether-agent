@@ -153,7 +153,9 @@ impl BusS3SinkConfig {
         let access_key = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_ACCESS_KEY");
         let secret_key = env_non_empty("CODETETHER_CHAT_SYNC_MINIO_SECRET_KEY");
 
-        if let (Some(ep), Some(ak), Some(sk)) = (endpoint.clone(), access_key.clone(), secret_key.clone()) {
+        if let (Some(ep), Some(ak), Some(sk)) =
+            (endpoint.clone(), access_key.clone(), secret_key.clone())
+        {
             info!("Bus S3 sink using chat-sync env vars");
             return Ok(Self {
                 endpoint: ep,
@@ -172,14 +174,22 @@ impl BusS3SinkConfig {
 
         // Try Vault: chat-sync-minio provider
         if let Some(secrets) = secrets::get_provider_secrets("chat-sync-minio").await {
-            let ep = secrets.base_url.clone()
+            let ep = secrets
+                .base_url
+                .clone()
                 .or_else(|| vault_extra_str(&secrets, &["endpoint", "minio_endpoint", "url"]))
                 .filter(|s| !s.is_empty());
-            let ak = vault_extra_str(&secrets, &["access_key", "access_key_id", "minio_access_key"])
-                .or_else(|| secrets.api_key.clone())
-                .filter(|s| !s.is_empty());
-            let sk = vault_extra_str(&secrets, &["secret_key", "secret_access_key", "minio_secret_key"])
-                .filter(|s| !s.is_empty());
+            let ak = vault_extra_str(
+                &secrets,
+                &["access_key", "access_key_id", "minio_access_key"],
+            )
+            .or_else(|| secrets.api_key.clone())
+            .filter(|s| !s.is_empty());
+            let sk = vault_extra_str(
+                &secrets,
+                &["secret_key", "secret_access_key", "minio_secret_key"],
+            )
+            .filter(|s| !s.is_empty());
 
             if let (Some(ep), Some(ak), Some(sk)) = (ep, ak, sk) {
                 info!("Bus S3 sink using Vault chat-sync-minio credentials");
@@ -593,12 +603,9 @@ impl BusS3Sink {
     pub async fn from_config(bus: Arc<AgentBus>, config: BusS3SinkConfig) -> Result<Self> {
         let endpoint = normalize_endpoint(&config.endpoint, config.secure);
 
-        let base_url: BaseUrl = endpoint
-            .parse()
-            .context("Invalid MinIO endpoint URL")?;
+        let base_url: BaseUrl = endpoint.parse().context("Invalid MinIO endpoint URL")?;
 
-        let static_provider =
-            StaticProvider::new(&config.access_key, &config.secret_key, None);
+        let static_provider = StaticProvider::new(&config.access_key, &config.secret_key, None);
 
         let client = MinioClientBuilder::new(base_url)
             .provider(Some(Box::new(static_provider)))
@@ -663,10 +670,9 @@ impl BusS3Sink {
 
         let mut batch: Vec<BusEnvelope> = Vec::with_capacity(self.config.batch_size);
         let mut batch_start: Option<String> = None;
-        let mut flush_interval =
-            tokio::time::interval(std::time::Duration::from_secs(
-                self.config.flush_interval_secs,
-            ));
+        let mut flush_interval = tokio::time::interval(std::time::Duration::from_secs(
+            self.config.flush_interval_secs,
+        ));
 
         loop {
             tokio::select! {
@@ -826,18 +832,16 @@ fn normalize_endpoint(endpoint: &str, secure: bool) -> String {
 pub fn spawn_bus_s3_sink(bus: Arc<AgentBus>) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         match BusS3SinkConfig::from_env_or_vault().await {
-            Ok(config) => {
-                match BusS3Sink::from_config(bus, config).await {
-                    Ok(sink) => {
-                        if let Err(e) = sink.run().await {
-                            error!(error = %e, "Bus S3 sink failed");
-                        }
-                    }
-                    Err(e) => {
-                        error!(error = %e, "Bus S3 sink failed to initialize");
+            Ok(config) => match BusS3Sink::from_config(bus, config).await {
+                Ok(sink) => {
+                    if let Err(e) = sink.run().await {
+                        error!(error = %e, "Bus S3 sink failed");
                     }
                 }
-            }
+                Err(e) => {
+                    error!(error = %e, "Bus S3 sink failed to initialize");
+                }
+            },
             Err(e) => {
                 warn!(
                     error = %e,
@@ -961,8 +965,20 @@ mod tests {
 
         let record = envelope_to_training_record(&env);
         assert_eq!(record.role, "assistant");
-        assert!(record.content.as_deref().unwrap().contains("I fixed the bug"));
-        assert!(record.content.as_deref().unwrap().contains("[coder → planner]"));
+        assert!(
+            record
+                .content
+                .as_deref()
+                .unwrap()
+                .contains("I fixed the bug")
+        );
+        assert!(
+            record
+                .content
+                .as_deref()
+                .unwrap()
+                .contains("[coder → planner]")
+        );
     }
 
     #[test]

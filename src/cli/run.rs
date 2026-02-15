@@ -510,14 +510,18 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             let mut approved_run = run;
             if let Ok(repo) = OkrRepository::from_config().await {
                 let _ = repo.create_okr(okr.clone()).await;
-                approved_run.record_decision(ApprovalDecision::approve(approved_run.id, "User approved via CLI"));
+                approved_run.record_decision(ApprovalDecision::approve(
+                    approved_run.id,
+                    "User approved via CLI",
+                ));
                 approved_run.correlation_id = Some(format!("ralph-{}", Uuid::new_v4()));
                 let _ = repo.create_run(approved_run.clone()).await;
                 tracing::info!(okr_id = %okr_id, okr_run_id = %approved_run.id, "OKR run approved and saved");
             }
 
             // Load provider for Ralph execution
-            let registry = std::sync::Arc::new(crate::provider::ProviderRegistry::from_vault().await?);
+            let registry =
+                std::sync::Arc::new(crate::provider::ProviderRegistry::from_vault().await?);
             let (provider, resolved_model) = resolve_provider_for_model_autochat(&registry, &model)
                 .ok_or_else(|| anyhow::anyhow!("No provider available for model '{model}'"))?;
 
@@ -532,9 +536,9 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 &mut approved_run,
                 provider,
                 &resolved_model,
-                10, // max iterations
-                Some(bus), // bus for training data
-                max_concurrent, // max concurrent stories
+                10,                     // max iterations
+                Some(bus),              // bus for training data
+                max_concurrent,         // max concurrent stories
                 Some(registry.clone()), // relay registry
             )
             .await?;
@@ -546,20 +550,23 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
             // Display results
             match args.format.as_str() {
-                "json" => println!("{}", serde_json::to_string_pretty(&serde_json::json!({
-                    "passed": ralph_result.passed,
-                    "total": ralph_result.total,
-                    "all_passed": ralph_result.all_passed,
-                    "iterations": ralph_result.iterations,
-                    "feature_branch": ralph_result.feature_branch,
-                    "prd_path": ralph_result.prd_path.display().to_string(),
-                    "status": format!("{:?}", ralph_result.status),
-                    "stories": ralph_result.stories.iter().map(|s| serde_json::json!({
-                        "id": s.id,
-                        "title": s.title,
-                        "passed": s.passed,
-                    })).collect::<Vec<_>>(),
-                }))?),
+                "json" => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "passed": ralph_result.passed,
+                        "total": ralph_result.total,
+                        "all_passed": ralph_result.all_passed,
+                        "iterations": ralph_result.iterations,
+                        "feature_branch": ralph_result.feature_branch,
+                        "prd_path": ralph_result.prd_path.display().to_string(),
+                        "status": format!("{:?}", ralph_result.status),
+                        "stories": ralph_result.stories.iter().map(|s| serde_json::json!({
+                            "id": s.id,
+                            "title": s.title,
+                            "passed": s.passed,
+                        })).collect::<Vec<_>>(),
+                    }))?
+                ),
                 _ => {
                     println!(
                         "{}",
@@ -571,8 +578,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         }
 
         // Plain /autochat (no OKR) — use traditional relay
-        let relay_result =
-            run_protocol_first_relay(agent_count, task, &model, None, None).await?;
+        let relay_result = run_protocol_first_relay(agent_count, task, &model, None, None).await?;
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
             _ => {

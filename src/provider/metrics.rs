@@ -3,12 +3,10 @@
 //! Wraps any `Provider` to automatically record latency, throughput,
 //! and tokens-per-second via the global `PROVIDER_METRICS` registry.
 
-use super::{
-    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk, Usage,
-};
+use super::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk, Usage};
+use crate::telemetry::{PROVIDER_METRICS, ProviderRequestRecord};
 use anyhow::Result;
 use async_trait::async_trait;
-use crate::telemetry::{ProviderRequestRecord, PROVIDER_METRICS};
 use std::sync::Arc;
 
 /// A provider wrapper that instruments every call with performance metrics.
@@ -22,13 +20,7 @@ impl MetricsProvider {
         Arc::new(Self { inner })
     }
 
-    fn record_request(
-        &self,
-        model: &str,
-        latency_ms: u64,
-        usage: &Usage,
-        success: bool,
-    ) {
+    fn record_request(&self, model: &str, latency_ms: u64, usage: &Usage, success: bool) {
         let record = ProviderRequestRecord {
             provider: self.inner.name().to_string(),
             model: model.to_string(),
@@ -79,12 +71,7 @@ impl Provider for MetricsProvider {
             }
             Err(e) => {
                 let latency_ms = start.elapsed().as_millis() as u64;
-                self.record_request(
-                    &model,
-                    latency_ms,
-                    &Usage::default(),
-                    false,
-                );
+                self.record_request(&model, latency_ms, &Usage::default(), false);
                 Err(e)
             }
         }
@@ -103,13 +90,8 @@ impl Provider for MetricsProvider {
                 let ttft_ms = start.elapsed().as_millis() as u64;
 
                 // Wrap the stream to capture final usage from Done chunk
-                let stream = StreamMetricsWrapper::new(
-                    stream,
-                    provider_name,
-                    model,
-                    start,
-                    ttft_ms,
-                );
+                let stream =
+                    StreamMetricsWrapper::new(stream, provider_name, model, start, ttft_ms);
 
                 Ok(Box::pin(stream))
             }

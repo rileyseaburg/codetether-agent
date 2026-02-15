@@ -3,14 +3,16 @@
 use super::types::*;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
-use crate::provider::{self, CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
+use crate::provider::{
+    self, CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role,
+};
 use crate::session::{Session, SessionEvent};
-use crate::swarm::run_agent_loop;
-use std::collections::HashMap;
+use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
 use crate::tool::ToolRegistry;
 use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use crate::tui::swarm_view::SwarmEvent;
 use crate::worktree::WorktreeManager;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
@@ -281,10 +283,36 @@ impl RalphLoop {
             self.run_sequential().await?;
         }
 
-        if self.state.status != RalphStatus::Completed
-            && self.state.current_iteration >= self.state.max_iterations
-        {
-            self.state.status = RalphStatus::MaxIterations;
+        // Set final status based on what happened
+        if self.state.status != RalphStatus::Completed {
+            if self.state.current_iteration >= self.state.max_iterations {
+                // Check if any stories were attempted (at least one iteration ran)
+                if self.state.current_iteration > 0 {
+                    let passed = self.state.prd.passed_count();
+                    let total = self.state.prd.user_stories.len();
+                    if passed == 0 && total > 0 {
+                        // All stories failed - likely due to quality check failures
+                        self.state.status = RalphStatus::QualityFailed;
+                        warn!(
+                            iterations = self.state.current_iteration,
+                            passed = passed,
+                            total = total,
+                            "Ralph failed: all stories failed quality checks"
+                        );
+                    } else {
+                        // Some stories passed but not all
+                        self.state.status = RalphStatus::MaxIterations;
+                        info!(
+                            iterations = self.state.current_iteration,
+                            passed = passed,
+                            total = total,
+                            "Ralph finished with partial progress"
+                        );
+                    }
+                } else {
+                    self.state.status = RalphStatus::MaxIterations;
+                }
+            }
         }
 
         // Clean up orphaned worktrees and branches
@@ -557,6 +585,7 @@ impl RalphLoop {
                 let relay_max_agents = self.config.relay_max_agents;
                 let relay_max_rounds = self.config.relay_max_rounds;
                 let registry = self.registry.clone();
+                let max_steps_per_story = self.config.max_steps_per_story;
 
                 let handle = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
@@ -620,7 +649,8 @@ impl RalphLoop {
                     // Create event bridge for this story's sub-agent (used for single-agent mode)
                     let (bridge_tx, _bridge_handle) = if !relay_enabled {
                         if let Some(ref tx) = ralph_tx {
-                            let (btx, handle) = Self::create_swarm_event_bridge(tx, story.id.clone());
+                            let (btx, handle) =
+                                Self::create_swarm_event_bridge(tx, story.id.clone());
                             (Some(btx), Some(handle))
                         } else {
                             (None, None)
@@ -657,6 +687,7 @@ impl RalphLoop {
                                 bridge_tx,
                                 story.id.clone(),
                                 bus.clone(),
+                                max_steps_per_story,
                             )
                             .await
                         }
@@ -669,6 +700,7 @@ impl RalphLoop {
                             bridge_tx,
                             story.id.clone(),
                             bus.clone(),
+                            max_steps_per_story,
                         )
                         .await
                     };
@@ -1024,6 +1056,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         event_tx: Option<mpsc::Sender<SwarmEvent>>,
         story_id: String,
         bus: Option<Arc<AgentBus>>,
+        max_steps_per_story: usize,
     ) -> anyhow::Result<String> {
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
@@ -1046,6 +1079,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         );
 
         // Run the agentic loop with tools
+        let max_steps = max_steps_per_story;
         let (output, steps, tool_calls, _exit_reason) = run_agent_loop(
             Arc::clone(provider),
             model,
@@ -1053,8 +1087,8 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             prompt,
             tool_definitions,
             tool_registry, // Already an Arc<ToolRegistry>
-            30,            // max steps per story (focused implementation)
-            180,           // 3 minute timeout per story
+            max_steps,
+            180, // 3 minute timeout per story
             event_tx,
             story_id,
             bus.clone(),
@@ -1279,9 +1313,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
                 }
 
                 let Some(mut session) = sessions.remove(&to) else {
-                    anyhow::bail!(
-                        "Relay agent @{to} session unavailable for story {story_id}"
-                    );
+                    anyhow::bail!("Relay agent @{to} session unavailable for story {story_id}");
                 };
 
                 let (event_tx, mut event_rx) = mpsc::channel::<SessionEvent>(256);
@@ -1322,7 +1354,9 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
                 sessions.insert(to.clone(), updated_session);
 
                 let output = result
-                    .map_err(|e| anyhow::anyhow!("Relay agent @{to} failed on story {story_id}: {e}"))?
+                    .map_err(|e| {
+                        anyhow::anyhow!("Relay agent @{to} failed on story {story_id}: {e}")
+                    })?
                     .text;
 
                 // Convergence detection
@@ -1728,7 +1762,7 @@ Respond with the implementation and any shell commands needed.
         };
 
         // Run the agentic loop with tools
-        let (output, steps, tool_calls, _exit_reason) = run_agent_loop(
+        let (output, steps, tool_calls, exit_reason) = run_agent_loop(
             Arc::clone(&self.provider),
             &self.model,
             &system_prompt,
@@ -1743,10 +1777,31 @@ Respond with the implementation and any shell commands needed.
         )
         .await?;
 
-        info!(
-            "Ralph agent completed: {} steps, {} tool calls",
-            steps, tool_calls
-        );
+        // Check exit reason and log appropriately
+        match exit_reason {
+            AgentLoopExit::Completed => {
+                info!(
+                    "Ralph agent completed: {} steps, {} tool calls",
+                    steps, tool_calls
+                );
+            }
+            AgentLoopExit::MaxStepsReached => {
+                warn!(
+                    story_id = %story_id,
+                    steps = steps,
+                    tool_calls = tool_calls,
+                    "Ralph sub-agent hit max steps limit - work may be incomplete"
+                );
+            }
+            AgentLoopExit::TimedOut => {
+                warn!(
+                    story_id = %story_id,
+                    steps = steps,
+                    tool_calls = tool_calls,
+                    "Ralph sub-agent timed out - work may be incomplete"
+                );
+            }
+        }
 
         Ok(output)
     }

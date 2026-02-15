@@ -110,7 +110,9 @@ Rules:
     let request = CompletionRequest {
         messages: vec![Message {
             role: Role::User,
-            content: vec![ContentPart::Text { text: prompt.clone() }],
+            content: vec![ContentPart::Text {
+                text: prompt.clone(),
+            }],
         }],
         tools: vec![],
         model: model.to_string(),
@@ -140,17 +142,25 @@ Rules:
                  Please output ONLY the corrected JSON object — no markdown fences, \
                  no commentary, no trailing commas, no comments. Start with {{ and end with }}.",
                 err = last_error,
-                text = if last_text.len() > 2000 { &last_text[..2000] } else { &last_text },
+                text = if last_text.len() > 2000 {
+                    &last_text[..2000]
+                } else {
+                    &last_text
+                },
             );
             CompletionRequest {
                 messages: vec![
                     Message {
                         role: Role::User,
-                        content: vec![ContentPart::Text { text: prompt.clone() }],
+                        content: vec![ContentPart::Text {
+                            text: prompt.clone(),
+                        }],
                     },
                     Message {
                         role: Role::Assistant,
-                        content: vec![ContentPart::Text { text: last_text.clone() }],
+                        content: vec![ContentPart::Text {
+                            text: last_text.clone(),
+                        }],
                     },
                     Message {
                         role: Role::User,
@@ -209,10 +219,7 @@ Rules:
         }
     }
 
-    anyhow::bail!(
-        "Failed to extract valid PRD JSON after 3 attempts. Last error: {last_error}"
-    );
-
+    anyhow::bail!("Failed to extract valid PRD JSON after 3 attempts. Last error: {last_error}");
 }
 
 /// Run Ralph loop for a `/go` task, mapping results back to OKR.
@@ -292,11 +299,17 @@ pub async fn execute_go_ralph(
         relay_enabled: false,
         relay_max_agents: 8,
         relay_max_rounds: 3,
+        max_steps_per_story: 30,
     };
 
-    let mut ralph = RalphLoop::new(prd_path.clone(), Arc::clone(&provider), model.to_string(), config)
-        .await
-        .context("Failed to initialize Ralph loop")?;
+    let mut ralph = RalphLoop::new(
+        prd_path.clone(),
+        Arc::clone(&provider),
+        model.to_string(),
+        config,
+    )
+    .await
+    .context("Failed to initialize Ralph loop")?;
 
     // Attach bus for inter-iteration learning sharing
     if let Some(bus) = bus {
@@ -618,10 +631,11 @@ fn sanitize_json(text: &str) -> String {
     let mut s = text.to_string();
 
     // Replace unicode curly quotes with straight quotes
-    s = s.replace('\u{201c}', "\"")  // left double
-         .replace('\u{201d}', "\"")  // right double
-         .replace('\u{2018}', "'")   // left single
-         .replace('\u{2019}', "'");  // right single
+    s = s
+        .replace('\u{201c}', "\"") // left double
+        .replace('\u{201d}', "\"") // right double
+        .replace('\u{2018}', "'") // left single
+        .replace('\u{2019}', "'"); // right single
 
     // Remove single-line // comments (outside strings)
     s = remove_line_comments(&s);
@@ -887,9 +901,24 @@ mod tests {
         // Progress should be 50% (1/2 stories passed)
         assert_eq!(run.outcomes[0].value, Some(50.0)); // 0.5 * 100.0
         // Evidence should include story results
-        assert!(run.outcomes[0].evidence.iter().any(|e| e.contains("US-001")));
-        assert!(run.outcomes[0].evidence.iter().any(|e| e.contains("PASSED")));
-        assert!(run.outcomes[0].evidence.iter().any(|e| e.contains("FAILED")));
+        assert!(
+            run.outcomes[0]
+                .evidence
+                .iter()
+                .any(|e| e.contains("US-001"))
+        );
+        assert!(
+            run.outcomes[0]
+                .evidence
+                .iter()
+                .any(|e| e.contains("PASSED"))
+        );
+        assert!(
+            run.outcomes[0]
+                .evidence
+                .iter()
+                .any(|e| e.contains("FAILED"))
+        );
     }
 
     #[test]
