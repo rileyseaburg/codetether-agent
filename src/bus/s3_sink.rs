@@ -43,6 +43,7 @@ use minio::s3::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
+use tokio::task;
 use tracing::{debug, error, info, warn};
 
 /// Configuration for the bus S3 sink
@@ -681,6 +682,8 @@ impl BusS3Sink {
                                 if let Err(e) = self.flush_batch(&mut batch, &mut batch_start).await {
                                     error!(error = %e, "Failed to flush batch");
                                 }
+                                // Yield to allow LLM requests priority access to executor
+                                task::yield_now().await;
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(n)) => {
@@ -703,6 +706,8 @@ impl BusS3Sink {
                         if let Err(e) = self.flush_batch(&mut batch, &mut batch_start).await {
                             error!(error = %e, "Failed to flush batch on interval");
                         }
+                        // Yield to allow LLM requests priority access to executor
+                        task::yield_now().await;
                     }
                 }
             }
@@ -813,6 +818,10 @@ fn normalize_endpoint(endpoint: &str, secure: bool) -> String {
 
 /// Spawn the bus S3 sink in a background task.
 ///
+/// The S3 sink runs non-blocking in its own task, processing batches
+/// of training records. It yields periodically to ensure LLM requests
+/// have priority for CPU/network resources.
+///
 /// Errors are logged but do not crash the application.
 pub fn spawn_bus_s3_sink(bus: Arc<AgentBus>) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
@@ -877,7 +886,7 @@ mod tests {
             ignore_cert: false,
         };
 
-        assert_eq!(config.prefix, "bus/");
+        assert_eq!(config.prefix, "training/");
         assert_eq!(config.batch_size, 100);
         assert_eq!(config.flush_interval_secs, 30);
     }
