@@ -3,6 +3,78 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// A concrete verification step that must pass for a story to be marked complete.
+///
+/// This complements `quality_checks` (which are repo/toolchain-level gates).
+/// Verification steps are story-level and can validate user-visible outcomes
+/// like E2E flows, artifacts (e.g. Cypress videos), or deployment endpoints.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum VerificationStep {
+    /// Run a shell command and optionally assert on output and/or produced files.
+    Shell {
+        /// Optional label for UI/logging.
+        #[serde(default)]
+        name: Option<String>,
+
+        /// Shell command to run.
+        command: String,
+
+        /// Optional working directory (relative to repo root / check root).
+        #[serde(default)]
+        cwd: Option<String>,
+
+        /// Substrings that must be present in stdout+stderr.
+        #[serde(default)]
+        expect_output_contains: Vec<String>,
+
+        /// File globs that must match at least one file after the command runs.
+        /// Example: "cypress/videos/**/*.mp4"
+        #[serde(default)]
+        expect_files_glob: Vec<String>,
+    },
+
+    /// Ensure a file (or glob pattern) exists.
+    FileExists {
+        #[serde(default)]
+        name: Option<String>,
+        /// Path or glob pattern.
+        path: String,
+        /// If true, treat `path` as a glob.
+        #[serde(default)]
+        glob: bool,
+    },
+
+    /// Validate an HTTP endpoint is reachable (useful for “deployment is live”).
+    Url {
+        #[serde(default)]
+        name: Option<String>,
+        url: String,
+        /// HTTP method (default: GET).
+        #[serde(default = "default_http_method")]
+        method: String,
+        /// Expected status (default: 200).
+        #[serde(default = "default_http_status")]
+        expect_status: u16,
+        /// Substrings that must appear in the response body.
+        #[serde(default)]
+        expect_body_contains: Vec<String>,
+        /// Timeout in seconds (default: 30).
+        #[serde(default = "default_http_timeout_secs")]
+        timeout_secs: u64,
+    },
+}
+
+fn default_http_method() -> String {
+    "GET".to_string()
+}
+fn default_http_status() -> u16 {
+    200
+}
+fn default_http_timeout_secs() -> u64 {
+    30
+}
+
 /// A user story in the PRD
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserStory {
@@ -18,6 +90,12 @@ pub struct UserStory {
     /// Acceptance criteria
     #[serde(default)]
     pub acceptance_criteria: Vec<String>,
+
+    /// Explicit verification steps that must pass for this story to be marked complete.
+    ///
+    /// Example: run Cypress E2E and assert that a video artifact exists.
+    #[serde(default)]
+    pub verification_steps: Vec<VerificationStep>,
 
     /// Whether this story passes all tests
     #[serde(default)]
@@ -366,7 +444,7 @@ fn default_story_timeout_secs() -> u64 {
     300
 }
 fn default_max_steps_per_story() -> usize {
-    30
+    50
 }
 fn default_conflict_timeout_secs() -> u64 {
     120

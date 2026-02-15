@@ -12,10 +12,12 @@ pub mod confirm_edit;
 pub mod confirm_multiedit;
 pub mod edit;
 pub mod file;
+pub mod go;
 pub mod image;
 pub mod invalid;
 pub mod lsp;
 pub mod mcp_bridge;
+pub mod mcp_tools;
 pub mod memory;
 pub mod multiedit;
 pub mod okr;
@@ -25,10 +27,12 @@ pub mod podcast;
 pub mod prd;
 pub mod question;
 pub mod ralph;
+pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
 pub mod search;
 pub mod skill;
+pub mod swarm_execute;
 pub mod swarm_share;
 pub mod task;
 pub mod todo;
@@ -46,6 +50,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::provider::Provider;
+pub use mcp_tools::{McpToolManager, McpToolWrapper};
 pub use sandbox::{PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file};
 
 /// A tool that can be executed by an agent
@@ -155,6 +160,8 @@ impl std::fmt::Debug for ToolRegistry {
 
 impl ToolRegistry {
     pub fn new() -> Self {
+        let _ = std::any::TypeId::of::<McpToolManager>();
+        let _ = std::any::TypeId::of::<McpToolWrapper>();
         Self {
             tools: HashMap::new(),
             plugin_registry: PluginRegistry::from_env(),
@@ -193,6 +200,33 @@ impl ToolRegistry {
             .collect()
     }
 
+    /// Register multiple tools at once
+    pub fn register_all(&mut self, tools: Vec<Arc<dyn Tool>>) {
+        for tool in tools {
+            self.register(tool);
+        }
+    }
+
+    /// Remove a tool by ID
+    pub fn unregister(&mut self, id: &str) -> Option<Arc<dyn Tool>> {
+        self.tools.remove(id)
+    }
+
+    /// Check if a tool exists
+    pub fn contains(&self, id: &str) -> bool {
+        self.tools.contains_key(id)
+    }
+
+    /// Get the number of registered tools
+    pub fn len(&self) -> usize {
+        self.tools.len()
+    }
+
+    /// Check if the registry is empty
+    pub fn is_empty(&self) -> bool {
+        self.tools.is_empty()
+    }
+
     /// Create registry with all default tools (without batch)
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
@@ -224,8 +258,6 @@ impl ToolRegistry {
         registry.register(Arc::new(memory::MemoryTool::new()));
         registry.register(Arc::new(ralph::RalphTool::new()));
         registry.register(Arc::new(prd::PrdTool::new()));
-        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
         registry.register(Arc::new(undo::UndoTool));
         registry.register(Arc::new(voice::VoiceTool::new()));
         registry.register(Arc::new(podcast::PodcastTool::new()));
@@ -238,6 +270,12 @@ impl ToolRegistry {
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool
         registry.register(Arc::new(agent::AgentTool::new()));
+        // Swarm execution tool for parallel task execution
+        registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
+        // Relay autochat tool for autonomous agent communication
+        registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
+        // Go tool for autonomous OKR→PRD→Ralph pipeline
+        registry.register(Arc::new(go::GoTool::new()));
 
         registry
     }
@@ -290,6 +328,12 @@ impl ToolRegistry {
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool
         registry.register(Arc::new(agent::AgentTool::new()));
+        // Swarm execution tool for parallel task execution
+        registry.register(Arc::new(swarm_execute::SwarmExecuteTool::new()));
+        // Relay autochat tool for autonomous agent communication
+        registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
+        // Go tool for autonomous OKR→PRD→Ralph pipeline
+        registry.register(Arc::new(go::GoTool::new()));
 
         registry
     }

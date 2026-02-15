@@ -3,9 +3,7 @@
 use super::types::*;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
-use crate::provider::{
-    self, CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role,
-};
+use crate::provider::{ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::{Session, SessionEvent};
 use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
 use crate::tool::ToolRegistry;
@@ -1679,6 +1677,7 @@ Working directory: {}
                         cargo_root
                     );
                     all_passed = false;
+                    break; // Short-circuit: stop at first failure to save time
                 }
             }
         }
@@ -1865,7 +1864,7 @@ Respond with the implementation and any shell commands needed.
                         name, cargo_root
                     );
                     all_passed = false;
-                    // Don't return early — run all checks so we can show all results
+                    break; // Short-circuit: stop at first failure to save time
                 }
             }
         }
@@ -2008,6 +2007,7 @@ pub fn create_prd_template(project: &str, feature: &str) -> Prd {
             title: "First user story".to_string(),
             description: "Description of what needs to be implemented".to_string(),
             acceptance_criteria: vec!["Criterion 1".to_string(), "Criterion 2".to_string()],
+            verification_steps: Vec::new(),
             passes: false,
             priority: 1,
             depends_on: Vec::new(),

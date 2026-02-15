@@ -434,6 +434,13 @@ pub struct McpArgs {
     /// Output as JSON
     #[arg(long)]
     pub json: bool,
+
+    /// URL of the CodeTether HTTP server's bus SSE endpoint.
+    /// When set, the MCP server connects to the agent bus and exposes
+    /// bus_events, bus_status, and ralph_status tools plus codetether:// resources.
+    /// Example: http://localhost:8001/v1/bus/stream
+    #[arg(long)]
+    pub bus_url: Option<String>,
 }
 
 #[derive(Parser, Debug)]

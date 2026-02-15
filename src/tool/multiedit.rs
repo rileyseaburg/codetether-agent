@@ -1,12 +1,11 @@
 //! Multi-Edit Tool
 //!
-//! Edit multiple files atomically with an array of replacements.
+//! Apply multiple file edits atomically. Validates all edits first, then
+//! writes all changes only if every edit passes validation.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
-use serde::Deserialize;
 use serde_json::{Value, json};
-use similar::{ChangeTag, TextDiff};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
@@ -27,37 +26,6 @@ impl MultiEditTool {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct MultiEditParams {
-    edits: Vec<EditOperation>,
-}
-
-#[derive(Debug, Deserialize)]
-struct EditOperation {
-    file: String,
-    old_string: String,
-    new_string: String,
-}
-
-/// Result of a single file edit operation
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct EditResult {
-    pub file: String,
-    pub success: bool,
-    pub message: String,
-}
-
-/// Summary of all edit operations
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct MultiEditSummary {
-    pub results: Vec<EditResult>,
-    pub total_files: usize,
-    pub success_count: usize,
-    pub failed_count: usize,
-    pub total_added: usize,
-    pub total_removed: usize,
-}
-
 #[async_trait]
 impl Tool for MultiEditTool {
     fn id(&self) -> &str {
@@ -69,9 +37,9 @@ impl Tool for MultiEditTool {
     }
 
     fn description(&self) -> &str {
-        "Edit multiple files atomically. Each edit replaces an old string with a new string. \
-         All edits are validated before any changes are applied. If any edit fails validation, \
-         no changes are made."
+        "Apply multiple file edits atomically. Validates all edits, then writes all changes. \
+         If any edit fails validation, no files are modified. Each edit replaces old_string \
+         with new_string in the given file."
     }
 
     fn parameters(&self) -> Value {
@@ -80,7 +48,7 @@ impl Tool for MultiEditTool {
             "properties": {
                 "edits": {
                     "type": "array",
-                    "description": "Array of edit operations to apply",
+                    "description": "Array of edit operations to apply atomically",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -90,11 +58,11 @@ impl Tool for MultiEditTool {
                             },
                             "old_string": {
                                 "type": "string",
-                                "description": "The exact string to find and replace"
+                                "description": "The exact string to find and replace (must appear exactly once)"
                             },
                             "new_string": {
                                 "type": "string",
-                                "description": "The string to replace it with"
+                                "description": "The replacement string"
                             }
                         },
                         "required": ["file", "old_string", "new_string"]
@@ -106,236 +74,216 @@ impl Tool for MultiEditTool {
     }
 
     async fn execute(&self, params: Value) -> Result<ToolResult> {
-        let params: MultiEditParams =
-            serde_json::from_value(params).context("Invalid parameters")?;
-
-        if params.edits.is_empty() {
-            return Ok(ToolResult::error("No edits provided"));
-        }
-
-        // Track results for each file edit
-        let mut edit_results: Vec<EditResult> = Vec::new();
-        let mut file_contents: Vec<(PathBuf, String, String, String)> = Vec::new();
-        let mut previews: Vec<Value> = Vec::new();
-        let mut total_added = 0;
-        let mut total_removed = 0;
-
-        // Phase 1: Validate all edits and collect file contents
-        for edit in &params.edits {
-            let path = PathBuf::from(&edit.file);
-
-            // Check if file exists
-            if !path.exists() {
-                edit_results.push(EditResult {
-                    file: edit.file.clone(),
-                    success: false,
-                    message: format!("File does not exist: {}", edit.file),
-                });
-                continue;
+        // ── Parse with detailed error messages ──────────────────────
+        let edits_val = match params.get("edits") {
+            Some(v) => v,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "multiedit",
+                    "Missing required field 'edits'. Provide an array of {file, old_string, new_string} objects.",
+                    Some(vec!["edits"]),
+                    Some(json!({
+                        "edits": [
+                            {"file": "src/main.rs", "old_string": "old code", "new_string": "new code"}
+                        ]
+                    })),
+                ));
             }
-
-            // Read file content
-            let content = match fs::read_to_string(&path).await {
-                Ok(c) => c,
-                Err(e) => {
-                    edit_results.push(EditResult {
-                        file: edit.file.clone(),
-                        success: false,
-                        message: format!("Failed to read file: {}", e),
-                    });
-                    continue;
-                }
-            };
-
-            // Check that old_string exists exactly once
-            let matches: Vec<_> = content.match_indices(&edit.old_string).collect();
-
-            if matches.is_empty() {
-                let preview = truncate_with_ellipsis(&edit.old_string, 50);
-                edit_results.push(EditResult {
-                    file: edit.file.clone(),
-                    success: false,
-                    message: format!("String not found: {}", preview),
-                });
-                continue;
-            }
-
-            if matches.len() > 1 {
-                edit_results.push(EditResult {
-                    file: edit.file.clone(),
-                    success: false,
-                    message: format!(
-                        "String found {} times (must be unique). Use more context to disambiguate.",
-                        matches.len()
-                    ),
-                });
-                continue;
-            }
-
-            // Validation passed - store for processing
-            file_contents.push((
-                path.clone(),
-                content.clone(),
-                edit.old_string.clone(),
-                edit.new_string.clone(),
-            ));
-
-            // Generate diff preview
-            let new_content = content.replacen(&edit.old_string, &edit.new_string, 1);
-            let diff = TextDiff::from_lines(&content, &new_content);
-
-            let mut diff_output = String::new();
-            let mut added = 0;
-            let mut removed = 0;
-
-            for change in diff.iter_all_changes() {
-                let (sign, style) = match change.tag() {
-                    ChangeTag::Delete => {
-                        removed += 1;
-                        ("-", "red")
-                    }
-                    ChangeTag::Insert => {
-                        added += 1;
-                        ("+", "green")
-                    }
-                    ChangeTag::Equal => (" ", "default"),
-                };
-
-                let line = format!("{}{}", sign, change);
-                if style == "red" {
-                    diff_output.push_str(&format!("\x1b[31m{}\x1b[0m", line.trim_end()));
-                } else if style == "green" {
-                    diff_output.push_str(&format!("\x1b[32m{}\x1b[0m", line.trim_end()));
-                } else {
-                    diff_output.push_str(&line.trim_end());
-                }
-                diff_output.push('\n');
-            }
-
-            previews.push(json!({
-                "file": path.display().to_string(),
-                "diff": diff_output.trim(),
-                "added": added,
-                "removed": removed
-            }));
-
-            total_added += added;
-            total_removed += removed;
-
-            // Mark as success for validation phase
-            edit_results.push(EditResult {
-                file: edit.file.clone(),
-                success: true,
-                message: format!("Validated: +{} lines, -{} lines", added, removed),
-            });
-        }
-
-        // Check if any edits failed validation
-        let failed_edits: Vec<&EditResult> = edit_results.iter().filter(|r| !r.success).collect();
-        let successful_edits: Vec<&EditResult> =
-            edit_results.iter().filter(|r| r.success).collect();
-
-        // Build structured summary
-        let summary = MultiEditSummary {
-            results: edit_results.clone(),
-            total_files: params.edits.len(),
-            success_count: successful_edits.len(),
-            failed_count: failed_edits.len(),
-            total_added,
-            total_removed,
         };
 
-        if !failed_edits.is_empty() {
-            // Build human-readable error summary for output
-            let mut error_summary = String::new();
-            for result in &failed_edits {
-                error_summary.push_str(&format!("\n✗ {}: {}", result.file, result.message));
+        let edits_arr = match edits_val.as_array() {
+            Some(a) => a,
+            None => {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "multiedit",
+                    "'edits' must be an array, not a single object.",
+                    Some(vec!["edits"]),
+                    Some(json!({
+                        "edits": [
+                            {"file": "src/main.rs", "old_string": "old code", "new_string": "new code"}
+                        ]
+                    })),
+                ));
             }
+        };
 
-            let output = format!(
-                "Validation failed for {} of {} edits:{}",
-                failed_edits.len(),
-                params.edits.len(),
-                error_summary
-            );
+        if edits_arr.is_empty() {
+            return Ok(ToolResult::error(
+                "No edits provided. 'edits' array is empty.",
+            ));
+        }
 
-            return Ok(ToolResult {
-                output,
-                success: false,
-                metadata: {
-                    let mut m = HashMap::new();
-                    m.insert("summary".to_string(), json!(summary));
-                    m.insert("edit_results".to_string(), json!(edit_results));
-                    m.insert("failed_count".to_string(), json!(failed_edits.len()));
-                    m.insert("success_count".to_string(), json!(successful_edits.len()));
-                    m
-                },
+        // ── Extract and validate each edit entry ────────────────────
+        struct EditOp {
+            file: String,
+            old_string: String,
+            new_string: String,
+        }
+
+        let mut ops: Vec<EditOp> = Vec::with_capacity(edits_arr.len());
+        for (i, entry) in edits_arr.iter().enumerate() {
+            let file = match entry.get("file").and_then(|v| v.as_str()) {
+                Some(f) => f.to_string(),
+                None => {
+                    return Ok(ToolResult::structured_error(
+                        "INVALID_ARGUMENT",
+                        "multiedit",
+                        &format!("edits[{i}]: missing or non-string 'file' field"),
+                        Some(vec!["edits", "file"]),
+                        Some(
+                            json!({"file": "src/example.rs", "old_string": "...", "new_string": "..."}),
+                        ),
+                    ));
+                }
+            };
+            let old_string = match entry.get("old_string").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    return Ok(ToolResult::structured_error(
+                        "INVALID_ARGUMENT",
+                        "multiedit",
+                        &format!("edits[{i}] ({file}): missing or non-string 'old_string' field"),
+                        Some(vec!["edits", "old_string"]),
+                        Some(
+                            json!({"file": file, "old_string": "exact text to find", "new_string": "replacement"}),
+                        ),
+                    ));
+                }
+            };
+            let new_string = match entry.get("new_string").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    return Ok(ToolResult::structured_error(
+                        "INVALID_ARGUMENT",
+                        "multiedit",
+                        &format!("edits[{i}] ({file}): missing or non-string 'new_string' field"),
+                        Some(vec!["edits", "new_string"]),
+                        Some(
+                            json!({"file": file, "old_string": old_string, "new_string": "replacement text"}),
+                        ),
+                    ));
+                }
+            };
+            ops.push(EditOp {
+                file,
+                old_string,
+                new_string,
             });
         }
 
-        // All validations passed - return confirmation prompt with structured results
-        let mut all_diffs = String::new();
-        for preview in &previews {
-            let file = preview["file"].as_str().unwrap();
-            let diff = preview["diff"].as_str().unwrap();
-            all_diffs.push_str(&format!("\n=== {} ===\n{}", file, diff));
-        }
+        // ── Phase 1: Validate all edits (no writes yet) ────────────
+        // Each validated edit becomes (path, original_content, new_content).
+        let mut validated: Vec<(PathBuf, String, String)> = Vec::with_capacity(ops.len());
+        let mut errors: Vec<String> = Vec::new();
 
-        // Build human-readable summary for output
-        let mut edit_summary = String::new();
-        for result in &edit_results {
-            edit_summary.push_str(&format!("\n✓ {}: {}", result.file, result.message));
-        }
+        // When multiple edits target the same file, we must chain them
+        // on the accumulated content rather than re-reading from disk.
+        let mut content_cache: HashMap<PathBuf, String> = HashMap::new();
 
-        let output = format!(
-            "Multi-file changes require confirmation:{}{}{}\n\nTotal: {} files, +{} lines, -{} lines",
-            all_diffs,
-            if edit_summary.is_empty() {
-                ""
+        for (i, op) in ops.iter().enumerate() {
+            let path = PathBuf::from(&op.file);
+
+            // Read or reuse cached content
+            let content = if let Some(cached) = content_cache.get(&path) {
+                cached.clone()
+            } else if path.exists() {
+                match fs::read_to_string(&path).await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        errors.push(format!("edits[{i}] {}: cannot read file: {e}", op.file));
+                        continue;
+                    }
+                }
             } else {
-                "\n\nEdit summary:"
-            },
-            edit_summary,
-            file_contents.len(),
-            total_added,
-            total_removed
-        );
+                errors.push(format!("edits[{i}] {}: file does not exist", op.file));
+                continue;
+            };
 
-        let mut metadata = HashMap::new();
-        metadata.insert("requires_confirmation".to_string(), json!(true));
-        metadata.insert("summary".to_string(), json!(summary));
-        metadata.insert("edit_results".to_string(), json!(edit_results));
-        metadata.insert("total_files".to_string(), json!(file_contents.len()));
-        metadata.insert("total_added".to_string(), json!(total_added));
-        metadata.insert("total_removed".to_string(), json!(total_removed));
-        metadata.insert("previews".to_string(), json!(previews));
+            let count = content.matches(&op.old_string).count();
+            if count == 0 {
+                let preview: String = op.old_string.chars().take(80).collect();
+                errors.push(format!(
+                    "edits[{i}] {}: old_string not found. First 80 chars: \"{}\"",
+                    op.file, preview
+                ));
+                continue;
+            }
+            if count > 1 {
+                errors.push(format!(
+                    "edits[{i}] {}: old_string found {count} times (must be unique). Add more context.",
+                    op.file
+                ));
+                continue;
+            }
 
-        Ok(ToolResult {
-            output,
-            success: true,
-            metadata,
-        })
-    }
-}
-
-fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-
-    let mut chars = value.chars();
-    let mut output = String::new();
-    for _ in 0..max_chars {
-        if let Some(ch) = chars.next() {
-            output.push(ch);
-        } else {
-            return value.to_string();
+            let new_content = content.replacen(&op.old_string, &op.new_string, 1);
+            content_cache.insert(path.clone(), new_content.clone());
+            validated.push((path, content, new_content));
         }
-    }
 
-    if chars.next().is_some() {
-        format!("{output}...")
-    } else {
-        output
+        if !errors.is_empty() {
+            let error_list = errors.join("\n");
+            return Ok(ToolResult {
+                output: format!(
+                    "Validation failed for {} of {} edits. No files were modified.\n\n{error_list}",
+                    errors.len(),
+                    ops.len()
+                ),
+                success: false,
+                metadata: HashMap::new(),
+            });
+        }
+
+        // ── Phase 2: Write all changes ──────────────────────────────
+        // Deduplicate by path — use the final accumulated content from
+        // the cache (handles multiple edits to the same file).
+        let mut written: HashMap<PathBuf, bool> = HashMap::new();
+        let mut write_errors: Vec<String> = Vec::new();
+
+        for (path, _original, _new) in &validated {
+            if written.contains_key(path) {
+                continue;
+            }
+            let final_content = content_cache.get(path).unwrap();
+            match fs::write(path, final_content).await {
+                Ok(()) => {
+                    written.insert(path.clone(), true);
+                }
+                Err(e) => {
+                    write_errors.push(format!("{}: write failed: {e}", path.display()));
+                    written.insert(path.clone(), false);
+                }
+            }
+        }
+
+        if !write_errors.is_empty() {
+            return Ok(ToolResult {
+                output: format!(
+                    "Write errors (some files may have been partially updated):\n{}",
+                    write_errors.join("\n")
+                ),
+                success: false,
+                metadata: HashMap::new(),
+            });
+        }
+
+        // ── Build summary ───────────────────────────────────────────
+        let unique_files = written.len();
+        let total_edits = ops.len();
+        let mut summary_lines: Vec<String> = Vec::new();
+        for (path, original, new_content) in &validated {
+            let old_lines = original.lines().count();
+            let new_lines = new_content.lines().count();
+            let delta = new_lines as i64 - old_lines as i64;
+            let sign = if delta >= 0 { "+" } else { "" };
+            summary_lines.push(format!("✓ {} ({sign}{delta} lines)", path.display()));
+        }
+
+        Ok(ToolResult::success(format!(
+            "Applied {total_edits} edit(s) across {unique_files} file(s):\n{}",
+            summary_lines.join("\n")
+        )))
     }
 }

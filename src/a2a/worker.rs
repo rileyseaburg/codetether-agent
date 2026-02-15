@@ -737,7 +737,7 @@ async fn register_worker(
     };
 
     // Register via the workers/register endpoint
-    let mut req = client.post(format!("{}/v1/opencode/workers/register", server));
+    let mut req = client.post(format!("{}/v1/agent/workers/register", server));
 
     if let Some(t) = token {
         req = req.bearer_auth(t);
@@ -933,7 +933,7 @@ async fn fetch_pending_tasks(
 ) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
-    let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
+    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
@@ -1165,7 +1165,7 @@ async fn poll_pending_tasks(
     auto_approve: &AutoApprove,
     bus: &Arc<AgentBus>,
 ) -> Result<()> {
-    let mut req = client.get(format!("{}/v1/opencode/tasks?status=pending", server));
+    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }
@@ -1293,9 +1293,25 @@ async fn handle_task(
         Session::new().await?
     };
 
-    let agent_type = task_str(task, "agent_type")
+    let raw_agent = task_str(task, "agent_type")
         .or_else(|| task_str(task, "agent"))
         .unwrap_or("build");
+    // Normalize agent: only "build", "plan", and swarm types are valid.
+    // Map deprecated/unknown agent types (e.g. "general", "explore") to "build".
+    let agent_type = if is_swarm_agent(raw_agent) {
+        raw_agent
+    } else {
+        match raw_agent {
+            "build" | "plan" => raw_agent,
+            other => {
+                tracing::info!(
+                    "Agent \"{}\" is not a primary agent, falling back to \"build\"",
+                    other
+                );
+                "build"
+            }
+        }
+    };
     session.agent = agent_type.to_string();
 
     if let Some(model) = selected_model.clone() {
@@ -1323,7 +1339,7 @@ async fn handle_task(
         let tid = stream_task_id.clone();
         tokio::spawn(async move {
             let mut req = c
-                .post(format!("{}/v1/opencode/tasks/{}/output", s, tid))
+                .post(format!("{}/v1/agent/tasks/{}/output", s, tid))
                 .header("X-Worker-ID", &w);
             if let Some(tok) = &t {
                 req = req.bearer_auth(tok);
@@ -1899,7 +1915,7 @@ fn create_filtered_registry(
     // Add potentially dangerous tools only if auto_approve is All
     if matches!(auto_approve, AutoApprove::All) {
         registry.register(Arc::new(file::WriteTool::new()));
-        registry.register(Arc::new(edit::EditTool::new()));
+        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
@@ -1962,7 +1978,7 @@ fn start_heartbeat(
 
             // Send heartbeat
             let url = format!(
-                "{}/v1/opencode/workers/{}/heartbeat",
+                "{}/v1/agent/workers/{}/heartbeat",
                 server, heartbeat_state.worker_id
             );
             let mut req = client.post(&url);

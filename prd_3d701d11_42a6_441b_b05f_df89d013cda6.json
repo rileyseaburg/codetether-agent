@@ -1,0 +1,196 @@
+{
+  "project": "Autonomous Orchestration",
+  "feature": "LLM-driven task orchestration with OKR approval gates",
+  "branch_name": "feature/autonomous-orchestration",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Implement relay_autochat LLM-invokable tool",
+      "description": "Create a new LLM-invokable tool named relay_autochat that enables autonomous relay communication between agents for task delegation and result aggregation",
+      "acceptance_criteria": [
+        "Tool relay_autochat is registered in the tool registry",
+        "Tool accepts parameters: target_agent, message, context",
+        "Tool returns structured response with delegation status and initial results",
+        "Tool is callable from LLM context with proper schema"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-002",
+      "title": "Implement swarm_execute LLM-invokable tool",
+      "description": "Create a new LLM-invokable tool named swarm_execute that enables parallel execution of tasks across multiple agents in a swarm pattern",
+      "acceptance_criteria": [
+        "Tool swarm_execute is registered in the tool registry",
+        "Tool accepts parameters: tasks (array), concurrency_limit, aggregation_strategy",
+        "Tool spawns multiple agent instances for parallel execution",
+        "Tool returns aggregated results from all swarm participants",
+        "Tool handles partial failures gracefully"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "US-003",
+      "title": "Update builtin.rs system prompt to block 'how should I proceed' on bulk backlogs",
+      "description": "Modify the builtin.rs system prompt to forbid LLM-generated 'how should I proceed' queries when processing bulk backlogs (>10 items)",
+      "acceptance_criteria": [
+        "System prompt includes explicit instruction blocking 'how should I proceed' for bulk backlogs",
+        "Bulk backlog detection triggers when backlog size > 10 items",
+        "LLM behavior changes appropriately when bulk backlog detected",
+        "Instruction is placed in system prompt section for autonomous behavior guidelines"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-004",
+      "title": "Implement OKR approval gate for large backlogs",
+      "description": "Route large backlogs (>10 items) through OKR approval gate before spawning relays or swarms, requiring explicit authorization",
+      "acceptance_criteria": [
+        "Backlog size is evaluated before any relay_autochat or swarm_execute invocation",
+        "Backlogs with >10 items trigger OKR approval workflow",
+        "Execution is blocked until OKR approval is granted",
+        "Approval state is persisted for audit trail",
+        "Small backlogs (<=10 items) bypass approval gate"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001",
+        "US-002",
+        "US-003"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-005",
+      "title": "Implement okr.propose_orchestration with TUI integration",
+      "description": "Implement the okr.propose_orchestration function that proposes orchestration plans and integrates with TUI for user approval before execution",
+      "acceptance_criteria": [
+        "okr.propose_orchestration function generates structured orchestration proposal",
+        "TUI displays approval dialog with orchestration details",
+        "User approval triggers execution of proposed relays/swarms",
+        "User rejection cancels orchestration and logs intent",
+        "Approval decision is communicated back to orchestration engine"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-004"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-006",
+      "title": "Implement AutoApprove allowlists safety boundary",
+      "description": "Configure AutoApprove allowlists to specify which tools and agents can be invoked without explicit approval in autonomous orchestration",
+      "acceptance_criteria": [
+        "Allowlist configuration is loaded from secure config source",
+        "Only whitelisted tools can beAutoApproved",
+        "Allowlist supports per-agent and per-tool entries",
+        "Violation attempts are logged and blocked"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-007",
+      "title": "Implement max_depth safety limit for orchestration chains",
+      "description": "Enforce maximum depth limit for nested orchestration calls to prevent unbounded recursion in relay/swarm chains",
+      "acceptance_criteria": [
+        "max_depth configuration parameter is defined",
+        "Current orchestration depth is tracked in execution context",
+        "Calls exceeding max_depth are rejected with clear error",
+        "Default max_depth is set to a safe value (e.g., 5)"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-008",
+      "title": "Filter orchestration tools from subagents",
+      "description": "Prevent subagents from invoking orchestration tools (relay_autochat, swarm_execute) to avoid recursive subcontracting loops",
+      "acceptance_criteria": [
+        "Orchestration tool filtering is applied to subagent tool resolution",
+        "Subagents cannot see or invoke relay_autochat or swarm_execute",
+        "Filtering logic is applied at tool registry level",
+        "Audit log captures filtered tool access attempts"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001",
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-009",
+      "title": "Add unit and integration tests for orchestration components",
+      "description": "Create comprehensive test suite covering all new orchestration components with minimum 20 tests",
+      "acceptance_criteria": [
+        "Unit tests cover relay_autochat tool functionality",
+        "Unit tests cover swarm_execute tool functionality",
+        "Unit tests cover OKR approval gate logic",
+        "Unit tests cover safety boundary enforcement",
+        "Integration tests cover end-to-end orchestration flows",
+        "Integration tests cover TUI approval workflow",
+        "Test coverage meets minimum threshold for new code"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006",
+        "US-007",
+        "US-008"
+      ],
+      "complexity": 3
+    }
+  ],
+  "technical_requirements": [
+    "Implement relay_autochat tool with target_agent, message, context parameters",
+    "Implement swarm_execute tool with tasks array, concurrency_limit, aggregation_strategy",
+    "Modify builtin.rs system prompt with bulk backlog restriction",
+    "Create OKR approval gate with backlog size evaluation (threshold: 10 items)",
+    "Implement okr.propose_orchestration function returning orchestration proposal",
+    "Implement TUI integration for approval dialog display",
+    "Configure AutoApprove allowlists with secure config loading",
+    "Implement max_depth tracking in execution context",
+    "Implement orchestration tool filtering at registry level for subagents",
+    "Create 20+ unit and integration tests"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check --all-targets",
+    "test": "cargo test --all-targets -- --test-threads=1",
+    "lint": "cargo clippy --all-targets -- -D warnings",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-15T15:48:22.550447077+00:00",
+  "updated_at": "2026-02-15T15:48:22.550447077+00:00"
+}

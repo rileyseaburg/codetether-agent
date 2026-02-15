@@ -539,6 +539,63 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
             name: Some(format!("reasoning.{agent_id}.step_{step}")),
             metadata: meta,
         },
+
+        // ── Voice session lifecycle → system ────────────────────────
+        BusMessage::VoiceSessionStarted {
+            room_name,
+            agent_id,
+            voice_id,
+        } => TrainingRecord {
+            role: "system".into(),
+            content: Some(format!(
+                "Voice session started: room={room_name}, agent={agent_id}, voice={voice_id}"
+            )),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+            metadata: meta,
+        },
+
+        BusMessage::VoiceTranscript {
+            room_name,
+            text,
+            role,
+            is_final,
+        } => TrainingRecord {
+            role: if role == "user" {
+                "user".into()
+            } else {
+                "assistant".into()
+            },
+            content: Some(format!(
+                "[voice:{room_name}{}] {text}",
+                if *is_final { " final" } else { "" }
+            )),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+            metadata: meta,
+        },
+
+        BusMessage::VoiceAgentStateChanged { room_name, state } => TrainingRecord {
+            role: "system".into(),
+            content: Some(format!("Voice agent state: room={room_name} → {state}")),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+            metadata: meta,
+        },
+
+        BusMessage::VoiceSessionEnded { room_name, reason } => TrainingRecord {
+            role: "system".into(),
+            content: Some(format!(
+                "Voice session ended: room={room_name}, reason={reason}"
+            )),
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+            metadata: meta,
+        },
     }
 }
 

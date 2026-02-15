@@ -13,8 +13,10 @@
 //! - rlm: Analyze large content
 //! - ralph: Autonomous PRD-driven execution
 
+use super::bus_bridge::BusBridge;
 use super::transport::{McpMessage, StdioTransport, Transport};
 use super::types::*;
+use crate::tool::ToolRegistry;
 use anyhow::Result;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -36,6 +38,10 @@ pub struct McpServer {
     metadata: RwLock<HashMap<String, ToolMetadata>>,
     /// Resource metadata storage for querying resource information
     resource_metadata: RwLock<HashMap<String, ResourceMetadata>>,
+    /// Optional bus bridge for live event monitoring
+    bus: Option<Arc<BusBridge>>,
+    /// Optional tool registry bridging all CodeTether tools to MCP
+    tool_registry: Option<Arc<ToolRegistry>>,
 }
 
 type McpToolHandler = Arc<dyn Fn(Value) -> Result<CallToolResult> + Send + Sync>;
@@ -74,12 +80,255 @@ impl McpServer {
             },
             metadata: RwLock::new(HashMap::new()),
             resource_metadata: RwLock::new(HashMap::new()),
+            bus: None,
+            tool_registry: None,
         };
 
         // Register default tools
         server.register_default_tools();
 
         server
+    }
+
+    /// Attach the full CodeTether tool registry to the MCP server.
+    ///
+    /// All tools from the registry will be exposed as MCP tools, replacing
+    /// the hardcoded basic tool set. Call before [`Self::run`].
+    pub fn with_tool_registry(mut self, registry: Arc<ToolRegistry>) -> Self {
+        self.tool_registry = Some(registry);
+        self
+    }
+
+    /// Attach a bus bridge and register bus-aware tools + resources.
+    ///
+    /// Call this *before* [`Self::run`] to enable live bus monitoring.
+    pub async fn with_bus(mut self, bus_url: String) -> Self {
+        let bridge = BusBridge::new(bus_url).spawn();
+        self.bus = Some(Arc::clone(&bridge));
+        self.register_bus_tools(Arc::clone(&bridge)).await;
+        self.register_bus_resources(Arc::clone(&bridge)).await;
+        self
+    }
+
+    /// Register bus-specific MCP tools.
+    async fn register_bus_tools(&self, bridge: Arc<BusBridge>) {
+        // ── bus_events ──────────────────────────────────────────────
+        let b = Arc::clone(&bridge);
+        self.register_tool(
+            "bus_events",
+            "Query recent events from the agent bus. Returns BusEnvelope JSON objects \
+             matching the optional topic filter (supports wildcards like 'ralph.*').",
+            json!({
+                "type": "object",
+                "properties": {
+                    "topic_filter": {
+                        "type": "string",
+                        "description": "Topic pattern to filter (e.g. 'ralph.*', 'agent.*', '*'). Default: all."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max events to return (default: 50, max: 500)"
+                    }
+                }
+            }),
+            Arc::new(move |args| {
+                let topic_filter = args.get("topic_filter").and_then(|v| v.as_str()).map(String::from);
+                let limit = args
+                    .get("limit")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(50)
+                    .min(500) as usize;
+
+                let b = Arc::clone(&b);
+                let events = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        b.recent_events(topic_filter.as_deref(), limit, None).await
+                    })
+                });
+
+                let text = serde_json::to_string_pretty(&events)
+                    .unwrap_or_else(|_| "[]".to_string());
+
+                Ok(CallToolResult {
+                    content: vec![ToolContent::Text { text }],
+                    is_error: false,
+                })
+            }),
+        )
+        .await;
+
+        // ── bus_status ──────────────────────────────────────────────
+        let b = Arc::clone(&bridge);
+        self.register_tool(
+            "bus_status",
+            "Get the current status of the bus bridge: connection state, event count, \
+             and buffer usage.",
+            json!({
+                "type": "object",
+                "properties": {}
+            }),
+            Arc::new(move |_args| {
+                let status = b.status();
+                let buffer_len = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(b.buffer_len())
+                });
+
+                let text = serde_json::to_string_pretty(&json!({
+                    "connected": status.connected,
+                    "total_received": status.total_received,
+                    "buffer_used": buffer_len,
+                    "buffer_capacity": status.buffer_capacity,
+                    "bus_url": status.bus_url,
+                }))
+                .unwrap_or_default();
+
+                Ok(CallToolResult {
+                    content: vec![ToolContent::Text { text }],
+                    is_error: false,
+                })
+            }),
+        )
+        .await;
+
+        // ── ralph_status ────────────────────────────────────────────
+        self.register_tool(
+            "ralph_status",
+            "Get current Ralph PRD status: story pass/fail states, iteration count, \
+             and progress.txt content. Reads prd.json and progress.txt from the \
+             current working directory.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "prd_path": {
+                        "type": "string",
+                        "description": "Path to prd.json (default: ./prd.json)"
+                    }
+                }
+            }),
+            Arc::new(|args| {
+                let prd_path = args
+                    .get("prd_path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("prd.json");
+
+                let mut result = json!({});
+
+                // Read PRD
+                if let Ok(content) = std::fs::read_to_string(prd_path) {
+                    if let Ok(prd) = serde_json::from_str::<serde_json::Value>(&content) {
+                        let stories = prd.get("user_stories").and_then(|s| s.as_array());
+                        let passed = stories
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter(|s| {
+                                        s.get("passes").and_then(|v| v.as_bool()).unwrap_or(false)
+                                    })
+                                    .count()
+                            })
+                            .unwrap_or(0);
+                        let total = stories.map(|arr| arr.len()).unwrap_or(0);
+
+                        result["prd"] = prd;
+                        result["summary"] = json!({
+                            "passed": passed,
+                            "total": total,
+                            "progress_pct": if total > 0 { (passed * 100) / total } else { 0 },
+                        });
+                    }
+                } else {
+                    result["prd_error"] = json!("prd.json not found");
+                }
+
+                // Read progress.txt
+                let progress_path = std::path::Path::new(prd_path)
+                    .parent()
+                    .unwrap_or(std::path::Path::new("."))
+                    .join("progress.txt");
+                if let Ok(progress) = std::fs::read_to_string(&progress_path) {
+                    result["progress"] = json!(progress);
+                }
+
+                let text = serde_json::to_string_pretty(&result).unwrap_or_default();
+
+                Ok(CallToolResult {
+                    content: vec![ToolContent::Text { text }],
+                    is_error: false,
+                })
+            }),
+        )
+        .await;
+
+        info!("Registered bus-aware MCP tools: bus_events, bus_status, ralph_status");
+    }
+
+    /// Register bus-specific MCP resources.
+    async fn register_bus_resources(&self, bridge: Arc<BusBridge>) {
+        // ── codetether://bus/events/recent ───────────────────────────
+        let b = Arc::clone(&bridge);
+        self.register_resource(
+            "codetether://bus/events/recent",
+            "Recent Bus Events",
+            "Last 100 events from the agent bus (JSON array of BusEnvelope)",
+            Some("application/json"),
+            Arc::new(move |_uri| {
+                let events = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current()
+                        .block_on(async { b.recent_events(None, 100, None).await })
+                });
+                let text =
+                    serde_json::to_string_pretty(&events).unwrap_or_else(|_| "[]".to_string());
+                Ok(ReadResourceResult {
+                    contents: vec![ResourceContents {
+                        uri: "codetether://bus/events/recent".to_string(),
+                        mime_type: Some("application/json".to_string()),
+                        content: ResourceContent::Text { text },
+                    }],
+                })
+            }),
+        )
+        .await;
+
+        // ── codetether://ralph/prd ──────────────────────────────────
+        self.register_resource(
+            "codetether://ralph/prd",
+            "Ralph PRD",
+            "Current PRD JSON with story pass/fail status",
+            Some("application/json"),
+            Arc::new(|_uri| {
+                let text = std::fs::read_to_string("prd.json")
+                    .unwrap_or_else(|_| r#"{"error": "prd.json not found"}"#.to_string());
+                Ok(ReadResourceResult {
+                    contents: vec![ResourceContents {
+                        uri: "codetether://ralph/prd".to_string(),
+                        mime_type: Some("application/json".to_string()),
+                        content: ResourceContent::Text { text },
+                    }],
+                })
+            }),
+        )
+        .await;
+
+        // ── codetether://ralph/progress ─────────────────────────────
+        self.register_resource(
+            "codetether://ralph/progress",
+            "Ralph Progress",
+            "progress.txt content from the current Ralph run",
+            Some("text/plain"),
+            Arc::new(|_uri| {
+                let text = std::fs::read_to_string("progress.txt")
+                    .unwrap_or_else(|_| "(no progress.txt found)".to_string());
+                Ok(ReadResourceResult {
+                    contents: vec![ResourceContents {
+                        uri: "codetether://ralph/progress".to_string(),
+                        mime_type: Some("text/plain".to_string()),
+                        content: ResourceContent::Text { text },
+                    }],
+                })
+            }),
+        )
+        .await;
+
+        info!("Registered bus-aware MCP resources");
     }
 
     /// Register default CodeTether tools
@@ -231,6 +480,90 @@ impl McpServer {
 
     /// Setup default tools
     async fn setup_tools(&self) {
+        // If a ToolRegistry was provided, bridge ALL its tools into MCP
+        if let Some(registry) = &self.tool_registry {
+            self.register_registry_tools(registry).await;
+            info!("Registered {} MCP tools from ToolRegistry", self.tools.read().await.len());
+            return;
+        }
+
+        // Fallback: register basic hardcoded tools when no registry is available
+        self.register_fallback_tools().await;
+        info!("Registered {} MCP tools (fallback)", self.tools.read().await.len());
+    }
+
+    /// Bridge all tools from a ToolRegistry into MCP tool handlers.
+    async fn register_registry_tools(&self, registry: &Arc<ToolRegistry>) {
+        // Skip tools that don't make sense over MCP:
+        // - question: interactive TUI-only prompt
+        // - invalid: internal error handler
+        // - batch: needs weak registry reference, internal orchestration
+        // - confirm_edit / confirm_multiedit: dead TUI confirmation tools
+        // - plan_enter / plan_exit: session-state dependent TUI tools
+        // - voice / podcast / youtube / avatar / image: media generation tools
+        // - undo: git undo, dangerous without TUI context
+        let skip_tools = [
+            "question",
+            "invalid",
+            "batch",
+            "confirm_edit",
+            "confirm_multiedit",
+            "plan_enter",
+            "plan_exit",
+            "voice",
+            "podcast",
+            "youtube",
+            "avatar",
+            "image",
+            "undo",
+        ];
+
+        for tool_id in registry.list() {
+            if skip_tools.contains(&tool_id) {
+                continue;
+            }
+
+            let tool = match registry.get(tool_id) {
+                Some(t) => t,
+                None => continue,
+            };
+
+            let tool_clone = Arc::clone(&tool);
+
+            self.register_tool(
+                tool.id(),
+                tool.description(),
+                tool.parameters(),
+                Arc::new(move |args: Value| {
+                    let tool = Arc::clone(&tool_clone);
+                    let result = tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(async {
+                            tool.execute(args).await
+                        })
+                    });
+
+                    match result {
+                        Ok(tool_result) => Ok(CallToolResult {
+                            content: vec![ToolContent::Text {
+                                text: tool_result.output,
+                            }],
+                            is_error: !tool_result.success,
+                        }),
+                        Err(e) => Ok(CallToolResult {
+                            content: vec![ToolContent::Text {
+                                text: e.to_string(),
+                            }],
+                            is_error: true,
+                        }),
+                    }
+                }),
+            )
+            .await;
+        }
+    }
+
+    /// Fallback hardcoded tools for when no ToolRegistry is provided.
+    async fn register_fallback_tools(&self) {
         // run_command tool
         self.register_tool(
             "run_command",
@@ -697,10 +1030,21 @@ impl McpServer {
         }
     }
 
-    /// Handle list resources request
+    /// Handle list resources request — reads from registered resource metadata
     async fn handle_list_resources(&self, _params: Option<Value>) -> Result<Value, JsonRpcError> {
+        let metadata = self.resource_metadata.read().await;
+        let resource_list: Vec<McpResource> = metadata
+            .values()
+            .map(|rm| McpResource {
+                uri: rm.uri.clone(),
+                name: rm.name.clone(),
+                description: rm.description.clone(),
+                mime_type: rm.mime_type.clone(),
+            })
+            .collect();
+
         let result = ListResourcesResult {
-            resources: vec![],
+            resources: resource_list,
             next_cursor: None,
         };
 

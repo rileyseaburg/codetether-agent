@@ -3,7 +3,7 @@
 use super::RunArgs;
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
 use crate::config::Config;
-use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun, OkrRunStatus};
+use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
 use anyhow::Result;
@@ -70,6 +70,30 @@ struct RelaySpawnDecision {
     reason: String,
     #[serde(default)]
     profile: Option<PlannedRelayProfile>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct PlannedOkrKeyResult {
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    target_value: f64,
+    #[serde(default = "default_okr_unit")]
+    unit: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct PlannedOkrDraft {
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    key_results: Vec<PlannedOkrKeyResult>,
+}
+
+fn default_okr_unit() -> String {
+    "%".to_string()
 }
 
 #[derive(Debug, Serialize)]
@@ -256,6 +280,130 @@ fn resolve_provider_for_model_autochat(
         .copied()
         .and_then(|name| registry.get(name))
         .map(|provider| (provider, model_ref.to_string()))
+}
+
+fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
+    let mut okr = Okr::new(
+        format!("Relay: {}", truncate_with_ellipsis(task, 60)),
+        format!("Execute relay task: {}", task),
+    );
+    okr.id = okr_id;
+
+    // Default key results (fallback only)
+    okr.add_key_result(KeyResult::new(
+        okr_id,
+        "Relay completes all rounds",
+        100.0,
+        "%",
+    ));
+    okr.add_key_result(KeyResult::new(
+        okr_id,
+        "Team produces actionable handoff",
+        1.0,
+        "count",
+    ));
+    okr.add_key_result(KeyResult::new(okr_id, "No critical errors", 0.0, "count"));
+    okr
+}
+
+fn okr_from_planned_draft(okr_id: Uuid, task: &str, planned: PlannedOkrDraft) -> Okr {
+    let title = if planned.title.trim().is_empty() {
+        format!("Relay: {}", truncate_with_ellipsis(task, 60))
+    } else {
+        planned.title.trim().to_string()
+    };
+
+    let description = if planned.description.trim().is_empty() {
+        format!("Execute relay task: {}", task)
+    } else {
+        planned.description.trim().to_string()
+    };
+
+    let mut okr = Okr::new(title, description);
+    okr.id = okr_id;
+
+    // Clamp to a reasonable number of KRs to keep UX readable.
+    for kr in planned.key_results.into_iter().take(7) {
+        if kr.title.trim().is_empty() {
+            continue;
+        }
+        let unit = if kr.unit.trim().is_empty() {
+            default_okr_unit()
+        } else {
+            kr.unit
+        };
+        okr.add_key_result(KeyResult::new(
+            okr_id,
+            kr.title.trim().to_string(),
+            kr.target_value.max(0.0),
+            unit,
+        ));
+    }
+
+    if okr.key_results.is_empty() {
+        default_relay_okr_template(okr_id, task)
+    } else {
+        okr
+    }
+}
+
+async fn plan_okr_draft_with_registry(
+    task: &str,
+    model_ref: &str,
+    agent_count: usize,
+    registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
+) -> Option<PlannedOkrDraft> {
+    let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+
+    // Keep prompt short-ish: this happens *before* the approval gate.
+    let request = crate::provider::CompletionRequest {
+        model: model_name,
+        messages: vec![
+            crate::provider::Message {
+                role: crate::provider::Role::System,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: "You write OKRs for execution governance. Return ONLY valid JSON."
+                        .to_string(),
+                }],
+            },
+            crate::provider::Message {
+                role: crate::provider::Role::User,
+                content: vec![crate::provider::ContentPart::Text {
+                    text: format!(
+                        "Task:\n{task}\n\nTeam size: {agent_count}\n\n\
+                         Propose ONE objective and 3-7 measurable key results for executing this task via an AI relay.\n\
+                         Key results must be quantitative (numeric target_value + unit).\n\n\
+                         Return JSON ONLY (no markdown):\n\
+                         {{\n  \"title\": \"...\",\n  \"description\": \"...\",\n  \"key_results\": [\n    {{\"title\":\"...\",\"target_value\":123,\"unit\":\"%|count|tests|files|items\"}}\n  ]\n}}\n\n\
+                         Rules:\n\
+                         - Avoid vague KRs like 'do better'\n\
+                         - Prefer engineering outcomes (tests passing, endpoints implemented, docs updated, errors=0)\n\
+                         - If unsure about a unit, use 'count'"
+                    ),
+                }],
+            },
+        ],
+        tools: Vec::new(),
+        temperature: Some(0.4),
+        top_p: Some(0.9),
+        max_tokens: Some(900),
+        stop: Vec::new(),
+    };
+
+    let response = provider.complete(request).await.ok()?;
+    let text = response
+        .message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text }
+            | crate::provider::ContentPart::Thinking { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    extract_json_payload::<PlannedOkrDraft>(&text)
 }
 
 async fn plan_relay_profiles_with_registry(
@@ -456,21 +604,27 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             } else {
                 AUTOCHAT_MAX_AGENTS
             };
-            // Create OKR draft
+            // Create OKR draft (LLM-proposed, with safe fallback)
             let okr_id = Uuid::new_v4();
-            let mut okr = Okr::new(
-                format!("Relay: {}", truncate_with_ellipsis(&task, 60)),
-                format!("Execute relay task: {}", task),
-            );
-            okr.id = okr_id;
+            let registry_for_draft = crate::provider::ProviderRegistry::from_vault()
+                .await
+                .ok()
+                .map(std::sync::Arc::new);
 
-            // Add default key results
-            let kr1 = KeyResult::new(okr_id, "Relay completes all rounds", 100.0, "%");
-            let kr2 = KeyResult::new(okr_id, "Team produces actionable handoff", 1.0, "count");
-            let kr3 = KeyResult::new(okr_id, "No critical errors", 0.0, "count");
-            okr.add_key_result(kr1);
-            okr.add_key_result(kr2);
-            okr.add_key_result(kr3);
+            let (mut okr, draft_note) = if let Some(registry) = &registry_for_draft {
+                match plan_okr_draft_with_registry(&task, &model, agent_count, registry).await {
+                    Some(planned) => (okr_from_planned_draft(okr_id, &task, planned), None),
+                    None => (
+                        default_relay_okr_template(okr_id, &task),
+                        Some("(OKR: fallback template — model draft parse failed)".to_string()),
+                    ),
+                }
+            } else {
+                (
+                    default_relay_okr_template(okr_id, &task),
+                    Some("(OKR: fallback template — provider unavailable)".to_string()),
+                )
+            };
 
             // Create run
             let mut run = OkrRun::new(
@@ -483,6 +637,9 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             println!("\n⚠️  /go OKR Draft\n");
             println!("Task: {}", truncate_with_ellipsis(&task, 80));
             println!("Agents: {} | Model: {}", agent_count, model);
+            if let Some(note) = draft_note {
+                println!("{}", note);
+            }
             println!("\nObjective: {}", okr.title);
             println!("\nKey Results:");
             for kr in &okr.key_results {
@@ -520,8 +677,11 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             }
 
             // Load provider for Ralph execution
-            let registry =
-                std::sync::Arc::new(crate::provider::ProviderRegistry::from_vault().await?);
+            let registry = if let Some(registry) = registry_for_draft {
+                registry
+            } else {
+                std::sync::Arc::new(crate::provider::ProviderRegistry::from_vault().await?)
+            };
             let (provider, resolved_model) = resolve_provider_for_model_autochat(&registry, &model)
                 .ok_or_else(|| anyhow::anyhow!("No provider available for model '{model}'"))?;
 
