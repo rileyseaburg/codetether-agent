@@ -19,7 +19,7 @@ use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
-#[cfg(feature = "functiongemma")]
+
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 fn is_interactive_tool(tool_name: &str) -> bool {
@@ -378,7 +378,7 @@ impl Session {
 
         // All current providers support native tool calling.  Hardcode to
         // true so we skip the expensive list_models() API call on every message.
-        #[cfg(feature = "functiongemma")]
+        
         let model_supports_tools = true;
 
         // Build system prompt with AGENTS.md
@@ -394,7 +394,7 @@ impl Session {
         let mut final_output = String::new();
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
-        #[cfg(feature = "functiongemma")]
+        
         let tool_router: Option<ToolCallRouter> = {
             let cfg = ToolRouterConfig::from_env();
             match ToolCallRouter::from_config(&cfg) {
@@ -435,7 +435,7 @@ impl Session {
             // Optionally route text-only responses through FunctionGemma to
             // produce structured tool calls.  Skipped when the model natively
             // supports tool calling (which all current providers do).
-            #[cfg(feature = "functiongemma")]
+            
             let response = if let Some(ref router) = tool_router {
                 router
                     .maybe_reformat(response, &tool_definitions, model_supports_tools)
@@ -942,7 +942,7 @@ impl Session {
 
         // All current providers support native tool calling.  Hardcode to
         // true so we skip the expensive list_models() API call on every message.
-        #[cfg(feature = "functiongemma")]
+        
         let model_supports_tools = true;
 
         // Build system prompt
@@ -955,7 +955,7 @@ impl Session {
         let max_steps = 50;
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
-        #[cfg(feature = "functiongemma")]
+        
         let tool_router: Option<ToolCallRouter> = {
             let cfg = ToolRouterConfig::from_env();
             match ToolCallRouter::from_config(&cfg) {
@@ -996,7 +996,7 @@ impl Session {
 
             // Optionally route text-only responses through FunctionGemma to
             // produce structured tool calls.  Skipped for native tool-calling models.
-            #[cfg(feature = "functiongemma")]
+            
             let response = if let Some(ref router) = tool_router {
                 router
                     .maybe_reformat(response, &tool_definitions, model_supports_tools)

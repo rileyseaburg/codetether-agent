@@ -10,7 +10,7 @@ pub mod executor;
 pub mod persistence;
 mod thinker;
 
-#[cfg(feature = "functiongemma")]
+
 pub mod tool_router;
 
 pub use thinker::{

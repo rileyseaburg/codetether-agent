@@ -2,7 +2,7 @@ use anyhow::{Context, Result, anyhow};
 use candle_core::quantized::gguf_file;
 use candle_core::{Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
-#[cfg(feature = "functiongemma")]
+
 use candle_transformers::models::quantized_gemma3;
 use candle_transformers::models::{quantized_llama, quantized_qwen2};
 use candle_transformers::utils::apply_repeat_penalty;
@@ -413,7 +413,7 @@ pub(crate) struct CandleThinker {
 enum CandleModel {
     Llama(quantized_llama::ModelWeights),
     Qwen2(quantized_qwen2::ModelWeights),
-    #[cfg(feature = "functiongemma")]
+    
     Gemma3(quantized_gemma3::ModelWeights),
 }
 
@@ -422,7 +422,7 @@ impl CandleModel {
         match self {
             Self::Llama(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen2(model) => Ok(model.forward(x, index_pos)?),
-            #[cfg(feature = "functiongemma")]
+            
             Self::Gemma3(model) => Ok(model.forward(x, index_pos)?),
         }
     }
@@ -476,7 +476,7 @@ impl CandleThinker {
                 quantized_qwen2::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load qwen2 gguf from {}", model_path))?,
             ),
-            #[cfg(feature = "functiongemma")]
+            
             "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => CandleModel::Gemma3(
                 quantized_gemma3::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load gemma3 gguf from {}", model_path))?,
