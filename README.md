@@ -390,6 +390,83 @@ All keys stored in Vault at `secret/codetether/providers/<name>`.
 
 27+ tools across file operations (`read_file`, `write_file`, `edit`, `multiedit`, `apply_patch`, `glob`, `list_dir`), code intelligence (`lsp`, `grep`, `codesearch`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), and agent orchestration (`ralph`, `rlm`, `prd`, `swarm`, `todo_read`, `todo_write`, `question`, `skill`, `plan_enter`, `plan_exit`).
 
+## MCP Server (VS Code / Claude Desktop)
+
+CodeTether exposes 26 tools via the [Model Context Protocol](https://modelcontextprotocol.io/) over stdio. This lets AI clients (GitHub Copilot in VS Code, Claude Desktop, etc.) call CodeTether tools directly.
+
+### VS Code (Workspace-Level — Recommended)
+
+When using VS Code Remote SSH, the extension host runs on the remote machine. Add a `.vscode/mcp.json` to your workspace:
+
+```json
+{
+  "servers": {
+    "codetether": {
+      "command": "/home/riley/.cargo/bin/codetether",
+      "args": ["mcp", "serve"],
+      "env": {
+        "RUST_LOG": "error"
+      }
+    }
+  }
+}
+```
+
+Reload VS Code — the 26 tools appear in the MCP panel automatically.
+
+### Claude Desktop (Global Config)
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/.config/Claude/claude_desktop_config.json` (Linux/macOS):
+
+```json
+{
+  "mcpServers": {
+    "codetether": {
+      "command": "/path/to/codetether",
+      "args": ["mcp", "serve"],
+      "env": {
+        "RUST_LOG": "error"
+      }
+    }
+  }
+}
+```
+
+For remote machines over SSH:
+
+```json
+{
+  "mcpServers": {
+    "codetether": {
+      "command": "ssh",
+      "args": ["-T", "user@host", "cd /project && RUST_LOG=error /path/to/codetether mcp serve"]
+    }
+  }
+}
+```
+
+### Exposed Tools (26)
+
+| Category | Tools |
+|----------|-------|
+| **File Ops** | `read`, `write`, `edit`, `multiedit`, `apply_patch`, `glob`, `list` |
+| **Search** | `grep`, `codesearch` |
+| **Execution** | `bash`, `task` |
+| **Code Intelligence** | `lsp` |
+| **Web** | `webfetch`, `websearch` |
+| **Agent Orchestration** | `agent`, `swarm_execute`, `relay_autochat`, `go` |
+| **Planning** | `ralph`, `prd`, `okr`, `todoread`, `todowrite` |
+| **Knowledge** | `memory`, `skill`, `mcp` (bridge to other MCP servers) |
+
+### CLI Helpers
+
+```bash
+codetether mcp list-tools          # List available MCP tools
+codetether mcp list-tools --json   # JSON output
+codetether mcp serve               # Start stdio MCP server
+codetether mcp serve --bus-url URL # With agent bus integration
+```
+
 ## Architecture
 
 ```
