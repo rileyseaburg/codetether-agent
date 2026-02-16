@@ -1,32 +1,22 @@
-# v3.1.0
+# v3.1.1
 
 ## What's New
 
-### Persistent Ralph State Store
-Added a new state store system for Ralph autonomous agent execution with multiple backend implementations:
-- **In-memory store** for ephemeral runs
-- **HTTP-backed store** for distributed state management
-- Ralph loops now persist progress across iterations, enabling better recovery and monitoring
-
-### Background Go Execution
-The `go` command now supports background execution mode for long-running autonomous tasks:
-- Execute OKR → PRD → Ralph pipelines asynchronously
-- Watch pipeline progress with the `watch` action
-- Check final status by OKR ID
-
-### MCP Server Configuration Guide
-Added comprehensive documentation for configuring MCP servers with:
-- VS Code integration
-- Claude Desktop setup
-
-### Worktree Isolation Improvements
-Enhanced git worktree management with better isolation guarantees for parallel agent execution.
+- **Swarm System Expansion**: Major enhancements to the swarm orchestration system with new `collapse_controller.rs` (590 lines), `kubernetes_executor.rs` (133 lines), and `remote_subtask.rs` (209 lines) modules for advanced parallel sub-agent coordination
+- **Kubernetes Integration**: Significant expansion of `src/k8s/mod.rs` (+293 lines) with enhanced cluster management and deployment capabilities
+- **Voice Planning**: Added `ll-voice-plan.md` documenting voice feature roadmap
 
 ## Changes
 
-- Expanded swarm executor with additional orchestration capabilities
-- Improved MCP server with new configuration options
-- Updated A2A worker with refined message handling
-- Enhanced CLI with new go/ralph integration commands
+- **Removed OpenCode Module**: Deleted `src/opencode/mod.rs` (509 lines) as part of codebase consolidation
+- **Refactored Copilot Provider**: Reorganized `src/provider/copilot.rs` for improved maintainability
+- **Session Management**: Streamlined session module with reduced complexity
+- **Documentation Updates**: Refreshed README, IMAGE_INPUT_REQUIREMENTS, and benchmark results
+- **PRD Management**: Added new PRD files and removed obsolete `prd_opencode_parity_missing_features.json`
+- **Tool Improvements**: Updates to `go.rs`, `advanced_edit.rs`, and CLI run command
 
-**Stats:** 17 files changed, 1,517 insertions(+), 117 deletions(-)
+## Stats
+
+```
+41 files changed, 3,286 insertions(+), 1,731 deletions(-)
+```
