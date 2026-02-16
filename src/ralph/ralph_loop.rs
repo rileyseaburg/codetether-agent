@@ -1,5 +1,6 @@
 //! Ralph loop - the core autonomous execution loop
 
+use super::state_store::{RalphRunState, RalphStateStore, StoryResultEntry};
 use super::types::*;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
@@ -26,6 +27,8 @@ pub struct RalphLoop {
     event_tx: Option<mpsc::Sender<RalphEvent>>,
     bus: Option<Arc<AgentBus>>,
     registry: Option<Arc<ProviderRegistry>>,
+    store: Option<Arc<dyn RalphStateStore>>,
+    run_id: String,
 }
 
 impl RalphLoop {
@@ -74,6 +77,8 @@ impl RalphLoop {
             event_tx: None,
             bus: None,
             registry: None,
+            store: None,
+            run_id: uuid::Uuid::new_v4().to_string(),
         })
     }
 
@@ -93,6 +98,27 @@ impl RalphLoop {
     pub fn with_registry(mut self, registry: Arc<ProviderRegistry>) -> Self {
         self.registry = Some(registry);
         self
+    }
+
+    /// Attach a state store for persistent run state
+    pub fn with_store(mut self, store: Arc<dyn RalphStateStore>) -> Self {
+        self.store = Some(store);
+        self
+    }
+
+    /// Set a specific run ID (defaults to a generated UUID)
+    pub fn with_run_id(mut self, run_id: String) -> Self {
+        self.run_id = run_id;
+        self
+    }
+
+    /// Fire-and-forget store update — logs errors but never blocks
+    fn store_fire_and_forget(&self, fut: impl std::future::Future<Output = anyhow::Result<()>> + Send + 'static) {
+        tokio::spawn(async move {
+            if let Err(e) = fut.await {
+                warn!(error = %e, "State store update failed");
+            }
+        });
     }
 
     /// Non-blocking send of a Ralph event
@@ -260,6 +286,27 @@ impl RalphLoop {
     pub async fn run(&mut self) -> anyhow::Result<RalphState> {
         self.state.status = RalphStatus::Running;
 
+        // Create run record in store
+        if let Some(ref store) = self.store {
+            let initial_state = RalphRunState {
+                run_id: self.run_id.clone(),
+                okr_id: None,
+                prd: self.state.prd.clone(),
+                config: self.config.clone(),
+                status: RalphStatus::Running,
+                current_iteration: 0,
+                max_iterations: self.state.max_iterations,
+                progress_log: Vec::new(),
+                story_results: Vec::new(),
+                error: None,
+                created_at: chrono::Utc::now().to_rfc3339(),
+                started_at: Some(chrono::Utc::now().to_rfc3339()),
+                completed_at: None,
+            };
+            let s = store.clone();
+            self.store_fire_and_forget(async move { s.create_run(&initial_state).await });
+        }
+
         // Emit Started event
         self.try_send_event(RalphEvent::Started {
             project: self.state.prd.project.clone(),
@@ -328,6 +375,18 @@ impl RalphLoop {
             }
         }
 
+        // Persist final state to store
+        if let Some(ref store) = self.store {
+            let s = store.clone();
+            let rid = self.run_id.clone();
+            let status = self.state.status;
+            let prd = self.state.prd.clone();
+            self.store_fire_and_forget(async move {
+                s.update_prd(&rid, &prd).await?;
+                s.complete_run(&rid, status).await
+            });
+        }
+
         info!(
             "Ralph finished: {:?}, {}/{} stories passed",
             self.state.status,
@@ -349,6 +408,15 @@ impl RalphLoop {
     async fn run_sequential(&mut self) -> anyhow::Result<()> {
         while self.state.current_iteration < self.state.max_iterations {
             self.state.current_iteration += 1;
+
+            // Persist iteration update
+            if let Some(ref store) = self.store {
+                let s = store.clone();
+                let rid = self.run_id.clone();
+                let iter = self.state.current_iteration;
+                self.store_fire_and_forget(async move { s.update_iteration(&rid, iter).await });
+            }
+
             info!(
                 "=== Ralph iteration {} of {} ===",
                 self.state.current_iteration, self.state.max_iterations
@@ -420,6 +488,20 @@ impl RalphLoop {
                             info!("Story {} passed quality checks!", story.id);
                             self.state.prd.mark_passed(&story.id);
 
+                            // Record story result in store
+                            if let Some(ref store) = self.store {
+                                let s = store.clone();
+                                let rid = self.run_id.clone();
+                                let entry = StoryResultEntry {
+                                    story_id: story.id.clone(),
+                                    title: story.title.clone(),
+                                    passed: true,
+                                    iteration: self.state.current_iteration,
+                                    error: None,
+                                };
+                                self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                            }
+
                             self.try_send_event(RalphEvent::StoryComplete {
                                 story_id: story.id.clone(),
                                 passed: true,
@@ -444,6 +526,20 @@ impl RalphLoop {
                         } else {
                             warn!("Story {} failed quality checks", story.id);
 
+                            // Record failed story result in store
+                            if let Some(ref store) = self.store {
+                                let s = store.clone();
+                                let rid = self.run_id.clone();
+                                let entry = StoryResultEntry {
+                                    story_id: story.id.clone(),
+                                    title: story.title.clone(),
+                                    passed: false,
+                                    iteration: self.state.current_iteration,
+                                    error: Some("Quality checks failed".to_string()),
+                                };
+                                self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                            }
+
                             // Publish failure learnings to bus
                             let next = self.state.prd.next_story().map(|s| s.id.clone());
                             self.bus_publish_story_result(
@@ -462,6 +558,20 @@ impl RalphLoop {
                         // No quality checks, just mark as passed
                         self.state.prd.mark_passed(&story.id);
                         self.state.prd.save(&self.state.prd_path).await?;
+
+                        // Record story result in store
+                        if let Some(ref store) = self.store {
+                            let s = store.clone();
+                            let rid = self.run_id.clone();
+                            let entry = StoryResultEntry {
+                                story_id: story.id.clone(),
+                                title: story.title.clone(),
+                                passed: true,
+                                iteration: self.state.current_iteration,
+                                error: None,
+                            };
+                            self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                        }
 
                         self.try_send_event(RalphEvent::StoryComplete {
                             story_id: story.id.clone(),
@@ -787,6 +897,21 @@ impl RalphLoop {
                                                     story_id: story.id.clone(),
                                                     passed: true,
                                                 });
+
+                                                // Record story result in store
+                                                if let Some(ref store) = self.store {
+                                                    let s = store.clone();
+                                                    let rid = self.run_id.clone();
+                                                    let entry = StoryResultEntry {
+                                                        story_id: story.id.clone(),
+                                                        title: story.title.clone(),
+                                                        passed: true,
+                                                        iteration: self.state.current_iteration,
+                                                        error: None,
+                                                    };
+                                                    self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                                                }
+
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(wt);
                                             } else if !merge_result.conflicts.is_empty() {
@@ -898,6 +1023,20 @@ impl RalphLoop {
                                         story_id: story.id.clone(),
                                         passed: true,
                                     });
+
+                                    // Record story result in store
+                                    if let Some(ref store) = self.store {
+                                        let s = store.clone();
+                                        let rid = self.run_id.clone();
+                                        let entry = StoryResultEntry {
+                                            story_id: story.id.clone(),
+                                            title: story.title.clone(),
+                                            passed: true,
+                                            iteration: self.state.current_iteration,
+                                            error: None,
+                                        };
+                                        self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                                    }
                                 }
                             } else {
                                 warn!("Story {} failed quality checks", story.id);
@@ -953,6 +1092,18 @@ impl RalphLoop {
 
             // Save PRD after each stage
             self.state.prd.save(&self.state.prd_path).await?;
+
+            // Persist PRD + iteration to store after each stage
+            if let Some(ref store) = self.store {
+                let s = store.clone();
+                let rid = self.run_id.clone();
+                let prd = self.state.prd.clone();
+                let iter = self.state.current_iteration;
+                self.store_fire_and_forget(async move {
+                    s.update_prd(&rid, &prd).await?;
+                    s.update_iteration(&rid, iter).await
+                });
+            }
         }
 
         Ok(())
@@ -964,10 +1115,11 @@ impl RalphLoop {
         prd_info: &(String, String),
         working_dir: &PathBuf,
     ) -> String {
+        let wd = working_dir.display();
         format!(
             r#"# PRD: {} - {}
 
-## Working Directory: {}
+## Working Directory: {wd}
 
 ## Current Story: {} - {}
 
@@ -980,45 +1132,28 @@ impl RalphLoop {
 
 1. **EXPLORE** (2-4 tool calls): Use `glob` and `read` to understand existing code
 2. **IMPLEMENT** (5-15 tool calls): Use `write` or `edit` to make changes
-3. **VERIFY**: Run `bash` with command `cargo check 2>&1` to check for errors
+3. **VERIFY**: Run a verification command appropriate to the language (see below)
 4. **FIX OR FINISH**:
    - If no errors: Output `STORY_COMPLETE: {}` and STOP
-   - If errors: Parse the error, fix it, re-run cargo check (max 3 fix attempts)
+   - If errors: Parse the error, fix it, re-verify (max 3 fix attempts)
    - After 3 failed attempts: Output `STORY_BLOCKED: <error summary>` and STOP
 
-## UNDERSTANDING CARGO ERRORS:
-
-When `cargo check` fails, the output shows:
-```
-error[E0432]: unresolved import `crate::foo::bar`
-  --> src/file.rs:10:5
-   |
-10 | use crate::foo::bar;
-   |             ^^^ could not find `bar` in `foo`
-```
-
-Key parts:
-- `error[E0432]` = error code (search rustc --explain E0432 for details)
-- `src/file.rs:10:5` = file:line:column where error occurs
-- The message explains what's wrong
-
-COMMON FIXES:
-- "unresolved import" → module doesn't exist or isn't exported, check mod.rs
-- "cannot find" → typo in name or missing import
-- "mismatched types" → wrong type, check function signatures
-- "trait bound not satisfied" → missing impl or use statement
+## VERIFICATION BY LANGUAGE:
+- **Rust**: `bash` with `cargo check 2>&1`
+- **Python**: `bash` with `python -c "import ast; ast.parse(open('FILE').read())"` for each changed file
+- **TypeScript/JavaScript**: `bash` with `npx tsc --noEmit` (if tsconfig.json exists)
+- Choose the right check for the files you modified
 
 ## TOOL USAGE:
 - `read`: Read file content (always read before editing!)
 - `edit`: Modify files (MUST include 3+ lines before/after for unique context)
 - `write`: Create new files
-- `bash`: Run commands with `{{"command": "...", "cwd": "{}"}}`
+- `bash`: Run commands with `{{"command": "...", "cwd": "{wd}"}}`
 
 ## CRITICAL RULES:
 - ALWAYS read a file before editing it
 - When edit fails with "ambiguous match", include MORE context lines
 - Do NOT add TODO/placeholder comments
-- Run `cargo check 2>&1` to see ALL errors including warnings
 - Count your fix attempts - STOP after 3 failures
 
 ## TERMINATION:
@@ -1029,7 +1164,6 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
 "#,
             prd_info.0,
             prd_info.1,
-            working_dir.display(),
             story.id,
             story.title,
             story.description,
@@ -1040,7 +1174,6 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
                 .collect::<Vec<_>>()
                 .join("\n"),
             story.id,
-            working_dir.display(),
             story.id
         )
     }
@@ -1090,6 +1223,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             event_tx,
             story_id,
             bus.clone(),
+            Some(working_dir.clone()),
         )
         .await?;
 
@@ -1500,6 +1634,7 @@ Working directory: {}
             None,
             String::new(),
             bus.clone(),
+            Some(working_dir.to_path_buf()),
         )
         .await?;
 
@@ -1773,6 +1908,7 @@ Respond with the implementation and any shell commands needed.
             bridge_tx,
             story_id.to_string(),
             self.bus.clone(),
+            Some(self.state.working_dir.clone()),
         )
         .await?;
 

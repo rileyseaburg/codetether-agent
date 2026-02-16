@@ -320,6 +320,7 @@ Share any intermediate results using the swarm_share tool so other agents can be
                     None,
                     task_id.clone(),
                     None,
+                    None,
                 )
                 .await?;
 

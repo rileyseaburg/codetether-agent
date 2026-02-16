@@ -3,17 +3,58 @@
 //! Exposes the `/go` command as an MCP-callable tool for programmatic
 //! autonomous work execution. Creates an OKR, generates a PRD from the
 //! task description, runs the Ralph loop, and maps results back to the OKR.
+//!
+//! The `execute` action spawns the pipeline in a background task and returns
+//! immediately so the MCP client can monitor progress via `go_watch`.
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 use super::{Tool, ToolResult};
 use crate::cli::go_ralph::{execute_go_ralph, format_go_ralph_result};
 use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun};
+
+// ─── Active execution tracking ──────────────────────────────────────────
+
+/// Phase of a running go pipeline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "phase", rename_all = "snake_case")]
+pub enum GoRunPhase {
+    Starting,
+    Running,
+    Completed {
+        passed: usize,
+        total: usize,
+        all_passed: bool,
+        feature_branch: String,
+        summary: String,
+    },
+    Failed {
+        error: String,
+    },
+}
+
+/// Metadata for an active go run
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveGoRun {
+    pub okr_id: String,
+    pub task: String,
+    pub model: String,
+    pub started_at: String,
+    pub working_dir: String,
+    pub prd_filename: String,
+    pub progress_filename: String,
+    pub phase: GoRunPhase,
+}
+
+/// Global registry of active (and recently completed) go runs.
+static ACTIVE_GO_RUNS: std::sync::LazyLock<Mutex<HashMap<String, ActiveGoRun>>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Deserialize)]
 struct GoParams {
@@ -56,12 +97,16 @@ and maps results back to OKR outcomes.
 This is the programmatic equivalent of the `/go` TUI command. OKR approval is automatic 
 (no interactive gate) since this is called by MCP clients.
 
+The pipeline runs in the background. Use action "watch" to monitor progress.
+
 Actions:
-- execute: Run the full autonomous pipeline (OKR → PRD → Ralph → results)
-- status: Check status of an OKR run by okr_id
+- execute: Launch the autonomous pipeline (OKR → PRD → Ralph → results). Returns immediately.
+- watch: Watch a running pipeline's progress by okr_id. Shows PRD status, progress notes, and phase.
+- status: Check final status of an OKR run by okr_id
 
 Required for execute: task
-Optional for execute: max_iterations (default 10), max_concurrent_stories (default 3), model"#
+Optional for execute: max_iterations (default 10), max_concurrent_stories (default 3), model
+Required for watch/status: okr_id"#
     }
 
     fn parameters(&self) -> Value {
@@ -70,8 +115,8 @@ Optional for execute: max_iterations (default 10), max_concurrent_stories (defau
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["execute", "status"],
-                    "description": "Action to perform"
+                    "enum": ["execute", "watch", "status"],
+                    "description": "Action to perform. Use 'execute' to start, 'watch' to monitor progress, 'status' for OKR results."
                 },
                 "task": {
                     "type": "string",
@@ -91,7 +136,7 @@ Optional for execute: max_iterations (default 10), max_concurrent_stories (defau
                 },
                 "okr_id": {
                     "type": "string",
-                    "description": "OKR ID for status action"
+                    "description": "OKR ID for watch/status actions"
                 }
             },
             "required": ["action"]
@@ -103,12 +148,13 @@ Optional for execute: max_iterations (default 10), max_concurrent_stories (defau
 
         match p.action.as_str() {
             "execute" => self.execute_go(p).await,
+            "watch" => self.watch_go(p).await,
             "status" => self.check_status(p).await,
             _ => Ok(ToolResult::structured_error(
                 "INVALID_ACTION",
                 "go",
                 &format!(
-                    "Unknown action: '{}'. Valid actions: execute, status",
+                    "Unknown action: '{}'. Valid actions: execute, watch, status",
                     p.action
                 ),
                 None,
@@ -155,6 +201,7 @@ impl GoTool {
 
         // Create OKR with default template
         let okr_id = Uuid::new_v4();
+        let okr_id_str = okr_id.to_string();
         let mut okr = create_default_okr(okr_id, &task);
         let mut run = OkrRun::new(
             okr_id,
@@ -166,10 +213,33 @@ impl GoTool {
             "Auto-approved via MCP go tool",
         ));
 
+        let run_id = run.id;
+        let prd_filename = format!("prd_{}.json", run_id.to_string().replace('-', "_"));
+        let progress_filename = format!("progress_{}.txt", run_id.to_string().replace('-', "_"));
+
         // Persist OKR before execution
         if let Ok(repo) = OkrRepository::from_config().await {
             let _ = repo.create_okr(okr.clone()).await;
             let _ = repo.create_run(run.clone()).await;
+        }
+
+        let working_dir = std::env::current_dir()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| ".".into());
+
+        // Register active run
+        let active_run = ActiveGoRun {
+            okr_id: okr_id_str.clone(),
+            task: task.clone(),
+            model: resolved_model.clone(),
+            started_at: chrono::Utc::now().to_rfc3339(),
+            working_dir: working_dir.clone(),
+            prd_filename: prd_filename.clone(),
+            progress_filename: progress_filename.clone(),
+            phase: GoRunPhase::Starting,
+        };
+        if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
+            runs.insert(okr_id_str.clone(), active_run);
         }
 
         tracing::info!(
@@ -177,70 +247,265 @@ impl GoTool {
             okr_id = %okr_id,
             model = %resolved_model,
             max_iterations,
-            "Starting /go autonomous pipeline via MCP"
+            "Starting /go autonomous pipeline via MCP (background)"
         );
 
-        // Create bus for inter-iteration learning sharing
-        let bus = crate::bus::AgentBus::new().into_arc();
-
-        // Run the full pipeline
-        match execute_go_ralph(
-            &task,
-            &mut okr,
-            &mut run,
-            provider,
-            &resolved_model,
-            max_iterations,
-            Some(bus),
-            max_concurrent,
-            Some(registry),
-        )
-        .await
-        {
-            Ok(result) => {
-                // Persist final state
-                if let Ok(repo) = OkrRepository::from_config().await {
-                    let _ = repo.update_run(run).await;
-                }
-
-                let summary = format_go_ralph_result(&result, &task);
-
-                if result.all_passed {
-                    Ok(ToolResult::success(summary)
-                        .with_metadata("okr_id", json!(okr_id.to_string()))
-                        .with_metadata("status", json!(format!("{:?}", result.status)))
-                        .with_metadata("passed", json!(result.passed))
-                        .with_metadata("total", json!(result.total))
-                        .with_metadata("feature_branch", json!(result.feature_branch))
-                        .with_metadata("all_passed", json!(true))
-                        .with_metadata("ready_to_merge", json!(true))
-                        .with_metadata("prd_path", json!(result.prd_path.display().to_string())))
-                } else {
-                    Ok(ToolResult::error(summary)
-                        .with_metadata("okr_id", json!(okr_id.to_string()))
-                        .with_metadata("status", json!(format!("{:?}", result.status)))
-                        .with_metadata("passed", json!(result.passed))
-                        .with_metadata("total", json!(result.total))
-                        .with_metadata("feature_branch", json!(result.feature_branch))
-                        .with_metadata("all_passed", json!(false))
-                        .with_metadata("ready_to_merge", json!(false))
-                        .with_metadata("prd_path", json!(result.prd_path.display().to_string())))
+        // Spawn the pipeline in a background task
+        let bg_okr_id = okr_id_str.clone();
+        let bg_task = task.clone();
+        let bg_model = resolved_model.clone();
+        tokio::spawn(async move {
+            // Update phase to Running
+            if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
+                if let Some(r) = runs.get_mut(&bg_okr_id) {
+                    r.phase = GoRunPhase::Running;
                 }
             }
-            Err(err) => {
-                // Mark run as failed
-                run.status = crate::okr::OkrRunStatus::Failed;
-                if let Ok(repo) = OkrRepository::from_config().await {
-                    let _ = repo.update_run(run).await;
+
+            // Create bus with S3 sink for training data archival
+            let bus = crate::bus::AgentBus::new().into_arc();
+            crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
+            match execute_go_ralph(
+                &bg_task,
+                &mut okr,
+                &mut run,
+                provider,
+                &bg_model,
+                max_iterations,
+                Some(bus),
+                max_concurrent,
+                Some(registry),
+            )
+            .await
+            {
+                Ok(result) => {
+                    // Persist final state
+                    if let Ok(repo) = OkrRepository::from_config().await {
+                        let _ = repo.update_run(run).await;
+                    }
+
+                    let summary = format_go_ralph_result(&result, &bg_task);
+
+                    if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
+                        if let Some(r) = runs.get_mut(&bg_okr_id) {
+                            r.phase = GoRunPhase::Completed {
+                                passed: result.passed,
+                                total: result.total,
+                                all_passed: result.all_passed,
+                                feature_branch: result.feature_branch,
+                                summary,
+                            };
+                        }
+                    }
+
+                    tracing::info!(
+                        okr_id = %bg_okr_id,
+                        passed = result.passed,
+                        total = result.total,
+                        "Go pipeline completed"
+                    );
+                }
+                Err(err) => {
+                    // Mark run as failed
+                    run.status = crate::okr::OkrRunStatus::Failed;
+                    if let Ok(repo) = OkrRepository::from_config().await {
+                        let _ = repo.update_run(run).await;
+                    }
+
+                    let error_msg = err.to_string();
+                    if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
+                        if let Some(r) = runs.get_mut(&bg_okr_id) {
+                            r.phase = GoRunPhase::Failed {
+                                error: error_msg.clone(),
+                            };
+                        }
+                    }
+
+                    tracing::error!(
+                        okr_id = %bg_okr_id,
+                        error = %error_msg,
+                        "Go pipeline failed"
+                    );
+                }
+            }
+        });
+
+        // Return immediately with launch confirmation + watch instructions
+        let output = format!(
+            "# Go Pipeline Launched\n\n\
+             **OKR ID:** `{okr_id_str}`\n\
+             **Task:** {task}\n\
+             **Model:** {resolved_model}\n\
+             **Max Iterations:** {max_iterations}\n\
+             **Working Directory:** {working_dir}\n\n\
+             The autonomous pipeline is now running in the background.\n\n\
+             ## Monitor Progress\n\n\
+             Use the `go` tool with action `watch` to monitor this pipeline:\n\n\
+             ```json\n\
+             {{\"action\": \"watch\", \"okr_id\": \"{okr_id_str}\"}}\n\
+             ```\n\n\
+             The pipeline will:\n\
+             1. Generate a PRD from the task description\n\
+             2. Run the Ralph loop to implement all user stories\n\
+             3. Run quality checks (typecheck, lint, test, build)\n\
+             4. Map results back to OKR outcomes\n\n\
+             PRD file: `{prd_filename}`\n\
+             Progress file: `{progress_filename}`"
+        );
+
+        Ok(ToolResult::success(output)
+            .with_metadata("okr_id", json!(okr_id_str))
+            .with_metadata("phase", json!("starting"))
+            .with_metadata("prd_filename", json!(prd_filename))
+            .with_metadata("progress_filename", json!(progress_filename))
+            .with_metadata("watch_hint", json!({
+                "tool": "go",
+                "args": {"action": "watch", "okr_id": okr_id_str}
+            })))
+    }
+
+    async fn watch_go(&self, p: GoParams) -> Result<ToolResult> {
+        let okr_id_str = match p.okr_id {
+            Some(id) if !id.trim().is_empty() => id,
+            _ => {
+                // If no OKR ID given, list all active runs
+                let runs = ACTIVE_GO_RUNS.lock().unwrap_or_else(|e| e.into_inner());
+                if runs.is_empty() {
+                    return Ok(ToolResult::success(
+                        "No active go pipelines. Use `go(action: \"execute\", task: \"...\")` to start one."
+                    ));
                 }
 
-                Ok(ToolResult::error(format!(
-                    "Go pipeline failed: {err}\n\nOKR: {okr_id}\nTask: {task}"
-                ))
-                .with_metadata("okr_id", json!(okr_id.to_string()))
-                .with_metadata("all_passed", json!(false)))
+                let mut output = String::from("# Active Go Pipelines\n\n");
+                for (id, run) in runs.iter() {
+                    let phase_str = match &run.phase {
+                        GoRunPhase::Starting => "Starting".to_string(),
+                        GoRunPhase::Running => "Running".to_string(),
+                        GoRunPhase::Completed { passed, total, .. } => {
+                            format!("Completed ({passed}/{total} passed)")
+                        }
+                        GoRunPhase::Failed { error } => {
+                            format!("Failed: {}", &error[..error.len().min(80)])
+                        }
+                    };
+                    output.push_str(&format!(
+                        "- **{id}**: {phase_str}\n  Task: {}\n  Started: {}\n\n",
+                        run.task, run.started_at
+                    ));
+                }
+                output.push_str("Use `go(action: \"watch\", okr_id: \"<id>\")` for details.");
+                return Ok(ToolResult::success(output));
+            }
+        };
+
+        // Look up the active run
+        let active_run = {
+            let runs = ACTIVE_GO_RUNS.lock().unwrap_or_else(|e| e.into_inner());
+            runs.get(&okr_id_str).cloned()
+        };
+
+        let Some(run) = active_run else {
+            return Ok(ToolResult::error(format!(
+                "No active go pipeline found for OKR `{okr_id_str}`.\n\n\
+                 Use `go(action: \"watch\")` with no okr_id to list active pipelines,\n\
+                 or `go(action: \"status\", okr_id: \"...\")` to check completed runs."
+            )));
+        };
+
+        let mut output = format!(
+            "# Go Pipeline Status\n\n\
+             **OKR ID:** `{}`\n\
+             **Task:** {}\n\
+             **Model:** {}\n\
+             **Started:** {}\n\
+             **Working Directory:** {}\n",
+            run.okr_id, run.task, run.model, run.started_at, run.working_dir
+        );
+
+        // Phase
+        match &run.phase {
+            GoRunPhase::Starting => {
+                output.push_str("\n**Phase:** Starting (generating PRD...)\n");
+            }
+            GoRunPhase::Running => {
+                output.push_str("\n**Phase:** Running Ralph loop\n");
+            }
+            GoRunPhase::Completed {
+                passed,
+                total,
+                all_passed,
+                feature_branch,
+                summary,
+            } => {
+                output.push_str(&format!(
+                    "\n**Phase:** Completed {}\n\
+                     **Result:** {passed}/{total} stories passed\n\
+                     **Feature Branch:** `{feature_branch}`\n\n\
+                     ## Summary\n\n{summary}\n",
+                    if *all_passed { "✅" } else { "⚠️" }
+                ));
+            }
+            GoRunPhase::Failed { error } => {
+                output.push_str(&format!("\n**Phase:** Failed ❌\n**Error:** {error}\n"));
             }
         }
+
+        // Read PRD file for story-level progress
+        if let Ok(prd_content) = std::fs::read_to_string(&run.prd_filename) {
+            if let Ok(prd) = serde_json::from_str::<Value>(&prd_content) {
+                if let Some(stories) = prd.get("user_stories").and_then(|s| s.as_array()) {
+                    output.push_str("\n## Stories\n\n");
+                    let mut passed_count = 0;
+                    for story in stories {
+                        let id = story.get("id").and_then(|v| v.as_str()).unwrap_or("?");
+                        let title =
+                            story.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+                        let passes = story
+                            .get("passes")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        let icon = if passes {
+                            passed_count += 1;
+                            "✅"
+                        } else {
+                            "⏳"
+                        };
+                        output.push_str(&format!("- {icon} **{id}**: {title}\n"));
+                    }
+                    output.push_str(&format!(
+                        "\n**Progress:** {passed_count}/{} stories passed\n",
+                        stories.len()
+                    ));
+                }
+            }
+        }
+
+        // Read progress file
+        if let Ok(progress) = std::fs::read_to_string(&run.progress_filename) {
+            if !progress.trim().is_empty() {
+                // Show last 30 lines to avoid overwhelming output
+                let lines: Vec<&str> = progress.lines().collect();
+                let start = lines.len().saturating_sub(30);
+                let tail: String = lines[start..].join("\n");
+                output.push_str(&format!(
+                    "\n## Progress Notes (last {} lines)\n\n```\n{tail}\n```\n",
+                    lines.len().min(30)
+                ));
+            }
+        }
+
+        // Hint for next action
+        if matches!(run.phase, GoRunPhase::Starting | GoRunPhase::Running) {
+            output.push_str(&format!(
+                "\n---\n*Pipeline still running. Call `go(action: \"watch\", okr_id: \"{}\")` again to check progress.*\n",
+                run.okr_id
+            ));
+        }
+
+        Ok(ToolResult::success(output)
+            .with_metadata("okr_id", json!(run.okr_id))
+            .with_metadata("phase", json!(serde_json::to_value(&run.phase).unwrap_or(json!("unknown")))))
     }
 
     async fn check_status(&self, p: GoParams) -> Result<ToolResult> {

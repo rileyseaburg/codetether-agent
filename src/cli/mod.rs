@@ -239,9 +239,9 @@ pub struct A2aArgs {
     #[arg(short, long, env = "CODETETHER_WORKER_NAME")]
     pub name: Option<String>,
 
-    /// Comma-separated list of codebase paths
-    #[arg(short, long)]
-    pub codebases: Option<String>,
+    /// Comma-separated list of workspace paths (alias: --codebases)
+    #[arg(short, long, visible_alias = "codebases")]
+    pub workspaces: Option<String>,
 
     /// Auto-approve policy: all, safe (read-only), none
     #[arg(long, default_value = "safe", value_parser = ["all", "safe", "none"])]

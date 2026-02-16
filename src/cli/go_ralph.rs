@@ -16,6 +16,7 @@ use crate::bus::AgentBus;
 use crate::okr::{KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus};
+use crate::ralph::store_http::HttpStore;
 
 /// Result of a `/go` execution via Ralph.
 #[derive(Debug, Clone)]
@@ -360,6 +361,9 @@ pub async fn execute_go_ralph(
     if let Some(registry) = registry {
         ralph = ralph.with_registry(registry);
     }
+
+    // Attach state store for persistent run tracking
+    ralph = ralph.with_store(Arc::new(HttpStore::from_env()));
 
     let state = ralph.run().await.context("Ralph loop execution failed")?;
 

@@ -173,9 +173,9 @@ pub struct A2aConfig {
     #[serde(default)]
     pub auto_approve: AutoApprovePolicy,
 
-    /// Codebases to register
+    /// Workspaces to register
     #[serde(default)]
-    pub codebases: Vec<PathBuf>,
+    pub workspaces: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]

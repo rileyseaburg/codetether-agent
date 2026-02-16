@@ -95,6 +95,9 @@ impl WorktreeManager {
             return Err(anyhow::anyhow!("git worktree add failed: {}", stderr));
         }
 
+        // Populate nested repos (gitlinks / submodules) inside the worktree
+        self.populate_gitlinks(&worktree_path)?;
+
         debug!(
             worktree_id = %id,
             "Worktree created successfully"
@@ -107,6 +110,119 @@ impl WorktreeManager {
             repo_path: self.repo_path.clone(),
             parent_branch,
         })
+    }
+
+    /// Populate gitlink entries (submodules / nested repos) inside a worktree.
+    ///
+    /// Git worktrees don't automatically check out submodule content.
+    /// This detects mode-160000 entries in the index and clones the
+    /// corresponding repos from the main checkout into the worktree.
+    /// Uses `--local --shared` for fast, space-efficient cloning.
+    fn populate_gitlinks(&self, worktree_path: &Path) -> Result<()> {
+        // First try standard submodule init (works when .gitmodules exists)
+        let sub_output = Command::new("git")
+            .args(["submodule", "update", "--init", "--recursive"])
+            .current_dir(worktree_path)
+            .output();
+
+        if let Ok(ref out) = sub_output {
+            if out.status.success() {
+                info!("Submodules initialized via git submodule update");
+                return Ok(());
+            }
+        }
+
+        // Fallback: detect gitlink entries and clone them manually.
+        // This handles repos tracked as gitlinks without .gitmodules.
+        let ls_output = Command::new("git")
+            .args(["ls-tree", "HEAD"])
+            .current_dir(&self.repo_path)
+            .output()
+            .context("Failed to list tree entries")?;
+
+        let stdout = String::from_utf8_lossy(&ls_output.stdout);
+        let gitlink_paths: Vec<String> = stdout
+            .lines()
+            .filter_map(|line| {
+                // Format: "160000 commit <sha>\t<path>"
+                if line.starts_with("160000") {
+                    line.split('\t').nth(1).map(|p| p.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if gitlink_paths.is_empty() {
+            return Ok(());
+        }
+
+        for gitlink_path in &gitlink_paths {
+            let source = self.repo_path.join(gitlink_path);
+            let dest = worktree_path.join(gitlink_path);
+
+            // Source must be a directory with a .git entry (dir or file)
+            if !source.exists() || !source.join(".git").exists() {
+                warn!(
+                    path = %gitlink_path,
+                    "Gitlink source missing or not a git repo, skipping"
+                );
+                continue;
+            }
+
+            // Remove the empty placeholder directory if it exists
+            if dest.exists() {
+                let _ = std::fs::remove_dir_all(&dest);
+            }
+
+            info!(
+                path = %gitlink_path,
+                source = %source.display(),
+                dest = %dest.display(),
+                "Cloning nested repo into worktree"
+            );
+
+            // Clone with --local --shared for fast, space-efficient copy
+            let clone_output = Command::new("git")
+                .args([
+                    "clone",
+                    "--local",
+                    "--shared",
+                    source.to_str().unwrap(),
+                    dest.to_str().unwrap(),
+                ])
+                .output()
+                .with_context(|| format!("Failed to clone nested repo {}", gitlink_path))?;
+
+            if !clone_output.status.success() {
+                let stderr = String::from_utf8_lossy(&clone_output.stderr);
+                warn!(
+                    path = %gitlink_path,
+                    error = %stderr,
+                    "Failed to clone nested repo into worktree"
+                );
+            } else {
+                // Checkout the same commit that the parent repo expects
+                let sha_output = Command::new("git")
+                    .args(["ls-tree", "HEAD", gitlink_path])
+                    .current_dir(&self.repo_path)
+                    .output()?;
+                let sha_line = String::from_utf8_lossy(&sha_output.stdout);
+                if let Some(sha) = sha_line.split_whitespace().nth(2) {
+                    let _ = Command::new("git")
+                        .args(["checkout", sha])
+                        .current_dir(&dest)
+                        .output();
+                }
+
+                info!(
+                    path = %gitlink_path,
+                    "Nested repo populated in worktree"
+                );
+            }
+        }
+
+        Ok(())
     }
 
     /// Inject a `[workspace]` stub into the worktree's Cargo.toml to make it hermetically sealed

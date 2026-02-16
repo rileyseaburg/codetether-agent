@@ -932,7 +932,7 @@ IMPORTANT: You MUST use tools to make changes. Do not just describe what to do -
 
 Available tools:
 - read: Read file contents
-- write: Write/create files  
+- write: Write/create files
 - edit: Edit existing files (search and replace)
 - multiedit: Make multiple edits at once
 - glob: Find files by pattern
@@ -1014,6 +1014,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     timeout_secs,
                     event_tx.clone(),
                     subtask_id.clone(),
+                    None,
                     None,
                 )
                 .await;
@@ -1349,6 +1350,78 @@ impl Default for SwarmExecutorBuilder {
 /// Run the agentic loop for a sub-agent with tool execution
 #[allow(clippy::too_many_arguments)]
 /// Run an agentic loop with tools - reusable for Ralph and swarm sub-agents
+/// Resolve relative file paths in tool call arguments to use the given working directory.
+///
+/// When sub-agents run in worktrees, the file tools (read, write, edit, etc.) resolve
+/// relative paths from the process CWD (the main repo), not the worktree. This function
+/// rewrites relative paths to absolute paths within the worktree before tool execution.
+fn resolve_tool_paths(
+    tool_name: &str,
+    args: &mut serde_json::Value,
+    working_dir: &std::path::Path,
+) {
+    match tool_name {
+        "read" | "write" | "list" | "grep" | "codesearch" => {
+            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from) {
+                if !std::path::Path::new(&path).is_absolute() {
+                    args["path"] = serde_json::json!(working_dir.join(&path).display().to_string());
+                }
+            }
+        }
+        "edit" => {
+            if let Some(path) = args
+                .get("filePath")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+            {
+                if !std::path::Path::new(&path).is_absolute() {
+                    args["filePath"] =
+                        serde_json::json!(working_dir.join(&path).display().to_string());
+                }
+            }
+        }
+        "glob" => {
+            if let Some(pattern) = args
+                .get("pattern")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+            {
+                if !std::path::Path::new(&pattern).is_absolute() && !pattern.starts_with("*") {
+                    args["pattern"] =
+                        serde_json::json!(working_dir.join(&pattern).display().to_string());
+                }
+            }
+        }
+        "multiedit" => {
+            if let Some(edits) = args.get_mut("edits").and_then(|v| v.as_array_mut()) {
+                for edit in edits.iter_mut() {
+                    if let Some(file) = edit.get("file").and_then(|v| v.as_str()).map(String::from)
+                    {
+                        if !std::path::Path::new(&file).is_absolute() {
+                            edit["file"] =
+                                serde_json::json!(working_dir.join(&file).display().to_string());
+                        }
+                    }
+                }
+            }
+        }
+        "patch" => {
+            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from) {
+                if !std::path::Path::new(&path).is_absolute() {
+                    args["file"] = serde_json::json!(working_dir.join(&path).display().to_string());
+                }
+            }
+        }
+        "bash" => {
+            // If bash has no cwd, set it to the working directory
+            if args.get("cwd").and_then(|v| v.as_str()).is_none() {
+                args["cwd"] = serde_json::json!(working_dir.display().to_string());
+            }
+        }
+        _ => {}
+    }
+}
+
 pub async fn run_agent_loop(
     provider: Arc<dyn Provider>,
     model: &str,
@@ -1361,6 +1434,7 @@ pub async fn run_agent_loop(
     event_tx: Option<mpsc::Sender<SwarmEvent>>,
     subtask_id: String,
     bus: Option<Arc<AgentBus>>,
+    working_dir: Option<std::path::PathBuf>,
 ) -> Result<(String, usize, usize, AgentLoopExit)> {
     // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
     let temperature = 0.7;
@@ -1565,11 +1639,16 @@ pub async fn run_agent_loop(
             let mut tool_success = true;
             let result = if let Some(tool) = registry.get(&tool_name) {
                 // Parse arguments as JSON
-                let args: serde_json::Value =
+                let mut args: serde_json::Value =
                     serde_json::from_str(&arguments).unwrap_or_else(|e| {
                         tracing::warn!(tool = %tool_name, error = %e, raw = %arguments, "Failed to parse tool arguments");
                         serde_json::json!({})
                     });
+
+                // Resolve relative file paths to the working directory (critical for worktree isolation)
+                if let Some(ref wd) = working_dir {
+                    resolve_tool_paths(&tool_name, &mut args, wd);
+                }
 
                 match tool.execute(args).await {
                     Ok(r) => {

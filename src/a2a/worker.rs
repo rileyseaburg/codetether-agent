@@ -121,13 +121,13 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     let worker_id = generate_worker_id();
 
     let codebases: Vec<String> = args
-        .codebases
+        .workspaces
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
     tracing::info!("Starting A2A worker: {} ({})", name, worker_id);
     tracing::info!("Server: {}", server);
-    tracing::info!("Codebases: {:?}", codebases);
+    tracing::info!("Workspaces: {:?}", codebases);
 
     let client = Client::new();
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
@@ -246,13 +246,13 @@ pub async fn run_with_state(
     server_state.set_worker_id(worker_id.clone()).await;
 
     let codebases: Vec<String> = args
-        .codebases
+        .workspaces
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
     tracing::info!("Starting A2A worker: {} ({})", name, worker_id);
     tracing::info!("Server: {}", server);
-    tracing::info!("Codebases: {:?}", codebases);
+    tracing::info!("Workspaces: {:?}", codebases);
 
     let client = Client::new();
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
@@ -783,7 +783,7 @@ async fn register_worker(
             "capabilities": WORKER_CAPABILITIES,
             "hostname": hostname,
             "models": models_array,
-            "codebases": codebases,
+            "workspaces": codebases,
         }))
         .send()
         .await?;
@@ -1017,7 +1017,7 @@ async fn connect_stream(
         .header("Accept", "text/event-stream")
         .header("X-Worker-ID", worker_id)
         .header("X-Agent-Name", name)
-        .header("X-Codebases", codebases.join(","));
+        .header("X-Workspaces", codebases.join(","));
 
     if let Some(t) = token {
         req = req.bearer_auth(t);

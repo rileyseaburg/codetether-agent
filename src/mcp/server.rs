@@ -16,6 +16,7 @@
 use super::bus_bridge::BusBridge;
 use super::transport::{McpMessage, StdioTransport, Transport};
 use super::types::*;
+use crate::bus::{AgentBus, BusMessage};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use serde_json::{Value, json};
@@ -40,6 +41,8 @@ pub struct McpServer {
     resource_metadata: RwLock<HashMap<String, ResourceMetadata>>,
     /// Optional bus bridge for live event monitoring
     bus: Option<Arc<BusBridge>>,
+    /// Optional local agent bus for publishing tool calls to S3 sink
+    agent_bus: Option<Arc<AgentBus>>,
     /// Optional tool registry bridging all CodeTether tools to MCP
     tool_registry: Option<Arc<ToolRegistry>>,
 }
@@ -81,6 +84,7 @@ impl McpServer {
             metadata: RwLock::new(HashMap::new()),
             resource_metadata: RwLock::new(HashMap::new()),
             bus: None,
+            agent_bus: None,
             tool_registry: None,
         };
 
@@ -96,6 +100,15 @@ impl McpServer {
     /// the hardcoded basic tool set. Call before [`Self::run`].
     pub fn with_tool_registry(mut self, registry: Arc<ToolRegistry>) -> Self {
         self.tool_registry = Some(registry);
+        self
+    }
+
+    /// Attach a local agent bus for publishing tool calls to the S3 sink.
+    ///
+    /// Call this *before* [`Self::run`] so every tool invocation gets
+    /// recorded as a `ToolRequest` + `ToolResponse` on the bus.
+    pub fn with_agent_bus(mut self, bus: Arc<AgentBus>) -> Self {
+        self.agent_bus = Some(bus);
         self
     }
 
@@ -1009,25 +1022,74 @@ impl McpServer {
             return Err(JsonRpcError::invalid_params("Missing params"));
         };
 
+        // Publish ToolRequest to the agent bus (picked up by S3 sink)
+        let request_id = uuid::Uuid::new_v4().to_string();
+        let bus_handle = self
+            .agent_bus
+            .as_ref()
+            .map(|bus| bus.handle("mcp-server"));
+        if let Some(ref bh) = bus_handle {
+            bh.send(
+                format!("tools.{}", &params.name),
+                BusMessage::ToolRequest {
+                    request_id: request_id.clone(),
+                    agent_id: "mcp-server".into(),
+                    tool_name: params.name.clone(),
+                    arguments: params.arguments.clone(),
+                },
+            );
+        }
+
         let tools = self.tools.read().await;
         let handler = tools
             .get(&params.name)
             .ok_or_else(|| JsonRpcError::method_not_found(&params.name))?;
 
-        match handler(params.arguments) {
-            Ok(result) => serde_json::to_value(result)
-                .map_err(|e| JsonRpcError::internal_error(e.to_string())),
+        let (result_value, output_text, success) = match handler(params.arguments) {
+            Ok(result) => {
+                let text = result
+                    .content
+                    .iter()
+                    .filter_map(|c| match c {
+                        ToolContent::Text { text } => Some(text.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let is_err = result.is_error;
+                let val = serde_json::to_value(result)
+                    .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+                (val, text, !is_err)
+            }
             Err(e) => {
+                let err_text = e.to_string();
                 let result = CallToolResult {
                     content: vec![ToolContent::Text {
-                        text: e.to_string(),
+                        text: err_text.clone(),
                     }],
                     is_error: true,
                 };
-                serde_json::to_value(result)
-                    .map_err(|e| JsonRpcError::internal_error(e.to_string()))
+                let val = serde_json::to_value(result)
+                    .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+                (val, err_text, false)
             }
+        };
+
+        // Publish ToolResponse to the agent bus
+        if let Some(ref bh) = bus_handle {
+            bh.send(
+                format!("tools.{}", &params.name),
+                BusMessage::ToolResponse {
+                    request_id,
+                    agent_id: "mcp-server".into(),
+                    tool_name: params.name,
+                    result: output_text,
+                    success,
+                },
+            );
         }
+
+        Ok(result_value)
     }
 
     /// Handle list resources request — reads from registered resource metadata

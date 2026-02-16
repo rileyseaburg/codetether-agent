@@ -546,9 +546,56 @@ async fn main() -> anyhow::Result<()> {
             match args.action.as_str() {
                 "serve" => {
                     tracing::info!("Starting MCP server over stdio...");
-                    let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
+
+                    // Create agent bus + S3 sink so tool calls sync to MinIO
+                    let bus = crate::bus::AgentBus::new().into_arc();
+                    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
+                    // Try to load provider from Vault so tools like Ralph can execute autonomously
+                    let registry = match crate::provider::ProviderRegistry::from_vault().await {
+                        Ok(provider_registry) => {
+                            let fallbacks = [
+                                "zai",
+                                "openai",
+                                "github-copilot",
+                                "anthropic",
+                                "openrouter",
+                                "novita",
+                                "moonshotai",
+                                "google",
+                            ];
+                            let provider_and_model = fallbacks
+                                .iter()
+                                .find_map(|name| provider_registry.get(name).map(|p| (p, name)));
+                            match provider_and_model {
+                                Some((provider, name)) => {
+                                    let model = match *name {
+                                        "zai" => "glm-5".to_string(),
+                                        "anthropic" => "claude-sonnet-4-20250514".to_string(),
+                                        "openai" => "gpt-4.1".to_string(),
+                                        _ => "default".to_string(),
+                                    };
+                                    tracing::info!(provider = %name, model = %model, "MCP server loaded provider from Vault");
+                                    std::sync::Arc::new(tool::ToolRegistry::with_provider(
+                                        provider, model,
+                                    ))
+                                }
+                                None => {
+                                    tracing::warn!(
+                                        "Vault connected but no known provider found, Ralph/Go will be limited"
+                                    );
+                                    std::sync::Arc::new(tool::ToolRegistry::with_defaults())
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(error = %e, "Failed to load providers from Vault, Ralph/Go will be limited");
+                            std::sync::Arc::new(tool::ToolRegistry::with_defaults())
+                        }
+                    };
                     let server = mcp::McpServer::new_stdio()
-                        .with_tool_registry(registry);
+                        .with_tool_registry(registry)
+                        .with_agent_bus(bus);
                     let server = if let Some(bus_url) = &args.bus_url {
                         tracing::info!(bus_url = %bus_url, "Connecting MCP server to agent bus");
                         server.with_bus(bus_url.clone()).await
@@ -626,8 +673,7 @@ async fn main() -> anyhow::Result<()> {
                     } else {
                         // List built-in tools from the MCP server registry
                         let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
-                        let server = mcp::McpServer::new_local()
-                            .with_tool_registry(registry);
+                        let server = mcp::McpServer::new_local().with_tool_registry(registry);
                         server.setup_tools_public().await;
                         let tools = server.get_all_tool_metadata().await;
                         if args.json {
@@ -692,8 +738,7 @@ async fn main() -> anyhow::Result<()> {
                     } else {
                         // Call built-in tool directly via MCP server
                         let registry = std::sync::Arc::new(tool::ToolRegistry::with_defaults());
-                        let server = mcp::McpServer::new_local()
-                            .with_tool_registry(registry);
+                        let server = mcp::McpServer::new_local().with_tool_registry(registry);
                         server.setup_tools_public().await;
                         let result = server.call_tool_direct(tool, arguments).await?;
 
