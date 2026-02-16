@@ -1,0 +1,245 @@
+{
+  "project": "ChronoForge",
+  "feature": "Timeline Forking and Counterfactual Execution",
+  "branch_name": "feature/timeline-forking-counterfactual-execution",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Create git worktree for timeline fork",
+      "description": "Implement ability to fork current timeline state into a new git worktree, enabling parallel execution without affecting main branch",
+      "acceptance_criteria": [
+        "Worktree created with unique branch name based on timeline ID",
+        "Worktree points to same commit as parent timeline",
+        "Worktree directory placed in .git/worktrees directory",
+        "Function returns worktree path and branch name"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "US-002",
+      "title": "Execute command in isolated timeline worktree",
+      "description": "Run a command (build/test) inside a specific timeline worktree and capture output and exit code",
+      "acceptance_criteria": [
+        "Command executes in correct worktree directory",
+        " stdout/stderr captured and returned",
+        "Exit code properly propagated",
+        "Works with cargo test and cargo build commands"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-003",
+      "title": "Add timeline lineage fields to event stream",
+      "description": "Extend event stream data model to include parent timeline ID, fork timestamp, and lineage depth for each timeline event",
+      "acceptance_criteria": [
+        "Event struct includes parent_timeline_id field",
+        "Event struct includes fork_timestamp field",
+        "Event struct includes lineage_depth field",
+        "Fields populated correctly on timeline creation"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-004",
+      "title": "Add timeline lineage fields to audit records",
+      "description": "Add lineage information to audit log entries for compliance tracking of timeline branching",
+      "acceptance_criteria": [
+        "Audit record includes lineage_history field",
+        "Audit record includes root_timeline_id",
+        "Audit record includes branch_factor",
+        "Serialization/deserialization works correctly"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-005",
+      "title": "Implement warp execute CLI command",
+      "description": "Create CLI subcommand 'warp execute' that runs specified command in a new timeline worktree and returns results",
+      "acceptance_criteria": [
+        "Command accepts --command flag for executable",
+        "Creates new timeline worktree automatically",
+        "Returns execution results with exit code",
+        "Outputs timeline ID for reference"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001",
+        "US-002"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-006",
+      "title": "Implement warp watch CLI command",
+      "description": "Create CLI subcommand 'warp watch' that monitors a timeline and streams status changes in real-time",
+      "acceptance_criteria": [
+        "Command accepts timeline ID argument",
+        "Streams events as they occur",
+        "Shows lineage information in output",
+        "Can be cancelled with Ctrl+C"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-007",
+      "title": "Implement warp merge CLI command",
+      "description": "Create CLI subcommand 'warp merge' that merges winning timeline branch back to main",
+      "acceptance_criteria": [
+        "Accepts timeline ID to merge",
+        "Performs git merge from worktree branch",
+        "Resolves conflicts if any",
+        "Records merge in audit log with lineage"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-004",
+        "US-005"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-008",
+      "title": "Integrate OKR scoring for timeline evaluation",
+      "description": "Implement scoring system that evaluates timeline outcomes based on predefined OKR metrics (build success, test pass rate, performance)",
+      "acceptance_criteria": [
+        "Scoring algorithm calculates numeric score",
+        "Factors include test results, build time, exit codes",
+        "Higher score indicates better outcome",
+        "Score stored with timeline results"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-002",
+        "US-005"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-009",
+      "title": "Select best timeline using OKR scores",
+      "description": "Add logic to automatically select and rank timelines based on OKR scores for merge decision",
+      "acceptance_criteria": [
+        "Ranks timelines by score descending",
+        "Shows score breakdown per metric",
+        "Identifies winning timeline",
+        "Integrates with merge command"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-008"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-010",
+      "title": "Write real worktree integration tests",
+      "description": "Create integration tests that use actual git worktrees and cargo commands without mocking",
+      "acceptance_criteria": [
+        "Test creates real worktree",
+        "Test runs actual cargo commands",
+        "Test verifies worktree state",
+        "Minimum 12 tests covering core flows"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-001",
+        "US-002",
+        "US-005"
+      ],
+      "complexity": 4
+    },
+    {
+      "id": "US-011",
+      "title": "Verify zero test failures in core timeline flow",
+      "description": "Ensure all core timeline operations (fork, execute, merge) pass without any test failures",
+      "acceptance_criteria": [
+        "All 12 integration tests pass",
+        "No mocked components in core flow",
+        "Real git operations succeed",
+        "Real cargo operations succeed"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [
+        "US-010"
+      ],
+      "complexity": 3
+    },
+    {
+      "id": "US-012",
+      "title": "Write ChronoForge documentation in README",
+      "description": "Add comprehensive documentation section for ChronoForge feature in project README",
+      "acceptance_criteria": [
+        "README includes ChronoForge overview",
+        "Documents warp execute/watch/merge commands",
+        "Includes usage examples",
+        "Explains timeline forking concept"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-005",
+        "US-006",
+        "US-007"
+      ],
+      "complexity": 2
+    }
+  ],
+  "technical_requirements": [
+    "Use Rust 2024 edition style",
+    "Implement structured tracing with tracing crate",
+    "No mocks for core timeline flow - use real git worktrees",
+    "Use real cargo test/build for gating",
+    "Support parallel timeline execution via git worktrees",
+    "Store timeline lineage in event stream and audit records",
+    "CLI commands must integrate with existing codebase",
+    "OKR scoring must be deterministic and reproducible"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check --all-targets",
+    "test": "cargo test --all-targets",
+    "lint": "cargo clippy --all-targets",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-16T19:41:28.158374730+00:00",
+  "updated_at": "2026-02-16T19:41:28.158374730+00:00"
+}

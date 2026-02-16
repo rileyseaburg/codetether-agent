@@ -1,11 +1,10 @@
 //! Model catalog from CodeTether API
 //!
-//! Fetches model information from https://api.codetether.run/static/models/api.json
+//! Fetches model information from the "models" endpoint for each provider, including capabilities, costs, and limits. This is used to enrich our internal model information and provide better recommendations and cost estimates.
+//! The catalog is fetched on demand and cached in memory. It also integrates with the secrets manager to check which providers have API keys configured, allowing us to filter available models accordingly.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-const MODELS_API_URL: &str = "https://api.codetether.run/static/models/api.json";
 
 /// Model cost information (per million tokens)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,8 +105,9 @@ impl ModelCatalog {
 
     /// Fetch models from the CodeTether API
     pub async fn fetch() -> anyhow::Result<Self> {
-        tracing::info!("Fetching models from {}", MODELS_API_URL);
-        let response = reqwest::get(MODELS_API_URL).await?;
+        const MODELS_URL: &str = "https://models.dev/api.json";
+        tracing::info!("Fetching models from {}", MODELS_URL);
+        let response = reqwest::get(MODELS_URL).await?;
         let providers: ModelsApiResponse = response.json().await?;
         tracing::info!("Loaded {} providers", providers.len());
         Ok(Self { providers })

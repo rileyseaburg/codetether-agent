@@ -16,9 +16,10 @@ use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::Pod;
 use kube::{
     Api, Client, Config as KubeConfig,
-    api::{ListParams, Patch, PatchParams, PostParams},
+    api::{ListParams, LogParams, Patch, PatchParams, PostParams},
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -49,6 +50,33 @@ pub struct DeployAction {
     pub timestamp: String,
 }
 
+/// Kubernetes pod launch options for a sub-agent.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SubagentPodSpec {
+    #[serde(default)]
+    pub image: Option<String>,
+    #[serde(default)]
+    pub env_vars: HashMap<String, String>,
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
+    #[serde(default)]
+    pub command: Option<Vec<String>>,
+    #[serde(default)]
+    pub args: Option<Vec<String>>,
+}
+
+/// Summary of a running/completed sub-agent pod.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubagentPodState {
+    pub pod_name: String,
+    pub phase: String,
+    pub ready: bool,
+    pub terminated: bool,
+    pub exit_code: Option<i32>,
+    pub reason: Option<String>,
+    pub restart_count: u32,
+}
+
 /// Kubernetes self-deployment manager.
 #[derive(Clone)]
 pub struct K8sManager {
@@ -71,6 +99,38 @@ impl std::fmt::Debug for K8sManager {
 }
 
 impl K8sManager {
+    pub fn subagent_pod_name(subagent_id: &str) -> String {
+        // DNS-1123 label: lowercase alphanumeric or '-', max 63 chars.
+        let mut sanitized: String = subagent_id
+            .to_ascii_lowercase()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+            .collect();
+        sanitized = sanitized.trim_matches('-').to_string();
+        if sanitized.is_empty() {
+            sanitized = "subagent".to_string();
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(subagent_id.as_bytes());
+        let hash_hex = hex::encode(hasher.finalize());
+        let hash_suffix = &hash_hex[..10];
+
+        // "codetether-subagent-" + "{name}" + "-" + "{hash}"
+        const PREFIX: &str = "codetether-subagent-";
+        let max_name_len = 63usize
+            .saturating_sub(PREFIX.len())
+            .saturating_sub(1)
+            .saturating_sub(hash_suffix.len());
+        let mut name_part: String = sanitized.chars().take(max_name_len.max(1)).collect();
+        name_part = name_part.trim_matches('-').to_string();
+        if name_part.is_empty() {
+            name_part = "subagent".to_string();
+        }
+
+        format!("{PREFIX}{name_part}-{hash_suffix}")
+    }
+
     /// Attempt to initialize from in-cluster configuration.
     /// Returns a manager even if not running in K8s (with client = None).
     pub async fn new() -> Self {
@@ -348,6 +408,23 @@ impl K8sManager {
         image: Option<&str>,
         env_vars: HashMap<String, String>,
     ) -> Result<DeployAction> {
+        self.spawn_subagent_pod_with_spec(
+            subagent_id,
+            SubagentPodSpec {
+                image: image.map(ToString::to_string),
+                env_vars,
+                ..SubagentPodSpec::default()
+            },
+        )
+        .await
+    }
+
+    /// Spawn a new pod for a swarm sub-agent with full pod options.
+    pub async fn spawn_subagent_pod_with_spec(
+        &self,
+        subagent_id: &str,
+        spec: SubagentPodSpec,
+    ) -> Result<DeployAction> {
         let client = self
             .client
             .as_ref()
@@ -355,13 +432,14 @@ impl K8sManager {
 
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
 
-        let image = image.unwrap_or("ghcr.io/rileyseaburg/codetether-agent:latest");
-        let pod_name = format!(
-            "codetether-subagent-{}",
-            &subagent_id[..8.min(subagent_id.len())]
-        );
+        let image = spec
+            .image
+            .as_deref()
+            .unwrap_or("ghcr.io/rileyseaburg/codetether-agent:latest");
+        let pod_name = Self::subagent_pod_name(subagent_id);
 
-        let mut env_list: Vec<serde_json::Value> = env_vars
+        let mut env_list: Vec<serde_json::Value> = spec
+            .env_vars
             .iter()
             .map(|(k, v)| serde_json::json!({ "name": k, "value": v }))
             .collect();
@@ -371,17 +449,25 @@ impl K8sManager {
             serde_json::json!({ "name": "CODETETHER_K8S_NAMESPACE", "value": &self.namespace }),
         );
 
+        let mut labels = serde_json::json!({
+            "app": "codetether",
+            "codetether.run/role": "subagent",
+            "codetether.run/subagent-id": sanitize_label_value(subagent_id)
+        });
+
+        if let Some(map) = labels.as_object_mut() {
+            for (k, v) in &spec.labels {
+                map.insert(k.clone(), serde_json::json!(v));
+            }
+        }
+
         let pod_manifest: Pod = serde_json::from_value(serde_json::json!({
             "apiVersion": "v1",
             "kind": "Pod",
             "metadata": {
                 "name": pod_name,
                 "namespace": &self.namespace,
-                "labels": {
-                    "app": "codetether",
-                    "codetether.run/role": "subagent",
-                    "codetether.run/subagent-id": subagent_id
-                }
+                "labels": labels
             },
             "spec": {
                 "restartPolicy": "Never",
@@ -389,6 +475,8 @@ impl K8sManager {
                     "name": "agent",
                     "image": image,
                     "env": env_list,
+                    "command": spec.command,
+                    "args": spec.args,
                     "resources": {
                         "requests": { "memory": "256Mi", "cpu": "250m" },
                         "limits": { "memory": "1Gi", "cpu": "1000m" }
@@ -397,9 +485,29 @@ impl K8sManager {
             }
         }))?;
 
-        pods.create(&PostParams::default(), &pod_manifest)
-            .await
-            .with_context(|| format!("Failed to create sub-agent pod {}", pod_name))?;
+        match pods.create(&PostParams::default(), &pod_manifest).await {
+            Ok(_) => {}
+            Err(kube::Error::Api(api_err)) if api_err.code == 409 => {
+                tracing::warn!(
+                    pod = %pod_name,
+                    subagent_id = %subagent_id,
+                    "Sub-agent pod already exists, deleting stale pod and retrying create"
+                );
+                let _ = pods
+                    .delete(&pod_name, &kube::api::DeleteParams::default())
+                    .await;
+                tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+                pods.create(&PostParams::default(), &pod_manifest)
+                    .await
+                    .with_context(|| {
+                        format!("Failed to create sub-agent pod {} after retry", pod_name)
+                    })?;
+            }
+            Err(e) => {
+                return Err(e)
+                    .with_context(|| format!("Failed to create sub-agent pod {pod_name}"));
+            }
+        }
 
         let action = DeployAction {
             action: format!("spawn_subagent:{}", subagent_id),
@@ -429,14 +537,24 @@ impl K8sManager {
             .ok_or_else(|| anyhow!("K8s client not available"))?;
 
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
-        let pod_name = format!(
-            "codetether-subagent-{}",
-            &subagent_id[..8.min(subagent_id.len())]
-        );
+        let pod_name = Self::subagent_pod_name(subagent_id);
 
-        pods.delete(&pod_name, &kube::api::DeleteParams::default())
+        match pods
+            .delete(&pod_name, &kube::api::DeleteParams::default())
             .await
-            .with_context(|| format!("Failed to delete pod {}", pod_name))?;
+        {
+            Ok(_) => {}
+            Err(kube::Error::Api(api_err)) if api_err.code == 404 => {
+                tracing::debug!(
+                    pod = %pod_name,
+                    subagent_id = %subagent_id,
+                    "Sub-agent pod already deleted"
+                );
+            }
+            Err(e) => {
+                return Err(e).with_context(|| format!("Failed to delete pod {}", pod_name));
+            }
+        }
 
         let action = DeployAction {
             action: format!("delete_subagent:{}", subagent_id),
@@ -447,6 +565,101 @@ impl K8sManager {
 
         self.record_action(action.clone()).await;
         Ok(action)
+    }
+
+    /// Get pod state for a sub-agent.
+    pub async fn get_subagent_pod_state(
+        &self,
+        subagent_id: &str,
+    ) -> Result<Option<SubagentPodState>> {
+        let client = self
+            .client
+            .as_ref()
+            .ok_or_else(|| anyhow!("K8s client not available"))?;
+
+        let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
+        let pod_name = Self::subagent_pod_name(subagent_id);
+
+        let pod = match pods.get_opt(&pod_name).await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!(pod = %pod_name, error = %e, "Failed to fetch sub-agent pod state");
+                return Ok(None);
+            }
+        };
+
+        let Some(pod) = pod else {
+            return Ok(None);
+        };
+
+        let phase = pod
+            .status
+            .as_ref()
+            .and_then(|s| s.phase.clone())
+            .unwrap_or_else(|| "Unknown".to_string());
+        let ready = pod
+            .status
+            .as_ref()
+            .and_then(|s| s.conditions.as_ref())
+            .map(|conditions| {
+                conditions
+                    .iter()
+                    .any(|c| c.type_ == "Ready" && c.status == "True")
+            })
+            .unwrap_or(false);
+
+        let container_status = pod
+            .status
+            .as_ref()
+            .and_then(|s| s.container_statuses.as_ref())
+            .and_then(|statuses| statuses.first());
+        let terminated = container_status
+            .and_then(|status| status.state.as_ref())
+            .and_then(|state| state.terminated.as_ref())
+            .is_some();
+        let exit_code = container_status
+            .and_then(|status| status.state.as_ref())
+            .and_then(|state| state.terminated.as_ref())
+            .map(|terminated| terminated.exit_code);
+        let reason = container_status
+            .and_then(|status| status.state.as_ref())
+            .and_then(|state| {
+                state
+                    .terminated
+                    .as_ref()
+                    .and_then(|t| t.reason.clone())
+                    .or_else(|| state.waiting.as_ref().and_then(|w| w.reason.clone()))
+            });
+        let restart_count = container_status
+            .map(|status| status.restart_count.max(0) as u32)
+            .unwrap_or(0);
+
+        Ok(Some(SubagentPodState {
+            pod_name,
+            phase,
+            ready,
+            terminated,
+            exit_code,
+            reason,
+            restart_count,
+        }))
+    }
+
+    /// Fetch recent logs for a sub-agent pod.
+    pub async fn subagent_logs(&self, subagent_id: &str, tail_lines: i64) -> Result<String> {
+        let client = self
+            .client
+            .as_ref()
+            .ok_or_else(|| anyhow!("K8s client not available"))?;
+        let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
+        let pod_name = Self::subagent_pod_name(subagent_id);
+        let params = LogParams {
+            tail_lines: Some(tail_lines),
+            ..LogParams::default()
+        };
+        pods.logs(&pod_name, &params)
+            .await
+            .with_context(|| format!("Failed to fetch logs for sub-agent pod {pod_name}"))
     }
 
     /// Get recent deployment actions.
@@ -465,6 +678,22 @@ impl K8sManager {
     }
 }
 
+fn sanitize_label_value(input: &str) -> String {
+    let mut value: String = input
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.')
+        .take(63)
+        .collect();
+    value = value
+        .trim_matches(|c| c == '-' || c == '_' || c == '.')
+        .to_string();
+    if value.is_empty() {
+        "subagent".to_string()
+    } else {
+        value
+    }
+}
+
 /// Summary information about a pod.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PodInfo {
@@ -477,6 +706,28 @@ pub struct PodInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn subagent_pod_name_is_sanitized_and_stable() {
+        let pod_name = K8sManager::subagent_pod_name("SubTask_ABC/123");
+        assert!(pod_name.starts_with("codetether-subagent-"));
+        assert!(pod_name.len() <= 63);
+        assert!(
+            pod_name
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        );
+
+        let pod_name_again = K8sManager::subagent_pod_name("SubTask_ABC/123");
+        assert_eq!(pod_name, pod_name_again);
+    }
+
+    #[test]
+    fn subagent_pod_name_avoids_prefix_collisions() {
+        let a = K8sManager::subagent_pod_name("subtask-aaaaaaaa-1111");
+        let b = K8sManager::subagent_pod_name("subtask-aaaaaaaa-2222");
+        assert_ne!(a, b);
+    }
 
     #[tokio::test]
     async fn k8s_manager_initializes_without_cluster() {

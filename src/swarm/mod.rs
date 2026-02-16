@@ -10,13 +10,20 @@
 //! - **Critical Path**: Latency-oriented metric for parallel execution
 
 pub mod cache;
+pub mod collapse_controller;
 pub mod executor;
+pub mod kubernetes_executor;
 pub mod orchestrator;
 pub mod rate_limiter;
+pub mod remote_subtask;
 pub mod result_store;
 pub mod subtask;
 
 pub use cache::{CacheConfig, CacheStats, SwarmCache};
+pub use collapse_controller::{
+    BranchEvaluation, BranchObservation, BranchRuntimeState, CoherenceScore, CollapseController,
+    CollapsePolicy, CollapseTick, KillDecision,
+};
 pub use executor::{SwarmExecutor, run_agent_loop};
 pub use orchestrator::Orchestrator;
 pub use rate_limiter::{AdaptiveRateLimiter, RateLimitInfo, RateLimitStats};
@@ -164,6 +171,47 @@ pub struct SwarmConfig {
 
     /// Working directory for worktree creation
     pub working_dir: Option<String>,
+
+    /// Execution mode for sub-agent runtime
+    #[serde(default)]
+    pub execution_mode: ExecutionMode,
+
+    /// Maximum number of Kubernetes sub-agent pods active at once.
+    #[serde(default = "default_k8s_pod_budget")]
+    pub k8s_pod_budget: usize,
+
+    /// Optional container image override for Kubernetes sub-agent pods.
+    #[serde(default)]
+    pub k8s_subagent_image: Option<String>,
+}
+
+/// Sub-agent execution mode.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecutionMode {
+    /// Run sub-agents as local async tasks in the current process.
+    LocalThread,
+    /// Run sub-agents as isolated Kubernetes pods.
+    KubernetesPod,
+}
+
+impl ExecutionMode {
+    pub fn from_cli_value(value: &str) -> Self {
+        match value {
+            "k8s" | "kubernetes" | "kubernetes-pod" | "pod" => Self::KubernetesPod,
+            _ => Self::LocalThread,
+        }
+    }
+}
+
+impl Default for ExecutionMode {
+    fn default() -> Self {
+        Self::LocalThread
+    }
+}
+
+fn default_k8s_pod_budget() -> usize {
+    8
 }
 
 impl Default for SwarmConfig {
@@ -181,6 +229,9 @@ impl Default for SwarmConfig {
             worktree_enabled: true,     // Enable worktree isolation by default
             worktree_auto_merge: true,  // Auto-merge on success
             working_dir: None,
+            execution_mode: ExecutionMode::LocalThread,
+            k8s_pod_budget: 8,
+            k8s_subagent_image: None,
         }
     }
 }

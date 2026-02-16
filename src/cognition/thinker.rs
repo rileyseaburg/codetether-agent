@@ -413,7 +413,7 @@ pub(crate) struct CandleThinker {
 enum CandleModel {
     Llama(quantized_llama::ModelWeights),
     Qwen2(quantized_qwen2::ModelWeights),
-    
+
     Gemma3(quantized_gemma3::ModelWeights),
 }
 
@@ -422,7 +422,7 @@ impl CandleModel {
         match self {
             Self::Llama(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen2(model) => Ok(model.forward(x, index_pos)?),
-            
+
             Self::Gemma3(model) => Ok(model.forward(x, index_pos)?),
         }
     }
@@ -476,7 +476,7 @@ impl CandleThinker {
                 quantized_qwen2::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load qwen2 gguf from {}", model_path))?,
             ),
-            
+
             "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => CandleModel::Gemma3(
                 quantized_gemma3::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load gemma3 gguf from {}", model_path))?,

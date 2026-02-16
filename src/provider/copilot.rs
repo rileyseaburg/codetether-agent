@@ -161,6 +161,187 @@ impl CopilotProvider {
                 .any(|part| matches!(part, ContentPart::Image { .. }))
         })
     }
+
+    /// Discover models dynamically from the Copilot /models API endpoint.
+    async fn discover_models_from_api(&self) -> Vec<ModelInfo> {
+        let response = match self
+            .client
+            .get(format!("{}/models", self.base_url))
+            .header("Authorization", format!("Bearer {}", self.token))
+            .header("User-Agent", Self::user_agent())
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::warn!(provider = %self.provider_name, error = %e, "Failed to fetch Copilot models endpoint");
+                return Vec::new();
+            }
+        };
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            tracing::warn!(
+                provider = %self.provider_name,
+                status = %status,
+                body = %body.chars().take(200).collect::<String>(),
+                "Copilot /models endpoint returned non-success"
+            );
+            return Vec::new();
+        }
+
+        let parsed: CopilotModelsResponse = match response.json().await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!(provider = %self.provider_name, error = %e, "Failed to parse Copilot models response");
+                return Vec::new();
+            }
+        };
+
+        let models: Vec<ModelInfo> = parsed
+            .data
+            .into_iter()
+            .filter(|model| {
+                // Skip models explicitly disabled in the picker
+                if model.model_picker_enabled == Some(false) {
+                    return false;
+                }
+                // Skip models with a disabled policy state
+                if let Some(ref policy) = model.policy {
+                    if policy.state.as_deref() == Some("disabled") {
+                        return false;
+                    }
+                }
+                true
+            })
+            .map(|model| {
+                let caps = model.capabilities.as_ref();
+                let limits = caps.and_then(|c| c.limits.as_ref());
+                let supports = caps.and_then(|c| c.supports.as_ref());
+
+                ModelInfo {
+                    id: model.id.clone(),
+                    name: model.name.unwrap_or_else(|| model.id.clone()),
+                    provider: self.provider_name.clone(),
+                    context_window: limits
+                        .and_then(|l| l.max_context_window_tokens)
+                        .unwrap_or(128_000),
+                    max_output_tokens: limits.and_then(|l| l.max_output_tokens).or(Some(16_384)),
+                    supports_vision: supports.and_then(|s| s.vision).unwrap_or(false),
+                    supports_tools: supports.and_then(|s| s.tool_calls).unwrap_or(true),
+                    supports_streaming: supports.and_then(|s| s.streaming).unwrap_or(true),
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                }
+            })
+            .collect();
+
+        tracing::info!(
+            provider = %self.provider_name,
+            count = models.len(),
+            "Discovered models from Copilot API"
+        );
+        models
+    }
+
+    /// Enrich models with pricing metadata from known premium request multipliers.
+    ///
+    /// Source: https://docs.github.com/en/copilot/concepts/billing/copilot-requests
+    /// Cost model: Premium requests at $0.04/request overflow rate.
+    /// We convert multiplier to approximate $/M tokens using ~4K tokens/request avg.
+    /// Formula: multiplier * $0.04 / 4K tokens * 1M = multiplier * $10/M tokens.
+    fn enrich_with_pricing(&self, models: &mut [ModelInfo]) {
+        // (display_name, premium_multiplier)
+        let pricing: std::collections::HashMap<&str, (&str, f64)> = [
+            ("claude-opus-4.5", ("Claude Opus 4.5", 3.0)),
+            ("claude-opus-4.6", ("Claude Opus 4.6", 3.0)),
+            ("claude-opus-41", ("Claude Opus 4.1", 10.0)),
+            ("claude-sonnet-4.5", ("Claude Sonnet 4.5", 1.0)),
+            ("claude-sonnet-4", ("Claude Sonnet 4", 1.0)),
+            ("claude-haiku-4.5", ("Claude Haiku 4.5", 0.33)),
+            ("gpt-5.3-codex", ("GPT-5.3-Codex", 1.0)),
+            ("gpt-5.2", ("GPT-5.2", 1.0)),
+            ("gpt-5.2-codex", ("GPT-5.2-Codex", 1.0)),
+            ("gpt-5.1", ("GPT-5.1", 1.0)),
+            ("gpt-5.1-codex", ("GPT-5.1-Codex", 1.0)),
+            ("gpt-5.1-codex-mini", ("GPT-5.1-Codex-Mini", 0.33)),
+            ("gpt-5.1-codex-max", ("GPT-5.1-Codex-Max", 1.0)),
+            ("gpt-5", ("GPT-5", 1.0)),
+            ("gpt-5-mini", ("GPT-5 mini", 0.0)),
+            ("gpt-5-codex", ("GPT-5-Codex", 1.0)),
+            ("gpt-4.1", ("GPT-4.1", 0.0)),
+            ("gpt-4o", ("GPT-4o", 0.0)),
+            ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1.0)),
+            ("gemini-3-flash-preview", ("Gemini 3 Flash", 0.33)),
+            ("gemini-3-pro-preview", ("Gemini 3 Pro", 1.0)),
+            ("grok-code-fast-1", ("Grok Code Fast 1", 0.25)),
+        ]
+        .into_iter()
+        .collect();
+
+        for model in models.iter_mut() {
+            if let Some((display_name, premium_mult)) = pricing.get(model.id.as_str()) {
+                // Set a friendlier display name when the API only returned the raw id
+                if model.name == model.id {
+                    model.name = display_name.to_string();
+                }
+                let approx_cost = premium_mult * 10.0;
+                model.input_cost_per_million = Some(approx_cost);
+                model.output_cost_per_million = Some(approx_cost);
+            } else {
+                // Unknown Copilot model — assume 1x premium request ($10/M approx)
+                if model.input_cost_per_million.is_none() {
+                    model.input_cost_per_million = Some(10.0);
+                }
+                if model.output_cost_per_million.is_none() {
+                    model.output_cost_per_million = Some(10.0);
+                }
+            }
+        }
+    }
+
+    /// Known models to use as a fallback when the /models API is unreachable.
+    fn known_models(&self) -> Vec<ModelInfo> {
+        let entries: &[(&str, &str, usize, usize, bool)] = &[
+            ("gpt-4o", "GPT-4o", 128_000, 16_384, true),
+            ("gpt-4.1", "GPT-4.1", 128_000, 32_768, false),
+            ("gpt-5", "GPT-5", 400_000, 128_000, false),
+            ("gpt-5-mini", "GPT-5 mini", 264_000, 64_000, false),
+            ("claude-sonnet-4", "Claude Sonnet 4", 200_000, 64_000, false),
+            (
+                "claude-sonnet-4.5",
+                "Claude Sonnet 4.5",
+                200_000,
+                64_000,
+                false,
+            ),
+            (
+                "claude-haiku-4.5",
+                "Claude Haiku 4.5",
+                200_000,
+                64_000,
+                false,
+            ),
+            ("gemini-2.5-pro", "Gemini 2.5 Pro", 1_000_000, 64_000, false),
+        ];
+
+        entries
+            .iter()
+            .map(|(id, name, ctx, max_out, vision)| ModelInfo {
+                id: id.to_string(),
+                name: name.to_string(),
+                provider: self.provider_name.clone(),
+                context_window: *ctx,
+                max_output_tokens: Some(*max_out),
+                supports_vision: *vision,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -279,174 +460,22 @@ impl Provider for CopilotProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        let response = self
-            .client
-            .get(format!("{}/models", self.base_url))
-            .header("Authorization", format!("Bearer {}", self.token))
-            .header("Openai-Intent", "conversation-edits")
-            .header("User-Agent", Self::user_agent())
-            .send()
-            .await
-            .context("Failed to fetch Copilot models")?;
+        let mut models = self.discover_models_from_api().await;
 
-        let mut models: Vec<ModelInfo> = if response.status().is_success() {
-            let parsed: CopilotModelsResponse = response
-                .json()
-                .await
-                .unwrap_or(CopilotModelsResponse { data: vec![] });
-
-            parsed
-                .data
-                .into_iter()
-                .filter(|model| {
-                    // Skip models that are disabled in the picker
-                    if model.model_picker_enabled == Some(false) {
-                        return false;
-                    }
-                    // Skip models with a disabled policy state
-                    if let Some(ref policy) = model.policy {
-                        if policy.state.as_deref() == Some("disabled") {
-                            return false;
-                        }
-                    }
-                    true
-                })
-                .map(|model| {
-                    let caps = model.capabilities.as_ref();
-                    let limits = caps.and_then(|c| c.limits.as_ref());
-                    let supports = caps.and_then(|c| c.supports.as_ref());
-
-                    ModelInfo {
-                        id: model.id.clone(),
-                        name: model.name.unwrap_or_else(|| model.id.clone()),
-                        provider: self.provider_name.clone(),
-                        context_window: limits
-                            .and_then(|l| l.max_context_window_tokens)
-                            .unwrap_or(128_000),
-                        max_output_tokens: limits
-                            .and_then(|l| l.max_output_tokens)
-                            .or(Some(16_384)),
-                        supports_vision: supports.and_then(|s| s.vision).unwrap_or(false),
-                        supports_tools: supports.and_then(|s| s.tool_calls).unwrap_or(true),
-                        supports_streaming: supports.and_then(|s| s.streaming).unwrap_or(true),
-                        input_cost_per_million: None, // Set below per-model
-                        output_cost_per_million: None,
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-
-        // Enrich API-returned models with known metadata (better names, accurate limits)
-        // AND per-model premium request costs from GitHub Copilot pricing.
-        // Source: https://docs.github.com/en/copilot/concepts/billing/copilot-requests
-        //
-        // Cost model: Premium requests at $0.04/request overflow rate.
-        // We convert multiplier to approximate $/M tokens using ~4K tokens/request avg.
-        // Formula: multiplier * $0.04 / 4K tokens * 1M = multiplier * $10/M tokens.
-        //
-        // Premium request multipliers (Feb 2026):
-        //   0x (included): GPT-4.1, GPT-4o, GPT-5 mini, Raptor mini
-        //   0.25x: Grok Code Fast 1
-        //   0.33x: Claude Haiku 4.5, Gemini 3 Flash, GPT-5.1-Codex-Mini
-        //   1x: Claude Sonnet 4/4.5, Gemini 2.5/3 Pro, GPT-5, GPT-5.x-Codex variants
-        //   3x: Claude Opus 4.5, Claude Opus 4.6
-        //   10x: Claude Opus 4.1
-        //
-        // Tuple: (display_name, context_window, max_output, premium_multiplier)
-        let known_metadata: std::collections::HashMap<&str, (&str, usize, usize, f64)> = [
-            ("claude-opus-4.5", ("Claude Opus 4.5", 200_000, 64_000, 3.0)),
-            ("claude-opus-4.6", ("Claude Opus 4.6", 200_000, 64_000, 3.0)),
-            ("claude-opus-41", ("Claude Opus 4.1", 200_000, 64_000, 10.0)),
-            (
-                "claude-sonnet-4.5",
-                ("Claude Sonnet 4.5", 200_000, 64_000, 1.0),
-            ),
-            ("claude-sonnet-4", ("Claude Sonnet 4", 200_000, 64_000, 1.0)),
-            (
-                "claude-haiku-4.5",
-                ("Claude Haiku 4.5", 200_000, 64_000, 0.33),
-            ),
-            ("gpt-5.3-codex", ("GPT-5.3-Codex", 264_000, 64_000, 1.0)),
-            ("gpt-5.2", ("GPT-5.2", 400_000, 128_000, 1.0)),
-            ("gpt-5.2-codex", ("GPT-5.2-Codex", 264_000, 64_000, 1.0)),
-            ("gpt-5.1", ("GPT-5.1", 400_000, 128_000, 1.0)),
-            ("gpt-5.1-codex", ("GPT-5.1-Codex", 264_000, 64_000, 1.0)),
-            (
-                "gpt-5.1-codex-mini",
-                ("GPT-5.1-Codex-Mini", 264_000, 64_000, 0.33),
-            ),
-            (
-                "gpt-5.1-codex-max",
-                ("GPT-5.1-Codex-Max", 264_000, 64_000, 1.0),
-            ),
-            ("gpt-5", ("GPT-5", 400_000, 128_000, 1.0)),
-            ("gpt-5-mini", ("GPT-5 mini", 264_000, 64_000, 0.0)),
-            ("gpt-5-codex", ("GPT-5-Codex", 264_000, 64_000, 1.0)),
-            ("gpt-4.1", ("GPT-4.1", 128_000, 32_768, 0.0)),
-            ("gpt-4o", ("GPT-4o", 128_000, 16_384, 0.0)),
-            ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1_000_000, 64_000, 1.0)),
-            (
-                "gemini-3-flash-preview",
-                ("Gemini 3 Flash", 1_000_000, 64_000, 0.33),
-            ),
-            (
-                "gemini-3-pro-preview",
-                ("Gemini 3 Pro", 1_000_000, 64_000, 1.0),
-            ),
-            (
-                "grok-code-fast-1",
-                ("Grok Code Fast 1", 128_000, 32_768, 0.25),
-            ),
-        ]
-        .into_iter()
-        .collect();
-
-        // Apply known metadata to enrich API models that had sparse info,
-        // and set per-model premium request costs.
-        for model in &mut models {
-            if let Some((name, ctx, max_out, premium_mult)) = known_metadata.get(model.id.as_str())
-            {
-                if model.name == model.id {
-                    model.name = name.to_string();
-                }
-                if model.context_window == 128_000 {
-                    model.context_window = *ctx;
-                }
-                if model.max_output_tokens == Some(16_384) {
-                    model.max_output_tokens = Some(*max_out);
-                }
-                // Convert premium request multiplier to approximate $/M tokens.
-                // $0.04/request overflow rate, ~4K tokens/request avg = multiplier * $10/M.
-                // Models at 0.0x are included free on paid plans.
-                let approx_cost = premium_mult * 10.0;
-                model.input_cost_per_million = Some(approx_cost);
-                model.output_cost_per_million = Some(approx_cost);
-            } else {
-                // Unknown Copilot model — assume 1x premium request ($10/M approx)
-                if model.input_cost_per_million.is_none() {
-                    model.input_cost_per_million = Some(10.0);
-                }
-                if model.output_cost_per_million.is_none() {
-                    model.output_cost_per_million = Some(10.0);
-                }
-            }
+        // If API discovery returned nothing, fall back to known models
+        if models.is_empty() {
+            tracing::info!(provider = %self.provider_name, "No models from API, using known model catalog");
+            models = self.known_models();
         }
 
-        // Filter out legacy/deprecated models that clutter the picker
-        // (embedding models, old GPT-3.5/4/4o variants without picker flag)
+        // Enrich with pricing metadata from known premium request multipliers
+        self.enrich_with_pricing(&mut models);
+
+        // Filter out non-chat models (embeddings, etc.) and legacy dated variants
         models.retain(|m| {
             !m.id.starts_with("text-embedding")
-                && m.id != "gpt-3.5-turbo"
-                && m.id != "gpt-3.5-turbo-0613"
-                && m.id != "gpt-4-0613"
-                && m.id != "gpt-4o-2024-05-13"
-                && m.id != "gpt-4o-2024-08-06"
-                && m.id != "gpt-4o-2024-11-20"
-                && m.id != "gpt-4o-mini-2024-07-18"
-                && m.id != "gpt-4-o-preview"
-                && m.id != "gpt-4.1-2025-04-14"
+                && !m.id.contains("-embedding-")
+                && !is_dated_model_variant(&m.id)
         });
 
         // Deduplicate by id (API sometimes returns duplicates)
@@ -616,6 +645,24 @@ impl Provider for CopilotProvider {
     }
 }
 
+/// Check if a model ID is a dated variant (e.g. "gpt-4o-2024-05-13") that should
+/// be filtered out in favor of the canonical alias (e.g. "gpt-4o").
+fn is_dated_model_variant(id: &str) -> bool {
+    // Match IDs ending in a YYYY-MM-DD date suffix
+    let bytes = id.as_bytes();
+    if bytes.len() < 11 {
+        return false;
+    }
+    // Check for "-YYYY-MM-DD" at end
+    let tail = &id[id.len() - 11..];
+    tail.starts_with('-')
+        && tail[1..5].bytes().all(|b| b.is_ascii_digit())
+        && tail.as_bytes()[5] == b'-'
+        && tail[6..8].bytes().all(|b| b.is_ascii_digit())
+        && tail.as_bytes()[8] == b'-'
+        && tail[9..11].bytes().all(|b| b.is_ascii_digit())
+}
+
 pub fn normalize_enterprise_domain(input: &str) -> String {
     input
         .trim()
@@ -658,5 +705,49 @@ mod tests {
             enterprise_base_url("https://company.ghe.com/"),
             "https://copilot-api.company.ghe.com"
         );
+    }
+
+    #[test]
+    fn is_dated_model_variant_detects_date_suffix() {
+        assert!(is_dated_model_variant("gpt-4o-2024-05-13"));
+        assert!(is_dated_model_variant("gpt-4o-2024-08-06"));
+        assert!(is_dated_model_variant("gpt-4.1-2025-04-14"));
+        assert!(is_dated_model_variant("gpt-4o-mini-2024-07-18"));
+        assert!(!is_dated_model_variant("gpt-4o"));
+        assert!(!is_dated_model_variant("gpt-5"));
+        assert!(!is_dated_model_variant("claude-sonnet-4"));
+        assert!(!is_dated_model_variant("gemini-2.5-pro"));
+    }
+
+    #[test]
+    fn known_models_fallback_is_non_empty() {
+        let provider = CopilotProvider::new("test-token".to_string()).unwrap();
+        let models = provider.known_models();
+        assert!(!models.is_empty());
+        // All fallback models should support tools
+        assert!(models.iter().all(|m| m.supports_tools));
+    }
+
+    #[test]
+    fn enrich_with_pricing_sets_costs() {
+        let provider = CopilotProvider::new("test-token".to_string()).unwrap();
+        let mut models = vec![ModelInfo {
+            id: "gpt-4o".to_string(),
+            name: "gpt-4o".to_string(),
+            provider: "github-copilot".to_string(),
+            context_window: 128_000,
+            max_output_tokens: Some(16_384),
+            supports_vision: true,
+            supports_tools: true,
+            supports_streaming: true,
+            input_cost_per_million: None,
+            output_cost_per_million: None,
+        }];
+        provider.enrich_with_pricing(&mut models);
+        // GPT-4o is 0x premium (free), so cost = 0.0
+        assert_eq!(models[0].input_cost_per_million, Some(0.0));
+        assert_eq!(models[0].output_cost_per_million, Some(0.0));
+        // Name should be enriched
+        assert_eq!(models[0].name, "GPT-4o");
     }
 }

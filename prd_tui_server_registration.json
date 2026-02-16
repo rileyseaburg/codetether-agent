@@ -28,7 +28,7 @@
     {
       "id": "US-002",
       "title": "Extract reusable registration client",
-      "description": "The worker (src/a2a/worker.rs) builds registration, heartbeat, and model-list payloads inline with serde_json::json!() macros. Extract a reusable ApiRegistrationClient struct (or similar) into src/a2a/registration.rs that encapsulates: (1) register_worker() → POST /v1/opencode/workers/register, (2) send_heartbeat() → POST /v1/opencode/workers/{id}/heartbeat, (3) deregister_worker() → POST /v1/opencode/workers/{id}/deregister (or DELETE). Define proper Rust structs for the request/response types instead of inline JSON. The worker should be migrated to use this client. The TUI will also use it.",
+      "description": "The worker (src/a2a/worker.rs) builds registration, heartbeat, and model-list payloads inline with serde_json::json!() macros. Extract a reusable ApiRegistrationClient struct (or similar) into src/a2a/registration.rs that encapsulates: (1) register_worker() → POST /v1/agent/workers/register, (2) send_heartbeat() → POST /v1/agent/workers/{id}/heartbeat, (3) deregister_worker() → POST /v1/agent/workers/{id}/deregister (or DELETE). Define proper Rust structs for the request/response types instead of inline JSON. The worker should be migrated to use this client. The TUI will also use it.",
       "acceptance_criteria": [
         "ApiRegistrationClient struct exists in src/a2a/registration.rs",
         "WorkerRegistrationRequest, HeartbeatRequest, and DeregisterRequest structs are defined with serde Serialize/Deserialize",
@@ -62,7 +62,7 @@
     {
       "id": "US-004",
       "title": "TUI sends periodic heartbeats",
-      "description": "After successful registration, spawn a background heartbeat task that sends POST /v1/opencode/workers/{worker_id}/heartbeat every 30 seconds (matching the worker interval). The heartbeat payload should include status ('idle' when waiting for input, 'processing' when an LLM call is in-flight) and active_task_count. Use a shared Arc<AtomicBool> or similar to track is_processing state from the main event loop. If 3 consecutive heartbeats fail, log a warning and stop sending (don't retry forever). The heartbeat task must be cancellable on TUI exit.",
+      "description": "After successful registration, spawn a background heartbeat task that sends POST /v1/agent/workers/{worker_id}/heartbeat every 30 seconds (matching the worker interval). The heartbeat payload should include status ('idle' when waiting for input, 'processing' when an LLM call is in-flight) and active_task_count. Use a shared Arc<AtomicBool> or similar to track is_processing state from the main event loop. If 3 consecutive heartbeats fail, log a warning and stop sending (don't retry forever). The heartbeat task must be cancellable on TUI exit.",
       "acceptance_criteria": [
         "Heartbeat task runs every 30 seconds after successful registration",
         "Status reflects 'idle' vs 'processing' based on TUI's is_processing flag",

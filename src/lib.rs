@@ -17,7 +17,6 @@ pub mod lsp;
 pub mod mcp;
 pub mod moltbook;
 pub mod okr;
-pub mod opencode;
 pub mod provider;
 pub mod ralph;
 pub mod rlm;

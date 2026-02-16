@@ -24,7 +24,6 @@ mod lsp;
 pub mod mcp;
 mod moltbook;
 mod okr;
-mod opencode;
 mod provider;
 pub mod ralph;
 pub mod rlm;
@@ -41,7 +40,7 @@ mod worktree;
 use clap::Parser;
 use cli::{Cli, Command};
 use std::io::IsTerminal;
-use swarm::{DecompositionStrategy, SwarmExecutor};
+use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -230,6 +229,9 @@ async fn main() -> anyhow::Result<()> {
                 max_steps_per_subagent: args.max_steps,
                 subagent_timeout_secs: args.timeout,
                 model: args.model.clone().or_else(|| Some("zai/glm-5".to_string())),
+                execution_mode: ExecutionMode::from_cli_value(&args.execution_mode),
+                k8s_pod_budget: args.k8s_pod_budget,
+                k8s_subagent_image: args.k8s_image.clone(),
                 ..Default::default()
             });
 
@@ -259,6 +261,7 @@ async fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
         Some(Command::Rlm(args)) => {
             use provider::ProviderRegistry;
             use std::io::Read;

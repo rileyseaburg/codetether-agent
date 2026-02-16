@@ -4,13 +4,19 @@
 //! respecting dependencies and optimizing for critical path.
 
 use super::{
-    CacheConfig, CacheStats, DecompositionStrategy, StageStats, SwarmCache, SwarmConfig,
+    BranchObservation, BranchRuntimeState, CacheConfig, CacheStats, CollapseController,
+    CollapsePolicy, DecompositionStrategy, ExecutionMode, StageStats, SwarmCache, SwarmConfig,
     SwarmResult,
+    kubernetes_executor::{
+        RemoteSubtaskPayload, SWARM_SUBTASK_PAYLOAD_ENV, encode_payload, latest_probe_from_logs,
+        probe_changed_files_set, result_from_logs,
+    },
     orchestrator::Orchestrator,
     result_store::ResultStore,
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
 };
 use crate::bus::{AgentBus, BusMessage};
+use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
 // Re-export swarm types for convenience
@@ -25,11 +31,13 @@ use crate::{
     worktree::{WorktreeInfo, WorktreeManager},
 };
 use anyhow::Result;
-use std::collections::HashMap;
+use futures::stream::{FuturesUnordered, StreamExt};
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{RwLock, mpsc};
-use tokio::time::{Duration, timeout};
+use tokio::task::AbortHandle;
+use tokio::time::{Duration, MissedTickBehavior, timeout};
 
 /// Default context limit (256k tokens - conservative for most models)
 const DEFAULT_CONTEXT_LIMIT: usize = 256_000;
@@ -260,11 +268,73 @@ const RLM_THRESHOLD_CHARS: usize = 50_000;
 /// Max chars for simple truncation (below RLM threshold)
 const SIMPLE_TRUNCATE_CHARS: usize = 6000;
 
+/// Collapse controller sampling interval for branch health.
+const COLLAPSE_SAMPLE_SECS: u64 = 5;
+const SWARM_FALLBACK_PROMPT_ENV: &str = "CODETETHER_SWARM_FALLBACK_PROMPT";
+const SWARM_FALLBACK_MODEL_ENV: &str = "CODETETHER_SWARM_FALLBACK_MODEL";
+const K8S_PASSTHROUGH_ENV_VARS: &[&str] = &[
+    "VAULT_ADDR",
+    "VAULT_TOKEN",
+    "VAULT_MOUNT",
+    "VAULT_SECRETS_PATH",
+    "VAULT_NAMESPACE",
+    "CODETETHER_AUTH_TOKEN",
+];
+
+#[derive(Debug, Clone)]
+struct ActiveK8sBranch {
+    branch: String,
+    started_at: Instant,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentLoopExit {
     Completed,
     MaxStepsReached,
     TimedOut,
+}
+
+fn compute_resource_health(pod_state: Option<&SubagentPodState>) -> (f32, u32) {
+    let Some(pod_state) = pod_state else {
+        return (0.2, 1);
+    };
+
+    let reason = pod_state
+        .reason
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let phase = pod_state.phase.to_ascii_lowercase();
+
+    if reason.contains("oomkilled") {
+        return (0.0, 3);
+    }
+    if reason.contains("imagepullbackoff") || reason.contains("errimagepull") {
+        return (0.0, 3);
+    }
+    if reason.contains("crashloopbackoff") {
+        return (0.1, 2);
+    }
+    if phase == "failed" {
+        return (0.1, 2);
+    }
+
+    let mut score = 1.0f32;
+    let mut unhealthy_signals = 0u32;
+
+    if !pod_state.ready {
+        score -= 0.2;
+    }
+    if !reason.is_empty() {
+        score -= 0.3;
+        unhealthy_signals += 1;
+    }
+    if pod_state.restart_count > 0 {
+        score -= (pod_state.restart_count.min(3) as f32) * 0.2;
+        unhealthy_signals += 1;
+    }
+
+    (score.clamp(0.0, 1.0), unhealthy_signals)
 }
 
 /// Process a large tool result using RLM to intelligently summarize it
@@ -700,11 +770,23 @@ impl SwarmExecutor {
         completed_results: Arc<RwLock<HashMap<String, String>>>,
         swarm_id: &str,
     ) -> Result<Vec<SubTaskResult>> {
-        let mut handles: Vec<(
-            String,
-            tokio::task::JoinHandle<Result<(SubTaskResult, Option<WorktreeInfo>), anyhow::Error>>,
-        )> = Vec::new();
+        if self.config.execution_mode == ExecutionMode::KubernetesPod {
+            return self
+                .execute_stage_kubernetes(orchestrator, subtasks, completed_results, swarm_id)
+                .await;
+        }
+
+        let mut handles: FuturesUnordered<
+            tokio::task::JoinHandle<(String, Result<SubTaskResult, anyhow::Error>)>,
+        > = FuturesUnordered::new();
+        let mut abort_handles: HashMap<String, AbortHandle> = HashMap::new();
+        let mut task_ids: HashMap<tokio::task::Id, String> = HashMap::new();
+        let mut active_worktrees: HashMap<String, WorktreeInfo> = HashMap::new();
+        let mut all_worktrees: HashMap<String, WorktreeInfo> = HashMap::new();
         let mut cached_results: Vec<SubTaskResult> = Vec::new();
+        let mut completed_entries: Vec<(SubTaskResult, Option<WorktreeInfo>)> = Vec::new();
+        let mut kill_reasons: HashMap<String, String> = HashMap::new();
+        let mut promoted_subtask_id: Option<String> = None;
 
         // Rate limiting: semaphore for max concurrent requests
         let semaphore = Arc::new(tokio::sync::Semaphore::new(
@@ -850,13 +932,54 @@ impl SwarmExecutor {
             let max_steps = self.config.max_steps_per_subagent;
             let timeout_secs = self.config.subagent_timeout_secs;
 
+            // Create worktree for this sub-agent before spawning so the collapse controller
+            // can monitor live branches while execution is in-flight.
+            let worktree_info = if let Some(ref mgr) = worktree_manager {
+                let task_slug = subtask_id.replace("-", "_");
+                match mgr.create(&task_slug) {
+                    Ok(wt) => {
+                        if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
+                            tracing::warn!(
+                                subtask_id = %subtask_id,
+                                error = %e,
+                                "Failed to inject workspace stub into worktree"
+                            );
+                        }
+                        tracing::info!(
+                            subtask_id = %subtask_id,
+                            worktree_path = %wt.path.display(),
+                            worktree_branch = %wt.branch,
+                            "Created worktree for sub-agent"
+                        );
+                        active_worktrees.insert(subtask_id.clone(), wt.clone());
+                        all_worktrees.insert(subtask_id.clone(), wt.clone());
+                        Some(wt)
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            subtask_id = %subtask_id,
+                            error = %e,
+                            "Failed to create worktree, using shared directory"
+                        );
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+
+            let working_dir = worktree_info
+                .as_ref()
+                .map(|wt| wt.path.display().to_string())
+                .unwrap_or_else(|| ".".to_string());
+            let working_dir_path = worktree_info.as_ref().map(|wt| wt.path.clone());
+
             // Clone for the async block
             let tools = tool_definitions.clone();
             let _base_registry = Arc::clone(&base_tool_registry);
             let agent_result_store = Arc::clone(&result_store);
             let sem = Arc::clone(&semaphore);
             let stagger_delay = delay_ms * idx as u64; // Stagger start times
-            let worktree_mgr = worktree_manager.clone();
             let event_tx = self.event_tx.clone();
 
             // Generate sub-agent execution ID
@@ -871,46 +994,19 @@ impl SwarmExecutor {
                 if stagger_delay > 0 {
                     tokio::time::sleep(Duration::from_millis(stagger_delay)).await;
                 }
-                let _permit = sem
-                    .acquire()
-                    .await
-                    .map_err(|_| anyhow::anyhow!("Swarm execution cancelled"))?;
+                let _permit = match sem.acquire().await {
+                    Ok(permit) => permit,
+                    Err(_) => {
+                        return (
+                            subtask_id.clone(),
+                            Err(anyhow::anyhow!("Swarm execution cancelled")),
+                        );
+                    }
+                };
 
                 let _agent_start = Instant::now();
 
                 let start = Instant::now();
-
-                // Create worktree for this sub-agent if enabled
-                let worktree_info = if let Some(ref mgr) = worktree_mgr {
-                    let task_slug = subtask_id.replace("-", "_");
-                    match mgr.create(&task_slug) {
-                        Ok(wt) => {
-                            tracing::info!(
-                                subtask_id = %subtask_id,
-                                worktree_path = %wt.path.display(),
-                                worktree_branch = %wt.branch,
-                                "Created worktree for sub-agent"
-                            );
-                            Some(wt)
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                subtask_id = %subtask_id,
-                                error = %e,
-                                "Failed to create worktree, using shared directory"
-                            );
-                            None
-                        }
-                    }
-                } else {
-                    None
-                };
-
-                // Determine working directory
-                let working_dir = worktree_info
-                    .as_ref()
-                    .map(|wt| wt.path.display().to_string())
-                    .unwrap_or_else(|| ".".to_string());
 
                 // Load AGENTS.md from working directory
                 let working_path = std::path::Path::new(&working_dir);
@@ -1015,11 +1111,11 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     event_tx.clone(),
                     subtask_id.clone(),
                     None,
-                    None,
+                    working_dir_path.clone(),
                 )
                 .await;
 
-                match result {
+                let task_result = match result {
                     Ok((output, steps, tool_calls, exit_reason)) => {
                         let (success, status, error) = match exit_reason {
                             AgentLoopExit::Completed => (true, SubTaskStatus::Completed, None),
@@ -1059,20 +1155,17 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                 steps,
                             });
                         }
-                        Ok((
-                            SubTaskResult {
-                                subtask_id: subtask_id.clone(),
-                                subagent_id: format!("agent-{}", subtask_id),
-                                success,
-                                result: output,
-                                steps,
-                                tool_calls,
-                                execution_time_ms: start.elapsed().as_millis() as u64,
-                                error,
-                                artifacts: Vec::new(),
-                            },
-                            worktree_info,
-                        ))
+                        Ok(SubTaskResult {
+                            subtask_id: subtask_id.clone(),
+                            subagent_id: format!("agent-{}", subtask_id),
+                            success,
+                            result: output,
+                            steps,
+                            tool_calls,
+                            execution_time_ms: start.elapsed().as_millis() as u64,
+                            error,
+                            artifacts: Vec::new(),
+                        })
                     }
                     Err(e) => {
                         // Emit error events
@@ -1093,180 +1186,868 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                 steps: 0,
                             });
                         }
-                        Ok((
-                            SubTaskResult {
-                                subtask_id: subtask_id.clone(),
-                                subagent_id: format!("agent-{}", subtask_id),
-                                success: false,
-                                result: String::new(),
-                                steps: 0,
-                                tool_calls: 0,
-                                execution_time_ms: start.elapsed().as_millis() as u64,
-                                error: Some(e.to_string()),
-                                artifacts: Vec::new(),
-                            },
-                            worktree_info,
-                        ))
+                        Ok(SubTaskResult {
+                            subtask_id: subtask_id.clone(),
+                            subagent_id: format!("agent-{}", subtask_id),
+                            success: false,
+                            result: String::new(),
+                            steps: 0,
+                            tool_calls: 0,
+                            execution_time_ms: start.elapsed().as_millis() as u64,
+                            error: Some(e.to_string()),
+                            artifacts: Vec::new(),
+                        })
                     }
-                }
+                };
+
+                (subtask_id.clone(), task_result)
             });
 
-            handles.push((subtask_id_for_handle, handle));
+            let abort_handle = handle.abort_handle();
+            abort_handles.insert(subtask_id_for_handle.clone(), abort_handle);
+            task_ids.insert(handle.id(), subtask_id_for_handle.clone());
+            handles.push(handle);
         }
 
-        // Wait for all handles and handle worktree merging
-        let mut results = cached_results;
-        let auto_merge = self.config.worktree_auto_merge;
+        // Deterministic collapse loop while branches are still running.
+        let mut collapse_controller = if worktree_manager.is_some() && active_worktrees.len() > 1 {
+            Some(CollapseController::new(CollapsePolicy::default()))
+        } else {
+            None
+        };
+        let mut collapse_tick = tokio::time::interval(Duration::from_secs(COLLAPSE_SAMPLE_SECS));
+        collapse_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
+        // Consume the immediate first tick so sampling starts after the first interval.
+        let _ = collapse_tick.tick().await;
 
-        for (subtask_id, handle) in handles {
-            match handle.await {
-                Ok(Ok((mut result, worktree_info))) => {
-                    // Handle worktree merge if applicable
-                    if let Some(wt) = worktree_info {
-                        if result.success && auto_merge {
-                            if let Some(ref mgr) = worktree_manager {
-                                match mgr.merge(&wt) {
-                                    Ok(merge_result) => {
-                                        if merge_result.success {
-                                            tracing::info!(
-                                                subtask_id = %result.subtask_id,
-                                                files_changed = merge_result.files_changed,
-                                                "Merged worktree changes successfully"
-                                            );
-                                            result.result.push_str(&format!(
-                                                "\n\n--- Merge Result ---\n{}",
-                                                merge_result.summary
-                                            ));
-                                        } else if merge_result.aborted {
-                                            // Merge was aborted due to non-conflict failure
-                                            tracing::warn!(
-                                                subtask_id = %result.subtask_id,
-                                                summary = %merge_result.summary,
-                                                "Merge was aborted"
-                                            );
-                                            result.result.push_str(&format!(
-                                                "\n\n--- Merge Aborted ---\n{}",
-                                                merge_result.summary
-                                            ));
-                                        } else {
-                                            tracing::warn!(
-                                                subtask_id = %result.subtask_id,
-                                                conflicts = ?merge_result.conflicts,
-                                                "Merge had conflicts"
-                                            );
-                                            result.result.push_str(&format!(
-                                                "\n\n--- Merge Conflicts ---\n{}",
-                                                merge_result.summary
-                                            ));
-                                        }
+        while !handles.is_empty() {
+            tokio::select! {
+                maybe_join = handles.next() => {
+                    let Some(joined) = maybe_join else {
+                        continue;
+                    };
+                    match joined {
+                        Ok((subtask_id, Ok(result))) => {
+                            abort_handles.remove(&subtask_id);
+                            let wt = active_worktrees.remove(&subtask_id).or_else(|| all_worktrees.get(&subtask_id).cloned());
+                            completed_entries.push((result, wt));
+                        }
+                        Ok((subtask_id, Err(e))) => {
+                            abort_handles.remove(&subtask_id);
+                            active_worktrees.remove(&subtask_id);
+                            let wt = all_worktrees.get(&subtask_id).cloned();
+                            completed_entries.push((
+                                SubTaskResult {
+                                    subtask_id: subtask_id.clone(),
+                                    subagent_id: format!("agent-{subtask_id}"),
+                                    success: false,
+                                    result: String::new(),
+                                    steps: 0,
+                                    tool_calls: 0,
+                                    execution_time_ms: 0,
+                                    error: Some(e.to_string()),
+                                    artifacts: Vec::new(),
+                                },
+                                wt,
+                            ));
+                        }
+                        Err(e) => {
+                            let subtask_id = task_ids
+                                .remove(&e.id())
+                                .unwrap_or_else(|| "unknown".to_string());
+                            abort_handles.remove(&subtask_id);
+                            active_worktrees.remove(&subtask_id);
+                            let wt = all_worktrees.get(&subtask_id).cloned();
+                            completed_entries.push((
+                                SubTaskResult {
+                                    subtask_id: subtask_id.clone(),
+                                    subagent_id: format!("agent-{subtask_id}"),
+                                    success: false,
+                                    result: String::new(),
+                                    steps: 0,
+                                    tool_calls: 0,
+                                    execution_time_ms: 0,
+                                    error: Some(format!("Task join error: {e}")),
+                                    artifacts: Vec::new(),
+                                },
+                                wt,
+                            ));
+                        }
+                    }
+                }
+                _ = collapse_tick.tick(), if collapse_controller.is_some() && !active_worktrees.is_empty() => {
+                    let branches: Vec<BranchRuntimeState> = active_worktrees
+                        .iter()
+                        .map(|(subtask_id, wt)| BranchRuntimeState {
+                            subtask_id: subtask_id.clone(),
+                            branch: wt.branch.clone(),
+                            worktree_path: wt.path.clone(),
+                        })
+                        .collect();
 
-                                        // Cleanup worktree after merge
-                                        if let Err(e) = mgr.cleanup(&wt) {
-                                            tracing::warn!(
-                                                error = %e,
-                                                "Failed to cleanup worktree"
-                                            );
+                    if let Some(controller) = collapse_controller.as_mut() {
+                        match controller.sample(&branches) {
+                            Ok(tick) => {
+                                if promoted_subtask_id != tick.promoted_subtask_id {
+                                    promoted_subtask_id = tick.promoted_subtask_id.clone();
+                                    if let Some(ref promoted) = promoted_subtask_id {
+                                        tracing::info!(
+                                            subtask_id = %promoted,
+                                            "Collapse controller promoted branch"
+                                        );
+                                        if let Some(audit) = crate::audit::try_audit_log() {
+                                            audit.log_with_correlation(
+                                                crate::audit::AuditCategory::Swarm,
+                                                "collapse_promote_branch",
+                                                crate::audit::AuditOutcome::Success,
+                                                Some("collapse-controller".to_string()),
+                                                Some(serde_json::json!({
+                                                    "swarm_id": swarm_id,
+                                                    "subtask_id": promoted,
+                                                })),
+                                                None,
+                                                None,
+                                                Some(swarm_id.to_string()),
+                                                None,
+                                            ).await;
                                         }
                                     }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            subtask_id = %result.subtask_id,
-                                            error = %e,
-                                            "Failed to merge worktree"
-                                        );
+                                }
+
+                                for kill in tick.kills {
+                                    if kill_reasons.contains_key(&kill.subtask_id) {
+                                        continue;
+                                    }
+                                    let Some(abort_handle) = abort_handles.get(&kill.subtask_id) else {
+                                        continue;
+                                    };
+
+                                    abort_handle.abort();
+                                    abort_handles.remove(&kill.subtask_id);
+                                    active_worktrees.remove(&kill.subtask_id);
+                                    kill_reasons.insert(kill.subtask_id.clone(), kill.reason.clone());
+
+                                    tracing::warn!(
+                                        subtask_id = %kill.subtask_id,
+                                        branch = %kill.branch,
+                                        reason = %kill.reason,
+                                        "Collapse controller killed branch"
+                                    );
+
+                                    if let Some(ref tx) = self.event_tx {
+                                        let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
+                                            id: kill.subtask_id.clone(),
+                                            name: kill.subtask_id.clone(),
+                                            status: SubTaskStatus::Cancelled,
+                                            agent_name: Some(format!("agent-{}", kill.subtask_id)),
+                                        });
+                                        let _ = tx.try_send(SwarmEvent::AgentError {
+                                            subtask_id: kill.subtask_id.clone(),
+                                            error: format!("Cancelled by collapse controller: {}", kill.reason),
+                                        });
+                                    }
+
+                                    if let Some(audit) = crate::audit::try_audit_log() {
+                                        audit.log_with_correlation(
+                                            crate::audit::AuditCategory::Swarm,
+                                            "collapse_kill_branch",
+                                            crate::audit::AuditOutcome::Success,
+                                            Some("collapse-controller".to_string()),
+                                            Some(serde_json::json!({
+                                                "swarm_id": swarm_id,
+                                                "subtask_id": kill.subtask_id,
+                                                "branch": kill.branch,
+                                                "reason": kill.reason,
+                                            })),
+                                            None,
+                                            None,
+                                            Some(swarm_id.to_string()),
+                                            None,
+                                        ).await;
                                     }
                                 }
                             }
-                        } else if !result.success {
-                            // Keep worktree for debugging on failure
-                            tracing::info!(
-                                subtask_id = %result.subtask_id,
-                                worktree_path = %wt.path.display(),
-                                "Keeping worktree for debugging (task failed)"
-                            );
+                            Err(e) => {
+                                tracing::warn!(error = %e, "Collapse controller sampling failed");
+                            }
                         }
                     }
+                }
+            }
+        }
 
-                    // Cache successful result
-                    if result.success {
-                        if let Some(ref cache_arc) = self.cache {
-                            let mut cache_guard: tokio::sync::MutexGuard<'_, SwarmCache> =
-                                cache_arc.lock().await;
-                            // Create a minimal subtask for cache lookup key
-                            let cache_subtask = SubTask::new(&subtask_id, &result.result);
-                            if let Err(e) = cache_guard.put(&cache_subtask, &result).await {
-                                tracing::warn!(
+        // Merge in deterministic order: promoted branch first when present.
+        if let Some(ref promoted) = promoted_subtask_id {
+            completed_entries.sort_by_key(|(result, _)| {
+                if &result.subtask_id == promoted {
+                    0usize
+                } else {
+                    1usize
+                }
+            });
+        }
+
+        let mut results = cached_results;
+        let auto_merge = self.config.worktree_auto_merge;
+
+        for (mut result, worktree_info) in completed_entries {
+            // Handle worktree merge/cleanup if applicable
+            if let Some(wt) = worktree_info {
+                if let Some(reason) = kill_reasons.get(&result.subtask_id) {
+                    result.error = Some(format!("Cancelled by collapse controller: {reason}"));
+                    result.result.push_str(&format!(
+                        "\n\n--- Collapse Controller ---\nBranch terminated: {reason}"
+                    ));
+                    if let Some(ref mgr) = worktree_manager {
+                        if let Err(e) = mgr.cleanup(&wt) {
+                            tracing::warn!(error = %e, "Failed to cleanup killed worktree");
+                        }
+                    }
+                } else if result.success && auto_merge {
+                    if let Some(ref mgr) = worktree_manager {
+                        match mgr.merge(&wt) {
+                            Ok(merge_result) => {
+                                if merge_result.success {
+                                    tracing::info!(
+                                        subtask_id = %result.subtask_id,
+                                        files_changed = merge_result.files_changed,
+                                        "Merged worktree changes successfully"
+                                    );
+                                    result.result.push_str(&format!(
+                                        "\n\n--- Merge Result ---\n{}",
+                                        merge_result.summary
+                                    ));
+                                } else if merge_result.aborted {
+                                    tracing::warn!(
+                                        subtask_id = %result.subtask_id,
+                                        summary = %merge_result.summary,
+                                        "Merge was aborted"
+                                    );
+                                    result.result.push_str(&format!(
+                                        "\n\n--- Merge Aborted ---\n{}",
+                                        merge_result.summary
+                                    ));
+                                } else {
+                                    tracing::warn!(
+                                        subtask_id = %result.subtask_id,
+                                        conflicts = ?merge_result.conflicts,
+                                        "Merge had conflicts"
+                                    );
+                                    result.result.push_str(&format!(
+                                        "\n\n--- Merge Conflicts ---\n{}",
+                                        merge_result.summary
+                                    ));
+                                }
+                                if let Err(e) = mgr.cleanup(&wt) {
+                                    tracing::warn!(error = %e, "Failed to cleanup worktree");
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!(
                                     subtask_id = %result.subtask_id,
                                     error = %e,
-                                    "Failed to cache subtask result"
+                                    "Failed to merge worktree"
                                 );
                             }
                         }
                     }
+                } else if !result.success {
+                    tracing::info!(
+                        subtask_id = %result.subtask_id,
+                        worktree_path = %wt.path.display(),
+                        "Keeping worktree for debugging (task failed)"
+                    );
+                }
+            }
 
-                    results.push(result);
-                }
-                Ok(Err(e)) => {
-                    tracing::error!(provider_name = %provider_name, "Subtask error: {}", e);
-                    if let Some(ref tx) = self.event_tx {
-                        let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
-                            id: subtask_id.clone(),
-                            name: subtask_id.clone(),
-                            status: SubTaskStatus::Failed,
-                            agent_name: Some(format!("agent-{}", subtask_id)),
-                        });
-                        let _ = tx.try_send(SwarmEvent::AgentError {
-                            subtask_id: subtask_id.clone(),
-                            error: e.to_string(),
-                        });
-                        let _ = tx.try_send(SwarmEvent::AgentComplete {
-                            subtask_id: subtask_id.clone(),
-                            success: false,
-                            steps: 0,
-                        });
+            // Cache successful result
+            if result.success {
+                if let Some(ref cache_arc) = self.cache {
+                    let mut cache_guard: tokio::sync::MutexGuard<'_, SwarmCache> =
+                        cache_arc.lock().await;
+                    let cache_subtask = SubTask::new(&result.subtask_id, &result.result);
+                    if let Err(e) = cache_guard.put(&cache_subtask, &result).await {
+                        tracing::warn!(
+                            subtask_id = %result.subtask_id,
+                            error = %e,
+                            "Failed to cache subtask result"
+                        );
                     }
+                }
+            }
+
+            results.push(result);
+        }
+
+        Ok(results)
+    }
+
+    async fn execute_stage_kubernetes(
+        &self,
+        orchestrator: &Orchestrator,
+        subtasks: Vec<SubTask>,
+        completed_results: Arc<RwLock<HashMap<String, String>>>,
+        swarm_id: &str,
+    ) -> Result<Vec<SubTaskResult>> {
+        let k8s = K8sManager::new().await;
+        if !k8s.is_available() {
+            anyhow::bail!(
+                "Kubernetes execution mode requested but K8s client is unavailable in this environment"
+            );
+        }
+
+        let provider_name = orchestrator.provider().to_string();
+        let model = orchestrator.model().to_string();
+        let pod_budget = self.config.k8s_pod_budget.max(1);
+        let mut pending: VecDeque<SubTask> = subtasks.into_iter().collect();
+        let mut active: HashMap<String, ActiveK8sBranch> = HashMap::new();
+        let mut subtask_names: HashMap<String, String> = HashMap::new();
+        let mut results: Vec<SubTaskResult> = Vec::new();
+        let mut kill_reasons: HashMap<String, String> = HashMap::new();
+        let mut promoted_subtask_id: Option<String> = None;
+        let mut collapse_controller = CollapseController::new(CollapsePolicy::default());
+
+        let mut tick = tokio::time::interval(Duration::from_secs(COLLAPSE_SAMPLE_SECS));
+        tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
+        let _ = tick.tick().await;
+
+        loop {
+            while active.len() < pod_budget {
+                let Some(subtask) = pending.pop_front() else {
+                    break;
+                };
+
+                if let Some(ref cache) = self.cache {
+                    let mut cache_guard = cache.lock().await;
+                    if let Some(cached_result) = cache_guard.get(&subtask).await {
+                        tracing::info!(
+                            subtask_id = %subtask.id,
+                            task_name = %subtask.name,
+                            "Cache hit for subtask, skipping Kubernetes execution"
+                        );
+                        self.try_send_event(SwarmEvent::SubTaskUpdate {
+                            id: subtask.id.clone(),
+                            name: subtask.name.clone(),
+                            status: SubTaskStatus::Completed,
+                            agent_name: Some("cached".to_string()),
+                        });
+                        results.push(cached_result);
+                        continue;
+                    }
+                }
+
+                let context = {
+                    let completed = completed_results.read().await;
+                    let mut dep_context = String::new();
+                    for dep_id in &subtask.dependencies {
+                        if let Some(result) = completed.get(dep_id) {
+                            dep_context.push_str(&format!(
+                                "\n--- Result from dependency {} ---\n{}\n",
+                                dep_id, result
+                            ));
+                        }
+                    }
+                    dep_context
+                };
+
+                let payload = RemoteSubtaskPayload {
+                    swarm_id: swarm_id.to_string(),
+                    subtask_id: subtask.id.clone(),
+                    subtask_name: subtask.name.clone(),
+                    specialty: subtask.specialty.clone().unwrap_or_default(),
+                    instruction: subtask.instruction.clone(),
+                    context: context.clone(),
+                    provider: provider_name.clone(),
+                    model: model.clone(),
+                    max_steps: self.config.max_steps_per_subagent,
+                    timeout_secs: self.config.subagent_timeout_secs,
+                    working_dir: self.config.working_dir.clone(),
+                    probe_interval_secs: COLLAPSE_SAMPLE_SECS,
+                };
+                let payload_b64 = match encode_payload(&payload) {
+                    Ok(payload) => payload,
+                    Err(error) => {
+                        let error_text = format!("Failed to encode remote payload: {error}");
+                        tracing::error!(subtask_id = %subtask.id, error = %error, "K8s payload encoding failed");
+                        self.try_send_event(SwarmEvent::SubTaskUpdate {
+                            id: subtask.id.clone(),
+                            name: subtask.name.clone(),
+                            status: SubTaskStatus::Failed,
+                            agent_name: Some("k8s-encoder".to_string()),
+                        });
+                        self.try_send_event(SwarmEvent::AgentError {
+                            subtask_id: subtask.id.clone(),
+                            error: error_text.clone(),
+                        });
+                        results.push(SubTaskResult {
+                            subtask_id: subtask.id.clone(),
+                            subagent_id: format!("agent-{}", subtask.id),
+                            success: false,
+                            result: String::new(),
+                            steps: 0,
+                            tool_calls: 0,
+                            execution_time_ms: 0,
+                            error: Some(error_text),
+                            artifacts: Vec::new(),
+                        });
+                        continue;
+                    }
+                };
+
+                let mut env_vars = HashMap::new();
+                env_vars.insert(SWARM_SUBTASK_PAYLOAD_ENV.to_string(), payload_b64);
+                for key in K8S_PASSTHROUGH_ENV_VARS {
+                    if let Ok(value) = std::env::var(key)
+                        && !value.trim().is_empty()
+                    {
+                        env_vars.insert((*key).to_string(), value);
+                    }
+                }
+                let fallback_prompt = if context.trim().is_empty() {
+                    format!(
+                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
+Return only the final subtask answer.",
+                        subtask.id, subtask.instruction
+                    )
+                } else {
+                    format!(
+                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
+Dependency context:\n{}\n\nReturn only the final subtask answer.",
+                        subtask.id, subtask.instruction, context
+                    )
+                };
+                env_vars.insert(SWARM_FALLBACK_PROMPT_ENV.to_string(), fallback_prompt);
+                env_vars.insert(SWARM_FALLBACK_MODEL_ENV.to_string(), model.clone());
+
+                let mut labels = HashMap::new();
+                labels.insert("codetether.run/swarm-id".to_string(), swarm_id.to_string());
+                labels.insert(
+                    "codetether.run/stage".to_string(),
+                    subtask.stage.to_string(),
+                );
+
+                let spec = SubagentPodSpec {
+                    image: self.config.k8s_subagent_image.clone(),
+                    env_vars,
+                    labels,
+                    command: Some(vec!["sh".to_string(), "-lc".to_string()]),
+                    args: Some(vec![
+                        format!(
+                            "if codetether help swarm-subagent >/dev/null 2>&1; then \
+exec codetether swarm-subagent --payload-env {payload_env}; \
+else \
+exec codetether run \"$${fallback_prompt_env}\" --model \"$${fallback_model_env}\"; \
+fi",
+                            payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
+                            fallback_prompt_env = SWARM_FALLBACK_PROMPT_ENV,
+                            fallback_model_env = SWARM_FALLBACK_MODEL_ENV,
+                        )
+                        .replace("$$", "$"),
+                    ]),
+                };
+
+                if let Err(error) = k8s.spawn_subagent_pod_with_spec(&subtask.id, spec).await {
+                    let error_text = format!("Failed to spawn Kubernetes pod: {error}");
+                    tracing::error!(subtask_id = %subtask.id, error = %error, "K8s sub-agent pod spawn failed");
+                    self.try_send_event(SwarmEvent::SubTaskUpdate {
+                        id: subtask.id.clone(),
+                        name: subtask.name.clone(),
+                        status: SubTaskStatus::Failed,
+                        agent_name: Some("k8s-spawn".to_string()),
+                    });
+                    self.try_send_event(SwarmEvent::AgentError {
+                        subtask_id: subtask.id.clone(),
+                        error: error_text.clone(),
+                    });
                     results.push(SubTaskResult {
-                        subtask_id: subtask_id.clone(),
-                        subagent_id: format!("agent-{}", subtask_id),
+                        subtask_id: subtask.id.clone(),
+                        subagent_id: format!("agent-{}", subtask.id),
                         success: false,
                         result: String::new(),
                         steps: 0,
                         tool_calls: 0,
                         execution_time_ms: 0,
-                        error: Some(e.to_string()),
+                        error: Some(error_text),
                         artifacts: Vec::new(),
                     });
+                    continue;
                 }
-                Err(e) => {
-                    tracing::error!(provider_name = %provider_name, "Task join error: {}", e);
-                    if let Some(ref tx) = self.event_tx {
-                        let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
-                            id: subtask_id.clone(),
-                            name: subtask_id.clone(),
-                            status: SubTaskStatus::Failed,
-                            agent_name: Some(format!("agent-{}", subtask_id)),
-                        });
-                        let _ = tx.try_send(SwarmEvent::AgentError {
-                            subtask_id: subtask_id.clone(),
-                            error: format!("Task join error: {}", e),
-                        });
-                        let _ = tx.try_send(SwarmEvent::AgentComplete {
-                            subtask_id: subtask_id.clone(),
-                            success: false,
-                            steps: 0,
-                        });
+
+                let branch = K8sManager::subagent_pod_name(&subtask.id);
+                subtask_names.insert(subtask.id.clone(), subtask.name.clone());
+                active.insert(
+                    subtask.id.clone(),
+                    ActiveK8sBranch {
+                        branch: branch.clone(),
+                        started_at: Instant::now(),
+                    },
+                );
+
+                self.try_send_event(SwarmEvent::SubTaskUpdate {
+                    id: subtask.id.clone(),
+                    name: subtask.name.clone(),
+                    status: SubTaskStatus::Running,
+                    agent_name: Some(format!("k8s-{branch}")),
+                });
+                self.try_send_event(SwarmEvent::AgentStarted {
+                    subtask_id: subtask.id.clone(),
+                    agent_name: format!("k8s-{branch}"),
+                    specialty: subtask
+                        .specialty
+                        .clone()
+                        .unwrap_or_else(|| "generalist".to_string()),
+                });
+
+                tracing::info!(
+                    subtask_id = %subtask.id,
+                    pod = %branch,
+                    "Spawned Kubernetes sub-agent pod"
+                );
+            }
+
+            if pending.is_empty() && active.is_empty() {
+                break;
+            }
+
+            tick.tick().await;
+
+            let active_ids: Vec<String> = active.keys().cloned().collect();
+            let mut finished_results: Vec<SubTaskResult> = Vec::new();
+            for subtask_id in active_ids {
+                let Some(active_state) = active.get(&subtask_id).cloned() else {
+                    continue;
+                };
+
+                if active_state.started_at.elapsed()
+                    > Duration::from_secs(self.config.subagent_timeout_secs)
+                {
+                    let reason = format!(
+                        "Timed out after {}s in Kubernetes pod",
+                        self.config.subagent_timeout_secs
+                    );
+                    kill_reasons.insert(subtask_id.clone(), reason.clone());
+                    if let Err(error) = k8s.delete_subagent_pod(&subtask_id).await {
+                        tracing::warn!(
+                            subtask_id = %subtask_id,
+                            error = %error,
+                            "Failed deleting timed-out Kubernetes pod"
+                        );
                     }
-                    results.push(SubTaskResult {
+                    active.remove(&subtask_id);
+                    finished_results.push(SubTaskResult {
                         subtask_id: subtask_id.clone(),
-                        subagent_id: format!("agent-{}", subtask_id),
+                        subagent_id: format!("agent-{subtask_id}"),
                         success: false,
                         result: String::new(),
                         steps: 0,
                         tool_calls: 0,
-                        execution_time_ms: 0,
-                        error: Some(format!("Task join error: {}", e)),
+                        execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
+                        error: Some(reason),
                         artifacts: Vec::new(),
                     });
+                    continue;
+                }
+
+                let pod_state = match k8s.get_subagent_pod_state(&subtask_id).await {
+                    Ok(state) => state,
+                    Err(error) => {
+                        tracing::warn!(
+                            subtask_id = %subtask_id,
+                            error = %error,
+                            "Failed to query Kubernetes pod state for sub-agent"
+                        );
+                        continue;
+                    }
+                };
+                let Some(pod_state) = pod_state else {
+                    active.remove(&subtask_id);
+                    finished_results.push(SubTaskResult {
+                        subtask_id: subtask_id.clone(),
+                        subagent_id: format!("agent-{subtask_id}"),
+                        success: false,
+                        result: String::new(),
+                        steps: 0,
+                        tool_calls: 0,
+                        execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
+                        error: Some("Sub-agent pod disappeared".to_string()),
+                        artifacts: Vec::new(),
+                    });
+                    continue;
+                };
+
+                let phase = pod_state.phase.to_ascii_lowercase();
+                let finished = pod_state.terminated || phase == "succeeded" || phase == "failed";
+                if !finished {
+                    continue;
+                }
+
+                let logs = k8s
+                    .subagent_logs(&subtask_id, 10_000)
+                    .await
+                    .unwrap_or_default();
+                let mut result = result_from_logs(&logs).unwrap_or_else(|| SubTaskResult {
+                    subtask_id: subtask_id.clone(),
+                    subagent_id: format!("agent-{subtask_id}"),
+                    success: pod_state.exit_code.unwrap_or(1) == 0,
+                    result: logs,
+                    steps: 0,
+                    tool_calls: 0,
+                    execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
+                    error: if pod_state.exit_code.unwrap_or(1) == 0 {
+                        None
+                    } else {
+                        Some(
+                            pod_state
+                                .reason
+                                .clone()
+                                .unwrap_or_else(|| "Remote sub-agent failed".to_string()),
+                        )
+                    },
+                    artifacts: Vec::new(),
+                });
+
+                if let Some(reason) = kill_reasons.get(&subtask_id) {
+                    result.success = false;
+                    result.error = Some(format!("Cancelled by collapse controller: {reason}"));
+                    result.result.push_str(&format!(
+                        "\n\n--- Collapse Controller ---\nBranch terminated: {reason}"
+                    ));
+                }
+
+                active.remove(&subtask_id);
+                if let Err(error) = k8s.delete_subagent_pod(&subtask_id).await {
+                    tracing::warn!(
+                        subtask_id = %subtask_id,
+                        error = %error,
+                        "Failed deleting completed Kubernetes pod"
+                    );
+                }
+                finished_results.push(result);
+            }
+
+            for result in finished_results {
+                if result.success {
+                    completed_results
+                        .write()
+                        .await
+                        .insert(result.subtask_id.clone(), result.result.clone());
+                }
+                if result.success {
+                    if let Some(ref cache_arc) = self.cache {
+                        let mut cache_guard = cache_arc.lock().await;
+                        let cache_subtask = SubTask::new(&result.subtask_id, &result.result);
+                        let _ = cache_guard.put(&cache_subtask, &result).await;
+                    }
+                }
+
+                self.try_send_event(SwarmEvent::SubTaskUpdate {
+                    id: result.subtask_id.clone(),
+                    name: subtask_names
+                        .get(&result.subtask_id)
+                        .cloned()
+                        .unwrap_or_else(|| result.subtask_id.clone()),
+                    status: if result.success {
+                        SubTaskStatus::Completed
+                    } else {
+                        SubTaskStatus::Failed
+                    },
+                    agent_name: Some(format!("k8s-{}", result.subtask_id)),
+                });
+                if let Some(ref error) = result.error {
+                    self.try_send_event(SwarmEvent::AgentError {
+                        subtask_id: result.subtask_id.clone(),
+                        error: error.clone(),
+                    });
+                }
+                self.try_send_event(SwarmEvent::AgentOutput {
+                    subtask_id: result.subtask_id.clone(),
+                    output: result.result.clone(),
+                });
+                self.try_send_event(SwarmEvent::AgentComplete {
+                    subtask_id: result.subtask_id.clone(),
+                    success: result.success,
+                    steps: result.steps,
+                });
+                results.push(result);
+            }
+
+            if active.len() > 1 {
+                let mut observations = Vec::with_capacity(active.len());
+                for (subtask_id, state) in &active {
+                    let pod_state = match k8s.get_subagent_pod_state(subtask_id).await {
+                        Ok(state) => state,
+                        Err(error) => {
+                            tracing::warn!(
+                                subtask_id = %subtask_id,
+                                error = %error,
+                                "Failed to query pod state while sampling branch observation"
+                            );
+                            None
+                        }
+                    };
+                    let (resource_health_score, infra_unhealthy_signals) =
+                        compute_resource_health(pod_state.as_ref());
+
+                    let logs = k8s.subagent_logs(subtask_id, 500).await.unwrap_or_default();
+                    if let Some(probe) = latest_probe_from_logs(&logs) {
+                        let compile_ok = pod_state
+                            .as_ref()
+                            .map(|p| probe.compile_ok && p.phase.to_ascii_lowercase() != "failed")
+                            .unwrap_or(probe.compile_ok);
+                        observations.push(BranchObservation {
+                            subtask_id: subtask_id.clone(),
+                            branch: state.branch.clone(),
+                            compile_ok,
+                            changed_files: probe_changed_files_set(&probe),
+                            changed_lines: probe.changed_lines,
+                            resource_health_score,
+                            infra_unhealthy_signals,
+                        });
+                        continue;
+                    }
+                    let compile_ok = pod_state
+                        .as_ref()
+                        .map(|p| p.phase.to_ascii_lowercase() != "failed")
+                        .unwrap_or(false);
+                    observations.push(BranchObservation {
+                        subtask_id: subtask_id.clone(),
+                        branch: state.branch.clone(),
+                        compile_ok,
+                        changed_files: std::collections::HashSet::new(),
+                        changed_lines: 0,
+                        resource_health_score,
+                        infra_unhealthy_signals,
+                    });
+                }
+
+                let tick = collapse_controller.sample_observations(&observations);
+                if promoted_subtask_id != tick.promoted_subtask_id {
+                    promoted_subtask_id = tick.promoted_subtask_id.clone();
+                    if let Some(ref promoted) = promoted_subtask_id {
+                        tracing::info!(subtask_id = %promoted, "Collapse controller promoted branch");
+                        if let Some(audit) = crate::audit::try_audit_log() {
+                            audit
+                                .log_with_correlation(
+                                    crate::audit::AuditCategory::Swarm,
+                                    "collapse_promote_branch",
+                                    crate::audit::AuditOutcome::Success,
+                                    Some("collapse-controller".to_string()),
+                                    Some(serde_json::json!({
+                                        "swarm_id": swarm_id,
+                                        "subtask_id": promoted,
+                                        "execution_mode": "kubernetes_pod",
+                                    })),
+                                    None,
+                                    None,
+                                    Some(swarm_id.to_string()),
+                                    None,
+                                )
+                                .await;
+                        }
+                    }
+                }
+
+                for kill in tick.kills {
+                    if kill_reasons.contains_key(&kill.subtask_id) {
+                        continue;
+                    }
+                    if !active.contains_key(&kill.subtask_id) {
+                        continue;
+                    }
+
+                    if let Err(error) = k8s.delete_subagent_pod(&kill.subtask_id).await {
+                        tracing::warn!(
+                            subtask_id = %kill.subtask_id,
+                            error = %error,
+                            "Failed deleting Kubernetes pod after collapse kill"
+                        );
+                    }
+                    kill_reasons.insert(kill.subtask_id.clone(), kill.reason.clone());
+                    let elapsed_ms = active
+                        .remove(&kill.subtask_id)
+                        .map(|s| s.started_at.elapsed().as_millis() as u64)
+                        .unwrap_or(0);
+
+                    tracing::warn!(
+                        subtask_id = %kill.subtask_id,
+                        branch = %kill.branch,
+                        reason = %kill.reason,
+                        "Collapse controller killed Kubernetes branch"
+                    );
+
+                    if let Some(audit) = crate::audit::try_audit_log() {
+                        audit
+                            .log_with_correlation(
+                                crate::audit::AuditCategory::Swarm,
+                                "collapse_kill_branch",
+                                crate::audit::AuditOutcome::Success,
+                                Some("collapse-controller".to_string()),
+                                Some(serde_json::json!({
+                                    "swarm_id": swarm_id,
+                                    "subtask_id": kill.subtask_id.clone(),
+                                    "branch": kill.branch.clone(),
+                                    "reason": kill.reason.clone(),
+                                    "execution_mode": "kubernetes_pod",
+                                })),
+                                None,
+                                None,
+                                Some(swarm_id.to_string()),
+                                None,
+                            )
+                            .await;
+                    }
+
+                    self.try_send_event(SwarmEvent::SubTaskUpdate {
+                        id: kill.subtask_id.clone(),
+                        name: subtask_names
+                            .get(&kill.subtask_id)
+                            .cloned()
+                            .unwrap_or_else(|| kill.subtask_id.clone()),
+                        status: SubTaskStatus::Cancelled,
+                        agent_name: Some(format!("agent-{}", kill.subtask_id)),
+                    });
+                    self.try_send_event(SwarmEvent::AgentError {
+                        subtask_id: kill.subtask_id.clone(),
+                        error: format!("Cancelled by collapse controller: {}", kill.reason),
+                    });
+
+                    results.push(SubTaskResult {
+                        subtask_id: kill.subtask_id.clone(),
+                        subagent_id: format!("agent-{}", kill.subtask_id),
+                        success: false,
+                        result: format!(
+                            "\n\n--- Collapse Controller ---\nBranch terminated: {}",
+                            kill.reason
+                        ),
+                        steps: 0,
+                        tool_calls: 0,
+                        execution_time_ms: elapsed_ms,
+                        error: Some(format!("Cancelled by collapse controller: {}", kill.reason)),
+                        artifacts: Vec::new(),
+                    });
+                }
+            }
+        }
+
+        if let Some(ref promoted) = promoted_subtask_id {
+            results.sort_by_key(|result| {
+                if &result.subtask_id == promoted {
+                    0usize
+                } else {
+                    1usize
+                }
+            });
+        }
+
+        if !active.is_empty() {
+            let residual_ids: Vec<String> = active.keys().cloned().collect();
+            for subtask_id in residual_ids {
+                if let Err(error) = k8s.delete_subagent_pod(&subtask_id).await {
+                    tracing::warn!(
+                        subtask_id = %subtask_id,
+                        error = %error,
+                        "Failed deleting residual Kubernetes pod at stage end"
+                    );
                 }
             }
         }

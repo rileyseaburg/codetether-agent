@@ -1,5 +1,5 @@
 #!/bin/bash
-# Benchmark script for codetether-agent swarm vs opencode subagents
+# Benchmark script for codetether-agent swarm vs codetether subagents
 
 set -e
 

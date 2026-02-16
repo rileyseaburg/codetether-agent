@@ -113,7 +113,10 @@ impl RalphLoop {
     }
 
     /// Fire-and-forget store update — logs errors but never blocks
-    fn store_fire_and_forget(&self, fut: impl std::future::Future<Output = anyhow::Result<()>> + Send + 'static) {
+    fn store_fire_and_forget(
+        &self,
+        fut: impl std::future::Future<Output = anyhow::Result<()>> + Send + 'static,
+    ) {
         tokio::spawn(async move {
             if let Err(e) = fut.await {
                 warn!(error = %e, "State store update failed");
@@ -499,7 +502,9 @@ impl RalphLoop {
                                     iteration: self.state.current_iteration,
                                     error: None,
                                 };
-                                self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                                self.store_fire_and_forget(async move {
+                                    s.record_story_result(&rid, &entry).await
+                                });
                             }
 
                             self.try_send_event(RalphEvent::StoryComplete {
@@ -537,7 +542,9 @@ impl RalphLoop {
                                     iteration: self.state.current_iteration,
                                     error: Some("Quality checks failed".to_string()),
                                 };
-                                self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                                self.store_fire_and_forget(async move {
+                                    s.record_story_result(&rid, &entry).await
+                                });
                             }
 
                             // Publish failure learnings to bus
@@ -570,7 +577,9 @@ impl RalphLoop {
                                 iteration: self.state.current_iteration,
                                 error: None,
                             };
-                            self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                            self.store_fire_and_forget(async move {
+                                s.record_story_result(&rid, &entry).await
+                            });
                         }
 
                         self.try_send_event(RalphEvent::StoryComplete {
@@ -909,7 +918,9 @@ impl RalphLoop {
                                                         iteration: self.state.current_iteration,
                                                         error: None,
                                                     };
-                                                    self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                                                    self.store_fire_and_forget(async move {
+                                                        s.record_story_result(&rid, &entry).await
+                                                    });
                                                 }
 
                                                 // Cleanup worktree
@@ -1035,7 +1046,9 @@ impl RalphLoop {
                                             iteration: self.state.current_iteration,
                                             error: None,
                                         };
-                                        self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+                                        self.store_fire_and_forget(async move {
+                                            s.record_story_result(&rid, &entry).await
+                                        });
                                     }
                                 }
                             } else {

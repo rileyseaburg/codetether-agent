@@ -496,13 +496,19 @@ impl McpServer {
         // If a ToolRegistry was provided, bridge ALL its tools into MCP
         if let Some(registry) = &self.tool_registry {
             self.register_registry_tools(registry).await;
-            info!("Registered {} MCP tools from ToolRegistry", self.tools.read().await.len());
+            info!(
+                "Registered {} MCP tools from ToolRegistry",
+                self.tools.read().await.len()
+            );
             return;
         }
 
         // Fallback: register basic hardcoded tools when no registry is available
         self.register_fallback_tools().await;
-        info!("Registered {} MCP tools (fallback)", self.tools.read().await.len());
+        info!(
+            "Registered {} MCP tools (fallback)",
+            self.tools.read().await.len()
+        );
     }
 
     /// Bridge all tools from a ToolRegistry into MCP tool handlers.
@@ -550,9 +556,8 @@ impl McpServer {
                 Arc::new(move |args: Value| {
                     let tool = Arc::clone(&tool_clone);
                     let result = tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current().block_on(async {
-                            tool.execute(args).await
-                        })
+                        tokio::runtime::Handle::current()
+                            .block_on(async { tool.execute(args).await })
                     });
 
                     match result {
@@ -1024,10 +1029,7 @@ impl McpServer {
 
         // Publish ToolRequest to the agent bus (picked up by S3 sink)
         let request_id = uuid::Uuid::new_v4().to_string();
-        let bus_handle = self
-            .agent_bus
-            .as_ref()
-            .map(|bus| bus.handle("mcp-server"));
+        let bus_handle = self.agent_bus.as_ref().map(|bus| bus.handle("mcp-server"));
         if let Some(ref bh) = bus_handle {
             bh.send(
                 format!("tools.{}", &params.name),

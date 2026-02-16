@@ -1666,6 +1666,12 @@ struct SpawnSubagentRequest {
     image: Option<String>,
     #[serde(default)]
     env_vars: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    labels: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    command: Option<Vec<String>>,
+    #[serde(default)]
+    args: Option<Vec<String>>,
 }
 
 async fn k8s_spawn_subagent(
@@ -1674,7 +1680,16 @@ async fn k8s_spawn_subagent(
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
     state
         .k8s
-        .spawn_subagent_pod(&req.subagent_id, req.image.as_deref(), req.env_vars)
+        .spawn_subagent_pod_with_spec(
+            &req.subagent_id,
+            crate::k8s::SubagentPodSpec {
+                image: req.image,
+                env_vars: req.env_vars,
+                labels: req.labels,
+                command: req.command,
+                args: req.args,
+            },
+        )
         .await
         .map(Json)
         .map_err(internal_error)

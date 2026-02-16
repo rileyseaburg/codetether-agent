@@ -15,8 +15,8 @@ use std::sync::Arc;
 use crate::bus::AgentBus;
 use crate::okr::{KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
-use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus};
 use crate::ralph::store_http::HttpStore;
+use crate::ralph::{Prd, QualityChecks, RalphConfig, RalphLoop, RalphStatus};
 
 /// Result of a `/go` execution via Ralph.
 #[derive(Debug, Clone)]

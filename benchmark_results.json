@@ -66,7 +66,7 @@
       "tokens_used": 500000,
       "token_cost_usd": 3.75
     },
-    "opencode_estimated": {
+    "agent_estimated": {
       "total_time_minutes": 100,
       "wall_clock_seconds": 6000,
       "iterations": 20,
@@ -89,7 +89,7 @@
     }
   },
   "manual_development_estimate": {
-    "description": "Estimated effort if implemented manually (based on opencode development patterns)",
+    "description": "Estimated effort if implemented manually (based on agent development patterns)",
     "lines_of_code": 6316,
     "stories": 20,
     "manual_estimate": {
@@ -99,8 +99,8 @@
       "cost_at_100_per_hour_usd": 8000,
       "assumptions": "Senior dev, 50-100 LOC/day Rust including tests/debug, reading specs, multiple iterations"
     },
-    "opencode_subagent_estimate": {
-      "description": "Estimated if using opencode with subagents (TypeScript, Bun runtime, same Kimi K2.5 model)",
+    "agent_subagent_estimate": {
+      "description": "Estimated if using agent with subagents (TypeScript, Bun runtime, same Kimi K2.5 model)",
       "minutes_per_story": 5,
       "total_minutes": 100,
       "total_hours": 1.67,
@@ -133,7 +133,7 @@
         "time_reduction": "163x faster",
         "cost_reduction": "2133x cheaper"
       },
-      "vs_opencode_subagents": {
+      "vs_agent_subagents": {
         "time_reduction": "3.4x faster",
         "cost_reduction": "~3x cheaper",
         "model_parity": "Both use Kimi K2.5",

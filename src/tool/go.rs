@@ -359,10 +359,13 @@ impl GoTool {
             .with_metadata("phase", json!("starting"))
             .with_metadata("prd_filename", json!(prd_filename))
             .with_metadata("progress_filename", json!(progress_filename))
-            .with_metadata("watch_hint", json!({
-                "tool": "go",
-                "args": {"action": "watch", "okr_id": okr_id_str}
-            })))
+            .with_metadata(
+                "watch_hint",
+                json!({
+                    "tool": "go",
+                    "args": {"action": "watch", "okr_id": okr_id_str}
+                }),
+            ))
     }
 
     async fn watch_go(&self, p: GoParams) -> Result<ToolResult> {
@@ -373,7 +376,7 @@ impl GoTool {
                 let runs = ACTIVE_GO_RUNS.lock().unwrap_or_else(|e| e.into_inner());
                 if runs.is_empty() {
                     return Ok(ToolResult::success(
-                        "No active go pipelines. Use `go(action: \"execute\", task: \"...\")` to start one."
+                        "No active go pipelines. Use `go(action: \"execute\", task: \"...\")` to start one.",
                     ));
                 }
 
@@ -459,8 +462,7 @@ impl GoTool {
                     let mut passed_count = 0;
                     for story in stories {
                         let id = story.get("id").and_then(|v| v.as_str()).unwrap_or("?");
-                        let title =
-                            story.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+                        let title = story.get("title").and_then(|v| v.as_str()).unwrap_or("?");
                         let passes = story
                             .get("passes")
                             .and_then(|v| v.as_bool())
@@ -505,7 +507,10 @@ impl GoTool {
 
         Ok(ToolResult::success(output)
             .with_metadata("okr_id", json!(run.okr_id))
-            .with_metadata("phase", json!(serde_json::to_value(&run.phase).unwrap_or(json!("unknown")))))
+            .with_metadata(
+                "phase",
+                json!(serde_json::to_value(&run.phase).unwrap_or(json!("unknown"))),
+            ))
     }
 
     async fn check_status(&self, p: GoParams) -> Result<ToolResult> {
@@ -595,18 +600,8 @@ fn create_default_okr(okr_id: Uuid, task: &str) -> Okr {
     let mut okr = Okr::new(title, format!("Autonomous execution: {task}"));
     okr.id = okr_id;
 
-    okr.add_key_result(KeyResult::new(
-        okr_id,
-        "All stories complete",
-        100.0,
-        "%",
-    ));
-    okr.add_key_result(KeyResult::new(
-        okr_id,
-        "Quality gates pass",
-        1.0,
-        "count",
-    ));
+    okr.add_key_result(KeyResult::new(okr_id, "All stories complete", 100.0, "%"));
+    okr.add_key_result(KeyResult::new(okr_id, "Quality gates pass", 1.0, "count"));
     okr.add_key_result(KeyResult::new(okr_id, "No critical errors", 0.0, "count"));
 
     okr

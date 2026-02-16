@@ -63,7 +63,11 @@ impl RalphStateStore for InMemoryStore {
         let mut runs = self.runs.write().await;
         if let Some(run) = runs.get_mut(run_id) {
             // Update or insert
-            if let Some(existing) = run.story_results.iter_mut().find(|r| r.story_id == result.story_id) {
+            if let Some(existing) = run
+                .story_results
+                .iter_mut()
+                .find(|r| r.story_id == result.story_id)
+            {
                 *existing = result.clone();
             } else {
                 run.story_results.push(result.clone());

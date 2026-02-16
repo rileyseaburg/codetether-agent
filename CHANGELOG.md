@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- **opencode API endpoints**: The `/v1/opencode/*` endpoints are deprecated
+- **agent API endpoints**: The `/v1/agent/*` endpoints are deprecated
   - Use `/v1/tasks/dispatch` for task creation with Knative integration
   - Use `/v1/worker/tasks/*` endpoints for worker operations
   - Migration guide will be provided before removal in v3.0.0
@@ -110,7 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **A2A Worker Server Paths**:
-  - Updated worker registration, task polling/output, and heartbeat endpoints to `/v1/opencode/*`
+  - Updated worker registration, task polling/output, and heartbeat endpoints to `/v1/agent/*`
 
 ### Fixed
 
@@ -268,7 +268,7 @@ Stories implemented:
 
 ### Performance
 
-| Metric | CodeTether (Rust) | opencode (Bun) | Advantage |
+| Metric | CodeTether (Rust) | agent (Bun) | Advantage |
 |--------|-------------------|----------------|-----------|
 | Binary Size | 12.5 MB | ~90 MB | 7.2x smaller |
 | Startup Time | 13 ms | 25-50 ms | 2-4x faster |

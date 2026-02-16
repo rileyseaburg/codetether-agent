@@ -5,7 +5,7 @@
   "status": "draft",
   "created": "2026-02-03",
   "updated": "2026-02-03",
-  "owner": "opencode-core",
+  "owner": "agent-core",
   "summary": "Enable subagents to work in isolated git worktrees with automatic branch merging upon completion",
   
   "problem": {
@@ -38,7 +38,7 @@
         "description": "When launching a subagent, automatically create a new worktree",
         "acceptance_criteria": [
           "Worktree is created with unique name derived from subagent task",
-          "Branch name follows pattern: opencode/subagent-{task-slug}-{random}",
+          "Branch name follows pattern: agent/subagent-{task-slug}-{random}",
           "Worktree directory created under Global.Path.data/worktree/{projectId}/",
           "Subagent receives worktree directory as working directory"
         ]
@@ -151,7 +151,7 @@
     "components": [
       {
         "name": "SubagentWorktree",
-        "location": "packages/opencode/src/agent/subagent-worktree.ts",
+        "location": "packages/agent/src/agent/subagent-worktree.ts",
         "responsibilities": [
           "Create worktree for subagent",
           "Track subagent -> worktree mapping",
@@ -161,7 +161,7 @@
       },
       {
         "name": "WorktreeMerger",
-        "location": "packages/opencode/src/worktree/merger.ts",
+        "location": "packages/agent/src/worktree/merger.ts",
         "responsibilities": [
           "Merge subagent branch into parent workspace",
           "Detect and report conflicts",
@@ -171,7 +171,7 @@
       },
       {
         "name": "runSubagent (enhanced)",
-        "location": "packages/opencode/src/tool/runSubagent.ts",
+        "location": "packages/agent/src/tool/runSubagent.ts",
         "responsibilities": [
           "Check if worktree isolation is enabled",
           "Create worktree before launching subagent",

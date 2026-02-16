@@ -142,6 +142,7 @@ codetether run "prompt"                  # Single prompt (chat, no tools)
 codetether run "/go <task>"               # Strategic relay (OKR-gated execution)
 codetether run "/autochat <task>"         # Tactical relay (fast path)
 codetether swarm "complex task"          # Parallel sub-agent execution
+codetether swarm "complex task" --execution-mode k8s --k8s-pod-budget 4 --k8s-image <image>  # Cluster execution
 codetether ralph run --prd prd.json      # Autonomous PRD-driven development
 codetether ralph create-prd --feature X  # Generate a PRD template
 codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
@@ -350,9 +351,24 @@ Decomposes complex tasks into subtasks and executes them concurrently with real-
 ```bash
 codetether swarm "Implement user auth with tests and docs"
 codetether swarm "Refactor the API layer" --strategy domain --max-subagents 8
+codetether swarm "Ship feature X end-to-end" --execution-mode k8s --k8s-pod-budget 6 --k8s-image us-central1-docker.pkg.dev/<project>/<repo>/<image>@sha256:<digest>
 ```
 
 Strategies: `auto` (default), `domain`, `data`, `stage`, `none`.
+
+Execution modes:
+
+- `local` (default): sub-agents run as local async tasks.
+- `k8s`: sub-agents run as isolated Kubernetes pods, with deterministic collapse-based pruning/promotion applied during execution.
+
+Kubernetes mode notes:
+
+- Use `--k8s-pod-budget` to bound concurrent speculative pods.
+- Use `--k8s-image` to choose the exact sub-agent image.
+- Sub-agent pod lifecycle is managed automatically (spawn, monitor, terminate, cleanup).
+- Runtime compatibility: newer images with `swarm-subagent` use the native remote-subtask protocol.
+- Runtime compatibility: older images fall back automatically to `codetether run`.
+- Forwarded env vars (when set): `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_MOUNT`, `VAULT_SECRETS_PATH`, `VAULT_NAMESPACE`, `CODETETHER_AUTH_TOKEN`.
 
 ### Ralph: Autonomous PRD-Driven Development
 
@@ -678,13 +694,13 @@ Using `ralph` and `swarm`, the agent autonomously implemented:
 | Approach | Time | Cost | Notes |
 |----------|------|------|-------|
 | **Manual Development** | 80 hours | $8,000 | Senior dev @ $100/hr, 50-100 LOC/day |
-| **opencode + subagents** | 100 min | ~$11.25 | Bun runtime, Kimi K2.5 (same model) |
+| **agent + subagents** | 100 min | ~$11.25 | Bun runtime, Kimi K2.5 (same model) |
 | **codetether swarm** | 29.5 min | $3.75 | Native Rust, Kimi K2.5 |
 
 **vs Manual**: 163x faster, 2133x cheaper
-**vs opencode**: 3.4x faster, ~3x cheaper (same Kimi K2.5 model)
+**vs agent**: 3.4x faster, ~3x cheaper (same Kimi K2.5 model)
 
-Key advantages over opencode subagents (model parity):
+Key advantages over agent subagents (model parity):
 - Native Rust binary (13ms startup vs 25-50ms Bun)
 - Direct API calls vs TypeScript HTTP overhead
 - PRD-driven state in files vs subagent process spawning
@@ -740,7 +756,7 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 
 ### Benchmark Results
 
-| Metric | CodeTether (Rust) | opencode (Bun) | Advantage |
+| Metric | CodeTether (Rust) | agent (Bun) | Advantage |
 |--------|-------------------|----------------|-----------|
 | **Binary Size** | 12.5 MB | ~90 MB (bun + deps) | **7.2x smaller** |
 | **Startup Time** | 13 ms | 25-50 ms | **2-4x faster** |
@@ -763,7 +779,7 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Memory Usage Comparison                      │
 │                                                                 │
-│  Sub-Agents    CodeTether (Rust)       opencode (Bun)           │
+│  Sub-Agents    CodeTether (Rust)       agent (Bun)           │
 │  ────────────────────────────────────────────────────────────── │
 │       1            15 MB                   60 MB                │
 │       5            35 MB                  150 MB                │
@@ -780,7 +796,7 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 
 For a typical swarm task (e.g., "Implement feature X with tests"):
 
-| Scenario | CodeTether | opencode (Bun) |
+| Scenario | CodeTether | agent (Bun) |
 |----------|------------|----------------|
 | Task decomposition | 50ms | 150ms |
 | Spawn 5 sub-agents | 8ms | 35ms |
@@ -797,7 +813,7 @@ Actual resource usage from implementing 20 user stories autonomously:
 ┌─────────────────────────────────────────────────────────────────┐
 │           Dogfooding Task: 20 Stories, Same Model (Kimi K2.5)   │
 │                                                                 │
-│  Metric              CodeTether           opencode (estimated)  │
+│  Metric              CodeTether           agent (estimated)  │
 │  ────────────────────────────────────────────────────────────── │
 │  Total Time          29.5 min             100 min (3.4x slower) │
 │  Wall Clock          1,770 sec            6,000 sec             │
@@ -817,11 +833,11 @@ Actual resource usage from implementing 20 user stories autonomously:
 **Computation Notes**:
 - Spawn overhead: `iterations × spawn_time` (1.5ms Rust vs 7.5ms Bun avg)
 - Startup overhead: `iterations × startup_time` (13ms Rust vs 37ms Bun avg)
-- Token difference: opencode has compaction, but subagent spawns rebuild system prompt + context each time (~3x more tokens)
+- Token difference: agent has compaction, but subagent spawns rebuild system prompt + context each time (~3x more tokens)
 - Memory: Based on 10-agent swarm profile (55 MB vs 280 MB)
 - Cost: Same Kimi K2.5 pricing, difference is from subagent initialization overhead
 
-**Note**: opencode uses LLM-based compaction for long sessions (similar to codetether). The token difference comes from subagent process spawning overhead, not lack of context management.
+**Note**: agent uses LLM-based compaction for long sessions (similar to codetether). The token difference comes from subagent process spawning overhead, not lack of context management.
 
 ### Benchmark Methodology
 

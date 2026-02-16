@@ -16,7 +16,6 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{info, warn};
 
-
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 use super::tools::rlm_tool_definitions;
@@ -253,7 +252,7 @@ impl RlmRouter {
         );
 
         // Initialise FunctionGemma router if available
-        
+
         let tool_router: Option<ToolCallRouter> = {
             let cfg = ToolRouterConfig::from_env();
             ToolCallRouter::from_config(&cfg)
@@ -362,7 +361,7 @@ impl RlmRouter {
             };
 
             // Optionally run FunctionGemma to convert text-only response
-            
+
             let response = if let Some(ref router) = tool_router {
                 // RLM router shares the session's provider which supports
                 // native tool calling.  Skip FunctionGemma.

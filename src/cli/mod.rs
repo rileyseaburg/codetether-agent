@@ -71,6 +71,10 @@ pub enum Command {
     /// Execute task with parallel sub-agents (swarm mode)
     Swarm(SwarmArgs),
 
+    /// Internal command: execute one swarm subtask payload.
+    #[command(hide = true)]
+    SwarmSubagent(SwarmSubagentArgs),
+
     /// Analyze large content with RLM (Recursive Language Model)
     Rlm(RlmArgs),
 
@@ -346,6 +350,29 @@ pub struct SwarmArgs {
     /// Output as JSON
     #[arg(long)]
     pub json: bool,
+
+    /// Sub-agent execution mode: local | k8s
+    #[arg(long, default_value = "local", value_parser = ["local", "k8s", "kubernetes", "kubernetes-pod", "pod"])]
+    pub execution_mode: String,
+
+    /// Maximum concurrent Kubernetes sub-agent pods when execution mode is k8s.
+    #[arg(long, default_value = "8")]
+    pub k8s_pod_budget: usize,
+
+    /// Optional image override for Kubernetes sub-agent pods.
+    #[arg(long)]
+    pub k8s_image: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct SwarmSubagentArgs {
+    /// Base64 payload for the remote subtask (JSON encoded)
+    #[arg(long)]
+    pub payload_base64: Option<String>,
+
+    /// Read payload from an environment variable
+    #[arg(long, default_value = "CODETETHER_SWARM_SUBTASK_PAYLOAD")]
+    pub payload_env: String,
 }
 
 #[derive(Parser, Debug)]
@@ -624,7 +651,7 @@ pub struct BenchmarkArgs {
     #[arg(long, default_value = "50.0")]
     pub cost_ceiling: f64,
 
-    /// Submit results to this API URL (e.g. https://opencode.ai/bench/submission)
+    /// Submit results to this API URL
     #[arg(long)]
     pub submit_url: Option<String>,
 

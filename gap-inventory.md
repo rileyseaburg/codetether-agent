@@ -80,7 +80,7 @@ No real-time output streaming exists; task results are only sent at completion.
 
 #### Technical Requirements
 - Spawn tokio task to consume `mpsc::Receiver<SessionEvent>`
-- POST output chunks to `/v1/opencode/tasks/{id}/output`
+- POST output chunks to `/v1/agent/tasks/{id}/output`
 - Handle event types:
   - `SessionEvent::TextChunk` → accumulated text
   - `SessionEvent::ToolCallStart` → structured tool running indicator
@@ -119,7 +119,7 @@ No heartbeat mechanism exists to keep worker registered as alive.
 
 #### Technical Requirements
 - Periodic heartbeat every 30 seconds
-- POST to `/v1/opencode/workers/{worker_id}/heartbeat`
+- POST to `/v1/agent/workers/{worker_id}/heartbeat`
 - Background tokio task alongside SSE stream
 - Include status: idle/processing, active_task_count
 - Failure resilience: 3 consecutive failures → log error, don't crash
@@ -252,7 +252,7 @@ Worker registration doesn't report available models or capabilities.
 No real-time status updates during task execution.
 
 #### Technical Requirements
-- PUT to `/v1/opencode/tasks/{id}/status` for status transitions
+- PUT to `/v1/agent/tasks/{id}/status` for status transitions
 - Track stages: claimed → working → streaming → completed/failed
 - Include metadata: provider name, model, tool_calls_count
 - Include token usage on completion

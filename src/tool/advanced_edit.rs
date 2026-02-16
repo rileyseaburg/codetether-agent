@@ -1,4 +1,4 @@
-//! Advanced Edit Tool with multiple replacement strategies (port of opencode edit.ts)
+//! Advanced Edit Tool with multiple replacement strategies (advanced edit tool)
 
 use super::{Tool, ToolResult};
 use anyhow::Result;

@@ -48,7 +48,7 @@ use crate::okr::{
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
 use crate::rlm::RlmExecutor;
-use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_with_opencode_paged};
+use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_paged};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::bus_log::{BusLogState, render_bus_log};
 use crate::tui::message_formatter::MessageFormatter;
@@ -3643,7 +3643,7 @@ impl App {
                 .unwrap_or(100);
             // Reset offset on refresh
             self.session_picker_offset = 0;
-            match list_sessions_with_opencode_paged(&self.workspace_dir, limit, 0).await {
+            match list_sessions_paged(&self.workspace_dir, limit, 0).await {
                 Ok(sessions) => self.update_cached_sessions(sessions),
                 Err(err) => self.messages.push(ChatMessage::new(
                     "system",
@@ -4027,7 +4027,7 @@ impl App {
                 .unwrap_or(100);
             // Reset offset when opening session picker
             self.session_picker_offset = 0;
-            match list_sessions_with_opencode_paged(&self.workspace_dir, limit, 0).await {
+            match list_sessions_paged(&self.workspace_dir, limit, 0).await {
                 Ok(sessions) => {
                     if sessions.is_empty() {
                         self.messages
@@ -4066,20 +4066,9 @@ impl App {
             }
 
             let loaded = if let Some(id) = session_id {
-                if let Some(oc_id) = id.strip_prefix("opencode_") {
-                    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
-                        Session::from_opencode(oc_id, &storage).await
-                    } else {
-                        Err(anyhow::anyhow!("OpenCode storage not available"))
-                    }
-                } else {
-                    Session::load(id).await
-                }
+                Session::load(id).await
             } else {
-                match Session::last_for_directory(Some(&self.workspace_dir)).await {
-                    Ok(s) => Ok(s),
-                    Err(_) => Session::last_opencode_for_directory(&self.workspace_dir).await,
-                }
+                Session::last_for_directory(Some(&self.workspace_dir)).await
             };
 
             match loaded {
@@ -5472,7 +5461,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(100);
-    if let Ok(sessions) = list_sessions_with_opencode_paged(&app.workspace_dir, limit, 0).await {
+    if let Ok(sessions) = list_sessions_paged(&app.workspace_dir, limit, 0).await {
         app.update_cached_sessions(sessions);
     }
 
@@ -5564,9 +5553,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             let mut interval = tokio::time::interval(Duration::from_secs(5));
             loop {
                 interval.tick().await;
-                if let Ok(sessions) =
-                    list_sessions_with_opencode_paged(&workspace_dir, session_limit, 0).await
-                {
+                if let Ok(sessions) = list_sessions_paged(&workspace_dir, session_limit, 0).await {
                     if session_tx.send(sessions).await.is_err() {
                         break; // TUI closed
                     }
@@ -5912,13 +5899,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             .unwrap_or(100);
                         let new_offset = app.session_picker_offset + limit;
                         app.session_picker_offset = new_offset;
-                        match list_sessions_with_opencode_paged(
-                            &app.workspace_dir,
-                            limit,
-                            new_offset,
-                        )
-                        .await
-                        {
+                        match list_sessions_paged(&app.workspace_dir, limit, new_offset).await {
                             Ok(sessions) => {
                                 app.update_cached_sessions(sessions);
                                 app.session_picker_selected = 0;
@@ -5939,13 +5920,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 .unwrap_or(100);
                             let new_offset = app.session_picker_offset.saturating_sub(limit);
                             app.session_picker_offset = new_offset;
-                            match list_sessions_with_opencode_paged(
-                                &app.workspace_dir,
-                                limit,
-                                new_offset,
-                            )
-                            .await
-                            {
+                            match list_sessions_paged(&app.workspace_dir, limit, new_offset).await {
                                 Ok(sessions) => {
                                     app.update_cached_sessions(sessions);
                                     app.session_picker_selected = 0;
@@ -5969,16 +5944,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             .get(app.session_picker_selected)
                             .map(|(orig_idx, _)| app.session_picker_list[*orig_idx].id.clone());
                         if let Some(session_id) = session_id {
-                            let load_result =
-                                if let Some(oc_id) = session_id.strip_prefix("opencode_") {
-                                    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
-                                        Session::from_opencode(oc_id, &storage).await
-                                    } else {
-                                        Err(anyhow::anyhow!("OpenCode storage not available"))
-                                    }
-                                } else {
-                                    Session::load(&session_id).await
-                                };
+                            let load_result = Session::load(&session_id).await;
                             match load_result {
                                 Ok(session) => {
                                     app.messages.clear();

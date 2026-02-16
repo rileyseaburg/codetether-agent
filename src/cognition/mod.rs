@@ -10,7 +10,6 @@ pub mod executor;
 pub mod persistence;
 mod thinker;
 
-
 pub mod tool_router;
 
 pub use thinker::{

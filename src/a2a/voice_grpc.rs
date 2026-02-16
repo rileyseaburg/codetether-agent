@@ -248,6 +248,8 @@ impl VoiceService for VoiceServiceImpl {
             }
         };
 
-        Ok(Response::new(Box::pin(stream) as Self::StreamVoiceEventsStream))
+        Ok(Response::new(
+            Box::pin(stream) as Self::StreamVoiceEventsStream
+        ))
     }
 }

@@ -19,7 +19,6 @@ use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
-
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 fn is_interactive_tool(tool_name: &str) -> bool {
@@ -378,7 +377,7 @@ impl Session {
 
         // All current providers support native tool calling.  Hardcode to
         // true so we skip the expensive list_models() API call on every message.
-        
+
         let model_supports_tools = true;
 
         // Build system prompt with AGENTS.md
@@ -394,7 +393,7 @@ impl Session {
         let mut final_output = String::new();
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
-        
+
         let tool_router: Option<ToolCallRouter> = {
             let cfg = ToolRouterConfig::from_env();
             match ToolCallRouter::from_config(&cfg) {
@@ -435,7 +434,7 @@ impl Session {
             // Optionally route text-only responses through FunctionGemma to
             // produce structured tool calls.  Skipped when the model natively
             // supports tool calling (which all current providers do).
-            
+
             let response = if let Some(ref router) = tool_router {
                 router
                     .maybe_reformat(response, &tool_definitions, model_supports_tools)
@@ -942,7 +941,7 @@ impl Session {
 
         // All current providers support native tool calling.  Hardcode to
         // true so we skip the expensive list_models() API call on every message.
-        
+
         let model_supports_tools = true;
 
         // Build system prompt
@@ -955,7 +954,7 @@ impl Session {
         let max_steps = 50;
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
-        
+
         let tool_router: Option<ToolCallRouter> = {
             let cfg = ToolRouterConfig::from_env();
             match ToolCallRouter::from_config(&cfg) {
@@ -996,7 +995,7 @@ impl Session {
 
             // Optionally route text-only responses through FunctionGemma to
             // produce structured tool calls.  Skipped for native tool-calling models.
-            
+
             let response = if let Some(ref router) = tool_router {
                 router
                     .maybe_reformat(response, &tool_definitions, model_supports_tools)
@@ -1469,39 +1468,6 @@ impl Session {
         Ok(())
     }
 
-    /// Import an OpenCode session into CodeTether
-    ///
-    /// Loads messages and parts from OpenCode storage and converts them
-    /// into a CodeTether session that can be resumed.
-    pub async fn from_opencode(
-        session_id: &str,
-        storage: &crate::opencode::OpenCodeStorage,
-    ) -> Result<Self> {
-        let oc_session = storage.load_session(session_id).await?;
-        let oc_messages = storage.load_messages(session_id).await?;
-
-        let mut messages_with_parts = Vec::new();
-        for msg in oc_messages {
-            let parts = storage.load_parts(&msg.id).await?;
-            messages_with_parts.push((msg, parts));
-        }
-
-        crate::opencode::convert::to_codetether_session(&oc_session, messages_with_parts).await
-    }
-
-    /// Try to load the last OpenCode session for a directory as a fallback
-    pub async fn last_opencode_for_directory(dir: &std::path::Path) -> Result<Self> {
-        let storage = crate::opencode::OpenCodeStorage::new()
-            .ok_or_else(|| anyhow::anyhow!("OpenCode storage directory not found"))?;
-
-        if !storage.exists() {
-            anyhow::bail!("OpenCode storage does not exist");
-        }
-
-        let oc_session = storage.last_session_for_directory(dir).await?;
-        Self::from_opencode(&oc_session.id, &storage).await
-    }
-
     /// Delete a session by ID
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
@@ -1627,87 +1593,17 @@ pub async fn list_sessions_for_directory(dir: &std::path::Path) -> Result<Vec<Se
         .collect())
 }
 
-/// List sessions including OpenCode sessions for a directory.
-///
-/// Merges CodeTether sessions with any discovered OpenCode sessions,
-/// sorted by most recently updated first. OpenCode sessions are
-/// prefixed with `opencode_` in their ID.
-pub async fn list_sessions_with_opencode(dir: &std::path::Path) -> Result<Vec<SessionSummary>> {
-    let mut sessions = list_sessions_for_directory(dir).await?;
-
-    // Also include OpenCode sessions if available
-    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
-        if storage.exists() {
-            if let Ok(oc_sessions) = storage.list_sessions_for_directory(dir).await {
-                for oc in oc_sessions {
-                    // Skip if we already have a CodeTether import of this session
-                    let import_id = format!("opencode_{}", oc.id);
-                    if sessions.iter().any(|s| s.id == import_id) {
-                        continue;
-                    }
-
-                    sessions.push(SessionSummary {
-                        id: import_id,
-                        title: Some(format!("[opencode] {}", oc.title)),
-                        created_at: oc.created_at,
-                        updated_at: oc.updated_at,
-                        message_count: oc.message_count,
-                        agent: "build".to_string(),
-                        directory: Some(PathBuf::from(&oc.directory)),
-                    });
-                }
-            }
-        }
-    }
-
-    // Re-sort merged list by updated_at descending
-    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    Ok(sessions)
-}
-
-/// List sessions including OpenCode sessions for a directory with pagination.
-///
-/// This is more efficient than `list_sessions_with_opencode` when you only need
-/// a subset of sessions (e.g., for the TUI session picker).
+/// List sessions for a directory with pagination.
 ///
 /// - `limit`: Maximum number of sessions to return (default: 100)
 /// - `offset`: Number of sessions to skip (default: 0)
-pub async fn list_sessions_with_opencode_paged(
+pub async fn list_sessions_paged(
     dir: &std::path::Path,
     limit: usize,
     offset: usize,
 ) -> Result<Vec<SessionSummary>> {
     let mut sessions = list_sessions_for_directory(dir).await?;
-
-    // Also include OpenCode sessions if available
-    if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
-        if storage.exists() {
-            if let Ok(oc_sessions) = storage.list_sessions_for_directory(dir).await {
-                for oc in oc_sessions {
-                    // Skip if we already have a CodeTether import of this session
-                    let import_id = format!("opencode_{}", oc.id);
-                    if sessions.iter().any(|s| s.id == import_id) {
-                        continue;
-                    }
-
-                    sessions.push(SessionSummary {
-                        id: import_id,
-                        title: Some(format!("[opencode] {}", oc.title)),
-                        created_at: oc.created_at,
-                        updated_at: oc.updated_at,
-                        message_count: oc.message_count,
-                        agent: "build".to_string(),
-                        directory: Some(PathBuf::from(&oc.directory)),
-                    });
-                }
-            }
-        }
-    }
-
-    // Re-sort merged list by updated_at descending
     sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-
-    // Apply pagination
     Ok(sessions.into_iter().skip(offset).take(limit).collect())
 }
 

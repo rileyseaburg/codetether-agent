@@ -22,7 +22,6 @@ use tokio::time::timeout;
 
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 
-
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 use super::tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
@@ -446,7 +445,7 @@ pub struct RlmExecutor {
     max_iterations: usize,
     sub_queries: Vec<SubQuery>,
     verbose: bool,
-    
+
     tool_router: Option<ToolCallRouter>,
 }
 
@@ -462,7 +461,6 @@ pub struct SubQuery {
 impl RlmExecutor {
     /// Create a new RLM executor
     pub fn new(context: String, provider: Arc<dyn Provider>, model: String) -> Self {
-        
         let tool_router = {
             let cfg = ToolRouterConfig::from_env();
             ToolCallRouter::from_config(&cfg)
@@ -480,7 +478,7 @@ impl RlmExecutor {
             max_iterations: 5, // Keep iterations limited for speed
             sub_queries: Vec::new(),
             verbose: false,
-            
+
             tool_router,
         }
     }
@@ -601,7 +599,7 @@ impl RlmExecutor {
 
             // Optionally run FunctionGemma to convert text-only responses into
             // structured tool calls.
-            
+
             let response = if let Some(ref router) = self.tool_router {
                 // RLM executor currently uses the same provider as the main session,
                 // which always supports native tool calling.  Pass `true` so

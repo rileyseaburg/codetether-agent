@@ -758,15 +758,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     // Create or continue session.
     let mut session = if let Some(session_id) = args.session.clone() {
         tracing::info!("Continuing session: {}", session_id);
-        if let Some(oc_id) = session_id.strip_prefix("opencode_") {
-            if let Some(storage) = crate::opencode::OpenCodeStorage::new() {
-                Session::from_opencode(oc_id, &storage).await?
-            } else {
-                anyhow::bail!("OpenCode storage not available")
-            }
-        } else {
-            Session::load(&session_id).await?
-        }
+        Session::load(&session_id).await?
     } else if args.continue_session {
         let workspace_dir = std::env::current_dir().unwrap_or_default();
         match Session::last_for_directory(Some(&workspace_dir)).await {
@@ -779,26 +771,13 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 s
             }
             Err(_) => {
-                // Fallback: try to resume from OpenCode session
-                match Session::last_opencode_for_directory(&workspace_dir).await {
-                    Ok(s) => {
-                        tracing::info!(
-                            session_id = %s.id,
-                            workspace = %workspace_dir.display(),
-                            "Resuming from OpenCode session"
-                        );
-                        s
-                    }
-                    Err(_) => {
-                        let s = Session::new().await?;
-                        tracing::info!(
-                            session_id = %s.id,
-                            workspace = %workspace_dir.display(),
-                            "No workspace session found; created new session"
-                        );
-                        s
-                    }
-                }
+                let s = Session::new().await?;
+                tracing::info!(
+                    session_id = %s.id,
+                    workspace = %workspace_dir.display(),
+                    "No workspace session found; created new session"
+                );
+                s
             }
         }
     } else {

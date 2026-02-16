@@ -1,6 +1,6 @@
 # Image Input Support Requirements
 
-Based on analysis of the opencode TypeScript implementation, this document outlines requirements for adding image/multimodal input support to CodeTether Agent.
+Based on analysis of the agent TypeScript implementation, this document outlines requirements for adding image/multimodal input support to CodeTether Agent.
 
 ## Overview
 
@@ -112,7 +112,7 @@ pub fn is_supported_vision_mime(mime: &str) -> bool {
 ```
 
 #### 2.2 Binary File Detection
-Implement binary file detection (from opencode's `shouldEncode`):
+Implement binary file detection (from agent's `shouldEncode`):
 
 ```rust
 pub fn should_encode_as_binary(mime_type: &str) -> bool {
@@ -485,8 +485,8 @@ Images will be ignored or use a vision-capable model.
 
 ## References
 
-- Opencode implementation: `packages/opencode/src/session/message-v2.ts`
-- Opencode file handling: `packages/opencode/src/file/index.ts`
+- Opencode implementation: `packages/agent/src/session/message-v2.ts`
+- Opencode file handling: `packages/agent/src/file/index.ts`
 - OpenAI Vision API: https://platform.openai.com/docs/guides/vision
 - Anthropic Vision: https://docs.anthropic.com/claude/docs/vision
 - Google Gemini Vision: https://ai.google.dev/gemini-api/docs/vision
