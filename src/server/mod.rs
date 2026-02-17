@@ -386,6 +386,62 @@ const POLICY_RULES: &[PolicyRule] = &[
         methods: Some(&["GET"]),
         permission: "sessions:read",
     },
+    // MCP compatibility alias
+    PolicyRule {
+        pattern: "/mcp/v1/tools",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    // Agent task APIs (dashboard compatibility)
+    PolicyRule {
+        pattern: "/v1/agent/tasks",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/v1/agent/tasks",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    PolicyRule {
+        pattern: "/v1/agent/tasks/",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    // Worker connectivity
+    PolicyRule {
+        pattern: "/v1/worker/",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/v1/agent/workers",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    // Task dispatch
+    PolicyRule {
+        pattern: "/v1/tasks/dispatch",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
+    // Voice REST bridge
+    PolicyRule {
+        pattern: "/v1/voice/",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/v1/voice/",
+        methods: Some(&["POST", "DELETE"]),
+        permission: "agent:execute",
+    },
+    // Session resume
+    PolicyRule {
+        pattern: "/v1/agent/codebases/",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
+    },
     // Proposal approval — governance action
     PolicyRule {
         pattern: "/v1/cognition/proposals/",
@@ -689,6 +745,39 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/tools", get(list_tools))
         .route("/v1/tools/register", post(register_tool))
         .route("/v1/tools/{id}/heartbeat", post(tool_heartbeat))
+        // MCP compatibility alias (marketing site SDK expects /mcp/v1/tools)
+        .route("/mcp/v1/tools", get(list_tools))
+        // Agent task APIs (compatibility surface for dashboard)
+        .route(
+            "/v1/agent/tasks",
+            get(list_agent_tasks).post(create_agent_task),
+        )
+        .route("/v1/agent/tasks/{task_id}", get(get_agent_task))
+        .route(
+            "/v1/agent/tasks/{task_id}/output",
+            get(get_agent_task_output),
+        )
+        .route(
+            "/v1/agent/tasks/{task_id}/output/stream",
+            get(stream_agent_task_output),
+        )
+        // Worker connectivity (dashboard polls this)
+        .route("/v1/worker/connected", get(list_connected_workers))
+        .route("/v1/agent/workers", get(list_connected_workers))
+        // Task dispatch (Knative-backed)
+        .route("/v1/tasks/dispatch", post(dispatch_task))
+        // Voice REST bridge (dashboard expects REST, server has gRPC)
+        .route("/v1/voice/sessions", post(create_voice_session_rest))
+        .route(
+            "/v1/voice/sessions/{room_name}",
+            get(get_voice_session_rest).delete(delete_voice_session_rest),
+        )
+        .route("/v1/voice/voices", get(list_voices_rest))
+        // Session resume (dashboard uses this for codebase-scoped resume)
+        .route(
+            "/v1/agent/codebases/{codebase_id}/sessions/{session_id}/resume",
+            post(resume_codebase_session),
+        )
         // Agent Bus — SSE stream + publish
         .route("/v1/bus/stream", get(stream_bus_events))
         .with_state(state.clone())
@@ -1793,6 +1882,346 @@ struct PluginListResponse {
     server_fingerprint: String,
     signing_available: bool,
     plugins: Vec<PluginManifest>,
+}
+
+// ── Agent task compatibility surface ─────────────────────────────────────
+// These handlers provide the /v1/agent/tasks/* surface the marketing-site
+// dashboard expects, backed by the existing KnativeTaskQueue.
+
+/// List all agent tasks (wraps Knative task queue)
+async fn list_agent_tasks(
+    State(state): State<AppState>,
+    Query(params): Query<ListAgentTasksQuery>,
+) -> Json<serde_json::Value> {
+    let tasks = state.knative_tasks.list().await;
+    let filtered: Vec<_> = tasks
+        .into_iter()
+        .filter(|t| params.status.as_ref().map_or(true, |s| t.status == *s))
+        .filter(|t| {
+            params
+                .agent_type
+                .as_ref()
+                .map_or(true, |a| t.agent_type == *a)
+        })
+        .collect();
+    Json(serde_json::json!({ "tasks": filtered, "total": filtered.len() }))
+}
+
+#[derive(Deserialize)]
+struct ListAgentTasksQuery {
+    status: Option<String>,
+    agent_type: Option<String>,
+}
+
+/// Create a new agent task
+async fn create_agent_task(
+    State(state): State<AppState>,
+    Json(req): Json<CreateAgentTaskRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let task_id = uuid::Uuid::new_v4().to_string();
+    let task = KnativeTask {
+        task_id: task_id.clone(),
+        title: req.title,
+        description: req.description,
+        agent_type: req.agent_type.unwrap_or_else(|| "build".to_string()),
+        priority: req.priority.unwrap_or(0),
+        received_at: chrono::Utc::now(),
+        status: "pending".to_string(),
+    };
+    state.knative_tasks.push(task).await;
+    Ok(Json(serde_json::json!({
+        "task_id": task_id,
+        "status": "pending",
+    })))
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct CreateAgentTaskRequest {
+    title: String,
+    description: String,
+    agent_type: Option<String>,
+    model: Option<String>,
+    priority: Option<i32>,
+}
+
+/// Get a single agent task by ID
+async fn get_agent_task(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Json<KnativeTask>, (StatusCode, String)> {
+    state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .map(Json)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+}
+
+/// Get task output (returns task details including result)
+async fn get_agent_task_output(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let task = state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))?;
+    Ok(Json(serde_json::json!({
+        "task_id": task.task_id,
+        "status": task.status,
+        "title": task.title,
+        "output": null,
+    })))
+}
+
+/// Stream task output as SSE events
+async fn stream_agent_task_output(
+    State(state): State<AppState>,
+    Path(task_id): Path<String>,
+) -> Result<Sse<impl stream::Stream<Item = Result<Event, Infallible>>>, (StatusCode, String)> {
+    // Verify task exists
+    state
+        .knative_tasks
+        .get(&task_id)
+        .await
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))?;
+
+    let bus_handle = state.bus.handle("task-stream");
+    let rx = bus_handle.into_receiver();
+    let topic_prefix = format!("task.{task_id}");
+
+    let stream = async_stream::try_stream! {
+        let mut rx = rx;
+        loop {
+            match rx.recv().await {
+                Ok(envelope) => {
+                    if !envelope.topic.starts_with(&topic_prefix) {
+                        continue;
+                    }
+                    let data = serde_json::to_string(&envelope.message).unwrap_or_default();
+                    yield Event::default().data(data);
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+            }
+        }
+    };
+
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+}
+
+// ── Worker connectivity ─────────────────────────────────────────────────
+
+/// List connected workers (K8s pods with agent label)
+async fn list_connected_workers(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    // Use K8s pod listing as proxy for connected workers
+    let pods = state.k8s.list_pods().await.unwrap_or_default();
+    let workers: Vec<serde_json::Value> = pods
+        .iter()
+        .filter(|p| p.name.contains("codetether") || p.name.contains("worker"))
+        .map(|p| {
+            serde_json::json!({
+                "worker_id": p.name,
+                "name": p.name,
+                "status": p.phase,
+                "is_sse_connected": p.phase == "Running",
+                "last_seen": chrono::Utc::now().to_rfc3339(),
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!({ "workers": workers })))
+}
+
+// ── Task dispatch ───────────────────────────────────────────────────────
+
+/// Dispatch a task (creates a Knative task and returns immediately)
+async fn dispatch_task(
+    State(state): State<AppState>,
+    Json(req): Json<DispatchTaskRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let task_id = uuid::Uuid::new_v4().to_string();
+    let task = KnativeTask {
+        task_id: task_id.clone(),
+        title: req.title,
+        description: req.description,
+        agent_type: req.agent_type.unwrap_or_else(|| "build".to_string()),
+        priority: req.priority.unwrap_or(0),
+        received_at: chrono::Utc::now(),
+        status: "pending".to_string(),
+    };
+
+    // Publish task event to agent bus for connected workers
+    let handle = state.bus.handle("task-dispatch");
+    handle.send(
+        format!("task.{}", task_id),
+        crate::bus::BusMessage::TaskUpdate {
+            task_id: task_id.clone(),
+            state: crate::a2a::types::TaskState::Submitted,
+            message: Some(format!("Task dispatched: {}", task.title)),
+        },
+    );
+
+    state.knative_tasks.push(task).await;
+
+    Ok(Json(serde_json::json!({
+        "task_id": task_id,
+        "status": "pending",
+        "dispatched_via_knative": true,
+    })))
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct DispatchTaskRequest {
+    title: String,
+    description: String,
+    agent_type: Option<String>,
+    model: Option<String>,
+    priority: Option<i32>,
+    metadata: Option<serde_json::Value>,
+}
+
+// ── Voice REST bridge ───────────────────────────────────────────────────
+// Bridges the REST /v1/voice/* surface the dashboard expects to the
+// existing gRPC VoiceService implementation via the AgentBus.
+
+/// Create a voice session (REST bridge for VoiceService::CreateVoiceSession)
+async fn create_voice_session_rest(
+    State(state): State<AppState>,
+    Json(req): Json<CreateVoiceSessionRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let voice_id = req.voice.unwrap_or_else(|| "960f89fc".to_string());
+    let room_name = format!("voice-{}", uuid::Uuid::new_v4());
+
+    // Publish session started event to bus
+    let handle = state.bus.handle("voice-rest");
+    handle.send_voice_session_started(&room_name, &voice_id);
+
+    let livekit_url = std::env::var("LIVEKIT_URL").unwrap_or_default();
+
+    Ok(Json(serde_json::json!({
+        "room_name": room_name,
+        "voice": voice_id,
+        "mode": req.mode.unwrap_or_else(|| "chat".to_string()),
+        "access_token": "",
+        "livekit_url": livekit_url,
+        "expires_at": (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339(),
+    })))
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct CreateVoiceSessionRequest {
+    voice: Option<String>,
+    mode: Option<String>,
+    codebase_id: Option<String>,
+    user_id: Option<String>,
+}
+
+/// Get a voice session (REST bridge)
+async fn get_voice_session_rest(Path(room_name): Path<String>) -> Json<serde_json::Value> {
+    let livekit_url = std::env::var("LIVEKIT_URL").unwrap_or_default();
+    Json(serde_json::json!({
+        "room_name": room_name,
+        "state": "active",
+        "agent_state": "listening",
+        "access_token": "",
+        "livekit_url": livekit_url,
+    }))
+}
+
+/// Delete a voice session (REST bridge)
+async fn delete_voice_session_rest(
+    State(state): State<AppState>,
+    Path(room_name): Path<String>,
+) -> Json<serde_json::Value> {
+    let handle = state.bus.handle("voice-rest");
+    handle.send_voice_session_ended(&room_name, "user_ended");
+    Json(serde_json::json!({ "status": "deleted" }))
+}
+
+/// List available voices (REST bridge)
+async fn list_voices_rest() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "voices": [
+            { "voice_id": "960f89fc", "name": "Riley", "language": "english" },
+            { "voice_id": "puck", "name": "Puck", "language": "english" },
+            { "voice_id": "charon", "name": "Charon", "language": "english" },
+            { "voice_id": "kore", "name": "Kore", "language": "english" },
+            { "voice_id": "fenrir", "name": "Fenrir", "language": "english" },
+            { "voice_id": "aoede", "name": "Aoede", "language": "english" },
+        ]
+    }))
+}
+
+// ── Session resume ──────────────────────────────────────────────────────
+
+/// Resume a codebase-scoped session (what the dashboard session resume flow calls)
+async fn resume_codebase_session(
+    Path((_codebase_id, session_id)): Path<(String, String)>,
+    Json(req): Json<ResumeSessionRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    // Load the session if it exists, or create a new one
+    let mut session = match crate::session::Session::load(&session_id).await {
+        Ok(s) => s,
+        Err(_) => {
+            // Create a new session for this codebase
+            let mut s = crate::session::Session::new()
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+            if let Some(agent) = &req.agent {
+                s.agent = agent.clone();
+            }
+            s.save()
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+            s
+        }
+    };
+
+    // If there's a prompt, execute it as a task
+    if let Some(prompt) = &req.prompt {
+        if !prompt.is_empty() {
+            match session.prompt(prompt).await {
+                Ok(result) => {
+                    session.save().await.ok();
+                    return Ok(Json(serde_json::json!({
+                        "session_id": session.id,
+                        "active_session_id": session.id,
+                        "status": "completed",
+                        "result": result.text,
+                    })));
+                }
+                Err(e) => {
+                    return Ok(Json(serde_json::json!({
+                        "session_id": session.id,
+                        "active_session_id": session.id,
+                        "status": "failed",
+                        "error": e.to_string(),
+                    })));
+                }
+            }
+        }
+    }
+
+    // No prompt = just resume/check session
+    Ok(Json(serde_json::json!({
+        "session_id": session.id,
+        "active_session_id": session.id,
+        "status": "ready",
+    })))
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct ResumeSessionRequest {
+    prompt: Option<String>,
+    agent: Option<String>,
+    model: Option<String>,
 }
 
 fn internal_error(error: anyhow::Error) -> (StatusCode, String) {

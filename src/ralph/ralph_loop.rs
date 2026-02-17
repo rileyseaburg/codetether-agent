@@ -331,35 +331,57 @@ impl RalphLoop {
             self.run_sequential().await?;
         }
 
-        // Set final status based on what happened
+        // Set final status based on what happened.
+        // Parallel mode can exhaust stages before hitting max_iterations, so avoid leaving
+        // a terminal run in "Running".
         if self.state.status != RalphStatus::Completed {
-            if self.state.current_iteration >= self.state.max_iterations {
-                // Check if any stories were attempted (at least one iteration ran)
-                if self.state.current_iteration > 0 {
-                    let passed = self.state.prd.passed_count();
-                    let total = self.state.prd.user_stories.len();
-                    if passed == 0 && total > 0 {
-                        // All stories failed - likely due to quality check failures
-                        self.state.status = RalphStatus::QualityFailed;
-                        warn!(
-                            iterations = self.state.current_iteration,
-                            passed = passed,
-                            total = total,
-                            "Ralph failed: all stories failed quality checks"
-                        );
-                    } else {
-                        // Some stories passed but not all
-                        self.state.status = RalphStatus::MaxIterations;
-                        info!(
-                            iterations = self.state.current_iteration,
-                            passed = passed,
-                            total = total,
-                            "Ralph finished with partial progress"
-                        );
-                    }
+            let passed = self.state.prd.passed_count();
+            let total = self.state.prd.user_stories.len();
+
+            if self.state.prd.is_complete() {
+                self.state.status = RalphStatus::Completed;
+            } else if self.state.current_iteration >= self.state.max_iterations {
+                if self.state.current_iteration > 0 && passed == 0 && total > 0 {
+                    // All stories failed - likely due to quality check failures
+                    self.state.status = RalphStatus::QualityFailed;
+                    warn!(
+                        iterations = self.state.current_iteration,
+                        passed = passed,
+                        total = total,
+                        "Ralph failed: all stories failed quality checks"
+                    );
+                } else {
+                    // Some stories passed but not all
+                    self.state.status = RalphStatus::MaxIterations;
+                    info!(
+                        iterations = self.state.current_iteration,
+                        passed = passed,
+                        total = total,
+                        "Ralph finished with partial progress"
+                    );
+                }
+            } else if self.state.current_iteration > 0 {
+                // Work completed but execution ended before full completion and before max
+                // iteration budget (for example, parallel stages exhausted).
+                if passed == 0 && total > 0 {
+                    self.state.status = RalphStatus::QualityFailed;
+                    warn!(
+                        iterations = self.state.current_iteration,
+                        passed = passed,
+                        total = total,
+                        "Ralph ended with no passing stories"
+                    );
                 } else {
                     self.state.status = RalphStatus::MaxIterations;
+                    info!(
+                        iterations = self.state.current_iteration,
+                        passed = passed,
+                        total = total,
+                        "Ralph ended before full completion"
+                    );
                 }
+            } else {
+                self.state.status = RalphStatus::MaxIterations;
             }
         }
 

@@ -537,9 +537,8 @@ pub fn format_go_ralph_result(result: &GoRalphResult, task: &str) -> String {
             .map(|s| format!("  - {}: {}", s.id, s.title))
             .collect();
         format!(
-            "\nIncomplete stories:\n{}\n\nNext steps:\n  1. Review progress file for learnings\n  2. Re-run: codetether run \"/go {}\"\n  3. Or fix manually on branch `{}`",
+            "\nIncomplete stories:\n{}\n\nNext steps:\n  1. Review progress file for learnings\n  2. Re-run with a clean objective: codetether run -- '/go <concise-task>'\n  3. Or fix manually on branch `{}`",
             failed.join("\n"),
-            task,
             result.feature_branch
         )
     };

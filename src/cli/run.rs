@@ -572,12 +572,17 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     let easy_go_requested = is_easy_go_command(message);
     let normalized = normalize_cli_go_command(message);
     if let Some(rest) = command_with_optional_args(&normalized, "/autochat") {
-        let Some((agent_count, task)) = parse_autochat_args(rest) else {
+        let Some((agent_count, parsed_task)) = parse_autochat_args(rest) else {
             anyhow::bail!(
                 "Usage: /autochat [count] <task>\nEasy mode: /go <task>\ncount range: 2-{} (default: {})",
                 AUTOCHAT_MAX_AGENTS,
                 AUTOCHAT_DEFAULT_AGENTS
             );
+        };
+        let task = if easy_go_requested {
+            validate_easy_go_task(parsed_task)?
+        } else {
+            normalize_go_task_input(parsed_task)
         };
 
         if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
@@ -691,7 +696,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
             // Execute via Ralph PRD loop — use max_concurrent as concurrency
             let ralph_result = super::go_ralph::execute_go_ralph(
-                task,
+                &task,
                 &mut okr,
                 &mut approved_run,
                 provider,
@@ -730,7 +735,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 _ => {
                     println!(
                         "{}",
-                        super::go_ralph::format_go_ralph_result(&ralph_result, task)
+                        super::go_ralph::format_go_ralph_result(&ralph_result, &task)
                     );
                 }
             }
@@ -738,7 +743,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         }
 
         // Plain /autochat (no OKR) — use traditional relay
-        let relay_result = run_protocol_first_relay(agent_count, task, &model, None, None).await?;
+        let relay_result = run_protocol_first_relay(agent_count, &task, &model, None, None).await?;
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
             _ => {
@@ -884,6 +889,44 @@ fn is_easy_go_command(input: &str) -> bool {
         .to_ascii_lowercase();
 
     matches!(command.as_str(), "/go" | "/team")
+}
+
+fn normalize_go_task_input(task: &str) -> String {
+    task.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn looks_like_pasted_go_run_output(task: &str) -> bool {
+    let lower = task.to_ascii_lowercase();
+    let markers = [
+        "progress:",
+        "iterations:",
+        "feature branch:",
+        "stories:",
+        "incomplete stories:",
+        "next steps:",
+        "assessment is done and documented",
+    ];
+
+    let marker_hits = markers.iter().filter(|m| lower.contains(**m)).count();
+    marker_hits >= 2 || (task.len() > 400 && lower.contains("next steps:"))
+}
+
+fn validate_easy_go_task(task: &str) -> Result<String> {
+    let normalized = normalize_go_task_input(task);
+    if normalized.is_empty() {
+        anyhow::bail!(
+            "`/go` requires a task. Example: /go implement /v1/agent compatibility routes"
+        );
+    }
+
+    if looks_like_pasted_go_run_output(&normalized) {
+        anyhow::bail!(
+            "`/go` received text that looks like prior run output/logs. \
+Use a concise objective sentence instead, e.g. `/go implement /v1/agent/* compatibility routes`."
+        );
+    }
+
+    Ok(normalized)
 }
 
 fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
@@ -1344,7 +1387,8 @@ mod tests {
     use super::{
         AUTOCHAT_QUICK_DEMO_TASK, PlannedRelayResponse, build_runtime_profile_from_plan,
         command_with_optional_args, extract_json_payload, is_easy_go_command,
-        normalize_cli_go_command, parse_autochat_args, resolve_autochat_model,
+        normalize_cli_go_command, normalize_go_task_input, parse_autochat_args,
+        resolve_autochat_model, validate_easy_go_task,
     };
 
     #[test]
@@ -1377,6 +1421,21 @@ mod tests {
             parse_autochat_args("4 build a relay").expect("valid args"),
             (4, "build a relay")
         );
+    }
+
+    #[test]
+    fn normalize_go_task_collapses_whitespace() {
+        assert_eq!(
+            normalize_go_task_input(" implement   api\ncompat routes\twith tests "),
+            "implement api compat routes with tests"
+        );
+    }
+
+    #[test]
+    fn validate_go_task_rejects_pasted_run_output() {
+        let pasted =
+            "Task: foo Progress: 0/7 stories Iterations: 7/10 Incomplete stories: ... Next steps:";
+        assert!(validate_easy_go_task(pasted).is_err());
     }
 
     #[test]

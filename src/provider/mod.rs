@@ -12,6 +12,7 @@ pub mod moonshot;
 pub mod openai;
 pub mod openrouter;
 pub mod stepfun;
+pub mod vertex_glm;
 pub mod zai;
 
 use anyhow::Result;
@@ -435,6 +436,48 @@ impl ProviderRegistry {
                             Err(e) => tracing::warn!("Failed to init zai: {}", e),
                         }
                     }
+                    // Vertex AI GLM-5 via MaaS endpoint (GCP authentication)
+                    "vertex-glm" | "vertex-ai" | "gcp-glm" => {
+                        let project_id = secrets
+                            .extra
+                            .get("project_id")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| secrets.extra.get("projectId").and_then(|v| v.as_str()))
+                            .map(|s| s.to_string());
+
+                        let service_account_key = secrets
+                            .extra
+                            .get("service_account_key")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| {
+                                secrets
+                                    .extra
+                                    .get("serviceAccountKey")
+                                    .and_then(|v| v.as_str())
+                            })
+                            .map(|s| s.to_string());
+
+                        match (project_id, service_account_key) {
+                            (Some(pid), sak) => {
+                                let result = if let Some(key_path) = sak {
+                                    vertex_glm::VertexGlmProvider::with_service_account(
+                                        pid, key_path,
+                                    )
+                                } else {
+                                    vertex_glm::VertexGlmProvider::new(pid)
+                                };
+                                match result {
+                                    Ok(p) => registry.register(Arc::new(p)),
+                                    Err(e) => tracing::warn!("Failed to init vertex-glm: {}", e),
+                                }
+                            }
+                            (None, _) => {
+                                tracing::warn!(
+                                    "vertex-glm provider requires project_id in Vault secrets"
+                                );
+                            }
+                        }
+                    }
                     // Cerebras - OpenAI-compatible fast inference
                     "cerebras" => {
                         let base_url = secrets
@@ -493,27 +536,10 @@ impl ProviderRegistry {
                                 Err(e) => tracing::warn!("Failed to init {}: {}", provider_id, e),
                             }
                         } else {
-                            // Try using the base_url from the models API
-                            if let Ok(catalog) = models::ModelCatalog::fetch().await {
-                                if let Some(provider_info) = catalog.get_provider(&provider_id) {
-                                    if let Some(api_url) = &provider_info.api {
-                                        match openai::OpenAIProvider::with_base_url(
-                                            api_key,
-                                            api_url.clone(),
-                                            &provider_id,
-                                        ) {
-                                            Ok(p) => registry.register(Arc::new(p)),
-                                            Err(e) => {
-                                                tracing::warn!(
-                                                    "Failed to init {}: {}",
-                                                    provider_id,
-                                                    e
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            tracing::warn!(
+                                "Provider {} has no built-in base_url; set base_url in Vault secrets",
+                                provider_id
+                            );
                         }
                     }
                     // Unknown providers - try as OpenAI-compatible with base_url from API

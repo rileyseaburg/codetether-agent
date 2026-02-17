@@ -36,6 +36,7 @@ impl A2AServer {
     pub fn router(self) -> Router {
         Router::new()
             .route("/.well-known/agent.json", get(get_agent_card))
+            .route("/.well-known/agent-card.json", get(get_agent_card))
             .route("/", post(handle_rpc))
             .with_state(self)
     }

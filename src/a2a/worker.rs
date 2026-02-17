@@ -817,99 +817,21 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
         }
     };
 
-    // Fetch the models.dev catalog for pricing data enrichment
-    let catalog = crate::provider::models::ModelCatalog::fetch().await.ok();
-
-    // Map provider IDs to their catalog equivalents (some differ)
-    let catalog_alias = |pid: &str| -> String {
-        match pid {
-            "bedrock" => "amazon-bedrock".to_string(),
-            "novita" => "novita-ai".to_string(),
-            _ => pid.to_string(),
-        }
-    };
-
     let mut models_by_provider: HashMap<String, Vec<crate::provider::ModelInfo>> = HashMap::new();
 
     for provider_name in registry.list() {
         if let Some(provider) = registry.get(provider_name) {
             match provider.list_models().await {
                 Ok(models) => {
-                    let enriched: Vec<crate::provider::ModelInfo> = models
-                        .into_iter()
-                        .map(|mut m| {
-                            // Enrich with catalog pricing if the provider didn't set it
-                            if m.input_cost_per_million.is_none()
-                                || m.output_cost_per_million.is_none()
-                            {
-                                if let Some(ref cat) = catalog {
-                                    let cat_pid = catalog_alias(provider_name);
-                                    if let Some(prov_info) = cat.get_provider(&cat_pid) {
-                                        // Try exact match first, then strip "us." prefix (bedrock uses us.vendor.model format)
-                                        let model_info =
-                                            prov_info.models.get(&m.id).or_else(|| {
-                                                m.id.strip_prefix("us.").and_then(|stripped| {
-                                                    prov_info.models.get(stripped)
-                                                })
-                                            });
-                                        if let Some(model_info) = model_info {
-                                            if let Some(ref cost) = model_info.cost {
-                                                if m.input_cost_per_million.is_none() {
-                                                    m.input_cost_per_million = Some(cost.input);
-                                                }
-                                                if m.output_cost_per_million.is_none() {
-                                                    m.output_cost_per_million = Some(cost.output);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            m
-                        })
-                        .collect();
-                    if !enriched.is_empty() {
-                        tracing::debug!("Provider {}: {} models", provider_name, enriched.len());
-                        models_by_provider.insert(provider_name.to_string(), enriched);
+                    if !models.is_empty() {
+                        tracing::debug!("Provider {}: {} models", provider_name, models.len());
+                        models_by_provider.insert(provider_name.to_string(), models);
                     }
                 }
                 Err(e) => {
                     tracing::debug!("Failed to list models for {}: {}", provider_name, e);
                 }
             }
-        }
-    }
-
-    // If we still have 0, try the models.dev catalog as last resort
-    // NOTE: We list ALL models from the catalog (not just ones with verified API keys)
-    // because the worker should advertise what it can handle. The server handles routing.
-    if models_by_provider.is_empty() {
-        tracing::info!(
-            "No authenticated providers found, fetching models.dev catalog (all providers)"
-        );
-        if let Ok(cat) = crate::provider::models::ModelCatalog::fetch().await {
-            // Use all_providers_with_models() to get every provider+model from catalog
-            // regardless of API key availability (Vault may be down)
-            for (provider_id, provider_info) in cat.all_providers() {
-                let model_infos: Vec<crate::provider::ModelInfo> = provider_info
-                    .models
-                    .values()
-                    .map(|m| cat.to_model_info(m, provider_id))
-                    .collect();
-                if !model_infos.is_empty() {
-                    tracing::debug!(
-                        "Catalog provider {}: {} models",
-                        provider_id,
-                        model_infos.len()
-                    );
-                    models_by_provider.insert(provider_id.clone(), model_infos);
-                }
-            }
-            tracing::info!(
-                "Loaded {} providers with {} total models from catalog",
-                models_by_provider.len(),
-                models_by_provider.values().map(|v| v.len()).sum::<usize>()
-            );
         }
     }
 

@@ -21,6 +21,7 @@ CodeTether Agent `v2.0.3` is a major release focused on long-running agent opera
 ### Upgrading to v2.x
 
 - `/go` is strategic and approval-gated; use `/autochat` when you want immediate relay execution without OKR lifecycle tracking.
+- `/go` expects a concise objective sentence. Pasted prior run output/log blocks are rejected to prevent malformed PRD generation.
 - `codetether worker` can expose an HTTP probe/status server by default (`--hostname`, `--port`, `--no-http-server`).
 - Event/audit payloads include additional correlation fields; update downstream parsers if they assume a legacy schema.
 
@@ -139,7 +140,7 @@ codetether run "explain this codebase"
 ```bash
 codetether tui                           # Interactive terminal UI
 codetether run "prompt"                  # Single prompt (chat, no tools)
-codetether run "/go <task>"               # Strategic relay (OKR-gated execution)
+codetether run -- "/go <task>"             # Strategic relay (OKR-gated execution)
 codetether run "/autochat <task>"         # Tactical relay (fast path)
 codetether swarm "complex task"          # Parallel sub-agent execution
 codetether swarm "complex task" --execution-mode k8s --k8s-pod-budget 4 --k8s-image <image>  # Cluster execution
@@ -302,6 +303,12 @@ When you type `/go` in the TUI or CLI, you're launching a **strategic execution*
 
 The approve/deny gate is the critical human-in-the-loop moment. The system structures your intent into measurable outcomes; you verify that those outcomes actually match what you meant. Two minutes of strategic review, then the swarm owns execution.
 
+#### `/go` Input Guardrails
+
+- Use a **clean, concise objective**: `codetether run -- "/go implement X with tests"`
+- Do **not** paste prior `/go` output back into `/go` (for example blocks containing `Progress:`, `Incomplete stories:`, or `Next steps:`)
+- If re-running, rewrite the objective in one sentence instead of replaying logs
+
 #### `/go` vs `/autochat`
 
 | Command | Purpose | OKR Gate | Best For |
@@ -310,6 +317,11 @@ The approve/deny gate is the critical human-in-the-loop moment. The system struc
 | `/autochat` | Tactical execution | No — runs immediately | Quick tasks, bug fixes, "just do this now" work |
 
 Think of `/go` as deploying a mission with objectives. `/autochat` is giving a direct order. Both use the same relay execution engine underneath — the difference is whether the work is wrapped in an OKR lifecycle with approval, progress tracking, and outcome recording.
+
+Ralph terminal outcomes are reported as:
+- `Completed` — all stories passed
+- `MaxIterations` — partial completion within limits
+- `QualityFailed` — no stories passed quality gates
 
 #### Long-Running Epics
 
