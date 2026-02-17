@@ -1,16 +1,19 @@
-# v3.2.0
+# v3.2.1
 
 ## What's New
 
-- **OpenAI-Compatible API**: Added a comprehensive OpenAI-compatible REST API to the server, enabling seamless integration with tools and clients that expect OpenAI endpoints
-- **OAuth/JWT Provider Authentication**: Refactored all providers to support OAuth and JWT-based authentication, improving security and enabling cloud provider integrations
-- **New Providers**: Added support for OpenAI Codex and Google Vertex GLM models
-- **Token Display**: New TUI component for real-time token usage visualization during conversations
+- **Background provider loading** — Providers now initialize asynchronously, improving startup time
+- **Kubernetes node identification** — Workers include `K8S_NODE_NAME` in registration for better cluster visibility
+- **Expanded worker capabilities** — Enhanced A2A worker feature set
+
+## Bug Fixes
+
+- Fixed scroll behavior in the TUI message panel
 
 ## Changes
 
-- Refactored provider module architecture for better OAuth/JWT handling
-- Enhanced worker server authentication flows
-- Improved Ralph autonomous loop with better error handling
-- Updated README with new API documentation and provider configuration examples
-- Streamlined A2A worker implementation
+- **TUI performance** — Message line rendering is now cached for smoother scrolling and reduced redraw overhead
+
+---
+
+**Stats:** 3 commits, 3 files changed, 265 insertions(+), 96 deletions(-)
