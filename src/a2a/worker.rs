@@ -163,7 +163,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
 
     {
         let handle = bus.handle(&worker_id);
-        handle.announce_ready(WORKER_CAPABILITIES.iter().map(|s| s.to_string()).collect());
+        handle.announce_ready(worker_capabilities());
     }
 
     // Register worker
@@ -293,7 +293,7 @@ pub async fn run_with_state(
 
     {
         let handle = bus.handle(&worker_id);
-        handle.announce_ready(WORKER_CAPABILITIES.iter().map(|s| s.to_string()).collect());
+        handle.announce_ready(worker_capabilities());
     }
 
     // Register worker
@@ -395,7 +395,28 @@ enum AutoApprove {
 pub const DEFAULT_A2A_SERVER_URL: &str = "https://api.codetether.run";
 
 /// Capabilities of the codetether-agent worker
-const WORKER_CAPABILITIES: &[&str] = &["ralph", "swarm", "rlm", "a2a", "mcp"];
+const BASE_WORKER_CAPABILITIES: &[&str] = &[
+    "ralph", "swarm", "rlm", "a2a", "mcp", "grpc", "grpc-web", "jsonrpc",
+];
+
+fn worker_capabilities() -> Vec<String> {
+    let mut capabilities: Vec<String> = BASE_WORKER_CAPABILITIES
+        .iter()
+        .map(|capability| capability.to_string())
+        .collect();
+
+    let is_knative = std::env::var("KNATIVE_SERVICE")
+        .map(|value| {
+            let normalized = value.trim().to_lowercase();
+            normalized == "1" || normalized == "true" || normalized == "yes"
+        })
+        .unwrap_or(false);
+    if is_knative {
+        capabilities.push("knative".to_string());
+    }
+
+    capabilities
+}
 
 fn task_value<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
     task.get("task")
@@ -804,7 +825,7 @@ async fn register_worker(
         .json(&serde_json::json!({
             "worker_id": worker_id,
             "name": name,
-            "capabilities": WORKER_CAPABILITIES,
+            "capabilities": worker_capabilities(),
             "hostname": hostname,
             "k8s_node_name": k8s_node_name,
             "models": models_array,

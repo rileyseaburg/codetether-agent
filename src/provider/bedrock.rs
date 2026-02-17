@@ -849,14 +849,16 @@ impl BedrockProvider {
                         })
                         .collect::<Vec<_>>()
                         .join("\n");
-                    system_parts.push(json!({"text": text}));
+                    if !text.trim().is_empty() {
+                        system_parts.push(json!({"text": text}));
+                    }
                 }
                 Role::User => {
                     let mut content_parts: Vec<Value> = Vec::new();
                     for part in &msg.content {
                         match part {
                             ContentPart::Text { text } => {
-                                if !text.is_empty() {
+                                if !text.trim().is_empty() {
                                     content_parts.push(json!({"text": text}));
                                 }
                             }
@@ -886,7 +888,7 @@ impl BedrockProvider {
                     for part in &msg.content {
                         match part {
                             ContentPart::Text { text } => {
-                                if !text.is_empty() {
+                                if !text.trim().is_empty() {
                                     content_parts.push(json!({"text": text}));
                                 }
                             }
@@ -908,8 +910,10 @@ impl BedrockProvider {
                             _ => {}
                         }
                     }
+                    // Bedrock rejects whitespace-only text blocks; if the assistant message has
+                    // no usable content (e.g. thinking-only), drop it from the request.
                     if content_parts.is_empty() {
-                        content_parts.push(json!({"text": " "}));
+                        continue;
                     }
                     // Merge into previous assistant message if consecutive
                     if let Some(last) = api_messages.last_mut() {
@@ -938,6 +942,11 @@ impl BedrockProvider {
                             content,
                         } = part
                         {
+                            let content = if content.trim().is_empty() {
+                                "(empty tool result)".to_string()
+                            } else {
+                                content.clone()
+                            };
                             content_parts.push(json!({
                                 "toolResult": {
                                     "toolUseId": tool_call_id,

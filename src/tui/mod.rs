@@ -4280,6 +4280,20 @@ impl App {
             return;
         }
 
+        // Normal chat messages require providers. Avoid blocking the TUI event loop by awaiting
+        // Vault/provider initialization here; instead ask the user to retry once the background
+        // preload completes.
+        if self.provider_registry.is_none() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Providers are still loading. Please wait a moment and press Enter again.",
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            self.input = message;
+            self.cursor_position = self.input.len();
+            return;
+        }
+
         // Add user message
         self.messages
             .push(ChatMessage::new("user", message.clone()));
@@ -4343,24 +4357,7 @@ impl App {
         self.processing_started_at = Some(Instant::now());
         self.streaming_text = None;
 
-        // Load provider registry once and cache it
-        if self.provider_registry.is_none() {
-            match crate::provider::ProviderRegistry::from_vault().await {
-                Ok(registry) => {
-                    self.provider_registry = Some(std::sync::Arc::new(registry));
-                }
-                Err(err) => {
-                    tracing::error!(error = %err, "Failed to load provider registry");
-                    self.messages.push(ChatMessage::new(
-                        "assistant",
-                        format!("Error loading providers: {err}"),
-                    ));
-                    self.is_processing = false;
-                    return;
-                }
-            }
-        }
-        let registry = self.provider_registry.clone().unwrap();
+        let registry = self.provider_registry.clone().expect("checked above");
 
         // Create channel for async communication
         let (tx, rx) = mpsc::channel(100);
@@ -4523,22 +4520,14 @@ impl App {
 
     /// Send a message to a specific spawned agent
     async fn send_to_agent(&mut self, agent_name: &str, message: &str, _config: &Config) {
-        // Load provider registry if needed
-        if self.provider_registry.is_none() {
-            match crate::provider::ProviderRegistry::from_vault().await {
-                Ok(registry) => {
-                    self.provider_registry = Some(std::sync::Arc::new(registry));
-                }
-                Err(err) => {
-                    self.messages.push(ChatMessage::new(
-                        "system",
-                        format!("Error loading providers: {err}"),
-                    ));
-                    return;
-                }
-            }
-        }
-        let registry = self.provider_registry.clone().unwrap();
+        let Some(registry) = self.provider_registry.clone() else {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Providers are still loading; cannot message sub-agents yet.",
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            return;
+        };
 
         let agent = match self.spawned_agents.get_mut(agent_name) {
             Some(a) => a,
@@ -5040,33 +5029,24 @@ impl App {
     async fn open_model_picker(&mut self, config: &Config) {
         let mut models: Vec<(String, String, String)> = Vec::new();
 
-        // Try to build provider registry and list models
-        match crate::provider::ProviderRegistry::from_vault().await {
-            Ok(registry) => {
-                for provider_name in registry.list() {
-                    if let Some(provider) = registry.get(provider_name) {
-                        match provider.list_models().await {
-                            Ok(model_list) => {
-                                for m in model_list {
-                                    let label = format!("{}/{}", provider_name, m.id);
-                                    let value = format!("{}/{}", provider_name, m.id);
-                                    let name = m.name.clone();
-                                    models.push((label, value, name));
-                                }
+        // Prefer cached provider registry to avoid blocking the UI on Vault calls.
+        if let Some(registry) = self.provider_registry.as_ref() {
+            for provider_name in registry.list() {
+                if let Some(provider) = registry.get(provider_name) {
+                    match provider.list_models().await {
+                        Ok(model_list) => {
+                            for m in model_list {
+                                let label = format!("{}/{}", provider_name, m.id);
+                                let value = format!("{}/{}", provider_name, m.id);
+                                let name = m.name.clone();
+                                models.push((label, value, name));
                             }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Failed to list models for {}: {}",
-                                    provider_name,
-                                    e
-                                );
-                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to list models for {}: {}", provider_name, e);
                         }
                     }
                 }
-            }
-            Err(e) => {
-                tracing::warn!("Failed to load provider registry: {}", e);
             }
         }
 
@@ -5091,7 +5071,7 @@ impl App {
         if models.is_empty() {
             self.messages.push(ChatMessage::new(
                 "system",
-                "No models found. Check provider configuration (Vault or config).",
+                "No models found yet. Providers may still be loading; try again in a moment.",
             ));
         } else {
             // Sort models by provider then name
@@ -5493,6 +5473,27 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let mut config = Config::load().await?;
     let mut theme = crate::tui::theme_utils::validate_theme(&config.load_theme());
 
+    // Preload provider registry in the background so the UI stays responsive on first submit
+    // (Vault/provider initialization can be slow, e.g. Vertex GLM service account parsing).
+    let (provider_tx, mut provider_rx) =
+        mpsc::channel::<Result<crate::provider::ProviderRegistry>>(1);
+    {
+        let config_for_providers = config.clone();
+        tokio::spawn(async move {
+            let registry = match crate::provider::ProviderRegistry::from_vault().await {
+                Ok(registry) => Ok(registry),
+                Err(vault_err) => {
+                    tracing::warn!(
+                        error = %vault_err,
+                        "Provider registry from_vault failed; falling back to config/env"
+                    );
+                    crate::provider::ProviderRegistry::from_config(&config_for_providers).await
+                }
+            };
+            let _ = provider_tx.send(registry).await;
+        });
+    }
+
     let secure_environment = is_secure_environment();
     app.secure_environment = secure_environment;
 
@@ -5579,6 +5580,29 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
     loop {
         // --- Periodic background work (non-blocking) ---
+
+        // Apply provider registry preload result (if ready).
+        if app.provider_registry.is_none() {
+            match provider_rx.try_recv() {
+                Ok(Ok(registry)) => {
+                    app.provider_registry = Some(std::sync::Arc::new(registry));
+                    app.messages.push(ChatMessage::new(
+                        "system",
+                        "Providers loaded. Ready to chat.",
+                    ));
+                    app.scroll = SCROLL_BOTTOM;
+                }
+                Ok(Err(err)) => {
+                    app.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed to load providers: {err}"),
+                    ));
+                    app.scroll = SCROLL_BOTTOM;
+                }
+                Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {}
+                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {}
+            }
+        }
 
         // Receive session list updates from background task
         if let Ok(sessions) = session_rx.try_recv() {
