@@ -289,6 +289,18 @@ struct App {
     okr_repository: Option<std::sync::Arc<OkrRepository>>,
     // Cached max scroll for key handlers
     last_max_scroll: usize,
+    /// Cached rendered message lines (rebuilt only when messages/state changes)
+    cached_message_lines: Vec<ratatui::text::Line<'static>>,
+    /// Number of messages when cache was last built
+    cached_messages_len: usize,
+    /// Width when cache was last built
+    cached_max_width: usize,
+    /// Streaming text snapshot when cache was last built
+    cached_streaming_snapshot: Option<String>,
+    /// Whether processing state when cache was last built
+    cached_processing: bool,
+    /// Whether autochat was running when cache was last built
+    cached_autochat_running: bool,
 }
 
 #[allow(dead_code)]
@@ -3103,6 +3115,12 @@ impl App {
             pending_okr_approval: None,
             okr_repository: None,
             last_max_scroll: 0,
+            cached_message_lines: Vec::new(),
+            cached_messages_len: 0,
+            cached_max_width: 0,
+            cached_streaming_snapshot: None,
+            cached_processing: false,
+            cached_autochat_running: false,
         }
     }
 
@@ -5383,6 +5401,39 @@ impl App {
         }
     }
 
+    /// Return cached message lines, rebuilding only when content has changed.
+    ///
+    /// `build_message_lines` allocates heavily (hundreds of `Line<'static>` per call)
+    /// and calls `syntect` for code blocks.  Rebuilding on every 50 ms tick was the
+    /// primary cause of CPU churn / apparent "freeze" during long tool sessions.
+    fn get_or_build_message_lines(
+        &mut self,
+        theme: &Theme,
+        max_width: usize,
+    ) -> &[ratatui::text::Line<'static>] {
+        let streaming_snapshot = self.streaming_text.clone();
+        // Also track whether any agent streaming texts are active (relay mode)
+        let has_agent_streams = !self.streaming_agent_texts.is_empty();
+        let needs_rebuild = self.cached_messages_len != self.messages.len()
+            || self.cached_max_width != max_width
+            || self.cached_streaming_snapshot != streaming_snapshot
+            || self.cached_processing != self.is_processing
+            || self.cached_autochat_running != self.autochat_running
+            // Rebuild when agent streams start or stop (content changes every tick while streaming)
+            || (has_agent_streams || self.is_processing);
+
+        if needs_rebuild {
+            self.cached_message_lines = build_message_lines(self, theme, max_width);
+            self.cached_messages_len = self.messages.len();
+            self.cached_max_width = max_width;
+            self.cached_streaming_snapshot = streaming_snapshot;
+            self.cached_processing = self.is_processing;
+            self.cached_autochat_running = self.autochat_running;
+        }
+
+        &self.cached_message_lines
+    }
+
     fn flush_chat_archive(&mut self) {
         let Some(path) = self.chat_archive_path.clone() else {
             self.archived_message_count = self.messages.len();
@@ -5624,11 +5675,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
         terminal.draw(|f| ui(f, &mut app, &theme))?;
 
-        // Update max_scroll estimate for scroll key handlers
-        // This needs to roughly match what ui() calculates
+        // Update max_scroll for scroll key handlers using the actual cached line count.
+        // Previously this used `messages.len() * 4` (a rough estimate) which caused
+        // scroll positions to be off.  The cache is populated by ui() on each draw,
+        // so by the time we get here it reflects the true rendered height.
         let terminal_height = terminal.size()?.height.saturating_sub(6) as usize;
-        let estimated_lines = app.messages.len() * 4; // rough estimate
-        app.last_max_scroll = estimated_lines.saturating_sub(terminal_height);
+        let actual_lines = app.cached_message_lines.len();
+        app.last_max_scroll = actual_lines.saturating_sub(terminal_height);
 
         // Drain all pending async responses
         if let Some(mut rx) = app.response_rx.take() {
@@ -6646,14 +6699,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 // Vim-style scrolling (Alt + j/k)
                 KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
                     if app.scroll < SCROLL_BOTTOM {
-                        app.scroll = app.scroll.saturating_add(1);
+                        let next = app.scroll.saturating_add(1);
+                        app.scroll = if next >= app.last_max_scroll { SCROLL_BOTTOM } else { next };
                     }
                 }
                 KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
                     if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll; // Leave auto-scroll mode
+                        app.scroll = app.last_max_scroll.saturating_sub(1);
+                    } else {
+                        app.scroll = app.scroll.saturating_sub(1);
                     }
-                    app.scroll = app.scroll.saturating_sub(1);
                 }
 
                 // Command history
@@ -6680,15 +6735,17 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
                     // Half page down
                     if app.scroll < SCROLL_BOTTOM {
-                        app.scroll = app.scroll.saturating_add(5);
+                        let next = app.scroll.saturating_add(5);
+                        app.scroll = if next >= app.last_max_scroll { SCROLL_BOTTOM } else { next };
                     }
                 }
                 KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
                     // Half page up
                     if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll;
+                        app.scroll = app.last_max_scroll.saturating_sub(5);
+                    } else {
+                        app.scroll = app.scroll.saturating_sub(5);
                     }
-                    app.scroll = app.scroll.saturating_sub(5);
                 }
 
                 // Text input
@@ -6758,26 +6815,50 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
 
                 // Scroll (normalize first to handle SCROLL_BOTTOM sentinel)
+                //
+                // Design:
+                // - app.scroll == SCROLL_BOTTOM  →  "stick to bottom" (auto-scroll) mode
+                // - app.scroll < SCROLL_BOTTOM   →  manual position (0 = top)
+                // - last_max_scroll is the max valid manual scroll position from the
+                //   previous frame; it's a best-effort hint used only by key handlers.
                 KeyCode::Up => {
                     if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll; // Leave auto-scroll mode
+                        // Leave auto-scroll: jump to the actual bottom then go up 1
+                        app.scroll = app.last_max_scroll.saturating_sub(1);
+                    } else {
+                        app.scroll = app.scroll.saturating_sub(1);
                     }
-                    app.scroll = app.scroll.saturating_sub(1);
                 }
                 KeyCode::Down => {
-                    if app.scroll < SCROLL_BOTTOM {
-                        app.scroll = app.scroll.saturating_add(1);
+                    if app.scroll >= SCROLL_BOTTOM {
+                        // Already at bottom, nothing to do
+                    } else {
+                        let next = app.scroll.saturating_add(1);
+                        // If we've hit or passed max, snap into auto-scroll mode
+                        if next >= app.last_max_scroll {
+                            app.scroll = SCROLL_BOTTOM;
+                        } else {
+                            app.scroll = next;
+                        }
                     }
                 }
                 KeyCode::PageUp => {
                     if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll;
+                        app.scroll = app.last_max_scroll.saturating_sub(10);
+                    } else {
+                        app.scroll = app.scroll.saturating_sub(10);
                     }
-                    app.scroll = app.scroll.saturating_sub(10);
                 }
                 KeyCode::PageDown => {
-                    if app.scroll < SCROLL_BOTTOM {
-                        app.scroll = app.scroll.saturating_add(10);
+                    if app.scroll >= SCROLL_BOTTOM {
+                        // Already at bottom
+                    } else {
+                        let next = app.scroll.saturating_add(10);
+                        if next >= app.last_max_scroll {
+                            app.scroll = SCROLL_BOTTOM;
+                        } else {
+                            app.scroll = next;
+                        }
                     }
                 }
 
@@ -7340,6 +7421,13 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         return;
     }
 
+    // Build message lines once here — shared by both webview and classic layouts.
+    // This avoids the per-frame allocation cost of calling build_message_lines twice.
+    // We use a conservative width estimate (terminal width - 8) for the cache key;
+    // the exact width is refined per-layout below but the content rarely changes.
+    let prefetch_width = f.area().width.saturating_sub(8) as usize;
+    let _ = app.get_or_build_message_lines(theme, prefetch_width);
+
     if app.chat_layout == ChatLayoutMode::Webview {
         if render_webview_chat(f, app, theme) {
             render_help_overlay_if_needed(f, app, theme);
@@ -7374,12 +7462,15 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
     let max_width = messages_area.width.saturating_sub(4) as usize;
-    let message_lines = build_message_lines(app, theme, max_width);
+    // Use cached lines — only rebuilt when messages/state actually changes.
+    let message_lines = app.get_or_build_message_lines(theme, max_width).to_vec();
 
     // Calculate scroll position
     let total_lines = message_lines.len();
     let visible_lines = messages_area.height.saturating_sub(2) as usize;
     let max_scroll = total_lines.saturating_sub(visible_lines);
+    // Keep last_max_scroll in sync so key handlers are always accurate.
+    app.last_max_scroll = max_scroll;
     // SCROLL_BOTTOM means "stick to bottom", otherwise clamp to max_scroll
     let scroll = if app.scroll >= SCROLL_BOTTOM {
         max_scroll
@@ -7404,7 +7495,9 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"));
 
-        let mut scrollbar_state = ScrollbarState::new(total_lines).position(scroll);
+        // Scrollbar: content_length = max_scroll+1 so the thumb tracks the
+        // scroll position correctly and reaches the very bottom.
+        let mut scrollbar_state = ScrollbarState::new(max_scroll + 1).position(scroll);
 
         let scrollbar_area = Rect::new(
             messages_area.right() - 1,
@@ -7456,9 +7549,14 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         .wrap(Wrap { trim: false });
     f.render_widget(input, chunks[1]);
 
-    // Cursor
+    // Cursor: convert byte offset to display column (char count).
+    // cursor_position is a byte index; rendering as a column directly
+    // causes the cursor to appear at the wrong position for multi-byte chars.
+    let cursor_col = app.input[..app.cursor_position.min(app.input.len())]
+        .chars()
+        .count() as u16;
     f.set_cursor_position((
-        chunks[1].x + app.cursor_position as u16 + 1,
+        chunks[1].x + cursor_col + 1,
         chunks[1].y + 1,
     ));
 
@@ -7501,7 +7599,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     render_help_overlay_if_needed(f, app, theme);
 }
 
-fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
+fn render_webview_chat(f: &mut Frame, app: &mut App, theme: &Theme) -> bool {
     let area = f.area();
     if area.width < 90 || area.height < 18 {
         return false;
@@ -7535,7 +7633,11 @@ fn render_webview_chat(f: &mut Frame, app: &App, theme: &Theme) -> bool {
         .split(main_chunks[1]);
 
     render_webview_sidebar(f, app, theme, body_chunks[0]);
-    render_webview_chat_center(f, app, theme, body_chunks[1]);
+    // Build lines using cache before passing to the immutable render fn
+    let center_area = body_chunks[1];
+    let center_max_width = center_area.width.saturating_sub(4) as usize;
+    let center_lines = app.get_or_build_message_lines(theme, center_max_width).to_vec();
+    render_webview_chat_center(f, app, theme, center_area, &center_lines);
     if app.show_inspector && body_chunks.len() > 2 {
         render_webview_inspector(f, app, theme, body_chunks[2]);
     }
@@ -7967,7 +8069,13 @@ fn render_webview_sidebar(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
     f.render_widget(sessions_panel, sidebar_chunks[1]);
 }
 
-fn render_webview_chat_center(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+fn render_webview_chat_center(
+    f: &mut Frame,
+    app: &App,
+    theme: &Theme,
+    area: Rect,
+    message_lines: &[ratatui::text::Line<'static>],
+) {
     let messages_area = area;
     let focused_suffix = app
         .active_spawned_agent
@@ -7979,9 +8087,7 @@ fn render_webview_chat_center(f: &mut Frame, app: &App, theme: &Theme, area: Rec
         .title(format!(" Chat [{}{}] ", app.current_agent, focused_suffix))
         .border_style(Style::default().fg(theme.border_color.to_color()));
 
-    let max_width = messages_area.width.saturating_sub(4) as usize;
-    let message_lines = build_message_lines(app, theme, max_width);
-
+    // message_lines is pre-built by the caller via the App cache.
     let total_lines = message_lines.len();
     let visible_lines = messages_area.height.saturating_sub(2) as usize;
     let max_scroll = total_lines.saturating_sub(visible_lines);
@@ -8006,7 +8112,7 @@ fn render_webview_chat_center(f: &mut Frame, app: &App, theme: &Theme, area: Rec
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"));
 
-        let mut scrollbar_state = ScrollbarState::new(total_lines).position(scroll);
+        let mut scrollbar_state = ScrollbarState::new(max_scroll + 1).position(scroll);
 
         let scrollbar_area = Rect::new(
             messages_area.right() - 1,
@@ -8316,7 +8422,11 @@ fn render_webview_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
         .wrap(Wrap { trim: false });
     f.render_widget(input, area);
 
-    f.set_cursor_position((area.x + app.cursor_position as u16 + 1, area.y + 1));
+    // Cursor: convert byte offset to display column (char count).
+    let cursor_col = app.input[..app.cursor_position.min(app.input.len())]
+        .chars()
+        .count() as u16;
+    f.set_cursor_position((area.x + cursor_col + 1, area.y + 1));
 }
 
 fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'static>> {
