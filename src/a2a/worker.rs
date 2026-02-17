@@ -775,6 +775,10 @@ async fn register_worker(
     let hostname = std::env::var("HOSTNAME")
         .or_else(|_| std::env::var("COMPUTERNAME"))
         .unwrap_or_else(|_| "unknown".to_string());
+    let k8s_node_name = std::env::var("K8S_NODE_NAME")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
 
     // Collect agent definitions from the builtin registry
     let registry = crate::agent::AgentRegistry::with_builtins();
@@ -802,6 +806,7 @@ async fn register_worker(
             "name": name,
             "capabilities": WORKER_CAPABILITIES,
             "hostname": hostname,
+            "k8s_node_name": k8s_node_name,
             "models": models_array,
             "workspaces": codebases,
             "agents": agent_defs,
