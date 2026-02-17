@@ -182,7 +182,7 @@ async fn worker_status(State(state): State<WorkerServerState>) -> Json<WorkerSta
 async fn receive_task(
     State(state): State<WorkerServerState>,
     Json(payload): Json<serde_json::Value>,
-) -> (StatusCode, String) {
+) -> StatusCode {
     // Extract task_id from CloudEvent payload
     let task_id = payload
         .get("task_id")
@@ -195,7 +195,9 @@ async fn receive_task(
     // Notify the worker loop to pick up this task
     state.notify_new_task(task_id).await;
 
-    (StatusCode::ACCEPTED, format!("task {} received", task_id))
+    // CloudEvent subscribers should return an empty 2xx response body.
+    // Non-empty non-CloudEvent payloads trigger retries in Knative Broker Filter.
+    StatusCode::ACCEPTED
 }
 
 /// Response types

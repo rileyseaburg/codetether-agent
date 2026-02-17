@@ -776,6 +776,26 @@ async fn register_worker(
         .or_else(|_| std::env::var("COMPUTERNAME"))
         .unwrap_or_else(|_| "unknown".to_string());
 
+    // Collect agent definitions from the builtin registry
+    let registry = crate::agent::AgentRegistry::with_builtins();
+    let agent_defs: Vec<serde_json::Value> = registry
+        .list()
+        .iter()
+        .map(|info| {
+            serde_json::json!({
+                "name": info.name,
+                "description": info.description,
+                "mode": format!("{:?}", info.mode).to_lowercase(),
+                "native": info.native,
+                "hidden": info.hidden,
+                "model": info.model,
+                "temperature": info.temperature,
+                "top_p": info.top_p,
+                "max_steps": info.max_steps,
+            })
+        })
+        .collect();
+
     let res = req
         .json(&serde_json::json!({
             "worker_id": worker_id,
@@ -784,6 +804,7 @@ async fn register_worker(
             "hostname": hostname,
             "models": models_array,
             "workspaces": codebases,
+            "agents": agent_defs,
         }))
         .send()
         .await?;

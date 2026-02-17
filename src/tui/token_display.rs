@@ -81,6 +81,7 @@ impl TokenDisplay {
 
         let total_tokens = global_snapshot.totals.total();
         let session_cost = self.calculate_session_cost();
+        let tps_display = self.get_tps_display();
 
         let mut spans = Vec::new();
 
@@ -116,6 +117,14 @@ impl TokenDisplay {
             format!(" Tokens: {} ", total_tokens),
             Style::default().fg(theme.timestamp_color.to_color()),
         ));
+
+        // TPS (tokens per second)
+        if let Some(tps) = tps_display {
+            spans.push(Span::styled(
+                format!(" TPS: {} ", tps),
+                Style::default().fg(Color::Cyan),
+            ));
+        }
 
         // Cost
         spans.push(Span::styled(
@@ -173,8 +182,42 @@ impl TokenDisplay {
         None
     }
 
+    /// Get TPS (tokens per second) display string from provider metrics
+    fn get_tps_display(&self) -> Option<String> {
+        use crate::telemetry::PROVIDER_METRICS;
+
+        let snapshots = PROVIDER_METRICS.all_snapshots();
+        if snapshots.is_empty() {
+            return None;
+        }
+
+        // Find the provider with the most recent activity
+        let most_active = snapshots
+            .iter()
+            .filter(|s| s.avg_tps > 0.0)
+            .max_by(|a, b| {
+                a.total_output_tokens
+                    .partial_cmp(&b.total_output_tokens)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })?;
+
+        // Format TPS nicely
+        let tps = most_active.avg_tps;
+        let formatted = if tps >= 100.0 {
+            format!("{:.0}", tps)
+        } else if tps >= 10.0 {
+            format!("{:.1}", tps)
+        } else {
+            format!("{:.2}", tps)
+        };
+
+        Some(formatted)
+    }
+
     /// Create detailed token usage display
     pub fn create_detailed_display(&self) -> Vec<String> {
+        use crate::telemetry::PROVIDER_METRICS;
+
         let mut lines = Vec::new();
         let global_snapshot = TOKEN_USAGE.global_snapshot();
         let model_snapshots = TOKEN_USAGE.model_snapshots();
@@ -233,6 +276,36 @@ impl TokenDisplay {
                     "    ... and {} more models",
                     model_snapshots.len() - 5
                 ));
+            }
+            lines.push("".to_string());
+        }
+
+        // Provider performance metrics (TPS, latency)
+        let provider_snapshots = PROVIDER_METRICS.all_snapshots();
+        if !provider_snapshots.is_empty() {
+            lines.push("  PROVIDER PERFORMANCE:".to_string());
+
+            for snapshot in provider_snapshots.iter().take(5) {
+                if snapshot.request_count > 0 {
+                    lines.push(format!(
+                        "    {}: {:.1} avg TPS | {:.0}ms avg latency | {} reqs",
+                        snapshot.provider,
+                        snapshot.avg_tps,
+                        snapshot.avg_latency_ms,
+                        snapshot.request_count
+                    ));
+
+                    // Show p50/p95 if we have enough requests
+                    if snapshot.request_count >= 5 {
+                        lines.push(format!(
+                            "      p50: {:.1} TPS / {:.0}ms | p95: {:.1} TPS / {:.0}ms",
+                            snapshot.p50_tps,
+                            snapshot.p50_latency_ms,
+                            snapshot.p95_tps,
+                            snapshot.p95_latency_ms
+                        ));
+                    }
+                }
             }
             lines.push("".to_string());
         }

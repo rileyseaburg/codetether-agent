@@ -410,9 +410,23 @@ The terminal UI includes a webview layout, model selector, session picker, swarm
 | `google` | `gemini-2.5-pro` | Google AI |
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |
+| `vertex-glm` | `zai-org/glm-5-maas` | GLM-5 via Google Cloud Vertex AI (service account JWT auth) |
 | `bedrock` | — | Amazon Bedrock Converse API |
 
 All keys stored in Vault at `secret/codetether/providers/<name>`.
+
+#### Vertex GLM Setup
+
+The `vertex-glm` provider uses a GCP service account for authentication (no `gcloud` CLI required). Store the service account JSON key and project ID in Vault:
+
+```bash
+SA_JSON=$(cat /path/to/service-account-key.json)
+vault kv put secret/codetether/providers/vertex-glm \
+  project_id="your-gcp-project" \
+  service_account_json="$SA_JSON"
+```
+
+The service account needs the **Vertex AI User** role (`roles/aiplatform.user`). Tokens are cached and auto-refreshed.
 
 ## Tools
 

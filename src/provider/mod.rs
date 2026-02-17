@@ -10,6 +10,7 @@ pub mod metrics;
 pub mod models;
 pub mod moonshot;
 pub mod openai;
+pub mod openai_codex;
 pub mod openrouter;
 pub mod stepfun;
 pub mod vertex_glm;
@@ -333,6 +334,61 @@ impl ProviderRegistry {
                     continue;
                 }
 
+                // Handle Vertex AI GLM before api_key extraction since it uses
+                // service account JWT auth (no api_key needed).
+                if matches!(provider_id.as_str(), "vertex-glm" | "vertex-ai" | "gcp-glm") {
+                    let sa_json = secrets
+                        .extra
+                        .get("service_account_json")
+                        .and_then(|v| v.as_str());
+
+                    if let Some(sa_json) = sa_json {
+                        let project_id = secrets
+                            .extra
+                            .get("project_id")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| secrets.extra.get("projectId").and_then(|v| v.as_str()))
+                            .map(|s| s.to_string());
+
+                        match vertex_glm::VertexGlmProvider::new(sa_json, project_id) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init vertex-glm: {e}"),
+                        }
+                    } else {
+                        tracing::warn!(
+                            "vertex-glm provider requires service_account_json in Vault secrets"
+                        );
+                    }
+                    continue;
+                }
+
+                // Handle OpenAI Codex (ChatGPT subscription) before api_key extraction
+                // since it uses OAuth credentials (access_token, refresh_token, expires_at)
+                if matches!(provider_id.as_str(), "openai-codex" | "codex" | "chatgpt") {
+                    let access_token = secrets.extra.get("access_token").and_then(|v| v.as_str());
+                    let refresh_token = secrets.extra.get("refresh_token").and_then(|v| v.as_str());
+                    let expires_at = secrets.extra.get("expires_at").and_then(|v| v.as_u64());
+
+                    match (access_token, refresh_token, expires_at) {
+                        (Some(access), Some(refresh), Some(expires)) => {
+                            let creds = openai_codex::OAuthCredentials {
+                                access_token: access.to_string(),
+                                refresh_token: refresh.to_string(),
+                                expires_at: expires,
+                            };
+                            let provider =
+                                openai_codex::OpenAiCodexProvider::from_credentials(creds);
+                            registry.register(Arc::new(provider));
+                        }
+                        _ => {
+                            tracing::warn!(
+                                "openai-codex provider requires access_token, refresh_token, and expires_at in Vault secrets"
+                            );
+                        }
+                    }
+                    continue;
+                }
+
                 let api_key = match secrets.api_key {
                     Some(key) => key,
                     None => continue,
@@ -436,48 +492,7 @@ impl ProviderRegistry {
                             Err(e) => tracing::warn!("Failed to init zai: {}", e),
                         }
                     }
-                    // Vertex AI GLM-5 via MaaS endpoint (GCP authentication)
-                    "vertex-glm" | "vertex-ai" | "gcp-glm" => {
-                        let project_id = secrets
-                            .extra
-                            .get("project_id")
-                            .and_then(|v| v.as_str())
-                            .or_else(|| secrets.extra.get("projectId").and_then(|v| v.as_str()))
-                            .map(|s| s.to_string());
 
-                        let service_account_key = secrets
-                            .extra
-                            .get("service_account_key")
-                            .and_then(|v| v.as_str())
-                            .or_else(|| {
-                                secrets
-                                    .extra
-                                    .get("serviceAccountKey")
-                                    .and_then(|v| v.as_str())
-                            })
-                            .map(|s| s.to_string());
-
-                        match (project_id, service_account_key) {
-                            (Some(pid), sak) => {
-                                let result = if let Some(key_path) = sak {
-                                    vertex_glm::VertexGlmProvider::with_service_account(
-                                        pid, key_path,
-                                    )
-                                } else {
-                                    vertex_glm::VertexGlmProvider::new(pid)
-                                };
-                                match result {
-                                    Ok(p) => registry.register(Arc::new(p)),
-                                    Err(e) => tracing::warn!("Failed to init vertex-glm: {}", e),
-                                }
-                            }
-                            (None, _) => {
-                                tracing::warn!(
-                                    "vertex-glm provider requires project_id in Vault secrets"
-                                );
-                            }
-                        }
-                    }
                     // Cerebras - OpenAI-compatible fast inference
                     "cerebras" => {
                         let base_url = secrets

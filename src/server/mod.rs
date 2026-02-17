@@ -28,10 +28,10 @@ use axum::{
     http::{Request, StatusCode},
     middleware::{self, Next},
     response::sse::{Event, KeepAlive, Sse},
-    response::{Json, Response},
+    response::{IntoResponse, Json, Response},
     routing::{get, post},
 };
-use futures::stream;
+use futures::{StreamExt, future::join_all, stream};
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -263,6 +263,17 @@ const POLICY_RULES: &[PolicyRule] = &[
         pattern: "/v1/knative/",
         methods: None,
         permission: "",
+    },
+    // OpenAI-compatible model discovery and chat completions
+    PolicyRule {
+        pattern: "/v1/models",
+        methods: Some(&["GET"]),
+        permission: "agent:read",
+    },
+    PolicyRule {
+        pattern: "/v1/chat/completions",
+        methods: Some(&["POST"]),
+        permission: "agent:execute",
     },
     // Tool registry — read/write
     PolicyRule {
@@ -699,6 +710,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/api/config", get(get_config))
         .route("/api/provider", get(list_providers))
         .route("/api/agent", get(list_agents))
+        // OpenAI-compatible APIs
+        .route("/v1/models", get(list_openai_models))
+        .route("/v1/chat/completions", post(openai_chat_completions))
         // Perpetual cognition APIs
         .route("/v1/cognition/start", post(start_cognition))
         .route("/v1/cognition/stop", post(stop_cognition))
@@ -1128,6 +1142,793 @@ async fn list_providers() -> Json<Vec<String>> {
 async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
     let registry = crate::agent::AgentRegistry::with_builtins();
     Json(registry.list().into_iter().cloned().collect())
+}
+
+type OpenAiApiError = (StatusCode, Json<serde_json::Value>);
+type OpenAiApiResult<T> = Result<T, OpenAiApiError>;
+
+#[derive(Debug, Deserialize)]
+struct OpenAiChatCompletionRequest {
+    model: String,
+    messages: Vec<OpenAiRequestMessage>,
+    #[serde(default)]
+    tools: Vec<OpenAiRequestTool>,
+    temperature: Option<f32>,
+    top_p: Option<f32>,
+    max_tokens: Option<usize>,
+    max_completion_tokens: Option<usize>,
+    stop: Option<OpenAiStop>,
+    stream: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum OpenAiStop {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiRequestMessage {
+    role: String,
+    #[serde(default)]
+    content: Option<serde_json::Value>,
+    #[serde(default)]
+    tool_call_id: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<OpenAiRequestToolCall>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiRequestToolCall {
+    id: String,
+    #[serde(rename = "type", default = "default_function_type")]
+    kind: String,
+    function: OpenAiRequestToolCallFunction,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiRequestToolCallFunction {
+    name: String,
+    #[serde(default = "default_json_object_string")]
+    arguments: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiRequestTool {
+    #[serde(rename = "type", default = "default_function_type")]
+    kind: String,
+    function: OpenAiRequestToolDefinition,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAiRequestToolDefinition {
+    name: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default = "default_json_object")]
+    parameters: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiModelsResponse {
+    object: String,
+    data: Vec<OpenAiModel>,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiModel {
+    id: String,
+    object: String,
+    created: i64,
+    owned_by: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiChatCompletionResponse {
+    id: String,
+    object: String,
+    created: i64,
+    model: String,
+    choices: Vec<OpenAiChatCompletionChoice>,
+    usage: OpenAiUsage,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiChatCompletionChoice {
+    index: usize,
+    message: OpenAiChatCompletionMessage,
+    finish_reason: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiChatCompletionMessage {
+    role: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_calls: Option<Vec<OpenAiResponseToolCall>>,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiResponseToolCall {
+    id: String,
+    #[serde(rename = "type")]
+    kind: String,
+    function: OpenAiResponseToolCallFunction,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiResponseToolCallFunction {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenAiUsage {
+    prompt_tokens: usize,
+    completion_tokens: usize,
+    total_tokens: usize,
+}
+
+fn default_function_type() -> String {
+    "function".to_string()
+}
+
+fn default_json_object() -> serde_json::Value {
+    serde_json::json!({})
+}
+
+fn default_json_object_string() -> String {
+    "{}".to_string()
+}
+
+fn openai_error(
+    status: StatusCode,
+    message: impl Into<String>,
+    error_type: &str,
+    code: &str,
+) -> OpenAiApiError {
+    (
+        status,
+        Json(serde_json::json!({
+            "error": {
+                "message": message.into(),
+                "type": error_type,
+                "code": code,
+            }
+        })),
+    )
+}
+
+fn openai_bad_request(message: impl Into<String>) -> OpenAiApiError {
+    openai_error(
+        StatusCode::BAD_REQUEST,
+        message,
+        "invalid_request_error",
+        "invalid_request",
+    )
+}
+
+fn openai_internal_error(message: impl Into<String>) -> OpenAiApiError {
+    openai_error(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        message,
+        "server_error",
+        "internal_error",
+    )
+}
+
+fn canonicalize_provider_name(provider: &str) -> &str {
+    if provider == "zhipuai" {
+        "zai"
+    } else {
+        provider
+    }
+}
+
+fn normalize_model_reference(model: &str) -> String {
+    let trimmed = model.trim();
+    if let Some((provider, model_id)) = trimmed.split_once(':')
+        && !provider.is_empty()
+        && !model_id.is_empty()
+        && !trimmed.contains('/')
+    {
+        return format!("{provider}/{model_id}");
+    }
+    trimmed.to_string()
+}
+
+fn make_openai_model_id(provider: &str, model_id: &str) -> String {
+    let provider = canonicalize_provider_name(provider);
+    let trimmed = model_id.trim_start_matches('/');
+    if trimmed.starts_with(&format!("{provider}/")) {
+        trimmed.to_string()
+    } else {
+        format!("{provider}/{trimmed}")
+    }
+}
+
+fn parse_openai_content_part(value: &serde_json::Value) -> Option<crate::provider::ContentPart> {
+    let obj = value.as_object()?;
+    let part_type = obj
+        .get("type")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("text");
+
+    match part_type {
+        "text" | "input_text" => obj
+            .get("text")
+            .and_then(serde_json::Value::as_str)
+            .map(|text| crate::provider::ContentPart::Text {
+                text: text.to_string(),
+            }),
+        "image_url" => obj
+            .get("image_url")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|image| image.get("url"))
+            .and_then(serde_json::Value::as_str)
+            .map(|url| crate::provider::ContentPart::Image {
+                url: url.to_string(),
+                mime_type: None,
+            }),
+        _ => obj
+            .get("text")
+            .and_then(serde_json::Value::as_str)
+            .map(|text| crate::provider::ContentPart::Text {
+                text: text.to_string(),
+            }),
+    }
+}
+
+fn parse_openai_content_parts(
+    content: &Option<serde_json::Value>,
+) -> Vec<crate::provider::ContentPart> {
+    let Some(value) = content else {
+        return Vec::new();
+    };
+
+    match value {
+        serde_json::Value::String(text) => {
+            vec![crate::provider::ContentPart::Text { text: text.clone() }]
+        }
+        serde_json::Value::Array(parts) => {
+            parts.iter().filter_map(parse_openai_content_part).collect()
+        }
+        serde_json::Value::Object(_) => parse_openai_content_part(value).into_iter().collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn parse_openai_tool_content(content: &Option<serde_json::Value>) -> String {
+    parse_openai_content_parts(content)
+        .into_iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text } => Some(text),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn convert_openai_messages(
+    messages: &[OpenAiRequestMessage],
+) -> OpenAiApiResult<Vec<crate::provider::Message>> {
+    let mut converted = Vec::with_capacity(messages.len());
+
+    for (index, message) in messages.iter().enumerate() {
+        let role = message.role.to_ascii_lowercase();
+        match role.as_str() {
+            "system" | "user" => {
+                let content = parse_openai_content_parts(&message.content);
+                if content.is_empty() {
+                    return Err(openai_bad_request(format!(
+                        "messages[{index}] must include text content"
+                    )));
+                }
+
+                converted.push(crate::provider::Message {
+                    role: if role == "system" {
+                        crate::provider::Role::System
+                    } else {
+                        crate::provider::Role::User
+                    },
+                    content,
+                });
+            }
+            "assistant" => {
+                let mut content = parse_openai_content_parts(&message.content);
+                for tool_call in &message.tool_calls {
+                    if tool_call.kind != "function" {
+                        return Err(openai_bad_request(format!(
+                            "messages[{index}].tool_calls only support `function`"
+                        )));
+                    }
+                    if tool_call.function.name.trim().is_empty() {
+                        return Err(openai_bad_request(format!(
+                            "messages[{index}].tool_calls[].function.name is required"
+                        )));
+                    }
+
+                    content.push(crate::provider::ContentPart::ToolCall {
+                        id: tool_call.id.clone(),
+                        name: tool_call.function.name.clone(),
+                        arguments: tool_call.function.arguments.clone(),
+                    });
+                }
+
+                if content.is_empty() {
+                    return Err(openai_bad_request(format!(
+                        "messages[{index}] must include `content` or `tool_calls` for assistant role"
+                    )));
+                }
+
+                converted.push(crate::provider::Message {
+                    role: crate::provider::Role::Assistant,
+                    content,
+                });
+            }
+            "tool" => {
+                let tool_call_id = message
+                    .tool_call_id
+                    .as_ref()
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| {
+                        openai_bad_request(format!(
+                            "messages[{index}].tool_call_id is required for tool role"
+                        ))
+                    })?
+                    .to_string();
+
+                converted.push(crate::provider::Message {
+                    role: crate::provider::Role::Tool,
+                    content: vec![crate::provider::ContentPart::ToolResult {
+                        tool_call_id,
+                        content: parse_openai_tool_content(&message.content),
+                    }],
+                });
+            }
+            _ => {
+                return Err(openai_bad_request(format!(
+                    "messages[{index}].role `{}` is not supported",
+                    message.role
+                )));
+            }
+        }
+    }
+
+    Ok(converted)
+}
+
+fn convert_openai_tools(
+    tools: &[OpenAiRequestTool],
+) -> OpenAiApiResult<Vec<crate::provider::ToolDefinition>> {
+    let mut converted = Vec::with_capacity(tools.len());
+
+    for (index, tool) in tools.iter().enumerate() {
+        if tool.kind != "function" {
+            return Err(openai_bad_request(format!(
+                "tools[{index}].type `{}` is not supported",
+                tool.kind
+            )));
+        }
+        if tool.function.name.trim().is_empty() {
+            return Err(openai_bad_request(format!(
+                "tools[{index}].function.name is required"
+            )));
+        }
+
+        converted.push(crate::provider::ToolDefinition {
+            name: tool.function.name.clone(),
+            description: tool.function.description.clone(),
+            parameters: tool.function.parameters.clone(),
+        });
+    }
+
+    Ok(converted)
+}
+
+fn convert_finish_reason(reason: crate::provider::FinishReason) -> &'static str {
+    match reason {
+        crate::provider::FinishReason::Stop => "stop",
+        crate::provider::FinishReason::Length => "length",
+        crate::provider::FinishReason::ToolCalls => "tool_calls",
+        crate::provider::FinishReason::ContentFilter => "content_filter",
+        crate::provider::FinishReason::Error => "error",
+    }
+}
+
+fn convert_response_message(
+    message: &crate::provider::Message,
+) -> (Option<String>, Option<Vec<OpenAiResponseToolCall>>) {
+    let mut texts = Vec::new();
+    let mut tool_calls = Vec::new();
+
+    for part in &message.content {
+        match part {
+            crate::provider::ContentPart::Text { text } => {
+                if !text.is_empty() {
+                    texts.push(text.clone());
+                }
+            }
+            crate::provider::ContentPart::ToolCall {
+                id,
+                name,
+                arguments,
+            } => {
+                tool_calls.push(OpenAiResponseToolCall {
+                    id: id.clone(),
+                    kind: "function".to_string(),
+                    function: OpenAiResponseToolCallFunction {
+                        name: name.clone(),
+                        arguments: arguments.clone(),
+                    },
+                });
+            }
+            _ => {}
+        }
+    }
+
+    let content = if texts.is_empty() {
+        None
+    } else {
+        Some(texts.join("\n"))
+    };
+    let tool_calls = if tool_calls.is_empty() {
+        None
+    } else {
+        Some(tool_calls)
+    };
+
+    (content, tool_calls)
+}
+
+fn openai_stream_chunk(
+    id: &str,
+    created: i64,
+    model: &str,
+    delta: serde_json::Value,
+    finish_reason: Option<&str>,
+) -> serde_json::Value {
+    let finish_reason = finish_reason
+        .map(|value| serde_json::Value::String(value.to_string()))
+        .unwrap_or(serde_json::Value::Null);
+
+    serde_json::json!({
+        "id": id,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [{
+            "index": 0,
+            "delta": delta,
+            "finish_reason": finish_reason,
+        }]
+    })
+}
+
+fn openai_stream_event(payload: &serde_json::Value) -> Event {
+    Event::default().data(payload.to_string())
+}
+
+async fn list_openai_models() -> OpenAiApiResult<Json<OpenAiModelsResponse>> {
+    let registry = crate::provider::ProviderRegistry::from_vault()
+        .await
+        .map_err(|error| {
+            tracing::error!(error = %error, "Failed to load providers from Vault");
+            openai_internal_error(format!("failed to load providers: {error}"))
+        })?;
+
+    let model_futures = registry.list().into_iter().map(|provider_id| {
+        let provider_id = provider_id.to_string();
+        let provider = registry.get(&provider_id);
+
+        async move {
+            let Some(provider) = provider else {
+                return Vec::new();
+            };
+
+            let now = chrono::Utc::now().timestamp();
+            match provider.list_models().await {
+                Ok(models) => models
+                    .into_iter()
+                    .map(|model| OpenAiModel {
+                        id: make_openai_model_id(&provider_id, &model.id),
+                        object: "model".to_string(),
+                        created: now,
+                        owned_by: canonicalize_provider_name(&provider_id).to_string(),
+                    })
+                    .collect(),
+                Err(error) => {
+                    tracing::warn!(
+                        provider = %provider_id,
+                        error = %error,
+                        "Failed to list models for provider"
+                    );
+                    Vec::new()
+                }
+            }
+        }
+    });
+
+    let mut data: Vec<OpenAiModel> = join_all(model_futures)
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+    data.sort_by(|a, b| a.owned_by.cmp(&b.owned_by).then(a.id.cmp(&b.id)));
+
+    Ok(Json(OpenAiModelsResponse {
+        object: "list".to_string(),
+        data,
+    }))
+}
+
+async fn openai_chat_completions(
+    Json(req): Json<OpenAiChatCompletionRequest>,
+) -> Result<Response, OpenAiApiError> {
+    let is_stream = req.stream.unwrap_or(false);
+    if req.model.trim().is_empty() {
+        return Err(openai_bad_request("`model` is required"));
+    }
+    if req.messages.is_empty() {
+        return Err(openai_bad_request("`messages` must not be empty"));
+    }
+
+    let registry = crate::provider::ProviderRegistry::from_vault()
+        .await
+        .map_err(|error| {
+            tracing::error!(error = %error, "Failed to load providers from Vault");
+            openai_internal_error(format!("failed to load providers: {error}"))
+        })?;
+
+    let providers = registry.list();
+    if providers.is_empty() {
+        return Err(openai_error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "No providers are configured in Vault",
+            "server_error",
+            "no_providers",
+        ));
+    }
+
+    let normalized_model = normalize_model_reference(&req.model);
+    let (maybe_provider, model_id) = crate::provider::parse_model_string(&normalized_model);
+    let model_id = if maybe_provider.is_some() {
+        if model_id.trim().is_empty() {
+            return Err(openai_bad_request(
+                "Model must be in `provider/model` format",
+            ));
+        }
+        model_id.to_string()
+    } else {
+        req.model.trim().to_string()
+    };
+
+    let selected_provider = if let Some(provider_name) = maybe_provider {
+        let provider_name = canonicalize_provider_name(provider_name);
+        if providers.contains(&provider_name) {
+            provider_name.to_string()
+        } else {
+            return Err(openai_bad_request(format!(
+                "Provider `{provider_name}` is not configured in Vault"
+            )));
+        }
+    } else if providers.len() == 1 {
+        providers[0].to_string()
+    } else if providers.contains(&"openai") {
+        "openai".to_string()
+    } else {
+        return Err(openai_bad_request(
+            "When multiple providers are configured, use `provider/model`. See GET /v1/models.",
+        ));
+    };
+
+    let provider = registry.get(&selected_provider).ok_or_else(|| {
+        openai_internal_error(format!(
+            "Provider `{selected_provider}` was available but could not be loaded"
+        ))
+    })?;
+
+    let messages = convert_openai_messages(&req.messages)?;
+    let tools = convert_openai_tools(&req.tools)?;
+    let stop = match req.stop {
+        Some(OpenAiStop::Single(stop)) => vec![stop],
+        Some(OpenAiStop::Multiple(stops)) => stops,
+        None => Vec::new(),
+    };
+
+    let completion_request = crate::provider::CompletionRequest {
+        messages,
+        tools,
+        model: model_id.clone(),
+        temperature: req.temperature,
+        top_p: req.top_p,
+        max_tokens: req.max_completion_tokens.or(req.max_tokens),
+        stop,
+    };
+
+    let chat_id = format!("chatcmpl-{}", uuid::Uuid::new_v4());
+    let now = chrono::Utc::now().timestamp();
+    let openai_model = make_openai_model_id(&selected_provider, &model_id);
+
+    if is_stream {
+        let mut provider_stream =
+            provider
+                .complete_stream(completion_request)
+                .await
+                .map_err(|error| {
+                    tracing::warn!(
+                        provider = %selected_provider,
+                        model = %model_id,
+                        error = %error,
+                        "Streaming completion request failed"
+                    );
+                    openai_internal_error(error.to_string())
+                })?;
+
+        let stream_id = chat_id.clone();
+        let stream_model = openai_model.clone();
+        let event_stream = async_stream::stream! {
+            let mut tool_call_indices: HashMap<String, usize> = HashMap::new();
+            let mut next_tool_call_index = 0usize;
+            let mut saw_text = false;
+            let mut saw_tool_calls = false;
+
+            let role_chunk = openai_stream_chunk(
+                &stream_id,
+                now,
+                &stream_model,
+                serde_json::json!({ "role": "assistant" }),
+                None,
+            );
+            yield Ok::<Event, Infallible>(openai_stream_event(&role_chunk));
+
+            while let Some(chunk) = provider_stream.next().await {
+                match chunk {
+                    crate::provider::StreamChunk::Text(text) => {
+                        if text.is_empty() {
+                            continue;
+                        }
+                        saw_text = true;
+                        let content_chunk = openai_stream_chunk(
+                            &stream_id,
+                            now,
+                            &stream_model,
+                            serde_json::json!({ "content": text }),
+                            None,
+                        );
+                        yield Ok(openai_stream_event(&content_chunk));
+                    }
+                    crate::provider::StreamChunk::ToolCallStart { id, name } => {
+                        saw_tool_calls = true;
+                        let index = *tool_call_indices.entry(id.clone()).or_insert_with(|| {
+                            let value = next_tool_call_index;
+                            next_tool_call_index += 1;
+                            value
+                        });
+                        let tool_chunk = openai_stream_chunk(
+                            &stream_id,
+                            now,
+                            &stream_model,
+                            serde_json::json!({
+                                "tool_calls": [{
+                                    "index": index,
+                                    "id": id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": name,
+                                        "arguments": "",
+                                    }
+                                }]
+                            }),
+                            None,
+                        );
+                        yield Ok(openai_stream_event(&tool_chunk));
+                    }
+                    crate::provider::StreamChunk::ToolCallDelta { id, arguments_delta } => {
+                        if arguments_delta.is_empty() {
+                            continue;
+                        }
+                        saw_tool_calls = true;
+                        let index = *tool_call_indices.entry(id.clone()).or_insert_with(|| {
+                            let value = next_tool_call_index;
+                            next_tool_call_index += 1;
+                            value
+                        });
+                        let tool_delta_chunk = openai_stream_chunk(
+                            &stream_id,
+                            now,
+                            &stream_model,
+                            serde_json::json!({
+                                "tool_calls": [{
+                                    "index": index,
+                                    "id": id,
+                                    "type": "function",
+                                    "function": {
+                                        "arguments": arguments_delta,
+                                    }
+                                }]
+                            }),
+                            None,
+                        );
+                        yield Ok(openai_stream_event(&tool_delta_chunk));
+                    }
+                    crate::provider::StreamChunk::ToolCallEnd { .. } => {}
+                    crate::provider::StreamChunk::Done { .. } => {}
+                    crate::provider::StreamChunk::Error(error) => {
+                        let error_chunk = openai_stream_chunk(
+                            &stream_id,
+                            now,
+                            &stream_model,
+                            serde_json::json!({ "content": error }),
+                            Some("error"),
+                        );
+                        yield Ok(openai_stream_event(&error_chunk));
+                        yield Ok(Event::default().data("[DONE]"));
+                        return;
+                    }
+                }
+            }
+
+            let finish_reason = if saw_tool_calls && !saw_text {
+                "tool_calls"
+            } else {
+                "stop"
+            };
+            let final_chunk = openai_stream_chunk(
+                &stream_id,
+                now,
+                &stream_model,
+                serde_json::json!({}),
+                Some(finish_reason),
+            );
+            yield Ok(openai_stream_event(&final_chunk));
+            yield Ok(Event::default().data("[DONE]"));
+        };
+
+        return Ok(Sse::new(event_stream)
+            .keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
+            .into_response());
+    }
+
+    let completion = provider
+        .complete(completion_request)
+        .await
+        .map_err(|error| {
+            tracing::warn!(
+                provider = %selected_provider,
+                model = %model_id,
+                error = %error,
+                "Completion request failed"
+            );
+            openai_internal_error(error.to_string())
+        })?;
+
+    let (content, tool_calls) = convert_response_message(&completion.message);
+
+    Ok(Json(OpenAiChatCompletionResponse {
+        id: chat_id,
+        object: "chat.completion".to_string(),
+        created: now,
+        model: openai_model,
+        choices: vec![OpenAiChatCompletionChoice {
+            index: 0,
+            message: OpenAiChatCompletionMessage {
+                role: "assistant".to_string(),
+                content,
+                tool_calls,
+            },
+            finish_reason: convert_finish_reason(completion.finish_reason).to_string(),
+        }],
+        usage: OpenAiUsage {
+            prompt_tokens: completion.usage.prompt_tokens,
+            completion_tokens: completion.usage.completion_tokens,
+            total_tokens: completion.usage.total_tokens,
+        },
+    })
+    .into_response())
 }
 
 async fn start_cognition(
@@ -2248,7 +3049,7 @@ fn env_bool(name: &str, default: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::match_policy_rule;
+    use super::{match_policy_rule, normalize_model_reference};
 
     #[test]
     fn policy_prompt_session_requires_execute_permission() {
@@ -2266,5 +3067,25 @@ mod tests {
     fn policy_proposal_approval_requires_execute_permission() {
         let permission = match_policy_rule("/v1/cognition/proposals/p1/approve", "POST");
         assert_eq!(permission, Some("agent:execute"));
+    }
+
+    #[test]
+    fn policy_openai_models_requires_read_permission() {
+        let permission = match_policy_rule("/v1/models", "GET");
+        assert_eq!(permission, Some("agent:read"));
+    }
+
+    #[test]
+    fn policy_openai_chat_completions_requires_execute_permission() {
+        let permission = match_policy_rule("/v1/chat/completions", "POST");
+        assert_eq!(permission, Some("agent:execute"));
+    }
+
+    #[test]
+    fn normalize_model_reference_accepts_colon_format() {
+        assert_eq!(
+            normalize_model_reference("openai:gpt-4o"),
+            "openai/gpt-4o".to_string()
+        );
     }
 }
