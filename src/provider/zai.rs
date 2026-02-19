@@ -175,6 +175,17 @@ impl ZaiProvider {
     fn model_supports_tool_stream(model: &str) -> bool {
         model.contains("glm-5") || model.contains("glm-4.7") || model.contains("glm-4.6")
     }
+
+    fn preview_text(text: &str, max_chars: usize) -> &str {
+        if max_chars == 0 {
+            return "";
+        }
+        if let Some((idx, _)) = text.char_indices().nth(max_chars) {
+            &text[..idx]
+        } else {
+            text
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -412,7 +423,7 @@ impl Provider for ZaiProvider {
 
         let response: ZaiResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Z.AI response: {}",
-            &text[..text.len().min(200)]
+            Self::preview_text(&text, 200)
         ))?;
 
         let choice = response
@@ -713,5 +724,11 @@ mod tests {
         let parsed: Value = serde_json::from_str(args).expect("arguments must contain valid JSON");
 
         assert_eq!(parsed, json!({"input": "city=Beijing"}));
+    }
+
+    #[test]
+    fn preview_text_truncates_on_char_boundary() {
+        let text = "a😀b";
+        assert_eq!(ZaiProvider::preview_text(text, 2), "a😀");
     }
 }

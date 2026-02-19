@@ -50,6 +50,60 @@ impl BashTool {
     }
 }
 
+fn interactive_auth_risk_reason(command: &str) -> Option<&'static str> {
+    let lower = command.to_ascii_lowercase();
+
+    let has_sudo = lower.starts_with("sudo ")
+        || lower.contains(";sudo ")
+        || lower.contains("&& sudo ")
+        || lower.contains("|| sudo ")
+        || lower.contains("| sudo ");
+    let sudo_non_interactive =
+        lower.contains("sudo -n") || lower.contains("sudo --non-interactive");
+    if has_sudo && !sudo_non_interactive {
+        return Some("Command uses sudo without non-interactive mode (-n).");
+    }
+
+    let has_ssh_family = lower.starts_with("ssh ")
+        || lower.contains(";ssh ")
+        || lower.starts_with("scp ")
+        || lower.contains(";scp ")
+        || lower.starts_with("sftp ")
+        || lower.contains(";sftp ")
+        || lower.contains(" rsync ");
+    if has_ssh_family && !lower.contains("batchmode=yes") {
+        return Some(
+            "SSH-family command may prompt for password/passphrase (missing -o BatchMode=yes).",
+        );
+    }
+
+    if lower.starts_with("su ")
+        || lower.contains(";su ")
+        || lower.contains(" passwd ")
+        || lower.starts_with("passwd")
+        || lower.contains("ssh-add")
+    {
+        return Some("Command is interactive and may require a password prompt.");
+    }
+
+    None
+}
+
+fn looks_like_auth_prompt(output: &str) -> bool {
+    let lower = output.to_ascii_lowercase();
+    [
+        "[sudo] password for",
+        "password:",
+        "passphrase",
+        "no tty present and no askpass program specified",
+        "a terminal is required to read the password",
+        "could not read password",
+        "permission denied (publickey,password",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+}
+
 #[async_trait]
 impl Tool for BashTool {
     fn id(&self) -> &str {
@@ -61,7 +115,7 @@ impl Tool for BashTool {
     }
 
     fn description(&self) -> &str {
-        "bash(command: string, cwd?: string, timeout?: int) - Execute a shell command. Commands run in a bash shell with the current working directory."
+        "bash(command: string, cwd?: string, timeout?: int) - Execute a non-interactive shell command. Commands run in a bash shell with the current working directory."
     }
 
     fn parameters(&self) -> Value {
@@ -106,6 +160,21 @@ impl Tool for BashTool {
         };
         let cwd = args["cwd"].as_str();
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
+
+        if let Some(reason) = interactive_auth_risk_reason(command) {
+            return Ok(ToolResult::structured_error(
+                "INTERACTIVE_AUTH_BLOCKED",
+                "bash",
+                &format!(
+                    "{reason} Bash tool runs non-interactively in TUI and cannot accept password prompts."
+                ),
+                None,
+                Some(json!({
+                    "command": "sudo -n <command>",
+                    "hint": "Use non-interactive flags and passwordless auth (or run the command manually outside TUI)."
+                })),
+            ));
+        }
 
         // Sandboxed execution path: restricted env, resource limits, audit logged
         if self.sandboxed {
@@ -206,8 +275,14 @@ impl Tool for BashTool {
         let mut cmd = Command::new("bash");
         cmd.arg("-c")
             .arg(command)
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stderr(Stdio::piped())
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .env("GCM_INTERACTIVE", "never")
+            .env("DEBIAN_FRONTEND", "noninteractive")
+            .env("SUDO_ASKPASS", "/bin/false")
+            .env("SSH_ASKPASS", "/bin/false");
 
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -230,6 +305,31 @@ impl Tool for BashTool {
                 };
 
                 let success = output.status.success();
+
+                if !success && looks_like_auth_prompt(&combined) {
+                    let duration = exec_start.elapsed();
+                    let exec = ToolExecution::start(
+                        "bash",
+                        json!({
+                            "command": command,
+                            "cwd": cwd,
+                            "timeout": timeout_secs,
+                        }),
+                    )
+                    .complete_error("Interactive auth prompt blocked".to_string(), duration);
+                    TOOL_EXECUTIONS.record(exec.clone());
+                    record_persistent(exec);
+                    return Ok(ToolResult::structured_error(
+                        "INTERACTIVE_AUTH_BLOCKED",
+                        "bash",
+                        "Command requested an interactive password/passphrase prompt, which is unsupported in TUI bash tool.",
+                        None,
+                        Some(json!({
+                            "hint": "Use non-interactive auth: sudo -n, ssh -o BatchMode=yes, or pre-configured credentials.",
+                            "command": command,
+                        })),
+                    ));
+                }
 
                 // Truncate if too long
                 let max_len = 50_000;
@@ -369,5 +469,22 @@ mod tests {
             .await
             .unwrap();
         assert!(!result.success);
+    }
+
+    #[test]
+    fn detects_interactive_auth_risk() {
+        assert!(interactive_auth_risk_reason("sudo apt update").is_some());
+        assert!(interactive_auth_risk_reason("ssh user@host").is_some());
+        assert!(interactive_auth_risk_reason("sudo -n apt update").is_none());
+        assert!(interactive_auth_risk_reason("ssh -o BatchMode=yes user@host").is_none());
+    }
+
+    #[test]
+    fn detects_auth_prompt_output() {
+        assert!(looks_like_auth_prompt("[sudo] password for riley:"));
+        assert!(looks_like_auth_prompt(
+            "sudo: a terminal is required to read the password"
+        ));
+        assert!(!looks_like_auth_prompt("command completed successfully"));
     }
 }

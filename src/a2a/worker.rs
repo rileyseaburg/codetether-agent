@@ -129,6 +129,9 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     tracing::info!("Server: {}", server);
     tracing::info!("Workspaces: {:?}", codebases);
 
+    // Wrap in shared mutex so background workspace-sync can add new local paths
+    let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
+
     let client = Client::new();
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
     let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
@@ -167,7 +170,10 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     }
 
     // Register worker
-    register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+    {
+        let codebases = shared_codebases.lock().await.clone();
+        register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+    }
 
     // Fetch pending tasks
     fetch_pending_tasks(
@@ -181,8 +187,19 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     )
     .await?;
 
+    // Start background task that polls server for new locally-present workspaces
+    let _workspace_sync_handle = start_workspace_sync(
+        client.clone(),
+        server.to_string(),
+        args.token.clone(),
+        shared_codebases.clone(),
+    );
+
     // Connect to SSE stream
     loop {
+        // Refresh codebases snapshot (background sync may have added new local paths)
+        let codebases = shared_codebases.lock().await.clone();
+
         // Re-register worker on each reconnection to report updated models/capabilities
         if let Err(e) =
             register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await
@@ -254,6 +271,9 @@ pub async fn run_with_state(
     tracing::info!("Server: {}", server);
     tracing::info!("Workspaces: {:?}", codebases);
 
+    // Wrap in shared mutex so background workspace-sync can add new local paths
+    let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
+
     let client = Client::new();
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
     let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
@@ -297,7 +317,10 @@ pub async fn run_with_state(
     }
 
     // Register worker
-    register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+    {
+        let codebases = shared_codebases.lock().await.clone();
+        register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+    }
 
     // Mark as connected
     server_state.set_connected(true).await;
@@ -314,8 +337,19 @@ pub async fn run_with_state(
     )
     .await?;
 
+    // Start background task that polls server for new locally-present workspaces
+    let _workspace_sync_handle = start_workspace_sync(
+        client.clone(),
+        server.to_string(),
+        args.token.clone(),
+        shared_codebases.clone(),
+    );
+
     // Connect to SSE stream
     loop {
+        // Refresh codebases snapshot (background sync may have added new local paths)
+        let codebases = shared_codebases.lock().await.clone();
+
         // Create task notification channel for CloudEvent-triggered task execution
         // Recreate on each reconnection since the receiver is moved into connect_stream
         let (task_notify_tx, task_notify_rx) = mpsc::channel::<String>(32);
@@ -2184,4 +2218,102 @@ fn env_u64(name: &str, default: u64) -> u64 {
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
         .unwrap_or(default)
+}
+
+/// Start a background task that periodically fetches the server's workspace list
+/// and auto-registers any whose path exists on this machine's filesystem.
+/// This lets workers pick up new codebases without restarting.
+fn start_workspace_sync(
+    client: Client,
+    server: String,
+    token: Option<String>,
+    shared_codebases: Arc<Mutex<Vec<String>>>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        const POLL_INTERVAL_SECS: u64 = 60;
+        let mut interval =
+            tokio::time::interval(Duration::from_secs(POLL_INTERVAL_SECS));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        interval.tick().await; // skip the immediate first tick -- let the worker settle first
+
+        loop {
+            interval.tick().await;
+            if let Err(e) =
+                sync_workspaces_from_server(&client, &server, &token, &shared_codebases).await
+            {
+                tracing::warn!("Workspace sync failed: {}", e);
+            }
+        }
+    })
+}
+
+/// Fetch the server's workspace/codebase list and add any locally-present paths
+/// that are not already in the worker's registered codebases.
+/// New paths take effect on the next SSE reconnect (re-register re-sends X-Workspaces).
+async fn sync_workspaces_from_server(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    shared_codebases: &Arc<Mutex<Vec<String>>>,
+) -> Result<()> {
+    let mut req = client.get(format!("{}/v1/agent/workspaces", server));
+    if let Some(t) = token {
+        req = req.bearer_auth(t);
+    }
+
+    let res = req.send().await?;
+    if !res.status().is_success() {
+        tracing::debug!(
+            status = %res.status(),
+            "Workspace sync: server returned non-success, skipping"
+        );
+        return Ok(());
+    }
+
+    let data: serde_json::Value = res.json().await?;
+
+    // Server returns { workspaces: [...] } or { codebases: [...] }
+    let entries = data["workspaces"]
+        .as_array()
+        .or_else(|| data["codebases"].as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut new_paths: Vec<String> = Vec::new();
+    {
+        let current = shared_codebases.lock().await;
+        for entry in &entries {
+            let path = match entry["path"].as_str().filter(|p| !p.is_empty()) {
+                Some(p) => p,
+                None => continue,
+            };
+            // Only auto-register if the path physically exists on this machine
+            // and is not already in the codebases list
+            if std::path::Path::new(path).exists()
+                && !current.iter().any(|c| c.as_str() == path)
+            {
+                new_paths.push(path.to_string());
+            }
+        }
+    }
+
+    if !new_paths.is_empty() {
+        let mut current = shared_codebases.lock().await;
+        for path in &new_paths {
+            tracing::info!(
+                path = %path,
+                "Workspace sync: auto-discovered local path, adding to codebases"
+            );
+            current.push(path.clone());
+        }
+        tracing::info!(
+            added = new_paths.len(),
+            total = current.len(),
+            "Workspace sync complete -- new paths take effect on next reconnect"
+        );
+    } else {
+        tracing::debug!("Workspace sync: no new local paths found");
+    }
+
+    Ok(())
 }

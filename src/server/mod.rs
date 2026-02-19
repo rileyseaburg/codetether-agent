@@ -638,6 +638,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
         // Configure CORS for marketing site (production + local dev)
         let allowed_origins = [
+            HeaderValue::from_static("https://codetether.run"),
+            HeaderValue::from_static("https://api.codetether.run"),
+            HeaderValue::from_static("https://docs.codetether.run"),
             HeaderValue::from_static("https://codetether.com"),
             HeaderValue::from_static("http://localhost:3000"),
             HeaderValue::from_static("http://localhost:3001"),
@@ -805,13 +808,24 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .layer(middleware::from_fn(policy_middleware))
         .layer(middleware::from_fn(auth::require_auth))
         .layer(axum::Extension(state.auth.clone()))
-        // CORS + tracing
+        // CORS + tracing — explicit origin allowlist so headers are present on
+        // ALL responses (including 4xx/5xx) and not dependent on request mirroring.
         .layer(
             CorsLayer::new()
-                .allow_origin(AllowOrigin::mirror_request())
+                .allow_origin([
+                    "https://codetether.run".parse::<HeaderValue>().unwrap(),
+                    "https://api.codetether.run".parse::<HeaderValue>().unwrap(),
+                    "https://docs.codetether.run"
+                        .parse::<HeaderValue>()
+                        .unwrap(),
+                    "https://codetether.com".parse::<HeaderValue>().unwrap(),
+                    "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+                    "http://localhost:3001".parse::<HeaderValue>().unwrap(),
+                    "http://localhost:8000".parse::<HeaderValue>().unwrap(),
+                ])
                 .allow_credentials(true)
-                .allow_methods(AllowMethods::mirror_request())
-                .allow_headers(AllowHeaders::mirror_request()),
+                .allow_methods(AllowMethods::any())
+                .allow_headers(AllowHeaders::any()),
         )
         .layer(TraceLayer::new_for_http());
 

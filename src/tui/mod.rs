@@ -10,7 +10,8 @@ pub mod theme;
 pub mod theme_utils;
 pub mod token_display;
 
-/// Sentinel value meaning "scroll to bottom"
+/// Sentinel value meaning "follow the latest message position" (top in newest-first chat view).
+/// Kept as a legacy name to avoid touching many call sites.
 const SCROLL_BOTTOM: usize = 1_000_000;
 
 // Tool-call / tool-result rendering can carry very large JSON payloads (e.g. patches, file blobs).
@@ -3141,6 +3142,19 @@ impl App {
         }
     }
 
+    async fn persist_active_session(&mut self, context: &'static str) {
+        if let Some(session) = self.session.as_mut()
+            && let Err(err) = session.save().await
+        {
+            tracing::warn!(
+                context,
+                error = %err,
+                session_id = %session.id,
+                "Failed to persist active session"
+            );
+        }
+    }
+
     fn is_agent_protocol_registered(&self, agent_name: &str) -> bool {
         self.bus
             .as_ref()
@@ -3562,6 +3576,7 @@ impl App {
                 if let Some(session) = self.session.as_mut() {
                     session.metadata.model = Some(next_model.clone());
                 }
+                self.persist_active_session("go_model_swap").await;
 
                 // Initialize OKR repository if not already done
                 if self.okr_repository.is_none() {
@@ -4222,6 +4237,7 @@ impl App {
                 if let Some(session) = self.session.as_mut() {
                     session.metadata.model = Some(model_str.to_string());
                 }
+                self.persist_active_session("direct_model_set").await;
                 self.messages.push(ChatMessage::new(
                     "system",
                     format!("Model set to: {}", model_str),
@@ -4289,6 +4305,7 @@ impl App {
 
         // Check for /new command to start a fresh session
         if message.trim() == "/new" {
+            self.persist_active_session("new_session_command").await;
             self.session = None;
             self.messages.clear();
             self.messages.push(ChatMessage::new(
@@ -4393,6 +4410,20 @@ impl App {
                 .await
             {
                 tracing::error!(error = %err, "Agent processing failed");
+                session.add_message(crate::provider::Message {
+                    role: crate::provider::Role::Assistant,
+                    content: vec![crate::provider::ContentPart::Text {
+                        text: format!("Error: {err}"),
+                    }],
+                });
+                if let Err(save_err) = session.save().await {
+                    tracing::warn!(
+                        error = %save_err,
+                        session_id = %session.id,
+                        "Failed to save session after processing error"
+                    );
+                }
+                let _ = tx.send(SessionEvent::SessionSync(session)).await;
                 let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
                 let _ = tx.send(SessionEvent::Done).await;
             }
@@ -4569,6 +4600,21 @@ impl App {
                 .await
             {
                 tracing::error!(agent = %agent_name_owned, error = %err, "Spawned agent failed");
+                session.add_message(crate::provider::Message {
+                    role: crate::provider::Role::Assistant,
+                    content: vec![crate::provider::ContentPart::Text {
+                        text: format!("Error: {err}"),
+                    }],
+                });
+                if let Err(save_err) = session.save().await {
+                    tracing::warn!(
+                        agent = %agent_name_owned,
+                        error = %save_err,
+                        session_id = %session.id,
+                        "Failed to save spawned-agent session after processing error"
+                    );
+                }
+                let _ = tx.send(SessionEvent::SessionSync(session)).await;
                 let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
                 let _ = tx.send(SessionEvent::Done).await;
             }
@@ -5865,6 +5911,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             if let Some(session) = app.session.as_mut() {
                                 session.metadata.model = Some(value.clone());
                             }
+                            app.persist_active_session("model_picker_set").await;
                             app.messages.push(ChatMessage::new(
                                 "system",
                                 format!("Model set to: {}", label),
@@ -6698,16 +6745,22 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
                 // Vim-style scrolling (Alt + j/k)
                 KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::ALT) => {
-                    if app.scroll < SCROLL_BOTTOM {
-                        let next = app.scroll.saturating_add(1);
-                        app.scroll = if next >= app.last_max_scroll { SCROLL_BOTTOM } else { next };
+                    // Move down toward older content.
+                    if app.scroll >= SCROLL_BOTTOM {
+                        if app.last_max_scroll > 0 {
+                            app.scroll = 1;
+                        }
+                    } else {
+                        app.scroll = app.scroll.saturating_add(1).min(app.last_max_scroll);
                     }
                 }
                 KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::ALT) => {
-                    if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll.saturating_sub(1);
+                    // Move up toward newest content.
+                    if app.scroll < SCROLL_BOTTOM {
+                        let next = app.scroll.saturating_sub(1);
+                        app.scroll = if next == 0 { SCROLL_BOTTOM } else { next };
                     } else {
-                        app.scroll = app.scroll.saturating_sub(1);
+                        // Already pinned to latest.
                     }
                 }
 
@@ -6727,24 +6780,28 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     app.scroll = 0; // Go to top
                 }
                 KeyCode::Char('G') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    // Go to bottom (auto-scroll)
+                    // Re-enter follow-latest mode.
                     app.scroll = SCROLL_BOTTOM;
                 }
 
                 // Enhanced scrolling (with Alt to avoid conflicts)
                 KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::ALT) => {
-                    // Half page down
-                    if app.scroll < SCROLL_BOTTOM {
-                        let next = app.scroll.saturating_add(5);
-                        app.scroll = if next >= app.last_max_scroll { SCROLL_BOTTOM } else { next };
+                    // Half page down toward older content.
+                    if app.scroll >= SCROLL_BOTTOM {
+                        if app.last_max_scroll > 0 {
+                            app.scroll = 5.min(app.last_max_scroll);
+                        }
+                    } else {
+                        app.scroll = app.scroll.saturating_add(5).min(app.last_max_scroll);
                     }
                 }
                 KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => {
-                    // Half page up
-                    if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll.saturating_sub(5);
+                    // Half page up toward newest content.
+                    if app.scroll < SCROLL_BOTTOM {
+                        let next = app.scroll.saturating_sub(5);
+                        app.scroll = if next == 0 { SCROLL_BOTTOM } else { next };
                     } else {
-                        app.scroll = app.scroll.saturating_sub(5);
+                        // Already pinned to latest.
                     }
                 }
 
@@ -6817,48 +6874,46 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 // Scroll (normalize first to handle SCROLL_BOTTOM sentinel)
                 //
                 // Design:
-                // - app.scroll == SCROLL_BOTTOM  →  "stick to bottom" (auto-scroll) mode
+                // - app.scroll == SCROLL_BOTTOM  →  follow-latest mode (latest shown at top)
                 // - app.scroll < SCROLL_BOTTOM   →  manual position (0 = top)
                 // - last_max_scroll is the max valid manual scroll position from the
                 //   previous frame; it's a best-effort hint used only by key handlers.
                 KeyCode::Up => {
-                    if app.scroll >= SCROLL_BOTTOM {
-                        // Leave auto-scroll: jump to the actual bottom then go up 1
-                        app.scroll = app.last_max_scroll.saturating_sub(1);
+                    // Move toward newest content.
+                    if app.scroll < SCROLL_BOTTOM {
+                        let next = app.scroll.saturating_sub(1);
+                        app.scroll = if next == 0 { SCROLL_BOTTOM } else { next };
                     } else {
-                        app.scroll = app.scroll.saturating_sub(1);
+                        // Already pinned to latest.
                     }
                 }
                 KeyCode::Down => {
+                    // Move toward older content.
                     if app.scroll >= SCROLL_BOTTOM {
-                        // Already at bottom, nothing to do
-                    } else {
-                        let next = app.scroll.saturating_add(1);
-                        // If we've hit or passed max, snap into auto-scroll mode
-                        if next >= app.last_max_scroll {
-                            app.scroll = SCROLL_BOTTOM;
-                        } else {
-                            app.scroll = next;
+                        if app.last_max_scroll > 0 {
+                            app.scroll = 1;
                         }
+                    } else {
+                        app.scroll = app.scroll.saturating_add(1).min(app.last_max_scroll);
                     }
                 }
                 KeyCode::PageUp => {
-                    if app.scroll >= SCROLL_BOTTOM {
-                        app.scroll = app.last_max_scroll.saturating_sub(10);
+                    // Page toward newest content.
+                    if app.scroll < SCROLL_BOTTOM {
+                        let next = app.scroll.saturating_sub(10);
+                        app.scroll = if next == 0 { SCROLL_BOTTOM } else { next };
                     } else {
-                        app.scroll = app.scroll.saturating_sub(10);
+                        // Already pinned to latest.
                     }
                 }
                 KeyCode::PageDown => {
+                    // Page toward older content.
                     if app.scroll >= SCROLL_BOTTOM {
-                        // Already at bottom
-                    } else {
-                        let next = app.scroll.saturating_add(10);
-                        if next >= app.last_max_scroll {
-                            app.scroll = SCROLL_BOTTOM;
-                        } else {
-                            app.scroll = next;
+                        if app.last_max_scroll > 0 {
+                            app.scroll = 10.min(app.last_max_scroll);
                         }
+                    } else {
+                        app.scroll = app.scroll.saturating_add(10).min(app.last_max_scroll);
                     }
                 }
 
@@ -7471,9 +7526,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     let max_scroll = total_lines.saturating_sub(visible_lines);
     // Keep last_max_scroll in sync so key handlers are always accurate.
     app.last_max_scroll = max_scroll;
-    // SCROLL_BOTTOM means "stick to bottom", otherwise clamp to max_scroll
+    // SCROLL_BOTTOM means "follow latest", otherwise clamp to max_scroll.
+    // In newest-first mode, latest content is at the top.
     let scroll = if app.scroll >= SCROLL_BOTTOM {
-        max_scroll
+        0
     } else {
         app.scroll.min(max_scroll)
     };
@@ -7555,10 +7611,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     let cursor_col = app.input[..app.cursor_position.min(app.input.len())]
         .chars()
         .count() as u16;
-    f.set_cursor_position((
-        chunks[1].x + cursor_col + 1,
-        chunks[1].y + 1,
-    ));
+    f.set_cursor_position((chunks[1].x + cursor_col + 1, chunks[1].y + 1));
 
     // Enhanced status bar with token display and model info
     let token_display = TokenDisplay::new();
@@ -7636,7 +7689,11 @@ fn render_webview_chat(f: &mut Frame, app: &mut App, theme: &Theme) -> bool {
     // Build lines using cache before passing to the immutable render fn
     let center_area = body_chunks[1];
     let center_max_width = center_area.width.saturating_sub(4) as usize;
-    let center_lines = app.get_or_build_message_lines(theme, center_max_width).to_vec();
+    let center_lines = app
+        .get_or_build_message_lines(theme, center_max_width)
+        .to_vec();
+    let center_visible_lines = center_area.height.saturating_sub(2) as usize;
+    app.last_max_scroll = center_lines.len().saturating_sub(center_visible_lines);
     render_webview_chat_center(f, app, theme, center_area, &center_lines);
     if app.show_inspector && body_chunks.len() > 2 {
         render_webview_inspector(f, app, theme, body_chunks[2]);
@@ -8092,7 +8149,7 @@ fn render_webview_chat_center(
     let visible_lines = messages_area.height.saturating_sub(2) as usize;
     let max_scroll = total_lines.saturating_sub(visible_lines);
     let scroll = if app.scroll >= SCROLL_BOTTOM {
-        max_scroll
+        0
     } else {
         app.scroll.min(max_scroll)
     };
@@ -8433,7 +8490,7 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
     let mut message_lines = Vec::new();
     let separator_width = max_width.min(60);
 
-    for (idx, message) in app.messages.iter().enumerate() {
+    for (idx, message) in app.messages.iter().rev().enumerate() {
         let role_style = theme.get_role_style(&message.role);
 
         // Add a thin separator between messages (not before the first)
@@ -9529,7 +9586,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Alt+j        Scroll down".to_string(),
         "  Alt+k        Scroll up".to_string(),
         "  Ctrl+g       Go to top".to_string(),
-        "  Ctrl+G       Go to bottom".to_string(),
+        "  Ctrl+G       Follow latest".to_string(),
         "".to_string(),
         "  SCROLLING".to_string(),
         "  Up/Down      Scroll messages".to_string(),
