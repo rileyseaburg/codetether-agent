@@ -1,19 +1,18 @@
-# v3.2.1
+# v3.2.2
 
 ## What's New
 
-- **Background provider loading** — Providers now initialize asynchronously, improving startup time
-- **Kubernetes node identification** — Workers include `K8S_NODE_NAME` in registration for better cluster visibility
-- **Expanded worker capabilities** — Enhanced A2A worker feature set
-
-## Bug Fixes
-
-- Fixed scroll behavior in the TUI message panel
+- **Worker Workspace Auto-Sync**: A2A workers now automatically sync workspace state, ensuring consistent codebase tracking across worker sessions
+- **Interactive Auth Blocking**: The bash tool now blocks interactive authentication prompts, preventing runaway terminal sessions and improving automation reliability
+- **TUI Improvements**: Significant enhancements to the terminal UI for better responsiveness and user experience
 
 ## Changes
 
-- **TUI performance** — Message line rendering is now cached for smoother scrolling and reduced redraw overhead
+- Extended A2A worker module with workspace synchronization capabilities (+136 lines)
+- Enhanced bash tool with interactive prompt detection and blocking (+121 lines)
+- Updated provider layer with additional authentication handling
+- Refined server request processing
+- Improved TUI rendering and state management
+- Minor sandbox policy updates for new bash behavior
 
----
-
-**Stats:** 3 commits, 3 files changed, 265 insertions(+), 96 deletions(-)
+**Stats**: 6 files changed, 401 insertions(+), 58 deletions(-)
