@@ -71,11 +71,24 @@ struct GoParams {
     okr_id: Option<String>,
 }
 
-pub struct GoTool;
+pub struct GoTool {
+    /// Optional callback invoked when the background pipeline completes or fails.
+    /// Used by the A2A worker to stream the final OKR result back to the calling LLM.
+    completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+}
 
 impl GoTool {
     pub fn new() -> Self {
-        Self
+        Self {
+            completion_callback: None,
+        }
+    }
+
+    /// Construct with a completion callback that fires when the background pipeline finishes.
+    pub fn with_callback(cb: Arc<dyn Fn(String) + Send + Sync + 'static>) -> Self {
+        Self {
+            completion_callback: Some(cb),
+        }
     }
 }
 
@@ -254,6 +267,7 @@ impl GoTool {
         let bg_okr_id = okr_id_str.clone();
         let bg_task = task.clone();
         let bg_model = resolved_model.clone();
+        let bg_callback = self.completion_callback.clone();
         tokio::spawn(async move {
             // Update phase to Running
             if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
@@ -305,6 +319,30 @@ impl GoTool {
                         total = result.total,
                         "Go pipeline completed"
                     );
+
+                    // Notify the LLM session that the pipeline finished
+                    if let Some(ref cb) = bg_callback {
+                        let phase_str = {
+                            let runs = ACTIVE_GO_RUNS.lock().unwrap_or_else(|e| e.into_inner());
+                            if let Some(r) = runs.get(&bg_okr_id) {
+                                if let GoRunPhase::Completed { passed, total, all_passed, ref feature_branch, ref summary } = r.phase {
+                                    format!(
+                                        "# Go Pipeline Completed {}\n\n\
+                                         **OKR ID:** `{}`\n\
+                                         **Result:** {}/{} stories passed\n\
+                                         **Branch:** `{}`\n\n{}",
+                                        if all_passed { "✅" } else { "⚠️" },
+                                        bg_okr_id, passed, total, feature_branch, summary
+                                    )
+                                } else {
+                                    format!("Go pipeline completed for OKR `{}`", bg_okr_id)
+                                }
+                            } else {
+                                format!("Go pipeline completed for OKR `{}`", bg_okr_id)
+                            }
+                        };
+                        cb(phase_str);
+                    }
                 }
                 Err(err) => {
                     // Mark run as failed
@@ -327,6 +365,14 @@ impl GoTool {
                         error = %error_msg,
                         "Go pipeline failed"
                     );
+
+                    // Notify the LLM session that the pipeline failed
+                    if let Some(ref cb) = bg_callback {
+                        cb(format!(
+                            "# Go Pipeline Failed ❌\n\n**OKR ID:** `{}`\n**Error:** {}",
+                            bg_okr_id, error_msg
+                        ));
+                    }
                 }
             }
         });

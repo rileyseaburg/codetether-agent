@@ -1327,19 +1327,32 @@ async fn handle_task(
 
     tracing::info!("Executing prompt: {}", prompt);
 
-    // Set up output streaming to forward progress to the server
+    // Set up output streaming to forward progress to the server and bus
     let stream_client = client.clone();
     let stream_server = server.to_string();
     let stream_token = token.clone();
     let stream_worker_id = worker_id.to_string();
     let stream_task_id = task_id.to_string();
+    let stream_bus = Arc::clone(bus);
 
-    let output_callback = move |output: String| {
+    let output_callback: Arc<dyn Fn(String) + Send + Sync + 'static> = Arc::new(move |output: String| {
         let c = stream_client.clone();
         let s = stream_server.clone();
         let t = stream_token.clone();
         let w = stream_worker_id.clone();
         let tid = stream_task_id.clone();
+
+        // Publish to the local bus so the SSE endpoint can pick it up in real time
+        let bus_handle = stream_bus.handle("task-output");
+        bus_handle.send(
+            format!("task.{}", tid),
+            crate::bus::BusMessage::TaskUpdate {
+                task_id: tid.clone(),
+                state: crate::a2a::types::TaskState::Working,
+                message: Some(output.clone()),
+            },
+        );
+
         tokio::spawn(async move {
             let mut req = c
                 .post(format!("{}/v1/agent/tasks/{}/output", s, tid))
@@ -1355,7 +1368,7 @@ async fn handle_task(
                 .send()
                 .await;
         });
-    };
+    });
 
     // Execute swarm tasks via SwarmExecutor; all other agents use the standard session loop.
     let (status, result, error, session_id) = if is_swarm_agent(agent_type) {
@@ -1369,7 +1382,7 @@ async fn handle_task(
             worker_personality.as_deref(),
             target_agent_name.as_deref(),
             Some(bus),
-            Some(&output_callback),
+            Some(Arc::clone(&output_callback)),
         )
         .await
         {
@@ -1402,7 +1415,7 @@ async fn handle_task(
             prompt,
             auto_approve,
             model_tier.as_deref(),
-            Some(&output_callback),
+            Some(Arc::clone(&output_callback)),
         )
         .await
         {
@@ -1444,7 +1457,7 @@ async fn handle_task(
     Ok(())
 }
 
-async fn execute_swarm_with_policy<F>(
+async fn execute_swarm_with_policy(
     session: &mut Session,
     prompt: &str,
     model_tier: Option<&str>,
@@ -1454,10 +1467,8 @@ async fn execute_swarm_with_policy<F>(
     worker_personality: Option<&str>,
     target_agent_name: Option<&str>,
     bus: Option<&Arc<AgentBus>>,
-    output_callback: Option<&F>,
+    output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> Result<(crate::session::SessionResult, bool)>
-where
-    F: Fn(String),
 {
     use crate::provider::{ContentPart, Message, Role};
 
@@ -1500,7 +1511,7 @@ where
         session.metadata.model = Some(selected_model.clone());
     }
 
-    if let Some(cb) = output_callback {
+    if let Some(ref cb) = output_callback {
         cb(format!(
             "[swarm] routing complexity={} tier={} personality={} target_agent={}",
             complexity_hint.unwrap_or("standard"),
@@ -1548,7 +1559,7 @@ where
             tokio::select! {
                 maybe_event = event_rx.recv() => {
                     if let Some(event) = maybe_event {
-                        if let Some(cb) = output_callback {
+                        if let Some(ref cb) = output_callback {
                             if let Some(line) = format_swarm_event_for_output(&event) {
                                 cb(line);
                             }
@@ -1563,7 +1574,7 @@ where
         }
 
         while let Ok(event) = event_rx.try_recv() {
-            if let Some(cb) = output_callback {
+            if let Some(ref cb) = output_callback {
                 if let Some(line) = format_swarm_event_for_output(&event) {
                     cb(line);
                 }
@@ -1608,15 +1619,13 @@ where
 
 /// Execute a session with the given auto-approve policy
 /// Optionally streams output chunks via the callback
-async fn execute_session_with_policy<F>(
+async fn execute_session_with_policy(
     session: &mut Session,
     prompt: &str,
     auto_approve: AutoApprove,
     model_tier: Option<&str>,
-    output_callback: Option<&F>,
+    output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> Result<crate::session::SessionResult>
-where
-    F: Fn(String),
 {
     use crate::provider::{
         CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
@@ -1686,7 +1695,7 @@ where
 
     // Create tool registry with filtering based on auto-approve policy
     let tool_registry =
-        create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve);
+        create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve, output_callback.clone());
     let tool_definitions = tool_registry.definitions();
 
     let temperature = if prefers_temperature_one(&model) {
@@ -1773,7 +1782,7 @@ where
                 if !text.is_empty() {
                     final_output.push_str(text);
                     final_output.push('\n');
-                    if let Some(cb) = output_callback {
+                    if let Some(ref cb) = output_callback {
                         cb(text.clone());
                     }
                 }
@@ -1799,7 +1808,7 @@ where
             tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
 
             // Stream tool start event
-            if let Some(cb) = output_callback {
+            if let Some(ref cb) = output_callback {
                 cb(format!("[tool:start:{}]", tool_name));
             }
 
@@ -1826,7 +1835,7 @@ where
                 match exec_result {
                     Ok(result) => {
                         tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
-                        if let Some(cb) = output_callback {
+                        if let Some(ref cb) = output_callback {
                             let status = if result.success { "ok" } else { "err" };
                             cb(format!(
                                 "[tool:{}:{}] {}",
@@ -1839,7 +1848,7 @@ where
                     }
                     Err(e) => {
                         tracing::warn!(tool = %tool_name, error = %e, "Tool execution failed");
-                        if let Some(cb) = output_callback {
+                        if let Some(ref cb) = output_callback {
                             cb(format!("[tool:{}:err] {}", tool_name, e));
                         }
                         format!("Error: {}", e)
@@ -1898,6 +1907,7 @@ fn create_filtered_registry(
     provider: Arc<dyn crate::provider::Provider>,
     model: String,
     auto_approve: AutoApprove,
+    completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> crate::tool::ToolRegistry {
     use crate::tool::*;
 
@@ -1932,6 +1942,13 @@ fn create_filtered_registry(
         )));
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));
+        // Register GoTool with the completion callback so the LLM gets notified when
+        // the background pipeline finishes.
+        if let Some(cb) = completion_callback {
+            registry.register(Arc::new(go::GoTool::with_callback(cb)));
+        } else {
+            registry.register(Arc::new(go::GoTool::new()));
+        }
         registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
         registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
         registry.register(Arc::new(undo::UndoTool));

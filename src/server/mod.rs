@@ -2816,7 +2816,7 @@ async fn stream_agent_task_output(
                         continue;
                     }
                     let data = serde_json::to_string(&envelope.message).unwrap_or_default();
-                    yield Event::default().data(data);
+                    yield Event::default().event("output").data(data);
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
                 Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
