@@ -9,6 +9,7 @@ pub mod swarm_view;
 pub mod theme;
 pub mod theme_utils;
 pub mod token_display;
+pub mod worker_bridge;
 
 /// Sentinel value meaning "follow the latest message position" (top in newest-first chat view).
 /// Kept as a legacy name to avoid touching many call sites.

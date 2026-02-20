@@ -68,6 +68,8 @@ path = "src/main.rs"
 default = ["functiongemma"]
 candle-cuda = ["candle-core/cuda", "candle-transformers/cuda"]
 candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["candle-core/mkl", "candle-transformers/mkl"]
 functiongemma = []
 
 [dependencies]

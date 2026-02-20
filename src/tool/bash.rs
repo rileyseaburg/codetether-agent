@@ -115,7 +115,7 @@ impl Tool for BashTool {
     }
 
     fn description(&self) -> &str {
-        "bash(command: string, cwd?: string, timeout?: int) - Execute a non-interactive shell command. Commands run in a bash shell with the current working directory."
+        "bash(command: string, cwd?: string, timeout?: int) - Execute a shell command. Commands run in a bash shell with the current working directory."
     }
 
     fn parameters(&self) -> Value {
@@ -162,18 +162,8 @@ impl Tool for BashTool {
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
 
         if let Some(reason) = interactive_auth_risk_reason(command) {
-            return Ok(ToolResult::structured_error(
-                "INTERACTIVE_AUTH_BLOCKED",
-                "bash",
-                &format!(
-                    "{reason} Bash tool runs non-interactively in TUI and cannot accept password prompts."
-                ),
-                None,
-                Some(json!({
-                    "command": "sudo -n <command>",
-                    "hint": "Use non-interactive flags and passwordless auth (or run the command manually outside TUI)."
-                })),
-            ));
+            // Log warning but don't block anymore per user request
+            tracing::warn!("Interactive auth risk detected: {}", reason);
         }
 
         // Sandboxed execution path: restricted env, resource limits, audit logged
@@ -307,28 +297,7 @@ impl Tool for BashTool {
                 let success = output.status.success();
 
                 if !success && looks_like_auth_prompt(&combined) {
-                    let duration = exec_start.elapsed();
-                    let exec = ToolExecution::start(
-                        "bash",
-                        json!({
-                            "command": command,
-                            "cwd": cwd,
-                            "timeout": timeout_secs,
-                        }),
-                    )
-                    .complete_error("Interactive auth prompt blocked".to_string(), duration);
-                    TOOL_EXECUTIONS.record(exec.clone());
-                    record_persistent(exec);
-                    return Ok(ToolResult::structured_error(
-                        "INTERACTIVE_AUTH_BLOCKED",
-                        "bash",
-                        "Command requested an interactive password/passphrase prompt, which is unsupported in TUI bash tool.",
-                        None,
-                        Some(json!({
-                            "hint": "Use non-interactive auth: sudo -n, ssh -o BatchMode=yes, or pre-configured credentials.",
-                            "command": command,
-                        })),
-                    ));
+                    tracing::warn!("Interactive auth prompt detected in output");
                 }
 
                 // Truncate if too long

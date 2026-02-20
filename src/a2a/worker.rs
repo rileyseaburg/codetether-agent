@@ -63,16 +63,19 @@ impl HeartbeatState {
 }
 
 #[derive(Clone, Debug)]
-struct CognitionHeartbeatConfig {
-    enabled: bool,
-    source_base_url: String,
-    include_thought_summary: bool,
-    summary_max_chars: usize,
-    request_timeout_ms: u64,
+pub struct CognitionHeartbeatConfig {
+    pub enabled: bool,
+    pub source_base_url: String,
+    pub token: Option<String>,
+    pub provider_name: String,
+    pub interval_secs: u64,
+    pub include_thought_summary: bool,
+    pub summary_max_chars: usize,
+    pub request_timeout_ms: u64,
 }
 
 impl CognitionHeartbeatConfig {
-    fn from_env() -> Self {
+    pub fn from_env() -> Self {
         let source_base_url = std::env::var("CODETETHER_WORKER_COGNITION_SOURCE_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:4096".to_string())
             .trim_end_matches('/')
@@ -82,9 +85,12 @@ impl CognitionHeartbeatConfig {
             enabled: env_bool("CODETETHER_WORKER_COGNITION_SHARE_ENABLED", true),
             source_base_url,
             include_thought_summary: env_bool("CODETETHER_WORKER_COGNITION_INCLUDE_THOUGHTS", true),
-            summary_max_chars: env_usize("CODETETHER_WORKER_COGNITION_THOUGHT_MAX_CHARS", 480)
-                .max(120),
+            summary_max_chars: env_usize("CODETETHER_WORKER_COGNITION_THOUGHT_MAX_CHARS", 480),
             request_timeout_ms: env_u64("CODETETHER_WORKER_COGNITION_TIMEOUT_MS", 2_500).max(250),
+            interval_secs: env_u64("CODETETHER_WORKER_COGNITION_INTERVAL_SECS", 30).max(5),
+            provider_name: std::env::var("CODETETHER_WORKER_COGNITION_PROVIDER")
+                .unwrap_or_else(|_| "cognition".to_string()),
+            token: std::env::var("CODETETHER_WORKER_COGNITION_TOKEN").ok(),
         }
     }
 }
@@ -410,7 +416,7 @@ pub async fn run_with_state(
     }
 }
 
-fn generate_worker_id() -> String {
+pub fn generate_worker_id() -> String {
     format!(
         "wrk_{}_{:x}",
         chrono::Utc::now().timestamp(),
@@ -771,7 +777,7 @@ fn format_swarm_event_for_output(event: &SwarmEvent) -> Option<String> {
     }
 }
 
-async fn register_worker(
+pub async fn register_worker(
     client: &Client,
     server: &str,
     token: &Option<String>,
@@ -1962,7 +1968,7 @@ fn create_filtered_registry(
 
 /// Start the heartbeat background task
 /// Returns a JoinHandle that can be used to cancel the heartbeat
-fn start_heartbeat(
+pub fn start_heartbeat(
     client: Client,
     server: String,
     token: Option<String>,

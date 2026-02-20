@@ -408,6 +408,7 @@ pub(crate) struct CandleThinker {
     seed: u64,
     request_index: u64,
     eos_token_ids: HashSet<u32>,
+    cached_tokens: Vec<u32>,
 }
 
 enum CandleModel {
@@ -523,6 +524,7 @@ impl CandleThinker {
             seed: config.candle_seed,
             request_index: 0,
             eos_token_ids,
+            cached_tokens: Vec::new(),
         })
     }
 
