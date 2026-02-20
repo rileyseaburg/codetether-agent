@@ -368,7 +368,10 @@ impl ProviderRegistry {
 
                 // Handle Vertex AI Anthropic (Claude models via GCP)
                 // Uses service account JWT auth like vertex-glm
-                if matches!(provider_id.as_str(), "vertex-anthropic" | "vertex-claude" | "gcp-anthropic") {
+                if matches!(
+                    provider_id.as_str(),
+                    "vertex-anthropic" | "vertex-claude" | "gcp-anthropic"
+                ) {
                     let sa_json = secrets
                         .extra
                         .get("service_account_json")

@@ -248,7 +248,8 @@ impl StepFunProvider {
                                 id,
                                 name,
                                 arguments,
-                            .. } => Some(ToolCall {
+                                ..
+                            } => Some(ToolCall {
                                 id: id.clone(),
                                 r#type: "function".to_string(),
                                 function: ToolCallFunction {

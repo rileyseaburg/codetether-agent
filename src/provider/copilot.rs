@@ -90,7 +90,8 @@ impl CopilotProvider {
                                     id,
                                     name,
                                     arguments,
-                                .. } => Some(json!({
+                                    ..
+                                } => Some(json!({
                                     "id": id,
                                     "type": "function",
                                     "function": {
@@ -257,6 +258,7 @@ impl CopilotProvider {
             ("claude-opus-4.5", ("Claude Opus 4.5", 3.0)),
             ("claude-opus-4.6", ("Claude Opus 4.6", 3.0)),
             ("claude-opus-41", ("Claude Opus 4.1", 10.0)),
+            ("claude-sonnet-4-6", ("Claude Sonnet 4.6", 1.0)),
             ("claude-sonnet-4.5", ("Claude Sonnet 4.5", 1.0)),
             ("claude-sonnet-4", ("Claude Sonnet 4", 1.0)),
             ("claude-haiku-4.5", ("Claude Haiku 4.5", 0.33)),
@@ -273,8 +275,17 @@ impl CopilotProvider {
             ("gpt-4.1", ("GPT-4.1", 0.0)),
             ("gpt-4o", ("GPT-4o", 0.0)),
             ("gemini-2.5-pro", ("Gemini 2.5 Pro", 1.0)),
-            ("gemini-3-flash-preview", ("Gemini 3 Flash", 0.33)),
-            ("gemini-3-pro-preview", ("Gemini 3 Pro", 1.0)),
+            ("gemini-3.1-pro-preview", ("Gemini 3.1 Pro Preview", 1.0)),
+            (
+                "gemini-3.1-pro-preview-customtools",
+                ("Gemini 3.1 Pro Preview (Custom Tools)", 1.0),
+            ),
+            ("gemini-3-flash-preview", ("Gemini 3 Flash Preview", 0.33)),
+            ("gemini-3-pro-preview", ("Gemini 3 Pro Preview", 1.0)),
+            (
+                "gemini-3-pro-image-preview",
+                ("Gemini 3 Pro Image Preview", 1.0),
+            ),
             ("grok-code-fast-1", ("Grok Code Fast 1", 0.25)),
         ]
         .into_iter()
@@ -317,6 +328,13 @@ impl CopilotProvider {
                 false,
             ),
             (
+                "claude-sonnet-4-6",
+                "Claude Sonnet 4.6",
+                200_000,
+                128_000,
+                false,
+            ),
+            (
                 "claude-haiku-4.5",
                 "Claude Haiku 4.5",
                 200_000,
@@ -324,6 +342,41 @@ impl CopilotProvider {
                 false,
             ),
             ("gemini-2.5-pro", "Gemini 2.5 Pro", 1_000_000, 64_000, false),
+            (
+                "gemini-3.1-pro-preview",
+                "Gemini 3.1 Pro Preview",
+                1_048_576,
+                65_536,
+                false,
+            ),
+            (
+                "gemini-3.1-pro-preview-customtools",
+                "Gemini 3.1 Pro Preview (Custom Tools)",
+                1_048_576,
+                65_536,
+                false,
+            ),
+            (
+                "gemini-3-pro-preview",
+                "Gemini 3 Pro Preview",
+                1_048_576,
+                65_536,
+                false,
+            ),
+            (
+                "gemini-3-flash-preview",
+                "Gemini 3 Flash Preview",
+                1_048_576,
+                65_536,
+                false,
+            ),
+            (
+                "gemini-3-pro-image-preview",
+                "Gemini 3 Pro Image Preview",
+                65_536,
+                32_768,
+                false,
+            ),
         ];
 
         entries

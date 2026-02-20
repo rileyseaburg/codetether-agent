@@ -1571,7 +1571,8 @@ fn convert_response_message(
                 id,
                 name,
                 arguments,
-            .. } => {
+                ..
+            } => {
                 tool_calls.push(OpenAiResponseToolCall {
                     id: id.clone(),
                     kind: "function".to_string(),

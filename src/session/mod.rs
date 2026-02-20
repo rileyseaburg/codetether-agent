@@ -460,7 +460,8 @@ impl Session {
                         id,
                         name,
                         arguments,
-                    .. } = part
+                        ..
+                    } = part
                     {
                         // Parse arguments JSON string into Value
                         let args: serde_json::Value =
@@ -1030,7 +1031,8 @@ impl Session {
                         id,
                         name,
                         arguments,
-                    .. } = part
+                        ..
+                    } = part
                     {
                         let args: serde_json::Value =
                             serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));

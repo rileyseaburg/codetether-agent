@@ -91,7 +91,8 @@ impl ZaiProvider {
                                     id,
                                     name,
                                     arguments,
-                                .. } => {
+                                    ..
+                                } => {
                                     // Z.AI request schema expects assistant.tool_calls[*].function.arguments
                                     // to be a JSON-format string. Normalize to a valid JSON string.
                                     let args_string = serde_json::from_str::<Value>(arguments)

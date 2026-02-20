@@ -29,7 +29,7 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_RETRIES: u32 = 3;
 
-const VERTEX_REGION: &str = "global";
+const VERTEX_REGION: &str = "us-east5";
 const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const VERTEX_SCOPE: &str = "https://www.googleapis.com/auth/cloud-platform";
 const VERTEX_ANTHROPIC_VERSION: &str = "vertex-2023-10-16";
@@ -287,7 +287,8 @@ impl VertexAnthropicProvider {
                                 id,
                                 name,
                                 arguments,
-                            .. } => {
+                                ..
+                            } => {
                                 let input: Value = serde_json::from_str(arguments)
                                     .unwrap_or_else(|_| json!({"raw": arguments}));
                                 content_parts.push(json!({
@@ -369,17 +370,18 @@ impl VertexAnthropicProvider {
     fn build_model_url(&self, model: &str) -> String {
         // Normalize model ID to Vertex format
         let model_id = model
+            .trim_start_matches("vertex-anthropic/")
             .trim_start_matches("anthropic/")
             .trim_start_matches("claude-");
 
         // Handle both formats: "claude-sonnet-4-6" and "sonnet-4-6"
-        let _model_id = if model_id.starts_with("claude-") {
+        let final_model_id = if model_id.starts_with("claude-") {
             model_id.to_string()
         } else {
             format!("claude-{model_id}")
         };
 
-        format!("{}:rawPredict", self.base_url)
+        format!("{}/{}:rawPredict", self.base_url, final_model_id)
     }
 }
 
@@ -768,9 +770,8 @@ impl Provider for VertexAnthropicProvider {
                             if let Some(data) = line.strip_prefix("data: ") {
                                 if data == "[DONE]" {
                                     if !text_buf.is_empty() {
-                                        chunks.push(StreamChunk::Text(std::mem::take(
-                                            &mut text_buf,
-                                        )));
+                                        chunks
+                                            .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
                                     }
                                     chunks.push(StreamChunk::Done { usage: None });
                                     continue;
@@ -778,15 +779,15 @@ impl Provider for VertexAnthropicProvider {
 
                                 // Parse Anthropic streaming event
                                 if let Ok(event) = serde_json::from_str::<Value>(data) {
-                                    let event_type = event
-                                        .get("type")
-                                        .and_then(Value::as_str)
-                                        .unwrap_or("");
+                                    let event_type =
+                                        event.get("type").and_then(Value::as_str).unwrap_or("");
 
                                     match event_type {
                                         "content_block_delta" => {
                                             if let Some(delta) = event.get("delta") {
-                                                if let Some(text) = delta.get("text").and_then(Value::as_str) {
+                                                if let Some(text) =
+                                                    delta.get("text").and_then(Value::as_str)
+                                                {
                                                     text_buf.push_str(text);
                                                 }
                                             }
@@ -794,7 +795,8 @@ impl Provider for VertexAnthropicProvider {
                                         "content_block_start" => {
                                             // Tool call start
                                             if let Some(content_block) = event.get("content_block")
-                                                && content_block.get("type").and_then(Value::as_str) == Some("tool_use")
+                                                && content_block.get("type").and_then(Value::as_str)
+                                                    == Some("tool_use")
                                             {
                                                 if !text_buf.is_empty() {
                                                     chunks.push(StreamChunk::Text(std::mem::take(

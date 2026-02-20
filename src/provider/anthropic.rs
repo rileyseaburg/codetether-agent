@@ -162,7 +162,8 @@ impl AnthropicProvider {
                                 id,
                                 name,
                                 arguments,
-                            .. } => {
+                                ..
+                            } => {
                                 let input: Value = serde_json::from_str(arguments)
                                     .unwrap_or_else(|_| json!({"raw": arguments}));
                                 content_parts.push(json!({
@@ -399,6 +400,18 @@ impl Provider for AnthropicProvider {
         }
 
         Ok(vec![
+            ModelInfo {
+                id: "claude-sonnet-4-6".to_string(),
+                name: "Claude Sonnet 4.6".to_string(),
+                provider: self.provider_name.clone(),
+                context_window: 200_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(3.0),
+                output_cost_per_million: Some(15.0),
+            },
             ModelInfo {
                 id: "claude-sonnet-4-20250514".to_string(),
                 name: "Claude Sonnet 4".to_string(),

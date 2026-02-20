@@ -418,6 +418,9 @@ impl BedrockProvider {
             "claude-opus-4.5" | "claude-4.5-opus" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
             "claude-opus-4.1" | "claude-4.1-opus" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
+            "claude-sonnet-4.6" | "claude-4.6-sonnet" | "claude-sonnet-4-6" => {
+                "us.anthropic.claude-sonnet-4-6-v1:0"
+            }
             "claude-sonnet-4.5" | "claude-4.5-sonnet" => {
                 "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
             }
@@ -786,6 +789,8 @@ impl BedrockProvider {
             32_000
         } else if id.contains("claude-opus-4-1") {
             32_000
+        } else if id.contains("claude-sonnet-4-6") {
+            128_000
         } else if id.contains("claude-sonnet-4-5")
             || id.contains("claude-sonnet-4")
             || id.contains("claude-3-7")
@@ -896,7 +901,8 @@ impl BedrockProvider {
                                 id,
                                 name,
                                 arguments,
-                            .. } => {
+                                ..
+                            } => {
                                 let input: Value = serde_json::from_str(arguments)
                                     .unwrap_or_else(|_| json!({"raw": arguments}));
                                 content_parts.push(json!({

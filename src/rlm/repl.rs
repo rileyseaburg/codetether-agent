@@ -624,7 +624,8 @@ impl RlmExecutor {
                         id,
                         name,
                         arguments,
-                    .. } => Some((id.clone(), name.clone(), arguments.clone())),
+                        ..
+                    } => Some((id.clone(), name.clone(), arguments.clone())),
                     _ => None,
                 })
                 .collect();

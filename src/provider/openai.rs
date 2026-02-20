@@ -149,7 +149,8 @@ impl OpenAIProvider {
                                 id,
                                 name,
                                 arguments,
-                            .. } => Some(ChatCompletionMessageToolCalls::Function(
+                                ..
+                            } => Some(ChatCompletionMessageToolCalls::Function(
                                 ChatCompletionMessageToolCall {
                                     id: id.clone(),
                                     function: FunctionCall {
