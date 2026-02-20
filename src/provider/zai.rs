@@ -91,7 +91,7 @@ impl ZaiProvider {
                                     id,
                                     name,
                                     arguments,
-                                } => {
+                                .. } => {
                                     // Z.AI request schema expects assistant.tool_calls[*].function.arguments
                                     // to be a JSON-format string. Normalize to a valid JSON string.
                                     let args_string = serde_json::from_str::<Value>(arguments)
@@ -471,6 +471,7 @@ impl Provider for ZaiProvider {
                     id: tc.id.clone(),
                     name: tc.function.name.clone(),
                     arguments,
+                    thought_signature: None,
                 });
             }
         }
@@ -694,7 +695,8 @@ mod tests {
             content: vec![ContentPart::ToolCall {
                 id: "call_1".to_string(),
                 name: "get_weather".to_string(),
-                arguments: "{\"city\":\"Beijing\"}".to_string(),
+                arguments: "{\"city\":\"Beijing\".. }".to_string(),
+                thought_signature: None,
             }],
         }];
 
@@ -714,6 +716,7 @@ mod tests {
                 id: "call_1".to_string(),
                 name: "get_weather".to_string(),
                 arguments: "city=Beijing".to_string(),
+                thought_signature: None,
             }],
         }];
 

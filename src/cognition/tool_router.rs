@@ -406,6 +406,7 @@ impl ToolCallRouter {
                 id: format!("fc_{}", Uuid::new_v4()),
                 name: call.name,
                 arguments: call.arguments,
+                thought_signature: None,
             });
         }
 

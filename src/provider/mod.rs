@@ -13,6 +13,7 @@ pub mod openai;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod stepfun;
+pub mod vertex_anthropic;
 pub mod vertex_glm;
 pub mod zai;
 
@@ -56,6 +57,9 @@ pub enum ContentPart {
         id: String,
         name: String,
         arguments: String,
+        /// Thought signature for Gemini 3.x models - must be passed back when sending tool results
+        #[serde(skip_serializing_if = "Option::is_none")]
+        thought_signature: Option<String>,
     },
     ToolResult {
         tool_call_id: String,
@@ -357,6 +361,34 @@ impl ProviderRegistry {
                     } else {
                         tracing::warn!(
                             "vertex-glm provider requires service_account_json in Vault secrets"
+                        );
+                    }
+                    continue;
+                }
+
+                // Handle Vertex AI Anthropic (Claude models via GCP)
+                // Uses service account JWT auth like vertex-glm
+                if matches!(provider_id.as_str(), "vertex-anthropic" | "vertex-claude" | "gcp-anthropic") {
+                    let sa_json = secrets
+                        .extra
+                        .get("service_account_json")
+                        .and_then(|v| v.as_str());
+
+                    if let Some(sa_json) = sa_json {
+                        let project_id = secrets
+                            .extra
+                            .get("project_id")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| secrets.extra.get("projectId").and_then(|v| v.as_str()))
+                            .map(|s| s.to_string());
+
+                        match vertex_anthropic::VertexAnthropicProvider::new(sa_json, project_id) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init vertex-anthropic: {e}"),
+                        }
+                    } else {
+                        tracing::warn!(
+                            "vertex-anthropic provider requires service_account_json in Vault secrets"
                         );
                     }
                     continue;

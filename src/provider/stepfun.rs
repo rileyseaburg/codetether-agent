@@ -248,7 +248,7 @@ impl StepFunProvider {
                                 id,
                                 name,
                                 arguments,
-                            } => Some(ToolCall {
+                            .. } => Some(ToolCall {
                                 id: id.clone(),
                                 r#type: "function".to_string(),
                                 function: ToolCallFunction {
@@ -483,6 +483,7 @@ impl Provider for StepFunProvider {
                     id: tc.id.clone(),
                     name: tc.function.name.clone(),
                     arguments: tc.function.arguments.clone(),
+                    thought_signature: None,
                 });
             }
         }

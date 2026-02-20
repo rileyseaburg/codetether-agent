@@ -1774,7 +1774,7 @@ async fn execute_session_with_policy(
                     id,
                     name,
                     arguments,
-                } = part
+                .. } = part
                 {
                     let args: serde_json::Value =
                         serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));

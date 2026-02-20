@@ -67,7 +67,7 @@ fn estimate_message_tokens(message: &Message) -> usize {
                 id,
                 name,
                 arguments,
-            } => estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10,
+            .. } => estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10,
             ContentPart::ToolResult {
                 tool_call_id,
                 content,
@@ -2308,7 +2308,7 @@ pub async fn run_agent_loop(
                     id,
                     name,
                     arguments,
-                } => {
+                .. } => {
                     tool_calls.push((id.clone(), name.clone(), arguments.clone()));
                 }
                 _ => {}

@@ -73,7 +73,7 @@ impl MoonshotProvider {
                                     id,
                                     name,
                                     arguments,
-                                } => Some(json!({
+                                .. } => Some(json!({
                                     "id": id,
                                     "type": "function",
                                     "function": {
@@ -358,6 +358,7 @@ impl Provider for MoonshotProvider {
                     id: tc.id.clone(),
                     name: tc.function.name.clone(),
                     arguments: tc.function.arguments.clone(),
+                    thought_signature: None,
                 });
             }
         }

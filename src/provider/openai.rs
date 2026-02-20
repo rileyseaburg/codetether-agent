@@ -149,7 +149,7 @@ impl OpenAIProvider {
                                 id,
                                 name,
                                 arguments,
-                            } => Some(ChatCompletionMessageToolCalls::Function(
+                            .. } => Some(ChatCompletionMessageToolCalls::Function(
                                 ChatCompletionMessageToolCall {
                                     id: id.clone(),
                                     function: FunctionCall {
@@ -336,6 +336,7 @@ impl Provider for OpenAIProvider {
                         id: func_call.id.clone(),
                         name: func_call.function.name.clone(),
                         arguments: func_call.function.arguments.clone(),
+                        thought_signature: None,
                     });
                 }
             }

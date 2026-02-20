@@ -162,7 +162,7 @@ impl AnthropicProvider {
                                 id,
                                 name,
                                 arguments,
-                            } => {
+                            .. } => {
                                 let input: Value = serde_json::from_str(arguments)
                                     .unwrap_or_else(|_| json!({"raw": arguments}));
                                 content_parts.push(json!({
@@ -544,6 +544,7 @@ impl Provider for AnthropicProvider {
                         id: id.clone(),
                         name: name.clone(),
                         arguments: serde_json::to_string(input).unwrap_or_default(),
+                        thought_signature: None,
                     });
                 }
                 AnthropicContent::Unknown => {}

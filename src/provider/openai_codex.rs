@@ -347,7 +347,7 @@ impl OpenAiCodexProvider {
                                     id,
                                     name,
                                     arguments,
-                                } => Some(json!({
+                                .. } => Some(json!({
                                     "id": id,
                                     "type": "function",
                                     "function": {
@@ -597,6 +597,7 @@ impl Provider for OpenAiCodexProvider {
                     id: tc.id,
                     name: tc.function.name,
                     arguments: tc.function.arguments,
+                    thought_signature: None,
                 });
             }
         }

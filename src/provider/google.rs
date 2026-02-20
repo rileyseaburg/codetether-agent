@@ -109,15 +109,25 @@ impl GoogleProvider {
                                 id,
                                 name,
                                 arguments,
+                                thought_signature,
                             } => {
-                                tool_calls.push(json!({
+                                let mut tc = json!({
                                     "id": id,
                                     "type": "function",
                                     "function": {
                                         "name": name,
                                         "arguments": arguments
                                     }
-                                }));
+                                });
+                                // Include thought signature for Gemini 3.x models
+                                if let Some(sig) = thought_signature {
+                                    tc["extra_content"] = json!({
+                                        "google": {
+                                            "thought_signature": sig
+                                        }
+                                    });
+                                }
+                                tool_calls.push(tc);
                             }
                             _ => {}
                         }
@@ -200,6 +210,19 @@ struct ChoiceMessage {
 struct ToolCall {
     id: String,
     function: FunctionCall,
+    /// Thought signature for Gemini 3.x models
+    #[serde(default)]
+    extra_content: Option<ExtraContent>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ExtraContent {
+    google: Option<GoogleExtra>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleExtra {
+    thought_signature: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,6 +261,44 @@ impl Provider for GoogleProvider {
         self.validate_api_key()?;
 
         Ok(vec![
+            // Gemini 3.x models (require thought signatures for tool calls)
+            ModelInfo {
+                id: "gemini-3.1-pro-preview".to_string(),
+                name: "Gemini 3.1 Pro Preview".to_string(),
+                provider: "google".to_string(),
+                context_window: 1_048_576,
+                max_output_tokens: Some(65_536),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(1.25),
+                output_cost_per_million: Some(10.0),
+            },
+            ModelInfo {
+                id: "gemini-3-pro".to_string(),
+                name: "Gemini 3 Pro".to_string(),
+                provider: "google".to_string(),
+                context_window: 1_048_576,
+                max_output_tokens: Some(65_536),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(1.25),
+                output_cost_per_million: Some(10.0),
+            },
+            ModelInfo {
+                id: "gemini-3-flash".to_string(),
+                name: "Gemini 3 Flash".to_string(),
+                provider: "google".to_string(),
+                context_window: 1_048_576,
+                max_output_tokens: Some(65_536),
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.15),
+                output_cost_per_million: Some(0.60),
+            },
+            // Gemini 2.5 models
             ModelInfo {
                 id: "gemini-2.5-pro".to_string(),
                 name: "Gemini 2.5 Pro".to_string(),
@@ -311,15 +372,13 @@ impl Provider for GoogleProvider {
 
         tracing::debug!("Google Gemini request to model {}", request.model);
 
-        // Google AI Studio keys use query param auth, not Bearer tokens
-        let url = format!(
-            "{}/chat/completions?key={}",
-            GOOGLE_OPENAI_BASE, self.api_key
-        );
+        // Google AI Studio OpenAI-compatible endpoint uses Bearer token auth
+        let url = format!("{}/chat/completions", GOOGLE_OPENAI_BASE);
         let response = self
             .client
             .post(&url)
             .header("content-type", "application/json")
+            .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&body)
             .send()
             .await
@@ -361,10 +420,18 @@ impl Provider for GoogleProvider {
         if let Some(tool_calls) = choice.message.tool_calls {
             has_tool_calls = !tool_calls.is_empty();
             for tc in tool_calls {
+                // Extract thought signature from extra_content.google.thought_signature
+                let thought_signature = tc
+                    .extra_content
+                    .as_ref()
+                    .and_then(|ec| ec.google.as_ref())
+                    .and_then(|g| g.thought_signature.clone());
+                
                 content_parts.push(ContentPart::ToolCall {
                     id: tc.id,
                     name: tc.function.name,
                     arguments: tc.function.arguments,
+                    thought_signature,
                 });
             }
         }

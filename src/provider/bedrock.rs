@@ -896,7 +896,7 @@ impl BedrockProvider {
                                 id,
                                 name,
                                 arguments,
-                            } => {
+                            .. } => {
                                 let input: Value = serde_json::from_str(arguments)
                                     .unwrap_or_else(|_| json!({"raw": arguments}));
                                 content_parts.push(json!({
@@ -1188,6 +1188,7 @@ impl Provider for BedrockProvider {
                         id: tool_use.tool_use_id.clone(),
                         name: tool_use.name.clone(),
                         arguments: serde_json::to_string(&tool_use.input).unwrap_or_default(),
+                        thought_signature: None,
                     });
                 }
             }

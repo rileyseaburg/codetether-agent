@@ -1468,6 +1468,7 @@ fn convert_openai_messages(
                         id: tool_call.id.clone(),
                         name: tool_call.function.name.clone(),
                         arguments: tool_call.function.arguments.clone(),
+                        thought_signature: None,
                     });
                 }
 
@@ -1570,7 +1571,7 @@ fn convert_response_message(
                 id,
                 name,
                 arguments,
-            } => {
+            .. } => {
                 tool_calls.push(OpenAiResponseToolCall {
                     id: id.clone(),
                     kind: "function".to_string(),
