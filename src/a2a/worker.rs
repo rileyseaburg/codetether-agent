@@ -1341,40 +1341,41 @@ async fn handle_task(
     let stream_task_id = task_id.to_string();
     let stream_bus = Arc::clone(bus);
 
-    let output_callback: Arc<dyn Fn(String) + Send + Sync + 'static> = Arc::new(move |output: String| {
-        let c = stream_client.clone();
-        let s = stream_server.clone();
-        let t = stream_token.clone();
-        let w = stream_worker_id.clone();
-        let tid = stream_task_id.clone();
+    let output_callback: Arc<dyn Fn(String) + Send + Sync + 'static> =
+        Arc::new(move |output: String| {
+            let c = stream_client.clone();
+            let s = stream_server.clone();
+            let t = stream_token.clone();
+            let w = stream_worker_id.clone();
+            let tid = stream_task_id.clone();
 
-        // Publish to the local bus so the SSE endpoint can pick it up in real time
-        let bus_handle = stream_bus.handle("task-output");
-        bus_handle.send(
-            format!("task.{}", tid),
-            crate::bus::BusMessage::TaskUpdate {
-                task_id: tid.clone(),
-                state: crate::a2a::types::TaskState::Working,
-                message: Some(output.clone()),
-            },
-        );
+            // Publish to the local bus so the SSE endpoint can pick it up in real time
+            let bus_handle = stream_bus.handle("task-output");
+            bus_handle.send(
+                format!("task.{}", tid),
+                crate::bus::BusMessage::TaskUpdate {
+                    task_id: tid.clone(),
+                    state: crate::a2a::types::TaskState::Working,
+                    message: Some(output.clone()),
+                },
+            );
 
-        tokio::spawn(async move {
-            let mut req = c
-                .post(format!("{}/v1/agent/tasks/{}/output", s, tid))
-                .header("X-Worker-ID", &w);
-            if let Some(tok) = &t {
-                req = req.bearer_auth(tok);
-            }
-            let _ = req
-                .json(&serde_json::json!({
-                    "worker_id": w,
-                    "output": output,
-                }))
-                .send()
-                .await;
+            tokio::spawn(async move {
+                let mut req = c
+                    .post(format!("{}/v1/agent/tasks/{}/output", s, tid))
+                    .header("X-Worker-ID", &w);
+                if let Some(tok) = &t {
+                    req = req.bearer_auth(tok);
+                }
+                let _ = req
+                    .json(&serde_json::json!({
+                        "worker_id": w,
+                        "output": output,
+                    }))
+                    .send()
+                    .await;
+            });
         });
-    });
 
     // Execute swarm tasks via SwarmExecutor; all other agents use the standard session loop.
     let (status, result, error, session_id) = if is_swarm_agent(agent_type) {
@@ -1474,8 +1475,7 @@ async fn execute_swarm_with_policy(
     target_agent_name: Option<&str>,
     bus: Option<&Arc<AgentBus>>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) -> Result<(crate::session::SessionResult, bool)>
-{
+) -> Result<(crate::session::SessionResult, bool)> {
     use crate::provider::{ContentPart, Message, Role};
 
     session.add_message(Message {
@@ -1631,8 +1631,7 @@ async fn execute_session_with_policy(
     auto_approve: AutoApprove,
     model_tier: Option<&str>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) -> Result<crate::session::SessionResult>
-{
+) -> Result<crate::session::SessionResult> {
     use crate::provider::{
         CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
     };
@@ -1700,8 +1699,12 @@ async fn execute_session_with_policy(
     };
 
     // Create tool registry with filtering based on auto-approve policy
-    let tool_registry =
-        create_filtered_registry(Arc::clone(&provider), model.clone(), auto_approve, output_callback.clone());
+    let tool_registry = create_filtered_registry(
+        Arc::clone(&provider),
+        model.clone(),
+        auto_approve,
+        output_callback.clone(),
+    );
     let tool_definitions = tool_registry.definitions();
 
     let temperature = if prefers_temperature_one(&model) {
@@ -2254,8 +2257,7 @@ fn start_workspace_sync(
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         const POLL_INTERVAL_SECS: u64 = 60;
-        let mut interval =
-            tokio::time::interval(Duration::from_secs(POLL_INTERVAL_SECS));
+        let mut interval = tokio::time::interval(Duration::from_secs(POLL_INTERVAL_SECS));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         interval.tick().await; // skip the immediate first tick -- let the worker settle first
 
@@ -2312,9 +2314,7 @@ async fn sync_workspaces_from_server(
             };
             // Only auto-register if the path physically exists on this machine
             // and is not already in the codebases list
-            if std::path::Path::new(path).exists()
-                && !current.iter().any(|c| c.as_str() == path)
-            {
+            if std::path::Path::new(path).exists() && !current.iter().any(|c| c.as_str() == path) {
                 new_paths.push(path.to_string());
             }
         }

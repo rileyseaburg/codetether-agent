@@ -107,6 +107,16 @@ cargo build --release --no-default-features
 
 ```bash
 cargo install codetether-agent
+
+# Optional: Enable hardware acceleration for the local FunctionGemma tool router 
+# For Apple Silicon / Intel Mac: 
+cargo install codetether-agent --features candle-accelerate 
+
+# For Intel/AMD Linux (requires MKL libraries): 
+cargo install codetether-agent --features candle-mkl 
+
+# For Nvidia GPU: 
+cargo install codetether-agent --features candle-cuda
 ```
 
 ## Quick Start

@@ -175,138 +175,146 @@ impl TuiWorkerBridge {
                                 .header("X-Agent-Name", &worker_name)
                                 .bearer_auth(&token);
 
-                    match req.send().await {
-                        Ok(res) if res.status().is_success() => {
-                            tracing::info!("Connected to A2A task stream");
-                            let mut stream = res.bytes_stream();
-                            let mut buffer = String::new();
+                            match req.send().await {
+                                Ok(res) if res.status().is_success() => {
+                                    tracing::info!("Connected to A2A task stream");
+                                    let mut stream = res.bytes_stream();
+                                    let mut buffer = String::new();
 
-                            while let Some(chunk) = stream.next().await {
-                                match chunk {
-                                    Ok(bytes) => {
-                                        buffer.push_str(&String::from_utf8_lossy(&bytes));
+                                    while let Some(chunk) = stream.next().await {
+                                        match chunk {
+                                            Ok(bytes) => {
+                                                buffer.push_str(&String::from_utf8_lossy(&bytes));
 
-                                        // Process SSE events
-                                        while let Some(pos) = buffer.find("\n\n") {
-                                            let event_str = buffer[..pos].to_string();
-                                            buffer = buffer[pos + 2..].to_string();
+                                                // Process SSE events
+                                                while let Some(pos) = buffer.find("\n\n") {
+                                                    let event_str = buffer[..pos].to_string();
+                                                    buffer = buffer[pos + 2..].to_string();
 
-                                            if let Some(data_line) =
-                                                event_str.lines().find(|l| l.starts_with("data:"))
-                                            {
-                                                let data =
-                                                    data_line.trim_start_matches("data:").trim();
-                                                if data.is_empty() || data == "[DONE]" {
-                                                    continue;
-                                                }
+                                                    if let Some(data_line) = event_str
+                                                        .lines()
+                                                        .find(|l| l.starts_with("data:"))
+                                                    {
+                                                        let data = data_line
+                                                            .trim_start_matches("data:")
+                                                            .trim();
+                                                        if data.is_empty() || data == "[DONE]" {
+                                                            continue;
+                                                        }
 
-                                                // Try to parse as task
-                                                if let Ok(task) =
-                                                    serde_json::from_str::<serde_json::Value>(data)
-                                                {
-                                                    let task_id = task
-                                                        .get("task_id")
-                                                        .or_else(|| task.get("id"))
-                                                        .and_then(|v| v.as_str())
-                                                        .unwrap_or("unknown")
-                                                        .to_string();
+                                                        // Try to parse as task
+                                                        if let Ok(task) = serde_json::from_str::<
+                                                            serde_json::Value,
+                                                        >(
+                                                            data
+                                                        ) {
+                                                            let task_id = task
+                                                                .get("task_id")
+                                                                .or_else(|| task.get("id"))
+                                                                .and_then(|v| v.as_str())
+                                                                .unwrap_or("unknown")
+                                                                .to_string();
 
-                                                    let message = task
-                                                        .get("message")
-                                                        .or_else(|| task.get("text"))
-                                                        .and_then(|v| v.as_str())
-                                                        .unwrap_or("")
-                                                        .to_string();
+                                                            let message = task
+                                                                .get("message")
+                                                                .or_else(|| task.get("text"))
+                                                                .and_then(|v| v.as_str())
+                                                                .unwrap_or("")
+                                                                .to_string();
 
-                                                    let from_agent = task
-                                                        .get("from_agent")
-                                                        .or_else(|| task.get("agent"))
-                                                        .and_then(|v| v.as_str())
-                                                        .map(String::from);
+                                                            let from_agent = task
+                                                                .get("from_agent")
+                                                                .or_else(|| task.get("agent"))
+                                                                .and_then(|v| v.as_str())
+                                                                .map(String::from);
 
-                                                    let incoming = IncomingTask {
-                                                        task_id,
-                                                        message,
-                                                        from_agent,
-                                                    };
+                                                            let incoming = IncomingTask {
+                                                                task_id,
+                                                                message,
+                                                                from_agent,
+                                                            };
 
-                                                    if task_tx.send(incoming).await.is_err() {
-                                                        tracing::warn!(
-                                                            "Task receiver dropped, stopping SSE stream"
-                                                        );
-                                                        return;
+                                                            if task_tx.send(incoming).await.is_err()
+                                                            {
+                                                                tracing::warn!(
+                                                                    "Task receiver dropped, stopping SSE stream"
+                                                                );
+                                                                return;
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
+                                            Err(e) => {
+                                                tracing::warn!("SSE stream error: {}", e);
+                                                break;
+                                            }
                                         }
                                     }
-                                    Err(e) => {
-                                        tracing::warn!("SSE stream error: {}", e);
-                                        break;
-                                    }
+                                }
+                                Ok(res) => {
+                                    tracing::warn!(
+                                        "Failed to connect to task stream: {}",
+                                        res.status()
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Failed to connect to task stream: {}", e);
+                                }
+                            }
+
+                            // Reconnect after delay
+                            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                        }
+                    }
+                });
+
+                // Handle commands and bus events
+                let mut cmd_rx = cmd_rx;
+                let mut bus_handle = bus.handle(&worker_id);
+
+                loop {
+                    tokio::select! {
+                        // Handle command to register/deregister agents
+                        Some(cmd) = cmd_rx.recv() => {
+                            match cmd {
+                                WorkerBridgeCmd::RegisterAgent { name, instructions: _ } => {
+                                    tracing::info!(agent = %name, "Registering sub-agent with A2A server");
+                                    // For now, just log - full implementation would POST to server
+                                    // The server tracks sub-agents via the heartbeat's agent list
+                                }
+                                WorkerBridgeCmd::DeregisterAgent { name } => {
+                                    tracing::info!(agent = %name, "Deregistering sub-agent from A2A server");
+                                }
+                                WorkerBridgeCmd::SetProcessing(processing) => {
+                                    let status = if processing {
+                                        WorkerStatus::Processing
+                                    } else {
+                                        WorkerStatus::Idle
+                                    };
+                                    heartbeat_state.set_status(status).await;
                                 }
                             }
                         }
-                        Ok(res) => {
-                            tracing::warn!("Failed to connect to task stream: {}", res.status());
-                        }
-                        Err(e) => {
-                            tracing::warn!("Failed to connect to task stream: {}", e);
-                        }
-                    }
-
-                    // Reconnect after delay
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                }
-            }
-        });
-
-        // Handle commands and bus events
-            let mut cmd_rx = cmd_rx;
-            let mut bus_handle = bus.handle(&worker_id);
-
-            loop {
-                tokio::select! {
-                    // Handle command to register/deregister agents
-                    Some(cmd) = cmd_rx.recv() => {
-                        match cmd {
-                            WorkerBridgeCmd::RegisterAgent { name, instructions: _ } => {
-                                tracing::info!(agent = %name, "Registering sub-agent with A2A server");
-                                // For now, just log - full implementation would POST to server
-                                // The server tracks sub-agents via the heartbeat's agent list
-                            }
-                            WorkerBridgeCmd::DeregisterAgent { name } => {
-                                tracing::info!(agent = %name, "Deregistering sub-agent from A2A server");
-                            }
-                            WorkerBridgeCmd::SetProcessing(processing) => {
-                                let status = if processing {
-                                    WorkerStatus::Processing
-                                } else {
-                                    WorkerStatus::Idle
-                                };
-                                heartbeat_state.set_status(status).await;
+                        // Handle bus events - forward to server
+                        Some(envelope) = bus_handle.recv() => {
+                            // Forward interesting events to server for observability
+                            if let Err(e) = forward_bus_event(&client, &server, &token, &worker_id, &envelope).await {
+                                tracing::debug!("Failed to forward bus event: {}", e);
                             }
                         }
-                    }
-                    // Handle bus events - forward to server
-                    Some(envelope) = bus_handle.recv() => {
-                        // Forward interesting events to server for observability
-                        if let Err(e) = forward_bus_event(&client, &server, &token, &worker_id, &envelope).await {
-                            tracing::debug!("Failed to forward bus event: {}", e);
+                        // Handle shutdown
+                        _ = tokio::signal::ctrl_c() => {
+                            tracing::info!("Worker bridge received shutdown signal");
+                            break;
                         }
-                    }
-                    // Handle shutdown
-                    _ = tokio::signal::ctrl_c() => {
-                        tracing::info!("Worker bridge received shutdown signal");
-                        break;
                     }
                 }
-            }
 
-            // Cleanup
-            heartbeat_handle.abort();
-            sse_handle.abort();
-            tracing::info!("Worker bridge stopped");
+                // Cleanup
+                heartbeat_handle.abort();
+                sse_handle.abort();
+                tracing::info!("Worker bridge stopped");
             }
         });
 
