@@ -91,6 +91,8 @@ impl LocalCudaProvider {
     }
 
     async fn runtime(&self, request: &CompletionRequest) -> Result<&ThinkerClient> {
+        // Runtime config is captured on first use; changing env vars later
+        // requires creating a new provider instance.
         self.runtime
             .get_or_try_init(|| async { ThinkerClient::new(self.build_config(request)?) })
             .await

@@ -4,7 +4,6 @@
 
 use anyhow::{anyhow, Context, Result};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 /// Worktree information
@@ -66,6 +65,7 @@ impl WorktreeManager {
     /// This creates an actual git worktree using `git worktree add`,
     /// creating a new branch if it doesn't exist.
     pub async fn create(&self, name: &str) -> Result<WorktreeInfo> {
+        Self::validate_worktree_name(name)?;
         let worktree_path = self.base_dir.join(name);
         let branch_name = format!("codetether/{}", name);
         
@@ -83,11 +83,11 @@ impl WorktreeManager {
             .context("Failed to execute git worktree add")?;
         
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
             // Branch might already exist, try without -b
             let output2 = tokio::process::Command::new("git")
                 .args(["worktree", "add"])
                 .arg(&worktree_path)
+                .arg(&branch_name)
                 .current_dir(&self.repo_path)
                 .output()
                 .await
@@ -246,7 +246,7 @@ impl WorktreeManager {
         drop(worktrees);
         
         // Check if we're in a merge state
-        let merge_head = self.repo_path.join(".git/MERGE_HEAD");
+        let merge_head = self.merge_head_path().await?;
         let in_merge = tokio::fs::try_exists(&merge_head).await.unwrap_or(false);
         
         if !in_merge {
@@ -281,9 +281,15 @@ impl WorktreeManager {
     }
 
     /// Abort an in-progress merge
-    pub async fn abort_merge(&self, _name: &str) -> Result<()> {
+    pub async fn abort_merge(&self, name: &str) -> Result<()> {
+        let worktrees = self.worktrees.lock().await;
+        if !worktrees.iter().any(|w| w.name == name) {
+            return Err(anyhow!("Worktree not found: {}", name));
+        }
+        drop(worktrees);
+
         // Check if we're in a merge state
-        let merge_head = self.repo_path.join(".git/MERGE_HEAD");
+        let merge_head = self.merge_head_path().await?;
         let in_merge = tokio::fs::try_exists(&merge_head).await.unwrap_or(false);
         
         if !in_merge {
@@ -304,6 +310,50 @@ impl WorktreeManager {
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
             Err(anyhow!("Failed to abort merge: {}", stderr))
+        }
+    }
+
+    fn validate_worktree_name(name: &str) -> Result<()> {
+        if name.is_empty() {
+            return Err(anyhow!("Worktree name cannot be empty"));
+        }
+        if name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            return Ok(());
+        }
+        Err(anyhow!(
+            "Invalid worktree name '{}'. Only alphanumeric characters, '-' and '_' are allowed.",
+            name
+        ))
+    }
+
+    async fn merge_head_path(&self) -> Result<PathBuf> {
+        let output = tokio::process::Command::new("git")
+            .args(["rev-parse", "--git-path", "MERGE_HEAD"])
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+            .context("Failed to determine git merge metadata path")?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "Failed to resolve merge metadata path: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+
+        let merge_head = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if merge_head.is_empty() {
+            return Err(anyhow!("Git returned an empty MERGE_HEAD path"));
+        }
+
+        let path = PathBuf::from(&merge_head);
+        if path.is_absolute() {
+            Ok(path)
+        } else {
+            Ok(self.repo_path.join(path))
         }
     }
 

@@ -416,6 +416,10 @@ pub struct RlmArgs {
     #[arg(long, default_value = "1.0")]
     pub consensus_threshold: f32,
 
+    /// Temperature for RLM generation (defaults: 0.3 single run, 0.75 consensus)
+    #[arg(long)]
+    pub analysis_temperature: Option<f32>,
+
     /// Directory to write split oracle JSONL datasets
     #[arg(long)]
     pub oracle_out_dir: Option<PathBuf>,

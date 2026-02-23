@@ -266,6 +266,13 @@ async fn main() -> anyhow::Result<()> {
             use provider::ProviderRegistry;
             use std::io::Read;
 
+            if args.consensus_runs == 0 {
+                anyhow::bail!("--consensus-runs must be at least 1");
+            }
+            if !(0.0..=1.0).contains(&args.consensus_threshold) {
+                anyhow::bail!("--consensus-threshold must be between 0.0 and 1.0");
+            }
+
             // Gather content
             let content = if !args.file.is_empty() {
                 let mut parts = Vec::new();
@@ -323,8 +330,10 @@ async fn main() -> anyhow::Result<()> {
             if let Some(provider) = provider_opt {
                 // Use LLM-powered RLM with llm_query() support
                 tracing::info!("Using LLM-powered RLM analysis");
-                let run_count = args.consensus_runs.max(1);
-                let run_temperature = if run_count > 1 { 0.75 } else { 0.3 };
+                let run_count = args.consensus_runs;
+                let run_temperature = args
+                    .analysis_temperature
+                    .unwrap_or_else(|| if run_count > 1 { 0.75 } else { 0.3 });
                 let mut runs: Vec<(
                     rlm::RlmAnalysisResult,
                     Vec<rlm::TraceStep>,
@@ -332,10 +341,13 @@ async fn main() -> anyhow::Result<()> {
                 )> = Vec::with_capacity(run_count);
 
                 for _ in 0..run_count {
-                    let mut executor =
-                        rlm::RlmExecutor::new(content.clone(), provider.clone(), "glm-5".to_string())
-                            .with_temperature(run_temperature)
-                            .with_verbose(args.verbose);
+                    let mut executor = rlm::RlmExecutor::new(
+                        content.clone(),
+                        provider.clone(),
+                        "glm-5".to_string(),
+                    )
+                    .with_temperature(run_temperature)
+                    .with_verbose(args.verbose);
                     let result = executor.analyze(&args.query).await?;
                     runs.push((
                         result,
@@ -391,7 +403,9 @@ async fn main() -> anyhow::Result<()> {
                             stats.consensus.push(trace.clone());
                         }
                         rlm::OracleResult::Unverified { reason } => {
-                            stats.unverified.push((run_results[0].clone(), reason.clone()));
+                            stats
+                                .unverified
+                                .push((run_results[0].clone(), reason.clone()));
                         }
                         rlm::OracleResult::Failed { reason, trace, .. } => {
                             stats.failed.push((trace.clone(), reason.clone()));
@@ -399,10 +413,13 @@ async fn main() -> anyhow::Result<()> {
                     }
 
                     let split = if let Some(ref out_dir) = args.oracle_out_dir {
-                        Some(stats.write_jsonl_split(
-                            out_dir.to_str().unwrap_or("."),
-                            &args.oracle_prefix,
-                        )?)
+                        let out_dir_str = out_dir.to_str().ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "Oracle output directory path is not valid UTF-8: {}",
+                                out_dir.display()
+                            )
+                        })?;
+                        Some(stats.write_jsonl_split(out_dir_str, &args.oracle_prefix)?)
                     } else {
                         None
                     };
@@ -428,7 +445,11 @@ async fn main() -> anyhow::Result<()> {
                             "reason": reason,
                             "split": split,
                         }),
-                        rlm::OracleResult::Failed { reason, diff, trace } => serde_json::json!({
+                        rlm::OracleResult::Failed {
+                            reason,
+                            diff,
+                            trace,
+                        } => serde_json::json!({
                             "status": "failed",
                             "reason": reason,
                             "diff": diff,

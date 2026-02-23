@@ -898,6 +898,10 @@ fn parse_params(params: &str) -> Vec<String> {
         .collect()
 }
 
+/// Canonicalize semantic text with whitespace normalization only.
+///
+/// This is intentionally lightweight and deterministic: paraphrases and
+/// reordered clauses are treated as different answers.
 fn canonicalize_semantic_answer(answer: &str) -> String {
     answer.split_whitespace().collect::<Vec<_>>().join(" ")
 }
