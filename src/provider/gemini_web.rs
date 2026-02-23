@@ -7,9 +7,10 @@
 //! `secret/codetether/providers/gemini-web` as the `cookies` key).
 //!
 //! Supported models (Gemini 3 / 3.1 family):
-//! - `gemini-web-fast`      Gemini 3 Fast (mode_id fbb127bbb056c959)
-//! - `gemini-web-thinking`  Gemini 3 Thinking (mode_id 5bf011840784117a)
-//! - `gemini-web-pro`       Gemini 3.1 Pro (mode_id 9d8ca3786ebdfbea)
+//! - `gemini-web-fast`       Gemini 3 Fast (mode_id fbb127bbb056c959)
+//! - `gemini-web-thinking`   Gemini 3 Thinking (mode_id 5bf011840784117a)
+//! - `gemini-web-pro`        Gemini 3.1 Pro (mode_id 9d8ca3786ebdfbea)
+//! - `gemini-web-deep-think` Gemini 3 Deep Think (mode_id e6fa609c3fa255c0)
 //!
 //! The model is selected via the `x-goog-ext-525001261-jspb` request header.
 
@@ -51,6 +52,12 @@ const MODELS: &[(&str, &str, &str, usize)] = &[
         "gemini-web-pro",
         "9d8ca3786ebdfbea",
         "Gemini 3.1 Pro",
+        1_048_576_usize,
+    ),
+    (
+        "gemini-web-deep-think",
+        "e6fa609c3fa255c0",
+        "Gemini 3 Deep Think",
         1_048_576_usize,
     ),
 ];
