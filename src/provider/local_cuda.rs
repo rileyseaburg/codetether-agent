@@ -86,6 +86,7 @@ impl Provider for LocalCudaProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+        // Note: streaming and tool support are planned features, currently unimplemented
         Ok(vec![ModelInfo {
             id: self.model_name.clone(),
             name: self.model_name.clone(),
@@ -93,8 +94,8 @@ impl Provider for LocalCudaProvider {
             context_window: 8192,
             max_output_tokens: Some(4096),
             supports_vision: false,
-            supports_tools: true,
-            supports_streaming: true,
+            supports_tools: false, // TODO: implement tool calling
+            supports_streaming: false, // TODO: implement streaming inference
             input_cost_per_million: Some(0.0), // Free - local inference
             output_cost_per_million: Some(0.0),
         }])
@@ -108,20 +109,16 @@ impl Provider for LocalCudaProvider {
         // 3. Run inference on the model
         // 4. Decode tokens back to text
 
-        let prompt = Self::format_messages(&request.messages);
-        
         tracing::debug!(
             model = %self.model_name,
-            prompt_len = prompt.len(),
-            "Local CUDA inference request"
+            message_count = request.messages.len(),
+            "Local CUDA inference requested (not yet implemented)"
         );
 
-        // TODO: Implement actual candle inference
-        // For now, return a placeholder that indicates the capability
+        // Return a generic error without exposing user prompt content
         Err(anyhow!(
-            "Local CUDA inference requires model implementation. \
-             Prompt would be: {}... (truncated)",
-            &prompt[..prompt.len().min(100)]
+            "Local CUDA inference not yet implemented. \
+             Please configure a cloud provider (Anthropic, OpenAI, etc.) for completion requests."
         ))
     }
 
@@ -258,5 +255,75 @@ mod tests {
         let formatted = LocalCudaProvider::format_messages(&messages);
         assert!(formatted.contains("You are a helpful assistant."));
         assert!(formatted.contains("Hello!"));
+    }
+
+    #[tokio::test]
+    async fn test_complete_error_message_no_prompt_exposure() {
+        let provider = LocalCudaProvider::new("test-model".to_string()).unwrap();
+        
+        let request = CompletionRequest {
+            messages: vec![
+                Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: "This is a sensitive prompt that should not appear in error messages!".to_string(),
+                    }],
+                },
+            ],
+            model: "test-model".to_string(),
+            max_tokens: Some(100),
+            temperature: None,
+            stream: false,
+            tools: vec![],
+            tool_choice: None,
+            response_format: None,
+        };
+
+        let result = provider.complete(request).await;
+        assert!(result.is_err());
+        
+        let error_message = result.unwrap_err().to_string();
+        
+        // Verify error message does not contain user prompt content
+        assert!(!error_message.contains("sensitive prompt"));
+        assert!(!error_message.contains("should not appear"));
+        
+        // Verify error message contains generic "not implemented" text
+        assert!(error_message.contains("not yet implemented") || error_message.contains("not implemented"));
+    }
+
+    #[tokio::test]
+    async fn test_complete_stream_error_message_no_prompt_exposure() {
+        let provider = LocalCudaProvider::new("test-model".to_string()).unwrap();
+        
+        let request = CompletionRequest {
+            messages: vec![
+                Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: "Another sensitive prompt for streaming test".to_string(),
+                    }],
+                },
+            ],
+            model: "test-model".to_string(),
+            max_tokens: Some(100),
+            temperature: None,
+            stream: true,
+            tools: vec![],
+            tool_choice: None,
+            response_format: None,
+        };
+
+        let result = provider.complete_stream(request).await;
+        assert!(result.is_err());
+        
+        let error_message = result.unwrap_err().to_string();
+        
+        // Verify error message does not contain user prompt content
+        assert!(!error_message.contains("sensitive prompt"));
+        assert!(!error_message.contains("streaming test"));
+        
+        // Verify error message contains generic "not implemented" text
+        assert!(error_message.contains("not yet implemented") || error_message.contains("not implemented"));
     }
 }

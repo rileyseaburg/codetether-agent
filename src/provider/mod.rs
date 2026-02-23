@@ -270,12 +270,65 @@ impl ProviderRegistry {
         Ok(registry)
     }
 
-    /// Initialize providers from HashiCorp Vault
-    ///
-    /// This loads API keys from Vault and creates providers dynamically.
-    /// Supports OpenAI-compatible providers via base_url.
-    pub async fn from_vault() -> Result<Self> {
-        let mut registry = Self::new();
+/// Initialize providers from HashiCorp Vault with configurable environment variable fallback.
+///
+/// This loads API keys from Vault and creates providers dynamically.
+/// Supports OpenAI-compatible providers via base_url.
+///
+/// # Security Model & Environment Variable Fallback
+///
+/// By default, this function attempts to load credentials from Vault first. If a provider
+/// is not configured in Vault, it falls back to checking environment variables for common
+/// providers (OpenAI, Anthropic, Google, OpenRouter). This fallback behavior is intended
+/// for local development and testing convenience.
+///
+/// **Security Consideration**: In production or security-conscious deployments, environment
+/// variable fallback may be undesirable because:
+/// - Environment variables can be leaked via logs, process listings, or container inspection
+/// - They may persist in shell history or configuration files
+/// - Multiple processes share the same environment, increasing attack surface
+///
+/// # Disabling Environment Variable Fallback
+///
+/// Set the environment variable `CODETETHER_DISABLE_ENV_FALLBACK=1` to disable all
+/// environment variable fallback for provider credentials. When set:
+/// - Only Vault-configured providers will be available
+/// - The `register_env_fallbacks()` step is skipped entirely
+/// - Bedrock auto-detection from `AWS_*` environment variables is also disabled
+///
+/// ```bash
+/// # Security-hardened deployment (no env var fallback)
+/// export CODETETHER_DISABLE_ENV_FALLBACK=1
+/// codetether serve
+/// ```
+///
+/// # Fallback Order
+///
+/// 1. **Vault secrets** (primary source): `secret/data/codetether/providers/<provider_id>`
+/// 2. **Bedrock auto-detection** (if not in Vault): Reads `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+/// 3. **Environment variable fallback** (if enabled):
+///    - `OPENAI_API_KEY` → OpenAI provider
+///    - `ANTHROPIC_API_KEY` → Anthropic provider
+///    - `GOOGLE_API_KEY` → Google provider
+///    - `OPENROUTER_API_KEY` → OpenRouter provider
+///
+/// # Default Behavior
+///
+/// The default (without `CODETETHER_DISABLE_ENV_FALLBACK`) allows environment variable
+/// fallback for backward compatibility and developer convenience. This default is
+/// intentionally permissive to support local development workflows where Vault may
+/// not be available.
+///
+/// # See Also
+///
+/// - `register_env_fallbacks()` for the list of supported environment variables
+/// - `src/secrets/mod.rs` for Vault configuration details
+/// - `AGENTS.md` for security best practices regarding secrets management
+pub async fn from_vault() -> Result<Self> {
+    let mut registry = Self::new();
+    let disable_env_fallback = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
 
         if let Some(manager) = crate::secrets::secrets_manager() {
             // List all configured providers from Vault
@@ -635,7 +688,8 @@ impl ProviderRegistry {
         }
 
         // If Bedrock wasn't registered via Vault, try auto-detecting AWS credentials
-        if !registry.providers.contains_key("bedrock") {
+        // (unless env fallback is disabled for security-hardened deployments)
+        if !registry.providers.contains_key("bedrock") && !disable_env_fallback {
             if let Some(creds) = bedrock::AwsCredentials::from_environment() {
                 let region = bedrock::AwsCredentials::detect_region()
                     .unwrap_or_else(|| "us-east-1".to_string());
@@ -650,16 +704,49 @@ impl ProviderRegistry {
         }
 
         // Fallback to environment variables for common providers if not registered via Vault
-        Self::register_env_fallbacks(&mut registry);
+        // Skip this step if CODETETHER_DISABLE_ENV_FALLBACK is set for security-hardened deployments
+        if !disable_env_fallback {
+            Self::register_env_fallbacks(&mut registry);
+        } else {
+            tracing::info!("Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)");
+        }
 
         tracing::info!(
-            "Registered {} providers (Vault + env fallback)",
-            registry.providers.len()
+            "Registered {} providers{}",
+            registry.providers.len(),
+            if disable_env_fallback { " (Vault only, no env fallback)" } else { " (Vault + env fallback)" }
         );
         Ok(registry)
     }
 
-    /// Register providers from environment variables if they aren't already registered
+    /// Register providers from environment variables if they aren't already registered.
+    ///
+    /// This function provides a convenience fallback for local development by reading
+    /// API keys from environment variables when providers are not configured in Vault.
+    ///
+    /// # Supported Environment Variables
+    ///
+    /// - `OPENAI_API_KEY` → Registers OpenAI provider
+    /// - `ANTHROPIC_API_KEY` → Registers Anthropic provider
+    /// - `GOOGLE_API_KEY` → Registers Google provider
+    /// - `OPENROUTER_API_KEY` → Registers OpenRouter provider
+    ///
+    /// # Security Warning
+    ///
+    /// Environment variables are less secure than Vault secrets because they:
+    /// - Can be leaked via process listings (`ps eww`) or container inspection
+    /// - May appear in debug logs or error messages
+    /// - Persist in shell history and dotfiles
+    /// - Are accessible to all child processes
+    ///
+    /// For production deployments, set `CODETETHER_DISABLE_ENV_FALLBACK=1` to disable
+    /// this fallback mechanism entirely. See [`from_vault()`](#method.from_vault) for details.
+    ///
+    /// # Behavior
+    ///
+    /// This function only registers a provider if:
+    /// 1. The provider is not already registered (via Vault or earlier initialization)
+    /// 2. The corresponding environment variable is set and non-empty
     fn register_env_fallbacks(registry: &mut Self) {
         let fallbacks: &[(&str, &str, fn(String) -> Result<Arc<dyn Provider>>)] = &[
             ("openai", "OPENAI_API_KEY", |key| Ok(Arc::new(openai::OpenAIProvider::new(key)?))),

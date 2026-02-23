@@ -1,7 +1,7 @@
 //! Additional file tools: tree, fileinfo, headtail, diff
 
 use super::{Tool, ToolResult};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::path::Path;
@@ -146,10 +146,8 @@ async fn build_tree(
     // Read directory and collect entries with their metadata
     let mut entries: Vec<TreeEntry> = Vec::new();
     
-    let mut dir = match fs::read_dir(path).await {
-        Ok(d) => d,
-        Err(_) => return Ok(()),
-    };
+    let mut dir = fs::read_dir(path).await
+        .with_context(|| format!("Failed to read directory: {}", path.display()))?;
 
     while let Ok(Some(entry)) = dir.next_entry().await {
         let name = entry.file_name().to_string_lossy().to_string();
@@ -644,5 +642,128 @@ impl Tool for DiffTool {
                 Ok(ToolResult::success(diff.to_string()))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn test_build_tree_propagates_read_dir_error() {
+        // Use a path that doesn't exist to trigger an error
+        let non_existent = PathBuf::from("/nonexistent/path/that/does/not/exist");
+        let mut output = Vec::new();
+        let mut file_count = 0;
+        let mut dir_count = 0;
+
+        let result = build_tree(
+            &non_existent,
+            "",
+            0,
+            3,
+            false,
+            false,
+            true,
+            &mut output,
+            &mut file_count,
+            &mut dir_count,
+        ).await;
+
+        // Should return an error, not Ok(())
+        assert!(result.is_err(), "Expected error for non-existent directory");
+        
+        // Error message should contain context about the path
+        let err = result.unwrap_err();
+        let err_msg = err.to_string();
+        assert!(
+            err_msg.contains("Failed to read directory"),
+            "Error should contain context message, got: {err_msg}"
+        );
+        assert!(
+            err_msg.contains("/nonexistent/path/that/does/not/exist"),
+            "Error should contain the path, got: {err_msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_build_tree_no_partial_output_on_error() {
+        // Use a path that doesn't exist
+        let non_existent = PathBuf::from("/another/nonexistent/path");
+        let mut output = Vec::new();
+        let mut file_count = 0;
+        let mut dir_count = 0;
+
+        let initial_output_len = output.len();
+        let initial_file_count = file_count;
+        let initial_dir_count = dir_count;
+
+        let result = build_tree(
+            &non_existent,
+            "",
+            0,
+            3,
+            false,
+            false,
+            true,
+            &mut output,
+            &mut file_count,
+            &mut dir_count,
+        ).await;
+
+        // Verify error was returned
+        assert!(result.is_err());
+
+        // Verify output was not modified (no partial tree building)
+        assert_eq!(
+            output.len(), initial_output_len,
+            "Output should not be modified on error"
+        );
+        assert_eq!(
+            file_count, initial_file_count,
+            "File count should not be modified on error"
+        );
+        assert_eq!(
+            dir_count, initial_dir_count,
+            "Dir count should not be modified on error"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_build_tree_success_with_temp_dir() {
+        // Create a temporary directory structure
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let temp_path = temp_dir.path();
+
+        // Create some files and directories
+        tokio::fs::create_dir(temp_path.join("subdir")).await.expect("Failed to create subdir");
+        tokio::fs::write(temp_path.join("file1.txt"), "content").await.expect("Failed to write file1");
+        tokio::fs::write(temp_path.join("subdir").join("file2.txt"), "content").await.expect("Failed to write file2");
+
+        let mut output = Vec::new();
+        let mut file_count = 0;
+        let mut dir_count = 0;
+
+        let result = build_tree(
+            temp_path,
+            "",
+            0,
+            3,
+            false,
+            false,
+            false, // Don't respect gitignore for this test
+            &mut output,
+            &mut file_count,
+            &mut dir_count,
+        ).await;
+
+        // Should succeed
+        assert!(result.is_ok(), "Expected success for valid directory: {:?}", result);
+
+        // Should have found files and directories
+        assert!(file_count >= 2, "Should have found at least 2 files, found: {}", file_count);
+        assert!(dir_count >= 1, "Should have found at least 1 directory, found: {}", dir_count);
+        assert!(!output.is_empty(), "Output should not be empty");
     }
 }

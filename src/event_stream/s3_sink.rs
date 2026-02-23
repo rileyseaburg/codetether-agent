@@ -67,6 +67,9 @@ pub struct S3SinkConfig {
     /// Region (default: us-east-1)
     #[serde(default = "default_region")]
     pub region: String,
+    /// Stub mode - skip actual HTTP requests when S3 unavailable
+    #[serde(default)]
+    pub stub_mode: bool,
 }
 
 fn default_region() -> String {
@@ -75,17 +78,65 @@ fn default_region() -> String {
 
 impl S3SinkConfig {
     /// Create config from environment variables
+    ///
+    /// Supports both `S3_*` (preferred) and `CODETETHER_S3_*` (legacy) environment variables.
+    /// The `S3_*` variables take precedence over `CODETETHER_S3_*` variables for backwards compatibility.
+    ///
+    /// # Environment Variables
+    /// - `S3_BUCKET` (or `CODETETHER_S3_BUCKET`): S3 bucket name
+    /// - `S3_PREFIX` (or `CODETETHER_S3_PREFIX`): Path prefix for uploads (default: "events/")
+    /// - `S3_ENDPOINT` (or `CODETETHER_S3_ENDPOINT`): Custom endpoint for R2/MinIO
+    /// - `S3_ACCESS_KEY` (or `CODETETHER_S3_ACCESS_KEY`): Access key
+    /// - `S3_SECRET_KEY` (or `CODETETHER_S3_SECRET_KEY`): Secret key
+    /// - `S3_REGION` (or `CODETETHER_S3_REGION`, `AWS_REGION`): Region (default: "us-east-1")
+    /// - `S3_STUB_MODE` (or `CODETETHER_S3_STUB_MODE`): Enable stub mode (skip actual uploads)
     pub fn from_env() -> Option<Self> {
-        let bucket = std::env::var("CODETETHER_S3_BUCKET").ok()?;
+        // Try S3_* first (new naming), fall back to CODETETHER_S3_* (legacy)
+        let bucket = std::env::var("S3_BUCKET")
+            .or_else(|_| std::env::var("CODETETHER_S3_BUCKET"))
+            .ok()?;
+
+        let prefix = std::env::var("S3_PREFIX")
+            .or_else(|_| std::env::var("CODETETHER_S3_PREFIX"))
+            .unwrap_or_else(|_| "events/".to_string());
+        
+        let endpoint = std::env::var("S3_ENDPOINT")
+            .or_else(|_| std::env::var("CODETETHER_S3_ENDPOINT"))
+            .ok();
+        
+        let access_key = std::env::var("S3_ACCESS_KEY")
+            .or_else(|_| std::env::var("CODETETHER_S3_ACCESS_KEY"))
+            .ok();
+        
+        let secret_key = std::env::var("S3_SECRET_KEY")
+            .or_else(|_| std::env::var("CODETETHER_S3_SECRET_KEY"))
+            .ok();
+        
+        let region = std::env::var("S3_REGION")
+            .or_else(|_| std::env::var("CODETETHER_S3_REGION"))
+            .or_else(|_| std::env::var("AWS_REGION"))
+            .unwrap_or_else(|_| "us-east-1".to_string());
+        
+        let stub_mode = std::env::var("S3_STUB_MODE")
+            .or_else(|_| std::env::var("CODETETHER_S3_STUB_MODE"))
+            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .unwrap_or(false);
+
+        // Log deprecation warning when using legacy CODETETHER_S3_* variables
+        if std::env::var("CODETETHER_S3_BUCKET").is_ok() && std::env::var("S3_BUCKET").is_err() {
+            tracing::warn!(
+                "Using legacy CODETETHER_S3_* environment variables. These are deprecated. Please migrate to S3_* naming convention."
+            );
+        }
 
         Some(Self {
             bucket,
-            prefix: std::env::var("CODETETHER_S3_PREFIX").unwrap_or_else(|_| "events/".to_string()),
-            endpoint: std::env::var("CODETETHER_S3_ENDPOINT").ok(),
-            access_key: std::env::var("CODETETHER_S3_ACCESS_KEY").ok(),
-            secret_key: std::env::var("CODETETHER_S3_SECRET_KEY").ok(),
-            region: std::env::var("CODETETHER_S3_REGION")
-                .unwrap_or_else(|_| "us-east-1".to_string()),
+            prefix,
+            endpoint,
+            access_key,
+            secret_key,
+            region,
+            stub_mode,
         })
     }
 }
@@ -112,6 +163,7 @@ impl S3Sink {
             access_key,
             secret_key,
             region: "us-east-1".to_string(),
+            stub_mode: false,
         };
 
         Self::from_config(config).await
@@ -129,7 +181,7 @@ impl S3Sink {
     /// Create S3 sink from environment variables
     pub async fn from_env() -> Result<Self, S3SinkError> {
         let config = S3SinkConfig::from_env().ok_or_else(|| {
-            S3SinkError::MissingConfig("CODETETHER_S3_BUCKET not set".to_string())
+            S3SinkError::MissingConfig("S3_BUCKET (or CODETETHER_S3_BUCKET) not set".to_string())
         })?;
 
         Self::from_config(config).await
@@ -224,6 +276,26 @@ impl S3Sink {
         s3_key: &str,
         _content_type: &str,
     ) -> Result<String, S3SinkError> {
+        // Stub mode: skip actual HTTP request
+        if self.config.stub_mode {
+            let url = if let Some(ref endpoint) = self.config.endpoint {
+                format!("{}/{}", endpoint.trim_end_matches('/'), s3_key)
+            } else {
+                format!(
+                    "s3://{}/{}",
+                    self.config.bucket, s3_key
+                )
+            };
+            
+            tracing::debug!(
+                key = %s3_key,
+                bytes = data.len(),
+                "[STUB MODE] Skipping S3 upload"
+            );
+            
+            return Ok(url);
+        }
+        
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let endpoint = self.endpoint_url();
@@ -288,8 +360,12 @@ impl S3Sink {
     }
 
     /// Check if S3 sink is configured
+    ///
+    /// Returns true if either `CODETETHER_S3_BUCKET` or `S3_BUCKET` is set.
     pub fn is_configured() -> bool {
-        std::env::var("CODETETHER_S3_BUCKET").is_ok()
+        std::env::var("CODETETHER_S3_BUCKET")
+            .or_else(|_| std::env::var("S3_BUCKET"))
+            .is_ok()
     }
 
     /// Get the bucket name
