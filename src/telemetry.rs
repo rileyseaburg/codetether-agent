@@ -186,6 +186,7 @@ impl Default for AtomicToolCounter {
 /// Tool execution record for telemetry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolExecution {
+    pub id: String,
     pub tool_name: String,
     pub timestamp: DateTime<Utc>,
     pub duration_ms: u64,
@@ -202,6 +203,7 @@ impl ToolExecution {
     /// Start a new tool execution
     pub fn start(tool_name: &str, input: serde_json::Value) -> Self {
         Self {
+            id: uuid::Uuid::new_v4().to_string(),
             tool_name: tool_name.to_string(),
             timestamp: Utc::now(),
             duration_ms: 0,
@@ -252,6 +254,20 @@ impl ToolExecution {
         self.duration_ms = duration.as_millis() as u64;
         self
     }
+}
+
+/// A2A Message record for telemetry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct A2AMessageRecord {
+    pub tool_name: String,
+    pub task_id: String,
+    pub blocking: bool,
+    pub prompt: String,
+    pub duration_ms: u64,
+    pub success: bool,
+    pub output: Option<String>,
+    pub error: Option<String>,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// File change record for telemetry
