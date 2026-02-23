@@ -215,6 +215,7 @@ impl Tool for ConfirmEditTool {
                 path.as_str(),
                 diff_output.as_str(),
                 new_string.len(),
+                Some((start_line, end_line)),
             );
 
             let mut exec = ToolExecution::start(

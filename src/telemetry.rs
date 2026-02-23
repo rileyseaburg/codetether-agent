@@ -307,25 +307,25 @@ impl FileChange {
     }
 
     /// Create a file modify record
-    pub fn modify(path: &str, old_content: &str, new_content: &str) -> Self {
+    pub fn modify(path: &str, old_content: &str, new_content: &str, line_range: Option<(u32, u32)>) -> Self {
         Self {
             path: path.to_string(),
             operation: "modify".to_string(),
             timestamp: Utc::now(),
             size_bytes: Some(new_content.len() as u64),
-            line_range: None,
+            line_range,
             diff: Some(format!("-{} bytes +{} bytes", old_content.len(), new_content.len())),
         }
     }
 
     /// Create a file modify record with diff
-    pub fn modify_with_diff(path: &str, diff: &str, new_size: usize) -> Self {
+    pub fn modify_with_diff(path: &str, diff: &str, new_size: usize, line_range: Option<(u32, u32)>) -> Self {
         Self {
             path: path.to_string(),
             operation: "modify".to_string(),
             timestamp: Utc::now(),
             size_bytes: Some(new_size as u64),
-            line_range: None,
+            line_range,
             diff: Some(diff.to_string()),
         }
     }

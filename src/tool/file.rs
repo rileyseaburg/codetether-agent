@@ -217,6 +217,7 @@ impl Tool for WriteTool {
                 path,
                 old_content.as_deref().unwrap_or(""),
                 content,
+                Some((1, content.lines().count() as u32)),
             )
         } else {
             FileChange::create(path, content)
