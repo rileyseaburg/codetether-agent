@@ -6,26 +6,33 @@
 
 A high-performance AI coding agent written in Rust. First-class A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
 
-## v2.0.3 — Major Release: Strategic Execution + Durable Replay
+## v4.0.0 — Major Release: Hybrid Swarm, Local CUDA & Real-Time Task Dispatch
 
-CodeTether Agent `v2.0.3` is a major release focused on long-running agent operations, measurable outcomes, and audit-ready replay.
+CodeTether Agent `v4.0.0` is a major release delivering zero-latency local inference, Kubernetes-native real-time task dispatch, and a significantly reduced cloud cost model.
 
-- **OKR-Gated `/go` Workflow** — `/go` now supports strategic execution with draft → approve/deny → run semantics and persisted OKR run tracking. Use `/autochat` for tactical fast-path relay runs.
-- **OKR CLI & Reporting** — New `codetether okr` command group for `list`, `status`, `create`, `runs`, `export`, `stats`, and `report` workflows.
-- **Relay Checkpointing + Resume** — In-flight relay state is checkpointed for crash recovery and exact-order continuation.
-- **Event Stream Module** — Structured JSONL event sourcing with byte-range offsets for efficient replay and session reconstruction.
-- **S3/R2 Archival** — Optional archival pipeline for event streams and chat artifacts to S3-compatible object storage.
-- **Correlation-Rich Observability** — Audit/event models now include `okr_id`, `okr_run_id`, `relay_id`, and `session_id` fields for end-to-end traceability.
-- **Worker HTTP Probe Server** — Worker mode now supports health/readiness/status endpoints (`/health`, `/ready`, `/worker/status`) for Kubernetes and platform integration.
+- **Hybrid Swarm Architecture & Local CUDA Provider** — New `LocalCudaProvider` runs ML inference directly on NVIDIA hardware via Candle, achieving zero network latency. Strategic reasoning stays on cloud models (e.g., Claude Opus); tool-call formatting is offloaded to local FunctionGemma. Full architecture documented in `docs/architecture/hybrid_swarm.md`.
+- **CloudEvent Task Notification** — Worker now receives task notifications via Knative Eventing. The `/task` endpoint extracts `task_id` from the CloudEvent payload and immediately polls for pending tasks, eliminating SSE polling delay.
+- **Claude Opus 4.6 Bedrock Pricing** — Reflects new Amazon Bedrock rates: input $5.00/1M tokens (was $15.00, −67%) and output $25.00/1M tokens (was $75.00, −67%). 200 K context limit added for Opus 4.6. TUI token display updated.
+- **Windows Installer Fix** — `install.ps1` now tries multiple artifact formats (msvc + zip for GitHub Actions, gnu + tar.gz for Jenkins) and auto-detects the correct binary. Improved error messages when no binary is available.
 
-### Upgrading to v2.x
+### Upgrading to v4.0
 
-- `/go` is strategic and approval-gated; use `/autochat` when you want immediate relay execution without OKR lifecycle tracking.
-- `/go` expects a concise objective sentence. Pasted prior run output/log blocks are rejected to prevent malformed PRD generation.
-- `codetether worker` can expose an HTTP probe/status server by default (`--hostname`, `--port`, `--no-http-server`).
-- Event/audit payloads include additional correlation fields; update downstream parsers if they assume a legacy schema.
+- Existing configurations, Vault secrets, and sessions are forward-compatible with v4.
+- Worker deployments automatically gain CloudEvent push-based dispatch; no `--server` polling changes required.
+- Enable local CUDA inference by building with `--features candle-cuda` and setting `CODETETHER_TOOL_ROUTER_DEVICE=cuda`.
+- Amazon Bedrock users: update cost-tracking dashboards to reflect the new per-token rates.
 
 ## Notable Prior Milestones
+
+### v2.0.3 — Strategic Execution + Durable Replay
+
+- **OKR-Gated `/go` Workflow** — Strategic execution with draft → approve/deny → run semantics and persisted OKR run tracking.
+- **OKR CLI & Reporting** — `codetether okr` command group: `list`, `status`, `create`, `runs`, `export`, `stats`, `report`.
+- **Relay Checkpointing + Resume** — In-flight relay state checkpointed for crash recovery and exact-order continuation.
+- **Event Stream Module** — Structured JSONL event sourcing with byte-range offsets for efficient replay.
+- **S3/R2 Archival** — Optional archival pipeline for event streams and chat artifacts to S3-compatible storage.
+- **Correlation-Rich Observability** — Audit/event models include `okr_id`, `okr_run_id`, `relay_id`, `session_id`.
+- **Worker HTTP Probe Server** — `/health`, `/ready`, `/worker/status` endpoints for Kubernetes integration.
 
 ### v1.1.6-alpha-2 — Agent Bus & gRPC Transport
 
@@ -618,7 +625,7 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
 {
   "name": "CodeTether Agent",
   "description": "A2A-native AI coding agent",
-  "version": "2.0.3",
+  "version": "4.0.0",
   "preferred_transport": "GRPC",
   "skills": [
     { "id": "code-generation", "name": "Code Generation" },
