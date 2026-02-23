@@ -538,13 +538,13 @@ impl BenchmarkRunner {
         // Snapshot token usage after
         let tokens_after = TOKEN_USAGE.global_snapshot();
         let input_tokens = tokens_after
-            .totals
+            .total
             .input
-            .saturating_sub(tokens_before.totals.input);
+            .saturating_sub(tokens_before.total.input);
         let output_tokens = tokens_after
-            .totals
+            .total
             .output
-            .saturating_sub(tokens_before.totals.output);
+            .saturating_sub(tokens_before.total.output);
         let tokens_used = input_tokens + output_tokens;
 
         // Calculate cost using real pricing

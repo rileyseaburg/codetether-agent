@@ -303,6 +303,20 @@ struct App {
     cached_processing: bool,
     /// Whether autochat was running when cache was last built
     cached_autochat_running: bool,
+    /// Pending image attachments (base64 data URLs) to send with the next message
+    pending_images: Vec<PendingImage>,
+}
+
+/// A pending image attachment from clipboard paste
+#[derive(Debug, Clone)]
+struct PendingImage {
+    /// Base64-encoded data URL (e.g., "data:image/png;base64,...")
+    data_url: String,
+    /// Image dimensions for display
+    width: usize,
+    height: usize,
+    /// Size in bytes (before base64 encoding)
+    size_bytes: usize,
 }
 
 #[allow(dead_code)]
@@ -505,6 +519,45 @@ fn estimate_cost(model: &str, prompt_tokens: usize, completion_tokens: usize) ->
     let cost =
         (prompt_tokens as f64 * input_rate + completion_tokens as f64 * output_rate) / 1_000_000.0;
     Some(cost)
+}
+
+/// Try to get an image from the system clipboard and encode it as a PNG data URL.
+/// Returns None if no image is available or encoding fails.
+fn get_clipboard_image() -> Option<PendingImage> {
+    use arboard::Clipboard;
+    use image::{ImageBuffer, Rgba};
+    use std::io::Cursor;
+
+    let mut clipboard = Clipboard::new().ok()?;
+    let img_data = clipboard.get_image().ok()?;
+
+    // arboard gives us RGBA bytes
+    let width = img_data.width;
+    let height = img_data.height;
+    let raw_bytes = img_data.bytes.into_owned();
+    let size_bytes = raw_bytes.len();
+
+    // Create an image buffer from the raw RGBA bytes
+    let img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_raw(width as u32, height as u32, raw_bytes)?;
+
+    // Encode as PNG
+    let mut png_bytes: Vec<u8> = Vec::new();
+    let mut cursor = Cursor::new(&mut png_bytes);
+    img_buffer
+        .write_to(&mut cursor, image::ImageFormat::Png)
+        .ok()?;
+
+    // Base64 encode
+    let base64_data = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &png_bytes);
+    let data_url = format!("data:image/png;base64,{}", base64_data);
+
+    Some(PendingImage {
+        data_url,
+        width,
+        height,
+        size_bytes,
+    })
 }
 
 fn current_spinner_frame() -> &'static str {
@@ -3123,6 +3176,7 @@ impl App {
             cached_streaming_snapshot: None,
             cached_processing: false,
             cached_autochat_running: false,
+            pending_images: Vec::new(),
         }
     }
 
@@ -4399,6 +4453,15 @@ impl App {
         let (tx, rx) = mpsc::channel(100);
         self.response_rx = Some(rx);
 
+        // Take any pending images to send with this message
+        let pending_images: Vec<crate::session::ImageAttachment> = std::mem::take(&mut self.pending_images)
+            .into_iter()
+            .map(|img| crate::session::ImageAttachment {
+                data_url: img.data_url,
+                mime_type: Some("image/png".to_string()),
+            })
+            .collect();
+
         // Clone session for async processing
         let session_clone = session.clone();
         let message_clone = message.clone();
@@ -4406,10 +4469,17 @@ impl App {
         // Spawn async task to process the message with event streaming
         tokio::spawn(async move {
             let mut session = session_clone;
-            if let Err(err) = session
-                .prompt_with_events(&message_clone, tx.clone(), registry)
-                .await
-            {
+            let result = if pending_images.is_empty() {
+                session
+                    .prompt_with_events(&message_clone, tx.clone(), registry)
+                    .await
+            } else {
+                session
+                    .prompt_with_events_and_images(&message_clone, pending_images, tx.clone(), registry)
+                    .await
+            };
+
+            if let Err(err) = result {
                 tracing::error!(error = %err, "Agent processing failed");
                 session.add_message(crate::provider::Message {
                     role: crate::provider::Role::Assistant,
@@ -6685,6 +6755,32 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             ));
                             app.scroll = SCROLL_BOTTOM;
                         }
+                    }
+                }
+
+                // Paste image from clipboard (Ctrl+V)
+                KeyCode::Char('v') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    // Try to get an image from clipboard
+                    if let Some(pending_img) = get_clipboard_image() {
+                        let size_kb = pending_img.size_bytes / 1024;
+                        let dims = format!("{}x{}", pending_img.width, pending_img.height);
+                        app.pending_images.push(pending_img);
+                        app.messages.push(ChatMessage::new(
+                            "system",
+                            format!(
+                                "📷 Image attached ({}, ~{}KB). Type a message and press Enter to send with the image.",
+                                dims, size_kb
+                            ),
+                        ));
+                        app.scroll = SCROLL_BOTTOM;
+                    } else {
+                        // No image in clipboard - let the normal paste handling work
+                        // (bracketed paste will handle text)
+                        app.messages.push(ChatMessage::new(
+                            "system",
+                            "No image found in clipboard. Text paste uses terminal's native paste.",
+                        ));
+                        app.scroll = SCROLL_BOTTOM;
                     }
                 }
 
@@ -9528,6 +9624,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Ctrl+P       Protocol registry".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
         "  Ctrl+B       Toggle webview layout".to_string(),
+        "  Ctrl+V       Paste image from clipboard".to_string(),
         "  Ctrl+Y       Copy latest assistant reply".to_string(),
         "  F3           Toggle inspector pane".to_string(),
         "  Ctrl+C       Quit".to_string(),

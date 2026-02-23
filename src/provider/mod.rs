@@ -627,11 +627,38 @@ impl ProviderRegistry {
             }
         }
 
+        // Fallback to environment variables for common providers if not registered via Vault
+        Self::register_env_fallbacks(&mut registry);
+
         tracing::info!(
-            "Registered {} providers from Vault",
+            "Registered {} providers (Vault + env fallback)",
             registry.providers.len()
         );
         Ok(registry)
+    }
+
+    /// Register providers from environment variables if they aren't already registered
+    fn register_env_fallbacks(registry: &mut Self) {
+        let fallbacks: &[(&str, &str, fn(String) -> Result<Arc<dyn Provider>>)] = &[
+            ("openai", "OPENAI_API_KEY", |key| Ok(Arc::new(openai::OpenAIProvider::new(key)?))),
+            ("anthropic", "ANTHROPIC_API_KEY", |key| Ok(Arc::new(anthropic::AnthropicProvider::new(key)?))),
+            ("google", "GOOGLE_API_KEY", |key| Ok(Arc::new(google::GoogleProvider::new(key)?))),
+            ("openrouter", "OPENROUTER_API_KEY", |key| Ok(Arc::new(openrouter::OpenRouterProvider::new(key)?))),
+        ];
+
+        for (provider_id, env_var, constructor) in fallbacks {
+            if !registry.providers.contains_key(*provider_id) {
+                if let Ok(api_key) = std::env::var(env_var) {
+                    match constructor(api_key) {
+                        Ok(p) => {
+                            tracing::info!("Registered {} provider from {} env var", provider_id, env_var);
+                            registry.register(p);
+                        }
+                        Err(e) => tracing::warn!("Failed to init {} from env: {}", provider_id, e),
+                    }
+                }
+            }
+        }
     }
 }
 

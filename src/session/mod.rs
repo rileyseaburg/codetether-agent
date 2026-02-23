@@ -21,6 +21,15 @@ use uuid::Uuid;
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
+/// An image attachment to include with a message (from clipboard paste, etc.)
+#[derive(Debug, Clone)]
+pub struct ImageAttachment {
+    /// Base64-encoded data URL (e.g., "data:image/png;base64,...")
+    pub data_url: String,
+    /// MIME type (e.g., "image/png")
+    pub mime_type: Option<String>,
+}
+
 fn is_interactive_tool(tool_name: &str) -> bool {
     matches!(tool_name, "question")
 }
@@ -813,6 +822,21 @@ impl Session {
         event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
         registry: std::sync::Arc<crate::provider::ProviderRegistry>,
     ) -> Result<SessionResult> {
+        self.prompt_with_events_and_images(message, Vec::new(), event_tx, registry)
+            .await
+    }
+
+    /// Execute a prompt with optional image attachments and stream events.
+    ///
+    /// This is the full-featured version that supports multimodal input (text + images).
+    /// Images should be base64-encoded data URLs.
+    pub async fn prompt_with_events_and_images(
+        &mut self,
+        message: &str,
+        images: Vec<ImageAttachment>,
+        event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
+        registry: std::sync::Arc<crate::provider::ProviderRegistry>,
+    ) -> Result<SessionResult> {
         use crate::provider::{CompletionRequest, ContentPart, Role, parse_model_string};
 
         let _ = event_tx.send(SessionEvent::Thinking).await;
@@ -851,12 +875,31 @@ impl Session {
             .get(selected_provider)
             .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
 
+        // Build user message content parts (text + optional images)
+        let mut content_parts = vec![ContentPart::Text {
+            text: message.to_string(),
+        }];
+
+        // Add image attachments
+        for img in &images {
+            content_parts.push(ContentPart::Image {
+                url: img.data_url.clone(),
+                mime_type: img.mime_type.clone(),
+            });
+        }
+
+        if !images.is_empty() {
+            tracing::info!(
+                image_count = images.len(),
+                "Adding {} image attachment(s) to user message",
+                images.len()
+            );
+        }
+
         // Add user message
         self.add_message(Message {
             role: Role::User,
-            content: vec![ContentPart::Text {
-                text: message.to_string(),
-            }],
+            content: content_parts,
         });
 
         // Generate title if needed

@@ -132,23 +132,18 @@ fn record_a2a_message_telemetry(
     output: Option<String>,
     error: Option<String>,
 ) {
-    let input = serde_json::json!({
-        "task_id": task_id,
-        "blocking": blocking,
-        "prompt": prompt,
-    });
-
-    let execution = ToolExecution::start(tool_name, input).with_session(task_id.to_string());
-    let execution = if success {
-        execution.complete_success(output.unwrap_or_default(), duration)
-    } else {
-        execution.complete_error(
-            error.unwrap_or_else(|| "A2A message execution failed".to_string()),
-            duration,
-        )
+    let record = crate::telemetry::A2AMessageRecord {
+        tool_name: tool_name.to_string(),
+        task_id: task_id.to_string(),
+        blocking,
+        prompt: prompt.to_string(),
+        duration_ms: duration.as_millis() as u64,
+        success,
+        output,
+        error,
+        timestamp: chrono::Utc::now(),
     };
-
-    record_persistent(execution);
+    let _ = record_persistent("a2a_message", &serde_json::to_value(&record).unwrap_or_default());
 }
 
 /// Handle JSON-RPC requests

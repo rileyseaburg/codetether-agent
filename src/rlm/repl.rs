@@ -265,6 +265,7 @@ impl RlmRepl {
             || line.starts_with("lines()")
             || line.starts_with("slice(")
             || line.starts_with("chunks(")
+            || line.starts_with("ast_query(")
             || line.starts_with("context")
         {
             let result = self.evaluate_expression(line);
@@ -370,6 +371,13 @@ impl RlmRepl {
             );
         }
 
+        // ast_query("s-expression")
+        // Execute a tree-sitter AST query and return formatted results
+        if expr.starts_with("ast_query(") {
+            let query = self.extract_string(expr).unwrap_or_default();
+            return self.execute_ast_query(&query);
+        }
+
         // Variable reference
         if let Some(val) = self.get_var(expr) {
             return val.to_string();
@@ -417,6 +425,28 @@ impl RlmRepl {
             .trim_end_matches(['"', '\'', '`', '/']);
 
         Some(unquoted.to_string())
+    }
+
+    /// Execute a tree-sitter AST query on the context.
+    fn execute_ast_query(&self, query: &str) -> String {
+        let mut oracle = super::oracle::TreeSitterOracle::new(self.context.clone());
+        
+        match oracle.query(query) {
+            Ok(result) => {
+                if result.matches.is_empty() {
+                    "(no AST matches)".to_string()
+                } else {
+                    let lines: Vec<String> = result.matches.iter().map(|m| {
+                        let captures_str: Vec<String> = m.captures.iter()
+                            .map(|(k, v)| format!("{}={:?}", k, v))
+                            .collect();
+                        format!("L{}: {} [{}]", m.line, m.text, captures_str.join(", "))
+                    }).collect();
+                    lines.join("\n")
+                }
+            }
+            Err(e) => format!("AST query error: {}", e)
+        }
     }
 }
 
@@ -519,6 +549,7 @@ impl RlmExecutor {
              - count(\"pattern\") - count regex matches\n\
              - slice(start, end) - slice by char position\n\
              - chunks(n) - split into n chunks\n\
+             - ast_query(\"s-expr\") - tree-sitter AST query for structural analysis\n\
              - llm_query(\"question\", context?) - ask sub-LM a question\n\
              - FINAL(\"answer\") - return final answer\n\
              === END CONTEXT INFO ===",
@@ -542,6 +573,7 @@ impl RlmExecutor {
              Available commands:\n\
              - head(n), tail(n): See first/last n lines\n\
              - grep(\"pattern\"): Search for patterns\n\
+             - ast_query(\"s-expr\"): Tree-sitter AST query (e.g., '(function_item name: (identifier) @name)')\n\
              - llm_query(\"question\"): Ask a focused sub-question\n\
              - FINAL(\"answer\"): Return your final answer (REQUIRED)\n\n\
              The context has {} chars across {} lines. A preview follows:\n\n\
@@ -823,6 +855,7 @@ impl RlmExecutor {
                     || l.starts_with("grep(")
                     || l.starts_with("count(")
                     || l.starts_with("llm_query(")
+                    || l.starts_with("ast_query(")
                     || l.starts_with("FINAL(")
                     || l.starts_with("let ")
                     || l.starts_with("const ")

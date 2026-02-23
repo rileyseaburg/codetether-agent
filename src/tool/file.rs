@@ -113,8 +113,8 @@ impl Tool for ReadTool {
             format!("Read {} lines from {}", end_line - start_line, path),
             duration,
         );
-        TOOL_EXECUTIONS.record(exec.clone());
-        record_persistent(exec);
+        TOOL_EXECUTIONS.record(exec.success);
+        let _ = record_persistent("tool_execution", &serde_json::to_value(&exec).unwrap_or_default());
 
         Ok(ToolResult::success(selected)
             .with_metadata("total_lines", json!(lines.len()))
@@ -235,8 +235,8 @@ impl Tool for WriteTool {
             format!("Wrote {} bytes to {}", content.len(), path),
             duration,
         );
-        TOOL_EXECUTIONS.record(exec.clone());
-        record_persistent(exec);
+        TOOL_EXECUTIONS.record(exec.success);
+        let _ = record_persistent("tool_execution", &serde_json::to_value(&exec).unwrap_or_default());
 
         Ok(ToolResult::success(format!(
             "Wrote {} bytes to {}",

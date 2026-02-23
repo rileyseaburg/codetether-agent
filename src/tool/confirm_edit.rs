@@ -213,9 +213,8 @@ impl Tool for ConfirmEditTool {
             // Record telemetry
             let file_change = FileChange::modify_with_diff(
                 path.as_str(),
-                old_string.as_str(),
-                new_string.as_str(),
                 diff_output.as_str(),
+                new_string.len(),
                 Some((start_line, end_line)),
             );
 
@@ -238,8 +237,8 @@ impl Tool for ConfirmEditTool {
                 ),
                 duration,
             );
-            TOOL_EXECUTIONS.record(exec.clone());
-            record_persistent(exec);
+            TOOL_EXECUTIONS.record(exec.success);
+            let _ = record_persistent("tool_execution", &serde_json::to_value(&exec).unwrap_or_default());
 
             Ok(ToolResult::success(format!(
                 "✓ Changes applied to {}\n\nDiff:\n{}",

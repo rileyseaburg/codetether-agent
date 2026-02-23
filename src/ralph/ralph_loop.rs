@@ -387,15 +387,14 @@ impl RalphLoop {
 
         // Clean up orphaned worktrees and branches
         if self.config.worktree_enabled {
-            if let Ok(mgr) = WorktreeManager::new(&self.state.working_dir) {
-                match mgr.cleanup_all() {
-                    Ok(count) if count > 0 => {
-                        info!(cleaned = count, "Cleaned up orphaned worktrees/branches");
-                    }
-                    Ok(_) => {}
-                    Err(e) => {
-                        warn!(error = %e, "Failed to cleanup orphaned worktrees");
-                    }
+            let mgr = WorktreeManager::new(&self.state.working_dir);
+            match mgr.cleanup_all().await {
+                Ok(count) if count > 0 => {
+                    info!(cleaned = count, "Cleaned up orphaned worktrees/branches");
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    warn!(error = %e, "Failed to cleanup orphaned worktrees");
                 }
             }
         }
@@ -652,19 +651,9 @@ impl RalphLoop {
 
         // Create worktree manager if enabled
         let worktree_mgr = if self.config.worktree_enabled {
-            match WorktreeManager::new(&self.state.working_dir) {
-                Ok(mgr) => {
-                    info!("Worktree isolation enabled for parallel stories");
-                    Some(Arc::new(mgr))
-                }
-                Err(e) => {
-                    warn!(
-                        "Failed to create worktree manager: {}, falling back to sequential within stages",
-                        e
-                    );
-                    None
-                }
-            }
+            let mgr = WorktreeManager::new(&self.state.working_dir);
+            info!("Worktree isolation enabled for parallel stories");
+            Some(Arc::new(mgr))
         } else {
             None
         };
@@ -726,12 +715,18 @@ impl RalphLoop {
                 let registry = self.registry.clone();
                 let max_steps_per_story = self.config.max_steps_per_story;
 
-                let handle = tokio::spawn(async move {
+                let handle: tokio::task::JoinHandle<(
+                    crate::ralph::types::UserStory,
+                    bool,
+                    crate::ralph::types::ProgressEntry,
+                    Option<crate::worktree::WorktreeInfo>,
+                    Option<std::sync::Arc<crate::worktree::WorktreeManager>>,
+                )> = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
 
                     // Create worktree for this story if enabled
                     let (story_working_dir, worktree_info) = if let Some(ref mgr) = worktree_mgr {
-                        match mgr.create(&story.id.to_lowercase().replace("-", "_")) {
+                        match mgr.create(&story.id.to_lowercase().replace("-", "_")).await {
                             Ok(wt) => {
                                 // Inject [workspace] stub for hermetic isolation
                                 if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
@@ -909,8 +904,8 @@ impl RalphLoop {
                                 }
 
                                 // Merge worktree back to main
-                                if let (Some(wt), Some(mgr)) = (&worktree_info, &worktree_mgr) {
-                                    match mgr.merge(wt) {
+                                if let (Some(wt), Some(mgr)) = (worktree_info.as_ref(), worktree_mgr.as_ref()) {
+                                    match mgr.merge(&wt.name).await {
                                         Ok(merge_result) => {
                                             if merge_result.success {
                                                 info!(
@@ -946,7 +941,7 @@ impl RalphLoop {
                                                 }
 
                                                 // Cleanup worktree
-                                                let _ = mgr.cleanup(wt);
+                                                let _ = mgr.cleanup(&wt.name).await;
                                             } else if !merge_result.conflicts.is_empty() {
                                                 // Real conflicts - spawn conflict resolver
                                                 info!(
@@ -975,7 +970,7 @@ impl RalphLoop {
                                                                 story.id
                                                             );
                                                             match mgr
-                                                                .complete_merge(wt, &commit_msg)
+                                                                .complete_merge(&wt.name, &commit_msg).await
                                                             {
                                                                 Ok(final_result) => {
                                                                     if final_result.success {
@@ -991,7 +986,7 @@ impl RalphLoop {
                                                                             story_id = %story.id,
                                                                             "Merge failed even after resolution"
                                                                         );
-                                                                        let _ = mgr.abort_merge();
+                                                                        let _ = mgr.abort_merge(&wt.name).await;
                                                                     }
                                                                 }
                                                                 Err(e) => {
@@ -1000,7 +995,7 @@ impl RalphLoop {
                                                                         error = %e,
                                                                         "Failed to complete merge after resolution"
                                                                     );
-                                                                    let _ = mgr.abort_merge();
+                                                                    let _ = mgr.abort_merge(&wt.name).await;
                                                                 }
                                                             }
                                                         } else {
@@ -1008,7 +1003,7 @@ impl RalphLoop {
                                                                 story_id = %story.id,
                                                                 "Conflict resolver could not resolve all conflicts"
                                                             );
-                                                            let _ = mgr.abort_merge();
+                                                            let _ = mgr.abort_merge(&wt.name).await;
                                                         }
                                                     }
                                                     Err(e) => {
@@ -1017,11 +1012,11 @@ impl RalphLoop {
                                                             error = %e,
                                                             "Conflict resolver failed"
                                                         );
-                                                        let _ = mgr.abort_merge();
+                                                        let _ = mgr.abort_merge(&wt.name).await;
                                                     }
                                                 }
                                                 // Cleanup worktree
-                                                let _ = mgr.cleanup(wt);
+                                                let _ = mgr.cleanup(&wt.name).await;
                                             } else if merge_result.aborted {
                                                 // Non-conflict failure that was already aborted
                                                 warn!(
@@ -1030,7 +1025,7 @@ impl RalphLoop {
                                                     "Merge was aborted due to non-conflict failure"
                                                 );
                                                 // Cleanup worktree
-                                                let _ = mgr.cleanup(wt);
+                                                let _ = mgr.cleanup(&wt.name).await;
                                             } else {
                                                 // Merge in progress state (should not reach here)
                                                 warn!(
@@ -1080,8 +1075,8 @@ impl RalphLoop {
                                     passed: false,
                                 });
                                 // Cleanup worktree without merging
-                                if let (Some(wt), Some(mgr)) = (&worktree_info, &worktree_mgr) {
-                                    let _ = mgr.cleanup(wt);
+                                if let (Some(wt), Some(mgr)) = (worktree_info.as_ref(), worktree_mgr.as_ref()) {
+                                    let _ = mgr.cleanup(&wt.name).await;
                                 }
                             }
                         } else {
