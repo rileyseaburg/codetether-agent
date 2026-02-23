@@ -5,6 +5,7 @@
 pub mod anthropic;
 pub mod bedrock;
 pub mod copilot;
+pub mod gemini_web;
 pub mod google;
 pub mod metrics;
 pub mod models;
@@ -420,6 +421,27 @@ impl ProviderRegistry {
                                 "openai-codex provider requires access_token, refresh_token, and expires_at in Vault secrets"
                             );
                         }
+                    }
+                    continue;
+                }
+
+                // Handle Gemini Web (browser-cookie-based, no API key needed)
+                if matches!(provider_id.as_str(), "gemini-web") {
+                    let cookies = secrets
+                        .extra
+                        .get("cookies")
+                        .and_then(|v| v.as_str());
+
+                    if let Some(cookies) = cookies {
+                        match gemini_web::GeminiWebProvider::new(cookies.to_string()) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init gemini-web: {e}"),
+                        }
+                    } else {
+                        tracing::warn!(
+                            "gemini-web provider requires \"cookies\" field in Vault secrets \
+                             (tab-separated Cookie-Editor export)"
+                        );
                     }
                     continue;
                 }
