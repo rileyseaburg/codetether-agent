@@ -3,18 +3,17 @@
 //! This provider uses pure-Rust ML execution directly on NVIDIA hardware
 //! without needing C++ interop or external HTTP servers like Ollama.
 
+use crate::cognition::{CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig};
 use crate::provider::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, Usage,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
-use candle_core::{Device, Tensor};
-use candle_nn::VarBuilder;
-use candle_transformers::generation::LogitsProcessor;
+use candle_core::Device;
 use futures::stream::BoxStream;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::path::Path;
+use tokio::sync::OnceCell;
 
 /// Local CUDA Provider using Candle bindings
 ///
@@ -24,15 +23,14 @@ pub struct LocalCudaProvider {
     model_name: String,
     device: Device,
     /// Model cache - in production this would hold the loaded model
-    model_cache: Arc<Mutex<Option<ModelCache>>>,
+    model_cache: Option<ModelCache>,
+    runtime: OnceCell<ThinkerClient>,
 }
 
 struct ModelCache {
-    // In a full implementation, this would hold:
-    // - The loaded model weights
-    // - The tokenizer
-    // - Generation config
     model_path: String,
+    tokenizer_path: Option<String>,
+    architecture: Option<String>,
 }
 
 impl LocalCudaProvider {
@@ -53,15 +51,29 @@ impl LocalCudaProvider {
         Ok(Self {
             model_name,
             device,
-            model_cache: Arc::new(Mutex::new(None)),
+            model_cache: None,
+            runtime: OnceCell::const_new(),
         })
     }
 
     /// Create with explicit model path
     pub fn with_model(model_name: String, model_path: String) -> Result<Self> {
+        Self::with_paths(model_name, model_path, None, None)
+    }
+
+    /// Create with explicit model and tokenizer paths.
+    pub fn with_paths(
+        model_name: String,
+        model_path: String,
+        tokenizer_path: Option<String>,
+        architecture: Option<String>,
+    ) -> Result<Self> {
         let mut provider = Self::new(model_name)?;
-        // Pre-load the model cache
-        provider.model_cache = Arc::new(Mutex::new(Some(ModelCache { model_path })));
+        provider.model_cache = Some(ModelCache {
+            model_path,
+            tokenizer_path,
+            architecture,
+        });
         Ok(provider)
     }
 
@@ -73,9 +85,195 @@ impl LocalCudaProvider {
     /// Get device info
     pub fn device_info() -> String {
         match Device::new_cuda(0) {
-            Ok(d) => format!("CUDA: {}", d),
+            Ok(d) => format!("CUDA: {:?}", d),
             Err(_) => "CPU only".to_string(),
         }
+    }
+
+    async fn runtime(&self, request: &CompletionRequest) -> Result<&ThinkerClient> {
+        self.runtime
+            .get_or_try_init(|| async { ThinkerClient::new(self.build_config(request)?) })
+            .await
+    }
+
+    fn build_config(&self, request: &CompletionRequest) -> Result<ThinkerConfig> {
+        let model_path = self
+            .resolve_model_path()
+            .ok_or_else(|| {
+                anyhow!(
+                    "Local CUDA requires model path via LOCAL_CUDA_MODEL_PATH or \
+                     CODETETHER_LOCAL_CUDA_MODEL_PATH"
+                )
+            })?;
+        let tokenizer_path = self.resolve_tokenizer_path().or_else(|| {
+            // Common local layout: tokenizer.json next to model.gguf
+            Path::new(&model_path)
+                .parent()
+                .map(|p| p.join("tokenizer.json"))
+                .filter(|p| p.exists())
+                .map(|p| p.to_string_lossy().to_string())
+        });
+        let tokenizer_path = tokenizer_path.ok_or_else(|| {
+            anyhow!(
+                "Local CUDA requires tokenizer path via LOCAL_CUDA_TOKENIZER_PATH or \
+                 CODETETHER_LOCAL_CUDA_TOKENIZER_PATH"
+            )
+        })?;
+
+        if !Path::new(&model_path).exists() {
+            return Err(anyhow!(
+                "Local CUDA model path does not exist: {}",
+                model_path
+            ));
+        }
+        if !Path::new(&tokenizer_path).exists() {
+            return Err(anyhow!(
+                "Local CUDA tokenizer path does not exist: {}",
+                tokenizer_path
+            ));
+        }
+
+        let mut config = ThinkerConfig {
+            enabled: true,
+            backend: ThinkerBackend::Candle,
+            model: self.model_name.clone(),
+            candle_model_path: Some(model_path),
+            candle_tokenizer_path: Some(tokenizer_path),
+            candle_arch: self.resolve_architecture(),
+            candle_device: self.resolve_device_preference(),
+            candle_cuda_ordinal: parse_env_usize(
+                &["LOCAL_CUDA_ORDINAL", "CODETETHER_LOCAL_CUDA_ORDINAL"],
+                0,
+            ),
+            candle_repeat_penalty: parse_env_f32(
+                &[
+                    "LOCAL_CUDA_REPEAT_PENALTY",
+                    "CODETETHER_LOCAL_CUDA_REPEAT_PENALTY",
+                ],
+                1.1,
+            ),
+            candle_repeat_last_n: parse_env_usize(
+                &[
+                    "LOCAL_CUDA_REPEAT_LAST_N",
+                    "CODETETHER_LOCAL_CUDA_REPEAT_LAST_N",
+                ],
+                64,
+            ),
+            candle_seed: parse_env_u64(&["LOCAL_CUDA_SEED", "CODETETHER_LOCAL_CUDA_SEED"], 42),
+            temperature: request.temperature.unwrap_or_else(|| {
+                parse_env_f32(
+                    &["LOCAL_CUDA_TEMPERATURE", "CODETETHER_LOCAL_CUDA_TEMPERATURE"],
+                    0.2,
+                )
+            }),
+            top_p: request.top_p,
+            max_tokens: request.max_tokens.unwrap_or(512).max(1),
+            ..ThinkerConfig::default()
+        };
+        config.timeout_ms = parse_env_u64(
+            &["LOCAL_CUDA_TIMEOUT_MS", "CODETETHER_LOCAL_CUDA_TIMEOUT_MS"],
+            120_000,
+        );
+
+        tracing::info!(
+            model = %config.model,
+            device = ?config.candle_device,
+            cuda_ordinal = config.candle_cuda_ordinal,
+            max_tokens = config.max_tokens,
+            "Initialized Local CUDA runtime configuration"
+        );
+
+        Ok(config)
+    }
+
+    fn resolve_model_path(&self) -> Option<String> {
+        self.model_cache
+            .as_ref()
+            .map(|c| c.model_path.clone())
+            .or_else(|| {
+                first_env(&[
+                    "LOCAL_CUDA_MODEL_PATH",
+                    "CODETETHER_LOCAL_CUDA_MODEL_PATH",
+                ])
+            })
+    }
+
+    fn resolve_tokenizer_path(&self) -> Option<String> {
+        self.model_cache
+            .as_ref()
+            .and_then(|c| c.tokenizer_path.clone())
+            .or_else(|| {
+                first_env(&[
+                    "LOCAL_CUDA_TOKENIZER_PATH",
+                    "CODETETHER_LOCAL_CUDA_TOKENIZER_PATH",
+                ])
+            })
+    }
+
+    fn resolve_architecture(&self) -> Option<String> {
+        self.model_cache
+            .as_ref()
+            .and_then(|c| c.architecture.clone())
+            .or_else(|| first_env(&["LOCAL_CUDA_ARCH", "CODETETHER_LOCAL_CUDA_ARCH"]))
+    }
+
+    fn resolve_device_preference(&self) -> CandleDevicePreference {
+        if let Some(v) = first_env(&["LOCAL_CUDA_DEVICE", "CODETETHER_LOCAL_CUDA_DEVICE"]) {
+            return CandleDevicePreference::from_env(&v);
+        }
+        CandleDevicePreference::Auto
+    }
+
+    fn map_finish_reason(reason: Option<&str>) -> FinishReason {
+        match reason {
+            Some("stop") => FinishReason::Stop,
+            Some("length") => FinishReason::Length,
+            Some("tool_calls") => FinishReason::ToolCalls,
+            Some("content_filter") => FinishReason::ContentFilter,
+            Some("error") => FinishReason::Error,
+            _ => FinishReason::Stop,
+        }
+    }
+
+    fn to_prompts(messages: &[Message]) -> (String, String) {
+        let mut system_lines = Vec::new();
+        let mut convo_lines = Vec::new();
+
+        for msg in messages {
+            match msg.role {
+                Role::System => {
+                    let text = Self::content_to_string(&msg.content);
+                    if !text.is_empty() {
+                        system_lines.push(text);
+                    }
+                }
+                Role::User => {
+                    convo_lines.push(format!("User:\n{}", Self::content_to_string(&msg.content)));
+                }
+                Role::Assistant => {
+                    convo_lines.push(format!(
+                        "Assistant:\n{}",
+                        Self::content_to_string(&msg.content)
+                    ));
+                }
+                Role::Tool => {
+                    convo_lines.push(format!("Tool:\n{}", Self::content_to_string(&msg.content)));
+                }
+            }
+        }
+
+        let system_prompt = if system_lines.is_empty() {
+            "You are CodeTether local CUDA coding assistant.".to_string()
+        } else {
+            system_lines.join("\n\n")
+        };
+        let user_prompt = if convo_lines.is_empty() {
+            "User:\n(Empty prompt)".to_string()
+        } else {
+            convo_lines.join("\n\n")
+        };
+
+        (system_prompt, user_prompt)
     }
 }
 
@@ -94,43 +292,76 @@ impl Provider for LocalCudaProvider {
             context_window: 8192,
             max_output_tokens: Some(4096),
             supports_vision: false,
-            supports_tools: false, // TODO: implement tool calling
-            supports_streaming: false, // TODO: implement streaming inference
+            supports_tools: false,             // TODO: implement tool calling
+            supports_streaming: false,         // TODO: implement streaming inference
             input_cost_per_million: Some(0.0), // Free - local inference
             output_cost_per_million: Some(0.0),
         }])
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
-        // For now, return an error indicating this needs model implementation
-        // In a full implementation, we would:
-        // 1. Format the prompt from messages
-        // 2. Tokenize using the tokenizer
-        // 3. Run inference on the model
-        // 4. Decode tokens back to text
+        let (system_prompt, user_prompt) = Self::to_prompts(&request.messages);
+        let runtime = self.runtime(&request).await?;
+        let output = runtime
+            .think(&system_prompt, &user_prompt)
+            .await
+            .with_context(|| format!("local_cuda inference failed for model {}", self.model_name))?;
 
         tracing::debug!(
             model = %self.model_name,
-            message_count = request.messages.len(),
-            "Local CUDA inference requested (not yet implemented)"
+            prompt_tokens = output.prompt_tokens.unwrap_or(0),
+            completion_tokens = output.completion_tokens.unwrap_or(0),
+            finish_reason = ?output.finish_reason,
+            "Local CUDA inference completed"
         );
 
-        // Return a generic error without exposing user prompt content
-        Err(anyhow!(
-            "Local CUDA inference not yet implemented. \
-             Please configure a cloud provider (Anthropic, OpenAI, etc.) for completion requests."
-        ))
+        let text = output.text.trim().to_string();
+        Ok(CompletionResponse {
+            message: Message {
+                role: Role::Assistant,
+                content: vec![ContentPart::Text { text }],
+            },
+            usage: Usage {
+                prompt_tokens: output.prompt_tokens.unwrap_or(0) as usize,
+                completion_tokens: output.completion_tokens.unwrap_or(0) as usize,
+                total_tokens: output.total_tokens.unwrap_or(0) as usize,
+                cache_read_tokens: None,
+                cache_write_tokens: None,
+            },
+            finish_reason: Self::map_finish_reason(output.finish_reason.as_deref()),
+        })
     }
 
     async fn complete_stream(
         &self,
-        request: CompletionRequest,
+        _request: CompletionRequest,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        // TODO: Implement streaming inference with candle
         Err(anyhow!(
             "Streaming inference not yet implemented for local_cuda provider"
         ))
     }
+}
+
+fn first_env(keys: &[&str]) -> Option<String> {
+    keys.iter().find_map(|k| std::env::var(k).ok())
+}
+
+fn parse_env_f32(keys: &[&str], default: f32) -> f32 {
+    first_env(keys)
+        .and_then(|v| v.parse::<f32>().ok())
+        .unwrap_or(default)
+}
+
+fn parse_env_usize(keys: &[&str], default: usize) -> usize {
+    first_env(keys)
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(default)
+}
+
+fn parse_env_u64(keys: &[&str], default: u64) -> u64 {
+    first_env(keys)
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(default)
 }
 
 impl LocalCudaProvider {
@@ -260,70 +491,72 @@ mod tests {
     #[tokio::test]
     async fn test_complete_error_message_no_prompt_exposure() {
         let provider = LocalCudaProvider::new("test-model".to_string()).unwrap();
-        
+
         let request = CompletionRequest {
-            messages: vec![
-                Message {
-                    role: Role::User,
-                    content: vec![ContentPart::Text {
-                        text: "This is a sensitive prompt that should not appear in error messages!".to_string(),
-                    }],
-                },
-            ],
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "This is a sensitive prompt that should not appear in error messages!"
+                        .to_string(),
+                }],
+            }],
             model: "test-model".to_string(),
-            max_tokens: Some(100),
-            temperature: None,
-            stream: false,
             tools: vec![],
-            tool_choice: None,
-            response_format: None,
+            temperature: None,
+            top_p: None,
+            max_tokens: Some(100),
+            stop: vec![],
         };
 
         let result = provider.complete(request).await;
-        assert!(result.is_err());
-        
-        let error_message = result.unwrap_err().to_string();
-        
+        let error_message = match result {
+            Ok(_) => panic!("Expected local_cuda complete() to fail until inference is implemented"),
+            Err(e) => e.to_string(),
+        };
+
         // Verify error message does not contain user prompt content
         assert!(!error_message.contains("sensitive prompt"));
         assert!(!error_message.contains("should not appear"));
-        
-        // Verify error message contains generic "not implemented" text
-        assert!(error_message.contains("not yet implemented") || error_message.contains("not implemented"));
+
+        // With no local model configured, provider should return config error.
+        assert!(error_message.contains("Local CUDA requires model path"));
     }
 
     #[tokio::test]
     async fn test_complete_stream_error_message_no_prompt_exposure() {
         let provider = LocalCudaProvider::new("test-model".to_string()).unwrap();
-        
+
         let request = CompletionRequest {
-            messages: vec![
-                Message {
-                    role: Role::User,
-                    content: vec![ContentPart::Text {
-                        text: "Another sensitive prompt for streaming test".to_string(),
-                    }],
-                },
-            ],
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "Another sensitive prompt for streaming test".to_string(),
+                }],
+            }],
             model: "test-model".to_string(),
-            max_tokens: Some(100),
-            temperature: None,
-            stream: true,
             tools: vec![],
-            tool_choice: None,
-            response_format: None,
+            temperature: None,
+            top_p: None,
+            max_tokens: Some(100),
+            stop: vec![],
         };
 
         let result = provider.complete_stream(request).await;
-        assert!(result.is_err());
-        
-        let error_message = result.unwrap_err().to_string();
-        
+        let error_message = match result {
+            Ok(_) => {
+                panic!("Expected local_cuda complete_stream() to fail until streaming is implemented")
+            }
+            Err(e) => e.to_string(),
+        };
+
         // Verify error message does not contain user prompt content
         assert!(!error_message.contains("sensitive prompt"));
         assert!(!error_message.contains("streaming test"));
-        
-        // Verify error message contains generic "not implemented" text
-        assert!(error_message.contains("not yet implemented") || error_message.contains("not implemented"));
+
+        // Streaming remains unimplemented.
+        assert!(
+            error_message.contains("not yet implemented")
+                || error_message.contains("not implemented")
+        );
     }
 }

@@ -403,6 +403,26 @@ pub struct RlmArgs {
     /// Enable verbose output (shows context summary)
     #[arg(short, long)]
     pub verbose: bool,
+
+    /// Validate FINAL payload with deterministic oracle when possible
+    #[arg(long)]
+    pub oracle_verify: bool,
+
+    /// Number of independent runs for semantic consensus verification
+    #[arg(long, default_value = "1")]
+    pub consensus_runs: usize,
+
+    /// Consensus threshold for semantic verification (1.0 = unanimous)
+    #[arg(long, default_value = "1.0")]
+    pub consensus_threshold: f32,
+
+    /// Directory to write split oracle JSONL datasets
+    #[arg(long)]
+    pub oracle_out_dir: Option<PathBuf>,
+
+    /// Output prefix for oracle split JSONL files
+    #[arg(long, default_value = "rlm_oracle")]
+    pub oracle_prefix: String,
 }
 
 #[derive(Parser, Debug)]

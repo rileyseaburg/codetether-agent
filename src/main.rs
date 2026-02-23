@@ -323,14 +323,134 @@ async fn main() -> anyhow::Result<()> {
             if let Some(provider) = provider_opt {
                 // Use LLM-powered RLM with llm_query() support
                 tracing::info!("Using LLM-powered RLM analysis");
+                let run_count = args.consensus_runs.max(1);
+                let run_temperature = if run_count > 1 { 0.75 } else { 0.3 };
+                let mut runs: Vec<(
+                    rlm::RlmAnalysisResult,
+                    Vec<rlm::TraceStep>,
+                    rlm::context_trace::ContextTraceSummary,
+                )> = Vec::with_capacity(run_count);
 
-                let mut executor =
-                    rlm::RlmExecutor::new(content.clone(), provider, "glm-5".to_string())
-                        .with_verbose(args.verbose);
+                for _ in 0..run_count {
+                    let mut executor =
+                        rlm::RlmExecutor::new(content.clone(), provider.clone(), "glm-5".to_string())
+                            .with_temperature(run_temperature)
+                            .with_verbose(args.verbose);
+                    let result = executor.analyze(&args.query).await?;
+                    runs.push((
+                        result,
+                        executor.trace_steps().to_vec(),
+                        executor.context_trace_summary(),
+                    ));
+                }
 
-                let result = executor.analyze(&args.query).await?;
+                let result = runs
+                    .first()
+                    .map(|(r, _, _)| r.clone())
+                    .ok_or_else(|| anyhow::anyhow!("No RLM runs executed"))?;
+                let source_path = if args.file.len() == 1 {
+                    Some(args.file[0].to_string_lossy().to_string())
+                } else {
+                    None
+                };
+                let mut oracle_json: Option<serde_json::Value> = None;
+
+                if args.oracle_verify {
+                    let validator = rlm::TraceValidator::new()
+                        .with_consensus_threshold(args.consensus_threshold);
+                    let run_results: Vec<rlm::RlmAnalysisResult> =
+                        runs.iter().map(|(r, _, _)| r.clone()).collect();
+                    let trace_steps = runs.first().map(|(_, t, _)| t.clone()).unwrap_or_default();
+                    let oracle_result = if run_results.len() > 1 {
+                        validator.validate_with_consensus(
+                            &run_results,
+                            &content,
+                            source_path.as_deref(),
+                            None,
+                            Some(trace_steps),
+                        )
+                    } else {
+                        validator.validate(
+                            &run_results[0],
+                            &content,
+                            source_path.as_deref(),
+                            None,
+                            Some(trace_steps),
+                        )
+                    };
+
+                    let mut stats = rlm::oracle::BatchValidationStats::default();
+                    let mut agreement_ratio = None;
+                    match &oracle_result {
+                        rlm::OracleResult::Golden(trace) => stats.golden.push(trace.clone()),
+                        rlm::OracleResult::Consensus {
+                            trace,
+                            agreement_ratio: ratio,
+                        } => {
+                            agreement_ratio = Some(*ratio);
+                            stats.consensus.push(trace.clone());
+                        }
+                        rlm::OracleResult::Unverified { reason } => {
+                            stats.unverified.push((run_results[0].clone(), reason.clone()));
+                        }
+                        rlm::OracleResult::Failed { reason, trace, .. } => {
+                            stats.failed.push((trace.clone(), reason.clone()));
+                        }
+                    }
+
+                    let split = if let Some(ref out_dir) = args.oracle_out_dir {
+                        Some(stats.write_jsonl_split(
+                            out_dir.to_str().unwrap_or("."),
+                            &args.oracle_prefix,
+                        )?)
+                    } else {
+                        None
+                    };
+
+                    oracle_json = Some(match oracle_result {
+                        rlm::OracleResult::Golden(trace) => serde_json::json!({
+                            "status": "golden",
+                            "verification_method": format!("{:?}", trace.verification_method),
+                            "verdict": trace.verdict,
+                            "trace_id": trace.trace_id,
+                            "split": split,
+                        }),
+                        rlm::OracleResult::Consensus { trace, .. } => serde_json::json!({
+                            "status": "consensus",
+                            "agreement_ratio": agreement_ratio.unwrap_or(0.0),
+                            "verification_method": format!("{:?}", trace.verification_method),
+                            "verdict": trace.verdict,
+                            "trace_id": trace.trace_id,
+                            "split": split,
+                        }),
+                        rlm::OracleResult::Unverified { reason } => serde_json::json!({
+                            "status": "unverified",
+                            "reason": reason,
+                            "split": split,
+                        }),
+                        rlm::OracleResult::Failed { reason, diff, trace } => serde_json::json!({
+                            "status": "failed",
+                            "reason": reason,
+                            "diff": diff,
+                            "trace_id": trace.trace_id,
+                            "split": split,
+                        }),
+                    });
+                }
 
                 if args.json {
+                    let trace_steps_json = runs
+                        .first()
+                        .map(|(_, t, _)| serde_json::to_value(t).unwrap_or_default())
+                        .unwrap_or_else(|| serde_json::json!([]));
+                    let context_trace_json = runs
+                        .first()
+                        .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
+                        .unwrap_or_else(|| serde_json::json!({}));
+                    let context_traces: Vec<serde_json::Value> = runs
+                        .iter()
+                        .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
+                        .collect();
                     let output = serde_json::json!({
                         "query": args.query,
                         "content_type": format!("{:?}", content_type),
@@ -339,6 +459,11 @@ async fn main() -> anyhow::Result<()> {
                         "iterations": result.iterations,
                         "sub_queries": result.sub_queries.len(),
                         "stats": result.stats,
+                        "trace_steps": trace_steps_json,
+                        "context_trace": context_trace_json,
+                        "runs": run_count,
+                        "context_traces": context_traces,
+                        "oracle": oracle_json,
                     });
                     println!("{}", serde_json::to_string_pretty(&output)?);
                 } else {
@@ -352,6 +477,17 @@ async fn main() -> anyhow::Result<()> {
                         result.sub_queries.len(),
                         result.stats.elapsed_ms
                     );
+                    if let Some((_, trace_steps, trace_summary)) = runs.first() {
+                        println!(
+                            "\n*Trace steps: {} | Context budget used: {:.1}%*",
+                            trace_steps.len(),
+                            trace_summary.budget_used_percent
+                        );
+                    }
+                    if let Some(ref oracle) = oracle_json {
+                        println!("\n### Oracle");
+                        println!("{}", serde_json::to_string_pretty(oracle)?);
+                    }
 
                     if !result.sub_queries.is_empty() {
                         println!("\n### Sub-queries made:");

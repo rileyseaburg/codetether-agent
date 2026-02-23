@@ -18,8 +18,8 @@ pub use chunker::{Chunk, ChunkOptions, ContentType, RlmChunker};
 pub use context_trace::{ContextTrace, ContextEvent};
 pub use oracle::{
     AstPayload, AstResult, FinalPayload, GeneratedQuery, GrepMatch, GrepOracle, GrepPayload,
-    OracleResult, QueryTemplate, SemanticPayload, TemplateKind,
-    TraceValidator, TreeSitterOracle, ValidatedTrace, VerificationMethod,
+    GrepVerification, OracleResult, QueryTemplate, SemanticPayload, TemplateKind, TraceStep,
+    TraceValidator, TreeSitterOracle, TreeSitterVerification, ValidatedTrace, VerificationMethod,
 };
 pub use repl::{ReplRuntime, RlmAnalysisResult, RlmExecutor, RlmRepl, SubQuery};
 pub use router::{RlmRouter, RoutingContext, RoutingResult};

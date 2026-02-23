@@ -24,6 +24,8 @@ use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
+use super::context_trace::{ContextEvent, ContextTrace, ContextTraceSummary};
+use super::oracle::TraceStep;
 use super::tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
 
 /// REPL runtime options
@@ -472,8 +474,12 @@ pub struct RlmExecutor {
     repl: RlmRepl,
     provider: Arc<dyn Provider>,
     model: String,
+    analysis_temperature: f32,
     max_iterations: usize,
     sub_queries: Vec<SubQuery>,
+    trace_steps: Vec<TraceStep>,
+    context_budget_tokens: usize,
+    context_trace: ContextTrace,
     verbose: bool,
 
     tool_router: Option<ToolCallRouter>,
@@ -491,6 +497,11 @@ pub struct SubQuery {
 impl RlmExecutor {
     /// Create a new RLM executor
     pub fn new(context: String, provider: Arc<dyn Provider>, model: String) -> Self {
+        let context_budget_tokens = std::env::var("CODETETHER_RLM_CONTEXT_BUDGET")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(32_768);
+
         let tool_router = {
             let cfg = ToolRouterConfig::from_env();
             ToolCallRouter::from_config(&cfg)
@@ -505,8 +516,12 @@ impl RlmExecutor {
             repl: RlmRepl::new(context, ReplRuntime::Rust),
             provider,
             model,
+            analysis_temperature: 0.3,
             max_iterations: 5, // Keep iterations limited for speed
             sub_queries: Vec::new(),
+            trace_steps: Vec::new(),
+            context_budget_tokens,
+            context_trace: ContextTrace::new(context_budget_tokens),
             verbose: false,
 
             tool_router,
@@ -519,6 +534,12 @@ impl RlmExecutor {
         self
     }
 
+    /// Set root analysis temperature for top-level RLM iterations.
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.analysis_temperature = temperature.clamp(0.0, 2.0);
+        self
+    }
+
     /// Enable or disable verbose mode
     ///
     /// When verbose is true, the context summary will be displayed
@@ -528,12 +549,25 @@ impl RlmExecutor {
         self
     }
 
+    /// Trace steps captured from the most recent analysis run.
+    pub fn trace_steps(&self) -> &[TraceStep] {
+        &self.trace_steps
+    }
+
+    /// Context trace summary for the most recent analysis run.
+    pub fn context_trace_summary(&self) -> ContextTraceSummary {
+        self.context_trace.summary()
+    }
+
     /// Execute RLM analysis with the given query
     pub async fn analyze(&mut self, query: &str) -> Result<RlmAnalysisResult> {
         let start = std::time::Instant::now();
         let mut iterations = 0;
         let mut total_input_tokens = 0;
         let mut total_output_tokens = 0;
+        self.sub_queries.clear();
+        self.trace_steps.clear();
+        self.context_trace = ContextTrace::new(self.context_budget_tokens);
 
         // Prepare RLM tool definitions for structured dispatch
         let tools = rlm_tool_definitions();
@@ -598,6 +632,24 @@ impl RlmExecutor {
                 }],
             },
         ];
+        let initial_system = messages[0]
+            .content
+            .iter()
+            .filter_map(|p| match p {
+                ContentPart::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        self.context_trace.log_event(ContextEvent::SystemPrompt {
+            content: "rlm_system_prompt".to_string(),
+            tokens: ContextTrace::estimate_tokens(&initial_system),
+        });
+        self.context_trace.log_event(ContextEvent::ToolCall {
+            name: "initial_query".to_string(),
+            arguments_preview: truncate_with_ellipsis(query, 160),
+            tokens: ContextTrace::estimate_tokens(query),
+        });
 
         let mut final_answer = None;
 
@@ -613,7 +665,7 @@ impl RlmExecutor {
                     messages: messages.clone(),
                     tools: tools.clone(),
                     model: self.model.clone(),
-                    temperature: Some(0.3),
+                    temperature: Some(self.analysis_temperature),
                     top_p: None,
                     max_tokens: Some(2000),
                     stop: vec![],
@@ -643,6 +695,22 @@ impl RlmExecutor {
 
             total_input_tokens += response.usage.prompt_tokens;
             total_output_tokens += response.usage.completion_tokens;
+            let assistant_text = response
+                .message
+                .content
+                .iter()
+                .filter_map(|p| match p {
+                    ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("");
+            if !assistant_text.is_empty() {
+                self.context_trace.log_event(ContextEvent::AssistantCode {
+                    code: truncate_with_ellipsis(&assistant_text, 500),
+                    tokens: ContextTrace::estimate_tokens(&assistant_text),
+                });
+            }
 
             // ── Structured tool-call path ────────────────────────────────
             // If the response (or FunctionGemma rewrite) contains ToolCall
@@ -677,12 +745,26 @@ impl RlmExecutor {
                 let mut tool_results: Vec<ContentPart> = Vec::new();
 
                 for (call_id, name, arguments) in &tool_calls {
+                    self.context_trace.log_event(ContextEvent::ToolCall {
+                        name: name.clone(),
+                        arguments_preview: truncate_with_ellipsis(arguments, 200),
+                        tokens: ContextTrace::estimate_tokens(arguments),
+                    });
                     match dispatch_tool_call(name, arguments, &mut self.repl) {
                         Some(RlmToolResult::Final(answer)) => {
                             if self.verbose {
                                 println!("[RLM] Final answer received via tool call");
                             }
                             final_answer = Some(answer.clone());
+                            self.trace_steps.push(TraceStep {
+                                iteration: iterations,
+                                action: format!("{name}({})", truncate_with_ellipsis(arguments, 120)),
+                                output: format!("FINAL: {}", truncate_with_ellipsis(&answer, 240)),
+                            });
+                            self.context_trace.log_event(ContextEvent::Final {
+                                answer: truncate_with_ellipsis(&answer, 400),
+                                tokens: ContextTrace::estimate_tokens(&answer),
+                            });
                             tool_results.push(ContentPart::ToolResult {
                                 tool_call_id: call_id.clone(),
                                 content: format!("FINAL: {answer}"),
@@ -708,6 +790,16 @@ impl RlmExecutor {
                                         .map(|s| s.to_string());
                                     let llm_result =
                                         self.handle_llm_query_direct(q, ctx_slice).await?;
+                                    self.trace_steps.push(TraceStep {
+                                        iteration: iterations,
+                                        action: format!("llm_query({})", truncate_with_ellipsis(q, 120)),
+                                        output: truncate_with_ellipsis(&llm_result, 240),
+                                    });
+                                    self.context_trace.log_event(ContextEvent::ToolResult {
+                                        tool_call_id: call_id.clone(),
+                                        result_preview: truncate_with_ellipsis(&llm_result, 300),
+                                        tokens: ContextTrace::estimate_tokens(&llm_result),
+                                    });
                                     tool_results.push(ContentPart::ToolResult {
                                         tool_call_id: call_id.clone(),
                                         content: llm_result,
@@ -720,15 +812,31 @@ impl RlmExecutor {
                                 let preview = truncate_with_ellipsis(&output, 200);
                                 println!("[RLM] Tool {name} → {}", preview);
                             }
+                            self.trace_steps.push(TraceStep {
+                                iteration: iterations,
+                                action: format!("{name}({})", truncate_with_ellipsis(arguments, 120)),
+                                output: truncate_with_ellipsis(&output, 240),
+                            });
+                            self.context_trace.log_event(ContextEvent::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                result_preview: truncate_with_ellipsis(&output, 300),
+                                tokens: ContextTrace::estimate_tokens(&output),
+                            });
                             tool_results.push(ContentPart::ToolResult {
                                 tool_call_id: call_id.clone(),
                                 content: output,
                             });
                         }
                         None => {
+                            let unknown = format!("Unknown tool: {name}");
+                            self.trace_steps.push(TraceStep {
+                                iteration: iterations,
+                                action: format!("{name}({})", truncate_with_ellipsis(arguments, 120)),
+                                output: unknown.clone(),
+                            });
                             tool_results.push(ContentPart::ToolResult {
                                 tool_call_id: call_id.clone(),
-                                content: format!("Unknown tool: {name}"),
+                                content: unknown,
                             });
                         }
                     }
@@ -772,6 +880,11 @@ impl RlmExecutor {
 
             // Extract and execute code blocks
             let code = self.extract_code(&assistant_text);
+            self.trace_steps.push(TraceStep {
+                iteration: iterations,
+                action: format!("execute_code({})", truncate_with_ellipsis(&code, 160)),
+                output: String::new(),
+            });
 
             // Display execution details in verbose mode
             if self.verbose {
@@ -792,8 +905,22 @@ impl RlmExecutor {
 
             // Check for final answer
             if let Some(answer) = &execution_result.final_answer {
+                self.context_trace.log_event(ContextEvent::Final {
+                    answer: truncate_with_ellipsis(answer, 400),
+                    tokens: ContextTrace::estimate_tokens(answer),
+                });
                 final_answer = Some(answer.clone());
                 break;
+            }
+
+            self.context_trace.log_event(ContextEvent::ExecutionOutput {
+                output: truncate_with_ellipsis(&execution_result.stdout, 400),
+                tokens: ContextTrace::estimate_tokens(&execution_result.stdout),
+            });
+            if let Some(step) = self.trace_steps.last_mut() {
+                if step.iteration == iterations && step.output.is_empty() {
+                    step.output = truncate_with_ellipsis(&execution_result.stdout, 240);
+                }
             }
 
             // Add execution result as user message for next iteration
@@ -811,8 +938,16 @@ impl RlmExecutor {
 
         let elapsed = start.elapsed();
 
+        let final_text = final_answer.unwrap_or_else(|| "Analysis incomplete".to_string());
+        if !matches!(self.context_trace.events().back(), Some(ContextEvent::Final { .. })) {
+            self.context_trace.log_event(ContextEvent::Final {
+                answer: truncate_with_ellipsis(&final_text, 400),
+                tokens: ContextTrace::estimate_tokens(&final_text),
+            });
+        }
+
         Ok(RlmAnalysisResult {
-            answer: final_answer.unwrap_or_else(|| "Analysis incomplete".to_string()),
+            answer: final_text,
             iterations,
             sub_queries: self.sub_queries.clone(),
             stats: super::RlmStats {
@@ -908,6 +1043,11 @@ impl RlmExecutor {
     async fn handle_llm_query(&mut self, line: &str) -> Result<String> {
         // Extract query and optional context slice
         let (query, context_slice) = self.parse_llm_query(line);
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query: query.clone(),
+            response_preview: "[pending]".to_string(),
+            tokens: ContextTrace::estimate_tokens(&query),
+        });
 
         // Get the context to send
         let context_to_analyze = context_slice
@@ -973,6 +1113,16 @@ impl RlmExecutor {
             response: answer.clone(),
             tokens_used: response.usage.total_tokens,
         });
+        self.trace_steps.push(TraceStep {
+            iteration: self.sub_queries.len(),
+            action: format!("llm_query({})", truncate_with_ellipsis(&query, 120)),
+            output: truncate_with_ellipsis(&answer, 240),
+        });
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query,
+            response_preview: truncate_with_ellipsis(&answer, 240),
+            tokens: response.usage.total_tokens,
+        });
 
         Ok(format!("llm_query result: {}", answer))
     }
@@ -986,6 +1136,11 @@ impl RlmExecutor {
         query: &str,
         context_slice: Option<String>,
     ) -> Result<String> {
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query: query.to_string(),
+            response_preview: "[pending]".to_string(),
+            tokens: ContextTrace::estimate_tokens(query),
+        });
         let context_to_analyze = context_slice
             .clone()
             .unwrap_or_else(|| self.repl.context().to_string());
@@ -1045,6 +1200,11 @@ impl RlmExecutor {
             context_slice,
             response: answer.clone(),
             tokens_used: response.usage.total_tokens,
+        });
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query: query.to_string(),
+            response_preview: truncate_with_ellipsis(&answer, 240),
+            tokens: response.usage.total_tokens,
         });
 
         Ok(format!("llm_query result: {}", answer))

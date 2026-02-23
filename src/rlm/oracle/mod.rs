@@ -31,11 +31,14 @@ mod templates;
 mod tree_sitter_oracle;
 mod validator;
 
-pub use grep_oracle::GrepOracle;
+pub use grep_oracle::{GrepOracle, GrepVerification};
 pub use schema::{AstPayload, AstResult, FinalPayload, GrepMatch, GrepPayload, SemanticPayload};
 pub use templates::{GeneratedQuery, QueryTemplate, TemplateKind};
-pub use tree_sitter_oracle::TreeSitterOracle;
-pub use validator::{OracleResult, TraceValidator, ValidatedTrace, VerificationMethod};
+pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
+pub use validator::{
+    BatchValidationStats, OracleResult, SplitWriteStats, TraceStep, TraceValidator, ValidatedTrace,
+    VerificationMethod,
+};
 
 /// Query type classification for routing to the appropriate oracle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

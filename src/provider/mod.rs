@@ -7,6 +7,7 @@ pub mod bedrock;
 pub mod copilot;
 pub mod gemini_web;
 pub mod google;
+pub mod local_cuda;
 pub mod metrics;
 pub mod models;
 pub mod moonshot;
@@ -270,65 +271,65 @@ impl ProviderRegistry {
         Ok(registry)
     }
 
-/// Initialize providers from HashiCorp Vault with configurable environment variable fallback.
-///
-/// This loads API keys from Vault and creates providers dynamically.
-/// Supports OpenAI-compatible providers via base_url.
-///
-/// # Security Model & Environment Variable Fallback
-///
-/// By default, this function attempts to load credentials from Vault first. If a provider
-/// is not configured in Vault, it falls back to checking environment variables for common
-/// providers (OpenAI, Anthropic, Google, OpenRouter). This fallback behavior is intended
-/// for local development and testing convenience.
-///
-/// **Security Consideration**: In production or security-conscious deployments, environment
-/// variable fallback may be undesirable because:
-/// - Environment variables can be leaked via logs, process listings, or container inspection
-/// - They may persist in shell history or configuration files
-/// - Multiple processes share the same environment, increasing attack surface
-///
-/// # Disabling Environment Variable Fallback
-///
-/// Set the environment variable `CODETETHER_DISABLE_ENV_FALLBACK=1` to disable all
-/// environment variable fallback for provider credentials. When set:
-/// - Only Vault-configured providers will be available
-/// - The `register_env_fallbacks()` step is skipped entirely
-/// - Bedrock auto-detection from `AWS_*` environment variables is also disabled
-///
-/// ```bash
-/// # Security-hardened deployment (no env var fallback)
-/// export CODETETHER_DISABLE_ENV_FALLBACK=1
-/// codetether serve
-/// ```
-///
-/// # Fallback Order
-///
-/// 1. **Vault secrets** (primary source): `secret/data/codetether/providers/<provider_id>`
-/// 2. **Bedrock auto-detection** (if not in Vault): Reads `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
-/// 3. **Environment variable fallback** (if enabled):
-///    - `OPENAI_API_KEY` → OpenAI provider
-///    - `ANTHROPIC_API_KEY` → Anthropic provider
-///    - `GOOGLE_API_KEY` → Google provider
-///    - `OPENROUTER_API_KEY` → OpenRouter provider
-///
-/// # Default Behavior
-///
-/// The default (without `CODETETHER_DISABLE_ENV_FALLBACK`) allows environment variable
-/// fallback for backward compatibility and developer convenience. This default is
-/// intentionally permissive to support local development workflows where Vault may
-/// not be available.
-///
-/// # See Also
-///
-/// - `register_env_fallbacks()` for the list of supported environment variables
-/// - `src/secrets/mod.rs` for Vault configuration details
-/// - `AGENTS.md` for security best practices regarding secrets management
-pub async fn from_vault() -> Result<Self> {
-    let mut registry = Self::new();
-    let disable_env_fallback = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
+    /// Initialize providers from HashiCorp Vault with configurable environment variable fallback.
+    ///
+    /// This loads API keys from Vault and creates providers dynamically.
+    /// Supports OpenAI-compatible providers via base_url.
+    ///
+    /// # Security Model & Environment Variable Fallback
+    ///
+    /// By default, this function attempts to load credentials from Vault first. If a provider
+    /// is not configured in Vault, it falls back to checking environment variables for common
+    /// providers (OpenAI, Anthropic, Google, OpenRouter). This fallback behavior is intended
+    /// for local development and testing convenience.
+    ///
+    /// **Security Consideration**: In production or security-conscious deployments, environment
+    /// variable fallback may be undesirable because:
+    /// - Environment variables can be leaked via logs, process listings, or container inspection
+    /// - They may persist in shell history or configuration files
+    /// - Multiple processes share the same environment, increasing attack surface
+    ///
+    /// # Disabling Environment Variable Fallback
+    ///
+    /// Set the environment variable `CODETETHER_DISABLE_ENV_FALLBACK=1` to disable all
+    /// environment variable fallback for provider credentials. When set:
+    /// - Only Vault-configured providers will be available
+    /// - The `register_env_fallbacks()` step is skipped entirely
+    /// - Bedrock auto-detection from `AWS_*` environment variables is also disabled
+    ///
+    /// ```bash
+    /// # Security-hardened deployment (no env var fallback)
+    /// export CODETETHER_DISABLE_ENV_FALLBACK=1
+    /// codetether serve
+    /// ```
+    ///
+    /// # Fallback Order
+    ///
+    /// 1. **Vault secrets** (primary source): `secret/data/codetether/providers/<provider_id>`
+    /// 2. **Bedrock auto-detection** (if not in Vault): Reads `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+    /// 3. **Environment variable fallback** (if enabled):
+    ///    - `OPENAI_API_KEY` → OpenAI provider
+    ///    - `ANTHROPIC_API_KEY` → Anthropic provider
+    ///    - `GOOGLE_API_KEY` → Google provider
+    ///    - `OPENROUTER_API_KEY` → OpenRouter provider
+    ///
+    /// # Default Behavior
+    ///
+    /// The default (without `CODETETHER_DISABLE_ENV_FALLBACK`) allows environment variable
+    /// fallback for backward compatibility and developer convenience. This default is
+    /// intentionally permissive to support local development workflows where Vault may
+    /// not be available.
+    ///
+    /// # See Also
+    ///
+    /// - `register_env_fallbacks()` for the list of supported environment variables
+    /// - `src/secrets/mod.rs` for Vault configuration details
+    /// - `AGENTS.md` for security best practices regarding secrets management
+    pub async fn from_vault() -> Result<Self> {
+        let mut registry = Self::new();
+        let disable_env_fallback = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
 
         if let Some(manager) = crate::secrets::secrets_manager() {
             // List all configured providers from Vault
@@ -480,10 +481,7 @@ pub async fn from_vault() -> Result<Self> {
 
                 // Handle Gemini Web (browser-cookie-based, no API key needed)
                 if matches!(provider_id.as_str(), "gemini-web") {
-                    let cookies = secrets
-                        .extra
-                        .get("cookies")
-                        .and_then(|v| v.as_str());
+                    let cookies = secrets.extra.get("cookies").and_then(|v| v.as_str());
 
                     if let Some(cookies) = cookies {
                         match gemini_web::GeminiWebProvider::new(cookies.to_string()) {
@@ -495,6 +493,58 @@ pub async fn from_vault() -> Result<Self> {
                             "gemini-web provider requires \"cookies\" field in Vault secrets \
                              (tab-separated Cookie-Editor export)"
                         );
+                    }
+                    continue;
+                }
+
+                // Handle Local CUDA (no API key needed)
+                if matches!(
+                    provider_id.as_str(),
+                    "local-cuda" | "local_cuda" | "localcuda"
+                ) {
+                    let model_name = secrets
+                        .extra
+                        .get("model_name")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| secrets.extra.get("model").and_then(|v| v.as_str()))
+                        .unwrap_or("qwen2.5-coder-7b")
+                        .to_string();
+                    let model_path = secrets
+                        .extra
+                        .get("model_path")
+                        .and_then(|v| v.as_str())
+                        .map(ToString::to_string);
+                    let tokenizer_path = secrets
+                        .extra
+                        .get("tokenizer_path")
+                        .and_then(|v| v.as_str())
+                        .map(ToString::to_string);
+                    let architecture = secrets
+                        .extra
+                        .get("architecture")
+                        .and_then(|v| v.as_str())
+                        .map(ToString::to_string);
+
+                    let provider = if let Some(path) = model_path {
+                        local_cuda::LocalCudaProvider::with_paths(
+                            model_name.clone(),
+                            path,
+                            tokenizer_path,
+                            architecture,
+                        )
+                    } else {
+                        local_cuda::LocalCudaProvider::new(model_name.clone())
+                    };
+
+                    match provider {
+                        Ok(p) => {
+                            tracing::info!(
+                                model = %model_name,
+                                "Registered Local CUDA provider from Vault"
+                            );
+                            registry.register(Arc::new(p));
+                        }
+                        Err(e) => tracing::warn!("Failed to init local-cuda: {}", e),
                     }
                     continue;
                 }
@@ -708,13 +758,19 @@ pub async fn from_vault() -> Result<Self> {
         if !disable_env_fallback {
             Self::register_env_fallbacks(&mut registry);
         } else {
-            tracing::info!("Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)");
+            tracing::info!(
+                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+            );
         }
 
         tracing::info!(
             "Registered {} providers{}",
             registry.providers.len(),
-            if disable_env_fallback { " (Vault only, no env fallback)" } else { " (Vault + env fallback)" }
+            if disable_env_fallback {
+                " (Vault only, no env fallback)"
+            } else {
+                " (Vault + env fallback)"
+            }
         );
         Ok(registry)
     }
@@ -730,6 +786,7 @@ pub async fn from_vault() -> Result<Self> {
     /// - `ANTHROPIC_API_KEY` → Registers Anthropic provider
     /// - `GOOGLE_API_KEY` → Registers Google provider
     /// - `OPENROUTER_API_KEY` → Registers OpenRouter provider
+    /// - `CODETETHER_LOCAL_CUDA=1` (or `LOCAL_CUDA_MODEL*`) → Registers Local CUDA provider
     ///
     /// # Security Warning
     ///
@@ -749,10 +806,18 @@ pub async fn from_vault() -> Result<Self> {
     /// 2. The corresponding environment variable is set and non-empty
     fn register_env_fallbacks(registry: &mut Self) {
         let fallbacks: &[(&str, &str, fn(String) -> Result<Arc<dyn Provider>>)] = &[
-            ("openai", "OPENAI_API_KEY", |key| Ok(Arc::new(openai::OpenAIProvider::new(key)?))),
-            ("anthropic", "ANTHROPIC_API_KEY", |key| Ok(Arc::new(anthropic::AnthropicProvider::new(key)?))),
-            ("google", "GOOGLE_API_KEY", |key| Ok(Arc::new(google::GoogleProvider::new(key)?))),
-            ("openrouter", "OPENROUTER_API_KEY", |key| Ok(Arc::new(openrouter::OpenRouterProvider::new(key)?))),
+            ("openai", "OPENAI_API_KEY", |key| {
+                Ok(Arc::new(openai::OpenAIProvider::new(key)?))
+            }),
+            ("anthropic", "ANTHROPIC_API_KEY", |key| {
+                Ok(Arc::new(anthropic::AnthropicProvider::new(key)?))
+            }),
+            ("google", "GOOGLE_API_KEY", |key| {
+                Ok(Arc::new(google::GoogleProvider::new(key)?))
+            }),
+            ("openrouter", "OPENROUTER_API_KEY", |key| {
+                Ok(Arc::new(openrouter::OpenRouterProvider::new(key)?))
+            }),
         ];
 
         for (provider_id, env_var, constructor) in fallbacks {
@@ -760,11 +825,63 @@ pub async fn from_vault() -> Result<Self> {
                 if let Ok(api_key) = std::env::var(env_var) {
                     match constructor(api_key) {
                         Ok(p) => {
-                            tracing::info!("Registered {} provider from {} env var", provider_id, env_var);
+                            tracing::info!(
+                                "Registered {} provider from {} env var",
+                                provider_id,
+                                env_var
+                            );
                             registry.register(p);
                         }
                         Err(e) => tracing::warn!("Failed to init {} from env: {}", provider_id, e),
                     }
+                }
+            }
+        }
+
+        if !registry.providers.contains_key("local_cuda") {
+            let local_cuda_enabled = std::env::var("CODETETHER_LOCAL_CUDA")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false);
+            let model_name = std::env::var("LOCAL_CUDA_MODEL")
+                .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
+                .unwrap_or_else(|_| "qwen2.5-coder-7b".to_string());
+            let model_path = std::env::var("LOCAL_CUDA_MODEL_PATH")
+                .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL_PATH"))
+                .ok();
+            let tokenizer_path = std::env::var("LOCAL_CUDA_TOKENIZER_PATH")
+                .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_TOKENIZER_PATH"))
+                .ok();
+            let architecture = std::env::var("LOCAL_CUDA_ARCH")
+                .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_ARCH"))
+                .ok();
+            let has_model_env = std::env::var("LOCAL_CUDA_MODEL").is_ok()
+                || std::env::var("CODETETHER_LOCAL_CUDA_MODEL").is_ok();
+            let has_local_cuda_config = has_model_env
+                || model_path.is_some()
+                || tokenizer_path.is_some()
+                || architecture.is_some();
+
+            if local_cuda_enabled || has_local_cuda_config {
+                let provider = if let Some(path) = model_path {
+                    local_cuda::LocalCudaProvider::with_paths(
+                        model_name.clone(),
+                        path,
+                        tokenizer_path,
+                        architecture,
+                    )
+                } else {
+                    local_cuda::LocalCudaProvider::new(model_name.clone())
+                };
+
+                match provider {
+                    Ok(p) => {
+                        tracing::info!(
+                            model = %model_name,
+                            "Registered local_cuda provider from environment"
+                        );
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init local_cuda from env: {}", e),
                 }
             }
         }

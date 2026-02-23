@@ -18,7 +18,7 @@ const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
 const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
-const GO_DEFAULT_MODEL: &str = "minimax-credits/MiniMax-M2.5-highspeed";
+const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M2.5";
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
