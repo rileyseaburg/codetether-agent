@@ -4,25 +4,22 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::Mutex;
-use once_cell::sync::Lazy;
 
 // Global telemetry counters
-pub static TOKEN_USAGE: Lazy<Arc<AtomicTokenCounter>> = Lazy::new(|| {
-    Arc::new(AtomicTokenCounter::new())
-});
+pub static TOKEN_USAGE: Lazy<Arc<AtomicTokenCounter>> =
+    Lazy::new(|| Arc::new(AtomicTokenCounter::new()));
 
-pub static TOOL_EXECUTIONS: Lazy<Arc<AtomicToolCounter>> = Lazy::new(|| {
-    Arc::new(AtomicToolCounter::new())
-});
+pub static TOOL_EXECUTIONS: Lazy<Arc<AtomicToolCounter>> =
+    Lazy::new(|| Arc::new(AtomicToolCounter::new()));
 
-pub static PROVIDER_METRICS: Lazy<Arc<ProviderMetrics>> = Lazy::new(|| {
-    Arc::new(ProviderMetrics::new())
-});
+pub static PROVIDER_METRICS: Lazy<Arc<ProviderMetrics>> =
+    Lazy::new(|| Arc::new(ProviderMetrics::new()));
 
 /// Token totals structure
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -63,7 +60,12 @@ impl GlobalTokenSnapshot {
     }
 
     pub fn summary(&self) -> String {
-        format!("{} total tokens ({} input, {} output)", self.totals.total(), self.input, self.output)
+        format!(
+            "{} total tokens ({} input, {} output)",
+            self.totals.total(),
+            self.input,
+            self.output
+        )
     }
 }
 
@@ -90,8 +92,10 @@ impl AtomicTokenCounter {
 
     pub fn record(&self, prompt: u64, completion: u64) {
         self.prompt_tokens.fetch_add(prompt, Ordering::Relaxed);
-        self.completion_tokens.fetch_add(completion, Ordering::Relaxed);
-        self.total_tokens.fetch_add(prompt + completion, Ordering::Relaxed);
+        self.completion_tokens
+            .fetch_add(completion, Ordering::Relaxed);
+        self.total_tokens
+            .fetch_add(prompt + completion, Ordering::Relaxed);
         self.request_count.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -106,7 +110,7 @@ impl AtomicTokenCounter {
     pub fn record_model_usage(&self, model: &str, prompt: u64, completion: u64) {
         tracing::debug!(model, prompt, completion, "Recording model usage");
         self.record(prompt, completion);
-        
+
         // Also track per-model usage
         if let Ok(mut usage) = self.model_usage.try_lock() {
             let entry = usage.entry(model.to_string()).or_insert((0, 0));
@@ -124,17 +128,20 @@ impl AtomicTokenCounter {
 
     pub fn model_snapshots(&self) -> Vec<TokenUsageSnapshot> {
         if let Ok(usage) = self.model_usage.try_lock() {
-            usage.iter().map(|(name, (input, output))| {
-                TokenUsageSnapshot {
-                    name: name.clone(),
-                    prompt_tokens: *input,
-                    completion_tokens: *output,
-                    total_tokens: input + output,
-                    totals: TokenTotals::new(*input, *output),
-                    timestamp: Utc::now(),
-                    request_count: 0, // Default value, per-model request count not tracked yet
-                }
-            }).collect()
+            usage
+                .iter()
+                .map(|(name, (input, output))| {
+                    TokenUsageSnapshot {
+                        name: name.clone(),
+                        prompt_tokens: *input,
+                        completion_tokens: *output,
+                        total_tokens: input + output,
+                        totals: TokenTotals::new(*input, *output),
+                        timestamp: Utc::now(),
+                        request_count: 0, // Default value, per-model request count not tracked yet
+                    }
+                })
+                .collect()
         } else {
             Vec::new()
         }
@@ -307,19 +314,33 @@ impl FileChange {
     }
 
     /// Create a file modify record
-    pub fn modify(path: &str, old_content: &str, new_content: &str, line_range: Option<(u32, u32)>) -> Self {
+    pub fn modify(
+        path: &str,
+        old_content: &str,
+        new_content: &str,
+        line_range: Option<(u32, u32)>,
+    ) -> Self {
         Self {
             path: path.to_string(),
             operation: "modify".to_string(),
             timestamp: Utc::now(),
             size_bytes: Some(new_content.len() as u64),
             line_range,
-            diff: Some(format!("-{} bytes +{} bytes", old_content.len(), new_content.len())),
+            diff: Some(format!(
+                "-{} bytes +{} bytes",
+                old_content.len(),
+                new_content.len()
+            )),
         }
     }
 
     /// Create a file modify record with diff
-    pub fn modify_with_diff(path: &str, diff: &str, new_size: usize, line_range: Option<(u32, u32)>) -> Self {
+    pub fn modify_with_diff(
+        path: &str,
+        diff: &str,
+        new_size: usize,
+        line_range: Option<(u32, u32)>,
+    ) -> Self {
         Self {
             path: path.to_string(),
             operation: "modify".to_string(),
@@ -386,7 +407,12 @@ impl TokenUsageSnapshot {
     }
 
     pub fn summary(&self) -> String {
-        format!("{} total tokens ({} input, {} output)", self.totals.total(), self.prompt_tokens, self.completion_tokens)
+        format!(
+            "{} total tokens ({} input, {} output)",
+            self.totals.total(),
+            self.prompt_tokens,
+            self.completion_tokens
+        )
     }
 }
 
@@ -538,7 +564,10 @@ impl ProviderMetrics {
 
         let mut by_provider: HashMap<String, Vec<ProviderRequestRecord>> = HashMap::new();
         for req in requests {
-            by_provider.entry(req.provider.clone()).or_default().push(req);
+            by_provider
+                .entry(req.provider.clone())
+                .or_default()
+                .push(req);
         }
 
         let mut snapshots = Vec::new();
@@ -551,12 +580,12 @@ impl ProviderMetrics {
             let total_input_tokens: u64 = reqs.iter().map(|r| r.input_tokens).sum();
             let total_output_tokens: u64 = reqs.iter().map(|r| r.output_tokens).sum();
             let total_latency: u64 = reqs.iter().map(|r| r.latency_ms).sum();
-            
+
             let avg_latency_ms = total_latency as f64 / request_count as f64;
-            
+
             let mut tps_values: Vec<f64> = reqs.iter().map(|r| r.tokens_per_second()).collect();
             tps_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            
+
             let mut latency_values: Vec<f64> = reqs.iter().map(|r| r.latency_ms as f64).collect();
             latency_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -565,7 +594,7 @@ impl ProviderMetrics {
 
             let p50_tps = tps_values.get(p50_idx).cloned().unwrap_or(0.0);
             let p95_tps = tps_values.get(p95_idx).cloned().unwrap_or(0.0);
-            
+
             let p50_latency_ms = latency_values.get(p50_idx).cloned().unwrap_or(0.0);
             let p95_latency_ms = latency_values.get(p95_idx).cloned().unwrap_or(0.0);
 
@@ -629,17 +658,23 @@ impl SwarmTelemetryCollector {
     }
 
     pub async fn record_swarm_latency(&self, _label: &str, duration: std::time::Duration) {
-        tracing::debug!(label = _label, duration_ms = duration.as_millis(), "Swarm latency recorded");
+        tracing::debug!(
+            label = _label,
+            duration_ms = duration.as_millis(),
+            "Swarm latency recorded"
+        );
     }
 
     pub async fn complete_swarm(&self, success: bool) -> TelemetryMetrics {
         let start = self.start_time.lock().await;
-        let duration = start.map(|s| (Utc::now() - s).num_milliseconds() as u64).unwrap_or(0);
+        let duration = start
+            .map(|s| (Utc::now() - s).num_milliseconds() as u64)
+            .unwrap_or(0);
         drop(start);
-        
+
         let completed = *self.completed.lock().await;
         let total = *self.total.lock().await;
-        
+
         tracing::info!(
             success,
             completed,
@@ -647,11 +682,15 @@ impl SwarmTelemetryCollector {
             duration_ms = duration,
             "Swarm completed"
         );
-        
+
         TelemetryMetrics {
             tool_invocations: total as u64,
             successful_operations: if success { completed as u64 } else { 0 },
-            failed_operations: if !success { (total.saturating_sub(completed)) as u64 } else { 0 },
+            failed_operations: if !success {
+                (total.saturating_sub(completed)) as u64
+            } else {
+                0
+            },
             total_tokens: 0,
             avg_latency_ms: duration as f64,
         }

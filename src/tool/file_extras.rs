@@ -88,9 +88,12 @@ impl Tool for TreeTool {
 
         let mut output = Vec::new();
         let root_path = Path::new(path);
-        
+
         // Add root directory
-        output.push(format!("{}/", root_path.file_name().unwrap_or_default().to_string_lossy()));
+        output.push(format!(
+            "{}/",
+            root_path.file_name().unwrap_or_default().to_string_lossy()
+        ));
 
         let mut file_count = 0;
         let mut dir_count = 0;
@@ -107,7 +110,8 @@ impl Tool for TreeTool {
             &mut output,
             &mut file_count,
             &mut dir_count,
-        ).await?;
+        )
+        .await?;
 
         output.push(String::new());
         output.push(format!("{} directories, {} files", dir_count, file_count));
@@ -145,13 +149,14 @@ async fn build_tree(
 
     // Read directory and collect entries with their metadata
     let mut entries: Vec<TreeEntry> = Vec::new();
-    
-    let mut dir = fs::read_dir(path).await
+
+    let mut dir = fs::read_dir(path)
+        .await
         .with_context(|| format!("Failed to read directory: {}", path.display()))?;
 
     while let Ok(Some(entry)) = dir.next_entry().await {
         let name = entry.file_name().to_string_lossy().to_string();
-        
+
         // Skip hidden files unless requested
         if !show_hidden && name.starts_with('.') {
             continue;
@@ -159,7 +164,16 @@ async fn build_tree(
 
         // Skip common ignored directories
         if respect_gitignore {
-            let skip_dirs = ["node_modules", "target", ".git", "__pycache__", ".venv", "dist", ".next", "vendor"];
+            let skip_dirs = [
+                "node_modules",
+                "target",
+                ".git",
+                "__pycache__",
+                ".venv",
+                "dist",
+                ".next",
+                "vendor",
+            ];
             if skip_dirs.contains(&name.as_str()) {
                 continue;
             }
@@ -169,7 +183,7 @@ async fn build_tree(
             Ok(ft) => ft,
             Err(_) => continue,
         };
-        
+
         let size = if show_size {
             entry.metadata().await.map(|m| m.len()).unwrap_or(0)
         } else {
@@ -185,21 +199,19 @@ async fn build_tree(
     }
 
     // Sort entries: directories first, then files, alphabetically
-    entries.sort_by(|a, b| {
-        match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.cmp(&b.name),
-        }
+    entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
     });
 
     let total = entries.len();
     for (idx, entry) in entries.iter().enumerate() {
         let is_last = idx == total - 1;
         let connector = if is_last { "└── " } else { "├── " };
-        
+
         let mut line = format!("{}{}", prefix, connector);
-        
+
         if entry.is_dir {
             *dir_count += 1;
             line.push_str(&format!("{}/", entry.name));
@@ -212,7 +224,7 @@ async fn build_tree(
                 line.push_str(&entry.name);
             }
         }
-        
+
         output.push(line);
 
         // Recurse into directories
@@ -229,7 +241,8 @@ async fn build_tree(
                 output,
                 file_count,
                 dir_count,
-            )).await?;
+            ))
+            .await?;
         }
     }
 
@@ -310,11 +323,15 @@ impl Tool for FileInfoTool {
         let metadata = fs::metadata(path).await?;
 
         let mut info = Vec::new();
-        
+
         // Basic info
         info.push(format!("Path: {}", path));
-        info.push(format!("Size: {} ({} bytes)", format_size(metadata.len()), metadata.len()));
-        
+        info.push(format!(
+            "Size: {} ({} bytes)",
+            format_size(metadata.len()),
+            metadata.len()
+        ));
+
         // File type
         let file_type = if metadata.is_dir() {
             "directory"
@@ -382,7 +399,7 @@ impl Tool for FileInfoTool {
                 let lines = content.lines().count();
                 let chars = content.chars().count();
                 let words = content.split_whitespace().count();
-                
+
                 info.push(format!("Lines: {}", lines));
                 info.push(format!("Words: {}", words));
                 info.push(format!("Characters: {}", chars));
@@ -475,7 +492,10 @@ impl Tool for HeadTailTool {
 
         // Head
         if head_lines > 0 {
-            output.push(format!("--- First {} lines ---", head_lines.min(total_lines)));
+            output.push(format!(
+                "--- First {} lines ---",
+                head_lines.min(total_lines)
+            ));
             for (i, line) in lines.iter().take(head_lines).enumerate() {
                 output.push(format!("{:4} | {}", i + 1, line));
             }
@@ -484,12 +504,15 @@ impl Tool for HeadTailTool {
         // Check if there's a gap between head and tail
         let head_end = head_lines;
         let tail_start = total_lines.saturating_sub(tail_lines);
-        
+
         if tail_lines > 0 && tail_start > head_end {
             output.push(String::new());
             output.push(format!("... ({} lines omitted) ...", tail_start - head_end));
             output.push(String::new());
-            output.push(format!("--- Last {} lines ---", tail_lines.min(total_lines)));
+            output.push(format!(
+                "--- Last {} lines ---",
+                tail_lines.min(total_lines)
+            ));
             for (i, line) in lines.iter().skip(tail_start).enumerate() {
                 output.push(format!("{:4} | {}", tail_start + i + 1, line));
             }
@@ -502,8 +525,7 @@ impl Tool for HeadTailTool {
             }
         }
 
-        Ok(ToolResult::success(output.join("\n"))
-            .with_metadata("total_lines", json!(total_lines)))
+        Ok(ToolResult::success(output.join("\n")).with_metadata("total_lines", json!(total_lines)))
     }
 }
 
@@ -574,11 +596,11 @@ impl Tool for DiffTool {
             // Git diff mode
             let mut cmd = tokio::process::Command::new("git");
             cmd.arg("diff");
-            
+
             if staged {
                 cmd.arg("--staged");
             }
-            
+
             cmd.arg(format!("-U{}", context));
 
             if let Some(file) = args["file1"].as_str() {
@@ -586,7 +608,7 @@ impl Tool for DiffTool {
             }
 
             let output = cmd.output().await?;
-            
+
             if output.status.success() {
                 let diff = String::from_utf8_lossy(&output.stdout);
                 if diff.is_empty() {
@@ -669,11 +691,12 @@ mod tests {
             &mut output,
             &mut file_count,
             &mut dir_count,
-        ).await;
+        )
+        .await;
 
         // Should return an error, not Ok(())
         assert!(result.is_err(), "Expected error for non-existent directory");
-        
+
         // Error message should contain context about the path
         let err = result.unwrap_err();
         let err_msg = err.to_string();
@@ -710,14 +733,16 @@ mod tests {
             &mut output,
             &mut file_count,
             &mut dir_count,
-        ).await;
+        )
+        .await;
 
         // Verify error was returned
         assert!(result.is_err());
 
         // Verify output was not modified (no partial tree building)
         assert_eq!(
-            output.len(), initial_output_len,
+            output.len(),
+            initial_output_len,
             "Output should not be modified on error"
         );
         assert_eq!(
@@ -737,9 +762,15 @@ mod tests {
         let temp_path = temp_dir.path();
 
         // Create some files and directories
-        tokio::fs::create_dir(temp_path.join("subdir")).await.expect("Failed to create subdir");
-        tokio::fs::write(temp_path.join("file1.txt"), "content").await.expect("Failed to write file1");
-        tokio::fs::write(temp_path.join("subdir").join("file2.txt"), "content").await.expect("Failed to write file2");
+        tokio::fs::create_dir(temp_path.join("subdir"))
+            .await
+            .expect("Failed to create subdir");
+        tokio::fs::write(temp_path.join("file1.txt"), "content")
+            .await
+            .expect("Failed to write file1");
+        tokio::fs::write(temp_path.join("subdir").join("file2.txt"), "content")
+            .await
+            .expect("Failed to write file2");
 
         let mut output = Vec::new();
         let mut file_count = 0;
@@ -756,14 +787,27 @@ mod tests {
             &mut output,
             &mut file_count,
             &mut dir_count,
-        ).await;
+        )
+        .await;
 
         // Should succeed
-        assert!(result.is_ok(), "Expected success for valid directory: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected success for valid directory: {:?}",
+            result
+        );
 
         // Should have found files and directories
-        assert!(file_count >= 2, "Should have found at least 2 files, found: {}", file_count);
-        assert!(dir_count >= 1, "Should have found at least 1 directory, found: {}", dir_count);
+        assert!(
+            file_count >= 2,
+            "Should have found at least 2 files, found: {}",
+            file_count
+        );
+        assert!(
+            dir_count >= 1,
+            "Should have found at least 1 directory, found: {}",
+            dir_count
+        );
         assert!(!output.is_empty(), "Output should not be empty");
     }
 }

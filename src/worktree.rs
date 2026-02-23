@@ -2,7 +2,7 @@
 //!
 //! Provides worktree isolation for parallel agent tasks.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::path::{Path, PathBuf};
 use tokio::sync::Mutex;
 
@@ -50,7 +50,7 @@ impl WorktreeManager {
             worktrees: Mutex::new(Vec::new()),
         }
     }
-    
+
     /// Create a worktree manager with explicit repo path
     pub fn with_repo(base_dir: impl Into<PathBuf>, repo_path: impl Into<PathBuf>) -> Self {
         Self {
@@ -68,11 +68,17 @@ impl WorktreeManager {
         Self::validate_worktree_name(name)?;
         let worktree_path = self.base_dir.join(name);
         let branch_name = format!("codetether/{}", name);
-        
+
         // Ensure base directory exists
-        tokio::fs::create_dir_all(&self.base_dir).await
-            .with_context(|| format!("Failed to create base directory: {}", self.base_dir.display()))?;
-        
+        tokio::fs::create_dir_all(&self.base_dir)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to create base directory: {}",
+                    self.base_dir.display()
+                )
+            })?;
+
         // Run git worktree add
         let output = tokio::process::Command::new("git")
             .args(["worktree", "add", "-b", &branch_name])
@@ -81,7 +87,7 @@ impl WorktreeManager {
             .output()
             .await
             .context("Failed to execute git worktree add")?;
-        
+
         if !output.status.success() {
             // Branch might already exist, try without -b
             let output2 = tokio::process::Command::new("git")
@@ -92,7 +98,7 @@ impl WorktreeManager {
                 .output()
                 .await
                 .context("Failed to execute git worktree add (fallback)")?;
-            
+
             if !output2.status.success() {
                 return Err(anyhow!(
                     "Failed to create git worktree '{}': {}",
@@ -101,17 +107,17 @@ impl WorktreeManager {
                 ));
             }
         }
-        
+
         let info = WorktreeInfo {
             name: name.to_string(),
             path: worktree_path.clone(),
             branch: branch_name,
             active: true,
         };
-        
+
         let mut worktrees = self.worktrees.lock().await;
         worktrees.push(info.clone());
-        
+
         tracing::info!(worktree = %name, path = %worktree_path.display(), "Created git worktree");
         Ok(info)
     }
@@ -132,7 +138,7 @@ impl WorktreeManager {
         let mut worktrees = self.worktrees.lock().await;
         if let Some(pos) = worktrees.iter().position(|w| w.name == name) {
             let info = &worktrees[pos];
-            
+
             // Run git worktree remove
             let output = tokio::process::Command::new("git")
                 .args(["worktree", "remove", "--force"])
@@ -140,7 +146,7 @@ impl WorktreeManager {
                 .current_dir(&self.repo_path)
                 .output()
                 .await;
-            
+
             match output {
                 Ok(o) if o.status.success() => {
                     tracing::info!(worktree = %name, "Removed git worktree");
@@ -164,7 +170,7 @@ impl WorktreeManager {
                     }
                 }
             }
-            
+
             worktrees.remove(pos);
         }
         Ok(())
@@ -179,12 +185,12 @@ impl WorktreeManager {
             .iter()
             .find(|w| w.name == name)
             .ok_or_else(|| anyhow!("Worktree not found: {}", name))?;
-        
+
         let branch = info.branch.clone();
         drop(worktrees); // Release lock before git operations
-        
+
         tracing::info!(worktree = %name, branch = %branch, "Starting git merge");
-        
+
         // Run git merge
         let output = tokio::process::Command::new("git")
             .args(["merge", "--no-ff", &branch])
@@ -192,16 +198,16 @@ impl WorktreeManager {
             .output()
             .await
             .context("Failed to execute git merge")?;
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        
+
         if output.status.success() {
             tracing::info!(worktree = %name, branch = %branch, "Git merge successful");
-            
+
             // Get files changed count
             let files_changed = self.count_merge_files_changed().await.unwrap_or(0);
-            
+
             Ok(MergeResult {
                 success: true,
                 aborted: false,
@@ -214,10 +220,10 @@ impl WorktreeManager {
             // Check for conflicts
             if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") {
                 tracing::warn!(worktree = %name, "Merge has conflicts");
-                
+
                 let conflicts = self.get_conflict_list().await?;
                 let conflict_diffs = self.get_conflict_diffs().await?;
-                
+
                 Ok(MergeResult {
                     success: false,
                     aborted: false,
@@ -241,18 +247,18 @@ impl WorktreeManager {
             .iter()
             .find(|w| w.name == name)
             .ok_or_else(|| anyhow!("Worktree not found: {}", name))?;
-        
+
         let branch = info.branch.clone();
         drop(worktrees);
-        
+
         // Check if we're in a merge state
         let merge_head = self.merge_head_path().await?;
         let in_merge = tokio::fs::try_exists(&merge_head).await.unwrap_or(false);
-        
+
         if !in_merge {
             return Err(anyhow!("Not in a merge state. Use merge() first."));
         }
-        
+
         // Commit the merge
         let output = tokio::process::Command::new("git")
             .args(["commit", "-m", commit_msg])
@@ -260,12 +266,12 @@ impl WorktreeManager {
             .output()
             .await
             .context("Failed to execute git commit")?;
-        
+
         if output.status.success() {
             tracing::info!(worktree = %name, branch = %branch, "Merge completed");
-            
+
             let files_changed = self.count_merge_files_changed().await.unwrap_or(0);
-            
+
             Ok(MergeResult {
                 success: true,
                 aborted: false,
@@ -291,19 +297,19 @@ impl WorktreeManager {
         // Check if we're in a merge state
         let merge_head = self.merge_head_path().await?;
         let in_merge = tokio::fs::try_exists(&merge_head).await.unwrap_or(false);
-        
+
         if !in_merge {
             tracing::warn!("Not in a merge state, nothing to abort");
             return Ok(());
         }
-        
+
         let output = tokio::process::Command::new("git")
             .args(["merge", "--abort"])
             .current_dir(&self.repo_path)
             .output()
             .await
             .context("Failed to execute git merge --abort")?;
-        
+
         if output.status.success() {
             tracing::info!("Merge aborted");
             Ok(())
@@ -361,7 +367,7 @@ impl WorktreeManager {
     pub async fn cleanup_all(&self) -> Result<usize> {
         let mut worktrees = self.worktrees.lock().await;
         let count = worktrees.len();
-        
+
         for info in worktrees.iter() {
             // Try git worktree remove first
             let _ = tokio::process::Command::new("git")
@@ -370,13 +376,13 @@ impl WorktreeManager {
                 .current_dir(&self.repo_path)
                 .output()
                 .await;
-            
+
             // Fallback to directory removal
             if let Err(e) = tokio::fs::remove_dir_all(&info.path).await {
                 tracing::warn!(worktree = %info.name, error = %e, "Failed to remove worktree directory");
             }
         }
-        
+
         worktrees.clear();
         tracing::info!(count, "Cleaned up all worktrees");
         Ok(count)
@@ -387,7 +393,7 @@ impl WorktreeManager {
         // Placeholder: In a real implementation, this would prepend [workspace] to Cargo.toml
         Ok(())
     }
-    
+
     /// Get list of conflicting files during a merge
     async fn get_conflict_list(&self) -> Result<Vec<String>> {
         let output = tokio::process::Command::new("git")
@@ -396,37 +402,37 @@ impl WorktreeManager {
             .output()
             .await
             .context("Failed to get conflict list")?;
-        
+
         let conflicts = String::from_utf8_lossy(&output.stdout)
             .lines()
             .map(String::from)
             .filter(|s| !s.is_empty())
             .collect();
-        
+
         Ok(conflicts)
     }
-    
+
     /// Get diffs for conflicting files
     async fn get_conflict_diffs(&self) -> Result<Vec<(String, String)>> {
         let conflicts = self.get_conflict_list().await?;
         let mut diffs = Vec::new();
-        
+
         for file in conflicts {
             let output = tokio::process::Command::new("git")
                 .args(["diff", &file])
                 .current_dir(&self.repo_path)
                 .output()
                 .await;
-            
+
             if let Ok(o) = output {
                 let diff = String::from_utf8_lossy(&o.stdout).to_string();
                 diffs.push((file, diff));
             }
         }
-        
+
         Ok(diffs)
     }
-    
+
     /// Count files changed in the last merge
     async fn count_merge_files_changed(&self) -> Result<usize> {
         let output = tokio::process::Command::new("git")
@@ -435,12 +441,12 @@ impl WorktreeManager {
             .output()
             .await
             .context("Failed to count changed files")?;
-        
+
         let count = String::from_utf8_lossy(&output.stdout)
             .lines()
             .filter(|s| !s.is_empty())
             .count();
-        
+
         Ok(count)
     }
 }

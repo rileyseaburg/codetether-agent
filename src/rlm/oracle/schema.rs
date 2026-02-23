@@ -39,7 +39,6 @@ pub enum FinalPayload {
     /// Semantic/free-form text (unverifiable)
     Semantic(SemanticPayload),
     /// Malformed JSON that couldn't be parsed
-    #[serde(skip)]
     Malformed {
         /// The raw string that failed to parse
         raw: String,
@@ -54,10 +53,10 @@ impl FinalPayload {
     /// Returns `FinalPayload::Malformed` if parsing fails.
     pub fn parse(json_str: &str) -> Self {
         let trimmed = json_str.trim();
-        
+
         // Try to parse as JSON
         let parsed: Result<serde_json::Value, _> = serde_json::from_str(trimmed);
-        
+
         match parsed {
             Ok(value) => {
                 // Try to deserialize into our enum
@@ -68,34 +67,28 @@ impl FinalPayload {
                         // Check if it has a "kind" field we can use
                         if let Some(kind) = value.get("kind").and_then(|k| k.as_str()) {
                             match kind {
-                                "grep" => {
-                                    serde_json::from_value(value).unwrap_or_else(|e2| {
-                                        FinalPayload::Malformed {
-                                            raw: trimmed.to_string(),
-                                            error: format!("GrepPayload parse error: {}", e2),
-                                        }
-                                    })
-                                }
-                                "ast" => {
-                                    serde_json::from_value(value).unwrap_or_else(|e2| {
-                                        FinalPayload::Malformed {
-                                            raw: trimmed.to_string(),
-                                            error: format!("AstPayload parse error: {}", e2),
-                                        }
-                                    })
-                                }
-                                "semantic" => {
-                                    serde_json::from_value(value).unwrap_or_else(|e2| {
-                                        FinalPayload::Malformed {
-                                            raw: trimmed.to_string(),
-                                            error: format!("SemanticPayload parse error: {}", e2),
-                                        }
-                                    })
-                                }
+                                "grep" => serde_json::from_value(value).unwrap_or_else(|e2| {
+                                    FinalPayload::Malformed {
+                                        raw: trimmed.to_string(),
+                                        error: format!("GrepPayload parse error: {}", e2),
+                                    }
+                                }),
+                                "ast" => serde_json::from_value(value).unwrap_or_else(|e2| {
+                                    FinalPayload::Malformed {
+                                        raw: trimmed.to_string(),
+                                        error: format!("AstPayload parse error: {}", e2),
+                                    }
+                                }),
+                                "semantic" => serde_json::from_value(value).unwrap_or_else(|e2| {
+                                    FinalPayload::Malformed {
+                                        raw: trimmed.to_string(),
+                                        error: format!("SemanticPayload parse error: {}", e2),
+                                    }
+                                }),
                                 _ => FinalPayload::Malformed {
                                     raw: trimmed.to_string(),
                                     error: format!("Unknown kind: {}", kind),
-                                }
+                                },
                             }
                         } else {
                             FinalPayload::Malformed {
@@ -135,12 +128,20 @@ impl FinalPayload {
     pub fn summary(&self) -> String {
         match self {
             FinalPayload::Grep(p) => {
-                format!("Grep(file={}, pattern={}, {} matches)", 
-                    p.file, p.pattern, p.matches.len())
+                format!(
+                    "Grep(file={}, pattern={}, {} matches)",
+                    p.file,
+                    p.pattern,
+                    p.matches.len()
+                )
             }
             FinalPayload::Ast(p) => {
-                format!("Ast(file={}, query={}, {} results)", 
-                    p.file, p.query, p.results.len())
+                format!(
+                    "Ast(file={}, query={}, {} results)",
+                    p.file,
+                    p.query,
+                    p.results.len()
+                )
             }
             FinalPayload::Semantic(p) => {
                 let preview = if p.answer.len() > 50 {
@@ -224,7 +225,12 @@ pub struct AstResult {
 
 impl AstResult {
     /// Create a new AST result for a function.
-    pub fn function(name: String, args: Vec<String>, return_type: Option<String>, span: Option<(usize, usize)>) -> Self {
+    pub fn function(
+        name: String,
+        args: Vec<String>,
+        return_type: Option<String>,
+        span: Option<(usize, usize)>,
+    ) -> Self {
         Self {
             name,
             args,
@@ -345,6 +351,18 @@ mod tests {
     }
 
     #[test]
+    fn malformed_payload_is_serializable() {
+        let payload = FinalPayload::Malformed {
+            raw: "oops".to_string(),
+            error: "parse error".to_string(),
+        };
+        let json = serde_json::to_string(&payload).expect("malformed payload should serialize");
+        assert!(json.contains("\"kind\":\"malformed\""));
+        assert!(json.contains("\"raw\":\"oops\""));
+        assert!(json.contains("\"error\":\"parse error\""));
+    }
+
+    #[test]
     fn grep_match_text_matching() {
         let m = GrepMatch::new(42, "async fn".to_string());
         assert!(m.text_matches("pub async fn process() -> Result<()> {"));
@@ -362,7 +380,8 @@ mod tests {
 
     #[test]
     fn file_extraction() {
-        let grep_json = r#"{"kind": "grep", "file": "src/main.rs", "pattern": "fn", "matches": []}"#;
+        let grep_json =
+            r#"{"kind": "grep", "file": "src/main.rs", "pattern": "fn", "matches": []}"#;
         assert_eq!(FinalPayload::parse(grep_json).file(), Some("src/main.rs"));
     }
 }

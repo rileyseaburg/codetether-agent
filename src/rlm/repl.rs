@@ -432,22 +432,28 @@ impl RlmRepl {
     /// Execute a tree-sitter AST query on the context.
     fn execute_ast_query(&self, query: &str) -> String {
         let mut oracle = super::oracle::TreeSitterOracle::new(self.context.clone());
-        
+
         match oracle.query(query) {
             Ok(result) => {
                 if result.matches.is_empty() {
                     "(no AST matches)".to_string()
                 } else {
-                    let lines: Vec<String> = result.matches.iter().map(|m| {
-                        let captures_str: Vec<String> = m.captures.iter()
-                            .map(|(k, v)| format!("{}={:?}", k, v))
-                            .collect();
-                        format!("L{}: {} [{}]", m.line, m.text, captures_str.join(", "))
-                    }).collect();
+                    let lines: Vec<String> = result
+                        .matches
+                        .iter()
+                        .map(|m| {
+                            let captures_str: Vec<String> = m
+                                .captures
+                                .iter()
+                                .map(|(k, v)| format!("{}={:?}", k, v))
+                                .collect();
+                            format!("L{}: {} [{}]", m.line, m.text, captures_str.join(", "))
+                        })
+                        .collect();
                     lines.join("\n")
                 }
             }
-            Err(e) => format!("AST query error: {}", e)
+            Err(e) => format!("AST query error: {}", e),
         }
     }
 }
@@ -651,6 +657,12 @@ impl RlmExecutor {
             tokens: ContextTrace::estimate_tokens(query),
         });
 
+        let llm_timeout_secs = std::env::var("CODETETHER_RLM_LLM_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or(60);
+
         let mut final_answer = None;
 
         while iterations < self.max_iterations {
@@ -660,7 +672,7 @@ impl RlmExecutor {
             // Get LLM response with code to execute (with timeout)
             tracing::debug!("Sending LLM request...");
             let response = match tokio::time::timeout(
-                std::time::Duration::from_secs(60),
+                std::time::Duration::from_secs(llm_timeout_secs),
                 self.provider.complete(CompletionRequest {
                     messages: messages.clone(),
                     tools: tools.clone(),
@@ -678,7 +690,12 @@ impl RlmExecutor {
                     r
                 }
                 Ok(Err(e)) => return Err(e),
-                Err(_) => return Err(anyhow::anyhow!("LLM request timed out after 60 seconds")),
+                Err(_) => {
+                    return Err(anyhow::anyhow!(
+                        "LLM request timed out after {} seconds",
+                        llm_timeout_secs
+                    ));
+                }
             };
 
             // Optionally run FunctionGemma to convert text-only responses into
@@ -758,7 +775,10 @@ impl RlmExecutor {
                             final_answer = Some(answer.clone());
                             self.trace_steps.push(TraceStep {
                                 iteration: iterations,
-                                action: format!("{name}({})", truncate_with_ellipsis(arguments, 120)),
+                                action: format!(
+                                    "{name}({})",
+                                    truncate_with_ellipsis(arguments, 120)
+                                ),
                                 output: format!("FINAL: {}", truncate_with_ellipsis(&answer, 240)),
                             });
                             self.context_trace.log_event(ContextEvent::Final {
@@ -792,7 +812,10 @@ impl RlmExecutor {
                                         self.handle_llm_query_direct(q, ctx_slice).await?;
                                     self.trace_steps.push(TraceStep {
                                         iteration: iterations,
-                                        action: format!("llm_query({})", truncate_with_ellipsis(q, 120)),
+                                        action: format!(
+                                            "llm_query({})",
+                                            truncate_with_ellipsis(q, 120)
+                                        ),
                                         output: truncate_with_ellipsis(&llm_result, 240),
                                     });
                                     self.context_trace.log_event(ContextEvent::ToolResult {
@@ -814,7 +837,10 @@ impl RlmExecutor {
                             }
                             self.trace_steps.push(TraceStep {
                                 iteration: iterations,
-                                action: format!("{name}({})", truncate_with_ellipsis(arguments, 120)),
+                                action: format!(
+                                    "{name}({})",
+                                    truncate_with_ellipsis(arguments, 120)
+                                ),
                                 output: truncate_with_ellipsis(&output, 240),
                             });
                             self.context_trace.log_event(ContextEvent::ToolResult {
@@ -831,7 +857,10 @@ impl RlmExecutor {
                             let unknown = format!("Unknown tool: {name}");
                             self.trace_steps.push(TraceStep {
                                 iteration: iterations,
-                                action: format!("{name}({})", truncate_with_ellipsis(arguments, 120)),
+                                action: format!(
+                                    "{name}({})",
+                                    truncate_with_ellipsis(arguments, 120)
+                                ),
                                 output: unknown.clone(),
                             });
                             tool_results.push(ContentPart::ToolResult {
@@ -939,7 +968,10 @@ impl RlmExecutor {
         let elapsed = start.elapsed();
 
         let final_text = final_answer.unwrap_or_else(|| "Analysis incomplete".to_string());
-        if !matches!(self.context_trace.events().back(), Some(ContextEvent::Final { .. })) {
+        if !matches!(
+            self.context_trace.events().back(),
+            Some(ContextEvent::Final { .. })
+        ) {
             self.context_trace.log_event(ContextEvent::Final {
                 answer: truncate_with_ellipsis(&final_text, 400),
                 tokens: ContextTrace::estimate_tokens(&final_text),

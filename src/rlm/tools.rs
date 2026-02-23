@@ -221,36 +221,35 @@ pub fn dispatch_tool_call(
             Some(RlmToolResult::Final(answer))
         }
         "rlm_ast_query" => {
-            let query = args
-                .get("query")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            
+            let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
+
             // Create a tree-sitter oracle and execute the query
             let mut oracle = super::oracle::TreeSitterOracle::new(repl.context().to_string());
             match oracle.query(query) {
                 Ok(result) => {
                     // Format the result as JSON
-                    let matches: Vec<serde_json::Value> = result.matches.iter().map(|m| {
-                        serde_json::json!({
-                            "line": m.line,
-                            "column": m.column,
-                            "captures": m.captures,
-                            "text": m.text
+                    let matches: Vec<serde_json::Value> = result
+                        .matches
+                        .iter()
+                        .map(|m| {
+                            serde_json::json!({
+                                "line": m.line,
+                                "column": m.column,
+                                "captures": m.captures,
+                                "text": m.text
+                            })
                         })
-                    }).collect();
-                    
+                        .collect();
+
                     let output = serde_json::json!({
                         "query": query,
                         "match_count": matches.len(),
                         "matches": matches
                     });
-                    
+
                     Some(RlmToolResult::Output(output.to_string()))
                 }
-                Err(e) => {
-                    Some(RlmToolResult::Output(format!("AST query error: {}", e)))
-                }
+                Err(e) => Some(RlmToolResult::Output(format!("AST query error: {}", e))),
             }
         }
         _ => None, // Not an RLM tool

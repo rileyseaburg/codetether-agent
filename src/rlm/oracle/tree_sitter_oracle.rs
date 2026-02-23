@@ -65,20 +65,13 @@ pub enum TreeSitterVerification {
     /// Answer matches but in different order.
     UnorderedMatch,
     /// Answer is a subset (partial match).
-    SubsetMatch {
-        claimed: usize,
-        actual: usize,
-    },
+    SubsetMatch { claimed: usize, actual: usize },
     /// Answer contains incorrect claims.
-    HasErrors {
-        errors: Vec<String>,
-    },
+    HasErrors { errors: Vec<String> },
     /// Answer is completely different.
     Mismatch,
     /// Could not parse or verify.
-    CannotVerify {
-        reason: String,
-    },
+    CannotVerify { reason: String },
 }
 
 impl TreeSitterOracle {
@@ -106,14 +99,18 @@ impl TreeSitterOracle {
     /// Parse the source and return the tree.
     fn parse(&mut self) -> Result<&tree_sitter::Tree> {
         self.ensure_parser()?;
-        
+
         if self.tree.is_none() {
-            let parser = self.parser.as_mut().ok_or_else(|| anyhow!("Parser not initialized"))?;
-            let tree = parser.parse(&self.source, None)
+            let parser = self
+                .parser
+                .as_mut()
+                .ok_or_else(|| anyhow!("Parser not initialized"))?;
+            let tree = parser
+                .parse(&self.source, None)
                 .ok_or_else(|| anyhow!("Failed to parse source"))?;
             self.tree = Some(tree);
         }
-        
+
         Ok(self.tree.as_ref().unwrap())
     }
 
@@ -127,34 +124,34 @@ impl TreeSitterOracle {
         self.parse()?;
         let tree = self.tree.as_ref().unwrap();
         let root = tree.root_node();
-        
+
         let query = tree_sitter::Query::new(&tree_sitter_rust::LANGUAGE.into(), query_str)?;
         let mut cursor = tree_sitter::QueryCursor::new();
-        
+
         let source_bytes = self.source.as_bytes();
         let mut results = Vec::new();
-        
+
         let mut matches = cursor.matches(&query, root, source_bytes);
         while let Some(match_) = matches.next() {
             let mut captures = HashMap::new();
             let mut text = String::new();
             let mut line = 1;
             let mut column = 1;
-            
+
             for capture in match_.captures {
                 let node = capture.node;
                 let capture_name = query.capture_names()[capture.index as usize].to_string();
                 let capture_text = node.utf8_text(source_bytes)?.to_string();
-                
+
                 captures.insert(capture_name, capture_text.clone());
-                
+
                 if text.is_empty() {
                     text = capture_text;
                     line = node.start_position().row + 1;
                     column = node.start_position().column + 1;
                 }
             }
-            
+
             results.push(AstMatch {
                 line,
                 column,
@@ -162,7 +159,7 @@ impl TreeSitterOracle {
                 text,
             });
         }
-        
+
         Ok(AstQueryResult {
             query_type: query_str.to_string(),
             matches: results,
@@ -177,15 +174,15 @@ impl TreeSitterOracle {
                 name: (identifier) @name
                 parameters: (parameters) @params
                 return_type: (_)? @return_type)
-            "#
+            "#,
         )?;
-        
+
         let mut functions = Vec::new();
         for m in result.matches {
             let name = m.captures.get("name").cloned().unwrap_or_default();
             let params = m.captures.get("params").cloned().unwrap_or_default();
             let return_type = m.captures.get("return_type").cloned();
-            
+
             functions.push(FunctionSignature {
                 name,
                 params,
@@ -193,7 +190,7 @@ impl TreeSitterOracle {
                 line: m.line,
             });
         }
-        
+
         Ok(functions)
     }
 
@@ -204,31 +201,31 @@ impl TreeSitterOracle {
             (struct_item
                 name: (type_identifier) @name
                 body: (field_declaration_list)? @body)
-            "#
+            "#,
         )?;
-        
+
         let mut structs = Vec::new();
         for m in result.matches {
             let name = m.captures.get("name").cloned().unwrap_or_default();
             let body = m.captures.get("body").cloned().unwrap_or_default();
-            
+
             // Extract fields from body
             let fields = self.extract_struct_fields(&body)?;
-            
+
             structs.push(StructDefinition {
                 name,
                 fields,
                 line: m.line,
             });
         }
-        
+
         Ok(structs)
     }
 
     /// Extract field names from a struct body.
     fn extract_struct_fields(&self, body: &str) -> Result<Vec<String>> {
         let mut fields = Vec::new();
-        
+
         // Simple regex-based extraction (faster than re-parsing)
         let re = regex::Regex::new(r"(?:pub\s+)?(\w+)\s*:")?;
         for cap in re.captures_iter(body) {
@@ -236,7 +233,7 @@ impl TreeSitterOracle {
                 fields.push(name.as_str().to_string());
             }
         }
-        
+
         Ok(fields)
     }
 
@@ -247,31 +244,31 @@ impl TreeSitterOracle {
             (enum_item
                 name: (type_identifier) @name
                 body: (enum_variant_list)? @body)
-            "#
+            "#,
         )?;
-        
+
         let mut enums = Vec::new();
         for m in result.matches {
             let name = m.captures.get("name").cloned().unwrap_or_default();
             let body = m.captures.get("body").cloned().unwrap_or_default();
-            
+
             // Extract variants from body
             let variants = self.extract_enum_variants(&body)?;
-            
+
             enums.push(EnumDefinition {
                 name,
                 variants,
                 line: m.line,
             });
         }
-        
+
         Ok(enums)
     }
 
     /// Extract variant names from an enum body.
     fn extract_enum_variants(&self, body: &str) -> Result<Vec<String>> {
         let mut variants = Vec::new();
-        
+
         let re = regex::Regex::new(r"(\w+)\s*(?:,|=|\{|\()")?;
         for cap in re.captures_iter(body) {
             if let Some(name) = cap.get(1) {
@@ -282,7 +279,7 @@ impl TreeSitterOracle {
                 }
             }
         }
-        
+
         Ok(variants)
     }
 
@@ -300,18 +297,20 @@ impl TreeSitterOracle {
                     trait: (type_identifier) @trait
                     body: (declaration_list)? @body)
             ]
-            "#
+            "#,
         )?;
-        
+
         let mut impls = Vec::new();
         for m in result.matches {
-            let type_name = m.captures.get("type")
+            let type_name = m
+                .captures
+                .get("type")
                 .or_else(|| m.captures.get("for"))
                 .cloned()
                 .unwrap_or_default();
             let trait_name = m.captures.get("trait").cloned();
             let body = m.captures.get("body").cloned().unwrap_or_default();
-            
+
             impls.push(ImplDefinition {
                 type_name,
                 trait_name,
@@ -319,27 +318,28 @@ impl TreeSitterOracle {
                 line: m.line,
             });
         }
-        
+
         Ok(impls)
     }
 
     /// Count error handling patterns.
     pub fn count_error_patterns(&mut self) -> Result<ErrorPatternCounts> {
         // Count Result<T> types
-        let result_types = self.query(r#"(generic_type type: (type_identifier) @name (#eq? @name "Result"))"#)?;
-        
+        let result_types =
+            self.query(r#"(generic_type type: (type_identifier) @name (#eq? @name "Result"))"#)?;
+
         // Count ? operators
         let try_operators = self.query(r#"(try_expression)"#)?;
-        
+
         // Count .unwrap() calls
         let unwrap_calls = self.query(r#"(call_expression function: (field_expression field: (field_identifier) @method (#eq? @method "unwrap")))"#)?;
-        
+
         // Count .expect() calls
         let expect_calls = self.query(r#"(call_expression function: (field_expression field: (field_identifier) @method (#eq? @method "expect")))"#)?;
-        
+
         // Count match expressions
         let match_exprs = self.query(r#"(match_expression)"#)?;
-        
+
         Ok(ErrorPatternCounts {
             result_types: result_types.matches.len(),
             try_operators: try_operators.matches.len(),
@@ -352,7 +352,7 @@ impl TreeSitterOracle {
     /// Verify a FINAL() answer against AST truth.
     pub fn verify(&mut self, answer: &str, query: &str) -> TreeSitterVerification {
         let query_type = Self::classify_query(query);
-        
+
         match query_type {
             QueryType::Structural => {
                 // Try to match against different structural queries
@@ -372,14 +372,14 @@ impl TreeSitterOracle {
             }
             _ => TreeSitterVerification::CannotVerify {
                 reason: "Not a structural query".to_string(),
-            }
+            },
         }
     }
 
     /// Classify query type for tree-sitter routing.
     fn classify_query(query: &str) -> QueryType {
         let lower = query.to_lowercase();
-        
+
         if lower.contains("signature")
             || lower.contains("parameters")
             || lower.contains("return type")
@@ -392,18 +392,20 @@ impl TreeSitterOracle {
         {
             return QueryType::Structural;
         }
-        
+
         QueryType::Semantic
     }
 
     fn verify_functions(&mut self, answer: &str) -> TreeSitterVerification {
         let functions = match self.get_functions() {
             Ok(f) => f,
-            Err(e) => return TreeSitterVerification::CannotVerify {
-                reason: format!("Failed to parse functions: {}", e),
-            },
+            Err(e) => {
+                return TreeSitterVerification::CannotVerify {
+                    reason: format!("Failed to parse functions: {}", e),
+                };
+            }
         };
-        
+
         // Parse answer to extract claimed function names
         let claimed_names: Vec<String> = answer
             .lines()
@@ -415,17 +417,17 @@ impl TreeSitterOracle {
                     .map(|m| m.as_str().to_string())
             })
             .collect();
-        
+
         if claimed_names.is_empty() {
             return TreeSitterVerification::CannotVerify {
                 reason: "Could not extract function names from answer".to_string(),
             };
         }
-        
+
         let actual_names: Vec<String> = functions.iter().map(|f| f.name.clone()).collect();
         let claimed_set: std::collections::HashSet<_> = claimed_names.iter().cloned().collect();
         let actual_set: std::collections::HashSet<_> = actual_names.iter().cloned().collect();
-        
+
         if claimed_set == actual_set {
             TreeSitterVerification::ExactMatch
         } else if claimed_set.is_subset(&actual_set) {
@@ -446,11 +448,13 @@ impl TreeSitterOracle {
     fn verify_structs(&mut self, answer: &str) -> TreeSitterVerification {
         let structs = match self.get_structs() {
             Ok(s) => s,
-            Err(e) => return TreeSitterVerification::CannotVerify {
-                reason: format!("Failed to parse structs: {}", e),
-            },
+            Err(e) => {
+                return TreeSitterVerification::CannotVerify {
+                    reason: format!("Failed to parse structs: {}", e),
+                };
+            }
         };
-        
+
         // Similar logic to verify_functions
         let claimed_names: Vec<String> = answer
             .lines()
@@ -461,17 +465,17 @@ impl TreeSitterOracle {
                     .map(|m| m.as_str().to_string())
             })
             .collect();
-        
+
         if claimed_names.is_empty() {
             return TreeSitterVerification::CannotVerify {
                 reason: "Could not extract struct names from answer".to_string(),
             };
         }
-        
+
         let actual_names: Vec<String> = structs.iter().map(|s| s.name.clone()).collect();
         let claimed_set: std::collections::HashSet<_> = claimed_names.iter().cloned().collect();
         let actual_set: std::collections::HashSet<_> = actual_names.iter().cloned().collect();
-        
+
         if claimed_set == actual_set {
             TreeSitterVerification::ExactMatch
         } else if claimed_set.is_subset(&actual_set) {
@@ -589,7 +593,8 @@ enum Status {
     Inactive,
     Pending,
 }
-"#.to_string()
+"#
+        .to_string()
     }
 
     #[test]
@@ -597,7 +602,7 @@ enum Status {
         let mut oracle = TreeSitterOracle::new(sample_rust_code());
         let functions = oracle.get_functions().unwrap();
         assert!(functions.len() >= 3);
-        
+
         let names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
         assert!(names.contains(&"new"));
         assert!(names.contains(&"with_debug"));
@@ -610,7 +615,7 @@ enum Status {
         let mut oracle = TreeSitterOracle::new(sample_rust_code());
         let structs = oracle.get_structs().unwrap();
         assert!(structs.len() >= 1);
-        
+
         let config_struct = structs.iter().find(|s| s.name == "Config").unwrap();
         assert!(config_struct.fields.contains(&"debug".to_string()));
         assert!(config_struct.fields.contains(&"timeout".to_string()));
@@ -621,7 +626,7 @@ enum Status {
         let mut oracle = TreeSitterOracle::new(sample_rust_code());
         let enums = oracle.get_enums().unwrap();
         assert!(enums.len() >= 1);
-        
+
         let status_enum = enums.iter().find(|e| e.name == "Status").unwrap();
         assert!(status_enum.variants.contains(&"Active".to_string()));
         assert!(status_enum.variants.contains(&"Inactive".to_string()));
@@ -631,7 +636,7 @@ enum Status {
     fn count_error_patterns() {
         let mut oracle = TreeSitterOracle::new(sample_rust_code());
         let counts = oracle.count_error_patterns().unwrap();
-        
+
         assert!(counts.result_types >= 2); // At least 2 Result<T>
         assert!(counts.try_operators >= 1); // At least 1 ? operator
     }

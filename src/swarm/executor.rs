@@ -618,11 +618,10 @@ impl SwarmExecutor {
         // Initialize telemetry for this swarm execution
         let swarm_id = uuid::Uuid::new_v4().to_string();
         let strategy_str = format!("{:?}", strategy);
-        self.telemetry.lock().await.start_swarm(
-            &swarm_id,
-            subtasks.len(),
-            &strategy_str,
-        );
+        self.telemetry
+            .lock()
+            .await
+            .start_swarm(&swarm_id, subtasks.len(), &strategy_str);
 
         // Shared state for completed results
         let completed_results: Arc<RwLock<HashMap<String, String>>> =

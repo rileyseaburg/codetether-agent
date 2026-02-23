@@ -14,15 +14,9 @@ use tokio::sync::broadcast;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ChatEvent {
     /// User message
-    UserMessage {
-        content: String,
-        timestamp: i64,
-    },
+    UserMessage { content: String, timestamp: i64 },
     /// Assistant message
-    AssistantMessage {
-        content: String,
-        timestamp: i64,
-    },
+    AssistantMessage { content: String, timestamp: i64 },
     /// Tool call
     ToolCall {
         tool_name: String,
@@ -80,13 +74,9 @@ pub enum Event {
         success: bool,
     },
     /// Agent message
-    AgentMessage {
-        content: String,
-    },
+    AgentMessage { content: String },
     /// Error occurred
-    Error {
-        message: String,
-    },
+    Error { message: String },
     /// Chat event
     Chat(ChatEvent),
 }

@@ -1,11 +1,11 @@
 //! Integration tests for the RLM oracle system.
 
-use codetether_agent::rlm::oracle::{
-    GrepOracle, GrepVerification, OracleResult, QueryType, TraceValidator,
-    TreeSitterOracle, FinalAnswerFormat,
-};
-use codetether_agent::rlm::context_trace::{ContextTrace, ContextEvent};
 use codetether_agent::rlm::RlmStats;
+use codetether_agent::rlm::context_trace::{ContextEvent, ContextTrace};
+use codetether_agent::rlm::oracle::{
+    FinalAnswerFormat, GrepOracle, GrepVerification, OracleResult, QueryType, TraceValidator,
+    TreeSitterOracle,
+};
 use codetether_agent::rlm::repl::RlmAnalysisResult;
 
 fn sample_rust_code() -> String {
@@ -79,7 +79,8 @@ mod tests {
         assert!(result.is_ok());
     }
 }
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn make_analysis_result(answer: &str) -> RlmAnalysisResult {
@@ -106,10 +107,10 @@ fn make_analysis_result(answer: &str) -> RlmAnalysisResult {
 fn grep_oracle_finds_async_functions() {
     let source = sample_rust_code();
     let oracle = GrepOracle::new(source);
-    
+
     let matches = oracle.grep(r"\basync\s+fn\b").unwrap();
     assert!(matches.len() >= 1);
-    
+
     // Should find the async process function
     assert!(matches.iter().any(|(_, line)| line.contains("process")));
 }
@@ -118,7 +119,7 @@ fn grep_oracle_finds_async_functions() {
 fn grep_oracle_finds_public_functions() {
     let source = sample_rust_code();
     let oracle = GrepOracle::new(source);
-    
+
     let matches = oracle.grep(r"\bpub\s+fn\b").unwrap();
     assert!(matches.len() >= 2);
 }
@@ -161,10 +162,16 @@ fn grep_oracle_classifies_pattern_match_query() {
 fn grep_oracle_verifies_count_result() {
     let source = sample_rust_code();
     let oracle = GrepOracle::new(source);
-    
+
     // This fixture currently contains two async functions.
     let result = oracle.verify("Found 1 async function", "Count async functions");
-    assert_eq!(result, GrepVerification::SubsetMatch { claimed: 1, actual: 2 });
+    assert_eq!(
+        result,
+        GrepVerification::SubsetMatch {
+            claimed: 1,
+            actual: 2
+        }
+    );
 }
 
 // ============================================================================
@@ -175,9 +182,9 @@ fn grep_oracle_verifies_count_result() {
 fn tree_sitter_oracle_gets_functions() {
     let mut oracle = TreeSitterOracle::new(sample_rust_code());
     let functions = oracle.get_functions().unwrap();
-    
+
     assert!(functions.len() >= 4);
-    
+
     let names: Vec<&str> = functions.iter().map(|f| f.name.as_str()).collect();
     assert!(names.contains(&"new"));
     assert!(names.contains(&"with_debug"));
@@ -190,9 +197,9 @@ fn tree_sitter_oracle_gets_functions() {
 fn tree_sitter_oracle_gets_structs() {
     let mut oracle = TreeSitterOracle::new(sample_rust_code());
     let structs = oracle.get_structs().unwrap();
-    
+
     assert!(structs.len() >= 1);
-    
+
     let config = structs.iter().find(|s| s.name == "Config").unwrap();
     assert!(config.fields.contains(&"debug".to_string()));
     assert!(config.fields.contains(&"max_retries".to_string()));
@@ -203,9 +210,9 @@ fn tree_sitter_oracle_gets_structs() {
 fn tree_sitter_oracle_gets_enums() {
     let mut oracle = TreeSitterOracle::new(sample_rust_code());
     let enums = oracle.get_enums().unwrap();
-    
+
     assert!(enums.len() >= 1);
-    
+
     let status = enums.iter().find(|e| e.name == "Status").unwrap();
     assert!(status.variants.contains(&"Active".to_string()));
     assert!(status.variants.contains(&"Inactive".to_string()));
@@ -216,10 +223,10 @@ fn tree_sitter_oracle_gets_enums() {
 fn tree_sitter_oracle_counts_error_patterns() {
     let mut oracle = TreeSitterOracle::new(sample_rust_code());
     let counts = oracle.count_error_patterns().unwrap();
-    
+
     // Should find Result<T> types
     assert!(counts.result_types >= 3);
-    
+
     // Should find ? operators
     assert!(counts.try_operators >= 2);
 }
@@ -227,13 +234,13 @@ fn tree_sitter_oracle_counts_error_patterns() {
 #[test]
 fn tree_sitter_oracle_query() {
     let mut oracle = TreeSitterOracle::new(sample_rust_code());
-    
+
     let result = oracle
         .query("(function_item name: (identifier) @name)")
         .unwrap();
-    
+
     assert!(!result.matches.is_empty());
-    
+
     // All matches should have a "name" capture
     for m in &result.matches {
         assert!(m.captures.contains_key("name"));
@@ -249,7 +256,7 @@ fn trace_validator_validates_grep_match() {
     let validator = TraceValidator::new();
     let source = sample_rust_code();
     let result = make_analysis_result("30:pub async fn process(input: &str) -> Result<String> {");
-    
+
     match validator.validate(&result, &source, Some("test.rs"), None, None) {
         OracleResult::Golden(trace) => {
             assert!(trace.answer.contains("async"));
@@ -267,9 +274,9 @@ fn trace_validator_marks_semantic_as_unverified() {
     let result = make_analysis_result(
         r#"{"kind":"semantic","file":"test.rs","answer":"This function processes input by parsing and transforming it"}"#,
     );
-    
+
     match validator.validate(&result, &source, Some("test.rs"), None, None) {
-        OracleResult::Unverified { reason } => {
+        OracleResult::Unverified { reason, .. } => {
             assert!(reason.contains("Semantic"));
         }
         OracleResult::Consensus { .. } => panic!("Expected Unverified for semantic query"),
@@ -281,14 +288,22 @@ fn trace_validator_marks_semantic_as_unverified() {
 fn trace_validator_batch_validate() {
     let validator = TraceValidator::new();
     let source = sample_rust_code();
-    
+
     let traces = vec![
-        (make_analysis_result("1 async function"), source.as_str(), None),
-        (make_analysis_result("Explanation text"), source.as_str(), None),
+        (
+            make_analysis_result("1 async function"),
+            source.as_str(),
+            None,
+        ),
+        (
+            make_analysis_result("Explanation text"),
+            source.as_str(),
+            None,
+        ),
     ];
-    
+
     let stats = validator.batch_validate(traces);
-    
+
     assert!(stats.total() == 2);
 }
 
@@ -299,18 +314,18 @@ fn trace_validator_batch_validate() {
 #[test]
 fn context_trace_tracks_tokens() {
     let mut trace = ContextTrace::new(1000);
-    
+
     trace.log_event(ContextEvent::SystemPrompt {
         content: "System prompt".to_string(),
         tokens: 100,
     });
-    
+
     trace.log_event(ContextEvent::GrepResult {
         pattern: "async".to_string(),
         matches: 5,
         tokens: 50,
     });
-    
+
     assert_eq!(trace.total_tokens(), 150);
     assert_eq!(trace.remaining_tokens(), 850);
     assert!((trace.budget_used_percent() - 15.0).abs() < 0.01);
@@ -319,38 +334,38 @@ fn context_trace_tracks_tokens() {
 #[test]
 fn context_trace_detects_over_budget() {
     let mut trace = ContextTrace::new(100);
-    
+
     trace.log_event(ContextEvent::Final {
         answer: "Big answer".to_string(),
         tokens: 150,
     });
-    
+
     assert!(trace.is_over_budget());
 }
 
 #[test]
 fn context_trace_filters_by_type() {
     let mut trace = ContextTrace::new(1000);
-    
+
     trace.log_event(ContextEvent::SystemPrompt {
         content: "test".to_string(),
         tokens: 100,
     });
-    
+
     trace.log_event(ContextEvent::GrepResult {
         pattern: "async".to_string(),
         matches: 5,
         tokens: 50,
     });
-    
+
     trace.log_event(ContextEvent::SystemPrompt {
         content: "test2".to_string(),
         tokens: 75,
     });
-    
+
     let system_events = trace.events_of_type("system_prompt");
     assert_eq!(system_events.len(), 2);
-    
+
     let grep_events = trace.events_of_type("grep_result");
     assert_eq!(grep_events.len(), 1);
 }
@@ -358,20 +373,20 @@ fn context_trace_filters_by_type() {
 #[test]
 fn context_trace_summary() {
     let mut trace = ContextTrace::new(1000);
-    
+
     trace.log_event(ContextEvent::SystemPrompt {
         content: "test".to_string(),
         tokens: 100,
     });
-    
+
     trace.log_event(ContextEvent::GrepResult {
         pattern: "async".to_string(),
         matches: 5,
         tokens: 50,
     });
-    
+
     trace.next_iteration();
-    
+
     let summary = trace.summary();
     assert_eq!(summary.total_tokens, 150);
     assert_eq!(summary.iteration, 1);
@@ -386,7 +401,7 @@ fn context_trace_summary() {
 fn parse_line_numbered_matches() {
     let answer = "42:async fn foo()\n100:pub struct Bar";
     let format = FinalAnswerFormat::parse(answer);
-    
+
     match format {
         FinalAnswerFormat::LineNumberedMatches { matches } => {
             assert_eq!(matches.len(), 2);
@@ -401,7 +416,7 @@ fn parse_line_numbered_matches() {
 fn parse_count_result() {
     let answer = "Found 15 async functions";
     let format = FinalAnswerFormat::parse(answer);
-    
+
     match format {
         FinalAnswerFormat::CountResult { count } => {
             assert_eq!(count, 15);
@@ -414,7 +429,7 @@ fn parse_count_result() {
 fn parse_structured_data() {
     let answer = r#"{"functions": ["foo", "bar"]}"#;
     let format = FinalAnswerFormat::parse(answer);
-    
+
     match format {
         FinalAnswerFormat::StructuredData { data } => {
             assert!(data["functions"].is_array());
@@ -427,7 +442,7 @@ fn parse_structured_data() {
 fn parse_free_form_text() {
     let answer = "This function handles errors by using the ? operator";
     let format = FinalAnswerFormat::parse(answer);
-    
+
     match format {
         FinalAnswerFormat::FreeFormText { text } => {
             assert!(text.contains("? operator"));

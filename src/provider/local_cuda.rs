@@ -99,14 +99,12 @@ impl LocalCudaProvider {
     }
 
     fn build_config(&self, request: &CompletionRequest) -> Result<ThinkerConfig> {
-        let model_path = self
-            .resolve_model_path()
-            .ok_or_else(|| {
-                anyhow!(
-                    "Local CUDA requires model path via LOCAL_CUDA_MODEL_PATH or \
+        let model_path = self.resolve_model_path().ok_or_else(|| {
+            anyhow!(
+                "Local CUDA requires model path via LOCAL_CUDA_MODEL_PATH or \
                      CODETETHER_LOCAL_CUDA_MODEL_PATH"
-                )
-            })?;
+            )
+        })?;
         let tokenizer_path = self.resolve_tokenizer_path().or_else(|| {
             // Common local layout: tokenizer.json next to model.gguf
             Path::new(&model_path)
@@ -164,7 +162,10 @@ impl LocalCudaProvider {
             candle_seed: parse_env_u64(&["LOCAL_CUDA_SEED", "CODETETHER_LOCAL_CUDA_SEED"], 42),
             temperature: request.temperature.unwrap_or_else(|| {
                 parse_env_f32(
-                    &["LOCAL_CUDA_TEMPERATURE", "CODETETHER_LOCAL_CUDA_TEMPERATURE"],
+                    &[
+                        "LOCAL_CUDA_TEMPERATURE",
+                        "CODETETHER_LOCAL_CUDA_TEMPERATURE",
+                    ],
                     0.2,
                 )
             }),
@@ -192,12 +193,7 @@ impl LocalCudaProvider {
         self.model_cache
             .as_ref()
             .map(|c| c.model_path.clone())
-            .or_else(|| {
-                first_env(&[
-                    "LOCAL_CUDA_MODEL_PATH",
-                    "CODETETHER_LOCAL_CUDA_MODEL_PATH",
-                ])
-            })
+            .or_else(|| first_env(&["LOCAL_CUDA_MODEL_PATH", "CODETETHER_LOCAL_CUDA_MODEL_PATH"]))
     }
 
     fn resolve_tokenizer_path(&self) -> Option<String> {
@@ -307,7 +303,9 @@ impl Provider for LocalCudaProvider {
         let output = runtime
             .think(&system_prompt, &user_prompt)
             .await
-            .with_context(|| format!("local_cuda inference failed for model {}", self.model_name))?;
+            .with_context(|| {
+                format!("local_cuda inference failed for model {}", self.model_name)
+            })?;
 
         tracing::debug!(
             model = %self.model_name,
@@ -418,7 +416,7 @@ impl LocalCudaProvider {
 /// Configuration for LocalCudaProvider
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LocalCudaConfig {
-    /// Model name (e.g., "qwen2.5-coder-7b", "deepseek-coder-6.7b")
+    /// Model name (e.g., "qwen3-coder-next", "deepseek-coder-6.7b")
     pub model_name: String,
     /// Path to the model weights (GGUF or safetensors format)
     pub model_path: Option<String>,
@@ -439,7 +437,7 @@ pub struct LocalCudaConfig {
 impl Default for LocalCudaConfig {
     fn default() -> Self {
         Self {
-            model_name: "qwen2.5-coder-7b".to_string(),
+            model_name: "qwen3-coder-next".to_string(),
             model_path: None,
             context_window: Some(8192),
             max_new_tokens: Some(4096),
@@ -512,7 +510,9 @@ mod tests {
 
         let result = provider.complete(request).await;
         let error_message = match result {
-            Ok(_) => panic!("Expected local_cuda complete() to fail until inference is implemented"),
+            Ok(_) => {
+                panic!("Expected local_cuda complete() to fail until inference is implemented")
+            }
             Err(e) => e.to_string(),
         };
 
@@ -546,7 +546,9 @@ mod tests {
         let result = provider.complete_stream(request).await;
         let error_message = match result {
             Ok(_) => {
-                panic!("Expected local_cuda complete_stream() to fail until streaming is implemented")
+                panic!(
+                    "Expected local_cuda complete_stream() to fail until streaming is implemented"
+                )
             }
             Err(e) => e.to_string(),
         };

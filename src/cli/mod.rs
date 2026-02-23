@@ -3,6 +3,7 @@
 pub mod auth;
 pub mod config;
 pub mod go_ralph;
+pub mod oracle;
 pub mod run;
 
 use clap::{Parser, Subcommand};
@@ -77,6 +78,9 @@ pub enum Command {
 
     /// Analyze large content with RLM (Recursive Language Model)
     Rlm(RlmArgs),
+
+    /// Deterministic oracle utilities (validate/sync)
+    Oracle(OracleArgs),
 
     /// Autonomous PRD-driven agent loop (Ralph)
     Ralph(RalphArgs),
@@ -380,6 +384,10 @@ pub struct RlmArgs {
     /// Query to answer about the content
     pub query: String,
 
+    /// Model to use (provider/model format)
+    #[arg(short, long)]
+    pub model: Option<String>,
+
     /// File paths to analyze
     #[arg(short, long)]
     pub file: Vec<PathBuf>,
@@ -404,9 +412,13 @@ pub struct RlmArgs {
     #[arg(short, long)]
     pub verbose: bool,
 
-    /// Validate FINAL payload with deterministic oracle when possible
+    /// Deprecated no-op: oracle verification is now always enabled by default
     #[arg(long)]
     pub oracle_verify: bool,
+
+    /// Disable deterministic oracle verification (emergency opt-out)
+    #[arg(long)]
+    pub no_oracle_verify: bool,
 
     /// Number of independent runs for semantic consensus verification
     #[arg(long, default_value = "1")]
@@ -427,6 +439,58 @@ pub struct RlmArgs {
     /// Output prefix for oracle split JSONL files
     #[arg(long, default_value = "rlm_oracle")]
     pub oracle_prefix: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct OracleArgs {
+    #[command(subcommand)]
+    pub command: OracleCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum OracleCommand {
+    /// Validate a FINAL(JSON) payload deterministically against source content
+    Validate(OracleValidateArgs),
+    /// Sync pending oracle spool files to MinIO/S3
+    Sync(OracleSyncArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct OracleValidateArgs {
+    /// Query associated with the payload (used as trace prompt)
+    #[arg(long)]
+    pub query: String,
+
+    /// Source file to validate against
+    #[arg(short, long)]
+    pub file: Option<PathBuf>,
+
+    /// Source content to validate against (use - for stdin)
+    #[arg(long)]
+    pub content: Option<String>,
+
+    /// FINAL(JSON) payload string
+    #[arg(long)]
+    pub payload: Option<String>,
+
+    /// Path to a file containing FINAL(JSON) payload
+    #[arg(long)]
+    pub payload_file: Option<PathBuf>,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
+
+    /// Persist validated record to oracle storage pipeline
+    #[arg(long)]
+    pub persist: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct OracleSyncArgs {
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
 }
 
 #[derive(Parser, Debug)]

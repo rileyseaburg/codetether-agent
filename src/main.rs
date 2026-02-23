@@ -40,9 +40,434 @@ mod worktree;
 use clap::Parser;
 use cli::{Cli, Command};
 use std::io::IsTerminal;
+use std::sync::Arc;
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+
+fn normalize_provider_alias(name: &str) -> &str {
+    match name {
+        "local-cuda" | "localcuda" => "local_cuda",
+        "zhipuai" => "zai",
+        other => other,
+    }
+}
+
+fn local_cuda_runtime_configured() -> bool {
+    let model_path = std::env::var("LOCAL_CUDA_MODEL_PATH")
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL_PATH"))
+        .ok();
+    let tokenizer_path = std::env::var("LOCAL_CUDA_TOKENIZER_PATH")
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_TOKENIZER_PATH"))
+        .ok();
+    model_path.is_some() && tokenizer_path.is_some()
+}
+
+fn local_cuda_model_name() -> String {
+    std::env::var("LOCAL_CUDA_MODEL")
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
+        .unwrap_or_else(|_| "qwen3-coder-next".to_string())
+}
+
+fn default_openrouter_rlm_model() -> String {
+    std::env::var("CODETETHER_RLM_DEFAULT_MODEL")
+        .or_else(|_| std::env::var("OPENROUTER_RLM_MODEL"))
+        .unwrap_or_else(|_| "qwen/qwen3.5-coder-7b".to_string())
+}
+
+fn resolve_rlm_provider_and_model(
+    model_arg: Option<&str>,
+    registry: &provider::ProviderRegistry,
+) -> anyhow::Result<(Arc<dyn provider::Provider>, String, String)> {
+    if let Some(model_ref) = model_arg {
+        let (provider_name, model_name) = provider::parse_model_string(model_ref);
+        if let Some(provider_name) = provider_name {
+            let normalized = normalize_provider_alias(provider_name);
+            let provider = registry.get(normalized).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Requested provider '{}' is not available. Configure it in Vault or env.",
+                    normalized
+                )
+            })?;
+
+            if normalized == "local_cuda" && !local_cuda_runtime_configured() {
+                anyhow::bail!(
+                    "local_cuda selected explicitly but runtime is not configured. \
+                     Set LOCAL_CUDA_MODEL_PATH and LOCAL_CUDA_TOKENIZER_PATH \
+                     (or CODETETHER_LOCAL_CUDA_MODEL_PATH / CODETETHER_LOCAL_CUDA_TOKENIZER_PATH)."
+                );
+            }
+
+            return Ok((provider, model_name.to_string(), normalized.to_string()));
+        }
+
+        // Unqualified model: local_cuda first when usable, then openrouter.
+        if local_cuda_runtime_configured()
+            && let Some(provider) = registry.get("local_cuda")
+        {
+            return Ok((provider, model_ref.to_string(), "local_cuda".to_string()));
+        }
+        if let Some(provider) = registry.get("openrouter") {
+            return Ok((provider, model_ref.to_string(), "openrouter".to_string()));
+        }
+        anyhow::bail!(
+            "No provider available for model '{}'. Configure local_cuda or openrouter.",
+            model_ref
+        );
+    }
+
+    // No explicit model: prefer local_cuda when usable, otherwise openrouter.
+    if local_cuda_runtime_configured()
+        && let Some(provider) = registry.get("local_cuda")
+    {
+        return Ok((provider, local_cuda_model_name(), "local_cuda".to_string()));
+    }
+
+    if let Some(provider) = registry.get("openrouter") {
+        return Ok((
+            provider,
+            default_openrouter_rlm_model(),
+            "openrouter".to_string(),
+        ));
+    }
+
+    anyhow::bail!(
+        "No usable RLM provider found. Configure local CUDA \
+         (LOCAL_CUDA_MODEL_PATH + LOCAL_CUDA_TOKENIZER_PATH) \
+         or OpenRouter credentials."
+    );
+}
+
+fn gather_rlm_content(args: &cli::RlmArgs) -> anyhow::Result<String> {
+    use std::io::Read;
+
+    if !args.file.is_empty() {
+        let mut parts = Vec::new();
+        for path in &args.file {
+            match std::fs::read_to_string(path) {
+                Ok(content) => parts.push(format!(
+                    "=== FILE: {} ===\n{}\n=== END FILE ===\n",
+                    path.display(),
+                    content
+                )),
+                Err(e) => parts.push(format!(
+                    "=== FILE: {} ===\nError: {}\n=== END FILE ===\n",
+                    path.display(),
+                    e
+                )),
+            }
+        }
+        return Ok(parts.join("\n"));
+    }
+
+    if let Some(ref c) = args.content {
+        if c == "-" {
+            let mut stdin_content = String::new();
+            std::io::stdin().read_to_string(&mut stdin_content)?;
+            return Ok(stdin_content);
+        }
+        return Ok(c.clone());
+    }
+
+    anyhow::bail!("Either --file or --content must be provided");
+}
+
+fn detect_rlm_content_type(args: &cli::RlmArgs, content: &str) -> rlm::ContentType {
+    if args.content_type == "auto" {
+        return rlm::RlmChunker::detect_content_type(content);
+    }
+
+    match args.content_type.as_str() {
+        "code" => rlm::ContentType::Code,
+        "logs" => rlm::ContentType::Logs,
+        "conversation" => rlm::ContentType::Conversation,
+        "documents" => rlm::ContentType::Documents,
+        _ => rlm::ContentType::Mixed,
+    }
+}
+
+fn oracle_status_line(result: &rlm::OracleResult) -> String {
+    match result {
+        rlm::OracleResult::Golden(_) => {
+            "[oracle: golden ✓] deterministic verification passed".to_string()
+        }
+        rlm::OracleResult::Consensus {
+            agreement_ratio, ..
+        } => format!(
+            "[oracle: consensus ✓] semantic agreement {:.1}%",
+            agreement_ratio * 100.0
+        ),
+        rlm::OracleResult::Unverified { reason, .. } => {
+            format!("[oracle: unverified —] {}", reason)
+        }
+        rlm::OracleResult::Failed { reason, .. } => format!("[oracle: failed ✗] {}", reason),
+    }
+}
+
+fn oracle_json_value(
+    result: &rlm::OracleResult,
+    split: Option<rlm::oracle::SplitWriteStats>,
+    persist: Option<rlm::OracleTracePersistResult>,
+) -> serde_json::Value {
+    let base = match result {
+        rlm::OracleResult::Golden(trace) => serde_json::json!({
+            "status": "golden",
+            "verification_method": format!("{:?}", trace.verification_method),
+            "verdict": trace.verdict,
+            "trace_id": trace.trace_id,
+        }),
+        rlm::OracleResult::Consensus {
+            trace,
+            agreement_ratio,
+        } => serde_json::json!({
+            "status": "consensus",
+            "agreement_ratio": agreement_ratio,
+            "verification_method": format!("{:?}", trace.verification_method),
+            "verdict": trace.verdict,
+            "trace_id": trace.trace_id,
+        }),
+        rlm::OracleResult::Unverified { reason, trace } => serde_json::json!({
+            "status": "unverified",
+            "reason": reason,
+            "verification_method": format!("{:?}", trace.verification_method),
+            "verdict": trace.verdict,
+            "trace_id": trace.trace_id,
+        }),
+        rlm::OracleResult::Failed {
+            reason,
+            diff,
+            trace,
+        } => serde_json::json!({
+            "status": "failed",
+            "reason": reason,
+            "diff": diff,
+            "verification_method": format!("{:?}", trace.verification_method),
+            "verdict": trace.verdict,
+            "trace_id": trace.trace_id,
+        }),
+    };
+
+    let mut object = base.as_object().cloned().unwrap_or_default();
+    object.insert(
+        "split".to_string(),
+        serde_json::to_value(split).unwrap_or_default(),
+    );
+    object.insert(
+        "persist".to_string(),
+        serde_json::to_value(persist).unwrap_or_default(),
+    );
+    serde_json::Value::Object(object)
+}
+
+async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
+    use provider::ProviderRegistry;
+
+    if args.consensus_runs == 0 {
+        anyhow::bail!("--consensus-runs must be at least 1");
+    }
+    if !(0.0..=1.0).contains(&args.consensus_threshold) {
+        anyhow::bail!("--consensus-threshold must be between 0.0 and 1.0");
+    }
+    if args.oracle_verify {
+        eprintln!(
+            "warning: --oracle-verify is deprecated, oracle verification is now always-on. \
+             Use --no-oracle-verify to disable."
+        );
+    }
+
+    let content = gather_rlm_content(&args)?;
+    let input_tokens = rlm::RlmChunker::estimate_tokens(&content);
+    let content_type = detect_rlm_content_type(&args, &content);
+    tracing::info!(input_tokens, "RLM: Analyzing content");
+
+    let registry = ProviderRegistry::from_vault().await.map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to load providers for Oracle-First RLM: {}. \
+             Configure local_cuda or openrouter.",
+            e
+        )
+    })?;
+    let (provider, model, provider_name) =
+        resolve_rlm_provider_and_model(args.model.as_deref(), &registry)?;
+    tracing::info!(provider = %provider_name, model = %model, "RLM provider resolved");
+
+    let run_count = args.consensus_runs;
+    let run_temperature = args
+        .analysis_temperature
+        .unwrap_or_else(|| if run_count > 1 { 0.75 } else { 0.3 });
+    let mut runs: Vec<(
+        rlm::RlmAnalysisResult,
+        Vec<rlm::TraceStep>,
+        rlm::context_trace::ContextTraceSummary,
+    )> = Vec::with_capacity(run_count);
+
+    for _ in 0..run_count {
+        let mut executor = rlm::RlmExecutor::new(content.clone(), provider.clone(), model.clone())
+            .with_temperature(run_temperature)
+            .with_verbose(args.verbose);
+        let mut result = executor.analyze(&args.query).await?;
+        if result.sub_queries.is_empty() {
+            result.sub_queries.push(rlm::SubQuery {
+                query: args.query.clone(),
+                context_slice: if args.file.len() == 1 {
+                    Some(args.file[0].to_string_lossy().to_string())
+                } else {
+                    None
+                },
+                response: result.answer.clone(),
+                tokens_used: result.stats.output_tokens,
+            });
+        }
+        runs.push((
+            result,
+            executor.trace_steps().to_vec(),
+            executor.context_trace_summary(),
+        ));
+    }
+
+    let result = runs
+        .first()
+        .map(|(r, _, _)| r.clone())
+        .ok_or_else(|| anyhow::anyhow!("No RLM runs executed"))?;
+    let source_path = if args.file.len() == 1 {
+        Some(args.file[0].to_string_lossy().to_string())
+    } else {
+        None
+    };
+
+    let oracle_enabled = !args.no_oracle_verify;
+    let mut oracle_json: serde_json::Value = serde_json::json!({
+        "status": "disabled",
+        "reason": "disabled via --no-oracle-verify",
+    });
+    let mut oracle_status = "[oracle: disabled —] verification disabled".to_string();
+
+    if oracle_enabled {
+        let validator =
+            rlm::TraceValidator::new().with_consensus_threshold(args.consensus_threshold);
+        let run_results: Vec<rlm::RlmAnalysisResult> =
+            runs.iter().map(|(r, _, _)| r.clone()).collect();
+        let trace_steps = runs.first().map(|(_, t, _)| t.clone()).unwrap_or_default();
+        let oracle_result = if run_results.len() > 1 {
+            validator.validate_with_consensus(
+                &run_results,
+                &content,
+                source_path.as_deref(),
+                None,
+                Some(trace_steps),
+            )
+        } else {
+            validator.validate(
+                &run_results[0],
+                &content,
+                source_path.as_deref(),
+                None,
+                Some(trace_steps),
+            )
+        };
+
+        let mut stats = rlm::oracle::BatchValidationStats::default();
+        match &oracle_result {
+            rlm::OracleResult::Golden(trace) => stats.golden.push(trace.clone()),
+            rlm::OracleResult::Consensus { trace, .. } => stats.consensus.push(trace.clone()),
+            rlm::OracleResult::Unverified { reason, trace } => {
+                stats.unverified.push((trace.clone(), reason.clone()));
+            }
+            rlm::OracleResult::Failed { reason, trace, .. } => {
+                stats.failed.push((trace.clone(), reason.clone()));
+            }
+        }
+
+        let split = if let Some(ref out_dir) = args.oracle_out_dir {
+            let out_dir_str = out_dir.to_str().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Oracle output directory path is not valid UTF-8: {}",
+                    out_dir.display()
+                )
+            })?;
+            Some(stats.write_jsonl_split(out_dir_str, &args.oracle_prefix)?)
+        } else {
+            None
+        };
+
+        let storage = rlm::OracleTraceStorage::from_env_or_vault().await;
+        let persist = match storage.persist_result(&oracle_result).await {
+            Ok(p) => Some(p),
+            Err(e) => Some(rlm::OracleTracePersistResult {
+                verdict: oracle_result.to_record().verdict,
+                spooled_path: String::new(),
+                uploaded: false,
+                remote_key: None,
+                remote_url: None,
+                pending_count: 0,
+                warning: Some(format!("Failed to persist oracle record: {}", e)),
+            }),
+        };
+
+        oracle_status = oracle_status_line(&oracle_result);
+        oracle_json = oracle_json_value(&oracle_result, split, persist);
+    }
+
+    if args.json {
+        let trace_steps_json = runs
+            .first()
+            .map(|(_, t, _)| serde_json::to_value(t).unwrap_or_default())
+            .unwrap_or_else(|| serde_json::json!([]));
+        let context_trace_json = runs
+            .first()
+            .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
+            .unwrap_or_else(|| serde_json::json!({}));
+        let context_traces: Vec<serde_json::Value> = runs
+            .iter()
+            .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
+            .collect();
+        let output = serde_json::json!({
+            "query": args.query,
+            "provider": provider_name,
+            "model": model,
+            "content_type": format!("{:?}", content_type),
+            "input_tokens": input_tokens,
+            "answer": result.answer,
+            "iterations": result.iterations,
+            "sub_queries": result.sub_queries.len(),
+            "stats": result.stats,
+            "trace_steps": trace_steps_json,
+            "context_trace": context_trace_json,
+            "runs": run_count,
+            "context_traces": context_traces,
+            "oracle": oracle_json,
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!("## RLM Analysis Result\n");
+        println!("**Query:** {}\n", args.query);
+        println!("**Answer:**\n{}\n", result.answer);
+        println!("{}", oracle_status);
+        println!("---");
+        println!(
+            "*Iterations: {} | Sub-queries: {} | Time: {}ms*",
+            result.iterations,
+            result.sub_queries.len(),
+            result.stats.elapsed_ms
+        );
+        if let Some((_, trace_steps, trace_summary)) = runs.first() {
+            println!(
+                "\n*Trace steps: {} | Context budget used: {:.1}%*",
+                trace_steps.len(),
+                trace_summary.budget_used_percent
+            );
+        }
+
+        if !result.sub_queries.is_empty() {
+            println!("\n### Sub-queries made:");
+            for (i, sq) in result.sub_queries.iter().enumerate() {
+                println!("{}. {} -> {} tokens", i + 1, sq.query, sq.tokens_used);
+            }
+        }
+    }
+
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -83,7 +508,7 @@ async fn main() -> anyhow::Result<()> {
     } else {
         tracing_subscriber::registry()
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-            .with(tracing_subscriber::fmt::layer())
+            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
             .init();
     }
 
@@ -262,369 +687,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
-        Some(Command::Rlm(args)) => {
-            use provider::ProviderRegistry;
-            use std::io::Read;
-
-            if args.consensus_runs == 0 {
-                anyhow::bail!("--consensus-runs must be at least 1");
-            }
-            if !(0.0..=1.0).contains(&args.consensus_threshold) {
-                anyhow::bail!("--consensus-threshold must be between 0.0 and 1.0");
-            }
-
-            // Gather content
-            let content = if !args.file.is_empty() {
-                let mut parts = Vec::new();
-                for path in &args.file {
-                    match std::fs::read_to_string(path) {
-                        Ok(content) => parts.push(format!(
-                            "=== FILE: {} ===\n{}\n=== END FILE ===\n",
-                            path.display(),
-                            content
-                        )),
-                        Err(e) => parts.push(format!(
-                            "=== FILE: {} ===\nError: {}\n=== END FILE ===\n",
-                            path.display(),
-                            e
-                        )),
-                    }
-                }
-                parts.join("\n")
-            } else if let Some(ref c) = args.content {
-                if c == "-" {
-                    let mut stdin_content = String::new();
-                    std::io::stdin().read_to_string(&mut stdin_content)?;
-                    stdin_content
-                } else {
-                    c.clone()
-                }
-            } else {
-                anyhow::bail!("Either --file or --content must be provided");
-            };
-
-            let input_tokens = rlm::RlmChunker::estimate_tokens(&content);
-            tracing::info!(input_tokens, "RLM: Analyzing content");
-
-            // Detect content type
-            let content_type = if args.content_type == "auto" {
-                rlm::RlmChunker::detect_content_type(&content)
-            } else {
-                match args.content_type.as_str() {
-                    "code" => rlm::ContentType::Code,
-                    "logs" => rlm::ContentType::Logs,
-                    "conversation" => rlm::ContentType::Conversation,
-                    "documents" => rlm::ContentType::Documents,
-                    _ => rlm::ContentType::Mixed,
-                }
-            };
-
-            // Try to use LLM-powered RLM if provider is available
-            let registry = ProviderRegistry::from_vault().await.ok();
-            let provider_opt = registry.as_ref().and_then(|r| {
-                r.get("zai")
-                    .or_else(|| r.get("moonshotai"))
-                    .or_else(|| r.get("openai"))
-            });
-
-            if let Some(provider) = provider_opt {
-                // Use LLM-powered RLM with llm_query() support
-                tracing::info!("Using LLM-powered RLM analysis");
-                let run_count = args.consensus_runs;
-                let run_temperature = args
-                    .analysis_temperature
-                    .unwrap_or_else(|| if run_count > 1 { 0.75 } else { 0.3 });
-                let mut runs: Vec<(
-                    rlm::RlmAnalysisResult,
-                    Vec<rlm::TraceStep>,
-                    rlm::context_trace::ContextTraceSummary,
-                )> = Vec::with_capacity(run_count);
-
-                for _ in 0..run_count {
-                    let mut executor = rlm::RlmExecutor::new(
-                        content.clone(),
-                        provider.clone(),
-                        "glm-5".to_string(),
-                    )
-                    .with_temperature(run_temperature)
-                    .with_verbose(args.verbose);
-                    let result = executor.analyze(&args.query).await?;
-                    runs.push((
-                        result,
-                        executor.trace_steps().to_vec(),
-                        executor.context_trace_summary(),
-                    ));
-                }
-
-                let result = runs
-                    .first()
-                    .map(|(r, _, _)| r.clone())
-                    .ok_or_else(|| anyhow::anyhow!("No RLM runs executed"))?;
-                let source_path = if args.file.len() == 1 {
-                    Some(args.file[0].to_string_lossy().to_string())
-                } else {
-                    None
-                };
-                let mut oracle_json: Option<serde_json::Value> = None;
-
-                if args.oracle_verify {
-                    let validator = rlm::TraceValidator::new()
-                        .with_consensus_threshold(args.consensus_threshold);
-                    let run_results: Vec<rlm::RlmAnalysisResult> =
-                        runs.iter().map(|(r, _, _)| r.clone()).collect();
-                    let trace_steps = runs.first().map(|(_, t, _)| t.clone()).unwrap_or_default();
-                    let oracle_result = if run_results.len() > 1 {
-                        validator.validate_with_consensus(
-                            &run_results,
-                            &content,
-                            source_path.as_deref(),
-                            None,
-                            Some(trace_steps),
-                        )
-                    } else {
-                        validator.validate(
-                            &run_results[0],
-                            &content,
-                            source_path.as_deref(),
-                            None,
-                            Some(trace_steps),
-                        )
-                    };
-
-                    let mut stats = rlm::oracle::BatchValidationStats::default();
-                    let mut agreement_ratio = None;
-                    match &oracle_result {
-                        rlm::OracleResult::Golden(trace) => stats.golden.push(trace.clone()),
-                        rlm::OracleResult::Consensus {
-                            trace,
-                            agreement_ratio: ratio,
-                        } => {
-                            agreement_ratio = Some(*ratio);
-                            stats.consensus.push(trace.clone());
-                        }
-                        rlm::OracleResult::Unverified { reason } => {
-                            stats
-                                .unverified
-                                .push((run_results[0].clone(), reason.clone()));
-                        }
-                        rlm::OracleResult::Failed { reason, trace, .. } => {
-                            stats.failed.push((trace.clone(), reason.clone()));
-                        }
-                    }
-
-                    let split = if let Some(ref out_dir) = args.oracle_out_dir {
-                        let out_dir_str = out_dir.to_str().ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "Oracle output directory path is not valid UTF-8: {}",
-                                out_dir.display()
-                            )
-                        })?;
-                        Some(stats.write_jsonl_split(out_dir_str, &args.oracle_prefix)?)
-                    } else {
-                        None
-                    };
-
-                    oracle_json = Some(match oracle_result {
-                        rlm::OracleResult::Golden(trace) => serde_json::json!({
-                            "status": "golden",
-                            "verification_method": format!("{:?}", trace.verification_method),
-                            "verdict": trace.verdict,
-                            "trace_id": trace.trace_id,
-                            "split": split,
-                        }),
-                        rlm::OracleResult::Consensus { trace, .. } => serde_json::json!({
-                            "status": "consensus",
-                            "agreement_ratio": agreement_ratio.unwrap_or(0.0),
-                            "verification_method": format!("{:?}", trace.verification_method),
-                            "verdict": trace.verdict,
-                            "trace_id": trace.trace_id,
-                            "split": split,
-                        }),
-                        rlm::OracleResult::Unverified { reason } => serde_json::json!({
-                            "status": "unverified",
-                            "reason": reason,
-                            "split": split,
-                        }),
-                        rlm::OracleResult::Failed {
-                            reason,
-                            diff,
-                            trace,
-                        } => serde_json::json!({
-                            "status": "failed",
-                            "reason": reason,
-                            "diff": diff,
-                            "trace_id": trace.trace_id,
-                            "split": split,
-                        }),
-                    });
-                }
-
-                if args.json {
-                    let trace_steps_json = runs
-                        .first()
-                        .map(|(_, t, _)| serde_json::to_value(t).unwrap_or_default())
-                        .unwrap_or_else(|| serde_json::json!([]));
-                    let context_trace_json = runs
-                        .first()
-                        .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
-                        .unwrap_or_else(|| serde_json::json!({}));
-                    let context_traces: Vec<serde_json::Value> = runs
-                        .iter()
-                        .map(|(_, _, c)| serde_json::to_value(c).unwrap_or_default())
-                        .collect();
-                    let output = serde_json::json!({
-                        "query": args.query,
-                        "content_type": format!("{:?}", content_type),
-                        "input_tokens": input_tokens,
-                        "answer": result.answer,
-                        "iterations": result.iterations,
-                        "sub_queries": result.sub_queries.len(),
-                        "stats": result.stats,
-                        "trace_steps": trace_steps_json,
-                        "context_trace": context_trace_json,
-                        "runs": run_count,
-                        "context_traces": context_traces,
-                        "oracle": oracle_json,
-                    });
-                    println!("{}", serde_json::to_string_pretty(&output)?);
-                } else {
-                    println!("## RLM Analysis Result\n");
-                    println!("**Query:** {}\n", args.query);
-                    println!("**Answer:**\n{}\n", result.answer);
-                    println!("---");
-                    println!(
-                        "*Iterations: {} | Sub-queries: {} | Time: {}ms*",
-                        result.iterations,
-                        result.sub_queries.len(),
-                        result.stats.elapsed_ms
-                    );
-                    if let Some((_, trace_steps, trace_summary)) = runs.first() {
-                        println!(
-                            "\n*Trace steps: {} | Context budget used: {:.1}%*",
-                            trace_steps.len(),
-                            trace_summary.budget_used_percent
-                        );
-                    }
-                    if let Some(ref oracle) = oracle_json {
-                        println!("\n### Oracle");
-                        println!("{}", serde_json::to_string_pretty(oracle)?);
-                    }
-
-                    if !result.sub_queries.is_empty() {
-                        println!("\n### Sub-queries made:");
-                        for (i, sq) in result.sub_queries.iter().enumerate() {
-                            println!("{}. {} -> {} tokens", i + 1, sq.query, sq.tokens_used);
-                        }
-                    }
-                }
-            } else {
-                // Fallback to static REPL-based analysis
-                tracing::info!("Using static RLM analysis (no provider available)");
-
-                // For small content, just use chunking
-                if input_tokens < 10000 {
-                    let hints = rlm::RlmChunker::get_processing_hints(content_type);
-                    let output = format!(
-                        "## Content Analysis\n\n\
-                         *Input: {} tokens, Type: {:?}*\n\n\
-                         {}\n\n\
-                         ---\n\n\
-                         {}",
-                        input_tokens,
-                        content_type,
-                        hints,
-                        rlm::RlmChunker::compress(&content, args.max_tokens, None)
-                    );
-
-                    if args.json {
-                        let result = serde_json::json!({
-                            "query": args.query,
-                            "content_type": format!("{:?}", content_type),
-                            "input_tokens": input_tokens,
-                            "output_tokens": rlm::RlmChunker::estimate_tokens(&output),
-                            "output": output,
-                        });
-                        println!("{}", serde_json::to_string_pretty(&result)?);
-                    } else {
-                        println!("{}", output);
-                    }
-                } else {
-                    // For large content, use REPL-based exploration
-                    let repl = rlm::RlmRepl::new(content.clone(), rlm::ReplRuntime::Rust);
-
-                    // Run exploration
-                    let exploration = format!(
-                        "=== CONTEXT EXPLORATION ===\n\
-                         Total: {} chars, {} lines, ~{} tokens\n\
-                         Type: {:?}\n\n\
-                         === FIRST 30 LINES ===\n{}\n\n\
-                         === LAST 50 LINES ===\n{}\n\
-                         === END EXPLORATION ===",
-                        content.len(),
-                        repl.lines().len(),
-                        input_tokens,
-                        content_type,
-                        repl.head(30).join("\n"),
-                        repl.tail(50).join("\n")
-                    );
-
-                    // Search for relevant patterns
-                    let errors = repl.grep("error|Error|ERROR|failed|Failed");
-                    let error_summary = if errors.is_empty() {
-                        "No errors found".to_string()
-                    } else {
-                        format!(
-                            "Found {} error lines:\n{}",
-                            errors.len(),
-                            errors
-                                .iter()
-                                .take(5)
-                                .map(|(i, l)| format!("  {}:{}", i, l))
-                                .collect::<Vec<_>>()
-                                .join("\n")
-                        )
-                    };
-
-                    let hints = rlm::RlmChunker::get_processing_hints(content_type);
-                    let output = format!(
-                        "## RLM Analysis (Static Mode)\n\n\
-                         **Query:** {}\n\n\
-                         *Input: {} tokens, Type: {:?}*\n\n\
-                         *Note: No LLM provider available. Connect Vault for full RLM analysis.*\n\n\
-                         ---\n\n\
-                         ### Exploration\n\n\
-                         {}\n\n\
-                         ### Error Summary\n\n\
-                         {}\n\n\
-                         ### Content Hints\n\n\
-                         {}\n\n\
-                         ### Compressed Content\n\n\
-                         {}",
-                        args.query,
-                        input_tokens,
-                        content_type,
-                        exploration,
-                        error_summary,
-                        hints,
-                        rlm::RlmChunker::compress(&content, args.max_tokens / 2, None)
-                    );
-
-                    if args.json {
-                        let result = serde_json::json!({
-                            "query": args.query,
-                            "content_type": format!("{:?}", content_type),
-                            "input_tokens": input_tokens,
-                            "llm_mode": false,
-                            "output": output,
-                        });
-                        println!("{}", serde_json::to_string_pretty(&result)?);
-                    } else {
-                        println!("{}", output);
-                    }
-                }
-            }
-            Ok(())
-        }
+        Some(Command::Rlm(args)) => run_rlm_command(args).await,
+        Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
         Some(Command::Ralph(args)) => {
             use provider::ProviderRegistry;
 
@@ -1064,10 +1128,7 @@ async fn main() -> anyhow::Result<()> {
                     if !file_execs.is_empty() {
                         println!("\n## Changes to '{}'\n", file_path);
                         for exec in file_execs.iter().take(args.limit) {
-                            println!(
-                                "- **{}** ({}ms)",
-                                exec.tool_name, exec.duration_ms
-                            );
+                            println!("- **{}** ({}ms)", exec.tool_name, exec.duration_ms);
                             for change in &exec.file_changes {
                                 if change.path == *file_path {
                                     if let Some((start, end)) = change.line_range {

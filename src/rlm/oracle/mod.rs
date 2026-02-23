@@ -27,17 +27,21 @@
 
 mod grep_oracle;
 mod schema;
+mod storage;
 mod templates;
 mod tree_sitter_oracle;
 mod validator;
 
 pub use grep_oracle::{GrepOracle, GrepVerification};
 pub use schema::{AstPayload, AstResult, FinalPayload, GrepMatch, GrepPayload, SemanticPayload};
+pub use storage::{
+    OracleTracePersistResult, OracleTraceStorage, OracleTraceSyncStats, default_spool_dir,
+};
 pub use templates::{GeneratedQuery, QueryTemplate, TemplateKind};
 pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
 pub use validator::{
-    BatchValidationStats, OracleResult, SplitWriteStats, TraceStep, TraceValidator, ValidatedTrace,
-    VerificationMethod,
+    BatchValidationStats, OracleResult, OracleTraceRecord, SplitWriteStats, TraceStep,
+    TraceValidator, ValidatedTrace, VerificationMethod,
 };
 
 /// Query type classification for routing to the appropriate oracle.
@@ -55,21 +59,13 @@ pub enum QueryType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FinalAnswerFormat {
     /// Line-numbered matches (e.g., "42:async fn foo()", "100:pub struct Bar")
-    LineNumberedMatches {
-        matches: Vec<(usize, String)>,
-    },
+    LineNumberedMatches { matches: Vec<(usize, String)> },
     /// Count result (e.g., "Found 15 occurrences")
-    CountResult {
-        count: usize,
-    },
+    CountResult { count: usize },
     /// Structured data (e.g., function signature JSON)
-    StructuredData {
-        data: serde_json::Value,
-    },
+    StructuredData { data: serde_json::Value },
     /// Free-form text (semantic - no deterministic verification)
-    FreeFormText {
-        text: String,
-    },
+    FreeFormText { text: String },
 }
 
 impl FinalAnswerFormat {
@@ -84,10 +80,7 @@ impl FinalAnswerFormat {
             // Pattern: "42:text" or "42: text" or "L42: text"
             let trimmed = line.trim();
             if let Some(colon_pos) = trimmed.find(':') {
-                let num_part = trimmed[..colon_pos]
-                    .trim()
-                    .trim_start_matches('L')
-                    .trim();
+                let num_part = trimmed[..colon_pos].trim().trim_start_matches('L').trim();
                 if let Ok(line_num) = num_part.parse::<usize>() {
                     let text_part = trimmed[colon_pos + 1..].trim().to_string();
                     numbered_matches.push((line_num, text_part));
@@ -135,7 +128,7 @@ impl FinalAnswerFormat {
 fn extract_count_from_text(text: &str) -> Option<usize> {
     // Look for patterns like "15 functions", "count: 42", "Found 7"
     let re = regex::Regex::new(r"(?i)(?:found|count:?\s*)\s*(\d+)|(\d+)\s+(?:functions?|matches?|occurrences?|items?|results?)").ok()?;
-    
+
     for cap in re.captures_iter(text) {
         // Try first group (found/count)
         if let Some(m) = cap.get(1) {
@@ -150,7 +143,7 @@ fn extract_count_from_text(text: &str) -> Option<usize> {
             }
         }
     }
-    
+
     None
 }
 

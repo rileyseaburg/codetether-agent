@@ -99,24 +99,24 @@ impl S3SinkConfig {
         let prefix = std::env::var("S3_PREFIX")
             .or_else(|_| std::env::var("CODETETHER_S3_PREFIX"))
             .unwrap_or_else(|_| "events/".to_string());
-        
+
         let endpoint = std::env::var("S3_ENDPOINT")
             .or_else(|_| std::env::var("CODETETHER_S3_ENDPOINT"))
             .ok();
-        
+
         let access_key = std::env::var("S3_ACCESS_KEY")
             .or_else(|_| std::env::var("CODETETHER_S3_ACCESS_KEY"))
             .ok();
-        
+
         let secret_key = std::env::var("S3_SECRET_KEY")
             .or_else(|_| std::env::var("CODETETHER_S3_SECRET_KEY"))
             .ok();
-        
+
         let region = std::env::var("S3_REGION")
             .or_else(|_| std::env::var("CODETETHER_S3_REGION"))
             .or_else(|_| std::env::var("AWS_REGION"))
             .unwrap_or_else(|_| "us-east-1".to_string());
-        
+
         let stub_mode = std::env::var("S3_STUB_MODE")
             .or_else(|_| std::env::var("CODETETHER_S3_STUB_MODE"))
             .map(|v| v.to_lowercase() == "true" || v == "1")
@@ -281,21 +281,18 @@ impl S3Sink {
             let url = if let Some(ref endpoint) = self.config.endpoint {
                 format!("{}/{}", endpoint.trim_end_matches('/'), s3_key)
             } else {
-                format!(
-                    "s3://{}/{}",
-                    self.config.bucket, s3_key
-                )
+                format!("s3://{}/{}", self.config.bucket, s3_key)
             };
-            
+
             tracing::debug!(
                 key = %s3_key,
                 bytes = data.len(),
                 "[STUB MODE] Skipping S3 upload"
             );
-            
+
             return Ok(url);
         }
-        
+
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let endpoint = self.endpoint_url();
