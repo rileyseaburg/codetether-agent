@@ -24,15 +24,14 @@ impl MetricsProvider {
         let record = ProviderRequestRecord {
             provider: self.inner.name().to_string(),
             model: model.to_string(),
-            latency_ms,
-            ttft_ms: 0, // non-streaming: no TTFT distinction
+            timestamp: chrono::Utc::now(),
+            prompt_tokens: usage.prompt_tokens as u64,
+            completion_tokens: usage.completion_tokens as u64,
             input_tokens: usage.prompt_tokens as u64,
             output_tokens: usage.completion_tokens as u64,
+            latency_ms,
+            ttft_ms: None, // non-streaming: no TTFT distinction
             success,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                .map(|d| d.as_millis() as u64)
-                .unwrap_or(0),
         };
 
         tracing::info!(
@@ -100,15 +99,14 @@ impl Provider for MetricsProvider {
                 let record = ProviderRequestRecord {
                     provider: provider_name,
                     model,
-                    latency_ms,
-                    ttft_ms: 0,
+                    timestamp: chrono::Utc::now(),
+                    prompt_tokens: 0,
+                    completion_tokens: 0,
                     input_tokens: 0,
                     output_tokens: 0,
+                    latency_ms,
+                    ttft_ms: None,
                     success: false,
-                    timestamp: std::time::SystemTime::now()
-                        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        .map(|d| d.as_millis() as u64)
-                        .unwrap_or(0),
                 };
                 PROVIDER_METRICS.record(record);
                 Err(e)
@@ -169,15 +167,14 @@ impl futures::Stream for StreamMetricsWrapper {
                 let record = ProviderRequestRecord {
                     provider: self.provider.clone(),
                     model: self.model.clone(),
-                    latency_ms,
-                    ttft_ms: self.ttft_ms,
+                    timestamp: chrono::Utc::now(),
+                    prompt_tokens: input_tokens,
+                    completion_tokens: output_tokens,
                     input_tokens,
                     output_tokens,
+                    latency_ms,
+                    ttft_ms: Some(self.ttft_ms),
                     success: true,
-                    timestamp: std::time::SystemTime::now()
-                        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        .map(|d| d.as_millis() as u64)
-                        .unwrap_or(0),
                 };
 
                 tracing::info!(
@@ -199,15 +196,14 @@ impl futures::Stream for StreamMetricsWrapper {
                 let record = ProviderRequestRecord {
                     provider: self.provider.clone(),
                     model: self.model.clone(),
-                    latency_ms,
-                    ttft_ms: self.ttft_ms,
+                    timestamp: chrono::Utc::now(),
+                    prompt_tokens: 0,
+                    completion_tokens: 0,
                     input_tokens: 0,
                     output_tokens: 0,
+                    latency_ms,
+                    ttft_ms: Some(self.ttft_ms),
                     success: false,
-                    timestamp: std::time::SystemTime::now()
-                        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        .map(|d| d.as_millis() as u64)
-                        .unwrap_or(0),
                 };
                 PROVIDER_METRICS.record(record);
             }

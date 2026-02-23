@@ -617,10 +617,11 @@ impl SwarmExecutor {
 
         // Initialize telemetry for this swarm execution
         let swarm_id = uuid::Uuid::new_v4().to_string();
+        let strategy_str = format!("{:?}", strategy);
         self.telemetry.lock().await.start_swarm(
-            swarm_id.clone(),
+            &swarm_id,
             subtasks.len(),
-            &format!("{:?}", strategy),
+            &strategy_str,
         );
 
         // Shared state for completed results
@@ -737,7 +738,7 @@ impl SwarmExecutor {
         let success = all_results.iter().all(|r| r.success);
 
         // Complete telemetry collection
-        let _telemetry_metrics = self.telemetry.lock().await.complete_swarm(success);
+        let telemetry_metrics = self.telemetry.lock().await.complete_swarm(success).await;
         let result = self.aggregate_results(&all_results).await?;
 
         tracing::info!(
@@ -865,22 +866,12 @@ impl SwarmExecutor {
                     .unwrap_or_else(|_| ".".to_string())
             });
 
-            match WorktreeManager::new(&working_dir) {
-                Ok(mgr) => {
-                    tracing::info!(
-                        working_dir = %working_dir,
-                        "Worktree isolation enabled for parallel sub-agents"
-                    );
-                    Some(Arc::new(mgr) as Arc<WorktreeManager>)
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        error = %e,
-                        "Failed to create worktree manager, falling back to shared directory"
-                    );
-                    None
-                }
-            }
+            let mgr = WorktreeManager::new(&working_dir);
+            tracing::info!(
+                working_dir = %working_dir,
+                "Worktree isolation enabled for parallel sub-agents"
+            );
+            Some(Arc::new(mgr) as Arc<WorktreeManager>)
         } else {
             None
         };
@@ -937,7 +928,7 @@ impl SwarmExecutor {
             // can monitor live branches while execution is in-flight.
             let worktree_info = if let Some(ref mgr) = worktree_manager {
                 let task_slug = subtask_id.replace("-", "_");
-                match mgr.create(&task_slug) {
+                match mgr.create(&task_slug).await {
                     Ok(wt) => {
                         if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
                             tracing::warn!(
@@ -1400,13 +1391,13 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                         "\n\n--- Collapse Controller ---\nBranch terminated: {reason}"
                     ));
                     if let Some(ref mgr) = worktree_manager {
-                        if let Err(e) = mgr.cleanup(&wt) {
+                        if let Err(e) = mgr.cleanup(&wt.name).await {
                             tracing::warn!(error = %e, "Failed to cleanup killed worktree");
                         }
                     }
                 } else if result.success && auto_merge {
                     if let Some(ref mgr) = worktree_manager {
-                        match mgr.merge(&wt) {
+                        match mgr.merge(&wt.name).await {
                             Ok(merge_result) => {
                                 if merge_result.success {
                                     tracing::info!(
@@ -1439,7 +1430,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                         merge_result.summary
                                     ));
                                 }
-                                if let Err(e) = mgr.cleanup(&wt) {
+                                if let Err(e) = mgr.cleanup(&wt.name).await {
                                     tracing::warn!(error = %e, "Failed to cleanup worktree");
                                 }
                             }

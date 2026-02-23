@@ -119,6 +119,20 @@ pub fn rlm_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["answer"]
             }),
         },
+        ToolDefinition {
+            name: "rlm_ast_query".to_string(),
+            description: "Execute a tree-sitter AST query on the loaded context. Use this for structural code analysis (function signatures, struct fields, impl blocks).".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Tree-sitter S-expression query (e.g., '(function_item name: (identifier) @name)')"
+                    }
+                },
+                "required": ["query"]
+            }),
+        },
     ]
 }
 
@@ -206,6 +220,39 @@ pub fn dispatch_tool_call(
                 .to_string();
             Some(RlmToolResult::Final(answer))
         }
+        "rlm_ast_query" => {
+            let query = args
+                .get("query")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            
+            // Create a tree-sitter oracle and execute the query
+            let mut oracle = super::oracle::TreeSitterOracle::new(repl.context().to_string());
+            match oracle.query(query) {
+                Ok(result) => {
+                    // Format the result as JSON
+                    let matches: Vec<serde_json::Value> = result.matches.iter().map(|m| {
+                        serde_json::json!({
+                            "line": m.line,
+                            "column": m.column,
+                            "captures": m.captures,
+                            "text": m.text
+                        })
+                    }).collect();
+                    
+                    let output = serde_json::json!({
+                        "query": query,
+                        "match_count": matches.len(),
+                        "matches": matches
+                    });
+                    
+                    Some(RlmToolResult::Output(output.to_string()))
+                }
+                Err(e) => {
+                    Some(RlmToolResult::Output(format!("AST query error: {}", e)))
+                }
+            }
+        }
         _ => None, // Not an RLM tool
     }
 }
@@ -218,7 +265,7 @@ mod tests {
     #[test]
     fn tool_definitions_are_complete() {
         let defs = rlm_tool_definitions();
-        assert_eq!(defs.len(), 7);
+        assert_eq!(defs.len(), 8);
         let names: Vec<&str> = defs.iter().map(|d| d.name.as_str()).collect();
         assert!(names.contains(&"rlm_head"));
         assert!(names.contains(&"rlm_tail"));
@@ -227,6 +274,7 @@ mod tests {
         assert!(names.contains(&"rlm_slice"));
         assert!(names.contains(&"rlm_llm_query"));
         assert!(names.contains(&"rlm_final"));
+        assert!(names.contains(&"rlm_ast_query"));
     }
 
     #[test]

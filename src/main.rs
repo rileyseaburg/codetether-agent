@@ -848,14 +848,14 @@ async fn main() -> anyhow::Result<()> {
                         println!("\n## Recent Tool Executions\n");
                         for exec in recent {
                             let status = if exec.success { "✓" } else { "✗" };
-                            let files_str = if exec.files_affected.is_empty() {
+                            let files_str = if exec.file_changes.is_empty() {
                                 String::new()
                             } else {
                                 format!(
                                     " → {}",
-                                    exec.files_affected
+                                    exec.file_changes
                                         .iter()
-                                        .map(|f| f.summary())
+                                        .map(|f: &telemetry::FileChange| f.summary())
                                         .collect::<Vec<_>>()
                                         .join(", ")
                                 )
@@ -897,7 +897,7 @@ async fn main() -> anyhow::Result<()> {
                         println!("\n## Executions of '{}'\n", tool_name);
                         for exec in tool_execs.iter().take(args.limit) {
                             let status = if exec.success { "✓" } else { "✗" };
-                            println!("- {} #{} ({}ms)", status, exec.id, exec.duration_ms);
+                            println!("- {} ({}ms)", status, exec.duration_ms);
                         }
                     }
                 }
@@ -908,12 +908,12 @@ async fn main() -> anyhow::Result<()> {
                         println!("\n## Changes to '{}'\n", file_path);
                         for exec in file_execs.iter().take(args.limit) {
                             println!(
-                                "- **{}** #{} ({}ms)",
-                                exec.tool_name, exec.id, exec.duration_ms
+                                "- **{}** ({}ms)",
+                                exec.tool_name, exec.duration_ms
                             );
-                            for change in &exec.files_affected {
+                            for change in &exec.file_changes {
                                 if change.path == *file_path {
-                                    if let Some((start, end)) = change.lines_affected {
+                                    if let Some((start, end)) = change.line_range {
                                         println!("  Lines {}-{}", start, end);
                                     }
                                 }
@@ -989,10 +989,10 @@ async fn main() -> anyhow::Result<()> {
             use worktree::WorktreeManager;
 
             let cwd = std::env::current_dir()?;
-            let mgr = WorktreeManager::new(&cwd)?;
+            let mgr = WorktreeManager::new(&cwd);
 
             // List what exists
-            let worktrees = mgr.list()?;
+            let worktrees = mgr.list().await;
 
             if args.dry_run {
                 if args.json {
@@ -1001,7 +1001,7 @@ async fn main() -> anyhow::Result<()> {
                         "worktrees_found": worktrees.len(),
                         "worktrees": worktrees.iter().map(|wt| {
                             serde_json::json!({
-                                "id": wt.id,
+                                "id": wt.name,
                                 "branch": wt.branch,
                                 "path": wt.path.display().to_string(),
                             })
@@ -1021,7 +1021,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             } else {
-                let count = mgr.cleanup_all()?;
+                let count = mgr.cleanup_all().await?;
 
                 if args.json {
                     println!(

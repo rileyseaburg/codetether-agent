@@ -230,8 +230,14 @@ impl Tool for BashTool {
                     } else {
                         exec.complete_error(format!("exit_code={:?}", r.exit_code), duration)
                     };
-                    TOOL_EXECUTIONS.record(exec.clone());
-                    record_persistent(exec);
+                    TOOL_EXECUTIONS.record(exec.success);
+                    let data = serde_json::json!({
+                        "tool": "bash",
+                        "command": command,
+                        "success": r.success,
+                        "exit_code": r.exit_code,
+                    });
+                    let _ = record_persistent("tool_execution", &data);
 
                     Ok(ToolResult {
                         output: r.output,
@@ -255,8 +261,14 @@ impl Tool for BashTool {
                         json!({ "command": command, "sandboxed": true }),
                     )
                     .complete_error(e.to_string(), duration);
-                    TOOL_EXECUTIONS.record(exec.clone());
-                    record_persistent(exec);
+                    TOOL_EXECUTIONS.record(exec.success);
+                    let data = serde_json::json!({
+                        "tool": "bash",
+                        "command": command,
+                        "success": false,
+                        "error": e.to_string(),
+                    });
+                    let _ = record_persistent("tool_execution", &data);
                     Ok(ToolResult::error(format!("Sandbox error: {}", e)))
                 }
             };
@@ -339,8 +351,8 @@ impl Tool for BashTool {
                         duration,
                     )
                 };
-                TOOL_EXECUTIONS.record(exec.clone());
-                record_persistent(exec);
+                TOOL_EXECUTIONS.record(exec.success);
+                let _ = record_persistent("tool_execution", &serde_json::to_value(&exec).unwrap_or_default());
 
                 Ok(ToolResult {
                     output: output_str,
@@ -363,8 +375,8 @@ impl Tool for BashTool {
                     }),
                 )
                 .complete_error(format!("Failed to execute: {}", e), duration);
-                TOOL_EXECUTIONS.record(exec.clone());
-                record_persistent(exec);
+                TOOL_EXECUTIONS.record(exec.success);
+                let _ = record_persistent("tool_execution", &serde_json::to_value(&exec).unwrap_or_default());
 
                 Ok(ToolResult::structured_error(
                     "EXECUTION_FAILED",
@@ -384,8 +396,8 @@ impl Tool for BashTool {
                     }),
                 )
                 .complete_error(format!("Timeout after {}s", timeout_secs), duration);
-                TOOL_EXECUTIONS.record(exec.clone());
-                record_persistent(exec);
+                TOOL_EXECUTIONS.record(exec.success);
+                let _ = record_persistent("tool_execution", &serde_json::to_value(&exec).unwrap_or_default());
 
                 Ok(ToolResult::structured_error(
                     "TIMEOUT",

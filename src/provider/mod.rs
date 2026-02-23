@@ -627,8 +627,57 @@ impl ProviderRegistry {
             }
         }
 
+        // Fallback to environment variables for common providers if not registered via Vault
+        if !registry.providers.contains_key("openai") {
+            if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
+                match openai::OpenAIProvider::new(api_key) {
+                    Ok(p) => {
+                        tracing::info!("Registered OpenAI provider from OPENAI_API_KEY env var");
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init openai from env: {}", e),
+                }
+            }
+        }
+
+        if !registry.providers.contains_key("anthropic") {
+            if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
+                match anthropic::AnthropicProvider::new(api_key) {
+                    Ok(p) => {
+                        tracing::info!("Registered Anthropic provider from ANTHROPIC_API_KEY env var");
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init anthropic from env: {}", e),
+                }
+            }
+        }
+
+        if !registry.providers.contains_key("google") {
+            if let Ok(api_key) = std::env::var("GOOGLE_API_KEY") {
+                match google::GoogleProvider::new(api_key) {
+                    Ok(p) => {
+                        tracing::info!("Registered Google provider from GOOGLE_API_KEY env var");
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init google from env: {}", e),
+                }
+            }
+        }
+
+        if !registry.providers.contains_key("openrouter") {
+            if let Ok(api_key) = std::env::var("OPENROUTER_API_KEY") {
+                match openrouter::OpenRouterProvider::new(api_key) {
+                    Ok(p) => {
+                        tracing::info!("Registered OpenRouter provider from OPENROUTER_API_KEY env var");
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init openrouter from env: {}", e),
+                }
+            }
+        }
+
         tracing::info!(
-            "Registered {} providers from Vault",
+            "Registered {} providers (Vault + env fallback)",
             registry.providers.len()
         );
         Ok(registry)

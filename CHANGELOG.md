@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Hybrid Swarm Architecture & Local CUDA Provider**:
+  - Added `LocalCudaProvider` for zero-latency, pure-Rust ML execution directly on NVIDIA hardware using Candle.
+  - Offloads tool-call formatting to local FunctionGemma while keeping strategic reasoning on cloud models (like Claude Opus).
+  - Documented the architecture, OKR, PRD, and system prompts in `docs/architecture/hybrid_swarm.md`.
+
 - **CloudEvent Task Notification**: Worker now receives task notifications via Knative Eventing
   - `/task` endpoint extracts `task_id` from CloudEvent payload
   - Worker loop immediately polls for pending tasks when notified
