@@ -4360,6 +4360,26 @@ impl App {
         }
 
         if message.trim() == "/local" || message.trim().starts_with("/local ") {
+            let Some(registry) = self.provider_registry.as_ref() else {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    "Providers are still loading; cannot enable local mode yet.",
+                ));
+                self.scroll = SCROLL_BOTTOM;
+                return;
+            };
+            if registry.get("local_cuda").is_none() {
+                let available = registry.list().join(", ");
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "Local mode unavailable: provider `local_cuda` is not configured.\nAvailable providers: {available}"
+                    ),
+                ));
+                self.scroll = SCROLL_BOTTOM;
+                return;
+            }
+
             let requested = message
                 .trim()
                 .strip_prefix("/local")

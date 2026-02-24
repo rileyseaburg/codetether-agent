@@ -56,6 +56,24 @@ fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
     providers.first().copied()
 }
 
+fn resolve_provider_for_session_request<'a>(
+    providers: &'a [&'a str],
+    explicit_provider: Option<&str>,
+) -> Result<&'a str> {
+    if let Some(explicit) = explicit_provider {
+        if let Some(found) = providers.iter().copied().find(|p| *p == explicit) {
+            return Ok(found);
+        }
+        anyhow::bail!(
+            "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
+            explicit,
+            providers.join(", ")
+        );
+    }
+
+    choose_default_provider(providers).ok_or_else(|| anyhow::anyhow!("No providers available"))
+}
+
 fn prefers_temperature_one(model: &str) -> bool {
     let normalized = model.to_ascii_lowercase();
     normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
@@ -279,12 +297,8 @@ impl Session {
             (None, String::new())
         };
 
-        // Determine which provider to use with deterministic fallback ordering.
-        let selected_provider = provider_name
-            .as_deref()
-            .filter(|p| providers.contains(p))
-            .or_else(|| choose_default_provider(providers.as_slice()))
-            .ok_or_else(|| anyhow::anyhow!("No providers available"))?;
+        let selected_provider =
+            resolve_provider_for_session_request(providers.as_slice(), provider_name.as_deref())?;
 
         let provider = registry
             .get(selected_provider)
@@ -864,12 +878,8 @@ impl Session {
             (None, String::new())
         };
 
-        // Determine which provider to use with deterministic fallback ordering.
-        let selected_provider = provider_name
-            .as_deref()
-            .filter(|p| providers.contains(p))
-            .or_else(|| choose_default_provider(providers.as_slice()))
-            .ok_or_else(|| anyhow::anyhow!("No providers available"))?;
+        let selected_provider =
+            resolve_provider_for_session_request(providers.as_slice(), provider_name.as_deref())?;
 
         let provider = registry
             .get(selected_provider)
@@ -1708,5 +1718,37 @@ where
             items.push(item);
         }
         items
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{choose_default_provider, resolve_provider_for_session_request};
+
+    #[test]
+    fn explicit_provider_must_not_fallback_when_unavailable() {
+        let providers = vec!["zai", "openai"];
+        let result = resolve_provider_for_session_request(&providers, Some("local_cuda"));
+        assert!(result.is_err());
+        assert!(
+            result
+                .err()
+                .map(|e| e.to_string())
+                .unwrap_or_default()
+                .contains("selected explicitly but is unavailable")
+        );
+    }
+
+    #[test]
+    fn explicit_provider_is_used_when_available() {
+        let providers = vec!["local_cuda", "zai"];
+        let result = resolve_provider_for_session_request(&providers, Some("local_cuda"));
+        assert_eq!(result.ok(), Some("local_cuda"));
+    }
+
+    #[test]
+    fn default_provider_prefers_zai() {
+        let providers = vec!["openai", "zai"];
+        assert_eq!(choose_default_provider(&providers), Some("zai"));
     }
 }
