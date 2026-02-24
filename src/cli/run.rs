@@ -251,10 +251,15 @@ fn resolve_provider_for_model_autochat(
     model_ref: &str,
 ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
     let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
-    if let Some(provider_name) = provider_name
-        && let Some(provider) = registry.get(provider_name)
-    {
-        return Some((provider, model_name.to_string()));
+    if let Some(provider_name) = provider_name {
+        let normalized_provider = if provider_name == "zhipuai" {
+            "zai"
+        } else {
+            provider_name
+        };
+        return registry
+            .get(normalized_provider)
+            .map(|provider| (provider, model_name.to_string()));
     }
 
     let fallbacks = [

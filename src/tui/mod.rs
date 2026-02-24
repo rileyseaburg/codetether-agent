@@ -1391,10 +1391,15 @@ fn resolve_provider_for_model_autochat(
     model_ref: &str,
 ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
     let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
-    if let Some(provider_name) = provider_name
-        && let Some(provider) = registry.get(provider_name)
-    {
-        return Some((provider, model_name.to_string()));
+    if let Some(provider_name) = provider_name {
+        let normalized_provider = if provider_name == "zhipuai" {
+            "zai"
+        } else {
+            provider_name
+        };
+        return registry
+            .get(normalized_provider)
+            .map(|provider| (provider, model_name.to_string()));
     }
 
     let fallbacks = [
@@ -4360,6 +4365,56 @@ impl App {
         }
 
         if message.trim() == "/local" || message.trim().starts_with("/local ") {
+            if self.provider_registry.is_none() {
+                match crate::provider::ProviderRegistry::from_vault().await {
+                    Ok(registry) => {
+                        self.provider_registry = Some(std::sync::Arc::new(registry));
+                    }
+                    Err(vault_err) => {
+                        tracing::warn!(
+                            error = %vault_err,
+                            "Provider registry from_vault failed during /local; falling back to config/env"
+                        );
+                        match crate::provider::ProviderRegistry::from_config(config).await {
+                            Ok(registry) => {
+                                self.provider_registry = Some(std::sync::Arc::new(registry));
+                            }
+                            Err(config_err) => {
+                                self.messages.push(ChatMessage::new(
+                                    "system",
+                                    format!(
+                                        "Failed to load providers for local mode.\nVault error: {vault_err}\nConfig/env fallback error: {config_err}"
+                                    ),
+                                ));
+                                self.scroll = SCROLL_BOTTOM;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if self
+                .provider_registry
+                .as_ref()
+                .and_then(|registry| registry.get("local_cuda"))
+                .is_none()
+            {
+                // Try one forced refresh before refusing local mode. This helps when
+                // provider preload finished before local env vars were fully available.
+                match crate::provider::ProviderRegistry::from_config(config).await {
+                    Ok(registry) => {
+                        self.provider_registry = Some(std::sync::Arc::new(registry));
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            error = %err,
+                            "Provider registry config/env refresh failed during /local"
+                        );
+                    }
+                }
+            }
+
             let Some(registry) = self.provider_registry.as_ref() else {
                 self.messages.push(ChatMessage::new(
                     "system",
@@ -4368,12 +4423,13 @@ impl App {
                 self.scroll = SCROLL_BOTTOM;
                 return;
             };
+
             if registry.get("local_cuda").is_none() {
                 let available = registry.list().join(", ");
                 self.messages.push(ChatMessage::new(
                     "system",
                     format!(
-                        "Local mode unavailable: provider `local_cuda` is not configured.\nAvailable providers: {available}"
+                        "Local mode unavailable: provider `local_cuda` is not configured.\nAvailable providers: {available}\nHint: set CODETETHER_LOCAL_CUDA=1 and LOCAL_CUDA_MODEL_PATH/LOCAL_CUDA_TOKENIZER_PATH (or configure local-cuda in Vault)."
                     ),
                 ));
                 self.scroll = SCROLL_BOTTOM;

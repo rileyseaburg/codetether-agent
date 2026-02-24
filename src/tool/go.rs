@@ -674,9 +674,20 @@ fn resolve_provider(
 
     // Try explicit provider/model pair
     if let Some(provider_name) = provider_name {
-        if let Some(provider) = registry.get(provider_name) {
+        let normalized_provider = if provider_name == "zhipuai" {
+            "zai"
+        } else {
+            provider_name
+        };
+        if let Some(provider) = registry.get(normalized_provider) {
             return Ok((provider, model_name.to_string()));
         }
+        let available = registry.list().join(", ");
+        anyhow::bail!(
+            "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
+            normalized_provider,
+            available
+        );
     }
 
     // Fallback provider order (same as TUI)

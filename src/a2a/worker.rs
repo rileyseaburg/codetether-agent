@@ -1662,15 +1662,19 @@ async fn execute_session_with_policy(
     };
 
     let provider_slice = providers.as_slice();
-    let provider_requested_but_unavailable = provider_name
-        .as_deref()
-        .map(|p| !providers.contains(&p))
-        .unwrap_or(false);
+    if let Some(explicit_provider) = provider_name.as_deref()
+        && !providers.contains(&explicit_provider)
+    {
+        anyhow::bail!(
+            "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
+            explicit_provider,
+            providers.join(", ")
+        );
+    }
 
     // Determine which provider to use, preferring explicit request first, then model tier.
     let selected_provider = provider_name
         .as_deref()
-        .filter(|p| providers.contains(p))
         .unwrap_or_else(|| choose_provider_for_tier(provider_slice, model_tier));
 
     let provider = registry
@@ -1690,9 +1694,8 @@ async fn execute_session_with_policy(
         session.generate_title().await?;
     }
 
-    // Determine model. If a specific provider was requested but not available,
-    // ignore that model id and fall back to the tier-based default model.
-    let model = if !model_id.is_empty() && !provider_requested_but_unavailable {
+    // Determine model.
+    let model = if !model_id.is_empty() {
         model_id
     } else {
         default_model_for_provider(selected_provider, model_tier)

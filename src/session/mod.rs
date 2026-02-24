@@ -136,6 +136,9 @@ impl Session {
             "minimax" => "MiniMax-M2.5".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
+            "local_cuda" => std::env::var("LOCAL_CUDA_MODEL")
+                .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
+                .unwrap_or_else(|_| "qwen3-coder-next".to_string()),
             "zhipuai" | "zai" => "glm-5".to_string(),
             // OpenRouter uses model IDs like "z-ai/glm-5".
             "openrouter" => "z-ai/glm-5".to_string(),

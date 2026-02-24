@@ -268,6 +268,17 @@ impl ProviderRegistry {
             }
         }
 
+        let disable_env_fallback = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if !disable_env_fallback {
+            Self::register_env_fallbacks(&mut registry);
+        } else {
+            tracing::info!(
+                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+            );
+        }
+
         Ok(registry)
     }
 
