@@ -78,14 +78,14 @@ impl QueryTemplate {
     /// Render this template with the given parameter values.
     pub fn render(&self, values: &[&str]) -> String {
         let mut result = self.template.to_string();
-        
+
         for (i, value) in values.iter().enumerate() {
             if i < self.params.len() {
                 let placeholder = format!("{{{}}}", self.params[i].name);
                 result = result.replace(&placeholder, value);
             }
         }
-        
+
         result
     }
 
@@ -199,13 +199,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_structs",
         description: "Find all struct definitions",
         template: "Find all structs in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -213,13 +211,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_enums",
         description: "Find all enum definitions",
         template: "Find all enums in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -227,13 +223,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_traits",
         description: "Find all trait definitions",
         template: "Find all traits in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -241,13 +235,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_impls",
         description: "Find all impl blocks",
         template: "Find all impl blocks in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -255,13 +247,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_imports",
         description: "Find all use/import statements",
         template: "Find all imports in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -269,13 +259,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_tests",
         description: "Find all test functions",
         template: "Find all test functions in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -283,13 +271,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_error_handling",
         description: "Find error handling patterns (Result, ?, unwrap)",
         template: "Find all error handling patterns in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -297,13 +283,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_macros",
         description: "Find macro invocations",
         template: "Find all macro calls in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -311,13 +295,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_comments",
         description: "Find comments in code",
         template: "Find all comments in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -325,13 +307,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_todos",
         description: "Find TODO/FIXME comments",
         template: "Find all TODO comments in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
@@ -339,29 +319,24 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "grep_find_string_literals",
         description: "Find string literals",
         template: "Find all string literals in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Grep,
         example: &["src/main.rs"],
     },
-
     // ==================== AST TEMPLATES ====================
     QueryTemplate {
         id: "ast_list_functions",
         description: "List all function names in a file",
         template: "List all function names in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -369,13 +344,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_list_structs",
         description: "List all structs and their fields",
         template: "List all structs and fields in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -383,13 +356,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_list_enums",
         description: "List all enums and their variants",
         template: "List all enums and variants in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -416,13 +387,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_function_signatures",
         description: "Get function signatures (name, params, return type)",
         template: "List all function signatures in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -430,13 +399,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_pub_functions",
         description: "List public function signatures",
         template: "List all public function signatures in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -444,13 +411,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_async_functions",
         description: "List async function signatures",
         template: "List all async function signatures in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -515,13 +480,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_error_handling_count",
         description: "Count error handling patterns",
         template: "Count the error handling patterns (Result, ?, unwrap, expect) in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -529,13 +492,11 @@ const TEMPLATES: &[QueryTemplate] = &[
         id: "ast_method_names",
         description: "List all method names in impl blocks",
         template: "List all methods defined in impl blocks in {FILE}",
-        params: &[
-            Param {
-                name: "FILE",
-                description: "File path",
-                example: "src/main.rs",
-            },
-        ],
+        params: &[Param {
+            name: "FILE",
+            description: "File path",
+            example: "src/main.rs",
+        }],
         kind: TemplateKind::Ast,
         example: &["src/main.rs"],
     },
@@ -558,7 +519,7 @@ impl GeneratedQuery {
     /// Render a template with custom values.
     pub fn render(template: &'static QueryTemplate, values: &[&str]) -> Self {
         let file = values.last().unwrap_or(&"").to_string();
-        
+
         Self {
             query: template.render(values),
             template_id: template.id,
@@ -581,7 +542,7 @@ impl Iterator for TemplateIter {
         while self.index < TEMPLATES.len() {
             let template = &TEMPLATES[self.index];
             self.index += 1;
-            
+
             if let Some(kind) = self.kind {
                 if template.kind == kind {
                     return Some(template);
@@ -597,12 +558,18 @@ impl Iterator for TemplateIter {
 impl QueryTemplate {
     /// Iterate over all templates.
     pub fn iter() -> TemplateIter {
-        TemplateIter { index: 0, kind: None }
+        TemplateIter {
+            index: 0,
+            kind: None,
+        }
     }
 
     /// Iterate over templates of a specific kind.
     pub fn iter_kind(kind: TemplateKind) -> TemplateIter {
-        TemplateIter { index: 0, kind: Some(kind) }
+        TemplateIter {
+            index: 0,
+            kind: Some(kind),
+        }
     }
 }
 
@@ -627,7 +594,7 @@ mod tests {
     fn filter_templates_by_kind() {
         let grep_count = QueryTemplate::iter_kind(TemplateKind::Grep).count();
         let ast_count = QueryTemplate::iter_kind(TemplateKind::Ast).count();
-        
+
         assert!(grep_count > 0);
         assert!(ast_count > 0);
     }
@@ -635,7 +602,11 @@ mod tests {
     #[test]
     fn template_has_examples() {
         for template in QueryTemplate::all() {
-            assert!(!template.example.is_empty(), "Template {} has no examples", template.id);
+            assert!(
+                !template.example.is_empty(),
+                "Template {} has no examples",
+                template.id
+            );
         }
     }
 
@@ -643,11 +614,14 @@ mod tests {
     fn generated_query_has_fields() {
         let template = QueryTemplate::find("grep_find_occurrences").unwrap();
         let r#gen = GeneratedQuery::render(template, &["async fn", "src/lib.rs"]);
-        
-        assert_eq!(gen.query, "Find all occurrences of async fn in src/lib.rs");
-        assert_eq!(gen.template_id, "grep_find_occurrences");
-        assert_eq!(gen.kind, TemplateKind::Grep);
-        assert_eq!(gen.file, "src/lib.rs");
+
+        assert_eq!(
+            r#gen.query,
+            "Find all occurrences of async fn in src/lib.rs"
+        );
+        assert_eq!(r#gen.template_id, "grep_find_occurrences");
+        assert_eq!(r#gen.kind, TemplateKind::Grep);
+        assert_eq!(r#gen.file, "src/lib.rs");
     }
 
     #[test]

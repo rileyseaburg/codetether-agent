@@ -1,0 +1,176 @@
+{
+  "project": "codetether",
+  "feature": "copilot-review-fixes-pr2",
+  "branch_name": "feature/copilot-review-fixes-pr2",
+  "version": "1.0",
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Implement real git merge operations in worktree module",
+      "description": "Replace stub implementations of merge, complete_merge, and abort_merge in src/worktree.rs with actual git operations using git2 crate or command execution. Include proper conflict detection and reporting.",
+      "acceptance_criteria": [
+        "merge() performs actual git merge operation on worktree",
+        "Conflict detection returns appropriate error with conflict details",
+        "complete_merge() finalizes merge after conflicts resolved",
+        "abort_merge() properly aborts in-progress merge",
+        "All methods return anyhow::Result with meaningful error messages",
+        "Unit tests cover success, conflict, and error scenarios"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 5
+    },
+    {
+      "id": "US-002",
+      "title": "Implement actual git worktree creation",
+      "description": "Update WorktreeManager::create in src/worktree.rs to execute 'git worktree add' command instead of only creating empty directories.",
+      "acceptance_criteria": [
+        "create() invokes git worktree add with correct arguments",
+        "Worktree is properly registered in git repository",
+        "Branch checkout works correctly for new and existing branches",
+        "Error handling covers git failures with anyhow::Result",
+        "Tracing logs operation start and completion"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 3
+    },
+    {
+      "id": "US-003",
+      "title": "Restore S3 sink upload functionality",
+      "description": "Replace stub S3 sink implementation with real upload functionality. Either restore original implementation or properly gate stub mode with feature flag or configuration option.",
+      "acceptance_criteria": [
+        "S3 upload performs actual HTTP request to S3 endpoint",
+        "Returns real s3:// URLs on successful upload",
+        "Stub mode available via feature flag or config when S3 unavailable",
+        "Proper error handling for network and authentication failures",
+        "Integration tests verify upload functionality"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 4
+    },
+    {
+      "id": "US-004",
+      "title": "Add backwards compatible S3 environment variable fallback",
+      "description": "Support legacy CODETETHER_S3_* environment variable names as fallback when new S3_* names are not set, ensuring backwards compatibility.",
+      "acceptance_criteria": [
+        "S3_* env vars checked first for new configuration",
+        "CODETETHER_S3_* env vars used as fallback if S3_* not set",
+        "Deprecation warning logged when legacy vars are used",
+        "Documentation updated to reflect both naming conventions",
+        "Tests verify fallback behavior works correctly"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [
+        "US-003"
+      ],
+      "complexity": 2
+    },
+    {
+      "id": "US-005",
+      "title": "Remove sensitive prompt data from error messages",
+      "description": "Fix complete() in src/provider/local_cuda.rs to return generic 'not implemented' error instead of echoing user prompt content which could expose sensitive data in logs.",
+      "acceptance_criteria": [
+        "Error message contains fixed 'not implemented' text only",
+        "No user prompt content included in any error variant",
+        "Tracing logs do not expose prompt content at error level",
+        "Unit tests verify error message content"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 1,
+      "depends_on": [],
+      "complexity": 1
+    },
+    {
+      "id": "US-006",
+      "title": "Correct local_cuda capability flags to reflect actual support",
+      "description": "Update list_models in src/provider/local_cuda.rs to set streaming_support and tool_support flags to false until these features are actually implemented.",
+      "acceptance_criteria": [
+        "streaming_support returns false in model capabilities",
+        "tool_support returns false in model capabilities",
+        "Flags can be updated to true when features implemented",
+        "Documentation comments indicate features are planned"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 1
+    },
+    {
+      "id": "US-007",
+      "title": "Properly propagate IO errors in file tree tool",
+      "description": "Fix build_tree in src/tool/file_extras.rs to propagate read_dir errors instead of silently returning Ok(()) when filesystem errors occur.",
+      "acceptance_criteria": [
+        "read_dir errors are propagated with context using anyhow",
+        "Permission errors reported clearly to caller",
+        "Partial tree building not attempted on critical errors",
+        "Unit tests verify error propagation behavior"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 2
+    },
+    {
+      "id": "US-008",
+      "title": "Remove transient development files from repository",
+      "description": "Delete leftoff.md and test_ts.rs files that were committed accidentally and do not belong in the codebase.",
+      "acceptance_criteria": [
+        "leftoff.md file removed from repository",
+        "test_ts.rs file removed from repository",
+        "No references to deleted files remain in codebase",
+        "Git history reflects clean removal"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 2,
+      "depends_on": [],
+      "complexity": 1
+    },
+    {
+      "id": "US-009",
+      "title": "Document and optionally gate env var fallback in provider module",
+      "description": "Add documentation to from_vault() in src/provider/mod.rs explaining env var fallback behavior. Consider adding explicit opt-in flag for security-conscious deployments.",
+      "acceptance_criteria": [
+        "Function documentation clearly explains fallback mechanism",
+        "Opt-in flag available to disable env var fallback if desired",
+        "Default behavior documented and intentional",
+        "AGENTS.md guidelines followed for documentation style"
+      ],
+      "verification_steps": [],
+      "passes": false,
+      "priority": 3,
+      "depends_on": [],
+      "complexity": 2
+    }
+  ],
+  "technical_requirements": [
+    "Use anyhow::Result for all error handling per AGENTS.md guidelines",
+    "Add tracing instrumentation for all git operations and S3 uploads",
+    "Run cargo fmt before committing to ensure consistent formatting",
+    "Run cargo clippy and address all warnings before merge",
+    "All unit tests must pass with cargo test",
+    "No new clippy warnings introduced",
+    "Follow existing code patterns and module structure"
+  ],
+  "quality_checks": {
+    "typecheck": "cargo check",
+    "test": "cargo test",
+    "lint": "cargo clippy -- -D warnings",
+    "build": "cargo build --release"
+  },
+  "created_at": "2026-02-23T02:13:05.198430737+00:00",
+  "updated_at": "2026-02-23T02:13:05.198430737+00:00"
+}

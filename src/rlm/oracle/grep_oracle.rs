@@ -31,10 +31,7 @@ pub enum GrepVerification {
     /// Answer matches but in different order.
     UnorderedMatch,
     /// Answer is a subset of ground truth (partial).
-    SubsetMatch {
-        claimed: usize,
-        actual: usize,
-    },
+    SubsetMatch { claimed: usize, actual: usize },
     /// Answer contains claims not in ground truth (false positives).
     HasFalsePositives {
         false_positives: Vec<(usize, String)>,
@@ -46,9 +43,7 @@ pub enum GrepVerification {
     /// Answer is completely different.
     Mismatch,
     /// Could not infer pattern from query.
-    CannotVerify {
-        reason: String,
-    },
+    CannotVerify { reason: String },
 }
 
 /// Grep-based oracle for validating pattern-match queries.
@@ -72,7 +67,7 @@ impl GrepOracle {
     /// Classify the query type based on keywords.
     pub fn classify_query(query: &str) -> QueryType {
         let lower = query.to_lowercase();
-        
+
         // Pattern-match indicators
         if lower.contains("find all")
             || lower.contains("list all")
@@ -84,7 +79,7 @@ impl GrepOracle {
         {
             return QueryType::PatternMatch;
         }
-        
+
         // Structural indicators
         if lower.contains("signature")
             || lower.contains("parameters")
@@ -95,7 +90,7 @@ impl GrepOracle {
         {
             return QueryType::Structural;
         }
-        
+
         QueryType::Semantic
     }
 
@@ -104,56 +99,76 @@ impl GrepOracle {
     /// Returns None if the pattern cannot be reliably inferred.
     pub fn infer_pattern(query: &str) -> Option<String> {
         let lower = query.to_lowercase();
-        
+
+        // First, try to extract an explicit quoted literal pattern from the query.
+        // Examples:
+        // - Find all occurrences of 'async fn' in file.rs
+        // - grep for "Result<"
+        let quoted_re =
+            Regex::new(r#"(?i)(?:occurrences?\s+of|grep(?:\s+for)?|matching|containing)\s+['"`]([^'"`]+)['"`]"#).ok()?;
+        if let Some(caps) = quoted_re.captures(query)
+            && let Some(m) = caps.get(1)
+        {
+            return Some(regex::escape(m.as_str()));
+        }
+
+        // Fallback: capture any quoted literal in the query.
+        let any_quoted_re = Regex::new(r#"['"`]([^'"`]+)['"`]"#).ok()?;
+        if let Some(caps) = any_quoted_re.captures(query)
+            && let Some(m) = caps.get(1)
+        {
+            return Some(regex::escape(m.as_str()));
+        }
+
+        // Fallback: handle unquoted "occurrences of X in ..." forms.
+        let bare_occurrences_re = Regex::new(r"(?i)occurrences?\s+of\s+(.+?)(?:\s+in\b|$)").ok()?;
+        if let Some(caps) = bare_occurrences_re.captures(query)
+            && let Some(m) = caps.get(1)
+        {
+            let candidate = m.as_str().trim().trim_matches(&['"', '\'', '`'][..]);
+            if !candidate.is_empty() {
+                return Some(regex::escape(candidate));
+            }
+        }
+
         // Common Rust patterns
         let patterns = [
             // Async functions
             (r"(?i)find\s+all\s+async\s+functions?", r"\basync\s+fn\b"),
             (r"(?i)list\s+async\s+functions?", r"\basync\s+fn\b"),
             (r"(?i)async\s+functions?", r"\basync\s+fn\b"),
-            
             // Public functions
             (r"(?i)public\s+functions?", r"\bpub\s+fn\b"),
             (r"(?i)pub\s+functions?", r"\bpub\s+fn\b"),
-            
             // Structs
             (r"(?i)find\s+all\s+structs?", r"\bstruct\b"),
             (r"(?i)list\s+structs?", r"\bstruct\b"),
             (r"(?i)all\s+structs?", r"\bstruct\b"),
-            
             // Enums
             (r"(?i)find\s+all\s+enums?", r"\benum\b"),
             (r"(?i)list\s+enums?", r"\benum\b"),
-            
             // Traits
             (r"(?i)find\s+all\s+traits?", r"\btrait\b"),
             (r"(?i)list\s+traits?", r"\btrait\b"),
-            
             // Impls
             (r"(?i)find\s+all\s+impls?", r"\bimpl\b"),
             (r"(?i)implementations?", r"\bimpl\b"),
-            
             // Error handling
             (r"(?i)error\s+handling", r"Result|anyhow|Error|\?"),
             (r"(?i)unwrap\s+calls?", r"\.unwrap\(\)"),
             (r"(?i)expect\s+calls?", r"\.expect\("),
-            
             // Imports
             (r"(?i)use\s+statements?", r"\buse\b"),
             (r"(?i)imports?", r"\buse\b"),
-            
             // Tests
             (r"(?i)test\s+functions?", r"#\[test\]"),
             (r"(?i)async\s+tests?", r"#\[tokio::test\]"),
-            
             // Comments
             (r"(?i)todo\s+comments?", r"TODO|FIXME|XXX"),
             (r"(?i)comments?", r"//|/\*"),
-            
             // Macros
             (r"(?i)macro\s+calls?", r"[a-zA-Z_]+!"),
             (r"(?i)println!?", r"println!"),
-            
             // String literals
             (r"(?i)string\s+literals?", r#""[^"]*""#),
         ];
@@ -165,14 +180,14 @@ impl GrepOracle {
                 }
             }
         }
-        
+
         None
     }
 
     /// Run grep on the source and return matches with line numbers.
     pub fn grep(&self, pattern: &str) -> Result<Vec<(usize, String)>> {
         let re = Regex::new(pattern)?;
-        
+
         let matches: Vec<(usize, String)> = self
             .source_lines
             .iter()
@@ -180,7 +195,7 @@ impl GrepOracle {
             .filter(|(_, line)| re.is_match(line))
             .map(|(i, line)| (i + 1, line.clone())) // 1-indexed
             .collect();
-        
+
         Ok(matches)
     }
 
@@ -190,21 +205,15 @@ impl GrepOracle {
     /// runs grep, and compares results.
     pub fn verify(&self, answer: &str, query: &str) -> GrepVerification {
         let format = FinalAnswerFormat::parse(answer);
-        
+
         // Infer the grep pattern from the query
-        let pattern = match Self::infer_pattern(query) {
-            Some(p) => p,
-            None => {
-                // Try to extract pattern from answer if it looks like a count
-                if let FinalAnswerFormat::CountResult { count: _ } = format {
-                    // For count results, we still need a pattern
-                    return GrepVerification::CannotVerify {
-                        reason: "Could not infer grep pattern from query".to_string(),
-                    };
-                }
-                return GrepVerification::CannotVerify {
-                    reason: "Could not infer grep pattern from query".to_string(),
-                };
+        let pattern = Self::infer_pattern(query)
+            .or_else(|| Self::infer_pattern(answer))
+            .ok_or_else(|| "Could not infer grep pattern from query".to_string());
+        let pattern = match pattern {
+            Ok(p) => p,
+            Err(reason) => {
+                return GrepVerification::CannotVerify { reason };
             }
         };
 
@@ -214,7 +223,7 @@ impl GrepOracle {
             Err(e) => {
                 return GrepVerification::CannotVerify {
                     reason: format!("Grep failed: {}", e),
-                }
+                };
             }
         };
 
@@ -223,7 +232,9 @@ impl GrepOracle {
             FinalAnswerFormat::LineNumberedMatches { matches: claimed } => {
                 self.verify_matches(&claimed, &ground_truth)
             }
-            FinalAnswerFormat::CountResult { count: claimed_count } => {
+            FinalAnswerFormat::CountResult {
+                count: claimed_count,
+            } => {
                 let actual_count = ground_truth.len();
                 if claimed_count == actual_count {
                     GrepVerification::ExactMatch
@@ -234,11 +245,9 @@ impl GrepOracle {
                     }
                 }
             }
-            FinalAnswerFormat::StructuredData { .. } => {
-                GrepVerification::CannotVerify {
-                    reason: "Structured data not supported by grep oracle".to_string(),
-                }
-            }
+            FinalAnswerFormat::StructuredData { .. } => GrepVerification::CannotVerify {
+                reason: "Structured data not supported by grep oracle".to_string(),
+            },
             FinalAnswerFormat::FreeFormText { text } => {
                 // Try to extract line numbers from free-form text
                 if let Some(extracted) = self.extract_line_numbers_from_text(&text) {
@@ -303,10 +312,10 @@ impl GrepOracle {
     /// Looks for patterns like "line 42", "L42:", "lines 10-20", etc.
     fn extract_line_numbers_from_text(&self, text: &str) -> Option<Vec<(usize, String)>> {
         let mut results = Vec::new();
-        
+
         // Pattern: "line 42: text" or "L42: text" or "42: text"
         let line_re = Regex::new(r"(?i)(?:line\s+|L)?(\d+):\s*(.+)").ok()?;
-        
+
         for line in text.lines() {
             if let Some(cap) = line_re.captures(line) {
                 if let (Some(num), Some(content)) = (cap.get(1), cap.get(2)) {
@@ -316,7 +325,7 @@ impl GrepOracle {
                 }
             }
         }
-        
+
         if results.is_empty() {
             None
         } else {
@@ -360,7 +369,8 @@ mod tests {
         assert!(true);
     }
 }
-"#.to_string()
+"#
+        .to_string()
     }
 
     #[test]
@@ -388,6 +398,13 @@ mod tests {
     }
 
     #[test]
+    fn infer_quoted_literal_pattern() {
+        let pattern =
+            GrepOracle::infer_pattern("Find all occurrences of 'async fn' in src/rlm/repl.rs");
+        assert_eq!(pattern, Some(regex::escape("async fn")));
+    }
+
+    #[test]
     fn grep_finds_matches() {
         let oracle = GrepOracle::new(sample_rust_code());
         let matches = oracle.grep(r"\basync\s+fn\b").unwrap();
@@ -397,12 +414,18 @@ mod tests {
     #[test]
     fn verify_exact_match() {
         let oracle = GrepOracle::new(sample_rust_code());
-        let answer = "3:pub async fn process(input: &str) -> Result<String> {\n8:async fn parse(input: &str) -> Result<String> {";
-        let result = oracle.verify(answer, "Find all async functions");
+        let answer = oracle
+            .grep(r"\basync\s+fn\b")
+            .unwrap_or_default()
+            .iter()
+            .map(|(line, text)| format!("{line}:{text}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let result = oracle.verify(&answer, "Find all async functions");
         // May not be exact due to whitespace, but should be close
         match result {
-            GrepVerification::ExactMatch 
-            | GrepVerification::UnorderedMatch 
+            GrepVerification::ExactMatch
+            | GrepVerification::UnorderedMatch
             | GrepVerification::SubsetMatch { .. } => (),
             _ => panic!("Expected match, got {:?}", result),
         }

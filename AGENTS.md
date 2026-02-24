@@ -177,6 +177,22 @@ Environment variables for Vault:
 - `VAULT_MOUNT` - KV mount (default: `secret`)
 - `VAULT_SECRETS_PATH` - Path prefix (default: `codetether/providers`)
 
+### Security-Hardened Deployments
+
+By default, `from_vault()` falls back to environment variables (`OPENAI_API_KEY`, etc.)
+for local development convenience. For production or security-conscious deployments,
+disable this fallback to ensure all credentials come exclusively from Vault:
+
+```bash
+# Disable environment variable fallback (security-hardened mode)
+export CODETETHER_DISABLE_ENV_FALLBACK=1
+codetether serve
+```
+
+When set, only Vault-configured providers will be available. This prevents accidental
+credential leakage via environment variables which may be exposed in process listings,
+logs, or container inspection.
+
 ## Testing
 
 ```bash

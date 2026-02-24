@@ -15,11 +15,13 @@ pub mod router;
 pub mod tools;
 
 pub use chunker::{Chunk, ChunkOptions, ContentType, RlmChunker};
-pub use context_trace::{ContextTrace, ContextEvent};
+pub use context_trace::{ContextEvent, ContextTrace};
 pub use oracle::{
     AstPayload, AstResult, FinalPayload, GeneratedQuery, GrepMatch, GrepOracle, GrepPayload,
-    OracleResult, QueryTemplate, SemanticPayload, TemplateKind,
-    TraceValidator, TreeSitterOracle, ValidatedTrace, VerificationMethod,
+    GrepVerification, OracleResult, OracleTracePersistResult, OracleTraceRecord,
+    OracleTraceStorage, OracleTraceSyncStats, QueryTemplate, SemanticPayload, TemplateKind,
+    TraceStep, TraceValidator, TreeSitterOracle, TreeSitterVerification, ValidatedTrace,
+    VerificationMethod,
 };
 pub use repl::{ReplRuntime, RlmAnalysisResult, RlmExecutor, RlmRepl, SubQuery};
 pub use router::{RlmRouter, RoutingContext, RoutingResult};

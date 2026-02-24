@@ -241,6 +241,31 @@ codetether rlm "What are the main functions?" -f src/large_file.rs
 cat logs/*.log | codetether rlm "Summarize the errors" --content -
 ```
 
+#### Local CUDA (Exact Command)
+
+Use this exact sequence to run RLM on the local CUDA provider:
+
+```bash
+# 1) Install CUDA-enabled binary
+cargo install --path . --force --features candle-cuda,functiongemma
+
+# 2) (Optional) download a tested local model + tokenizer
+hf download Qwen/Qwen3-4B-GGUF --include 'Qwen3-4B-Q4_K_M.gguf' --local-dir "$HOME/models/qwen3-4b"
+hf download Qwen/Qwen3-4B --include 'tokenizer.json' --local-dir "$HOME/models/qwen3-4b"
+
+# 3) Point CodeTether at local files
+export LOCAL_CUDA_MODEL_PATH="$HOME/models/qwen3-4b/Qwen3-4B-Q4_K_M.gguf"
+export LOCAL_CUDA_TOKENIZER_PATH="$HOME/models/qwen3-4b/tokenizer.json"
+
+# 4) Invoke local CUDA explicitly
+codetether rlm --model local_cuda/qwen3-4b --file src/rlm/repl.rs --json \
+  "Find all occurrences of 'async fn' in src/rlm/repl.rs"
+```
+
+Expected verification in JSON output:
+- `"provider": "local_cuda"`
+- `"model": "qwen3-4b"`
+
 #### Content Types
 
 RLM auto-detects content type for optimized processing:

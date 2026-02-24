@@ -1,31 +1,99 @@
-# Left Off - Complete Success!
+# Left Off - Oracle FINAL Enforcement + Local CUDA Golden Run
 
-## Summary
-We successfully implemented the foundation for the `LocalCudaProvider` using Candle bindings for local GPU inference in the CodeTether agent hybrid swarm architecture. Along the way, we encountered and fixed 124 compilation errors across the entire codebase.
+Date: 2026-02-24
+Branch: `feature/copilot-review-fixes-pr2`
 
-## What Was Accomplished
+## Current state
 
-1. **Hybrid Swarm Architecture Designed & Documented**: 
-   - Created `docs/architecture/hybrid_swarm.md` outlining the OKR, PRD, and System Prompt.
+- Oracle pipeline is end-to-end and active.
+- Local CUDA run now reached **golden** on deterministic grep validation.
+- FINAL output is enforced as JSON and normalized from trace evidence when needed.
 
-2. **LocalCudaProvider Implemented**:
-   - Created `src/provider/local_cuda.rs` with the `LocalCudaProvider` struct.
-   - Integrated it into the `ProviderRegistry` in `src/provider/mod.rs`.
-   - Added environment variable fallbacks for other providers in `from_vault()`.
+## What changed after the previous note
 
-3. **Fixed 124 Compilation Errors**:
-   - **Telemetry Module**: Massively expanded to support missing types (`ContextLimit`, `TokenTotals`, `ProviderSnapshot`, `PersistentStats`). Fixed method signatures for tool executions.
-   - **Worktree Module**: Added missing `abort_merge` and `complete_merge` methods. Updated `MergeResult` to include `conflict_diffs`. Updated `ralph_loop.rs` to use asynchronous calls properly.
-   - **RLM Oracle Module**: Added `PartialEq` and `Default` traits to validation structs. Fixed `tree_sitter` cursor iteration using `streaming-iterator`. Resolved borrow checker issues in `schema.rs` and `validator.rs`.
-   - **Main CLI**: Fixed type annotations and async method calls for `WorktreeManager`.
+### 1) Added hard gate: no FINAL for grep queries without evidence
 
-## Current State
-- The codebase compiles with **0 errors**.
-- `cargo check` passes cleanly.
-- `cargo install --path .` has been triggered to install the updated binary.
+In `src/rlm/repl.rs`:
+- pattern-match queries now reject FINAL unless grep evidence exists in trace/output.
+- rejection is recorded as `reject_final(no_grep_evidence)`.
 
-## Next Steps
-Now that the project is completely error-free and compiling, the next steps are to test the actual local inference:
+This prevents model guesses/hallucinated line numbers from being accepted as final output.
 
-1. **Finish Candle Inference Logic**: The `LocalCudaProvider::complete()` method currently returns a placeholder error. It needs to be updated to load the actual GGUF model weights, tokenize the prompt, and run the generation loop using `candle-core` and `candle-transformers`.
-2. **Test the Swarm**: Run the CodeTether worker node on the RTX 2070 PC and verify that the Cloud Opus orchestrator can successfully route tasks to it and receive generated code back.
+### 2) Added canonical normalization from trace evidence
+
+In `src/rlm/repl.rs`:
+- `ensure_structured_final_payload(...)` now normalizes even valid `kind=grep` payloads when model payload differs from trace-derived ground data.
+- normalization step is recorded as `normalize_final_payload(grep_trace)`.
+
+This removes model reformatting errors from the final payload path.
+
+### 3) Fixed trace fidelity for grep normalization
+
+In `src/rlm/repl.rs`:
+- line-numbered grep outputs are no longer truncated when persisted in trace steps.
+- `parse_line_numbered_output(...)` now preserves leading whitespace in line text (critical for exact oracle comparisons).
+
+Without this, normalization could still fail on partial/truncated text.
+
+## Local CUDA E2E results
+
+GPU:
+- `NVIDIA GeForce RTX 2080 SUPER` (8GB)
+
+### A) Qwen3-4B (earlier run)
+
+Command:
+```bash
+export LOCAL_CUDA_MODEL_PATH=/home/riley/models/qwen3-4b/Qwen3-4B-Q4_K_M.gguf
+export LOCAL_CUDA_TOKENIZER_PATH=/home/riley/models/qwen3-4b/tokenizer.json
+codetether rlm --model local_cuda/qwen3-4b --file src/rlm/repl.rs --json \
+  "Find all occurrences of 'async fn' in src/rlm/repl.rs"
+```
+
+Observed (earlier installed-binary run):
+- provider `local_cuda`
+- structured `kind=grep` payload emitted
+- oracle `failed` (content mismatch)
+- TPS: `39.66`
+
+### B) Qwen2.5-Coder-7B (latest source run, after fixes)
+
+Command:
+```bash
+export LOCAL_CUDA_MODEL=qwen2.5-coder-7b-q4_k_m
+export LOCAL_CUDA_MODEL_PATH=/home/riley/.local/share/codetether/models/qwen2.5-coder-7b-q4_k_m/qwen2.5-coder-7b-instruct-q4_k_m.gguf
+export LOCAL_CUDA_TOKENIZER_PATH=/home/riley/.local/share/codetether/models/qwen2.5-coder-7b-q4_k_m/tokenizer.json
+cargo run --features candle-cuda,functiongemma -- \
+  rlm --model local_cuda/qwen2.5-coder-7b-q4_k_m --file src/rlm/repl.rs --json \
+  "Find all occurrences of 'async fn' in src/rlm/repl.rs"
+```
+
+Observed (latest):
+- provider `local_cuda`
+- trace includes `grep("async fn")`
+- trace includes `normalize_final_payload(grep_trace)`
+- oracle verdict: **`golden`**
+- TPS: `21.85`
+
+## Additional notes
+
+- `Qwen2.5-Coder-0.5B q4_k_m` remains unstable on this setup (`A weight is negative, too large or not a valid number`).
+- `README.md` now includes exact local CUDA invocation commands for users.
+
+## Validation/tests run
+
+- `cargo fmt`
+- `cargo test rlm::repl -- --nocapture`
+- `cargo test rlm::repl::tests::test_parse_line_numbered_output -- --nocapture`
+- `cargo test rlm::tools::tests::tool_definitions_are_complete -- --nocapture`
+
+## Files touched in current workspace
+
+- `README.md`
+- `src/rlm/repl.rs`
+- `src/rlm/tools.rs`
+- `src/cognition/thinker.rs`
+- `src/main.rs`
+- `src/provider/local_cuda.rs`
+- `tests/rlm_provider_resolution.rs`
+- `leftoff.md`

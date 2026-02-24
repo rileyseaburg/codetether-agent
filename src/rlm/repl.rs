@@ -24,6 +24,8 @@ use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
+use super::context_trace::{ContextEvent, ContextTrace, ContextTraceSummary};
+use super::oracle::{FinalPayload, GrepMatch, GrepOracle, GrepPayload, QueryType, TraceStep};
 use super::tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
 
 /// REPL runtime options
@@ -171,7 +173,7 @@ impl RlmRepl {
     /// - count("pattern") - count matches
     /// - slice(start, end) - slice by chars
     /// - chunks(n) - split into n chunks
-    /// - FINAL("answer") - return final answer
+    /// - FINAL({json_payload}) - return final answer payload
     pub fn execute(&mut self, code: &str) -> ReplResult {
         match self.runtime {
             ReplRuntime::Rust => self.execute_rust_dsl(code),
@@ -430,22 +432,28 @@ impl RlmRepl {
     /// Execute a tree-sitter AST query on the context.
     fn execute_ast_query(&self, query: &str) -> String {
         let mut oracle = super::oracle::TreeSitterOracle::new(self.context.clone());
-        
+
         match oracle.query(query) {
             Ok(result) => {
                 if result.matches.is_empty() {
                     "(no AST matches)".to_string()
                 } else {
-                    let lines: Vec<String> = result.matches.iter().map(|m| {
-                        let captures_str: Vec<String> = m.captures.iter()
-                            .map(|(k, v)| format!("{}={:?}", k, v))
-                            .collect();
-                        format!("L{}: {} [{}]", m.line, m.text, captures_str.join(", "))
-                    }).collect();
+                    let lines: Vec<String> = result
+                        .matches
+                        .iter()
+                        .map(|m| {
+                            let captures_str: Vec<String> = m
+                                .captures
+                                .iter()
+                                .map(|(k, v)| format!("{}={:?}", k, v))
+                                .collect();
+                            format!("L{}: {} [{}]", m.line, m.text, captures_str.join(", "))
+                        })
+                        .collect();
                     lines.join("\n")
                 }
             }
-            Err(e) => format!("AST query error: {}", e)
+            Err(e) => format!("AST query error: {}", e),
         }
     }
 }
@@ -472,8 +480,12 @@ pub struct RlmExecutor {
     repl: RlmRepl,
     provider: Arc<dyn Provider>,
     model: String,
+    analysis_temperature: f32,
     max_iterations: usize,
     sub_queries: Vec<SubQuery>,
+    trace_steps: Vec<TraceStep>,
+    context_budget_tokens: usize,
+    context_trace: ContextTrace,
     verbose: bool,
 
     tool_router: Option<ToolCallRouter>,
@@ -491,6 +503,11 @@ pub struct SubQuery {
 impl RlmExecutor {
     /// Create a new RLM executor
     pub fn new(context: String, provider: Arc<dyn Provider>, model: String) -> Self {
+        let context_budget_tokens = std::env::var("CODETETHER_RLM_CONTEXT_BUDGET")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(32_768);
+
         let tool_router = {
             let cfg = ToolRouterConfig::from_env();
             ToolCallRouter::from_config(&cfg)
@@ -505,8 +522,12 @@ impl RlmExecutor {
             repl: RlmRepl::new(context, ReplRuntime::Rust),
             provider,
             model,
+            analysis_temperature: 0.3,
             max_iterations: 5, // Keep iterations limited for speed
             sub_queries: Vec::new(),
+            trace_steps: Vec::new(),
+            context_budget_tokens,
+            context_trace: ContextTrace::new(context_budget_tokens),
             verbose: false,
 
             tool_router,
@@ -519,6 +540,12 @@ impl RlmExecutor {
         self
     }
 
+    /// Set root analysis temperature for top-level RLM iterations.
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.analysis_temperature = temperature.clamp(0.0, 2.0);
+        self
+    }
+
     /// Enable or disable verbose mode
     ///
     /// When verbose is true, the context summary will be displayed
@@ -528,12 +555,25 @@ impl RlmExecutor {
         self
     }
 
+    /// Trace steps captured from the most recent analysis run.
+    pub fn trace_steps(&self) -> &[TraceStep] {
+        &self.trace_steps
+    }
+
+    /// Context trace summary for the most recent analysis run.
+    pub fn context_trace_summary(&self) -> ContextTraceSummary {
+        self.context_trace.summary()
+    }
+
     /// Execute RLM analysis with the given query
     pub async fn analyze(&mut self, query: &str) -> Result<RlmAnalysisResult> {
         let start = std::time::Instant::now();
         let mut iterations = 0;
         let mut total_input_tokens = 0;
         let mut total_output_tokens = 0;
+        self.sub_queries.clear();
+        self.trace_steps.clear();
+        self.context_trace = ContextTrace::new(self.context_budget_tokens);
 
         // Prepare RLM tool definitions for structured dispatch
         let tools = rlm_tool_definitions();
@@ -551,7 +591,7 @@ impl RlmExecutor {
              - chunks(n) - split into n chunks\n\
              - ast_query(\"s-expr\") - tree-sitter AST query for structural analysis\n\
              - llm_query(\"question\", context?) - ask sub-LM a question\n\
-             - FINAL(\"answer\") - return final answer\n\
+             - FINAL({{json_payload}}) - return structured final payload\n\
              === END CONTEXT INFO ===",
             self.repl.context().len(),
             self.repl.lines().len()
@@ -569,16 +609,26 @@ impl RlmExecutor {
 
         let system_prompt = format!(
             "You are a code analysis assistant. Answer questions by examining the provided context.\n\n\
-             IMPORTANT: You MUST end your response with FINAL(\"your answer\") in 1-3 iterations.\n\n\
+             CRITICAL OUTPUT CONTRACT:\n\
+             - Your final response MUST be exactly one FINAL(<json>) call.\n\
+             - Never end with prose and never use FINAL(\"...\").\n\
+             - For pattern/grep queries, you MUST run grep/head/tail first. Never guess line numbers or matches.\n\
+             - The JSON inside FINAL(...) MUST match one of these shapes:\n\
+               1) {{\"kind\":\"grep\",\"file\":\"<path>\",\"pattern\":\"<regex>\",\"matches\":[{{\"line\":123,\"text\":\"...\"}}]}}\n\
+               2) {{\"kind\":\"ast\",\"file\":\"<path>\",\"query\":\"<tree-sitter query>\",\"results\":[{{\"name\":\"...\",\"args\":[],\"return_type\":null,\"span\":[1,2]}}]}}\n\
+               3) {{\"kind\":\"semantic\",\"file\":\"<path>\",\"answer\":\"...\"}} (only if deterministic payload is impossible)\n\
+             - For grep/list/find/count style queries, emit kind=grep with exact line-numbered matches.\n\n\
              Available commands:\n\
              - head(n), tail(n): See first/last n lines\n\
              - grep(\"pattern\"): Search for patterns\n\
              - ast_query(\"s-expr\"): Tree-sitter AST query (e.g., '(function_item name: (identifier) @name)')\n\
              - llm_query(\"question\"): Ask a focused sub-question\n\
-             - FINAL(\"answer\"): Return your final answer (REQUIRED)\n\n\
+             - FINAL({{\"kind\":\"...\", ...}}): Return your final structured payload (REQUIRED)\n\n\
              The context has {} chars across {} lines. A preview follows:\n\n\
              {}\n\n\
-             Now analyze the context. Use 1-2 commands if needed, then call FINAL() with your answer.",
+             Example final response:\n\
+             FINAL({{\"kind\":\"grep\",\"file\":\"src/rlm/repl.rs\",\"pattern\":\"async fn\",\"matches\":[{{\"line\":570,\"text\":\"pub async fn analyze(...)\"}}]}})\n\n\
+             Now analyze the context. Use 1-2 commands if needed, then call FINAL() with valid JSON payload.",
             self.repl.context().len(),
             self.repl.lines().len(),
             self.repl.head(25).join("\n")
@@ -598,6 +648,32 @@ impl RlmExecutor {
                 }],
             },
         ];
+        let initial_system = messages[0]
+            .content
+            .iter()
+            .filter_map(|p| match p {
+                ContentPart::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        self.context_trace.log_event(ContextEvent::SystemPrompt {
+            content: "rlm_system_prompt".to_string(),
+            tokens: ContextTrace::estimate_tokens(&initial_system),
+        });
+        self.context_trace.log_event(ContextEvent::ToolCall {
+            name: "initial_query".to_string(),
+            arguments_preview: truncate_with_ellipsis(query, 160),
+            tokens: ContextTrace::estimate_tokens(query),
+        });
+
+        let llm_timeout_secs = std::env::var("CODETETHER_RLM_LLM_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .filter(|v| *v > 0)
+            .unwrap_or(60);
+        let requires_pattern_evidence =
+            GrepOracle::classify_query(query) == QueryType::PatternMatch;
 
         let mut final_answer = None;
 
@@ -608,12 +684,12 @@ impl RlmExecutor {
             // Get LLM response with code to execute (with timeout)
             tracing::debug!("Sending LLM request...");
             let response = match tokio::time::timeout(
-                std::time::Duration::from_secs(60),
+                std::time::Duration::from_secs(llm_timeout_secs),
                 self.provider.complete(CompletionRequest {
                     messages: messages.clone(),
                     tools: tools.clone(),
                     model: self.model.clone(),
-                    temperature: Some(0.3),
+                    temperature: Some(self.analysis_temperature),
                     top_p: None,
                     max_tokens: Some(2000),
                     stop: vec![],
@@ -626,7 +702,12 @@ impl RlmExecutor {
                     r
                 }
                 Ok(Err(e)) => return Err(e),
-                Err(_) => return Err(anyhow::anyhow!("LLM request timed out after 60 seconds")),
+                Err(_) => {
+                    return Err(anyhow::anyhow!(
+                        "LLM request timed out after {} seconds",
+                        llm_timeout_secs
+                    ));
+                }
             };
 
             // Optionally run FunctionGemma to convert text-only responses into
@@ -643,6 +724,22 @@ impl RlmExecutor {
 
             total_input_tokens += response.usage.prompt_tokens;
             total_output_tokens += response.usage.completion_tokens;
+            let assistant_text = response
+                .message
+                .content
+                .iter()
+                .filter_map(|p| match p {
+                    ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("");
+            if !assistant_text.is_empty() {
+                self.context_trace.log_event(ContextEvent::AssistantCode {
+                    code: truncate_with_ellipsis(&assistant_text, 500),
+                    tokens: ContextTrace::estimate_tokens(&assistant_text),
+                });
+            }
 
             // ── Structured tool-call path ────────────────────────────────
             // If the response (or FunctionGemma rewrite) contains ToolCall
@@ -677,12 +774,47 @@ impl RlmExecutor {
                 let mut tool_results: Vec<ContentPart> = Vec::new();
 
                 for (call_id, name, arguments) in &tool_calls {
+                    self.context_trace.log_event(ContextEvent::ToolCall {
+                        name: name.clone(),
+                        arguments_preview: truncate_with_ellipsis(arguments, 200),
+                        tokens: ContextTrace::estimate_tokens(arguments),
+                    });
                     match dispatch_tool_call(name, arguments, &mut self.repl) {
                         Some(RlmToolResult::Final(answer)) => {
+                            if requires_pattern_evidence && !self.has_pattern_evidence() {
+                                let rejection = "FINAL rejected: pattern query requires grep evidence. Call rlm_grep first, then FINAL with exact line-numbered matches.";
+                                self.trace_steps.push(TraceStep {
+                                    iteration: iterations,
+                                    action: "reject_final(no_grep_evidence)".to_string(),
+                                    output: rejection.to_string(),
+                                });
+                                self.context_trace.log_event(ContextEvent::ToolResult {
+                                    tool_call_id: call_id.clone(),
+                                    result_preview: rejection.to_string(),
+                                    tokens: ContextTrace::estimate_tokens(rejection),
+                                });
+                                tool_results.push(ContentPart::ToolResult {
+                                    tool_call_id: call_id.clone(),
+                                    content: rejection.to_string(),
+                                });
+                                continue;
+                            }
                             if self.verbose {
                                 println!("[RLM] Final answer received via tool call");
                             }
                             final_answer = Some(answer.clone());
+                            self.trace_steps.push(TraceStep {
+                                iteration: iterations,
+                                action: format!(
+                                    "{name}({})",
+                                    truncate_with_ellipsis(arguments, 120)
+                                ),
+                                output: format!("FINAL: {}", truncate_with_ellipsis(&answer, 240)),
+                            });
+                            self.context_trace.log_event(ContextEvent::Final {
+                                answer: truncate_with_ellipsis(&answer, 400),
+                                tokens: ContextTrace::estimate_tokens(&answer),
+                            });
                             tool_results.push(ContentPart::ToolResult {
                                 tool_call_id: call_id.clone(),
                                 content: format!("FINAL: {answer}"),
@@ -708,6 +840,19 @@ impl RlmExecutor {
                                         .map(|s| s.to_string());
                                     let llm_result =
                                         self.handle_llm_query_direct(q, ctx_slice).await?;
+                                    self.trace_steps.push(TraceStep {
+                                        iteration: iterations,
+                                        action: format!(
+                                            "llm_query({})",
+                                            truncate_with_ellipsis(q, 120)
+                                        ),
+                                        output: truncate_with_ellipsis(&llm_result, 240),
+                                    });
+                                    self.context_trace.log_event(ContextEvent::ToolResult {
+                                        tool_call_id: call_id.clone(),
+                                        result_preview: truncate_with_ellipsis(&llm_result, 300),
+                                        tokens: ContextTrace::estimate_tokens(&llm_result),
+                                    });
                                     tool_results.push(ContentPart::ToolResult {
                                         tool_call_id: call_id.clone(),
                                         content: llm_result,
@@ -720,15 +865,37 @@ impl RlmExecutor {
                                 let preview = truncate_with_ellipsis(&output, 200);
                                 println!("[RLM] Tool {name} → {}", preview);
                             }
+                            self.trace_steps.push(TraceStep {
+                                iteration: iterations,
+                                action: format!(
+                                    "{name}({})",
+                                    truncate_with_ellipsis(arguments, 120)
+                                ),
+                                output: Self::trace_output_for_storage(&output),
+                            });
+                            self.context_trace.log_event(ContextEvent::ToolResult {
+                                tool_call_id: call_id.clone(),
+                                result_preview: truncate_with_ellipsis(&output, 300),
+                                tokens: ContextTrace::estimate_tokens(&output),
+                            });
                             tool_results.push(ContentPart::ToolResult {
                                 tool_call_id: call_id.clone(),
                                 content: output,
                             });
                         }
                         None => {
+                            let unknown = format!("Unknown tool: {name}");
+                            self.trace_steps.push(TraceStep {
+                                iteration: iterations,
+                                action: format!(
+                                    "{name}({})",
+                                    truncate_with_ellipsis(arguments, 120)
+                                ),
+                                output: unknown.clone(),
+                            });
                             tool_results.push(ContentPart::ToolResult {
                                 tool_call_id: call_id.clone(),
-                                content: format!("Unknown tool: {name}"),
+                                content: unknown,
                             });
                         }
                     }
@@ -772,6 +939,11 @@ impl RlmExecutor {
 
             // Extract and execute code blocks
             let code = self.extract_code(&assistant_text);
+            self.trace_steps.push(TraceStep {
+                iteration: iterations,
+                action: format!("execute_code({})", truncate_with_ellipsis(&code, 160)),
+                output: String::new(),
+            });
 
             // Display execution details in verbose mode
             if self.verbose {
@@ -792,8 +964,47 @@ impl RlmExecutor {
 
             // Check for final answer
             if let Some(answer) = &execution_result.final_answer {
+                let stdout_has_pattern_evidence = code.contains("grep(")
+                    || execution_result.stdout.contains("(no matches)")
+                    || !Self::parse_line_numbered_output(&execution_result.stdout).is_empty();
+                if requires_pattern_evidence
+                    && !self.has_pattern_evidence()
+                    && !stdout_has_pattern_evidence
+                {
+                    let rejection = "FINAL rejected: pattern query requires grep evidence. Run grep/head/tail before FINAL and include exact lines.";
+                    self.trace_steps.push(TraceStep {
+                        iteration: iterations,
+                        action: "reject_final(no_grep_evidence)".to_string(),
+                        output: rejection.to_string(),
+                    });
+                    self.context_trace.log_event(ContextEvent::ExecutionOutput {
+                        output: rejection.to_string(),
+                        tokens: ContextTrace::estimate_tokens(rejection),
+                    });
+                    messages.push(Message {
+                        role: Role::User,
+                        content: vec![ContentPart::Text {
+                            text: rejection.to_string(),
+                        }],
+                    });
+                    continue;
+                }
+                self.context_trace.log_event(ContextEvent::Final {
+                    answer: truncate_with_ellipsis(answer, 400),
+                    tokens: ContextTrace::estimate_tokens(answer),
+                });
                 final_answer = Some(answer.clone());
                 break;
+            }
+
+            self.context_trace.log_event(ContextEvent::ExecutionOutput {
+                output: truncate_with_ellipsis(&execution_result.stdout, 400),
+                tokens: ContextTrace::estimate_tokens(&execution_result.stdout),
+            });
+            if let Some(step) = self.trace_steps.last_mut() {
+                if step.iteration == iterations && step.output.is_empty() {
+                    step.output = Self::trace_output_for_storage(&execution_result.stdout);
+                }
             }
 
             // Add execution result as user message for next iteration
@@ -811,8 +1022,20 @@ impl RlmExecutor {
 
         let elapsed = start.elapsed();
 
+        let raw_final_text = final_answer.unwrap_or_else(|| "Analysis incomplete".to_string());
+        let final_text = self.ensure_structured_final_payload(query, raw_final_text);
+        if !matches!(
+            self.context_trace.events().back(),
+            Some(ContextEvent::Final { .. })
+        ) {
+            self.context_trace.log_event(ContextEvent::Final {
+                answer: truncate_with_ellipsis(&final_text, 400),
+                tokens: ContextTrace::estimate_tokens(&final_text),
+            });
+        }
+
         Ok(RlmAnalysisResult {
-            answer: final_answer.unwrap_or_else(|| "Analysis incomplete".to_string()),
+            answer: final_text,
             iterations,
             sub_queries: self.sub_queries.clone(),
             stats: super::RlmStats {
@@ -824,6 +1047,163 @@ impl RlmExecutor {
                 compression_ratio: 1.0,
             },
         })
+    }
+
+    fn ensure_structured_final_payload(&mut self, query: &str, raw_final_text: String) -> String {
+        let parsed = FinalPayload::parse(&raw_final_text);
+
+        if let Some(canonical) = self.coerce_grep_payload_from_trace(query) {
+            let canonical_payload = FinalPayload::parse(&canonical);
+            match &parsed {
+                FinalPayload::Grep(_) => {
+                    if canonical_payload != parsed {
+                        let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+                        self.trace_steps.push(TraceStep {
+                            iteration,
+                            action: "normalize_final_payload(grep_trace)".to_string(),
+                            output: truncate_with_ellipsis(&canonical, 240),
+                        });
+                        self.context_trace.log_event(ContextEvent::Final {
+                            answer: truncate_with_ellipsis(&canonical, 400),
+                            tokens: ContextTrace::estimate_tokens(&canonical),
+                        });
+                        tracing::info!(
+                            "RLM normalized FINAL(JSON) grep payload using trace evidence"
+                        );
+                        return canonical;
+                    }
+                    return raw_final_text;
+                }
+                FinalPayload::Malformed { .. } => {
+                    let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+                    self.trace_steps.push(TraceStep {
+                        iteration,
+                        action: "coerce_final_payload(grep_trace)".to_string(),
+                        output: truncate_with_ellipsis(&canonical, 240),
+                    });
+                    self.context_trace.log_event(ContextEvent::Final {
+                        answer: truncate_with_ellipsis(&canonical, 400),
+                        tokens: ContextTrace::estimate_tokens(&canonical),
+                    });
+                    tracing::info!(
+                        "RLM coerced malformed/prose final answer into FINAL(JSON) grep payload"
+                    );
+                    return canonical;
+                }
+                _ => {
+                    let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+                    self.trace_steps.push(TraceStep {
+                        iteration,
+                        action: "coerce_final_payload(grep_trace)".to_string(),
+                        output: truncate_with_ellipsis(&canonical, 240),
+                    });
+                    self.context_trace.log_event(ContextEvent::Final {
+                        answer: truncate_with_ellipsis(&canonical, 400),
+                        tokens: ContextTrace::estimate_tokens(&canonical),
+                    });
+                    tracing::info!(
+                        "RLM coerced non-grep FINAL payload into canonical grep payload using trace evidence"
+                    );
+                    return canonical;
+                }
+            }
+        }
+
+        raw_final_text
+    }
+
+    fn coerce_grep_payload_from_trace(&self, query: &str) -> Option<String> {
+        if GrepOracle::classify_query(query) != QueryType::PatternMatch {
+            return None;
+        }
+
+        let pattern = GrepOracle::infer_pattern(query)?;
+        let matches = self.extract_latest_grep_matches()?;
+        let file = Self::infer_file_from_query(query).unwrap_or_else(|| "unknown".to_string());
+
+        let payload = FinalPayload::Grep(GrepPayload {
+            file,
+            pattern,
+            matches: matches
+                .into_iter()
+                .map(|(line, text)| GrepMatch { line, text })
+                .collect(),
+        });
+
+        serde_json::to_string(&payload).ok()
+    }
+
+    fn has_pattern_evidence(&self) -> bool {
+        self.trace_steps.iter().any(|step| {
+            step.action.contains("grep(")
+                || step.action.contains("rlm_grep(")
+                || step.output.contains("(no matches)")
+                || !Self::parse_line_numbered_output(&step.output).is_empty()
+        })
+    }
+
+    fn extract_latest_grep_matches(&self) -> Option<Vec<(usize, String)>> {
+        for step in self.trace_steps.iter().rev() {
+            if !step.action.contains("grep(") && !step.action.contains("rlm_grep(") {
+                continue;
+            }
+            if step.output.trim() == "(no matches)" {
+                return Some(Vec::new());
+            }
+            let parsed = Self::parse_line_numbered_output(&step.output);
+            if !parsed.is_empty() {
+                return Some(parsed);
+            }
+        }
+
+        for step in self.trace_steps.iter().rev() {
+            let parsed = Self::parse_line_numbered_output(&step.output);
+            if !parsed.is_empty() {
+                return Some(parsed);
+            }
+        }
+
+        None
+    }
+
+    fn parse_line_numbered_output(output: &str) -> Vec<(usize, String)> {
+        output
+            .lines()
+            .filter_map(|line| {
+                let trimmed = line.trim();
+                let (line_no, text) = trimmed.split_once(':')?;
+                let number = line_no
+                    .trim()
+                    .trim_start_matches('L')
+                    .parse::<usize>()
+                    .ok()?;
+                Some((number, text.trim_end_matches('\r').to_string()))
+            })
+            .collect()
+    }
+
+    fn infer_file_from_query(query: &str) -> Option<String> {
+        let lower = query.to_lowercase();
+        let idx = lower.rfind(" in ")?;
+        let candidate = query[idx + 4..]
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .trim_matches(|c: char| c == '"' || c == '\'' || c == '`' || c == '.' || c == ',');
+        if candidate.is_empty() {
+            None
+        } else {
+            Some(candidate.to_string())
+        }
+    }
+
+    fn trace_output_for_storage(output: &str) -> String {
+        let trimmed = output.trim();
+        if trimmed == "(no matches)" || !Self::parse_line_numbered_output(output).is_empty() {
+            output.to_string()
+        } else {
+            truncate_with_ellipsis(output, 240)
+        }
     }
 
     /// Extract code from LLM response
@@ -908,6 +1288,11 @@ impl RlmExecutor {
     async fn handle_llm_query(&mut self, line: &str) -> Result<String> {
         // Extract query and optional context slice
         let (query, context_slice) = self.parse_llm_query(line);
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query: query.clone(),
+            response_preview: "[pending]".to_string(),
+            tokens: ContextTrace::estimate_tokens(&query),
+        });
 
         // Get the context to send
         let context_to_analyze = context_slice
@@ -973,6 +1358,16 @@ impl RlmExecutor {
             response: answer.clone(),
             tokens_used: response.usage.total_tokens,
         });
+        self.trace_steps.push(TraceStep {
+            iteration: self.sub_queries.len(),
+            action: format!("llm_query({})", truncate_with_ellipsis(&query, 120)),
+            output: truncate_with_ellipsis(&answer, 240),
+        });
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query,
+            response_preview: truncate_with_ellipsis(&answer, 240),
+            tokens: response.usage.total_tokens,
+        });
 
         Ok(format!("llm_query result: {}", answer))
     }
@@ -986,6 +1381,11 @@ impl RlmExecutor {
         query: &str,
         context_slice: Option<String>,
     ) -> Result<String> {
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query: query.to_string(),
+            response_preview: "[pending]".to_string(),
+            tokens: ContextTrace::estimate_tokens(query),
+        });
         let context_to_analyze = context_slice
             .clone()
             .unwrap_or_else(|| self.repl.context().to_string());
@@ -1045,6 +1445,11 @@ impl RlmExecutor {
             context_slice,
             response: answer.clone(),
             tokens_used: response.usage.total_tokens,
+        });
+        self.context_trace.log_event(ContextEvent::LlmQueryResult {
+            query: query.to_string(),
+            response_preview: truncate_with_ellipsis(&answer, 240),
+            tokens: response.usage.total_tokens,
         });
 
         Ok(format!("llm_query result: {}", answer))
@@ -1335,6 +1740,23 @@ mod tests {
 
         let result = repl.execute(r#"FINAL("This is the answer")"#);
         assert_eq!(result.final_answer, Some("This is the answer".to_string()));
+    }
+
+    #[test]
+    fn test_parse_line_numbered_output() {
+        let parsed =
+            RlmExecutor::parse_line_numbered_output("570:async fn analyze\nL1038:async fn x");
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0], (570, "async fn analyze".to_string()));
+        assert_eq!(parsed[1], (1038, "async fn x".to_string()));
+    }
+
+    #[test]
+    fn test_infer_file_from_query() {
+        let file = RlmExecutor::infer_file_from_query(
+            "Find all occurrences of 'async fn' in src/rlm/repl.rs",
+        );
+        assert_eq!(file.as_deref(), Some("src/rlm/repl.rs"));
     }
 
     #[test]

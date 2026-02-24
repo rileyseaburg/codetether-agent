@@ -1,10 +1,12 @@
 use anyhow::{Context, Result, anyhow};
 use candle_core::quantized::gguf_file;
-use candle_core::{Device, Tensor};
+use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 
 use candle_transformers::models::quantized_gemma3;
-use candle_transformers::models::{quantized_llama, quantized_qwen2};
+use candle_transformers::models::{
+    quantized_llama, quantized_qwen2, quantized_qwen3, quantized_qwen3_moe,
+};
 use candle_transformers::utils::apply_repeat_penalty;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -414,6 +416,8 @@ pub(crate) struct CandleThinker {
 enum CandleModel {
     Llama(quantized_llama::ModelWeights),
     Qwen2(quantized_qwen2::ModelWeights),
+    Qwen3(quantized_qwen3::ModelWeights),
+    Qwen3Moe(quantized_qwen3_moe::GGUFQWenMoE),
 
     Gemma3(quantized_gemma3::ModelWeights),
 }
@@ -423,6 +427,8 @@ impl CandleModel {
         match self {
             Self::Llama(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen2(model) => Ok(model.forward(x, index_pos)?),
+            Self::Qwen3(model) => Ok(model.forward(x, index_pos)?),
+            Self::Qwen3Moe(model) => Ok(model.forward(x, index_pos)?),
 
             Self::Gemma3(model) => Ok(model.forward(x, index_pos)?),
         }
@@ -477,6 +483,19 @@ impl CandleThinker {
                 quantized_qwen2::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load qwen2 gguf from {}", model_path))?,
             ),
+            "qwen3" => CandleModel::Qwen3(
+                quantized_qwen3::ModelWeights::from_gguf(content, &mut reader, &device)
+                    .with_context(|| format!("failed to load qwen3 gguf from {}", model_path))?,
+            ),
+            "qwen3moe" | "qwen3_moe" => CandleModel::Qwen3Moe(
+                quantized_qwen3_moe::GGUFQWenMoE::from_gguf(
+                    content,
+                    &mut reader,
+                    &device,
+                    DType::F16,
+                )
+                .with_context(|| format!("failed to load qwen3_moe gguf from {}", model_path))?,
+            ),
 
             "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => CandleModel::Gemma3(
                 quantized_gemma3::ModelWeights::from_gguf(content, &mut reader, &device)
@@ -491,7 +510,7 @@ impl CandleThinker {
                     ));
                 }
                 return Err(anyhow!(
-                    "unsupported candle architecture '{}' (supported: llama, qwen2{})",
+                    "unsupported candle architecture '{}' (supported: llama, qwen2, qwen3, qwen3_moe{})",
                     other,
                     if cfg!(feature = "functiongemma") {
                         ", gemma/gemma2/gemma3"
@@ -653,7 +672,7 @@ impl CandleThinker {
 fn format_chat_prompt(architecture: &str, system_prompt: &str, user_prompt: &str) -> String {
     match architecture {
         // ChatML template (Qwen2, Yi, etc.)
-        "qwen2" => format!(
+        "qwen2" | "qwen3" | "qwen3moe" | "qwen3_moe" => format!(
             "<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n",
             system = system_prompt,
             user = user_prompt,
@@ -721,6 +740,7 @@ fn try_cuda_device(_ordinal: usize) -> Result<Device> {
 fn detect_context_window(content: &gguf_file::Content, architecture: &str) -> Option<usize> {
     let key = match architecture {
         "qwen2" => "qwen2.context_length",
+        "qwen3" | "qwen3moe" | "qwen3_moe" => "qwen3.context_length",
         "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => {
             // Try gemma3 first, then fall back to gemma2, gemma
             for prefix in ["gemma3", "gemma2", "gemma"] {

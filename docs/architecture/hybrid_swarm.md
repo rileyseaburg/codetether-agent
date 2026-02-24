@@ -1,62 +1,90 @@
-# CodeTether Hybrid Swarm Architecture
+# CodeTether Hybrid Swarm: Oracle-First Architecture
 
-This document outlines the architecture for a zero-latency, cost-minimized, hybrid AI coding swarm that completely separates strategic reasoning from syntax formatting and code generation.
+This document is the current architecture source of truth for `codetether rlm` and oracle validation.
 
-## Part 1: The OKR (Objectives and Key Results)
+## Objective
 
-**Objective**: Deploy a zero-latency, cost-minimized, hybrid AI coding swarm that completely separates strategic reasoning from syntax formatting and code generation.
+Run model-driven code navigation with deterministic verification always on, while persisting full validation traces for reproducible training data.
 
-- **Key Result 1 (Cost)**: Reduce Claude Opus API output token costs by 100% for tool-calling and JSON formatting by offloading all syntax to local FunctionGemma.
-- **Key Result 2 (Latency)**: Achieve sustained code-generation speeds of >30 Tokens Per Second (TPS) by isolating the Qwen 7B worker model entirely within the RTX 2070's 8GB VRAM.
-- **Key Result 3 (Reliability)**: Achieve a 0% A2A protocol parsing failure rate by using FunctionGemma as an absolute two-way semantic filter between raw text and strict JSON.
+## Locked Runtime Decisions
 
-## Part 2: Product Requirements Document (PRD)
+1. `codetether rlm` is Oracle-First.
+2. Oracle classification runs by default on every RLM invocation.
+3. Oracle verdicts are non-blocking for process exit (`failed` verdict does not force non-zero exit).
+4. Static no-provider fallback is removed from `rlm`; provider resolution is fail-fast.
+5. Provider strategy is local-first (`local_cuda`), then OpenRouter fallback when no explicit provider is pinned.
+6. Default cloud model baseline is Qwen 3.5 coder family (`qwen/qwen3.5-coder-7b`) unless overridden.
+7. Trace persistence writes full envelope records for all verdicts (`golden`, `failed`, `unverified`, `consensus`).
+8. Remote persistence target defaults to MinIO/S3 using Bus S3 credential resolution.
+9. Remote outages do not drop traces; traces spool locally and can be synced later.
 
-**Project Name**: Project CodeTether Swarm (Hybrid A2A Setup)
-**Status**: Architecture Finalized
+## `rlm` Command Flow
 
-### 1. Hardware & Deployment Allocation
+1. Build source content from `--file` or `--content`.
+2. Resolve provider/model:
+   - Explicit `--model provider/model`: use requested provider or fail.
+   - Explicit `local_cuda/...` without runtime config fails (no silent fallback).
+   - Unqualified model: try `local_cuda`, else `openrouter`.
+   - No model: try `local_cuda` with local default, else `openrouter` with default Qwen model.
+3. Execute RLM analysis.
+4. Validate result through oracle (unless explicitly disabled with `--no-oracle-verify`).
+5. Persist full oracle envelope via spool-first storage pipeline.
+6. Print answer and oracle status.
 
-- **Node A (The Command Center - 8GB Mac)**: Runs the CodeTether Orchestrator, the Terminal User Interface (TUI), and hosts FunctionGemma (270M) via Candle for instant, local semantic translation (5–50ms latency).
-- **Node B (The Execution Engine - PC w/ RTX 2070 8GB)**: Acts as a dedicated local API server running an aggressively quantized Qwen 2.5 Coder (7B Q4_K_M) to fit entirely in VRAM.
-- **Node C (The Cloud - Anthropic API)**: Hosts Claude 3 Opus, operating strictly as the strategic planner and debugger.
+## Oracle CLI
 
-### 2. Data Flow & Translation Pipeline
+### `codetether oracle validate`
 
-- **Step 1 (Intent)**: Opus outputs raw, conversational English instructions.
-- **Step 2 (Downward Translation)**: FunctionGemma (Mac) intercepts Opus's English, mapping it to strict Agent-to-Agent (A2A) JSON schema.
-- **Step 3 (Delegation)**: CodeTether routes the JSON task over the local network to the PC.
-- **Step 4 (Generation)**: Qwen (PC) generates raw Python/Rust code (plus potential conversational fluff) and returns it.
-- **Step 5 (Upward Translation)**: FunctionGemma (Mac) intercepts Qwen's response, strips conversational fluff, and packages the pure code into a clean JSON payload.
-- **Step 6 (Execution)**: CodeTether safely executes the clean code in the Mac's terminal.
+- Deterministically validates a provided FINAL payload against source.
+- Supports `--file` or `--content`, and `--payload` or `--payload-file`.
+- JSON mode emits verdict + full record envelope.
+- Persistence is opt-in with `--persist`.
 
-## Part 3: The Claude Opus System Prompt
+### `codetether oracle sync`
 
-This prompt is designed to absolutely forbid Opus from trying to be helpful with formatting, forcing it to act purely as a high-level manager to save API tokens.
+- Flushes local pending spool records to configured MinIO/S3 target.
+- Reports `uploaded`, `retained`, `failed`, and `pending_after`.
 
-### System Prompt: CodeTether Swarm Orchestrator
+## Persistence Semantics
 
-You are the Strategic Orchestrator for a local AI software development swarm.
+### Remote config resolution
 
-**YOUR ROLE:**
-Your only job is to reason through software requirements, architect solutions, and issue step-by-step commands to your sub-agents. You are the "Brain." You do not have hands.
+Uses Bus S3 resolution order:
 
-**STRICT PROTOCOLS (READ CAREFULLY):**
+1. `MINIO_*` / `CODETETHER_BUS_S3_*`
+2. `CODETETHER_CHAT_SYNC_MINIO_*`
+3. Vault `chat-sync-minio`
 
-- **DO NOT WRITE JSON:** You are communicating through a local FunctionGemma translation layer. You must never attempt to format your outputs as JSON, XML, or structured tool calls. Do not write curly braces or schemas. Doing so will break the translation pipeline and waste tokens.
-- **DO NOT WRITE CODE:** You must not write the actual implementation code. You must delegate code generation to the local worker agent.
-- **USE PLAIN ENGLISH:** Issue your directives in concise, direct natural language. Treat the system like a human developer sitting next to you.
+### Local spool
 
-**EXAMPLE GOOD OUTPUT:**
-"Agent, we need to parse the auth.log file. Write a Python script to extract all failed login IP addresses, save it to a new file called 'banned_ips.txt', and execute it."
+- Default: `~/.codetether/traces/pending/`
+- Override: `CODETETHER_ORACLE_SPOOL_DIR`
+- Writes are atomic (temp file then rename).
 
-**EXAMPLE BAD OUTPUT:**
-```json
-{
-  "tool": "write_script",
-  "code": "..."
-}
-```
-(Do NOT do this).
+### Upload behavior
 
-State your intent clearly, wait for the worker to execute, and evaluate the terminal output when it is returned to you.
+1. Write local spool file first.
+2. Attempt remote upload.
+3. On success, remove local spool file.
+4. On failure, keep local spool file and report warning.
+
+## Output Contracts
+
+### Non-JSON `codetether rlm`
+
+- Prints normal answer.
+- Always appends one oracle status line:
+  - `[oracle: golden ✓] ...`
+  - `[oracle: failed ✗] ...`
+  - `[oracle: unverified —] ...`
+  - `[oracle: consensus ✓] ...`
+
+### JSON `codetether rlm`
+
+- Always includes `oracle` object with verdict metadata and persistence state.
+
+## Compatibility Notes
+
+- `--oracle-verify` remains accepted for compatibility but is deprecated and no-op.
+- Use `--no-oracle-verify` for explicit emergency opt-out.
+

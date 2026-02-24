@@ -107,16 +107,23 @@ pub fn rlm_tool_definitions() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "rlm_final".to_string(),
-            description: "Return the final answer to the analysis query. Call this when you have gathered enough information to answer.".to_string(),
+            description: "Return the final structured payload to the analysis query. Always emit a JSON payload matching the FINAL schema.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
+                    "payload": {
+                        "type": "object",
+                        "description": "FINAL(JSON) payload. Preferred over `answer`."
+                    },
                     "answer": {
                         "type": "string",
-                        "description": "The complete, detailed answer to the original query"
+                        "description": "Deprecated compatibility field; if used, must contain the FINAL(JSON) payload string."
                     }
                 },
-                "required": ["answer"]
+                "anyOf": [
+                    { "required": ["payload"] },
+                    { "required": ["answer"] }
+                ]
             }),
         },
         ToolDefinition {
@@ -213,6 +220,12 @@ pub fn dispatch_tool_call(
             Some(RlmToolResult::Output(payload.to_string()))
         }
         "rlm_final" => {
+            if let Some(payload) = args.get("payload") {
+                if let Some(text_payload) = payload.as_str() {
+                    return Some(RlmToolResult::Final(text_payload.to_string()));
+                }
+                return Some(RlmToolResult::Final(payload.to_string()));
+            }
             let answer = args
                 .get("answer")
                 .and_then(|v| v.as_str())
@@ -221,36 +234,35 @@ pub fn dispatch_tool_call(
             Some(RlmToolResult::Final(answer))
         }
         "rlm_ast_query" => {
-            let query = args
-                .get("query")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            
+            let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
+
             // Create a tree-sitter oracle and execute the query
             let mut oracle = super::oracle::TreeSitterOracle::new(repl.context().to_string());
             match oracle.query(query) {
                 Ok(result) => {
                     // Format the result as JSON
-                    let matches: Vec<serde_json::Value> = result.matches.iter().map(|m| {
-                        serde_json::json!({
-                            "line": m.line,
-                            "column": m.column,
-                            "captures": m.captures,
-                            "text": m.text
+                    let matches: Vec<serde_json::Value> = result
+                        .matches
+                        .iter()
+                        .map(|m| {
+                            serde_json::json!({
+                                "line": m.line,
+                                "column": m.column,
+                                "captures": m.captures,
+                                "text": m.text
+                            })
                         })
-                    }).collect();
-                    
+                        .collect();
+
                     let output = serde_json::json!({
                         "query": query,
                         "match_count": matches.len(),
                         "matches": matches
                     });
-                    
+
                     Some(RlmToolResult::Output(output.to_string()))
                 }
-                Err(e) => {
-                    Some(RlmToolResult::Output(format!("AST query error: {}", e)))
-                }
+                Err(e) => Some(RlmToolResult::Output(format!("AST query error: {}", e))),
             }
         }
         _ => None, // Not an RLM tool

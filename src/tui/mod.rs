@@ -549,7 +549,8 @@ fn get_clipboard_image() -> Option<PendingImage> {
         .ok()?;
 
     // Base64 encode
-    let base64_data = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &png_bytes);
+    let base64_data =
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &png_bytes);
     let data_url = format!("data:image/png;base64,{}", base64_data);
 
     Some(PendingImage {
@@ -4454,13 +4455,14 @@ impl App {
         self.response_rx = Some(rx);
 
         // Take any pending images to send with this message
-        let pending_images: Vec<crate::session::ImageAttachment> = std::mem::take(&mut self.pending_images)
-            .into_iter()
-            .map(|img| crate::session::ImageAttachment {
-                data_url: img.data_url,
-                mime_type: Some("image/png".to_string()),
-            })
-            .collect();
+        let pending_images: Vec<crate::session::ImageAttachment> =
+            std::mem::take(&mut self.pending_images)
+                .into_iter()
+                .map(|img| crate::session::ImageAttachment {
+                    data_url: img.data_url,
+                    mime_type: Some("image/png".to_string()),
+                })
+                .collect();
 
         // Clone session for async processing
         let session_clone = session.clone();
@@ -4475,7 +4477,12 @@ impl App {
                     .await
             } else {
                 session
-                    .prompt_with_events_and_images(&message_clone, pending_images, tx.clone(), registry)
+                    .prompt_with_events_and_images(
+                        &message_clone,
+                        pending_images,
+                        tx.clone(),
+                        registry,
+                    )
                     .await
             };
 

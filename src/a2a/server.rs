@@ -143,7 +143,10 @@ fn record_a2a_message_telemetry(
         error,
         timestamp: chrono::Utc::now(),
     };
-    let _ = record_persistent("a2a_message", &serde_json::to_value(&record).unwrap_or_default());
+    let _ = record_persistent(
+        "a2a_message",
+        &serde_json::to_value(&record).unwrap_or_default(),
+    );
 }
 
 /// Handle JSON-RPC requests

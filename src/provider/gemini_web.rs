@@ -148,12 +148,12 @@ impl GeminiWebProvider {
     async fn get_session_tokens(&self) -> Result<SessionTokens> {
         static RE_NEW: OnceLock<Regex> = OnceLock::new();
         static RE_OLD: OnceLock<Regex> = OnceLock::new();
-        static RE_BL:  OnceLock<Regex> = OnceLock::new();
+        static RE_BL: OnceLock<Regex> = OnceLock::new();
         static RE_SID: OnceLock<Regex> = OnceLock::new();
 
         let re_new = RE_NEW.get_or_init(|| Regex::new(r#""thykhd":"([^"]+)""#).unwrap());
         let re_old = RE_OLD.get_or_init(|| Regex::new(r#""SNlM0e":"([^"]+)""#).unwrap());
-        let re_bl  = RE_BL .get_or_init(|| Regex::new(r#""cfb2h":"([^"]+)""#) .unwrap());
+        let re_bl = RE_BL.get_or_init(|| Regex::new(r#""cfb2h":"([^"]+)""#).unwrap());
         let re_sid = RE_SID.get_or_init(|| Regex::new(r#""FdrFJe":"([^"]+)""#).unwrap());
 
         let cookie_hdr = self.cookie_header();
@@ -179,10 +179,20 @@ impl GeminiWebProvider {
             );
         };
 
-        let bl    = re_bl .captures(&html).map(|c| c[1].to_string()).unwrap_or_default();
-        let f_sid = re_sid.captures(&html).map(|c| c[1].to_string()).unwrap_or_default();
+        let bl = re_bl
+            .captures(&html)
+            .map(|c| c[1].to_string())
+            .unwrap_or_default();
+        let f_sid = re_sid
+            .captures(&html)
+            .map(|c| c[1].to_string())
+            .unwrap_or_default();
 
-        Ok(SessionTokens { at_token, f_sid, bl })
+        Ok(SessionTokens {
+            at_token,
+            f_sid,
+            bl,
+        })
     }
 
     /// Return session tokens, re-fetching only when the cached copy has
@@ -209,30 +219,40 @@ impl GeminiWebProvider {
 
         let mut inner: Vec<Value> = Vec::with_capacity(69);
         inner.push(json!([[prompt, 0, null, null, null, null, 0]])); // [0]
-        inner.push(json!(["en"]));                                    // [1]
-        inner.push(json!([null, null, null]));                        // [2]
-        inner.push(Value::Null);                                      // [3]
-        inner.push(Value::Null);                                      // [4]
-        inner.push(Value::Null);                                      // [5]
-        inner.push(json!([1]));                                       // [6]
-        inner.push(json!(1));                                         // [7]
-        inner.push(Value::Null);                                      // [8]
-        inner.push(json!([1, 0, null, null, null, null, null, 0]));   // [9]
-        inner.push(Value::Null);                                      // [10]
-        inner.push(Value::Null);                                      // [11]
-        inner.push(json!([0]));                                       // [12]
-        for _ in 0..40 { inner.push(Value::Null); }                  // [13]-[52]
-        inner.push(json!(0));                                         // [53]
-        for _ in 0..5  { inner.push(Value::Null); }                  // [54]-[58]
-        inner.push(json!("CD1035A5-0E0E-4B68-B744-23C2D8960DF5"));   // [59]
-        inner.push(Value::Null);                                      // [60]
-        inner.push(json!([]));                                        // [61]
-        for _ in 0..4  { inner.push(Value::Null); }                  // [62]-[65]
-        inner.push(json!([ts, 0]));                                   // [66]
-        inner.push(Value::Null);                                      // [67]
-        inner.push(json!(2));                                         // [68]
+        inner.push(json!(["en"])); // [1]
+        inner.push(json!([null, null, null])); // [2]
+        inner.push(Value::Null); // [3]
+        inner.push(Value::Null); // [4]
+        inner.push(Value::Null); // [5]
+        inner.push(json!([1])); // [6]
+        inner.push(json!(1)); // [7]
+        inner.push(Value::Null); // [8]
+        inner.push(json!([1, 0, null, null, null, null, null, 0])); // [9]
+        inner.push(Value::Null); // [10]
+        inner.push(Value::Null); // [11]
+        inner.push(json!([0])); // [12]
+        for _ in 0..40 {
+            inner.push(Value::Null);
+        } // [13]-[52]
+        inner.push(json!(0)); // [53]
+        for _ in 0..5 {
+            inner.push(Value::Null);
+        } // [54]-[58]
+        inner.push(json!("CD1035A5-0E0E-4B68-B744-23C2D8960DF5")); // [59]
+        inner.push(Value::Null); // [60]
+        inner.push(json!([])); // [61]
+        for _ in 0..4 {
+            inner.push(Value::Null);
+        } // [62]-[65]
+        inner.push(json!([ts, 0])); // [66]
+        inner.push(Value::Null); // [67]
+        inner.push(json!(2)); // [68]
 
-        debug_assert_eq!(inner.len(), 69, "f.req inner list must be exactly 69 elements");
+        debug_assert_eq!(
+            inner.len(),
+            69,
+            "f.req inner list must be exactly 69 elements"
+        );
 
         let inner_json = serde_json::to_string(&inner).unwrap_or_default();
         serde_json::to_string(&json!([null, inner_json])).unwrap_or_default()
@@ -247,14 +267,26 @@ impl GeminiWebProvider {
         let mut last = String::new();
         for line in raw.lines() {
             let line = line.trim();
-            if line.is_empty() || !line.starts_with('[') { continue; }
-            let Ok(outer) = serde_json::from_str::<Value>(line) else { continue };
-            let Some(arr) = outer.as_array() else { continue };
-            let Some(two) = arr.get(2).and_then(Value::as_str) else { continue };
-            let Ok(inner) = serde_json::from_str::<Value>(two) else { continue };
+            if line.is_empty() || !line.starts_with('[') {
+                continue;
+            }
+            let Ok(outer) = serde_json::from_str::<Value>(line) else {
+                continue;
+            };
+            let Some(arr) = outer.as_array() else {
+                continue;
+            };
+            let Some(two) = arr.get(2).and_then(Value::as_str) else {
+                continue;
+            };
+            let Ok(inner) = serde_json::from_str::<Value>(two) else {
+                continue;
+            };
             if let Some(text) = inner
-                .get(4).and_then(|v| v.get(0))
-                .and_then(|v| v.get(1)).and_then(|v| v.get(0))
+                .get(4)
+                .and_then(|v| v.get(0))
+                .and_then(|v| v.get(1))
+                .and_then(|v| v.get(0))
                 .and_then(Value::as_str)
             {
                 last = text.to_string();
@@ -284,7 +316,20 @@ impl GeminiWebProvider {
         let mode_id = Self::mode_id(model);
 
         let ext_header = {
-            let v: Value = json!([1, null, null, null, mode_id, null, null, 0, [4], null, null, 3]);
+            let v: Value = json!([
+                1,
+                null,
+                null,
+                null,
+                mode_id,
+                null,
+                null,
+                0,
+                [4],
+                null,
+                null,
+                3
+            ]);
             serde_json::to_string(&v).unwrap_or_default()
         };
 
@@ -299,11 +344,11 @@ impl GeminiWebProvider {
         let url = reqwest::Url::parse_with_params(
             GEMINI_ENDPOINT,
             &[
-                ("bl",     tokens.bl.as_str()),
-                ("f.sid",  tokens.f_sid.as_str()),
-                ("hl",     "en"),
+                ("bl", tokens.bl.as_str()),
+                ("f.sid", tokens.f_sid.as_str()),
+                ("hl", "en"),
                 ("_reqid", reqid.as_str()),
-                ("rt",     "c"),
+                ("rt", "c"),
             ],
         )
         .context("Failed to build Gemini endpoint URL")?;
@@ -311,10 +356,10 @@ impl GeminiWebProvider {
         Ok(self
             .client
             .post(url)
-            .header("Cookie",                    cookie_hdr)
-            .header("X-Same-Domain",             "1")
-            .header("Origin",                    GEMINI_ORIGIN)
-            .header("Referer",                   format!("{}/app", GEMINI_ORIGIN))
+            .header("Cookie", cookie_hdr)
+            .header("X-Same-Domain", "1")
+            .header("Origin", GEMINI_ORIGIN)
+            .header("Referer", format!("{}/app", GEMINI_ORIGIN))
             .header("x-goog-ext-525001261-jspb", ext_header)
             .form(&[("f.req", freq), ("at", tokens.at_token)]))
     }
@@ -338,7 +383,10 @@ impl GeminiWebProvider {
             );
         }
 
-        let body = resp.text().await.context("Failed to read Gemini response body")?;
+        let body = resp
+            .text()
+            .await
+            .context("Failed to read Gemini response body")?;
         let text = Self::extract_text(&body);
         if text.is_empty() {
             anyhow::bail!(
@@ -352,21 +400,23 @@ impl GeminiWebProvider {
 
 #[async_trait]
 impl Provider for GeminiWebProvider {
-    fn name(&self) -> &str { "gemini-web" }
+    fn name(&self) -> &str {
+        "gemini-web"
+    }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         Ok(MODELS
             .iter()
             .map(|(id, _, label, ctx)| ModelInfo {
-                id:                      id.to_string(),
-                name:                    label.to_string(),
-                provider:                "gemini-web".to_string(),
-                context_window:          *ctx,
-                max_output_tokens:       Some(65_536),
-                supports_vision:         false,
-                supports_tools:          false,
-                supports_streaming:      true,
-                input_cost_per_million:  Some(0.0),
+                id: id.to_string(),
+                name: label.to_string(),
+                provider: "gemini-web".to_string(),
+                context_window: *ctx,
+                max_output_tokens: Some(65_536),
+                supports_vision: false,
+                supports_tools: false,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.0),
                 output_cost_per_million: Some(0.0),
             })
             .collect())
@@ -374,37 +424,44 @@ impl Provider for GeminiWebProvider {
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let prompt = request
-            .messages.iter()
+            .messages
+            .iter()
             .map(|m| {
                 let role = match m.role {
-                    Role::System    => "System",
-                    Role::User      => "User",
+                    Role::System => "System",
+                    Role::User => "User",
                     Role::Assistant => "Assistant",
-                    Role::Tool      => "Tool",
+                    Role::Tool => "Tool",
                 };
-                let text = m.content.iter()
+                let text = m
+                    .content
+                    .iter()
                     .filter_map(|p| match p {
                         ContentPart::Text { text } => Some(text.as_str()),
                         _ => None,
                     })
-                    .collect::<Vec<_>>().join("");
+                    .collect::<Vec<_>>()
+                    .join("");
                 format!("{role}: {text}")
             })
-            .collect::<Vec<_>>().join("\n");
+            .collect::<Vec<_>>()
+            .join("\n");
 
-        let text = self.ask(&prompt, &request.model).await
+        let text = self
+            .ask(&prompt, &request.model)
+            .await
             .context("Gemini Web completion failed")?;
 
         Ok(CompletionResponse {
             message: Message {
-                role:    Role::Assistant,
+                role: Role::Assistant,
                 content: vec![ContentPart::Text { text }],
             },
             usage: Usage {
-                prompt_tokens:     0,
+                prompt_tokens: 0,
                 completion_tokens: 0,
-                total_tokens:      0,
-                cache_read_tokens:  None,
+                total_tokens: 0,
+                cache_read_tokens: None,
                 cache_write_tokens: None,
             },
             finish_reason: FinishReason::Stop,
@@ -416,23 +473,28 @@ impl Provider for GeminiWebProvider {
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
         let prompt = request
-            .messages.iter()
+            .messages
+            .iter()
             .map(|m| {
                 let role = match m.role {
-                    Role::System    => "System",
-                    Role::User      => "User",
+                    Role::System => "System",
+                    Role::User => "User",
                     Role::Assistant => "Assistant",
-                    Role::Tool      => "Tool",
+                    Role::Tool => "Tool",
                 };
-                let text = m.content.iter()
+                let text = m
+                    .content
+                    .iter()
                     .filter_map(|p| match p {
                         ContentPart::Text { text } => Some(text.as_str()),
                         _ => None,
                     })
-                    .collect::<Vec<_>>().join("");
+                    .collect::<Vec<_>>()
+                    .join("");
                 format!("{role}: {text}")
             })
-            .collect::<Vec<_>>().join("\n");
+            .collect::<Vec<_>>()
+            .join("\n");
 
         let resp = self
             .build_request(&prompt, &request.model)
@@ -465,7 +527,9 @@ impl Provider for GeminiWebProvider {
 
             while let Some(chunk_result) = byte_stream.next().await {
                 let Ok(bytes) = chunk_result else { break };
-                let Ok(s) = std::str::from_utf8(&bytes) else { continue };
+                let Ok(s) = std::str::from_utf8(&bytes) else {
+                    continue;
+                };
                 buf.push_str(s);
 
                 let current_text = Self::extract_text(&buf);

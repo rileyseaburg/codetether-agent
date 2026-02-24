@@ -904,7 +904,9 @@ impl RalphLoop {
                                 }
 
                                 // Merge worktree back to main
-                                if let (Some(wt), Some(mgr)) = (worktree_info.as_ref(), worktree_mgr.as_ref()) {
+                                if let (Some(wt), Some(mgr)) =
+                                    (worktree_info.as_ref(), worktree_mgr.as_ref())
+                                {
                                     match mgr.merge(&wt.name).await {
                                         Ok(merge_result) => {
                                             if merge_result.success {
@@ -970,7 +972,11 @@ impl RalphLoop {
                                                                 story.id
                                                             );
                                                             match mgr
-                                                                .complete_merge(&wt.name, &commit_msg).await
+                                                                .complete_merge(
+                                                                    &wt.name,
+                                                                    &commit_msg,
+                                                                )
+                                                                .await
                                                             {
                                                                 Ok(final_result) => {
                                                                     if final_result.success {
@@ -986,7 +992,9 @@ impl RalphLoop {
                                                                             story_id = %story.id,
                                                                             "Merge failed even after resolution"
                                                                         );
-                                                                        let _ = mgr.abort_merge(&wt.name).await;
+                                                                        let _ = mgr
+                                                                            .abort_merge(&wt.name)
+                                                                            .await;
                                                                     }
                                                                 }
                                                                 Err(e) => {
@@ -995,7 +1003,9 @@ impl RalphLoop {
                                                                         error = %e,
                                                                         "Failed to complete merge after resolution"
                                                                     );
-                                                                    let _ = mgr.abort_merge(&wt.name).await;
+                                                                    let _ = mgr
+                                                                        .abort_merge(&wt.name)
+                                                                        .await;
                                                                 }
                                                             }
                                                         } else {
@@ -1075,7 +1085,9 @@ impl RalphLoop {
                                     passed: false,
                                 });
                                 // Cleanup worktree without merging
-                                if let (Some(wt), Some(mgr)) = (worktree_info.as_ref(), worktree_mgr.as_ref()) {
+                                if let (Some(wt), Some(mgr)) =
+                                    (worktree_info.as_ref(), worktree_mgr.as_ref())
+                                {
                                     let _ = mgr.cleanup(&wt.name).await;
                                 }
                             }
