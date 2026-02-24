@@ -29,7 +29,17 @@ const AUTOCHAT_MAX_ROUNDS: usize = 3;
 const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
 const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
+const AUTOCHAT_RLM_FALLBACK_CHARS: usize = 3_500;
+const AUTOCHAT_RLM_HANDOFF_QUERY: &str = "Prepare a concise relay handoff for the next specialist.\n\
+Return FINAL(JSON) with this exact shape:\n\
+{\"kind\":\"semantic\",\"file\":\"relay_handoff\",\"answer\":\"...\"}\n\
+The \"answer\" must include:\n\
+1) key conclusions,\n\
+2) unresolved risks,\n\
+3) one exact next action.\n\
+Keep it concise and actionable.";
 const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
+const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen2.5-coder-7b";
 const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
 const GO_SWAP_MODEL_MINIMAX: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
@@ -49,7 +59,7 @@ use crate::okr::{
 };
 use crate::provider::{ContentPart, Role};
 use crate::ralph::{RalphConfig, RalphLoop};
-use crate::rlm::RlmExecutor;
+use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::{Session, SessionEvent, SessionSummary, list_sessions_paged};
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::bus_log::{BusLogState, render_bus_log};
@@ -1388,6 +1398,7 @@ fn resolve_provider_for_model_autochat(
     }
 
     let fallbacks = [
+        "local_cuda",
         "zai",
         "openai",
         "github-copilot",
@@ -1881,30 +1892,35 @@ async fn prepare_autochat_handoff_with_registry(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
 ) -> (String, bool) {
     let mut used_rlm = false;
-    let mut relay_payload = output.to_string();
+    let mut relay_payload = if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
+        truncate_with_ellipsis(output, AUTOCHAT_RLM_FALLBACK_CHARS)
+    } else {
+        output.to_string()
+    };
 
-    if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
-        relay_payload = truncate_with_ellipsis(output, 3_500);
-
-        if let Some((provider, model_name)) =
-            resolve_provider_for_model_autochat(registry, model_ref)
-        {
-            let mut executor =
-                RlmExecutor::new(output.to_string(), provider, model_name).with_max_iterations(2);
-
-            let query = "Summarize this agent output for the next specialist in a relay. Keep:\n\
-                         1) key conclusions, 2) unresolved risks, 3) exact next action.\n\
-                         Keep it concise and actionable.";
-            match executor.analyze(query).await {
-                Ok(result) => {
-                    relay_payload = result.answer;
+    if let Some((provider, model_name)) = resolve_provider_for_model_autochat(registry, model_ref) {
+        let mut executor =
+            RlmExecutor::new(output.to_string(), provider, model_name).with_max_iterations(2);
+        match executor.analyze(AUTOCHAT_RLM_HANDOFF_QUERY).await {
+            Ok(result) => {
+                let normalized = extract_semantic_handoff_from_rlm(&result.answer);
+                if !normalized.is_empty() {
+                    relay_payload = normalized;
                     used_rlm = true;
                 }
-                Err(err) => {
-                    tracing::warn!(error = %err, "RLM handoff summarization failed; using truncation fallback");
-                }
+            }
+            Err(err) => {
+                tracing::warn!(
+                    error = %err,
+                    "RLM handoff normalization failed; using fallback payload"
+                );
             }
         }
+    } else {
+        tracing::warn!(
+            model_ref = %model_ref,
+            "No provider resolved for RLM handoff normalization; using fallback payload"
+        );
     }
 
     (
@@ -1914,6 +1930,13 @@ async fn prepare_autochat_handoff_with_registry(
         ),
         used_rlm,
     )
+}
+
+fn extract_semantic_handoff_from_rlm(answer: &str) -> String {
+    match FinalPayload::parse(answer) {
+        FinalPayload::Semantic(payload) => payload.answer,
+        _ => answer.trim().to_string(),
+    }
 }
 
 /// Ralph worker for TUI `/go` approval flow.
@@ -2564,7 +2587,7 @@ async fn run_autochat_worker(
         summary.push_str(&format!("\n\nFailure detail: {note}"));
     }
     if rlm_handoff_count > 0 {
-        summary.push_str(&format!("\n\nRLM compressed handoffs: {rlm_handoff_count}"));
+        summary.push_str(&format!("\n\nRLM-normalized handoffs: {rlm_handoff_count}"));
     }
     if dynamic_spawn_count > 0 {
         summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
@@ -3074,7 +3097,7 @@ async fn resume_autochat_worker(
         summary.push_str(&format!("\n\nFailure detail: {note}"));
     }
     if rlm_handoff_count > 0 {
-        summary.push_str(&format!("\n\nRLM compressed handoffs: {rlm_handoff_count}"));
+        summary.push_str(&format!("\n\nRLM-normalized handoffs: {rlm_handoff_count}"));
     }
     if dynamic_spawn_count > 0 {
         summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
@@ -3107,7 +3130,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR-gated relay (requires approval, tracks outcomes)\n• /autochat <task> - tactical relay (fast path, no OKR)\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
+                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR-gated relay (requires approval, tracks outcomes)\n• /autochat <task> - tactical relay (fast path, no OKR)\n• /autochat-local <task> - tactical relay pinned to local CUDA\n• /local - switch active model to local CUDA\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -3290,6 +3313,7 @@ impl App {
         config: &Config,
         okr_id: Option<Uuid>,
         okr_run_id: Option<Uuid>,
+        model_override: Option<String>,
     ) {
         if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
             self.messages.push(ChatMessage::new(
@@ -3309,15 +3333,20 @@ impl App {
             return;
         }
 
+        let model_ref = model_override
+            .or_else(|| self.active_model.clone())
+            .or_else(|| config.default_model.clone())
+            .unwrap_or_else(|| "zai/glm-5".to_string());
+
         let status_msg = if okr_id.is_some() {
             format!(
-                "Preparing OKR-gated relay with {agent_count} agents…\nTask: {}\n(Approval-granted execution)",
-                truncate_with_ellipsis(&task, 160)
+                "Preparing OKR-gated relay with {agent_count} agents…\nModel: {model_ref}\nTask: {}\n(Approval-granted execution)",
+                truncate_with_ellipsis(&task, 160),
             )
         } else {
             format!(
-                "Preparing relay with {agent_count} agents…\nTask: {}\n(Compact mode: live agent streaming here, detailed relay envelopes in /buslog)",
-                truncate_with_ellipsis(&task, 180)
+                "Preparing relay with {agent_count} agents…\nModel: {model_ref}\nTask: {}\n(Compact mode: live agent streaming here, detailed relay envelopes in /buslog)",
+                truncate_with_ellipsis(&task, 180),
             )
         };
 
@@ -3335,12 +3364,6 @@ impl App {
             ));
             return;
         };
-
-        let model_ref = self
-            .active_model
-            .clone()
-            .or_else(|| config.default_model.clone())
-            .unwrap_or_else(|| "zai/glm-5".to_string());
 
         let profiles = self.build_autochat_profiles(agent_count);
         if profiles.is_empty() {
@@ -3474,6 +3497,7 @@ impl App {
                     config,
                     Some(okr_id),
                     Some(run_id),
+                    None,
                 )
                 .await;
                 return;
@@ -3608,6 +3632,36 @@ impl App {
             }
         }
 
+        if let Some(rest) = command_with_optional_args(&message, "/autochat-local") {
+            let Some((count, task)) = parse_autochat_args(rest) else {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!(
+                        "Usage: /autochat-local [count] <task>\nExamples:\n  /autochat-local implement protocol-first relay with tests\n  /autochat-local 4 implement protocol-first relay with tests\ncount range: 2-{} (default: {})",
+                        AUTOCHAT_MAX_AGENTS,
+                        AUTOCHAT_DEFAULT_AGENTS,
+                    ),
+                ));
+                return;
+            };
+
+            let current_model = self
+                .active_model
+                .as_deref()
+                .or(config.default_model.as_deref());
+            let local_model = resolve_local_loop_model(current_model);
+            self.start_autochat_execution(
+                count,
+                task.to_string(),
+                config,
+                None,
+                None,
+                Some(local_model),
+            )
+            .await;
+            return;
+        }
+
         // Check for /autochat command
         if let Some(rest) = command_with_optional_args(&message, "/autochat") {
             let Some((count, task)) = parse_autochat_args(rest) else {
@@ -3661,7 +3715,7 @@ impl App {
                 return;
             }
 
-            self.start_autochat_execution(count, task.to_string(), config, None, None)
+            self.start_autochat_execution(count, task.to_string(), config, None, None, None)
                 .await;
             return;
         }
@@ -4302,6 +4356,34 @@ impl App {
                 // Open model picker
                 self.open_model_picker(config).await;
             }
+            return;
+        }
+
+        if message.trim() == "/local" || message.trim().starts_with("/local ") {
+            let requested = message
+                .trim()
+                .strip_prefix("/local")
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+            let current_model = self
+                .active_model
+                .as_deref()
+                .or(config.default_model.as_deref());
+            let local_model = requested
+                .map(normalize_local_model_ref)
+                .unwrap_or_else(|| resolve_local_loop_model(current_model));
+
+            self.active_model = Some(local_model.clone());
+            if let Some(session) = self.session.as_mut() {
+                session.metadata.model = Some(local_model.clone());
+            }
+            self.persist_active_session("direct_local_model_set").await;
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!(
+                    "Local mode enabled: {local_model}\nUse /autochat-local <task> for forced local relay runs."
+                ),
+            ));
             return;
         }
 
@@ -9043,6 +9125,11 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/help", "Open help"),
         ("/spawn ", "Create a named sub-agent"),
         ("/autochat ", "Tactical relay (fast path, no OKR tracking)"),
+        (
+            "/autochat-local ",
+            "Tactical relay forced to local CUDA model",
+        ),
+        ("/local", "Switch active model to local CUDA"),
         ("/agents", "List spawned sub-agents"),
         ("/kill ", "Remove a spawned sub-agent"),
         ("/agent ", "Focus or message a spawned sub-agent"),
@@ -9210,6 +9297,41 @@ fn next_go_model(current_model: Option<&str>) -> String {
         Some(model) if is_minimax_m25_model(model) => GO_SWAP_MODEL_GLM.to_string(),
         _ => GO_SWAP_MODEL_MINIMAX.to_string(),
     }
+}
+
+fn normalize_local_model_ref(model: &str) -> String {
+    let trimmed = model.trim();
+    if trimmed.is_empty() {
+        return AUTOCHAT_LOCAL_DEFAULT_MODEL.to_string();
+    }
+
+    let (provider_name, _) = crate::provider::parse_model_string(trimmed);
+    if provider_name.is_some() {
+        trimmed.to_string()
+    } else {
+        format!("local_cuda/{trimmed}")
+    }
+}
+
+fn resolve_local_loop_model(current_model: Option<&str>) -> String {
+    if let Ok(explicit) = std::env::var("CODETETHER_TUI_LOCAL_MODEL")
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
+        .or_else(|_| std::env::var("LOCAL_CUDA_MODEL"))
+    {
+        let normalized = normalize_local_model_ref(&explicit);
+        if !normalized.trim().is_empty() {
+            return normalized;
+        }
+    }
+
+    if let Some(model) = current_model {
+        let normalized = normalize_local_model_ref(model);
+        if normalized.starts_with("local_cuda/") {
+            return normalized;
+        }
+    }
+
+    AUTOCHAT_LOCAL_DEFAULT_MODEL.to_string()
 }
 
 fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
@@ -9645,6 +9767,9 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  TACTICAL MODE (fast path, no OKR tracking)".to_string(),
         "  /autochat [count] <task>  Immediate relay: no approval needed, no outcome tracking"
             .to_string(),
+        "  /autochat-local [count] <task>  Immediate relay pinned to local CUDA model".to_string(),
+        "  /local [model]  Switch active model to local CUDA (example: /local qwen2.5-coder-7b)"
+            .to_string(),
         "".to_string(),
         "  EASY MODE".to_string(),
         "  /add <name>     Create a helper teammate".to_string(),
@@ -9747,9 +9872,10 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 mod tests {
     use super::{
         AUTOCHAT_QUICK_DEMO_TASK, agent_avatar, agent_profile, command_with_optional_args,
-        estimate_cost, format_agent_identity, format_relay_handoff_line, is_easy_go_command,
-        is_secure_environment_from_values, match_slash_command_hint, minio_fallback_endpoint,
-        next_go_model, normalize_easy_command, normalize_for_convergence, normalize_minio_endpoint,
+        estimate_cost, extract_semantic_handoff_from_rlm, format_agent_identity,
+        format_relay_handoff_line, is_easy_go_command, is_secure_environment_from_values,
+        match_slash_command_hint, minio_fallback_endpoint, next_go_model, normalize_easy_command,
+        normalize_for_convergence, normalize_local_model_ref, normalize_minio_endpoint,
         parse_autochat_args,
     };
 
@@ -9794,6 +9920,24 @@ mod tests {
     fn slash_hint_includes_autochat_command() {
         let hint = match_slash_command_hint("/autochat");
         assert!(hint.contains("/autochat"));
+    }
+
+    #[test]
+    fn slash_hint_includes_autochat_local_command() {
+        let hint = match_slash_command_hint("/autochat-local");
+        assert!(hint.contains("/autochat-local"));
+    }
+
+    #[test]
+    fn normalize_local_model_ref_adds_local_provider_prefix() {
+        assert_eq!(
+            normalize_local_model_ref("qwen2.5-coder-7b"),
+            "local_cuda/qwen2.5-coder-7b"
+        );
+        assert_eq!(
+            normalize_local_model_ref("local_cuda/qwen2.5-coder-7b"),
+            "local_cuda/qwen2.5-coder-7b"
+        );
     }
 
     #[test]
@@ -9855,6 +9999,23 @@ mod tests {
         let a = normalize_for_convergence("Done! Next Step: Add tests.");
         let b = normalize_for_convergence("done next step add tests");
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn extract_semantic_handoff_prefers_semantic_payload_answer() {
+        let payload = r#"{"kind":"semantic","file":"relay_handoff","answer":"Ship phase 1, test API edge cases, then hand off to infra."}"#;
+        assert_eq!(
+            extract_semantic_handoff_from_rlm(payload),
+            "Ship phase 1, test API edge cases, then hand off to infra."
+        );
+    }
+
+    #[test]
+    fn extract_semantic_handoff_falls_back_to_trimmed_raw_answer() {
+        assert_eq!(
+            extract_semantic_handoff_from_rlm("  plain relay output  "),
+            "plain relay output"
+        );
     }
 
     #[test]
