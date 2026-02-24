@@ -612,6 +612,7 @@ impl RlmExecutor {
              CRITICAL OUTPUT CONTRACT:\n\
              - Your final response MUST be exactly one FINAL(<json>) call.\n\
              - Never end with prose and never use FINAL(\"...\").\n\
+             - For pattern/grep queries, you MUST run grep/head/tail first. Never guess line numbers or matches.\n\
              - The JSON inside FINAL(...) MUST match one of these shapes:\n\
                1) {{\"kind\":\"grep\",\"file\":\"<path>\",\"pattern\":\"<regex>\",\"matches\":[{{\"line\":123,\"text\":\"...\"}}]}}\n\
                2) {{\"kind\":\"ast\",\"file\":\"<path>\",\"query\":\"<tree-sitter query>\",\"results\":[{{\"name\":\"...\",\"args\":[],\"return_type\":null,\"span\":[1,2]}}]}}\n\
@@ -671,6 +672,8 @@ impl RlmExecutor {
             .and_then(|v| v.parse::<u64>().ok())
             .filter(|v| *v > 0)
             .unwrap_or(60);
+        let requires_pattern_evidence =
+            GrepOracle::classify_query(query) == QueryType::PatternMatch;
 
         let mut final_answer = None;
 
@@ -778,6 +781,24 @@ impl RlmExecutor {
                     });
                     match dispatch_tool_call(name, arguments, &mut self.repl) {
                         Some(RlmToolResult::Final(answer)) => {
+                            if requires_pattern_evidence && !self.has_pattern_evidence() {
+                                let rejection = "FINAL rejected: pattern query requires grep evidence. Call rlm_grep first, then FINAL with exact line-numbered matches.";
+                                self.trace_steps.push(TraceStep {
+                                    iteration: iterations,
+                                    action: "reject_final(no_grep_evidence)".to_string(),
+                                    output: rejection.to_string(),
+                                });
+                                self.context_trace.log_event(ContextEvent::ToolResult {
+                                    tool_call_id: call_id.clone(),
+                                    result_preview: rejection.to_string(),
+                                    tokens: ContextTrace::estimate_tokens(rejection),
+                                });
+                                tool_results.push(ContentPart::ToolResult {
+                                    tool_call_id: call_id.clone(),
+                                    content: rejection.to_string(),
+                                });
+                                continue;
+                            }
                             if self.verbose {
                                 println!("[RLM] Final answer received via tool call");
                             }
@@ -850,7 +871,7 @@ impl RlmExecutor {
                                     "{name}({})",
                                     truncate_with_ellipsis(arguments, 120)
                                 ),
-                                output: truncate_with_ellipsis(&output, 240),
+                                output: Self::trace_output_for_storage(&output),
                             });
                             self.context_trace.log_event(ContextEvent::ToolResult {
                                 tool_call_id: call_id.clone(),
@@ -943,6 +964,31 @@ impl RlmExecutor {
 
             // Check for final answer
             if let Some(answer) = &execution_result.final_answer {
+                let stdout_has_pattern_evidence = code.contains("grep(")
+                    || execution_result.stdout.contains("(no matches)")
+                    || !Self::parse_line_numbered_output(&execution_result.stdout).is_empty();
+                if requires_pattern_evidence
+                    && !self.has_pattern_evidence()
+                    && !stdout_has_pattern_evidence
+                {
+                    let rejection = "FINAL rejected: pattern query requires grep evidence. Run grep/head/tail before FINAL and include exact lines.";
+                    self.trace_steps.push(TraceStep {
+                        iteration: iterations,
+                        action: "reject_final(no_grep_evidence)".to_string(),
+                        output: rejection.to_string(),
+                    });
+                    self.context_trace.log_event(ContextEvent::ExecutionOutput {
+                        output: rejection.to_string(),
+                        tokens: ContextTrace::estimate_tokens(rejection),
+                    });
+                    messages.push(Message {
+                        role: Role::User,
+                        content: vec![ContentPart::Text {
+                            text: rejection.to_string(),
+                        }],
+                    });
+                    continue;
+                }
                 self.context_trace.log_event(ContextEvent::Final {
                     answer: truncate_with_ellipsis(answer, 400),
                     tokens: ContextTrace::estimate_tokens(answer),
@@ -957,7 +1003,7 @@ impl RlmExecutor {
             });
             if let Some(step) = self.trace_steps.last_mut() {
                 if step.iteration == iterations && step.output.is_empty() {
-                    step.output = truncate_with_ellipsis(&execution_result.stdout, 240);
+                    step.output = Self::trace_output_for_storage(&execution_result.stdout);
                 }
             }
 
@@ -1004,28 +1050,63 @@ impl RlmExecutor {
     }
 
     fn ensure_structured_final_payload(&mut self, query: &str, raw_final_text: String) -> String {
-        if !matches!(
-            FinalPayload::parse(&raw_final_text),
-            FinalPayload::Malformed { .. }
-        ) {
-            return raw_final_text;
-        }
+        let parsed = FinalPayload::parse(&raw_final_text);
 
-        if let Some(coerced) = self.coerce_grep_payload_from_trace(query) {
-            let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
-            self.trace_steps.push(TraceStep {
-                iteration,
-                action: "coerce_final_payload(grep_trace)".to_string(),
-                output: truncate_with_ellipsis(&coerced, 240),
-            });
-            self.context_trace.log_event(ContextEvent::Final {
-                answer: truncate_with_ellipsis(&coerced, 400),
-                tokens: ContextTrace::estimate_tokens(&coerced),
-            });
-            tracing::info!(
-                "RLM coerced malformed/prose final answer into FINAL(JSON) grep payload"
-            );
-            return coerced;
+        if let Some(canonical) = self.coerce_grep_payload_from_trace(query) {
+            let canonical_payload = FinalPayload::parse(&canonical);
+            match &parsed {
+                FinalPayload::Grep(_) => {
+                    if canonical_payload != parsed {
+                        let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+                        self.trace_steps.push(TraceStep {
+                            iteration,
+                            action: "normalize_final_payload(grep_trace)".to_string(),
+                            output: truncate_with_ellipsis(&canonical, 240),
+                        });
+                        self.context_trace.log_event(ContextEvent::Final {
+                            answer: truncate_with_ellipsis(&canonical, 400),
+                            tokens: ContextTrace::estimate_tokens(&canonical),
+                        });
+                        tracing::info!(
+                            "RLM normalized FINAL(JSON) grep payload using trace evidence"
+                        );
+                        return canonical;
+                    }
+                    return raw_final_text;
+                }
+                FinalPayload::Malformed { .. } => {
+                    let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+                    self.trace_steps.push(TraceStep {
+                        iteration,
+                        action: "coerce_final_payload(grep_trace)".to_string(),
+                        output: truncate_with_ellipsis(&canonical, 240),
+                    });
+                    self.context_trace.log_event(ContextEvent::Final {
+                        answer: truncate_with_ellipsis(&canonical, 400),
+                        tokens: ContextTrace::estimate_tokens(&canonical),
+                    });
+                    tracing::info!(
+                        "RLM coerced malformed/prose final answer into FINAL(JSON) grep payload"
+                    );
+                    return canonical;
+                }
+                _ => {
+                    let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+                    self.trace_steps.push(TraceStep {
+                        iteration,
+                        action: "coerce_final_payload(grep_trace)".to_string(),
+                        output: truncate_with_ellipsis(&canonical, 240),
+                    });
+                    self.context_trace.log_event(ContextEvent::Final {
+                        answer: truncate_with_ellipsis(&canonical, 400),
+                        tokens: ContextTrace::estimate_tokens(&canonical),
+                    });
+                    tracing::info!(
+                        "RLM coerced non-grep FINAL payload into canonical grep payload using trace evidence"
+                    );
+                    return canonical;
+                }
+            }
         }
 
         raw_final_text
@@ -1050,6 +1131,15 @@ impl RlmExecutor {
         });
 
         serde_json::to_string(&payload).ok()
+    }
+
+    fn has_pattern_evidence(&self) -> bool {
+        self.trace_steps.iter().any(|step| {
+            step.action.contains("grep(")
+                || step.action.contains("rlm_grep(")
+                || step.output.contains("(no matches)")
+                || !Self::parse_line_numbered_output(&step.output).is_empty()
+        })
     }
 
     fn extract_latest_grep_matches(&self) -> Option<Vec<(usize, String)>> {
@@ -1087,7 +1177,7 @@ impl RlmExecutor {
                     .trim_start_matches('L')
                     .parse::<usize>()
                     .ok()?;
-                Some((number, text.trim().to_string()))
+                Some((number, text.trim_end_matches('\r').to_string()))
             })
             .collect()
     }
@@ -1104,6 +1194,15 @@ impl RlmExecutor {
             None
         } else {
             Some(candidate.to_string())
+        }
+    }
+
+    fn trace_output_for_storage(output: &str) -> String {
+        let trimmed = output.trim();
+        if trimmed == "(no matches)" || !Self::parse_line_numbered_output(output).is_empty() {
+            output.to_string()
+        } else {
+            truncate_with_ellipsis(output, 240)
         }
     }
 

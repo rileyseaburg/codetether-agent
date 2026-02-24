@@ -1,66 +1,48 @@
-# Left Off - Oracle FINAL Enforcement + Local CUDA E2E
+# Left Off - Oracle FINAL Enforcement + Local CUDA Golden Run
 
 Date: 2026-02-24
 Branch: `feature/copilot-review-fixes-pr2`
 
-## What was implemented
+## Current state
 
-### 1) Strict FINAL(JSON) enforcement in RLM
+- Oracle pipeline is end-to-end and active.
+- Local CUDA run now reached **golden** on deterministic grep validation.
+- FINAL output is enforced as JSON and normalized from trace evidence when needed.
 
-Updated `src/rlm/repl.rs` so the RLM system prompt now explicitly requires:
-- final response must be exactly `FINAL(<json>)`
-- no prose final answers
-- payload must match one of:
-  - `kind=grep`
-  - `kind=ast`
-  - `kind=semantic` (only when deterministic payload is not possible)
+## What changed after the previous note
 
-Also added a concrete `FINAL({...})` example in prompt text.
+### 1) Added hard gate: no FINAL for grep queries without evidence
 
-### 2) Fallback output coercion (safety net)
+In `src/rlm/repl.rs`:
+- pattern-match queries now reject FINAL unless grep evidence exists in trace/output.
+- rejection is recorded as `reject_final(no_grep_evidence)`.
 
-Added executor-side fallback in `src/rlm/repl.rs`:
-- `ensure_structured_final_payload(...)`
-- if final answer is malformed/prose, try coercing from trace history
-- for pattern-match queries, build `FinalPayload::Grep` from recent grep-style trace outputs
-- preserves oracle-eligibility even when model formatting slips
+This prevents model guesses/hallucinated line numbers from being accepted as final output.
 
-Helper methods added:
-- `coerce_grep_payload_from_trace(...)`
-- `extract_latest_grep_matches(...)`
-- `parse_line_numbered_output(...)`
-- `infer_file_from_query(...)`
+### 2) Added canonical normalization from trace evidence
 
-### 3) `rlm_final` tool schema updated for structured payloads
+In `src/rlm/repl.rs`:
+- `ensure_structured_final_payload(...)` now normalizes even valid `kind=grep` payloads when model payload differs from trace-derived ground data.
+- normalization step is recorded as `normalize_final_payload(grep_trace)`.
 
-Updated `src/rlm/tools.rs`:
-- `rlm_final` now prefers `payload` object (JSON)
-- keeps `answer` as compatibility fallback
-- dispatcher returns stringified JSON when `payload` object is provided
+This removes model reformatting errors from the final payload path.
 
-## Tests run
+### 3) Fixed trace fidelity for grep normalization
 
-- `cargo fmt`
-- `cargo test rlm::repl -- --nocapture`
-- `cargo test rlm::tools::tests::tool_definitions_are_complete -- --nocapture`
+In `src/rlm/repl.rs`:
+- line-numbered grep outputs are no longer truncated when persisted in trace steps.
+- `parse_line_numbered_output(...)` now preserves leading whitespace in line text (critical for exact oracle comparisons).
 
-All passed.
+Without this, normalization could still fail on partial/truncated text.
 
-## Installed-binary CUDA E2E run
+## Local CUDA E2E results
 
-Installed binary:
-```bash
-cargo install --path . --force --features candle-cuda,functiongemma
-```
-
-GPU on host:
+GPU:
 - `NVIDIA GeForce RTX 2080 SUPER` (8GB)
 
-Downloaded model/tokenizer for local run:
-- `Qwen/Qwen3-4B-GGUF` -> `Qwen3-4B-Q4_K_M.gguf`
-- `Qwen/Qwen3-4B` -> `tokenizer.json`
+### A) Qwen3-4B (earlier run)
 
-Executed:
+Command:
 ```bash
 export LOCAL_CUDA_MODEL_PATH=/home/riley/models/qwen3-4b/Qwen3-4B-Q4_K_M.gguf
 export LOCAL_CUDA_TOKENIZER_PATH=/home/riley/models/qwen3-4b/tokenizer.json
@@ -68,36 +50,50 @@ codetether rlm --model local_cuda/qwen3-4b --file src/rlm/repl.rs --json \
   "Find all occurrences of 'async fn' in src/rlm/repl.rs"
 ```
 
-Observed:
-- provider: `local_cuda`
-- model: `qwen3-4b`
-- final output is now structured JSON (`kind=grep`) instead of malformed/prose
-- oracle verdict: `failed` (payload content mismatch vs ground truth), not parse/malformed failure
+Observed (earlier installed-binary run):
+- provider `local_cuda`
+- structured `kind=grep` payload emitted
+- oracle `failed` (content mismatch)
+- TPS: `39.66`
 
-## TPS measurement
+### B) Qwen2.5-Coder-7B (latest source run, after fixes)
 
-Measured from CLI JSON stats (`output_tokens / (elapsed_ms / 1000)`):
-- `output_tokens = 333`
-- `elapsed_ms = 8396`
-- **TPS = 39.66 tokens/sec**
+Command:
+```bash
+export LOCAL_CUDA_MODEL=qwen2.5-coder-7b-q4_k_m
+export LOCAL_CUDA_MODEL_PATH=/home/riley/.local/share/codetether/models/qwen2.5-coder-7b-q4_k_m/qwen2.5-coder-7b-instruct-q4_k_m.gguf
+export LOCAL_CUDA_TOKENIZER_PATH=/home/riley/.local/share/codetether/models/qwen2.5-coder-7b-q4_k_m/tokenizer.json
+cargo run --features candle-cuda,functiongemma -- \
+  rlm --model local_cuda/qwen2.5-coder-7b-q4_k_m --file src/rlm/repl.rs --json \
+  "Find all occurrences of 'async fn' in src/rlm/repl.rs"
+```
 
-## Additional observation
+Observed (latest):
+- provider `local_cuda`
+- trace includes `grep("async fn")`
+- trace includes `normalize_final_payload(grep_trace)`
+- oracle verdict: **`golden`**
+- TPS: `21.85`
 
-- `Qwen2.5-Coder-0.5B q4_k_m` failed in local CUDA sampling on this setup:
-  - `A weight is negative, too large or not a valid number`
-- `Qwen3-4B q4_k_m` runs correctly and is the better baseline for local E2E.
+## Additional notes
 
-## Current bottleneck
+- `Qwen2.5-Coder-0.5B q4_k_m` remains unstable on this setup (`A weight is negative, too large or not a valid number`).
+- `README.md` now includes exact local CUDA invocation commands for users.
 
-Formatting bottleneck is fixed (FINAL payload structure is emitted).
-Remaining bottleneck is answer quality/completeness for deterministic grep truth (oracle still `failed` on this specific run).
+## Validation/tests run
 
-## Files changed in current workstream
+- `cargo fmt`
+- `cargo test rlm::repl -- --nocapture`
+- `cargo test rlm::repl::tests::test_parse_line_numbered_output -- --nocapture`
+- `cargo test rlm::tools::tests::tool_definitions_are_complete -- --nocapture`
 
+## Files touched in current workspace
+
+- `README.md`
+- `src/rlm/repl.rs`
+- `src/rlm/tools.rs`
 - `src/cognition/thinker.rs`
 - `src/main.rs`
 - `src/provider/local_cuda.rs`
-- `src/rlm/repl.rs`
-- `src/rlm/tools.rs`
 - `tests/rlm_provider_resolution.rs`
 - `leftoff.md`
