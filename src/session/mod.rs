@@ -6,7 +6,7 @@ use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
-use crate::provider::{Message, Usage};
+use crate::provider::{ContentPart, Message, Role, ToolDefinition, Usage};
 use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
@@ -101,6 +101,147 @@ fn context_window_for_model(model: &str) -> usize {
     } else {
         128_000 // conservative default
     }
+}
+
+fn session_completion_max_tokens() -> usize {
+    std::env::var("CODETETHER_SESSION_MAX_TOKENS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(8192)
+}
+
+fn estimate_tokens_for_part(part: &ContentPart) -> usize {
+    match part {
+        ContentPart::Text { text } => RlmChunker::estimate_tokens(text),
+        ContentPart::ToolResult { content, .. } => RlmChunker::estimate_tokens(content),
+        ContentPart::ToolCall {
+            id,
+            name,
+            arguments,
+            thought_signature,
+            ..
+        } => {
+            let mut s = String::new();
+            s.push_str(id);
+            s.push(' ');
+            s.push_str(name);
+            s.push(' ');
+            s.push_str(arguments);
+            if let Some(sig) = thought_signature {
+                s.push(' ');
+                s.push_str(sig);
+            }
+            RlmChunker::estimate_tokens(&s)
+        }
+        ContentPart::Thinking { text } => RlmChunker::estimate_tokens(text),
+        ContentPart::Image { .. } => {
+            // Image parts are encoded/handled provider-side and do not map
+            // cleanly to text tokens. Use a conservative fixed estimate.
+            2000
+        }
+        ContentPart::File { path, mime_type } => {
+            let mut s = String::new();
+            s.push_str(path);
+            if let Some(mt) = mime_type {
+                s.push(' ');
+                s.push_str(mt);
+            }
+            RlmChunker::estimate_tokens(&s)
+        }
+    }
+}
+
+fn estimate_tokens_for_messages(messages: &[Message]) -> usize {
+    messages
+        .iter()
+        .map(|m| m.content.iter().map(estimate_tokens_for_part).sum::<usize>())
+        .sum()
+}
+
+fn estimate_tokens_for_tools(tools: &[ToolDefinition]) -> usize {
+    // Tool definitions are serialized and sent to providers. Count them as part
+    // of the prompt budget to avoid unexpected overflows.
+    serde_json::to_string(tools)
+        .ok()
+        .map(|s| RlmChunker::estimate_tokens(&s))
+        .unwrap_or(0)
+}
+
+fn estimate_request_tokens(system_prompt: &str, messages: &[Message], tools: &[ToolDefinition]) -> usize {
+    RlmChunker::estimate_tokens(system_prompt)
+        + estimate_tokens_for_messages(messages)
+        + estimate_tokens_for_tools(tools)
+}
+
+fn role_label(role: Role) -> &'static str {
+    match role {
+        Role::System => "System",
+        Role::User => "User",
+        Role::Assistant => "Assistant",
+        Role::Tool => "Tool",
+    }
+}
+
+fn messages_to_rlm_context(messages: &[Message]) -> String {
+    // Render a lossless-ish text representation of the session suitable for RLM.
+    // Avoid embedding base64 image data URLs (they can be enormous and not useful
+    // for summarizing conversational state).
+    let mut out = String::new();
+    for (idx, m) in messages.iter().enumerate() {
+        out.push_str(&format!("[{} {}]\n", idx, role_label(m.role)));
+
+        for part in &m.content {
+            match part {
+                ContentPart::Text { text } => {
+                    out.push_str(text);
+                    out.push('\n');
+                }
+                ContentPart::Thinking { text } => {
+                    if !text.trim().is_empty() {
+                        out.push_str("[Thinking]\n");
+                        out.push_str(text);
+                        out.push('\n');
+                    }
+                }
+                ContentPart::ToolCall { id, name, arguments, .. } => {
+                    out.push_str(&format!(
+                        "[ToolCall id={id} name={name}]\nargs: {arguments}\n"
+                    ));
+                }
+                ContentPart::ToolResult { tool_call_id, content } => {
+                    out.push_str(&format!("[ToolResult id={tool_call_id}]\n"));
+                    out.push_str(content);
+                    out.push('\n');
+                }
+                ContentPart::Image { mime_type, url } => {
+                    out.push_str(&format!(
+                        "[Image mime_type={} url_len={}]\n",
+                        mime_type.clone().unwrap_or_else(|| "unknown".to_string()),
+                        url.len()
+                    ));
+                }
+                ContentPart::File { path, mime_type } => {
+                    out.push_str(&format!(
+                        "[File path={} mime_type={}]\n",
+                        path,
+                        mime_type.clone().unwrap_or_else(|| "unknown".to_string())
+                    ));
+                }
+            }
+        }
+
+        out.push_str("\n---\n\n");
+    }
+    out
+}
+
+fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
+    let msg = err.to_string().to_ascii_lowercase();
+    msg.contains("prompt is too long")
+        || msg.contains("context length")
+        || msg.contains("maximum context")
+        || (msg.contains("tokens") && msg.contains("maximum") && msg.contains("prompt"))
 }
 
 /// A conversation session
@@ -262,6 +403,118 @@ impl Session {
     pub fn add_message(&mut self, message: Message) {
         self.messages.push(message);
         self.updated_at = Utc::now();
+    }
+
+    async fn compress_history_keep_last(
+        &mut self,
+        provider: Arc<dyn crate::provider::Provider>,
+        model: &str,
+        keep_last: usize,
+        reason: &str,
+    ) -> Result<bool> {
+        if self.messages.len() <= keep_last {
+            return Ok(false);
+        }
+
+        let split_idx = self.messages.len().saturating_sub(keep_last);
+        let tail = self.messages.split_off(split_idx);
+        let prefix = std::mem::take(&mut self.messages);
+
+        let context = messages_to_rlm_context(&prefix);
+        let ctx_window = context_window_for_model(model);
+
+        // We call auto_process directly for session context. It internally
+        // compresses very large inputs before hitting the model.
+        let rlm_config = RlmConfig::default();
+        let auto_ctx = AutoProcessContext {
+            tool_id: "session_context",
+            tool_args: serde_json::json!({"reason": reason}),
+            session_id: &self.id,
+            abort: None,
+            on_progress: None,
+            provider,
+            model: model.to_string(),
+        };
+
+        let summary = match RlmRouter::auto_process(&context, auto_ctx, &rlm_config).await {
+            Ok(result) => {
+                tracing::info!(
+                    reason,
+                    input_tokens = result.stats.input_tokens,
+                    output_tokens = result.stats.output_tokens,
+                    compression_ratio = result.stats.compression_ratio,
+                    "RLM: Compressed session history"
+                );
+                result.processed
+            }
+            Err(e) => {
+                tracing::warn!(reason, error = %e, "RLM: Failed to compress session history; falling back to chunk compression");
+                // Fallback: keep a smaller, semantically chunked excerpt.
+                RlmChunker::compress(&context, (ctx_window as f64 * 0.25) as usize, None)
+            }
+        };
+
+        let summary_msg = Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::Text {
+                text: format!(
+                    "[AUTO CONTEXT COMPRESSION]\nOlder conversation + tool output was compressed to fit the model context window.\n\n{}",
+                    summary
+                ),
+            }],
+        };
+
+        let mut new_messages = Vec::with_capacity(1 + tail.len());
+        new_messages.push(summary_msg);
+        new_messages.extend(tail);
+        self.messages = new_messages;
+        self.updated_at = Utc::now();
+
+        Ok(true)
+    }
+
+    async fn enforce_context_window(
+        &mut self,
+        provider: Arc<dyn crate::provider::Provider>,
+        model: &str,
+        system_prompt: &str,
+        tools: &[ToolDefinition],
+    ) -> Result<()> {
+        let ctx_window = context_window_for_model(model);
+
+        // Reserve response tokens + a small fixed overhead for tool schemas,
+        // protocol framing, and provider-specific wrappers.
+        let reserve = session_completion_max_tokens().saturating_add(2048);
+        let budget = ctx_window.saturating_sub(reserve);
+        let safety_budget = (budget as f64 * 0.90) as usize;
+
+        // Try progressively more aggressive compression.
+        let keep_last_candidates = [16usize, 12, 8, 6];
+        for keep_last in keep_last_candidates {
+            let est = estimate_request_tokens(system_prompt, &self.messages, tools);
+            if est <= safety_budget {
+                return Ok(());
+            }
+
+            tracing::info!(
+                est_tokens = est,
+                ctx_window,
+                safety_budget,
+                keep_last,
+                "Context window approaching limit; compressing older session history"
+            );
+
+            let did = self
+                .compress_history_keep_last(Arc::clone(&provider), model, keep_last, "context_budget")
+                .await?;
+
+            if !did {
+                // Nothing left to compress.
+                break;
+            }
+        }
+
+        Ok(())
     }
 
     /// Execute a prompt and get the result
@@ -434,28 +687,60 @@ impl Session {
         for step in 1..=max_steps {
             tracing::info!(step = step, "Agent step starting");
 
-            // Build messages with system prompt first
-            let mut messages = vec![Message {
-                role: Role::System,
-                content: vec![ContentPart::Text {
-                    text: system_prompt.clone(),
-                }],
-            }];
-            messages.extend(self.messages.clone());
+            // Proactively keep the prompt within the model's context window.
+            self.enforce_context_window(
+                Arc::clone(&provider),
+                &model,
+                &system_prompt,
+                &tool_definitions,
+            )
+            .await?;
 
-            // Create completion request with tools
-            let request = CompletionRequest {
-                messages,
-                tools: tool_definitions.clone(),
-                model: model.clone(),
-                temperature,
-                top_p: None,
-                max_tokens: Some(8192),
-                stop: Vec::new(),
+            // Call the provider (retry once if the provider rejects due to an
+            // unexpected context-length mismatch).
+            let mut attempt = 0;
+            let response = loop {
+                attempt += 1;
+
+                // Build messages with system prompt first
+                let mut messages = vec![Message {
+                    role: Role::System,
+                    content: vec![ContentPart::Text {
+                        text: system_prompt.clone(),
+                    }],
+                }];
+                messages.extend(self.messages.clone());
+
+                // Create completion request with tools
+                let request = CompletionRequest {
+                    messages,
+                    tools: tool_definitions.clone(),
+                    model: model.clone(),
+                    temperature,
+                    top_p: None,
+                    max_tokens: Some(session_completion_max_tokens()),
+                    stop: Vec::new(),
+                };
+
+                match provider.complete(request).await {
+                    Ok(r) => break r,
+                    Err(e) => {
+                        if attempt == 1 && is_prompt_too_long_error(&e) {
+                            tracing::warn!(error = %e, "Provider rejected prompt as too long; forcing extra compression and retrying");
+                            let _ = self
+                                .compress_history_keep_last(
+                                    Arc::clone(&provider),
+                                    &model,
+                                    6,
+                                    "prompt_too_long_retry",
+                                )
+                                .await?;
+                            continue;
+                        }
+                        return Err(e);
+                    }
+                }
             };
-
-            // Call the provider
-            let response = provider.complete(request).await?;
 
             // Optionally route text-only responses through FunctionGemma to
             // produce structured tool calls.  Skipped when the model natively
@@ -695,21 +980,7 @@ impl Session {
                 // Route large tool outputs through RLM
                 let content = {
                     let ctx_window = context_window_for_model(&model);
-                    let total_chars: usize = self
-                        .messages
-                        .iter()
-                        .map(|m| {
-                            m.content
-                                .iter()
-                                .map(|p| match p {
-                                    ContentPart::Text { text } => text.len(),
-                                    ContentPart::ToolResult { content, .. } => content.len(),
-                                    _ => 0,
-                                })
-                                .sum::<usize>()
-                        })
-                        .sum();
-                    let current_tokens = total_chars / 4; // ~4 chars per token
+                    let current_tokens = estimate_tokens_for_messages(&self.messages);
                     let routing_ctx = RoutingContext {
                         tool_id: tool_name.clone(),
                         session_id: self.id.clone(),
@@ -1027,6 +1298,15 @@ impl Session {
             tracing::info!(step = step, "Agent step starting");
             let _ = event_tx.send(SessionEvent::Thinking).await;
 
+            // Proactively keep the prompt within the model's context window.
+            self.enforce_context_window(
+                Arc::clone(&provider),
+                &model,
+                &system_prompt,
+                &tool_definitions,
+            )
+            .await?;
+
             // Build messages with system prompt first
             let mut messages = vec![Message {
                 role: Role::System,
@@ -1042,12 +1322,58 @@ impl Session {
                 model: model.clone(),
                 temperature,
                 top_p: None,
-                max_tokens: Some(8192),
+                max_tokens: Some(session_completion_max_tokens()),
                 stop: Vec::new(),
             };
 
             let llm_start = std::time::Instant::now();
-            let response = provider.complete(request).await?;
+            let mut attempt = 0;
+            #[allow(clippy::never_loop)]
+            let response = loop {
+                attempt += 1;
+                match provider.complete(request.clone()).await {
+                    Ok(r) => break r,
+                    Err(e) => {
+                        if attempt == 1 && is_prompt_too_long_error(&e) {
+                            tracing::warn!(error = %e, "Provider rejected prompt as too long; forcing extra compression and retrying");
+                            let _ = self
+                                .compress_history_keep_last(
+                                    Arc::clone(&provider),
+                                    &model,
+                                    6,
+                                    "prompt_too_long_retry",
+                                )
+                                .await?;
+                            // Rebuild request with the newly-compressed history.
+                            // NOTE: we can't mutate the existing request in place; it contains
+                            // cloned message vectors.
+                            let mut messages = vec![Message {
+                                role: Role::System,
+                                content: vec![ContentPart::Text {
+                                    text: system_prompt.clone(),
+                                }],
+                            }];
+                            messages.extend(self.messages.clone());
+                            let new_request = CompletionRequest {
+                                messages,
+                                tools: tool_definitions.clone(),
+                                model: model.clone(),
+                                temperature,
+                                top_p: None,
+                                max_tokens: Some(session_completion_max_tokens()),
+                                stop: Vec::new(),
+                            };
+                            // Shadow request for next attempt.
+                            // (We keep the loop structure simple; at most one retry.)
+                            match provider.complete(new_request).await {
+                                Ok(r2) => break r2,
+                                Err(e2) => return Err(e2),
+                            }
+                        }
+                        return Err(e);
+                    }
+                }
+            };
             let llm_duration_ms = llm_start.elapsed().as_millis() as u64;
 
             // Optionally route text-only responses through FunctionGemma to
@@ -1352,21 +1678,7 @@ impl Session {
                 // Route large tool outputs through RLM
                 let content = {
                     let ctx_window = context_window_for_model(&model);
-                    let total_chars: usize = self
-                        .messages
-                        .iter()
-                        .map(|m| {
-                            m.content
-                                .iter()
-                                .map(|p| match p {
-                                    ContentPart::Text { text } => text.len(),
-                                    ContentPart::ToolResult { content, .. } => content.len(),
-                                    _ => 0,
-                                })
-                                .sum::<usize>()
-                        })
-                        .sum();
-                    let current_tokens = total_chars / 4;
+                    let current_tokens = estimate_tokens_for_messages(&self.messages);
                     let routing_ctx = RoutingContext {
                         tool_id: tool_name.clone(),
                         session_id: self.id.clone(),
