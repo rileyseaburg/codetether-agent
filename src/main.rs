@@ -72,7 +72,7 @@ fn local_cuda_model_name() -> String {
 fn default_openrouter_rlm_model() -> String {
     std::env::var("CODETETHER_RLM_DEFAULT_MODEL")
         .or_else(|_| std::env::var("OPENROUTER_RLM_MODEL"))
-        .unwrap_or_else(|_| "qwen/qwen3.5-coder-7b".to_string())
+        .unwrap_or_else(|_| "qwen/qwen3-coder-next".to_string())
 }
 
 fn resolve_rlm_provider_and_model(
@@ -83,29 +83,45 @@ fn resolve_rlm_provider_and_model(
         let (provider_name, model_name) = provider::parse_model_string(model_ref);
         if let Some(provider_name) = provider_name {
             let normalized = normalize_provider_alias(provider_name);
+            if normalized == "local_cuda" {
+                let provider = registry.get("local_cuda").ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "local_cuda selected explicitly but provider is unavailable. \
+                         Build/install with CUDA support \
+                         (--features candle-cuda,functiongemma) and set \
+                         LOCAL_CUDA_MODEL_PATH + LOCAL_CUDA_TOKENIZER_PATH."
+                    )
+                })?;
+                if !local_cuda_runtime_configured() {
+                    anyhow::bail!(
+                        "local_cuda selected explicitly but runtime is not configured. \
+                         Set LOCAL_CUDA_MODEL_PATH and LOCAL_CUDA_TOKENIZER_PATH \
+                         (or CODETETHER_LOCAL_CUDA_MODEL_PATH / CODETETHER_LOCAL_CUDA_TOKENIZER_PATH)."
+                    );
+                }
+                return Ok((provider, model_name.to_string(), "local_cuda".to_string()));
+            }
+
             let provider = registry.get(normalized).ok_or_else(|| {
                 anyhow::anyhow!(
                     "Requested provider '{}' is not available. Configure it in Vault or env.",
                     normalized
                 )
             })?;
-
-            if normalized == "local_cuda" && !local_cuda_runtime_configured() {
-                anyhow::bail!(
-                    "local_cuda selected explicitly but runtime is not configured. \
-                     Set LOCAL_CUDA_MODEL_PATH and LOCAL_CUDA_TOKENIZER_PATH \
-                     (or CODETETHER_LOCAL_CUDA_MODEL_PATH / CODETETHER_LOCAL_CUDA_TOKENIZER_PATH)."
-                );
-            }
-
             return Ok((provider, model_name.to_string(), normalized.to_string()));
         }
 
         // Unqualified model: local_cuda first when usable, then openrouter.
-        if local_cuda_runtime_configured()
-            && let Some(provider) = registry.get("local_cuda")
-        {
-            return Ok((provider, model_ref.to_string(), "local_cuda".to_string()));
+        if local_cuda_runtime_configured() {
+            if let Some(provider) = registry.get("local_cuda") {
+                return Ok((provider, model_ref.to_string(), "local_cuda".to_string()));
+            }
+            anyhow::bail!(
+                "Local CUDA is configured but unavailable. \
+                 Fix local CUDA setup (CUDA-enabled binary + valid LOCAL_CUDA_MODEL_PATH and \
+                 LOCAL_CUDA_TOKENIZER_PATH) or explicitly select OpenRouter with \
+                 --model openrouter/<model>."
+            );
         }
         if let Some(provider) = registry.get("openrouter") {
             return Ok((provider, model_ref.to_string(), "openrouter".to_string()));
@@ -117,10 +133,15 @@ fn resolve_rlm_provider_and_model(
     }
 
     // No explicit model: prefer local_cuda when usable, otherwise openrouter.
-    if local_cuda_runtime_configured()
-        && let Some(provider) = registry.get("local_cuda")
-    {
-        return Ok((provider, local_cuda_model_name(), "local_cuda".to_string()));
+    if local_cuda_runtime_configured() {
+        if let Some(provider) = registry.get("local_cuda") {
+            return Ok((provider, local_cuda_model_name(), "local_cuda".to_string()));
+        }
+        anyhow::bail!(
+            "Local CUDA is configured but unavailable. \
+             Fix local CUDA setup (CUDA-enabled binary + valid LOCAL_CUDA_MODEL_PATH and \
+             LOCAL_CUDA_TOKENIZER_PATH) or disable local CUDA env vars to use OpenRouter fallback."
+        );
     }
 
     if let Some(provider) = registry.get("openrouter") {

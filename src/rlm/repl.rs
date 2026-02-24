@@ -25,7 +25,7 @@ use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 use super::context_trace::{ContextEvent, ContextTrace, ContextTraceSummary};
-use super::oracle::TraceStep;
+use super::oracle::{FinalPayload, GrepMatch, GrepOracle, GrepPayload, QueryType, TraceStep};
 use super::tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
 
 /// REPL runtime options
@@ -173,7 +173,7 @@ impl RlmRepl {
     /// - count("pattern") - count matches
     /// - slice(start, end) - slice by chars
     /// - chunks(n) - split into n chunks
-    /// - FINAL("answer") - return final answer
+    /// - FINAL({json_payload}) - return final answer payload
     pub fn execute(&mut self, code: &str) -> ReplResult {
         match self.runtime {
             ReplRuntime::Rust => self.execute_rust_dsl(code),
@@ -591,7 +591,7 @@ impl RlmExecutor {
              - chunks(n) - split into n chunks\n\
              - ast_query(\"s-expr\") - tree-sitter AST query for structural analysis\n\
              - llm_query(\"question\", context?) - ask sub-LM a question\n\
-             - FINAL(\"answer\") - return final answer\n\
+             - FINAL({{json_payload}}) - return structured final payload\n\
              === END CONTEXT INFO ===",
             self.repl.context().len(),
             self.repl.lines().len()
@@ -609,16 +609,25 @@ impl RlmExecutor {
 
         let system_prompt = format!(
             "You are a code analysis assistant. Answer questions by examining the provided context.\n\n\
-             IMPORTANT: You MUST end your response with FINAL(\"your answer\") in 1-3 iterations.\n\n\
+             CRITICAL OUTPUT CONTRACT:\n\
+             - Your final response MUST be exactly one FINAL(<json>) call.\n\
+             - Never end with prose and never use FINAL(\"...\").\n\
+             - The JSON inside FINAL(...) MUST match one of these shapes:\n\
+               1) {{\"kind\":\"grep\",\"file\":\"<path>\",\"pattern\":\"<regex>\",\"matches\":[{{\"line\":123,\"text\":\"...\"}}]}}\n\
+               2) {{\"kind\":\"ast\",\"file\":\"<path>\",\"query\":\"<tree-sitter query>\",\"results\":[{{\"name\":\"...\",\"args\":[],\"return_type\":null,\"span\":[1,2]}}]}}\n\
+               3) {{\"kind\":\"semantic\",\"file\":\"<path>\",\"answer\":\"...\"}} (only if deterministic payload is impossible)\n\
+             - For grep/list/find/count style queries, emit kind=grep with exact line-numbered matches.\n\n\
              Available commands:\n\
              - head(n), tail(n): See first/last n lines\n\
              - grep(\"pattern\"): Search for patterns\n\
              - ast_query(\"s-expr\"): Tree-sitter AST query (e.g., '(function_item name: (identifier) @name)')\n\
              - llm_query(\"question\"): Ask a focused sub-question\n\
-             - FINAL(\"answer\"): Return your final answer (REQUIRED)\n\n\
+             - FINAL({{\"kind\":\"...\", ...}}): Return your final structured payload (REQUIRED)\n\n\
              The context has {} chars across {} lines. A preview follows:\n\n\
              {}\n\n\
-             Now analyze the context. Use 1-2 commands if needed, then call FINAL() with your answer.",
+             Example final response:\n\
+             FINAL({{\"kind\":\"grep\",\"file\":\"src/rlm/repl.rs\",\"pattern\":\"async fn\",\"matches\":[{{\"line\":570,\"text\":\"pub async fn analyze(...)\"}}]}})\n\n\
+             Now analyze the context. Use 1-2 commands if needed, then call FINAL() with valid JSON payload.",
             self.repl.context().len(),
             self.repl.lines().len(),
             self.repl.head(25).join("\n")
@@ -967,7 +976,8 @@ impl RlmExecutor {
 
         let elapsed = start.elapsed();
 
-        let final_text = final_answer.unwrap_or_else(|| "Analysis incomplete".to_string());
+        let raw_final_text = final_answer.unwrap_or_else(|| "Analysis incomplete".to_string());
+        let final_text = self.ensure_structured_final_payload(query, raw_final_text);
         if !matches!(
             self.context_trace.events().back(),
             Some(ContextEvent::Final { .. })
@@ -991,6 +1001,110 @@ impl RlmExecutor {
                 compression_ratio: 1.0,
             },
         })
+    }
+
+    fn ensure_structured_final_payload(&mut self, query: &str, raw_final_text: String) -> String {
+        if !matches!(
+            FinalPayload::parse(&raw_final_text),
+            FinalPayload::Malformed { .. }
+        ) {
+            return raw_final_text;
+        }
+
+        if let Some(coerced) = self.coerce_grep_payload_from_trace(query) {
+            let iteration = self.trace_steps.last().map(|s| s.iteration).unwrap_or(1);
+            self.trace_steps.push(TraceStep {
+                iteration,
+                action: "coerce_final_payload(grep_trace)".to_string(),
+                output: truncate_with_ellipsis(&coerced, 240),
+            });
+            self.context_trace.log_event(ContextEvent::Final {
+                answer: truncate_with_ellipsis(&coerced, 400),
+                tokens: ContextTrace::estimate_tokens(&coerced),
+            });
+            tracing::info!(
+                "RLM coerced malformed/prose final answer into FINAL(JSON) grep payload"
+            );
+            return coerced;
+        }
+
+        raw_final_text
+    }
+
+    fn coerce_grep_payload_from_trace(&self, query: &str) -> Option<String> {
+        if GrepOracle::classify_query(query) != QueryType::PatternMatch {
+            return None;
+        }
+
+        let pattern = GrepOracle::infer_pattern(query)?;
+        let matches = self.extract_latest_grep_matches()?;
+        let file = Self::infer_file_from_query(query).unwrap_or_else(|| "unknown".to_string());
+
+        let payload = FinalPayload::Grep(GrepPayload {
+            file,
+            pattern,
+            matches: matches
+                .into_iter()
+                .map(|(line, text)| GrepMatch { line, text })
+                .collect(),
+        });
+
+        serde_json::to_string(&payload).ok()
+    }
+
+    fn extract_latest_grep_matches(&self) -> Option<Vec<(usize, String)>> {
+        for step in self.trace_steps.iter().rev() {
+            if !step.action.contains("grep(") && !step.action.contains("rlm_grep(") {
+                continue;
+            }
+            if step.output.trim() == "(no matches)" {
+                return Some(Vec::new());
+            }
+            let parsed = Self::parse_line_numbered_output(&step.output);
+            if !parsed.is_empty() {
+                return Some(parsed);
+            }
+        }
+
+        for step in self.trace_steps.iter().rev() {
+            let parsed = Self::parse_line_numbered_output(&step.output);
+            if !parsed.is_empty() {
+                return Some(parsed);
+            }
+        }
+
+        None
+    }
+
+    fn parse_line_numbered_output(output: &str) -> Vec<(usize, String)> {
+        output
+            .lines()
+            .filter_map(|line| {
+                let trimmed = line.trim();
+                let (line_no, text) = trimmed.split_once(':')?;
+                let number = line_no
+                    .trim()
+                    .trim_start_matches('L')
+                    .parse::<usize>()
+                    .ok()?;
+                Some((number, text.trim().to_string()))
+            })
+            .collect()
+    }
+
+    fn infer_file_from_query(query: &str) -> Option<String> {
+        let lower = query.to_lowercase();
+        let idx = lower.rfind(" in ")?;
+        let candidate = query[idx + 4..]
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .trim_matches(|c: char| c == '"' || c == '\'' || c == '`' || c == '.' || c == ',');
+        if candidate.is_empty() {
+            None
+        } else {
+            Some(candidate.to_string())
+        }
     }
 
     /// Extract code from LLM response
@@ -1527,6 +1641,23 @@ mod tests {
 
         let result = repl.execute(r#"FINAL("This is the answer")"#);
         assert_eq!(result.final_answer, Some("This is the answer".to_string()));
+    }
+
+    #[test]
+    fn test_parse_line_numbered_output() {
+        let parsed =
+            RlmExecutor::parse_line_numbered_output("570:async fn analyze\nL1038:async fn x");
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0], (570, "async fn analyze".to_string()));
+        assert_eq!(parsed[1], (1038, "async fn x".to_string()));
+    }
+
+    #[test]
+    fn test_infer_file_from_query() {
+        let file = RlmExecutor::infer_file_from_query(
+            "Find all occurrences of 'async fn' in src/rlm/repl.rs",
+        );
+        assert_eq!(file.as_deref(), Some("src/rlm/repl.rs"));
     }
 
     #[test]

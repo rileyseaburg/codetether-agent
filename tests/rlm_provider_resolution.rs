@@ -62,7 +62,41 @@ fn rlm_explicit_local_cuda_does_not_fallback() {
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("local_cuda selected explicitly but runtime is not configured"),
+        stderr.contains("local_cuda selected explicitly but runtime is not configured")
+            || stderr.contains("local_cuda selected explicitly but provider is unavailable"),
+        "unexpected stderr: {stderr}"
+    );
+}
+
+#[test]
+fn rlm_configured_local_cuda_does_not_silently_fallback() {
+    let output = Command::new(env!("CARGO_BIN_EXE_codetether"))
+        .args([
+            "rlm",
+            "Find all functions",
+            "--content",
+            "fn main() {}",
+            "--json",
+        ])
+        .env("VAULT_ADDR", "http://127.0.0.1:1")
+        .env("VAULT_TOKEN", "dummy")
+        .env("OPENROUTER_API_KEY", "dummy-openrouter-key")
+        .env("LOCAL_CUDA_MODEL_PATH", "/tmp/nonexistent-model.gguf")
+        .env(
+            "LOCAL_CUDA_TOKENIZER_PATH",
+            "/tmp/nonexistent-tokenizer.json",
+        )
+        .output()
+        .expect("run codetether rlm");
+
+    assert!(
+        !output.status.success(),
+        "expected local_cuda availability error; stdout={}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Local CUDA is configured but unavailable"),
         "unexpected stderr: {stderr}"
     );
 }

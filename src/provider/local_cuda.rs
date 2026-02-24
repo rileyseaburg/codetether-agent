@@ -21,7 +21,7 @@ use tokio::sync::OnceCell;
 /// without needing C++ interop.
 pub struct LocalCudaProvider {
     model_name: String,
-    device: Device,
+    _device: Device,
     /// Model cache - in production this would hold the loaded model
     model_cache: Option<ModelCache>,
     runtime: OnceCell<ThinkerClient>,
@@ -36,21 +36,30 @@ struct ModelCache {
 impl LocalCudaProvider {
     /// Create a new LocalCudaProvider
     pub fn new(model_name: String) -> Result<Self> {
-        // Try to create a CUDA device, fall back to CPU if unavailable
-        let device = match Device::new_cuda(0) {
-            Ok(d) => {
-                tracing::info!("Using CUDA device for local inference");
-                d
-            }
-            Err(_) => {
-                tracing::warn!("CUDA not available, using CPU (will be slow)");
-                Device::Cpu
-            }
-        };
+        if !cfg!(feature = "candle-cuda") {
+            return Err(anyhow!(
+                "Local CUDA provider requires a CUDA-enabled build. \
+                 Reinstall with: cargo install --path . --force --features candle-cuda,functiongemma"
+            ));
+        }
+
+        let ordinal = parse_env_usize(&["LOCAL_CUDA_ORDINAL", "CODETETHER_LOCAL_CUDA_ORDINAL"], 0);
+        let device = Device::new_cuda(ordinal).map_err(|e| {
+            anyhow!(
+                "CUDA device unavailable for local_cuda (ordinal {}): {}. \
+                 Verify `nvidia-smi`, CUDA runtime, and LOCAL_CUDA_ORDINAL.",
+                ordinal,
+                e
+            )
+        })?;
+        tracing::info!(
+            cuda_ordinal = ordinal,
+            "Using CUDA device for local inference"
+        );
 
         Ok(Self {
             model_name,
-            device,
+            _device: device,
             model_cache: None,
             runtime: OnceCell::const_new(),
         })
@@ -456,8 +465,17 @@ mod tests {
     #[test]
     fn test_local_cuda_provider_creation() {
         let provider = LocalCudaProvider::new("test-model".to_string());
-        assert!(provider.is_ok());
-        assert_eq!(provider.unwrap().name(), "local_cuda");
+        if cfg!(feature = "candle-cuda") {
+            if let Ok(p) = provider {
+                assert_eq!(p.name(), "local_cuda");
+            } else {
+                let msg = provider.err().unwrap().to_string();
+                assert!(msg.contains("CUDA device unavailable"));
+            }
+        } else {
+            let msg = provider.err().unwrap().to_string();
+            assert!(msg.contains("requires a CUDA-enabled build"));
+        }
     }
 
     #[test]
@@ -490,7 +508,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_complete_error_message_no_prompt_exposure() {
-        let provider = LocalCudaProvider::new("test-model".to_string()).unwrap();
+        let provider = match LocalCudaProvider::new("test-model".to_string()) {
+            Ok(p) => p,
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(
+                    msg.contains("requires a CUDA-enabled build")
+                        || msg.contains("CUDA device unavailable")
+                );
+                return;
+            }
+        };
 
         let request = CompletionRequest {
             messages: vec![Message {
@@ -510,9 +538,7 @@ mod tests {
 
         let result = provider.complete(request).await;
         let error_message = match result {
-            Ok(_) => {
-                panic!("Expected local_cuda complete() to fail until inference is implemented")
-            }
+            Ok(_) => panic!("Expected local_cuda complete() to fail without model/tokenizer paths"),
             Err(e) => e.to_string(),
         };
 
@@ -526,7 +552,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_complete_stream_error_message_no_prompt_exposure() {
-        let provider = LocalCudaProvider::new("test-model".to_string()).unwrap();
+        let provider = match LocalCudaProvider::new("test-model".to_string()) {
+            Ok(p) => p,
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(
+                    msg.contains("requires a CUDA-enabled build")
+                        || msg.contains("CUDA device unavailable")
+                );
+                return;
+            }
+        };
 
         let request = CompletionRequest {
             messages: vec![Message {
@@ -546,9 +582,7 @@ mod tests {
         let result = provider.complete_stream(request).await;
         let error_message = match result {
             Ok(_) => {
-                panic!(
-                    "Expected local_cuda complete_stream() to fail until streaming is implemented"
-                )
+                panic!("Expected local_cuda complete_stream() to fail (streaming unimplemented)")
             }
             Err(e) => e.to_string(),
         };
