@@ -1,5 +1,9 @@
 //! Shared autochat relay helpers used by TUI and CLI flows.
 
+pub mod model_rotation;
+pub mod shared_context;
+pub mod transport;
+
 pub const AUTOCHAT_MAX_AGENTS: usize = 8;
 pub const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
 pub const AUTOCHAT_MAX_ROUNDS: usize = 3;

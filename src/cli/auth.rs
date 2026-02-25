@@ -1,7 +1,8 @@
 //! Provider authentication commands.
 
 use super::{
-    AuthArgs, AuthCommand, CodexAuthArgs, CopilotAuthArgs, LoginAuthArgs, RegisterAuthArgs,
+    AuthArgs, AuthCommand, CodexAuthArgs, CookieAuthArgs, CopilotAuthArgs, LoginAuthArgs,
+    RegisterAuthArgs,
 };
 use crate::provider::copilot::normalize_enterprise_domain;
 use crate::provider::openai_codex::OpenAiCodexProvider;
@@ -50,6 +51,7 @@ pub async fn execute(args: AuthArgs) -> Result<()> {
     match args.command {
         AuthCommand::Copilot(copilot_args) => authenticate_copilot(copilot_args).await,
         AuthCommand::Codex(codex_args) => authenticate_codex(codex_args).await,
+        AuthCommand::Cookies(cookie_args) => authenticate_cookie_import(cookie_args).await,
         AuthCommand::Register(register_args) => authenticate_register(register_args).await,
         AuthCommand::Login(login_args) => authenticate_login(login_args).await,
     }
@@ -468,6 +470,272 @@ async fn authenticate_codex(_args: CodexAuthArgs) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+struct CookieRow {
+    domain: String,
+    include_subdomains: bool,
+    path: String,
+    secure: bool,
+    expires_epoch: i64,
+    name: String,
+    value: String,
+    http_only: bool,
+}
+
+async fn authenticate_cookie_import(args: CookieAuthArgs) -> Result<()> {
+    if secrets::secrets_manager().is_none() {
+        anyhow::bail!(
+            "HashiCorp Vault is not configured. Set VAULT_ADDR and VAULT_TOKEN before running `codetether auth cookies`."
+        );
+    }
+
+    let provider_id = args.provider.trim().to_string();
+    if provider_id.is_empty() {
+        anyhow::bail!("--provider cannot be empty");
+    }
+
+    let raw = tokio::fs::read_to_string(&args.file)
+        .await
+        .with_context(|| format!("Failed to read cookie file {}", args.file.display()))?;
+    let rows = parse_netscape_cookie_file(&raw);
+    if rows.is_empty() {
+        anyhow::bail!(
+            "No valid cookie rows found in {} (expected Netscape format)",
+            args.file.display()
+        );
+    }
+
+    let (selected, dropped_expired, dropped_non_auth) =
+        select_cookie_rows(&rows, &provider_id, args.keep_all);
+    if selected.is_empty() {
+        anyhow::bail!("No usable cookies remained after filtering");
+    }
+
+    let rendered = render_netscape_cookie_file(&selected);
+    let now = chrono::Utc::now();
+    let (earliest_expiry, latest_expiry) = cookie_expiry_bounds(&selected);
+    let cookie_names: Vec<String> = selected.iter().map(|row| row.name.clone()).collect();
+    let mut extra = HashMap::new();
+    extra.insert("cookies".to_string(), json!(rendered));
+    extra.insert("cookie_format".to_string(), json!("netscape"));
+    extra.insert("imported_at".to_string(), json!(now.to_rfc3339()));
+    extra.insert("cookie_count".to_string(), json!(selected.len()));
+    extra.insert("cookie_names".to_string(), json!(cookie_names));
+    extra.insert("dropped_expired".to_string(), json!(dropped_expired));
+    extra.insert("dropped_non_auth".to_string(), json!(dropped_non_auth));
+    extra.insert("keep_all".to_string(), json!(args.keep_all));
+    extra.insert(
+        "strategy".to_string(),
+        json!(if args.keep_all {
+            "cookies_all_v1"
+        } else {
+            "cookies_auth_subset_v1"
+        }),
+    );
+
+    if let Some(epoch) = earliest_expiry {
+        extra.insert("earliest_expiry_epoch".to_string(), json!(epoch));
+        if let Some(ts) = chrono::DateTime::from_timestamp(epoch, 0) {
+            extra.insert(
+                "earliest_expiry_rfc3339".to_string(),
+                json!(ts.to_rfc3339()),
+            );
+        }
+        extra.insert(
+            "rotate_before_epoch".to_string(),
+            json!(epoch.saturating_sub(24 * 60 * 60)),
+        );
+    }
+    if let Some(epoch) = latest_expiry {
+        extra.insert("latest_expiry_epoch".to_string(), json!(epoch));
+    }
+
+    let provider_secrets = ProviderSecrets {
+        api_key: None,
+        base_url: None,
+        organization: None,
+        headers: None,
+        extra,
+    };
+
+    secrets::set_provider_secrets(&provider_id, &provider_secrets)
+        .await
+        .with_context(|| format!("Failed to store {} cookies in Vault", provider_id))?;
+    let can_read_back = secrets::get_provider_secrets(&provider_id)
+        .await
+        .map(|saved| saved.extra.contains_key("cookies"))
+        .unwrap_or(false);
+
+    println!(
+        "Saved {} cookies to HashiCorp Vault provider '{}'.",
+        selected.len(),
+        provider_id
+    );
+    println!(
+        "Dropped {} expired and {} non-auth cookies.",
+        dropped_expired, dropped_non_auth
+    );
+    if let Some(epoch) = earliest_expiry
+        && let Some(ts) = chrono::DateTime::from_timestamp(epoch, 0)
+    {
+        println!(
+            "Earliest cookie expiry: {} (rotate at least 24h before this).",
+            ts.to_rfc3339()
+        );
+    }
+    println!(
+        "Vault path: {}/{}",
+        std::env::var("VAULT_SECRETS_PATH").unwrap_or_else(|_| "codetether/providers".to_string()),
+        provider_id
+    );
+    println!(
+        "Read-back verification: {}",
+        if can_read_back { "ok" } else { "failed" }
+    );
+    Ok(())
+}
+
+fn parse_netscape_cookie_file(raw: &str) -> Vec<CookieRow> {
+    raw.lines().filter_map(parse_netscape_cookie_line).collect()
+}
+
+fn parse_netscape_cookie_line(line: &str) -> Option<CookieRow> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() || (trimmed.starts_with('#') && !trimmed.starts_with("#HttpOnly_")) {
+        return None;
+    }
+
+    let (http_only, normalized) = if let Some(rest) = trimmed.strip_prefix("#HttpOnly_") {
+        (true, rest)
+    } else {
+        (false, trimmed)
+    };
+    let parts: Vec<&str> = normalized.split('\t').collect();
+    if parts.len() < 7 {
+        return None;
+    }
+
+    Some(CookieRow {
+        domain: parts[0].trim().to_string(),
+        include_subdomains: parts[1].trim().eq_ignore_ascii_case("TRUE"),
+        path: parts[2].trim().to_string(),
+        secure: parts[3].trim().eq_ignore_ascii_case("TRUE"),
+        expires_epoch: parts[4].trim().parse::<i64>().unwrap_or(0),
+        name: parts[5].trim().to_string(),
+        value: parts[6].trim().to_string(),
+        http_only,
+    })
+}
+
+fn select_cookie_rows(
+    rows: &[CookieRow],
+    provider_id: &str,
+    keep_all: bool,
+) -> (Vec<CookieRow>, usize, usize) {
+    let now_epoch = chrono::Utc::now().timestamp();
+    let allowed = preferred_cookie_names(provider_id);
+    let mut selected_by_name: HashMap<String, CookieRow> = HashMap::new();
+    let mut dropped_expired = 0usize;
+    let mut dropped_non_auth = 0usize;
+
+    for row in rows {
+        if row.name.is_empty() {
+            continue;
+        }
+        if row.expires_epoch > 0 && row.expires_epoch <= now_epoch {
+            dropped_expired += 1;
+            continue;
+        }
+        if !keep_all && !allowed.is_empty() && !allowed.iter().any(|name| *name == row.name) {
+            dropped_non_auth += 1;
+            continue;
+        }
+        match selected_by_name.get(&row.name) {
+            Some(existing) if existing.expires_epoch >= row.expires_epoch => {}
+            _ => {
+                selected_by_name.insert(row.name.clone(), row.clone());
+            }
+        }
+    }
+
+    let mut selected: Vec<CookieRow> = selected_by_name.into_values().collect();
+    selected.sort_by(|left, right| left.name.cmp(&right.name));
+    (selected, dropped_expired, dropped_non_auth)
+}
+
+fn preferred_cookie_names(provider_id: &str) -> &'static [&'static str] {
+    match provider_id {
+        "nextdoor-web" => &[
+            "ndbr_at",
+            "ndbr_idt",
+            "ndbr_adt",
+            "csrftoken",
+            "ndp_session_id",
+            "WE",
+            "WE3P",
+            "DAID",
+        ],
+        "gemini-web" => &[
+            "__Secure-1PSID",
+            "__Secure-1PSIDTS",
+            "__Secure-1PSIDCC",
+            "SID",
+            "HSID",
+            "SSID",
+            "APISID",
+            "SAPISID",
+        ],
+        _ => &[],
+    }
+}
+
+fn render_netscape_cookie_file(rows: &[CookieRow]) -> String {
+    let mut lines = vec![
+        "# Netscape HTTP Cookie File".to_string(),
+        "# Generated by codetether auth cookies".to_string(),
+    ];
+    lines.extend(rows.iter().map(|row| {
+        let domain = if row.http_only {
+            format!("#HttpOnly_{}", row.domain)
+        } else {
+            row.domain.clone()
+        };
+        format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            domain,
+            bool_flag(row.include_subdomains),
+            row.path,
+            bool_flag(row.secure),
+            row.expires_epoch,
+            row.name,
+            row.value
+        )
+    }));
+    format!("{}\n", lines.join("\n"))
+}
+
+fn cookie_expiry_bounds(rows: &[CookieRow]) -> (Option<i64>, Option<i64>) {
+    let mut expiries = rows.iter().map(|row| row.expires_epoch).filter(|e| *e > 0);
+    let first = expiries.next();
+    let Some(mut min_epoch) = first else {
+        return (None, None);
+    };
+    let mut max_epoch = min_epoch;
+    for epoch in expiries {
+        if epoch < min_epoch {
+            min_epoch = epoch;
+        }
+        if epoch > max_epoch {
+            max_epoch = epoch;
+        }
+    }
+    (Some(min_epoch), Some(max_epoch))
+}
+
+fn bool_flag(value: bool) -> &'static str {
+    if value { "TRUE" } else { "FALSE" }
+}
+
 async fn capture_oauth_callback_auto(timeout: Duration) -> Result<Option<(String, String)>> {
     let listener = match TcpListener::bind(CODEX_CALLBACK_ADDR).await {
         Ok(listener) => listener,
@@ -884,7 +1152,10 @@ fn decode_query_component(component: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_oauth_code_and_state, parse_oauth_callback_request};
+    use super::{
+        extract_oauth_code_and_state, parse_netscape_cookie_line, parse_oauth_callback_request,
+        select_cookie_rows,
+    };
 
     #[test]
     fn extracts_code_and_state_from_full_callback_url() {
@@ -926,5 +1197,32 @@ mod tests {
         let err =
             parse_oauth_callback_request(request).expect_err("expected non-GET callback rejection");
         assert!(err.to_string().contains("Unsupported callback method"));
+    }
+
+    #[test]
+    fn parses_netscape_cookie_with_httponly_prefix() {
+        let line = "#HttpOnly_.nextdoor.com\tTRUE\t/\tTRUE\t1803495701\tndbr_at\ttoken123";
+        let parsed = parse_netscape_cookie_line(line).expect("expected cookie parse");
+        assert_eq!(parsed.domain, ".nextdoor.com");
+        assert!(parsed.http_only);
+        assert_eq!(parsed.name, "ndbr_at");
+    }
+
+    #[test]
+    fn nextdoor_filter_keeps_auth_cookies_only() {
+        let rows = vec![
+            parse_netscape_cookie_line(
+                ".nextdoor.com\tTRUE\t/\tTRUE\t4803495701\tndbr_at\tauth-token",
+            )
+            .expect("auth cookie"),
+            parse_netscape_cookie_line(".nextdoor.com\tTRUE\t/\tFALSE\t4803495701\t_ga\ttracking")
+                .expect("tracking cookie"),
+        ];
+        let (selected, dropped_expired, dropped_non_auth) =
+            select_cookie_rows(&rows, "nextdoor-web", false);
+        assert_eq!(selected.len(), 1);
+        assert_eq!(selected[0].name, "ndbr_at");
+        assert_eq!(dropped_expired, 0);
+        assert_eq!(dropped_non_auth, 1);
     }
 }

@@ -28,6 +28,8 @@ pub struct WorktreeManager {
     repo_path: PathBuf,
     /// Active worktrees
     worktrees: Mutex<Vec<WorktreeInfo>>,
+    /// Whether git object integrity was already verified for this manager
+    integrity_checked: Mutex<bool>,
 }
 
 /// Merge result
@@ -48,6 +50,7 @@ impl WorktreeManager {
             base_dir: base_dir.into(),
             repo_path: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             worktrees: Mutex::new(Vec::new()),
+            integrity_checked: Mutex::new(false),
         }
     }
 
@@ -57,6 +60,7 @@ impl WorktreeManager {
             base_dir: base_dir.into(),
             repo_path: repo_path.into(),
             worktrees: Mutex::new(Vec::new()),
+            integrity_checked: Mutex::new(false),
         }
     }
 
@@ -65,6 +69,7 @@ impl WorktreeManager {
     /// This creates an actual git worktree using `git worktree add`,
     /// creating a new branch if it doesn't exist.
     pub async fn create(&self, name: &str) -> Result<WorktreeInfo> {
+        self.ensure_repo_integrity_once().await?;
         Self::validate_worktree_name(name)?;
         let worktree_path = self.base_dir.join(name);
         let branch_name = format!("codetether/{}", name);
@@ -120,6 +125,46 @@ impl WorktreeManager {
 
         tracing::info!(worktree = %name, path = %worktree_path.display(), "Created git worktree");
         Ok(info)
+    }
+
+    /// Verify repository object integrity before worktree operations.
+    ///
+    /// If corruption is detected, a best-effort repair is attempted automatically.
+    pub async fn ensure_repo_integrity(&self) -> Result<()> {
+        let first_check = self.run_repo_fsck().await?;
+        if first_check.status.success() {
+            return Ok(());
+        }
+
+        let first_output = Self::combined_output(&first_check.stdout, &first_check.stderr);
+        if !Self::looks_like_object_corruption(&first_output) {
+            return Err(anyhow!(
+                "Git repository preflight failed: {}",
+                Self::summarize_git_output(&first_output)
+            ));
+        }
+
+        tracing::warn!(
+            repo_path = %self.repo_path.display(),
+            issue = %Self::summarize_git_output(&first_output),
+            "Detected git object corruption; attempting automatic repair"
+        );
+        self.try_auto_repair().await;
+
+        let second_check = self.run_repo_fsck().await?;
+        if second_check.status.success() {
+            tracing::info!(
+                repo_path = %self.repo_path.display(),
+                "Git repository integrity restored after automatic repair"
+            );
+            return Ok(());
+        }
+
+        let second_output = Self::combined_output(&second_check.stdout, &second_check.stderr);
+        Err(Self::integrity_error_message(
+            &self.repo_path,
+            &second_output,
+        ))
     }
 
     /// Get information about a worktree
@@ -335,6 +380,117 @@ impl WorktreeManager {
         ))
     }
 
+    async fn ensure_repo_integrity_once(&self) -> Result<()> {
+        let mut checked = self.integrity_checked.lock().await;
+        if *checked {
+            return Ok(());
+        }
+        self.ensure_repo_integrity().await?;
+        *checked = true;
+        Ok(())
+    }
+
+    async fn run_repo_fsck(&self) -> Result<std::process::Output> {
+        tokio::process::Command::new("git")
+            .args(["fsck", "--full", "--no-dangling"])
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+            .context("Failed to execute git fsck --full --no-dangling")
+    }
+
+    async fn try_auto_repair(&self) {
+        self.run_repair_step(["fetch", "--all", "--prune", "--tags"])
+            .await;
+        self.run_repair_step(["worktree", "prune"]).await;
+        self.run_repair_step(["gc", "--prune=now"]).await;
+    }
+
+    async fn run_repair_step<const N: usize>(&self, args: [&str; N]) {
+        match tokio::process::Command::new("git")
+            .args(args)
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+        {
+            Ok(output) if output.status.success() => {
+                tracing::info!(
+                    repo_path = %self.repo_path.display(),
+                    command = %format!("git {}", args.join(" ")),
+                    "Git repair step succeeded"
+                );
+            }
+            Ok(output) => {
+                tracing::warn!(
+                    repo_path = %self.repo_path.display(),
+                    command = %format!("git {}", args.join(" ")),
+                    error = %Self::summarize_git_output(&Self::combined_output(
+                        &output.stdout,
+                        &output.stderr
+                    )),
+                    "Git repair step failed"
+                );
+            }
+            Err(error) => {
+                tracing::warn!(
+                    repo_path = %self.repo_path.display(),
+                    command = %format!("git {}", args.join(" ")),
+                    error = %error,
+                    "Failed to execute git repair step"
+                );
+            }
+        }
+    }
+
+    fn integrity_error_message(repo_path: &Path, fsck_output: &str) -> anyhow::Error {
+        let summary = Self::summarize_git_output(fsck_output);
+        anyhow!(
+            "Git object database is corrupted in '{}': {}\n\
+Automatic repair was attempted but repository integrity is still broken.\n\
+Recovery steps:\n\
+1. Backup local changes: git diff > /tmp/codetether-recovery.patch\n\
+2. Attempt object recovery: git fetch --all --prune --tags && git fsck --full\n\
+3. If corruption remains, create a fresh clone and re-apply the patch.",
+            repo_path.display(),
+            summary
+        )
+    }
+
+    fn combined_output(stdout: &[u8], stderr: &[u8]) -> String {
+        let left = String::from_utf8_lossy(stdout);
+        let right = String::from_utf8_lossy(stderr);
+        format!("{left}\n{right}")
+    }
+
+    fn looks_like_object_corruption(output: &str) -> bool {
+        let lower = output.to_ascii_lowercase();
+        [
+            "missing blob",
+            "missing tree",
+            "missing commit",
+            "bad object",
+            "unable to read",
+            "object file",
+            "hash mismatch",
+            "broken link from",
+            "corrupt",
+            "invalid sha1 pointer",
+            "fatal: loose object",
+            "failed to parse commit",
+        ]
+        .iter()
+        .any(|needle| lower.contains(needle))
+    }
+
+    fn summarize_git_output(output: &str) -> String {
+        output
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+            .map(|line| line.chars().take(220).collect::<String>())
+            .unwrap_or_else(|| "git command reported no details".to_string())
+    }
+
     async fn merge_head_path(&self) -> Result<PathBuf> {
         let output = tokio::process::Command::new("git")
             .args(["rev-parse", "--git-path", "MERGE_HEAD"])
@@ -448,6 +604,32 @@ impl WorktreeManager {
             .count();
 
         Ok(count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WorktreeManager;
+
+    #[test]
+    fn corruption_detection_matches_missing_blob() {
+        let output = "error: missing blob 1234abcd";
+        assert!(WorktreeManager::looks_like_object_corruption(output));
+    }
+
+    #[test]
+    fn corruption_detection_ignores_non_corruption_errors() {
+        let output = "fatal: not a git repository";
+        assert!(!WorktreeManager::looks_like_object_corruption(output));
+    }
+
+    #[test]
+    fn summarize_output_uses_first_non_empty_line() {
+        let output = "\n\nfatal: bad object HEAD\nmore";
+        assert_eq!(
+            WorktreeManager::summarize_git_output(output),
+            "fatal: bad object HEAD"
+        );
     }
 }
 

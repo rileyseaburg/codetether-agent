@@ -121,6 +121,9 @@ pub enum AuthCommand {
     /// Authenticate OpenAI Codex with a ChatGPT subscription via OAuth (Plus/Pro/Team/Enterprise)
     Codex(CodexAuthArgs),
 
+    /// Import browser cookies (Netscape format) into Vault for a provider
+    Cookies(CookieAuthArgs),
+
     /// Register a new CodeTether account with email/password
     Register(RegisterAuthArgs),
 
@@ -175,6 +178,21 @@ pub struct CopilotAuthArgs {
 
 #[derive(Parser, Debug)]
 pub struct CodexAuthArgs {}
+
+#[derive(Parser, Debug)]
+pub struct CookieAuthArgs {
+    /// Provider ID to store under (e.g. nextdoor-web, gemini-web)
+    #[arg(long, default_value = "nextdoor-web")]
+    pub provider: String,
+
+    /// Path to Netscape cookies export file
+    #[arg(long)]
+    pub file: PathBuf,
+
+    /// Keep all valid cookies instead of filtering to auth-focused names
+    #[arg(long, default_value_t = false)]
+    pub keep_all: bool,
+}
 
 #[derive(Parser, Debug)]
 pub struct TuiArgs {

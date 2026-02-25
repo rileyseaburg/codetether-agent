@@ -29,7 +29,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
 const GEMINI_ORIGIN: &str = "https://gemini.google.com";
-const GEMINI_ENDPOINT: &str = "https://gemini.google.com/u/1/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
+const GEMINI_STREAM_PATH: &str =
+    "/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
 
 /// How long cached session tokens remain valid before re-scraping the home page.
 const TOKEN_TTL: Duration = Duration::from_secs(20 * 60);
@@ -67,6 +68,9 @@ struct SessionTokens {
     at_token: String,
     f_sid: String,
     bl: String,
+    /// Path prefix extracted from the /u/N/ portion of the home-page redirect
+    /// URL (e.g. "/u/1"). Empty for the primary account which uses no prefix.
+    acct_prefix: String,
 }
 
 pub struct GeminiWebProvider {
@@ -115,9 +119,22 @@ impl GeminiWebProvider {
     fn cookie_header(&self) -> String {
         self.cookies
             .lines()
-            .filter(|l| {
-                let t = l.trim();
-                !t.is_empty() && !t.starts_with('#')
+            .filter_map(|line| {
+                let t = line.trim();
+                if t.is_empty() {
+                    return None;
+                }
+                // "#HttpOnly_" prefix marks HttpOnly cookies in Netscape format —
+                // strip it so the cookie is still included.  Pure comment lines
+                // (e.g. the header block starting with "# Netscape") are skipped.
+                let line = if let Some(rest) = t.strip_prefix("#HttpOnly_") {
+                    rest
+                } else if t.starts_with('#') {
+                    return None;
+                } else {
+                    t
+                };
+                Some(line)
             })
             .filter_map(|line| {
                 let parts: Vec<&str> = line.split('\t').collect();
@@ -157,13 +174,27 @@ impl GeminiWebProvider {
         let re_sid = RE_SID.get_or_init(|| Regex::new(r#""FdrFJe":"([^"]+)""#).unwrap());
 
         let cookie_hdr = self.cookie_header();
-        let html = self
+        let resp = self
             .client
             .get(GEMINI_ORIGIN)
             .header("Cookie", &cookie_hdr)
             .send()
             .await
-            .context("Failed to fetch Gemini home page")?
+            .context("Failed to fetch Gemini home page")?;
+
+        // Extract the account prefix from the final URL after redirects.
+        // Multi-account: redirects to /u/N/app  → prefix is "/u/N"
+        // Primary account: redirects to /app    → prefix is ""
+        let acct_prefix: String = {
+            static RE_ACCT: OnceLock<Regex> = OnceLock::new();
+            let re = RE_ACCT.get_or_init(|| Regex::new(r"(/u/\d+)/").unwrap());
+            re.captures(resp.url().path())
+                .map(|c| c[1].to_string())
+                .unwrap_or_default()
+        };
+        tracing::debug!(acct_prefix = %acct_prefix, final_url = %resp.url(), "Gemini home page resolved");
+
+        let html = resp
             .text()
             .await
             .context("Failed to read Gemini home page body")?;
@@ -188,10 +219,18 @@ impl GeminiWebProvider {
             .map(|c| c[1].to_string())
             .unwrap_or_default();
 
+        if bl.is_empty() {
+            tracing::warn!("Gemini bl token not found in home page — request may fail");
+        }
+        if f_sid.is_empty() {
+            tracing::warn!("Gemini f_sid token not found in home page — request may fail");
+        }
+
         Ok(SessionTokens {
             at_token,
             f_sid,
             bl,
+            acct_prefix,
         })
     }
 
@@ -209,44 +248,47 @@ impl GeminiWebProvider {
         Ok(fresh)
     }
 
-    /// Build the `f.req` JSON payload  a two-element outer array whose
+    /// Build the `f.req` JSON payload — a two-element outer array whose
     /// second slot is a JSON-encoded 69-element inner array.
+    ///
+    /// Index layout matches the Python GemChat reference implementation.
     fn build_freq(prompt: &str) -> String {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
 
-        let mut inner: Vec<Value> = Vec::with_capacity(69);
-        inner.push(json!([[prompt, 0, null, null, null, null, 0]])); // [0]
-        inner.push(json!(["en"])); // [1]
-        inner.push(json!([null, null, null])); // [2]
-        inner.push(Value::Null); // [3]
-        inner.push(Value::Null); // [4]
-        inner.push(Value::Null); // [5]
-        inner.push(json!([1])); // [6]
-        inner.push(json!(1)); // [7]
-        inner.push(Value::Null); // [8]
-        inner.push(json!([1, 0, null, null, null, null, null, 0])); // [9]
-        inner.push(Value::Null); // [10]
-        inner.push(Value::Null); // [11]
-        inner.push(json!([0])); // [12]
-        for _ in 0..40 {
-            inner.push(Value::Null);
-        } // [13]-[52]
-        inner.push(json!(0)); // [53]
-        for _ in 0..5 {
-            inner.push(Value::Null);
-        } // [54]-[58]
-        inner.push(json!("CD1035A5-0E0E-4B68-B744-23C2D8960DF5")); // [59]
-        inner.push(Value::Null); // [60]
-        inner.push(json!([])); // [61]
-        for _ in 0..4 {
-            inner.push(Value::Null);
-        } // [62]-[65]
-        inner.push(json!([ts, 0])); // [66]
-        inner.push(Value::Null); // [67]
-        inner.push(json!(2)); // [68]
+        let mut inner: Vec<Value> = vec![Value::Null; 69];
+        // [0]  prompt tuple — single array, NOT double-wrapped
+        inner[0] = json!([prompt, 0, null, null, null, null, 0]);
+        // [1]  language
+        inner[1] = json!(["en"]);
+        // [2]  conversation continuation ids (empty strings for new convo)
+        inner[2] = json!(["", "", "", null, null, null, null, null, null, ""]);
+        // [3]-[5] null
+        inner[6] = json!([1]);
+        inner[7] = json!(1);
+        // [8]-[9] null
+        inner[10] = json!(1);
+        inner[11] = json!(0);
+        // [12] null
+        // [13]-[16] null
+        inner[17] = json!([[0]]);
+        inner[18] = json!(0);
+        // [19]-[26] null
+        inner[27] = json!(1);
+        // [28]-[29] null
+        inner[30] = json!([4]);
+        // [31]-[52] null
+        inner[53] = json!(0);
+        // [54]-[58] null
+        inner[59] = json!("CD1035A5-0E0E-4B68-B744-23C2D8960DF5");
+        // [60] null
+        inner[61] = json!([]);
+        // [62]-[65] null
+        inner[66] = json!([ts, 0]);
+        // [67] null
+        inner[68] = json!(2);
 
         debug_assert_eq!(
             inner.len(),
@@ -258,13 +300,14 @@ impl GeminiWebProvider {
         serde_json::to_string(&json!([null, inner_json])).unwrap_or_default()
     }
 
-    /// Walk streaming lines and return the text from the *last* parseable
-    /// `inner[4][0][1][0]` block.
+    /// Walk streaming lines and return the longest parseable answer text.
     ///
-    /// Gemini sends cumulative text (each chunk is the full answer so far);
-    /// the last valid block is the most complete and most reliable.
+    /// Wire format: each line is a JSON array of events:
+    ///   `[["wrb.fr", key_or_null, inner_json_str, ...], ...]`
+    /// The inner JSON has the response text at `inner[4][0][1][0]`.
+    /// Gemini sends cumulative chunks; we take the longest (= most complete).
     fn extract_text(raw: &str) -> String {
-        let mut last = String::new();
+        let mut best = String::new();
         for line in raw.lines() {
             let line = line.trim();
             if line.is_empty() || !line.starts_with('[') {
@@ -273,26 +316,35 @@ impl GeminiWebProvider {
             let Ok(outer) = serde_json::from_str::<Value>(line) else {
                 continue;
             };
-            let Some(arr) = outer.as_array() else {
+            let Some(events) = outer.as_array() else {
                 continue;
             };
-            let Some(two) = arr.get(2).and_then(Value::as_str) else {
-                continue;
-            };
-            let Ok(inner) = serde_json::from_str::<Value>(two) else {
-                continue;
-            };
-            if let Some(text) = inner
-                .get(4)
-                .and_then(|v| v.get(0))
-                .and_then(|v| v.get(1))
-                .and_then(|v| v.get(0))
-                .and_then(Value::as_str)
-            {
-                last = text.to_string();
+            // Each element of the outer array is one event: ["wrb.fr", null, inner_str, ...]
+            for event in events {
+                let Some(ev) = event.as_array() else { continue };
+                let Some(inner_str) = ev.get(2).and_then(Value::as_str) else {
+                    continue;
+                };
+                if !inner_str.starts_with('[') {
+                    continue;
+                }
+                let Ok(inner) = serde_json::from_str::<Value>(inner_str) else {
+                    continue;
+                };
+                if let Some(text) = inner
+                    .get(4)
+                    .and_then(|v| v.get(0))
+                    .and_then(|v| v.get(1))
+                    .and_then(|v| v.get(0))
+                    .and_then(Value::as_str)
+                {
+                    if text.len() > best.len() {
+                        best = text.to_string();
+                    }
+                }
             }
         }
-        last
+        best
     }
 
     /// Look up the `mode_id` string for a given model identifier.
@@ -341,12 +393,18 @@ impl GeminiWebProvider {
             + 100_000)
             .to_string();
 
+        let endpoint = format!(
+            "https://gemini.google.com{}{}",
+            tokens.acct_prefix, GEMINI_STREAM_PATH
+        );
+        tracing::debug!(endpoint = %endpoint, "Gemini StreamGenerate endpoint");
         let url = reqwest::Url::parse_with_params(
-            GEMINI_ENDPOINT,
+            &endpoint,
             &[
                 ("bl", tokens.bl.as_str()),
                 ("f.sid", tokens.f_sid.as_str()),
                 ("hl", "en"),
+                ("pageId", "none"),
                 ("_reqid", reqid.as_str()),
                 ("rt", "c"),
             ],
@@ -360,6 +418,13 @@ impl GeminiWebProvider {
             .header("X-Same-Domain", "1")
             .header("Origin", GEMINI_ORIGIN)
             .header("Referer", format!("{}/app", GEMINI_ORIGIN))
+            .header("Accept", "*/*")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
+            .header("sec-fetch-dest", "empty")
+            .header("sec-fetch-mode", "cors")
+            .header("sec-fetch-site", "same-origin")
             .header("x-goog-ext-525001261-jspb", ext_header)
             .form(&[("f.req", freq), ("at", tokens.at_token)]))
     }

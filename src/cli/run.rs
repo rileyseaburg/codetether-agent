@@ -1,6 +1,12 @@
 //! Non-interactive run command
 
 use super::RunArgs;
+use crate::autochat::model_rotation::{RelayModelRotation, build_round_robin_model_rotation};
+use crate::autochat::shared_context::{
+    SharedRelayContext, compose_prompt_with_context, distill_context_delta_with_rlm,
+    drain_context_updates, publish_context_delta,
+};
+use crate::autochat::transport::{attach_handoff_receiver, consume_handoff_by_correlation};
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
 use crate::config::Config;
 use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
@@ -113,6 +119,8 @@ struct AutochatCliResult {
     final_handoff: String,
     summary: String,
     failure: Option<String>,
+    shared_context_items: usize,
+    rlm_context_count: usize,
 }
 
 fn slugify_label(value: &str) -> String {
@@ -252,41 +260,7 @@ fn resolve_provider_for_model_autochat(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
     model_ref: &str,
 ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
-    let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
-    if let Some(provider_name) = provider_name {
-        let normalized_provider = if provider_name == "zhipuai" {
-            "zai"
-        } else {
-            provider_name
-        };
-        return registry
-            .get(normalized_provider)
-            .map(|provider| (provider, model_name.to_string()));
-    }
-
-    let fallbacks = [
-        "zai",
-        "openai",
-        "github-copilot",
-        "anthropic",
-        "openrouter",
-        "novita",
-        "moonshotai",
-        "google",
-    ];
-
-    for provider_name in fallbacks {
-        if let Some(provider) = registry.get(provider_name) {
-            return Some((provider, model_ref.to_string()));
-        }
-    }
-
-    registry
-        .list()
-        .first()
-        .copied()
-        .and_then(|name| registry.get(name))
-        .map(|provider| (provider, model_ref.to_string()))
+    crate::autochat::model_rotation::resolve_provider_for_model_autochat(registry, model_ref)
 }
 
 fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
@@ -1136,10 +1110,18 @@ async fn run_protocol_first_relay(
         .map(|profile| profile.name.clone())
         .collect();
     let mut sessions: HashMap<String, Session> = HashMap::new();
+    let mut relay_receivers: HashMap<String, crate::bus::BusHandle> = HashMap::new();
+    let mut agent_models: HashMap<String, String> = HashMap::new();
+    let mut model_rotation = if let Some(registry) = &registry {
+        build_round_robin_model_rotation(registry, model_ref).await
+    } else {
+        RelayModelRotation::fallback(model_ref)
+    };
 
     for profile in &profiles {
+        let assigned_model_ref = model_rotation.next_model_ref(model_ref);
         let mut session = Session::new().await?;
-        session.metadata.model = Some(model_ref.to_string());
+        session.metadata.model = Some(assigned_model_ref.clone());
         session.agent = profile.name.clone();
         session.bus = Some(bus.clone());
         session.add_message(Message {
@@ -1148,7 +1130,9 @@ async fn run_protocol_first_relay(
                 text: profile.instructions.clone(),
             }],
         });
+        agent_models.insert(profile.name.clone(), assigned_model_ref);
         sessions.insert(profile.name.clone(), session);
+        attach_handoff_receiver(&mut relay_receivers, bus.clone(), &profile.name);
     }
 
     if ordered_agents.len() < 2 {
@@ -1156,6 +1140,8 @@ async fn run_protocol_first_relay(
     }
 
     relay.register_agents(&relay_profiles);
+    let mut context_receiver = bus.handle(format!("relay-context-{}", relay.relay_id()));
+    let mut shared_context = SharedRelayContext::default();
 
     // Load KR targets if OKR is associated
     let kr_targets: std::collections::HashMap<String, f64> =
@@ -1186,6 +1172,7 @@ async fn run_protocol_first_relay(
     let mut turns = 0usize;
     let mut dynamic_spawn_count = 0usize;
     let mut rlm_handoff_count = 0usize;
+    let mut rlm_context_count = 0usize;
     let mut status = crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED.to_string();
     let mut failure_note: Option<String> = None;
 
@@ -1204,7 +1191,26 @@ async fn run_protocol_first_relay(
             };
 
             turns += 1;
-            relay.send_handoff(&from, &to, &baton);
+            let _ =
+                drain_context_updates(&mut context_receiver, relay.relay_id(), &mut shared_context);
+            let correlation_id = relay.send_handoff(&from, &to, &baton);
+            let consumed_handoff = match consume_handoff_by_correlation(
+                &mut relay_receivers,
+                &to,
+                &correlation_id,
+            )
+            .await
+            {
+                Ok(handoff) => handoff,
+                Err(err) => {
+                    status = "bus_error".to_string();
+                    failure_note = Some(format!(
+                        "Failed to consume handoff for @{to} (correlation={correlation_id}): {err}"
+                    ));
+                    break 'relay_loop;
+                }
+            };
+            let prompt_input = compose_prompt_with_context(&consumed_handoff, &shared_context);
 
             let Some(mut session) = sessions.remove(&to) else {
                 status = "agent_error".to_string();
@@ -1212,7 +1218,7 @@ async fn run_protocol_first_relay(
                 break 'relay_loop;
             };
 
-            let output = match session.prompt(&baton).await {
+            let output = match session.prompt(&prompt_input).await {
                 Ok(response) => response.text,
                 Err(err) => {
                     status = "agent_error".to_string();
@@ -1232,17 +1238,39 @@ async fn run_protocol_first_relay(
             }
             previous_normalized = Some(normalized);
 
+            let turn_model_ref = agent_models
+                .get(&to)
+                .map(String::as_str)
+                .unwrap_or(model_ref);
             let (next_handoff, used_rlm) = prepare_autochat_handoff_with_registry(
                 task,
                 &to,
                 &output,
-                model_ref,
+                turn_model_ref,
                 registry.as_ref(),
             )
             .await;
             if used_rlm {
                 rlm_handoff_count += 1;
             }
+            let turn_context_provider = registry
+                .as_ref()
+                .and_then(|r| resolve_provider_for_model_autochat(r, turn_model_ref));
+            let (context_delta, used_context_rlm) =
+                distill_context_delta_with_rlm(&output, task, &to, turn_context_provider).await;
+            if used_context_rlm {
+                rlm_context_count += 1;
+            }
+            shared_context.merge_delta(&context_delta);
+            let publisher = bus.handle(to.clone());
+            publish_context_delta(
+                &publisher,
+                relay.relay_id(),
+                &to,
+                round,
+                turns,
+                &context_delta,
+            );
             baton = next_handoff;
 
             // Update KR progress after each turn
@@ -1293,7 +1321,8 @@ async fn run_protocol_first_relay(
             {
                 match Session::new().await {
                     Ok(mut spawned_session) => {
-                        spawned_session.metadata.model = Some(model_ref.to_string());
+                        let spawned_model_ref = model_rotation.next_model_ref(model_ref);
+                        spawned_session.metadata.model = Some(spawned_model_ref.clone());
                         spawned_session.agent = profile.name.clone();
                         spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(Message {
@@ -1307,8 +1336,10 @@ async fn run_protocol_first_relay(
                             name: profile.name.clone(),
                             capabilities: profile.capabilities.clone(),
                         }]);
+                        attach_handoff_receiver(&mut relay_receivers, bus.clone(), &profile.name);
 
                         ordered_agents.insert(idx + 1, profile.name.clone());
+                        agent_models.insert(profile.name.clone(), spawned_model_ref);
                         sessions.insert(profile.name.clone(), spawned_session);
                         dynamic_spawn_count += 1;
 
@@ -1392,7 +1423,7 @@ async fn run_protocol_first_relay(
                 // Mark complete or update status based on execution result
                 if status == "converged" {
                     run.complete();
-                } else if status == "agent_error" {
+                } else if status == "agent_error" || status == "bus_error" {
                     run.status = crate::okr::OkrRunStatus::Failed;
                 } else {
                     run.status = crate::okr::OkrRunStatus::Completed;
@@ -1420,6 +1451,15 @@ async fn run_protocol_first_relay(
     if rlm_handoff_count > 0 {
         summary.push_str(&format!("\nRLM-normalized handoffs: {rlm_handoff_count}"));
     }
+    if rlm_context_count > 0 {
+        summary.push_str(&format!("\nRLM context deltas: {rlm_context_count}"));
+    }
+    if shared_context.item_count() > 0 {
+        summary.push_str(&format!(
+            "\nShared context items: {}",
+            shared_context.item_count()
+        ));
+    }
     if dynamic_spawn_count > 0 {
         summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
     }
@@ -1434,6 +1474,8 @@ async fn run_protocol_first_relay(
         final_handoff: baton,
         summary,
         failure: failure_note,
+        shared_context_items: shared_context.item_count(),
+        rlm_context_count,
     })
 }
 
