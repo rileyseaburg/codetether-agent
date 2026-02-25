@@ -595,18 +595,25 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     let easy_go_requested = is_easy_go_command(message);
     let normalized = normalize_cli_go_command(message);
     if let Some(rest) = command_with_optional_args(&normalized, "/autochat") {
-        let Some((agent_count, parsed_task)) = parse_autochat_args(rest) else {
+        let Some(parsed) = crate::autochat::parse_autochat_request(
+            rest,
+            AUTOCHAT_DEFAULT_AGENTS,
+            AUTOCHAT_QUICK_DEMO_TASK,
+        ) else {
             anyhow::bail!(
-                "Usage: /autochat [count] <task>\nEasy mode: /go <task>\ncount range: 2-{} (default: {})",
+                "Usage: /autochat [count] [--no-prd] <task>\nEasy mode: /go <task>\ncount range: 2-{} (default: {})",
                 AUTOCHAT_MAX_AGENTS,
                 AUTOCHAT_DEFAULT_AGENTS
             );
         };
+        let agent_count = parsed.agent_count;
+        let parsed_task = parsed.task;
         let task = if easy_go_requested {
-            validate_easy_go_task(parsed_task)?
+            validate_easy_go_task(&parsed_task)?
         } else {
-            normalize_go_task_input(parsed_task)
+            normalize_go_task_input(&parsed_task)
         };
+        let require_prd = easy_go_requested || !parsed.bypass_prd;
 
         if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
             anyhow::bail!(
@@ -623,14 +630,14 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             easy_go_requested,
         );
 
-        // For /go commands (not /autochat), require OKR approval then execute via Ralph
-        if easy_go_requested {
-            // For /go, default to max concurrency (run all stories in parallel)
-            // unless the user explicitly specified a count like "/go 5 task"
-            let max_concurrent = if rest.trim().starts_with(|c: char| c.is_ascii_digit()) {
-                agent_count
-            } else {
+        // PRD-gated execution path (mandatory for /go and default for /autochat)
+        if require_prd {
+            // For /go, default to max concurrency (run all stories in parallel) unless
+            // the user explicitly specified a count. /autochat keeps the requested count.
+            let max_concurrent = if easy_go_requested && !parsed.explicit_count {
                 AUTOCHAT_MAX_AGENTS
+            } else {
+                agent_count
             };
             // Create OKR draft (LLM-proposed, with safe fallback)
             let okr_id = Uuid::new_v4();
@@ -662,7 +669,12 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             let _ = run.submit_for_approval();
 
             // Show OKR draft
-            println!("\n⚠️  /go OKR Draft\n");
+            let command_label = if easy_go_requested {
+                "/go"
+            } else {
+                "/autochat"
+            };
+            println!("\n⚠️  {command_label} OKR Draft\n");
             println!("Task: {}", truncate_with_ellipsis(&task, 80));
             println!("Agents: {} | Model: {}", agent_count, model);
             if let Some(note) = draft_note {
@@ -685,7 +697,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             if input != "y" && input != "yes" {
                 run.record_decision(ApprovalDecision::deny(run.id, "User denied via CLI"));
                 println!("❌ OKR denied. Relay not started.");
-                println!("Use /autochat for tactical execution without OKR tracking.");
+                println!("Use /autochat --no-prd for tactical execution without OKR/PRD tracking.");
                 return Ok(());
             }
 
@@ -765,7 +777,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             return Ok(());
         }
 
-        // Plain /autochat (no OKR) — use traditional relay
+        // Explicit tactical /autochat path (requires --no-prd)
         let relay_result = run_protocol_first_relay(agent_count, &task, &model, None, None).await?;
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
@@ -950,10 +962,6 @@ Use a concise objective sentence instead, e.g. `/go implement /v1/agent/* compat
     }
 
     Ok(normalized)
-}
-
-fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
-    crate::autochat::parse_autochat_args(rest, AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_QUICK_DEMO_TASK)
 }
 
 fn resolve_autochat_model(
@@ -1435,8 +1443,8 @@ mod tests {
     use super::{
         AUTOCHAT_QUICK_DEMO_TASK, PlannedRelayResponse, build_runtime_profile_from_plan,
         command_with_optional_args, extract_json_payload, is_easy_go_command,
-        normalize_cli_go_command, normalize_go_task_input, parse_autochat_args,
-        resolve_autochat_model, validate_easy_go_task,
+        normalize_cli_go_command, normalize_go_task_input, resolve_autochat_model,
+        validate_easy_go_task,
     };
 
     #[test]
@@ -1457,17 +1465,23 @@ mod tests {
 
     #[test]
     fn parse_autochat_args_supports_default_count() {
+        let parsed =
+            crate::autochat::parse_autochat_request("build a relay", 3, AUTOCHAT_QUICK_DEMO_TASK)
+                .expect("valid args");
         assert_eq!(
-            parse_autochat_args("build a relay").expect("valid args"),
-            (3, "build a relay")
+            (parsed.agent_count, parsed.task.as_str()),
+            (3, "build a relay"),
         );
     }
 
     #[test]
     fn parse_autochat_args_supports_explicit_count() {
+        let parsed =
+            crate::autochat::parse_autochat_request("4 build a relay", 3, AUTOCHAT_QUICK_DEMO_TASK)
+                .expect("valid args");
         assert_eq!(
-            parse_autochat_args("4 build a relay").expect("valid args"),
-            (4, "build a relay")
+            (parsed.agent_count, parsed.task.as_str()),
+            (4, "build a relay"),
         );
     }
 

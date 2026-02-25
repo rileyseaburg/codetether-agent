@@ -8,6 +8,7 @@ pub const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
 pub const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
 pub const AUTOCHAT_RLM_FALLBACK_CHARS: usize = 3_500;
 pub const AUTOCHAT_STATUS_MAX_ROUNDS_REACHED: &str = "max_rounds_reached";
+pub const AUTOCHAT_NO_PRD_FLAG: &str = "--no-prd";
 pub const AUTOCHAT_RLM_HANDOFF_QUERY: &str = "Prepare a concise relay handoff for the next specialist.\n\
 Return FINAL(JSON) with this exact shape:\n\
 {\"kind\":\"semantic\",\"file\":\"relay_handoff\",\"answer\":\"...\"}\n\
@@ -27,6 +28,46 @@ pub fn ensure_required_relay_capabilities(capabilities: &mut Vec<String>) {
             capabilities.push(required.to_string());
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedAutochatRequest {
+    pub agent_count: usize,
+    pub task: String,
+    pub bypass_prd: bool,
+    pub explicit_count: bool,
+}
+
+pub fn parse_autochat_request(
+    rest: &str,
+    default_agents: usize,
+    quick_demo_task: &str,
+) -> Option<ParsedAutochatRequest> {
+    let mut bypass_prd = false;
+    let mut kept_tokens: Vec<&str> = Vec::new();
+
+    for token in rest.split_whitespace() {
+        if token.eq_ignore_ascii_case(AUTOCHAT_NO_PRD_FLAG) {
+            bypass_prd = true;
+        } else {
+            kept_tokens.push(token);
+        }
+    }
+
+    let normalized = kept_tokens.join(" ");
+    let explicit_count = normalized
+        .split_whitespace()
+        .next()
+        .and_then(|value| value.parse::<usize>().ok())
+        .is_some();
+    let (agent_count, task) = parse_autochat_args(&normalized, default_agents, quick_demo_task)?;
+
+    Some(ParsedAutochatRequest {
+        agent_count,
+        task: task.to_string(),
+        bypass_prd,
+        explicit_count,
+    })
 }
 
 pub fn parse_autochat_args<'a>(
@@ -81,8 +122,9 @@ pub fn normalize_for_convergence(text: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_QUICK_DEMO_TASK, ensure_required_relay_capabilities,
-        normalize_for_convergence, parse_autochat_args,
+        AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_NO_PRD_FLAG, AUTOCHAT_QUICK_DEMO_TASK,
+        ParsedAutochatRequest, ensure_required_relay_capabilities, normalize_for_convergence,
+        parse_autochat_args, parse_autochat_request,
     };
 
     #[test]
@@ -118,5 +160,41 @@ mod tests {
         assert!(caps.iter().any(|cap| cap == "context-handoff"));
         assert!(caps.iter().any(|cap| cap == "rlm-aware"));
         assert!(caps.iter().any(|cap| cap == "autochat"));
+    }
+
+    #[test]
+    fn parse_autochat_request_detects_no_prd_flag() {
+        let parsed = parse_autochat_request(
+            &format!("{AUTOCHAT_NO_PRD_FLAG} 4 build relay"),
+            AUTOCHAT_DEFAULT_AGENTS,
+            AUTOCHAT_QUICK_DEMO_TASK,
+        );
+        assert_eq!(
+            parsed,
+            Some(ParsedAutochatRequest {
+                agent_count: 4,
+                task: "build relay".to_string(),
+                bypass_prd: true,
+                explicit_count: true,
+            })
+        );
+    }
+
+    #[test]
+    fn parse_autochat_request_supports_flag_anywhere() {
+        let parsed = parse_autochat_request(
+            "build relay --no-prd now",
+            AUTOCHAT_DEFAULT_AGENTS,
+            AUTOCHAT_QUICK_DEMO_TASK,
+        );
+        assert_eq!(
+            parsed,
+            Some(ParsedAutochatRequest {
+                agent_count: AUTOCHAT_DEFAULT_AGENTS,
+                task: "build relay now".to_string(),
+                bypass_prd: true,
+                explicit_count: false,
+            })
+        );
     }
 }

@@ -1199,7 +1199,7 @@ impl ChatMessage {
     }
 }
 
-/// Pending OKR approval gate state for /go commands
+/// Pending OKR approval gate state for PRD-gated relay commands.
 struct PendingOkrApproval {
     /// The OKR being proposed
     okr: Okr,
@@ -1289,7 +1289,7 @@ impl PendingOkrApproval {
             .unwrap_or_default();
 
         format!(
-            "⚠️  /go OKR Draft\n\n\
+            "⚠️  Relay OKR Draft\n\n\
             Task: {task}\n\
             Agents: {agents} | Model: {model}\n\n\
             {note_line}\
@@ -3160,7 +3160,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR-gated relay (requires approval, tracks outcomes)\n• /autochat <task> - tactical relay (fast path, no OKR)\n• /autochat-local <task> - tactical relay pinned to local CUDA\n• /local - switch active model to local CUDA\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
+                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR+PRD gated relay (requires approval, tracks outcomes)\n• /autochat <task> - PRD-gated relay by default (use --no-prd for tactical)\n• /autochat-local <task> - PRD-gated local relay (use --no-prd for tactical)\n• /local - switch active model to local CUDA\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -3663,11 +3663,15 @@ impl App {
         }
 
         if let Some(rest) = command_with_optional_args(&message, "/autochat-local") {
-            let Some((count, task)) = parse_autochat_args(rest) else {
+            let Some(parsed) = crate::autochat::parse_autochat_request(
+                rest,
+                AUTOCHAT_DEFAULT_AGENTS,
+                AUTOCHAT_QUICK_DEMO_TASK,
+            ) else {
                 self.messages.push(ChatMessage::new(
                     "system",
                     format!(
-                        "Usage: /autochat-local [count] <task>\nExamples:\n  /autochat-local implement protocol-first relay with tests\n  /autochat-local 4 implement protocol-first relay with tests\ncount range: 2-{} (default: {})",
+                        "Usage: /autochat-local [count] [--no-prd] <task>\nExamples:\n  /autochat-local implement protocol-first relay with tests\n  /autochat-local 4 implement protocol-first relay with tests\ncount range: 2-{} (default: {})",
                         AUTOCHAT_MAX_AGENTS,
                         AUTOCHAT_DEFAULT_AGENTS,
                     ),
@@ -3675,48 +3679,67 @@ impl App {
                 return;
             };
 
+            let count = parsed.agent_count;
+            let task = parsed.task;
             let current_model = self
                 .active_model
                 .as_deref()
                 .or(config.default_model.as_deref());
             let local_model = resolve_local_loop_model(current_model);
-            self.start_autochat_execution(
-                count,
-                task.to_string(),
-                config,
-                None,
-                None,
-                Some(local_model),
-            )
-            .await;
+            let require_prd = !parsed.bypass_prd;
+            if require_prd {
+                let pending = PendingOkrApproval::propose(task, count, local_model).await;
+                self.messages
+                    .push(ChatMessage::new("system", pending.approval_prompt()));
+                self.scroll = SCROLL_BOTTOM;
+                self.pending_okr_approval = Some(pending);
+            } else {
+                self.start_autochat_execution(count, task, config, None, None, Some(local_model))
+                    .await;
+            }
             return;
         }
 
         // Check for /autochat command
         if let Some(rest) = command_with_optional_args(&message, "/autochat") {
-            let Some((count, task)) = parse_autochat_args(rest) else {
+            let Some(parsed) = crate::autochat::parse_autochat_request(
+                rest,
+                AUTOCHAT_DEFAULT_AGENTS,
+                AUTOCHAT_QUICK_DEMO_TASK,
+            ) else {
                 self.messages.push(ChatMessage::new(
                     "system",
                     format!(
-                        "Usage: /autochat [count] <task>\nEasy mode: /go <task>\nExamples:\n  /autochat implement protocol-first relay with tests\n  /autochat 4 implement protocol-first relay with tests\ncount range: 2-{} (default: {})",
+                        "Usage: /autochat [count] [--no-prd] <task>\nEasy mode: /go <task>\nExamples:\n  /autochat implement protocol-first relay with tests\n  /autochat 4 implement protocol-first relay with tests\ncount range: 2-{} (default: {})",
                         AUTOCHAT_MAX_AGENTS,
                         AUTOCHAT_DEFAULT_AGENTS,
                     ),
                 ));
                 return;
             };
+            let count = parsed.agent_count;
+            let task = parsed.task;
+            let require_prd = easy_go_requested || !parsed.bypass_prd;
 
-            if easy_go_requested {
+            if require_prd {
                 let current_model = self
                     .active_model
                     .as_deref()
                     .or(config.default_model.as_deref());
-                let next_model = next_go_model(current_model);
-                self.active_model = Some(next_model.clone());
-                if let Some(session) = self.session.as_mut() {
-                    session.metadata.model = Some(next_model.clone());
-                }
-                self.persist_active_session("go_model_swap").await;
+                let model = if easy_go_requested {
+                    let next_model = next_go_model(current_model);
+                    self.active_model = Some(next_model.clone());
+                    if let Some(session) = self.session.as_mut() {
+                        session.metadata.model = Some(next_model.clone());
+                    }
+                    self.persist_active_session("go_model_swap").await;
+                    next_model
+                } else {
+                    current_model
+                        .filter(|value| !value.trim().is_empty())
+                        .map(str::to_string)
+                        .unwrap_or_else(|| GO_SWAP_MODEL_MINIMAX.to_string())
+                };
 
                 // Initialize OKR repository if not already done
                 if self.okr_repository.is_none() {
@@ -3725,16 +3748,14 @@ impl App {
                     }
                 }
 
-                // Create pending OKR approval gate
-                // For /go, default to max concurrency unless user specified a count
-                let go_count = if rest.trim().starts_with(|c: char| c.is_ascii_digit()) {
-                    count
-                } else {
+                // Create pending OKR approval gate.
+                // For /go, default to max concurrency unless an explicit count is provided.
+                let go_count = if easy_go_requested && !parsed.explicit_count {
                     AUTOCHAT_MAX_AGENTS
+                } else {
+                    count
                 };
-                let pending =
-                    PendingOkrApproval::propose(task.to_string(), go_count, next_model.clone())
-                        .await;
+                let pending = PendingOkrApproval::propose(task.to_string(), go_count, model).await;
 
                 self.messages
                     .push(ChatMessage::new("system", pending.approval_prompt()));
@@ -3745,7 +3766,7 @@ impl App {
                 return;
             }
 
-            self.start_autochat_execution(count, task.to_string(), config, None, None, None)
+            self.start_autochat_execution(count, task, config, None, None, None)
                 .await;
             return;
         }
@@ -6873,7 +6894,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             ));
                         app.messages.push(ChatMessage::new(
                             "system",
-                            "❌ OKR denied. Relay not started.\n\nUse /autochat for tactical execution without OKR tracking.",
+                            "❌ OKR denied. Relay not started.\n\nUse /autochat --no-prd for tactical execution without OKR/PRD tracking.",
                         ));
                         app.scroll = SCROLL_BOTTOM;
                         continue;
@@ -9443,10 +9464,6 @@ fn resolve_local_loop_model(current_model: Option<&str>) -> String {
     AUTOCHAT_LOCAL_DEFAULT_MODEL.to_string()
 }
 
-fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
-    crate::autochat::parse_autochat_args(rest, AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_QUICK_DEMO_TASK)
-}
-
 fn normalize_for_convergence(text: &str) -> String {
     crate::autochat::normalize_for_convergence(text, 280)
 }
@@ -9832,14 +9849,15 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  ?            Toggle this help".to_string(),
         "".to_string(),
         "  SLASH COMMANDS (auto-complete hints shown while typing)".to_string(),
-        "  OKR-GATED MODE (requires approval, tracks measurable outcomes)".to_string(),
-        "  /go <task>      OKR-gated relay: draft → approve → execute → track KR progress"
+        "  OKR/PRD-GATED MODE (requires approval, tracks measurable outcomes)".to_string(),
+        "  /go <task>      OKR+PRD relay: draft → approve → execute → track KR progress"
             .to_string(),
         "".to_string(),
-        "  TACTICAL MODE (fast path, no OKR tracking)".to_string(),
-        "  /autochat [count] <task>  Immediate relay: no approval needed, no outcome tracking"
+        "  RELAY MODE".to_string(),
+        "  /autochat [count] [--no-prd] <task>  PRD-gated by default; use --no-prd for tactical"
             .to_string(),
-        "  /autochat-local [count] <task>  Immediate relay pinned to local CUDA model".to_string(),
+        "  /autochat-local [count] [--no-prd] <task>  Local relay; PRD-gated unless --no-prd"
+            .to_string(),
         "  /local [model]  Switch active model to local CUDA (example: /local qwen2.5-coder-7b)"
             .to_string(),
         "".to_string(),
@@ -9948,7 +9966,6 @@ mod tests {
         format_relay_handoff_line, is_easy_go_command, is_secure_environment_from_values,
         match_slash_command_hint, minio_fallback_endpoint, next_go_model, normalize_easy_command,
         normalize_for_convergence, normalize_local_model_ref, normalize_minio_endpoint,
-        parse_autochat_args,
     };
 
     #[test]
@@ -10044,25 +10061,36 @@ mod tests {
 
     #[test]
     fn parse_autochat_args_supports_default_count() {
+        let parsed = crate::autochat::parse_autochat_request(
+            "build a calculator",
+            3,
+            AUTOCHAT_QUICK_DEMO_TASK,
+        );
         assert_eq!(
-            parse_autochat_args("build a calculator"),
-            Some((3, "build a calculator"))
+            parsed.map(|value| (value.agent_count, value.task)),
+            Some((3, "build a calculator".to_string()))
         );
     }
 
     #[test]
     fn parse_autochat_args_supports_explicit_count() {
+        let parsed = crate::autochat::parse_autochat_request(
+            "4 build a calculator",
+            3,
+            AUTOCHAT_QUICK_DEMO_TASK,
+        );
         assert_eq!(
-            parse_autochat_args("4 build a calculator"),
-            Some((4, "build a calculator"))
+            parsed.map(|value| (value.agent_count, value.task)),
+            Some((4, "build a calculator".to_string()))
         );
     }
 
     #[test]
     fn parse_autochat_args_count_only_uses_quick_demo_task() {
+        let parsed = crate::autochat::parse_autochat_request("4", 3, AUTOCHAT_QUICK_DEMO_TASK);
         assert_eq!(
-            parse_autochat_args("4"),
-            Some((4, AUTOCHAT_QUICK_DEMO_TASK))
+            parsed.map(|value| (value.agent_count, value.task)),
+            Some((4, AUTOCHAT_QUICK_DEMO_TASK.to_string()))
         );
     }
 
