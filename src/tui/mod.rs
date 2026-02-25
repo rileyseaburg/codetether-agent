@@ -23,22 +23,15 @@ const TOOL_ARGS_PREVIEW_MAX_LINES: usize = 10;
 const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
 const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
 const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
-const AUTOCHAT_MAX_AGENTS: usize = 8;
-const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
-const AUTOCHAT_MAX_ROUNDS: usize = 3;
-const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
-const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
-const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = 6_000;
-const AUTOCHAT_RLM_FALLBACK_CHARS: usize = 3_500;
-const AUTOCHAT_RLM_HANDOFF_QUERY: &str = "Prepare a concise relay handoff for the next specialist.\n\
-Return FINAL(JSON) with this exact shape:\n\
-{\"kind\":\"semantic\",\"file\":\"relay_handoff\",\"answer\":\"...\"}\n\
-The \"answer\" must include:\n\
-1) key conclusions,\n\
-2) unresolved risks,\n\
-3) one exact next action.\n\
-Keep it concise and actionable.";
-const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
+const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
+const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
+const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
+const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = crate::autochat::AUTOCHAT_MAX_DYNAMIC_SPAWNS;
+const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = crate::autochat::AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
+const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
+const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
+const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
+const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
 const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen2.5-coder-7b";
 const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
 const GO_SWAP_MODEL_MINIMAX: &str = "minimax-credits/MiniMax-M2.5-highspeed";
@@ -478,12 +471,32 @@ impl RelayCheckpoint {
         serde_json::from_str(&content).ok()
     }
 
+    async fn load_for_workspace(workspace_dir: &Path) -> Option<Self> {
+        let checkpoint = Self::load().await?;
+        if same_workspace(&checkpoint.workspace_dir, workspace_dir) {
+            Some(checkpoint)
+        } else {
+            tracing::info!(
+                checkpoint_workspace = %checkpoint.workspace_dir.display(),
+                active_workspace = %workspace_dir.display(),
+                "Ignoring relay checkpoint from different workspace"
+            );
+            None
+        }
+    }
+
     async fn delete() {
         if let Some(path) = Self::checkpoint_path() {
             let _ = tokio::fs::remove_file(&path).await;
             tracing::debug!("Relay checkpoint deleted");
         }
     }
+}
+
+fn same_workspace(left: &Path, right: &Path) -> bool {
+    let left_norm = left.canonicalize().unwrap_or_else(|_| left.to_path_buf());
+    let right_norm = right.canonicalize().unwrap_or_else(|_| right.to_path_buf());
+    left_norm == right_norm
 }
 
 /// Estimate USD cost from model name and token counts.
@@ -1581,11 +1594,7 @@ fn build_runtime_profile_from_plan(
         }
     }
 
-    for required in ["relay", "context-handoff", "rlm-aware", "autochat"] {
-        if !capabilities.iter().any(|capability| capability == required) {
-            capabilities.push(required.to_string());
-        }
-    }
+    crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
 
     let instructions = relay_instruction_from_plan(&name, &specialty, &mission);
     Some((name, instructions, capabilities))
@@ -1687,6 +1696,7 @@ async fn plan_okr_draft_with_registry(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
 ) -> Option<PlannedOkrDraft> {
     let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+    let model_name_for_log = model_name.clone();
 
     let request = crate::provider::CompletionRequest {
         model: model_name,
@@ -1735,7 +1745,22 @@ async fn plan_okr_draft_with_registry(
         .collect::<Vec<_>>()
         .join("\n");
 
-    extract_json_payload::<PlannedOkrDraft>(&text)
+    tracing::debug!(
+        model = %model_name_for_log,
+        response_len = text.len(),
+        response_preview = %text.chars().take(500).collect::<String>(),
+        "OKR draft model response"
+    );
+
+    let parsed = extract_json_payload::<PlannedOkrDraft>(&text);
+    if parsed.is_none() {
+        tracing::warn!(
+            model = %model_name_for_log,
+            response_preview = %text.chars().take(500).collect::<String>(),
+            "Failed to parse OKR draft JSON from model response"
+        );
+    }
+    parsed
 }
 
 async fn plan_relay_profiles_with_registry(
@@ -2253,7 +2278,7 @@ async fn run_autochat_worker(
     let mut turns = 0usize;
     let mut rlm_handoff_count = 0usize;
     let mut dynamic_spawn_count = 0usize;
-    let mut status = "max_rounds_reached";
+    let mut status = crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED;
     let mut failure_note: Option<String> = None;
 
     'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
@@ -2529,7 +2554,7 @@ async fn run_autochat_worker(
                     // Set outcome type based on status
                     let outcome_type = if status == "converged" {
                         KrOutcomeType::FeatureDelivered
-                    } else if status == "max_rounds" {
+                    } else if status == crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED {
                         KrOutcomeType::Evidence
                     } else {
                         KrOutcomeType::Evidence
@@ -2766,7 +2791,7 @@ async fn resume_autochat_worker(
         .await;
 
     let mut previous_normalized: Option<String> = None;
-    let mut status = "max_rounds_reached";
+    let mut status = crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED;
     let mut failure_note: Option<String> = None;
 
     'relay_loop: for round in start_round..=AUTOCHAT_MAX_ROUNDS {
@@ -4206,7 +4231,9 @@ impl App {
 
             // If no specific session ID, check for an interrupted relay checkpoint first
             if session_id.is_none() {
-                if let Some(checkpoint) = RelayCheckpoint::load().await {
+                if let Some(checkpoint) =
+                    RelayCheckpoint::load_for_workspace(&self.workspace_dir).await
+                {
                     self.messages.push(ChatMessage::new("user", "/resume"));
                     self.resume_autochat_relay(checkpoint).await;
                     return;
@@ -5897,7 +5924,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     }
 
     // Check for an interrupted relay checkpoint and notify the user
-    if let Some(checkpoint) = RelayCheckpoint::load().await {
+    if let Some(checkpoint) = RelayCheckpoint::load_for_workspace(&app.workspace_dir).await {
         app.messages.push(ChatMessage::new(
             "system",
             format!(
@@ -9352,7 +9379,13 @@ fn is_glm5_model(model: &str) -> bool {
     let normalized = model.trim().to_ascii_lowercase();
     matches!(
         normalized.as_str(),
-        "zai/glm-5" | "z-ai/glm-5" | "openrouter/z-ai/glm-5"
+        "zai/glm-5"
+            | "z-ai/glm-5"
+            | "openrouter/z-ai/glm-5"
+            | "glm5/glm-5-fp8"
+            | "glm5/glm-5"
+            | "glm5:glm-5-fp8"
+            | "glm5:glm-5"
     )
 }
 
@@ -9411,48 +9444,11 @@ fn resolve_local_loop_model(current_model: Option<&str>) -> String {
 }
 
 fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
-    let rest = rest.trim();
-    if rest.is_empty() {
-        return None;
-    }
-
-    let mut parts = rest.splitn(2, char::is_whitespace);
-    let first = parts.next().unwrap_or("").trim();
-    if first.is_empty() {
-        return None;
-    }
-
-    if let Ok(count) = first.parse::<usize>() {
-        let task = parts.next().unwrap_or("").trim();
-        if task.is_empty() {
-            Some((count, AUTOCHAT_QUICK_DEMO_TASK))
-        } else {
-            Some((count, task))
-        }
-    } else {
-        Some((AUTOCHAT_DEFAULT_AGENTS, rest))
-    }
+    crate::autochat::parse_autochat_args(rest, AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_QUICK_DEMO_TASK)
 }
 
 fn normalize_for_convergence(text: &str) -> String {
-    let mut normalized = String::with_capacity(text.len().min(512));
-    let mut last_was_space = false;
-
-    for ch in text.chars() {
-        if ch.is_ascii_alphanumeric() {
-            normalized.push(ch.to_ascii_lowercase());
-            last_was_space = false;
-        } else if ch.is_whitespace() && !last_was_space {
-            normalized.push(' ');
-            last_was_space = true;
-        }
-
-        if normalized.len() >= 280 {
-            break;
-        }
-    }
-
-    normalized.trim().to_string()
+    crate::autochat::normalize_for_convergence(text, 280)
 }
 
 fn agent_profile(agent_name: &str) -> AgentProfile {

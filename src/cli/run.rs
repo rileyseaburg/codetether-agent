@@ -5,6 +5,7 @@ use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile
 use crate::config::Config;
 use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
+use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::Session;
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -12,13 +13,18 @@ use std::collections::HashMap;
 use std::io::Write;
 use uuid::Uuid;
 
-const AUTOCHAT_MAX_AGENTS: usize = 100;
-const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
-const AUTOCHAT_MAX_ROUNDS: usize = 3;
-const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
-const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
-const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
-const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M2.5";
+const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
+const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
+const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
+const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = crate::autochat::AUTOCHAT_MAX_DYNAMIC_SPAWNS;
+const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = crate::autochat::AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
+const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
+const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
+const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
+const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
+// Easy-go defaults should be fast and cheap. We use the dedicated
+// minimax-credits provider and the highspeed variant by default.
+const GO_DEFAULT_MODEL: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
@@ -210,11 +216,7 @@ fn build_runtime_profile_from_plan(
         }
     }
 
-    for required in ["relay", "context-handoff", "autochat"] {
-        if !capabilities.iter().any(|capability| capability == required) {
-            capabilities.push(required.to_string());
-        }
-    }
+    crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
 
     Some(RelayProfile {
         name: name.clone(),
@@ -359,6 +361,7 @@ async fn plan_okr_draft_with_registry(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
 ) -> Option<PlannedOkrDraft> {
     let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+    let model_name_for_log = model_name.clone();
 
     // Keep prompt short-ish: this happens *before* the approval gate.
     let request = crate::provider::CompletionRequest {
@@ -408,7 +411,22 @@ async fn plan_okr_draft_with_registry(
         .collect::<Vec<_>>()
         .join("\n");
 
-    extract_json_payload::<PlannedOkrDraft>(&text)
+    tracing::debug!(
+        model = %model_name_for_log,
+        response_len = text.len(),
+        response_preview = %text.chars().take(500).collect::<String>(),
+        "OKR draft model response"
+    );
+
+    let parsed = extract_json_payload::<PlannedOkrDraft>(&text);
+    if parsed.is_none() {
+        tracing::warn!(
+            model = %model_name_for_log,
+            response_preview = %text.chars().take(500).collect::<String>(),
+            "Failed to parse OKR draft JSON from model response"
+        );
+    }
+    parsed
 }
 
 async fn plan_relay_profiles_with_registry(
@@ -935,27 +953,7 @@ Use a concise objective sentence instead, e.g. `/go implement /v1/agent/* compat
 }
 
 fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
-    let rest = rest.trim();
-    if rest.is_empty() {
-        return None;
-    }
-
-    let mut parts = rest.splitn(2, char::is_whitespace);
-    let first = parts.next().unwrap_or("").trim();
-    if first.is_empty() {
-        return None;
-    }
-
-    if let Ok(count) = first.parse::<usize>() {
-        let task = parts.next().unwrap_or("").trim();
-        if task.is_empty() {
-            Some((count, AUTOCHAT_QUICK_DEMO_TASK))
-        } else {
-            Some((count, task))
-        }
-    } else {
-        Some((AUTOCHAT_DEFAULT_AGENTS, rest))
-    }
+    crate::autochat::parse_autochat_args(rest, AUTOCHAT_DEFAULT_AGENTS, AUTOCHAT_QUICK_DEMO_TASK)
 }
 
 fn resolve_autochat_model(
@@ -993,13 +991,8 @@ fn build_relay_profiles(count: usize) -> Vec<RelayProfile> {
              Include one clear recommendation for what the next agent should do.\n\
              If the task scope is too large, explicitly call out missing specialties and handoff boundaries.",
         );
-        let capabilities = vec![
-            "generalist".to_string(),
-            "self-organizing".to_string(),
-            "relay".to_string(),
-            "context-handoff".to_string(),
-            "autochat".to_string(),
-        ];
+        let mut capabilities = vec!["generalist".to_string(), "self-organizing".to_string()];
+        crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
 
         profiles.push(RelayProfile {
             name,
@@ -1033,24 +1026,60 @@ fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
 }
 
 fn normalize_for_convergence(text: &str) -> String {
-    let mut normalized = String::with_capacity(text.len().min(512));
-    let mut last_was_space = false;
+    crate::autochat::normalize_for_convergence(text, 280)
+}
 
-    for ch in text.chars() {
-        if ch.is_ascii_alphanumeric() {
-            normalized.push(ch.to_ascii_lowercase());
-            last_was_space = false;
-        } else if ch.is_whitespace() && !last_was_space {
-            normalized.push(' ');
-            last_was_space = true;
-        }
+fn extract_semantic_handoff_from_rlm(answer: &str) -> String {
+    match FinalPayload::parse(answer) {
+        FinalPayload::Semantic(payload) => payload.answer,
+        _ => answer.trim().to_string(),
+    }
+}
 
-        if normalized.len() >= 280 {
-            break;
+async fn prepare_autochat_handoff_with_registry(
+    task: &str,
+    from_agent: &str,
+    output: &str,
+    model_ref: &str,
+    registry: Option<&std::sync::Arc<crate::provider::ProviderRegistry>>,
+) -> (String, bool) {
+    let mut used_rlm = false;
+    let mut relay_payload = if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
+        truncate_with_ellipsis(output, AUTOCHAT_RLM_FALLBACK_CHARS)
+    } else {
+        output.to_string()
+    };
+
+    if let Some(registry) = registry
+        && let Some((provider, model_name)) =
+            resolve_provider_for_model_autochat(registry, model_ref)
+    {
+        let mut executor =
+            RlmExecutor::new(output.to_string(), provider, model_name).with_max_iterations(2);
+        match executor.analyze(AUTOCHAT_RLM_HANDOFF_QUERY).await {
+            Ok(result) => {
+                let normalized = extract_semantic_handoff_from_rlm(&result.answer);
+                if !normalized.is_empty() {
+                    relay_payload = normalized;
+                    used_rlm = true;
+                }
+            }
+            Err(err) => {
+                tracing::warn!(
+                    error = %err,
+                    "CLI RLM handoff normalization failed; using fallback payload"
+                );
+            }
         }
     }
 
-    normalized.trim().to_string()
+    (
+        format!(
+            "Relay task:\n{task}\n\nIncoming handoff from @{from_agent}:\n{relay_payload}\n\n\
+             Continue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent."
+        ),
+        used_rlm,
+    )
 }
 
 async fn run_protocol_first_relay(
@@ -1148,7 +1177,8 @@ async fn run_protocol_first_relay(
     let mut convergence_hits = 0usize;
     let mut turns = 0usize;
     let mut dynamic_spawn_count = 0usize;
-    let mut status = "max_rounds_reached".to_string();
+    let mut rlm_handoff_count = 0usize;
+    let mut status = crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED.to_string();
     let mut failure_note: Option<String> = None;
 
     'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
@@ -1194,10 +1224,18 @@ async fn run_protocol_first_relay(
             }
             previous_normalized = Some(normalized);
 
-            baton = format!(
-                "Relay task:\n{task}\n\nIncoming handoff from @{to}:\n{}\n\nContinue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent.",
-                truncate_with_ellipsis(&output, 3_500)
-            );
+            let (next_handoff, used_rlm) = prepare_autochat_handoff_with_registry(
+                task,
+                &to,
+                &output,
+                model_ref,
+                registry.as_ref(),
+            )
+            .await;
+            if used_rlm {
+                rlm_handoff_count += 1;
+            }
+            baton = next_handoff;
 
             // Update KR progress after each turn
             if !kr_targets.is_empty() {
@@ -1308,6 +1346,8 @@ async fn run_protocol_first_relay(
                     format!("turns:{}", turns),
                     format!("agents:{}", ordered_agents.len()),
                     format!("status:{}", status),
+                    format!("rlm_handoffs:{}", rlm_handoff_count),
+                    format!("dynamic_spawns:{}", dynamic_spawn_count),
                 ];
 
                 let outcome_type = if status == "converged" {
@@ -1368,6 +1408,9 @@ async fn run_protocol_first_relay(
         summary.push_str("\n\nTeam planning: model-organized profiles.");
     } else {
         summary.push_str("\n\nTeam planning: fallback self-organizing profiles.");
+    }
+    if rlm_handoff_count > 0 {
+        summary.push_str(&format!("\nRLM-normalized handoffs: {rlm_handoff_count}"));
     }
     if dynamic_spawn_count > 0 {
         summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));

@@ -155,7 +155,12 @@ fn estimate_tokens_for_part(part: &ContentPart) -> usize {
 fn estimate_tokens_for_messages(messages: &[Message]) -> usize {
     messages
         .iter()
-        .map(|m| m.content.iter().map(estimate_tokens_for_part).sum::<usize>())
+        .map(|m| {
+            m.content
+                .iter()
+                .map(estimate_tokens_for_part)
+                .sum::<usize>()
+        })
         .sum()
 }
 
@@ -168,7 +173,11 @@ fn estimate_tokens_for_tools(tools: &[ToolDefinition]) -> usize {
         .unwrap_or(0)
 }
 
-fn estimate_request_tokens(system_prompt: &str, messages: &[Message], tools: &[ToolDefinition]) -> usize {
+fn estimate_request_tokens(
+    system_prompt: &str,
+    messages: &[Message],
+    tools: &[ToolDefinition],
+) -> usize {
     RlmChunker::estimate_tokens(system_prompt)
         + estimate_tokens_for_messages(messages)
         + estimate_tokens_for_tools(tools)
@@ -204,12 +213,20 @@ fn messages_to_rlm_context(messages: &[Message]) -> String {
                         out.push('\n');
                     }
                 }
-                ContentPart::ToolCall { id, name, arguments, .. } => {
+                ContentPart::ToolCall {
+                    id,
+                    name,
+                    arguments,
+                    ..
+                } => {
                     out.push_str(&format!(
                         "[ToolCall id={id} name={name}]\nargs: {arguments}\n"
                     ));
                 }
-                ContentPart::ToolResult { tool_call_id, content } => {
+                ContentPart::ToolResult {
+                    tool_call_id,
+                    content,
+                } => {
                     out.push_str(&format!("[ToolResult id={tool_call_id}]\n"));
                     out.push_str(content);
                     out.push('\n');
@@ -505,7 +522,12 @@ impl Session {
             );
 
             let did = self
-                .compress_history_keep_last(Arc::clone(&provider), model, keep_last, "context_budget")
+                .compress_history_keep_last(
+                    Arc::clone(&provider),
+                    model,
+                    keep_last,
+                    "context_budget",
+                )
                 .await?;
 
             if !did {
@@ -529,7 +551,7 @@ impl Session {
         let providers = registry.list();
         if providers.is_empty() {
             anyhow::bail!(
-                "No providers available. Configure API keys in HashiCorp Vault (for Copilot use `codetether auth copilot`)."
+                "No providers available. Configure provider credentials in HashiCorp Vault (for ChatGPT subscription Codex use `codetether auth codex`; for Copilot use `codetether auth copilot`)."
             );
         }
 
@@ -1132,7 +1154,7 @@ impl Session {
         let providers = registry.list();
         if providers.is_empty() {
             anyhow::bail!(
-                "No providers available. Configure API keys in HashiCorp Vault (for Copilot use `codetether auth copilot`)."
+                "No providers available. Configure provider credentials in HashiCorp Vault (for ChatGPT subscription Codex use `codetether auth codex`; for Copilot use `codetether auth copilot`)."
             );
         }
         tracing::info!("Available providers: {:?}", providers);

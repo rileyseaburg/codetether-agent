@@ -98,7 +98,7 @@ impl OpenAiCodexProvider {
             let tid_repr = format!("{:?}", tid);
             let tid_hash = Sha256::digest(tid_repr.as_bytes());
 
-            bytes[0..8].copy_from_slice(&ts_bytes);
+            bytes[0..8].copy_from_slice(&ts_bytes[0..8]);
             bytes[8..24].copy_from_slice(&tid_hash[0..16]);
             bytes[24..].copy_from_slice(&Sha256::digest(&ts_bytes)[0..8]);
             bytes

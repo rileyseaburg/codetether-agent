@@ -134,6 +134,11 @@ impl K8sManager {
     /// Attempt to initialize from in-cluster configuration.
     /// Returns a manager even if not running in K8s (with client = None).
     pub async fn new() -> Self {
+        // rustls 0.23+ requires selecting a process-level crypto provider.
+        // This path is exercised by unit tests (and library users) without
+        // going through the binary's startup initialization.
+        crate::tls::ensure_rustls_crypto_provider();
+
         let namespace = std::env::var("CODETETHER_K8S_NAMESPACE")
             .or_else(|_| Self::read_namespace_file())
             .unwrap_or_else(|_| "default".to_string());

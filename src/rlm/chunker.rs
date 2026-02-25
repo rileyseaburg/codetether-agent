@@ -271,7 +271,36 @@ impl RlmChunker {
 
     /// Estimate token count (roughly 4 chars per token)
     pub fn estimate_tokens(text: &str) -> usize {
-        text.len().div_ceil(4)
+        if text.is_empty() {
+            return 0;
+        }
+
+        // Heuristic token estimator.
+        //
+        // The classic rule-of-thumb is ~4 chars/token for natural-language
+        // prose. In practice, we frequently ingest content like minified JS,
+        // HTML, base64 blobs, and dense JSON where the chars/token ratio is
+        // lower (i.e., *more* tokens per character). Under-estimating tokens
+        // prevents RLM routing + context window management from kicking in.
+        let len = text.len();
+        let whitespace = text
+            .as_bytes()
+            .iter()
+            .filter(|b| b.is_ascii_whitespace())
+            .count();
+
+        let ws_ratio = whitespace as f64 / len as f64;
+        let chars_per_token = if ws_ratio < 0.05 {
+            2.8
+        } else if ws_ratio < 0.10 {
+            3.2
+        } else if ws_ratio < 0.20 {
+            3.6
+        } else {
+            4.0
+        };
+
+        ((len as f64) / chars_per_token).ceil() as usize
     }
 
     /// Split content into semantic chunks

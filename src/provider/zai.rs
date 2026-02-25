@@ -11,6 +11,8 @@ use super::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -43,6 +45,55 @@ impl ZaiProvider {
             api_key,
             base_url,
         })
+    }
+
+    fn normalize_tool_arguments(arguments: &str) -> String {
+        // Z.AI expects assistant.tool_calls[*].function.arguments to be a *string*
+        // containing valid JSON.
+        //
+        // Models sometimes emit slightly-invalid JSON during tool-call streaming
+        // (trailing junk, missing closing braces, etc.). We try to salvage a
+        // sensible JSON object before falling back to wrapping the raw input.
+        if let Ok(parsed) = serde_json::from_str::<Value>(arguments) {
+            return serde_json::to_string(&parsed).unwrap_or_else(|_| "{}".to_string());
+        }
+
+        if let Some(salvaged) = Self::salvage_json_object(arguments) {
+            return serde_json::to_string(&salvaged).unwrap_or_else(|_| "{}".to_string());
+        }
+
+        json!({"input": arguments}).to_string()
+    }
+
+    fn salvage_json_object(arguments: &str) -> Option<Value> {
+        let trimmed = arguments.trim();
+        if !trimmed.starts_with('{') {
+            return None;
+        }
+
+        static RE_SIMPLE_PAIR: Lazy<Regex> = Lazy::new(|| {
+            // Matches simple JSON key/value pairs where the value is a primitive
+            // or a quoted string. This is intentionally conservative.
+            Regex::new(
+                r#"(?s)\"(?P<k>[^\"\\]*(?:\\.[^\"\\]*)*)\"\s*:\s*(?P<v>\"(?:\\.|[^\"])*\"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)"#,
+            )
+            .expect("invalid regex")
+        });
+
+        let mut map = serde_json::Map::new();
+        for caps in RE_SIMPLE_PAIR.captures_iter(trimmed) {
+            let key = caps.name("k")?.as_str();
+            let val_str = caps.name("v")?.as_str();
+            if let Ok(val) = serde_json::from_str::<Value>(val_str) {
+                map.insert(key.to_string(), val);
+            }
+        }
+
+        if map.is_empty() {
+            None
+        } else {
+            Some(Value::Object(map))
+        }
     }
 
     fn convert_messages(messages: &[Message], include_reasoning_content: bool) -> Vec<Value> {
@@ -93,16 +144,7 @@ impl ZaiProvider {
                                     arguments,
                                     ..
                                 } => {
-                                    // Z.AI request schema expects assistant.tool_calls[*].function.arguments
-                                    // to be a JSON-format string. Normalize to a valid JSON string.
-                                    let args_string = serde_json::from_str::<Value>(arguments)
-                                        .map(|parsed| {
-                                            serde_json::to_string(&parsed)
-                                                .unwrap_or_else(|_| "{}".to_string())
-                                        })
-                                        .unwrap_or_else(|_| {
-                                            json!({"input": arguments}).to_string()
-                                        });
+                                    let args_string = Self::normalize_tool_arguments(arguments);
                                     Some(json!({
                                         "id": id,
                                         "type": "function",

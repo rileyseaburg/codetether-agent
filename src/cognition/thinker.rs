@@ -626,9 +626,7 @@ impl CandleThinker {
                 logits
             };
 
-            let next_token = logits_processor
-                .sample(&logits)
-                .context("token sampling failed")?;
+            let next_token = sample_next_token_with_fallback(&mut logits_processor, &logits)?;
             if self.eos_token_ids.contains(&next_token) {
                 finish_reason = "stop".to_string();
                 break;
@@ -793,6 +791,46 @@ fn collect_eos_token_ids(tokenizer: &Tokenizer, gguf_eos_ids: &[u32]) -> HashSet
         }
     }
     ids
+}
+
+fn sample_next_token_with_fallback(
+    logits_processor: &mut LogitsProcessor,
+    logits: &Tensor,
+) -> Result<u32> {
+    match logits_processor.sample(logits) {
+        Ok(token) => Ok(token),
+        Err(sample_error) => {
+            let logits_vec = logits
+                .to_vec1::<f32>()
+                .context("token sampling failed and fallback logits extraction failed")?;
+            let mut best_token = None;
+            let mut best_logit = f32::NEG_INFINITY;
+
+            for (idx, logit) in logits_vec.into_iter().enumerate() {
+                if !logit.is_finite() {
+                    continue;
+                }
+                if best_token.is_none() || logit > best_logit {
+                    best_token = Some(idx as u32);
+                    best_logit = logit;
+                }
+            }
+
+            if let Some(token) = best_token {
+                tracing::warn!(
+                    error = %sample_error,
+                    token,
+                    "Token sampling produced invalid weights; using greedy argmax fallback"
+                );
+                Ok(token)
+            } else {
+                Err(anyhow!(
+                    "token sampling failed and fallback argmax found no finite logits: {}",
+                    sample_error
+                ))
+            }
+        }
+    }
 }
 
 /// Returns true for HTTP status codes that are worth retrying.

@@ -165,6 +165,8 @@ codetether ralph run --prd prd.json      # Autonomous PRD-driven development
 codetether ralph create-prd --feature X  # Generate a PRD template
 codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
 codetether worker --server URL           # A2A worker mode (+ HTTP probes on :8080 by default)
+codetether auth codex                    # OAuth login for OpenAI Codex using ChatGPT subscription
+codetether auth copilot --client-id ID   # OAuth login for GitHub Copilot
 codetether okr list                      # List OKRs
 codetether okr report --id <uuid>        # Show OKR or run report
 codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn real A2A agent with auto-discovery
@@ -449,6 +451,7 @@ The terminal UI includes a webview layout, model selector, session picker, swarm
 | `moonshotai` | `kimi-k2.5` | Default — excellent for coding |
 | `github-copilot` | `claude-opus-4` | GitHub Copilot models |
 | `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
+| `openai-codex` | `gpt-5-codex` | ChatGPT subscription OAuth (Plus/Pro/Team/Enterprise) |
 | `google` | `gemini-2.5-pro` | Google AI |
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |

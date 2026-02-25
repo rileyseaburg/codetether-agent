@@ -118,6 +118,9 @@ pub enum AuthCommand {
     /// Authenticate with GitHub Copilot using device flow
     Copilot(CopilotAuthArgs),
 
+    /// Authenticate OpenAI Codex with a ChatGPT subscription via OAuth (Plus/Pro/Team/Enterprise)
+    Codex(CodexAuthArgs),
+
     /// Register a new CodeTether account with email/password
     Register(RegisterAuthArgs),
 
@@ -169,6 +172,9 @@ pub struct CopilotAuthArgs {
     #[arg(long, env = "CODETETHER_COPILOT_OAUTH_CLIENT_ID")]
     pub client_id: Option<String>,
 }
+
+#[derive(Parser, Debug)]
+pub struct CodexAuthArgs {}
 
 #[derive(Parser, Debug)]
 pub struct TuiArgs {

@@ -164,15 +164,14 @@ impl Glm5Provider {
                                     ..
                                 } => {
                                     // vLLM expects arguments as a JSON string
-                                    let args_string =
-                                        serde_json::from_str::<Value>(arguments)
-                                            .map(|parsed| {
-                                                serde_json::to_string(&parsed)
-                                                    .unwrap_or_else(|_| "{}".to_string())
-                                            })
-                                            .unwrap_or_else(|_| {
-                                                json!({"input": arguments}).to_string()
-                                            });
+                                    let args_string = serde_json::from_str::<Value>(arguments)
+                                        .map(|parsed| {
+                                            serde_json::to_string(&parsed)
+                                                .unwrap_or_else(|_| "{}".to_string())
+                                        })
+                                        .unwrap_or_else(|_| {
+                                            json!({"input": arguments}).to_string()
+                                        });
                                     Some(json!({
                                         "id": id,
                                         "type": "function",
@@ -571,8 +570,7 @@ impl Provider for Glm5Provider {
                             }
 
                             if let Some(data) = line.strip_prefix("data: ") {
-                                if let Ok(parsed) =
-                                    serde_json::from_str::<Glm5StreamResponse>(data)
+                                if let Ok(parsed) = serde_json::from_str::<Glm5StreamResponse>(data)
                                 {
                                     // Capture usage from the final chunk (stream_options)
                                     let usage = parsed.usage.as_ref().map(|u| Usage {
@@ -599,10 +597,7 @@ impl Provider for Glm5Provider {
                                                 if let Some(ref func) = tc.function {
                                                     if let Some(ref name) = func.name {
                                                         chunks.push(StreamChunk::ToolCallStart {
-                                                            id: tc
-                                                                .id
-                                                                .clone()
-                                                                .unwrap_or_default(),
+                                                            id: tc.id.clone().unwrap_or_default(),
                                                             name: name.clone(),
                                                         });
                                                     }
@@ -638,10 +633,7 @@ impl Provider for Glm5Provider {
                                                 if let Some(ref tcs) = choice.delta.tool_calls {
                                                     if let Some(tc) = tcs.last() {
                                                         chunks.push(StreamChunk::ToolCallEnd {
-                                                            id: tc
-                                                                .id
-                                                                .clone()
-                                                                .unwrap_or_default(),
+                                                            id: tc.id.clone().unwrap_or_default(),
                                                         });
                                                     }
                                                 }

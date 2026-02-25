@@ -12,6 +12,7 @@
 mod a2a;
 mod agent;
 mod audit;
+mod autochat;
 mod benchmark;
 mod bus;
 mod cli;
@@ -32,6 +33,7 @@ mod server;
 mod session;
 pub mod swarm;
 pub mod telemetry;
+mod tls;
 mod tool;
 mod tui;
 mod worker_server;

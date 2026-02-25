@@ -6,6 +6,7 @@ pub mod anthropic;
 pub mod bedrock;
 pub mod copilot;
 pub mod gemini_web;
+pub mod glm5;
 pub mod google;
 pub mod local_cuda;
 pub mod metrics;
@@ -652,6 +653,24 @@ impl ProviderRegistry {
                             }
                         }
                     }
+                    // GLM-5 FP8 on Vast.ai serverless (vLLM OpenAI-compatible endpoint)
+                    "glm5" | "glm-5-fp8" | "glm5-vastai" => {
+                        let base_url = secrets.base_url.clone().unwrap_or_else(|| {
+                            std::env::var("GLM5_BASE_URL")
+                                .unwrap_or_else(|_| "https://localhost:18000/v1".to_string())
+                        });
+                        let model_name = secrets
+                            .extra
+                            .get("model_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or(glm5::DEFAULT_MODEL)
+                            .to_string();
+                        match glm5::Glm5Provider::with_model(api_key, base_url, model_name) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init glm5: {}", e),
+                        }
+                    }
+
                     // Z.AI (formerly ZhipuAI) — first-class provider for GLM models
                     "zhipuai" | "zai" => {
                         let base_url = secrets
@@ -845,6 +864,22 @@ impl ProviderRegistry {
                         }
                         Err(e) => tracing::warn!("Failed to init {} from env: {}", provider_id, e),
                     }
+                }
+            }
+        }
+
+        // GLM-5 FP8 on Vast.ai — requires GLM5_BASE_URL; GLM5_API_KEY is optional
+        if !registry.providers.contains_key("glm5") {
+            if let Ok(base_url) = std::env::var("GLM5_BASE_URL") {
+                let api_key = std::env::var("GLM5_API_KEY").unwrap_or_default();
+                let model_name =
+                    std::env::var("GLM5_MODEL").unwrap_or_else(|_| glm5::DEFAULT_MODEL.to_string());
+                match glm5::Glm5Provider::with_model(api_key, base_url, model_name) {
+                    Ok(p) => {
+                        tracing::info!("Registered glm5 provider from GLM5_BASE_URL env var");
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init glm5 from env: {}", e),
                 }
             }
         }
