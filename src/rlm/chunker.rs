@@ -319,36 +319,36 @@ impl RlmChunker {
 
         for (i, line) in lines.iter().enumerate() {
             // Check if we hit a boundary
-            if let Some((boundary_type, boundary_priority)) = boundaries.get(&i) {
-                if !current_chunk.is_empty() {
-                    let content = current_chunk.join("\n");
-                    let tokens = Self::estimate_tokens(&content);
+            if let Some((boundary_type, boundary_priority)) = boundaries.get(&i)
+                && !current_chunk.is_empty()
+            {
+                let content = current_chunk.join("\n");
+                let tokens = Self::estimate_tokens(&content);
 
-                    // If chunk is too big, split it
-                    if tokens > opts.max_chunk_tokens {
-                        let sub_chunks = Self::split_large_chunk(
-                            &current_chunk,
-                            current_start,
-                            current_type,
-                            opts.max_chunk_tokens,
-                        );
-                        chunks.extend(sub_chunks);
-                    } else {
-                        chunks.push(Chunk {
-                            content,
-                            chunk_type: current_type,
-                            start_line: current_start,
-                            end_line: i.saturating_sub(1),
-                            tokens,
-                            priority: current_priority,
-                        });
-                    }
-
-                    current_chunk = Vec::new();
-                    current_start = i;
-                    current_type = *boundary_type;
-                    current_priority = *boundary_priority;
+                // If chunk is too big, split it
+                if tokens > opts.max_chunk_tokens {
+                    let sub_chunks = Self::split_large_chunk(
+                        &current_chunk,
+                        current_start,
+                        current_type,
+                        opts.max_chunk_tokens,
+                    );
+                    chunks.extend(sub_chunks);
+                } else {
+                    chunks.push(Chunk {
+                        content,
+                        chunk_type: current_type,
+                        start_line: current_start,
+                        end_line: i.saturating_sub(1),
+                        tokens,
+                        priority: current_priority,
+                    });
                 }
+
+                current_chunk = Vec::new();
+                current_start = i;
+                current_type = *boundary_type;
+                current_priority = *boundary_priority;
             }
 
             current_chunk.push(line);
@@ -546,11 +546,11 @@ impl RlmChunker {
 
         for chunk in chunks {
             // Add separator if there's a gap
-            if let Some(end) = last_end {
-                if chunk.start_line > end + 1 {
-                    let gap = chunk.start_line - end - 1;
-                    parts.push(format!("\n[... {} lines omitted ...]\n", gap));
-                }
+            if let Some(end) = last_end
+                && chunk.start_line > end + 1
+            {
+                let gap = chunk.start_line - end - 1;
+                parts.push(format!("\n[... {} lines omitted ...]\n", gap));
             }
             parts.push(chunk.content.clone());
             last_end = Some(chunk.end_line);

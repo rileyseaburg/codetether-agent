@@ -471,10 +471,10 @@ impl Provider for StepFunProvider {
         let mut content = Vec::new();
         let mut has_tool_calls = false;
 
-        if let Some(text) = &choice.message.content {
-            if !text.is_empty() {
-                content.push(ContentPart::Text { text: text.clone() });
-            }
+        if let Some(text) = &choice.message.content
+            && !text.is_empty()
+        {
+            content.push(ContentPart::Text { text: text.clone() });
         }
 
         if let Some(tool_calls) = &choice.message.tool_calls {
@@ -582,40 +582,44 @@ impl Provider for StepFunProvider {
                                 continue;
                             }
 
-                            if let Ok(chunk) = serde_json::from_str::<StreamChunkResponse>(data) {
-                                if let Some(choice) = chunk.choices.first() {
-                                    if let Some(content) = &choice.delta.content {
-                                        chunks.push(StreamChunk::Text(content.clone()));
-                                    }
+                            if let Ok(chunk) = serde_json::from_str::<StreamChunkResponse>(data)
+                                && let Some(choice) = chunk.choices.first()
+                            {
+                                if let Some(content) = &choice.delta.content {
+                                    chunks.push(StreamChunk::Text(content.clone()));
+                                }
 
-                                    if let Some(tool_calls) = &choice.delta.tool_calls {
-                                        for tc in tool_calls {
-                                            if let Some(id) = &tc.id {
-                                                if let Some(func) = &tc.function {
-                                                    if let Some(name) = &func.name {
-                                                        chunks.push(StreamChunk::ToolCallStart {
-                                                            id: id.clone(),
-                                                            name: name.clone(),
-                                                        });
-                                                    }
-                                                }
-                                            }
-                                            if let Some(func) = &tc.function {
-                                                if let Some(args) = &func.arguments {
-                                                    if !args.is_empty() {
-                                                        chunks.push(StreamChunk::ToolCallDelta {
-                                                            id: tc.id.clone().unwrap_or_default(),
-                                                            arguments_delta: args.clone(),
-                                                        });
-                                                    }
-                                                }
-                                            }
+                                if let Some(tool_calls) = &choice.delta.tool_calls {
+                                    for tc in tool_calls {
+                                        // Log tool call metadata for debugging
+                                        tracing::trace!(
+                                            tool_call_index = tc.index,
+                                            tool_call_id = ?tc.id,
+                                            "Processing StepFun streaming tool call"
+                                        );
+                                        if let Some(id) = &tc.id
+                                            && let Some(func) = &tc.function
+                                            && let Some(name) = &func.name
+                                        {
+                                            chunks.push(StreamChunk::ToolCallStart {
+                                                id: id.clone(),
+                                                name: name.clone(),
+                                            });
+                                        }
+                                        if let Some(func) = &tc.function
+                                            && let Some(args) = &func.arguments
+                                            && !args.is_empty()
+                                        {
+                                            chunks.push(StreamChunk::ToolCallDelta {
+                                                id: tc.id.clone().unwrap_or_default(),
+                                                arguments_delta: args.clone(),
+                                            });
                                         }
                                     }
+                                }
 
-                                    if choice.finish_reason.is_some() {
-                                        chunks.push(StreamChunk::Done { usage: None });
-                                    }
+                                if choice.finish_reason.is_some() {
+                                    chunks.push(StreamChunk::Done { usage: None });
                                 }
                             }
                         }

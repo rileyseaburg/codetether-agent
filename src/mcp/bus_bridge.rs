@@ -235,12 +235,10 @@ fn topic_matches(topic: &str, pattern: &str) -> bool {
     if pattern == "*" {
         return true;
     }
-    if pattern.ends_with(".*") {
-        let prefix = &pattern[..pattern.len() - 2];
+    if let Some(prefix) = pattern.strip_suffix(".*") {
         return topic.starts_with(prefix);
     }
-    if pattern.starts_with(".*") {
-        let suffix = &pattern[2..];
+    if let Some(suffix) = pattern.strip_prefix(".*") {
         return topic.ends_with(suffix);
     }
     topic == pattern

@@ -35,6 +35,12 @@ pub struct WorkerServerState {
     task_notification_tx: Arc<Mutex<Option<mpsc::Sender<String>>>>,
 }
 
+impl Default for WorkerServerState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorkerServerState {
     pub fn new() -> Self {
         Self {
@@ -96,10 +102,9 @@ impl WorkerServerState {
     }
 
     pub async fn is_ready(&self) -> bool {
-        let connected = *self.connected.lock().await;
         // Ready if we have a connection to the A2A server
         // Optional: could also check heartbeat_state for active task count
-        connected
+        *self.connected.lock().await
     }
 }
 

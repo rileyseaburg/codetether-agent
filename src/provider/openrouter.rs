@@ -351,35 +351,35 @@ impl Provider for OpenRouterProvider {
         }
 
         // Log reasoning content if present (e.g., Kimi K2 models)
-        if let Some(ref reasoning) = choice.message.reasoning {
-            if !reasoning.is_empty() {
-                tracing::info!(
-                    reasoning_len = reasoning.len(),
-                    "Model reasoning content received"
-                );
-                tracing::debug!(
-                    reasoning = %reasoning,
-                    "Full model reasoning"
-                );
-            }
+        if let Some(ref reasoning) = choice.message.reasoning
+            && !reasoning.is_empty()
+        {
+            tracing::info!(
+                reasoning_len = reasoning.len(),
+                "Model reasoning content received"
+            );
+            tracing::debug!(
+                reasoning = %reasoning,
+                "Full model reasoning"
+            );
         }
-        if let Some(ref details) = choice.message.reasoning_details {
-            if !details.is_empty() {
-                tracing::debug!(
-                    reasoning_details = ?details,
-                    "Model reasoning details"
-                );
-            }
+        if let Some(ref details) = choice.message.reasoning_details
+            && !details.is_empty()
+        {
+            tracing::debug!(
+                reasoning_details = ?details,
+                "Model reasoning details"
+            );
         }
 
         let mut content = Vec::new();
         let mut has_tool_calls = false;
 
         // Add text content if present
-        if let Some(text) = &choice.message.content {
-            if !text.is_empty() {
-                content.push(ContentPart::Text { text: text.clone() });
-            }
+        if let Some(text) = &choice.message.content
+            && !text.is_empty()
+        {
+            content.push(ContentPart::Text { text: text.clone() });
         }
 
         // Log message role for debugging

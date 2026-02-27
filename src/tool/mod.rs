@@ -242,6 +242,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::DiffTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
+        registry.register(Arc::new(edit::EditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
         registry.register(Arc::new(lsp::LspTool::with_root(
             std::env::current_dir()
@@ -299,6 +300,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::DiffTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
+        registry.register(Arc::new(edit::EditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
         registry.register(Arc::new(lsp::LspTool::with_root(
             std::env::current_dir()

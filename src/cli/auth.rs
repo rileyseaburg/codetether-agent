@@ -5,11 +5,12 @@ use super::{
     RegisterAuthArgs,
 };
 use crate::provider::copilot::normalize_enterprise_domain;
-use crate::provider::openai_codex::OpenAiCodexProvider;
+use crate::provider::openai_codex::{OAuthCredentials, OpenAiCodexProvider};
 use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
 use reqwest::Client;
 use serde::Deserialize;
+use serde::de::{self, Deserializer};
 use serde_json::json;
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -20,9 +21,12 @@ use tokio::time::{Duration, Instant, sleep};
 
 const DEFAULT_GITHUB_DOMAIN: &str = "github.com";
 const OAUTH_POLLING_SAFETY_MARGIN_MS: u64 = 3000;
-const CODEX_CALLBACK_ADDR: &str = "127.0.0.1:1455";
+const CODEX_CALLBACK_ADDR_V4: &str = "127.0.0.1:1455";
+const CODEX_CALLBACK_ADDR_V6: &str = "[::1]:1455";
+const CODEX_CALLBACK_DISPLAY_ADDR: &str = "localhost:1455";
 const CODEX_CALLBACK_TIMEOUT_SECS: u64 = 300;
 const CODEX_CALLBACK_TIMEOUT_SSH_SECS: u64 = 15;
+const CODEX_DEVICE_AUTH_TIMEOUT_SECS: u64 = 15 * 60;
 
 #[derive(Debug, Deserialize)]
 struct DeviceCodeResponse {
@@ -45,6 +49,29 @@ struct AccessTokenResponse {
     error_description: Option<String>,
     #[serde(default)]
     interval: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexDeviceCodeResponse {
+    device_auth_id: String,
+    #[serde(alias = "usercode")]
+    user_code: String,
+    #[serde(default, deserialize_with = "deserialize_interval_seconds")]
+    interval: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexDeviceCodeTokenResponse {
+    authorization_code: String,
+    code_verifier: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexDeviceErrorResponse {
+    #[serde(default)]
+    error: Option<String>,
+    #[serde(default)]
+    error_description: Option<String>,
 }
 
 pub async fn execute(args: AuthArgs) -> Result<()> {
@@ -368,23 +395,26 @@ pub fn load_saved_credentials() -> Option<SavedCredentials> {
     let creds: SavedCredentials = serde_json::from_str(&data).ok()?;
 
     // Check expiry if parseable
-    if let Ok(expires) = chrono::DateTime::parse_from_rfc3339(&creds.expires_at) {
-        if expires < chrono::Utc::now() {
-            tracing::warn!(
-                "Saved credentials have expired — run `codetether auth login` to refresh"
-            );
-            return None;
-        }
+    if let Ok(expires) = chrono::DateTime::parse_from_rfc3339(&creds.expires_at)
+        && expires < chrono::Utc::now()
+    {
+        tracing::warn!("Saved credentials have expired — run `codetether auth login` to refresh");
+        return None;
     }
 
     Some(creds)
 }
 
-async fn authenticate_codex(_args: CodexAuthArgs) -> Result<()> {
+async fn authenticate_codex(args: CodexAuthArgs) -> Result<()> {
     if secrets::secrets_manager().is_none() {
         anyhow::bail!(
             "HashiCorp Vault is not configured. Set VAULT_ADDR and VAULT_TOKEN before running `codetether auth codex`."
         );
+    }
+
+    if args.device_code {
+        let credentials = authenticate_codex_device_code().await?;
+        return store_codex_credentials(credentials).await;
     }
 
     let (authorization_url, code_verifier, expected_state) =
@@ -410,6 +440,7 @@ async fn authenticate_codex(_args: CodexAuthArgs) -> Result<()> {
     println!(
         "After approving access, copy the browser callback URL and paste it below (it starts with http://localhost:1455/auth/callback)."
     );
+
     let callback_timeout = if is_ssh_session {
         Duration::from_secs(CODEX_CALLBACK_TIMEOUT_SSH_SECS)
     } else {
@@ -420,7 +451,22 @@ async fn authenticate_codex(_args: CodexAuthArgs) -> Result<()> {
         println!("Captured callback automatically.");
         callback
     } else {
-        let callback_input = prompt_line("Callback URL: ")?;
+        if is_ssh_session {
+            println!(
+                "Press Enter to switch to device-code auth, or paste callback URL from your browser."
+            );
+        }
+        let callback_input = if is_ssh_session {
+            prompt_optional_line("Callback URL: ")?
+        } else {
+            prompt_line("Callback URL: ")?
+        };
+
+        if callback_input.trim().is_empty() {
+            let credentials = authenticate_codex_device_code().await?;
+            return store_codex_credentials(credentials).await;
+        }
+
         extract_oauth_code_and_state(&callback_input)?
     };
 
@@ -434,24 +480,78 @@ async fn authenticate_codex(_args: CodexAuthArgs) -> Result<()> {
         .await
         .context("Failed to exchange ChatGPT OAuth code for Codex tokens")?;
 
+    store_codex_credentials(credentials).await
+}
+
+async fn store_codex_credentials(credentials: OAuthCredentials) -> Result<()> {
+    let chatgpt_account_id = credentials
+        .chatgpt_account_id
+        .clone()
+        .or_else(|| {
+            credentials
+                .id_token
+                .as_deref()
+                .and_then(OpenAiCodexProvider::extract_chatgpt_account_id)
+        })
+        .or_else(|| OpenAiCodexProvider::extract_chatgpt_account_id(&credentials.access_token));
+
+    let mut expected_token_exchange_fallback = false;
+    let api_key = if let Some(id_token) = credentials.id_token.as_deref() {
+        match OpenAiCodexProvider::exchange_id_token_for_api_key(id_token).await {
+            Ok(key) => Some(key),
+            Err(error) => {
+                if is_expected_codex_id_token_exchange_fallback(&error) {
+                    expected_token_exchange_fallback = true;
+                    tracing::info!(
+                        error = %error,
+                        "Expected id_token exchange fallback; using OAuth access token for Codex backend"
+                    );
+                } else {
+                    tracing::warn!(
+                        error = %error,
+                        "Failed to exchange id_token for OpenAI API key; falling back to OAuth access token"
+                    );
+                }
+                None
+            }
+        }
+    } else {
+        tracing::warn!(
+            "OAuth token exchange did not return an id_token; cannot derive OpenAI API key"
+        );
+        None
+    };
+
     let mut extra = HashMap::new();
     extra.insert(
         "access_token".to_string(),
-        serde_json::Value::String(credentials.access_token),
+        serde_json::Value::String(credentials.access_token.clone()),
     );
     extra.insert(
         "refresh_token".to_string(),
-        serde_json::Value::String(credentials.refresh_token),
+        serde_json::Value::String(credentials.refresh_token.clone()),
     );
     extra.insert(
         "expires_at".to_string(),
         serde_json::Value::Number(credentials.expires_at.into()),
     );
+    if let Some(id_token) = credentials.id_token.as_ref() {
+        extra.insert(
+            "id_token".to_string(),
+            serde_json::Value::String(id_token.clone()),
+        );
+    }
+    if let Some(account_id) = chatgpt_account_id.as_ref() {
+        extra.insert(
+            "chatgpt_account_id".to_string(),
+            serde_json::Value::String(account_id.clone()),
+        );
+    }
 
     let provider_secrets = ProviderSecrets {
-        api_key: None,
+        api_key: api_key.clone(),
         base_url: None,
-        organization: None,
+        organization: chatgpt_account_id.clone(),
         headers: None,
         extra,
     };
@@ -465,9 +565,55 @@ async fn authenticate_codex(_args: CodexAuthArgs) -> Result<()> {
         .unwrap_or_else(|| credentials.expires_at.to_string());
 
     println!("Saved openai-codex credentials to HashiCorp Vault.");
+    if api_key.is_some() {
+        println!("Stored exchanged OpenAI API key for Codex model requests.");
+    } else {
+        println!(
+            "Could not exchange an OpenAI API key; Codex requests will use ChatGPT OAuth backend tokens."
+        );
+        if expected_token_exchange_fallback {
+            println!(
+                "Note: this fallback is expected when your id_token does not include organization context."
+            );
+        }
+    }
+    if let Some(account_id) = chatgpt_account_id {
+        println!("Using ChatGPT workspace/account ID: {}", account_id);
+    }
     println!("Access token expires at {}", expires_display);
     println!("You can now select models like `openai-codex/gpt-5-codex`.");
     Ok(())
+}
+
+fn is_expected_codex_id_token_exchange_fallback(error: &anyhow::Error) -> bool {
+    let msg = error.to_string().to_ascii_lowercase();
+    msg.contains("missing organization_id")
+        || (msg.contains("invalid_subject_token") && msg.contains("organization"))
+}
+
+async fn authenticate_codex_device_code() -> Result<OAuthCredentials> {
+    let client = Client::new();
+    let issuer = OpenAiCodexProvider::oauth_issuer().trim_end_matches('/');
+    let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
+    let device_code = request_codex_device_code(&client, issuer, &user_agent).await?;
+
+    println!("OpenAI Codex device authentication");
+    println!("Open this URL: {issuer}/codex/device");
+    println!("Enter code: {}", device_code.user_code);
+    println!("Waiting for authorization...");
+
+    let code = poll_for_codex_authorization_code(&client, issuer, &user_agent, &device_code)
+        .await
+        .context("Timed out waiting for device authorization")?;
+
+    let redirect_uri = format!("{issuer}/deviceauth/callback");
+    OpenAiCodexProvider::exchange_code_with_redirect_uri(
+        &code.authorization_code,
+        &code.code_verifier,
+        &redirect_uri,
+    )
+    .await
+    .context("Failed to exchange device authorization code for Codex tokens")
 }
 
 #[derive(Debug, Clone)]
@@ -737,25 +883,36 @@ fn bool_flag(value: bool) -> &'static str {
 }
 
 async fn capture_oauth_callback_auto(timeout: Duration) -> Result<Option<(String, String)>> {
-    let listener = match TcpListener::bind(CODEX_CALLBACK_ADDR).await {
-        Ok(listener) => listener,
-        Err(error) => {
-            tracing::warn!(
-                address = CODEX_CALLBACK_ADDR,
-                error = %error,
-                "Failed to bind OAuth callback listener; falling back to manual paste"
-            );
-            return Ok(None);
+    let mut listeners = Vec::new();
+    for address in [CODEX_CALLBACK_ADDR_V4, CODEX_CALLBACK_ADDR_V6] {
+        match TcpListener::bind(address).await {
+            Ok(listener) => listeners.push(listener),
+            Err(error) => {
+                tracing::debug!(
+                    address,
+                    error = %error,
+                    "Failed to bind one OAuth callback listener address"
+                );
+            }
         }
-    };
+    }
+
+    if listeners.is_empty() {
+        tracing::warn!(
+            ipv4 = CODEX_CALLBACK_ADDR_V4,
+            ipv6 = CODEX_CALLBACK_ADDR_V6,
+            "Failed to bind OAuth callback listener on localhost addresses; falling back to manual paste"
+        );
+        return Ok(None);
+    }
 
     println!(
         "Waiting up to {}s for automatic callback capture on http://{}/auth/callback ...",
         timeout.as_secs(),
-        CODEX_CALLBACK_ADDR
+        CODEX_CALLBACK_DISPLAY_ADDR
     );
 
-    match wait_for_oauth_callback(listener, timeout).await {
+    match wait_for_oauth_callback_any(listeners, timeout).await {
         Ok(callback) => Ok(Some(callback)),
         Err(error) => {
             tracing::warn!(
@@ -763,6 +920,47 @@ async fn capture_oauth_callback_auto(timeout: Duration) -> Result<Option<(String
                 "Automatic OAuth callback capture did not complete; falling back to manual paste"
             );
             Ok(None)
+        }
+    }
+}
+
+async fn wait_for_oauth_callback_any(
+    mut listeners: Vec<TcpListener>,
+    timeout: Duration,
+) -> Result<(String, String)> {
+    match listeners.len() {
+        0 => anyhow::bail!("No OAuth callback listeners were available"),
+        1 => {
+            let listener = listeners.pop().expect("length checked");
+            wait_for_oauth_callback(listener, timeout).await
+        }
+        _ => {
+            let listener2 = listeners.pop().expect("length checked");
+            let listener1 = listeners.pop().expect("length checked");
+
+            let mut waiter1 = Box::pin(wait_for_oauth_callback(listener1, timeout));
+            let mut waiter2 = Box::pin(wait_for_oauth_callback(listener2, timeout));
+
+            tokio::select! {
+                result1 = &mut waiter1 => {
+                    match result1 {
+                        Ok(callback) => Ok(callback),
+                        Err(err1) => match waiter2.await {
+                            Ok(callback) => Ok(callback),
+                            Err(err2) => anyhow::bail!("{}; {}", err1, err2),
+                        },
+                    }
+                }
+                result2 = &mut waiter2 => {
+                    match result2 {
+                        Ok(callback) => Ok(callback),
+                        Err(err2) => match waiter1.await {
+                            Ok(callback) => Ok(callback),
+                            Err(err1) => anyhow::bail!("{}; {}", err2, err1),
+                        },
+                    }
+                }
+            }
         }
     }
 }
@@ -835,19 +1033,30 @@ fn parse_oauth_callback_request(request: &str) -> Result<(String, String)> {
     let mut parts = first_line.split_whitespace();
 
     let method = parts.next().unwrap_or_default();
-    if method != "GET" {
-        anyhow::bail!("Unsupported callback method: {}", method);
-    }
+    let method = method.to_ascii_uppercase();
 
     let target = parts
         .next()
         .ok_or_else(|| anyhow::anyhow!("Missing callback target"))?;
-    let query = target
-        .split_once('?')
-        .map(|(_, query)| query)
-        .ok_or_else(|| anyhow::anyhow!("Callback target missing query string"))?;
+    let target_query = target.split_once('?').map(|(_, query)| query.trim());
+    let body = request
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .or_else(|| request.split_once("\n\n").map(|(_, body)| body))
+        .map(str::trim)
+        .filter(|body| !body.is_empty());
 
-    extract_oauth_code_and_state(query)
+    let callback_payload = match method.as_str() {
+        "GET" => target_query
+            .or(body)
+            .ok_or_else(|| anyhow::anyhow!("Callback target missing query string"))?,
+        "POST" => body
+            .or(target_query)
+            .ok_or_else(|| anyhow::anyhow!("Callback POST body missing OAuth payload"))?,
+        _ => anyhow::bail!("Unsupported callback method: {}", method),
+    };
+
+    extract_oauth_code_and_state(callback_payload)
 }
 
 async fn write_http_response(
@@ -930,6 +1139,112 @@ async fn authenticate_copilot(args: CopilotAuthArgs) -> Result<()> {
     Ok(())
 }
 
+async fn request_codex_device_code(
+    client: &Client,
+    issuer: &str,
+    user_agent: &str,
+) -> Result<CodexDeviceCodeResponse> {
+    let url = format!("{issuer}/api/accounts/deviceauth/usercode");
+    let response = client
+        .post(&url)
+        .header("Accept", "application/json")
+        .header("Content-Type", "application/json")
+        .header("User-Agent", user_agent)
+        .json(&json!({
+            "client_id": OpenAiCodexProvider::oauth_client_id(),
+        }))
+        .send()
+        .await
+        .with_context(|| format!("Failed to reach device authorization endpoint: {url}"))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        if status == reqwest::StatusCode::NOT_FOUND {
+            anyhow::bail!(
+                "Device code login is not enabled for this Codex server. Use browser OAuth flow instead."
+            );
+        }
+        anyhow::bail!(
+            "Failed to initiate Codex device authorization ({}): {}",
+            status,
+            truncate_body(&body)
+        );
+    }
+
+    let mut device: CodexDeviceCodeResponse = response
+        .json()
+        .await
+        .context("Failed to parse Codex device authorization response")?;
+    if device.interval == 0 {
+        device.interval = 5;
+    }
+    Ok(device)
+}
+
+async fn poll_for_codex_authorization_code(
+    client: &Client,
+    issuer: &str,
+    user_agent: &str,
+    device: &CodexDeviceCodeResponse,
+) -> Result<CodexDeviceCodeTokenResponse> {
+    let url = format!("{issuer}/api/accounts/deviceauth/token");
+    let interval_secs = device.interval.max(1);
+    let timeout = Duration::from_secs(CODEX_DEVICE_AUTH_TIMEOUT_SECS);
+    let start = Instant::now();
+
+    loop {
+        let response = client
+            .post(&url)
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .header("User-Agent", user_agent)
+            .json(&json!({
+                "device_auth_id": device.device_auth_id,
+                "user_code": device.user_code,
+            }))
+            .send()
+            .await
+            .with_context(|| format!("Failed to poll device authorization endpoint: {url}"))?;
+
+        let status = response.status();
+        if status.is_success() {
+            return response
+                .json()
+                .await
+                .context("Failed to parse Codex device authorization response");
+        }
+
+        let body = response.text().await.unwrap_or_default();
+        if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::NOT_FOUND {
+            if start.elapsed() >= timeout {
+                anyhow::bail!(
+                    "Device authorization timed out after {} seconds",
+                    CODEX_DEVICE_AUTH_TIMEOUT_SECS
+                );
+            }
+            sleep_with_margin(interval_secs).await;
+            continue;
+        }
+
+        if let Ok(payload) = serde_json::from_str::<CodexDeviceErrorResponse>(&body)
+            && let Some(error) = payload.error.as_deref()
+        {
+            let description = payload
+                .error_description
+                .as_deref()
+                .unwrap_or("No error description provided");
+            anyhow::bail!("Codex device authorization failed: {error} ({description})");
+        }
+
+        anyhow::bail!(
+            "Codex device authorization failed ({}): {}",
+            status,
+            truncate_body(&body)
+        );
+    }
+}
+
 async fn request_device_code(
     client: &Client,
     domain: &str,
@@ -1010,10 +1325,10 @@ async fn poll_for_access_token(
             .await
             .context("Failed to parse OAuth token response")?;
 
-        if let Some(token) = payload.access_token {
-            if !token.trim().is_empty() {
-                return Ok(token);
-            }
+        if let Some(token) = payload.access_token
+            && !token.trim().is_empty()
+        {
+            return Ok(token);
         }
 
         match payload.error.as_deref() {
@@ -1065,6 +1380,28 @@ fn truncate_body(body: &str) -> String {
     }
 }
 
+fn deserialize_interval_seconds<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntervalValue {
+        Number(u64),
+        String(String),
+    }
+
+    let value = Option::<IntervalValue>::deserialize(deserializer)?;
+    match value {
+        Some(IntervalValue::Number(value)) => Ok(value),
+        Some(IntervalValue::String(value)) => value
+            .trim()
+            .parse::<u64>()
+            .map_err(|error| de::Error::custom(format!("invalid interval value: {error}"))),
+        None => Ok(0),
+    }
+}
+
 fn prompt_line(prompt: &str) -> Result<String> {
     print!("{prompt}");
     io::stdout().flush()?;
@@ -1076,6 +1413,15 @@ fn prompt_line(prompt: &str) -> Result<String> {
         anyhow::bail!("Input is required");
     }
     Ok(trimmed)
+}
+
+fn prompt_optional_line(prompt: &str) -> Result<String> {
+    print!("{prompt}");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    Ok(input.trim().to_string())
 }
 
 fn extract_oauth_code_and_state(callback_input: &str) -> Result<(String, String)> {
@@ -1153,8 +1499,8 @@ fn decode_query_component(component: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        extract_oauth_code_and_state, parse_netscape_cookie_line, parse_oauth_callback_request,
-        select_cookie_rows,
+        CodexDeviceCodeResponse, extract_oauth_code_and_state, parse_netscape_cookie_line,
+        parse_oauth_callback_request, select_cookie_rows,
     };
 
     #[test]
@@ -1191,12 +1537,48 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_get_callback_request() {
+    fn parses_post_callback_with_query_params() {
         let request =
             "POST /auth/callback?code=abc123&state=xyz789 HTTP/1.1\r\nHost: localhost:1455\r\n\r\n";
-        let err =
-            parse_oauth_callback_request(request).expect_err("expected non-GET callback rejection");
+        let (code, state) =
+            parse_oauth_callback_request(request).expect("expected POST callback parse");
+        assert_eq!(code, "abc123");
+        assert_eq!(state, "xyz789");
+    }
+
+    #[test]
+    fn parses_post_form_encoded_callback_request() {
+        let request = "POST /auth/callback HTTP/1.1\r\nHost: localhost:1455\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 25\r\n\r\ncode=abc123&state=xyz789";
+        let (code, state) =
+            parse_oauth_callback_request(request).expect("expected form POST callback parse");
+        assert_eq!(code, "abc123");
+        assert_eq!(state, "xyz789");
+    }
+
+    #[test]
+    fn rejects_unsupported_callback_method() {
+        let request = "OPTIONS /auth/callback HTTP/1.1\r\nHost: localhost:1455\r\n\r\n";
+        let err = parse_oauth_callback_request(request)
+            .expect_err("expected unsupported callback method");
         assert!(err.to_string().contains("Unsupported callback method"));
+    }
+
+    #[test]
+    fn parses_codex_device_interval_from_string() {
+        let parsed: CodexDeviceCodeResponse = serde_json::from_str(
+            r#"{"device_auth_id":"id-1","user_code":"ABCD-EFGH","interval":"7"}"#,
+        )
+        .expect("expected valid device-code payload");
+        assert_eq!(parsed.interval, 7);
+    }
+
+    #[test]
+    fn parses_codex_device_interval_from_number() {
+        let parsed: CodexDeviceCodeResponse = serde_json::from_str(
+            r#"{"device_auth_id":"id-1","user_code":"ABCD-EFGH","interval":9}"#,
+        )
+        .expect("expected valid numeric interval payload");
+        assert_eq!(parsed.interval, 9);
     }
 
     #[test]

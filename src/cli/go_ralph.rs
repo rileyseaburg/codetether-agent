@@ -238,13 +238,13 @@ Rules:
                         .map(|c| c.to_ascii_lowercase().contains("go vet"))
                         .unwrap_or(false);
 
-                    if prd.quality_checks.typecheck.is_none() {
-                        prd.quality_checks = detected;
-                    } else if looks_like_cargo && !cwd.join("Cargo.toml").exists() {
-                        prd.quality_checks = detected;
-                    } else if looks_like_npm && !cwd.join("package.json").exists() {
-                        prd.quality_checks = detected;
-                    } else if looks_like_go && !cwd.join("go.mod").exists() {
+                    // Override if: no typecheck set, OR guessed tool doesn't match project files
+                    let needs_override = prd.quality_checks.typecheck.is_none()
+                        || (looks_like_cargo && !cwd.join("Cargo.toml").exists())
+                        || (looks_like_npm && !cwd.join("package.json").exists())
+                        || (looks_like_go && !cwd.join("go.mod").exists());
+
+                    if needs_override {
                         prd.quality_checks = detected;
                     }
 
@@ -616,10 +616,10 @@ fn gather_json_candidates(text: &str) -> Vec<String> {
     }
 
     // 4. First `{` to last `}` (greedy brace match)
-    if let (Some(start), Some(end)) = (text.find('{'), text.rfind('}')) {
-        if start < end {
-            candidates.push(text[start..=end].to_string());
-        }
+    if let (Some(start), Some(end)) = (text.find('{'), text.rfind('}'))
+        && start < end
+    {
+        candidates.push(text[start..=end].to_string());
     }
 
     // 5. Balanced brace extraction starting from first `{`
@@ -675,10 +675,8 @@ fn sanitize_json(text: &str) -> String {
 
     // Replace unicode curly quotes with straight quotes
     s = s
-        .replace('\u{201c}', "\"") // left double
-        .replace('\u{201d}', "\"") // right double
-        .replace('\u{2018}', "'") // left single
-        .replace('\u{2019}', "'"); // right single
+        .replace(['\u{201c}', '\u{201d}'], "\"") // right double
+        .replace(['\u{2018}', '\u{2019}'], "'"); // right single
 
     // Remove single-line // comments (outside strings)
     s = remove_line_comments(&s);

@@ -54,6 +54,12 @@ async fn get_agent_bus() -> Result<Arc<AgentBus>> {
 
 pub struct RelayAutoChatTool;
 
+impl Default for RelayAutoChatTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RelayAutoChatTool {
     pub fn new() -> Self {
         Self

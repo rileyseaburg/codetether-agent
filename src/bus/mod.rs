@@ -447,13 +447,13 @@ impl BusHandle {
         let prefix = format!("ralph.{prd_id}");
         let mut out = Vec::new();
         while let Some(env) = self.try_recv() {
-            if env.topic.starts_with(&prefix) {
-                if matches!(
+            if env.topic.starts_with(&prefix)
+                && matches!(
                     &env.message,
                     BusMessage::RalphLearning { .. } | BusMessage::RalphHandoff { .. }
-                ) {
-                    out.push(env);
-                }
+                )
+            {
+                out.push(env);
             }
         }
         out

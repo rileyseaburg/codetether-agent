@@ -96,7 +96,7 @@ impl MessageFormatter {
         // Extract filename from URL for display
         let filename = url
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or("image")
             .split('?')
             .next()

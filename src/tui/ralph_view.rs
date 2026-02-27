@@ -142,7 +142,7 @@ pub struct RalphStoryInfo {
 // ---------------------------------------------------------------------------
 
 /// State for the Ralph view
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RalphViewState {
     /// Whether Ralph mode is active
     pub active: bool,
@@ -170,26 +170,6 @@ pub struct RalphViewState {
     pub detail_scroll: usize,
     /// ListState for StatefulWidget rendering
     pub list_state: ListState,
-}
-
-impl Default for RalphViewState {
-    fn default() -> Self {
-        Self {
-            active: false,
-            project: String::new(),
-            feature: String::new(),
-            stories: Vec::new(),
-            current_iteration: 0,
-            max_iterations: 0,
-            complete: false,
-            final_status: None,
-            error: None,
-            selected_index: 0,
-            detail_mode: false,
-            detail_scroll: 0,
-            list_state: ListState::default(),
-        }
-    }
 }
 
 impl RalphViewState {

@@ -111,10 +111,10 @@ impl FinalAnswerFormat {
         }
 
         // Try to parse as JSON
-        if answer.trim().starts_with('{') || answer.trim().starts_with('[') {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(answer) {
-                return Self::StructuredData { data };
-            }
+        if (answer.trim().starts_with('{') || answer.trim().starts_with('['))
+            && let Ok(data) = serde_json::from_str::<serde_json::Value>(answer)
+        {
+            return Self::StructuredData { data };
         }
 
         // Default to free-form text
@@ -131,16 +131,16 @@ fn extract_count_from_text(text: &str) -> Option<usize> {
 
     for cap in re.captures_iter(text) {
         // Try first group (found/count)
-        if let Some(m) = cap.get(1) {
-            if let Ok(n) = m.as_str().parse() {
-                return Some(n);
-            }
+        if let Some(m) = cap.get(1)
+            && let Ok(n) = m.as_str().parse()
+        {
+            return Some(n);
         }
         // Try second group (number before word)
-        if let Some(m) = cap.get(2) {
-            if let Ok(n) = m.as_str().parse() {
-                return Some(n);
-            }
+        if let Some(m) = cap.get(2)
+            && let Ok(n) = m.as_str().parse()
+        {
+            return Some(n);
         }
     }
 

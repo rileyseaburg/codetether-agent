@@ -179,10 +179,10 @@ impl Tool for CodeSearchTool {
                 continue;
             }
 
-            if let Some(ref glob) = file_glob {
-                if !glob.matches_path(path) {
-                    continue;
-                }
+            if let Some(ref glob) = file_glob
+                && !glob.matches_path(path)
+            {
+                continue;
             }
 
             if let Ok(matches) =

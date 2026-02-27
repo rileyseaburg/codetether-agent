@@ -103,10 +103,10 @@ fn evaluate_local(user: &PolicyUser, action: &str) -> bool {
     };
 
     // Public endpoints bypass all checks.
-    if let Some(public) = data["public_endpoints"].as_array() {
-        if public.iter().any(|p| p.as_str() == Some(action)) {
-            return true;
-        }
+    if let Some(public) = data["public_endpoints"].as_array()
+        && public.iter().any(|p| p.as_str() == Some(action))
+    {
+        return true;
     }
 
     let roles_data = match data["roles"].as_object() {
@@ -129,13 +129,12 @@ fn evaluate_local(user: &PolicyUser, action: &str) -> bool {
     // Collect permissions from effective roles.
     let mut has_permission = false;
     for role in &effective_roles {
-        if let Some(role_def) = roles_data.get(*role) {
-            if let Some(perms) = role_def["permissions"].as_array() {
-                if perms.iter().any(|p| p.as_str() == Some(action)) {
-                    has_permission = true;
-                    break;
-                }
-            }
+        if let Some(role_def) = roles_data.get(*role)
+            && let Some(perms) = role_def["permissions"].as_array()
+            && perms.iter().any(|p| p.as_str() == Some(action))
+        {
+            has_permission = true;
+            break;
         }
     }
 

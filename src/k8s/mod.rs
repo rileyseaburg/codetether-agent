@@ -406,6 +406,7 @@ impl K8sManager {
         Ok(infos)
     }
 
+    #[allow(dead_code)]
     /// Spawn a new pod for a swarm sub-agent.
     pub async fn spawn_subagent_pod(
         &self,

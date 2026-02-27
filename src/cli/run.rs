@@ -891,7 +891,6 @@ fn normalize_cli_go_command(input: &str) -> String {
 
 fn is_easy_go_command(input: &str) -> bool {
     let command = input
-        .trim_start()
         .split_whitespace()
         .next()
         .unwrap_or("")
@@ -1287,19 +1286,17 @@ async fn run_protocol_first_relay(
                 }
 
                 // Persist mid-run (best-effort)
-                if let Some(run_id) = okr_run_id {
-                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-                        if let Ok(Some(mut run)) = repo.get_run(run_id).await {
-                            if run.is_resumable() {
-                                run.iterations = turns as u32;
-                                for (kr_id, value) in &kr_progress {
-                                    run.update_kr_progress(kr_id, *value);
-                                }
-                                run.status = crate::okr::OkrRunStatus::Running;
-                                let _ = repo.update_run(run).await;
-                            }
-                        }
+                if let Some(run_id) = okr_run_id
+                    && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+                    && let Ok(Some(mut run)) = repo.get_run(run_id).await
+                    && run.is_resumable()
+                {
+                    run.iterations = turns as u32;
+                    for (kr_id, value) in &kr_progress {
+                        run.update_kr_progress(kr_id, *value);
                     }
+                    run.status = crate::okr::OkrRunStatus::Running;
+                    let _ = repo.update_run(run).await;
                 }
             }
 
@@ -1371,66 +1368,63 @@ async fn run_protocol_first_relay(
     relay.shutdown_agents(&ordered_agents);
 
     // Update OKR run with final progress if associated
-    if let Some(run_id) = okr_run_id {
-        if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-            if let Ok(Some(mut run)) = repo.get_run(run_id).await {
-                // Update KR progress from execution
-                for (kr_id, value) in &kr_progress {
-                    run.update_kr_progress(kr_id, *value);
-                }
+    if let Some(run_id) = okr_run_id
+        && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+        && let Ok(Some(mut run)) = repo.get_run(run_id).await
+    {
+        // Update KR progress from execution
+        for (kr_id, value) in &kr_progress {
+            run.update_kr_progress(kr_id, *value);
+        }
 
-                // Create outcomes per KR with progress (link to actual KR IDs)
-                let base_evidence = vec![
-                    format!("relay:{}", relay.relay_id()),
-                    format!("turns:{}", turns),
-                    format!("agents:{}", ordered_agents.len()),
-                    format!("status:{}", status),
-                    format!("rlm_handoffs:{}", rlm_handoff_count),
-                    format!("dynamic_spawns:{}", dynamic_spawn_count),
-                ];
+        // Create outcomes per KR with progress (link to actual KR IDs)
+        let base_evidence = vec![
+            format!("relay:{}", relay.relay_id()),
+            format!("turns:{}", turns),
+            format!("agents:{}", ordered_agents.len()),
+            format!("status:{}", status),
+            format!("rlm_handoffs:{}", rlm_handoff_count),
+            format!("dynamic_spawns:{}", dynamic_spawn_count),
+        ];
 
-                let outcome_type = if status == "converged" {
-                    crate::okr::KrOutcomeType::FeatureDelivered
-                } else {
-                    crate::okr::KrOutcomeType::Evidence
-                };
+        let outcome_type = if status == "converged" {
+            crate::okr::KrOutcomeType::FeatureDelivered
+        } else {
+            crate::okr::KrOutcomeType::Evidence
+        };
 
-                // Create one outcome per KR, linked to the actual KR ID
-                for (kr_id_str, value) in &kr_progress {
-                    // Parse KR ID with guardrail to prevent NIL UUID linkage
-                    if let Some(kr_uuid) =
-                        parse_uuid_guarded(kr_id_str, "cli_relay_outcome_kr_link")
-                    {
-                        let kr_description = format!(
-                            "CLI relay outcome for KR {}: {} agents, {} turns, status={}",
-                            kr_id_str,
-                            ordered_agents.len(),
-                            turns,
-                            status
-                        );
-                        run.outcomes.push({
-                            let mut outcome = crate::okr::KrOutcome::new(kr_uuid, kr_description)
-                                .with_value(*value);
-                            outcome.run_id = Some(run.id);
-                            outcome.outcome_type = outcome_type;
-                            outcome.evidence = base_evidence.clone();
-                            outcome.source = "cli relay".to_string();
-                            outcome
-                        });
-                    }
-                }
-
-                // Mark complete or update status based on execution result
-                if status == "converged" {
-                    run.complete();
-                } else if status == "agent_error" || status == "bus_error" {
-                    run.status = crate::okr::OkrRunStatus::Failed;
-                } else {
-                    run.status = crate::okr::OkrRunStatus::Completed;
-                }
-                let _ = repo.update_run(run).await;
+        // Create one outcome per KR, linked to the actual KR ID
+        for (kr_id_str, value) in &kr_progress {
+            // Parse KR ID with guardrail to prevent NIL UUID linkage
+            if let Some(kr_uuid) = parse_uuid_guarded(kr_id_str, "cli_relay_outcome_kr_link") {
+                let kr_description = format!(
+                    "CLI relay outcome for KR {}: {} agents, {} turns, status={}",
+                    kr_id_str,
+                    ordered_agents.len(),
+                    turns,
+                    status
+                );
+                run.outcomes.push({
+                    let mut outcome =
+                        crate::okr::KrOutcome::new(kr_uuid, kr_description).with_value(*value);
+                    outcome.run_id = Some(run.id);
+                    outcome.outcome_type = outcome_type;
+                    outcome.evidence = base_evidence.clone();
+                    outcome.source = "cli relay".to_string();
+                    outcome
+                });
             }
         }
+
+        // Mark complete or update status based on execution result
+        if status == "converged" {
+            run.complete();
+        } else if status == "agent_error" || status == "bus_error" {
+            run.status = crate::okr::OkrRunStatus::Failed;
+        } else {
+            run.status = crate::okr::OkrRunStatus::Completed;
+        }
+        let _ = repo.update_run(run).await;
     }
 
     let mut summary = format!(

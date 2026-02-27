@@ -514,12 +514,11 @@ impl McpRegistry {
     /// Find a specific tool across all servers
     pub async fn find_tool(&self, tool_name: &str) -> Option<(String, McpTool)> {
         // First check the tool index
-        if let Some(server_name) = self.tool_index.read().await.get(tool_name) {
-            if let Some(client) = self.get(server_name).await {
-                if let Some(tool) = client.tools().await.iter().find(|t| t.name == tool_name) {
-                    return Some((server_name.clone(), tool.clone()));
-                }
-            }
+        if let Some(server_name) = self.tool_index.read().await.get(tool_name)
+            && let Some(client) = self.get(server_name).await
+            && let Some(tool) = client.tools().await.iter().find(|t| t.name == tool_name)
+        {
+            return Some((server_name.clone(), tool.clone()));
         }
 
         // Fallback: search all clients

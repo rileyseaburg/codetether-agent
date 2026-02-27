@@ -105,6 +105,9 @@ pub enum Command {
 
     /// Manage OKRs (Objectives and Key Results)
     Okr(OkrArgs),
+
+    /// OKR-governed autonomous opportunity scanner/executor
+    Forage(ForageArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -177,7 +180,11 @@ pub struct CopilotAuthArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct CodexAuthArgs {}
+pub struct CodexAuthArgs {
+    /// Use ChatGPT device-code authentication flow (recommended for remote SSH sessions)
+    #[arg(long, default_value_t = false)]
+    pub device_code: bool,
+}
 
 #[derive(Parser, Debug)]
 pub struct CookieAuthArgs {
@@ -817,4 +824,68 @@ pub struct OkrArgs {
     /// Include evidence links in output
     #[arg(long)]
     pub evidence: bool,
+}
+
+#[derive(Parser, Debug)]
+#[command(
+    about = "OKR-governed autonomous opportunity scanner/executor",
+    long_about = "Scan OKRs/KRs for high-priority opportunities and optionally execute the top selections with the build agent.",
+    after_long_help = "Examples:\n  codetether forage --top 5\n  codetether forage --loop --interval-secs 600\n  codetether forage --loop --execute --top 1 --interval-secs 600 --max-cycles 48 --run-timeout-secs 900 --model minimax/MiniMax-M2.5"
+)]
+pub struct ForageArgs {
+    /// Show top-N opportunities each cycle
+    #[arg(long, default_value = "3")]
+    pub top: usize,
+
+    /// Keep running continuously
+    #[arg(long = "loop")]
+    pub loop_mode: bool,
+
+    /// Seconds between loop cycles
+    #[arg(long, default_value = "120")]
+    pub interval_secs: u64,
+
+    /// Maximum cycles when looping (0 = unlimited)
+    #[arg(long, default_value = "0")]
+    pub max_cycles: usize,
+
+    /// Execute selected opportunities via `codetether run`
+    #[arg(long)]
+    pub execute: bool,
+
+    /// Execution engine for `--execute`: run | swarm
+    #[arg(long, default_value = "run", value_parser = ["run", "swarm"])]
+    pub execution_engine: String,
+
+    /// Timeout per execution task in seconds (only used with --execute)
+    #[arg(long, default_value = "900")]
+    pub run_timeout_secs: u64,
+
+    /// Stop immediately on execution error/timeout (default: continue loop)
+    #[arg(long)]
+    pub fail_fast: bool,
+
+    /// Swarm decomposition strategy when --execution-engine=swarm
+    #[arg(long, default_value = "auto", value_parser = ["auto", "domain", "data", "stage", "none"])]
+    pub swarm_strategy: String,
+
+    /// Maximum concurrent sub-agents when --execution-engine=swarm
+    #[arg(long, default_value = "8")]
+    pub swarm_max_subagents: usize,
+
+    /// Maximum steps per sub-agent when --execution-engine=swarm
+    #[arg(long, default_value = "100")]
+    pub swarm_max_steps: usize,
+
+    /// Timeout per sub-agent in seconds when --execution-engine=swarm
+    #[arg(long, default_value = "300")]
+    pub swarm_subagent_timeout_secs: u64,
+
+    /// Optional model override for execution mode
+    #[arg(short, long)]
+    pub model: Option<String>,
+
+    /// Output as JSON
+    #[arg(long)]
+    pub json: bool,
 }

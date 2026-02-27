@@ -91,7 +91,7 @@ impl ToolRouterConfig {
             max_tokens: std::env::var("CODETETHER_TOOL_ROUTER_MAX_TOKENS")
                 .ok()
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(128),
+                .unwrap_or(256),
             temperature: std::env::var("CODETETHER_TOOL_ROUTER_TEMPERATURE")
                 .ok()
                 .and_then(|v| v.parse().ok())
@@ -104,12 +104,22 @@ impl ToolRouterConfig {
 
 /// Serialize tool definitions into FunctionGemma's expected chat template.
 ///
-/// FunctionGemma expects tools as a JSON list in the system turn, followed by
-/// the user's intent.  The model produces structured JSON function call output.
+/// The prompt frames FunctionGemma as a tool-call extractor: given an LLM's
+/// text response that *describes* tool usage, produce the corresponding
+/// structured `<tool_call>` blocks.
 fn build_functiongemma_prompt(assistant_text: &str, tools: &[ToolDefinition]) -> String {
-    // Build tool descriptions as a JSON array for the system section.
-    let tool_defs: Vec<serde_json::Value> = tools
+    // Build compact tool descriptions — name + description only (skip full
+    // parameter schemas to keep prompt tokens low for the 270M model).
+    let tool_lines: String = tools
         .iter()
+        .map(|t| format!("- {}: {}", t.name, t.description))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Build full definitions only for first 5 tools (most likely candidates).
+    let detailed_defs: Vec<serde_json::Value> = tools
+        .iter()
+        .take(5)
         .map(|t| {
             serde_json::json!({
                 "name": t.name,
@@ -119,16 +129,17 @@ fn build_functiongemma_prompt(assistant_text: &str, tools: &[ToolDefinition]) ->
         })
         .collect();
 
-    let tools_json = serde_json::to_string_pretty(&tool_defs).unwrap_or_else(|_| "[]".to_string());
+    let tools_json =
+        serde_json::to_string_pretty(&detailed_defs).unwrap_or_else(|_| "[]".to_string());
 
-    // FunctionGemma chat template:
-    //   <start_of_turn>system
-    //   You are a function calling AI model. ...
-    //   <end_of_turn>
-    //   <start_of_turn>user
-    //   <user intent text>
-    //   <end_of_turn>
-    //   <start_of_turn>model
+    // Truncate assistant text to first ~500 chars — the intent is expressed
+    // early; the rest is often hallucinated output or markdown formatting.
+    let truncated = if assistant_text.len() > 500 {
+        &assistant_text[..500]
+    } else {
+        assistant_text
+    };
+
     format!(
         "<start_of_turn>system\n\
          You are a function calling AI model. You are provided with function \
@@ -136,12 +147,16 @@ fn build_functiongemma_prompt(assistant_text: &str, tools: &[ToolDefinition]) ->
          functions to assist with the user query. Don't make assumptions about \
          what values to plug into functions.\n\n\
          <tools>\n{tools_json}\n</tools>\n\n\
+         Other available tools:\n{tool_lines}\n\n\
          For each function call return a JSON object with function name and \
          arguments within <tool_call></tool_call> XML tags as follows:\n\
          <tool_call>\n{{\"name\": \"function_name\", \"arguments\": {{\"arg1\": \"value1\"}}}}\n</tool_call>\n\
          <end_of_turn>\n\
          <start_of_turn>user\n\
-         {assistant_text}\n\
+         The following is an AI assistant's response. It describes wanting to \
+         use tools but expressed them as text instead of structured calls. \
+         Extract the tool calls the assistant intended to make:\n\n\
+         {truncated}\n\
          <end_of_turn>\n\
          <start_of_turn>model\n"
     )
@@ -267,27 +282,21 @@ impl ToolCallRouter {
 
     /// Conditionally reformat a `CompletionResponse`.
     ///
-    /// - If the model natively supports tool calling, return **unchanged**
-    ///   (FunctionGemma is only useful for models that lack native tool support).
+    /// - If the model natively supports tool calling, return **unchanged**.
     /// - If the response already contains `ContentPart::ToolCall` entries,
-    ///   return it **unchanged** (zero overhead path).
-    /// - If the assistant text doesn't look like it's describing tool usage,
-    ///   return **unchanged** (cheap heuristic avoids expensive inference).
-    /// - Otherwise, run FunctionGemma to convert the text into structured
-    ///   tool calls.
-    /// - On any internal error, return the **original** response unchanged
-    ///   (safe degradation — the router never breaks existing functionality).
+    ///   return it **unchanged**.
+    /// - First, try to parse `<tool_call>` blocks directly from the text
+    ///   (zero-cost; works when the model was prompted to output them).
+    /// - If no direct parse, fall back to FunctionGemma inference.
+    /// - On any internal error, return the **original** response unchanged.
     pub async fn maybe_reformat(
         &self,
         response: CompletionResponse,
         tools: &[ToolDefinition],
         model_supports_tools: bool,
     ) -> CompletionResponse {
-        // Fast path: model already handles tool calling natively.
-        // FunctionGemma is only needed for models that return text descriptions
-        // of tool calls instead of structured ContentPart::ToolCall entries.
         if model_supports_tools {
-            tracing::trace!("Skipping FunctionGemma: model supports native tool calling");
+            tracing::trace!("Skipping tool router: model supports native tool calling");
             return response;
         }
 
@@ -302,7 +311,7 @@ impl ToolCallRouter {
             return response;
         }
 
-        // No tools were provided — nothing for FunctionGemma to match against.
+        // No tools were provided — nothing to match against.
         if tools.is_empty() {
             return response;
         }
@@ -323,36 +332,54 @@ impl ToolCallRouter {
             return response;
         }
 
-        // Cheap heuristic: skip FunctionGemma if the text doesn't mention any
-        // available tool name.  This avoids expensive CPU inference for pure
-        // conversational / final-answer responses.
-        let text_lower = assistant_text.to_lowercase();
-        let mentions_tool = tools
-            .iter()
-            .any(|t| text_lower.contains(&t.name.to_lowercase()));
-        if !mentions_tool {
-            tracing::trace!("Skipping FunctionGemma: assistant text mentions no tool names");
-            return response;
+        // ── Direct parse: try to extract <tool_call> blocks from the text. ──
+        // This is zero-cost and works when the system prompt instructed the
+        // model to output structured tool calls.
+        let direct_calls = parse_functiongemma_response(&assistant_text);
+        if !direct_calls.is_empty() {
+            // Validate that parsed tool names actually exist in the tool set.
+            let valid_calls: Vec<ParsedToolCall> = direct_calls
+                .into_iter()
+                .filter(|c| tools.iter().any(|t| t.name == c.name))
+                .collect();
+            if !valid_calls.is_empty() {
+                tracing::info!(
+                    num_calls = valid_calls.len(),
+                    "Direct parse extracted tool calls from text response"
+                );
+                return self.rewrite_response(response, valid_calls);
+            }
         }
 
-        // Run FunctionGemma in a blocking thread (CPU-bound).
-        match self.run_functiongemma(&assistant_text, tools).await {
-            Ok(parsed) if !parsed.is_empty() => {
+        // ── Fallback: FunctionGemma inference (GPU ~4s, CPU ~65s). ──
+        tracing::info!(
+            num_tools = tools.len(),
+            "Running FunctionGemma tool extraction ({} tool definitions)",
+            tools.len()
+        );
+
+        let fut = self.run_functiongemma(&assistant_text, tools);
+        match tokio::time::timeout(std::time::Duration::from_secs(90), fut).await {
+            Ok(Ok(parsed)) if !parsed.is_empty() => {
                 tracing::info!(
                     num_calls = parsed.len(),
                     "FunctionGemma router produced tool calls from text-only response"
                 );
                 self.rewrite_response(response, parsed)
             }
-            Ok(_) => {
+            Ok(Ok(_)) => {
                 // FunctionGemma decided no tool calls are needed — pass through.
                 response
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 tracing::warn!(
                     error = %e,
                     "FunctionGemma router failed; returning original response"
                 );
+                response
+            }
+            Err(_elapsed) => {
+                tracing::warn!("FunctionGemma timed out after 90s; returning original response");
                 response
             }
         }
@@ -364,21 +391,51 @@ impl ToolCallRouter {
         assistant_text: &str,
         tools: &[ToolDefinition],
     ) -> Result<Vec<ParsedToolCall>> {
-        let prompt = build_functiongemma_prompt(assistant_text, tools);
+        // Sort tools so that ones whose names appear in the text come first —
+        // build_functiongemma_prompt gives the first 5 full parameter schemas.
+        let text_lower = assistant_text.to_lowercase();
+        let mut sorted_tools: Vec<ToolDefinition> = tools.to_vec();
+        sorted_tools.sort_by_key(|t| {
+            if text_lower.contains(&t.name.to_lowercase()) {
+                0
+            } else {
+                1
+            }
+        });
+        // Also prioritize common action tools (bash, read, write, grep, list)
+        // that models often describe in text without naming explicitly.
+        let action_tools = ["bash", "read", "write", "grep", "list", "search"];
+        sorted_tools.sort_by_key(|t| {
+            let name_lower = t.name.to_lowercase();
+            if text_lower.contains(&name_lower) {
+                0
+            } else if action_tools.iter().any(|a| name_lower.contains(a)) {
+                1
+            } else {
+                2
+            }
+        });
+
+        let prompt = build_functiongemma_prompt(assistant_text, &sorted_tools);
+        tracing::debug!(prompt_len = prompt.len(), "FunctionGemma prompt built");
         let runtime = Arc::clone(&self.runtime);
 
         let output = tokio::task::spawn_blocking(move || {
             let mut guard = runtime
                 .lock()
                 .map_err(|_| anyhow!("FunctionGemma mutex poisoned"))?;
-            // Use the raw prompt — we've already formatted it with the Gemma chat template.
-            // The thinker's `think()` wraps in System/User/Assistant roles; we need direct
-            // access to the generation loop.  We pass the full prompt as the user message
-            // and an empty system prompt so the thinker doesn't re-wrap it.
-            guard.think("", &prompt)
+            // Use think_raw — the prompt is already formatted with the Gemma
+            // chat template by build_functiongemma_prompt.
+            guard.think_raw(&prompt)
         })
         .await
         .map_err(|e| anyhow!("FunctionGemma task join failed: {e}"))??;
+
+        tracing::debug!(
+            raw_output = %output.text,
+            completion_tokens = output.completion_tokens.unwrap_or(0),
+            "FunctionGemma raw output"
+        );
 
         Ok(parse_functiongemma_response(&output.text))
     }
@@ -394,12 +451,21 @@ impl ToolCallRouter {
         mut response: CompletionResponse,
         calls: Vec<ParsedToolCall>,
     ) -> CompletionResponse {
-        // Strip all text parts — the model should see only tool calls so it
-        // properly processes the tool results on the next iteration.
+        // Strip <tool_call>...</tool_call> blocks from text parts but keep
+        // the surrounding reasoning text so the model retains its chain of
+        // thought on subsequent turns.
+        let re = regex::Regex::new(r"(?s)<tool_call>.*?</tool_call>").unwrap();
+        for part in &mut response.message.content {
+            if let ContentPart::Text { text } = part {
+                let cleaned = re.replace_all(text, "").trim().to_string();
+                *text = cleaned;
+            }
+        }
+        // Remove now-empty text parts.
         response
             .message
             .content
-            .retain(|p| !matches!(p, ContentPart::Text { .. }));
+            .retain(|p| !matches!(p, ContentPart::Text { text } if text.is_empty()));
 
         for call in calls {
             response.message.content.push(ContentPart::ToolCall {

@@ -149,16 +149,12 @@ pub struct PermissionConfig {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum PermissionAction {
     Allow,
     Deny,
+    #[default]
     Ask,
-}
-
-impl Default for PermissionAction {
-    fn default() -> Self {
-        Self::Ask
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -305,12 +301,12 @@ impl Config {
         let mut config = Self::default();
 
         // Load global config
-        if let Some(global_path) = Self::global_config_path() {
-            if global_path.exists() {
-                let content = fs::read_to_string(&global_path).await?;
-                let global: Config = toml::from_str(&content)?;
-                config = config.merge(global);
-            }
+        if let Some(global_path) = Self::global_config_path()
+            && global_path.exists()
+        {
+            let content = fs::read_to_string(&global_path).await?;
+            let global: Config = toml::from_str(&content)?;
+            config = config.merge(global);
         }
 
         // Load project config

@@ -77,6 +77,12 @@ pub struct GoTool {
     completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 }
 
+impl Default for GoTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GoTool {
     pub fn new() -> Self {
         Self {
@@ -270,10 +276,10 @@ impl GoTool {
         let bg_callback = self.completion_callback.clone();
         tokio::spawn(async move {
             // Update phase to Running
-            if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
-                if let Some(r) = runs.get_mut(&bg_okr_id) {
-                    r.phase = GoRunPhase::Running;
-                }
+            if let Ok(mut runs) = ACTIVE_GO_RUNS.lock()
+                && let Some(r) = runs.get_mut(&bg_okr_id)
+            {
+                r.phase = GoRunPhase::Running;
             }
 
             // Create bus with S3 sink for training data archival
@@ -301,16 +307,16 @@ impl GoTool {
 
                     let summary = format_go_ralph_result(&result, &bg_task);
 
-                    if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
-                        if let Some(r) = runs.get_mut(&bg_okr_id) {
-                            r.phase = GoRunPhase::Completed {
-                                passed: result.passed,
-                                total: result.total,
-                                all_passed: result.all_passed,
-                                feature_branch: result.feature_branch,
-                                summary,
-                            };
-                        }
+                    if let Ok(mut runs) = ACTIVE_GO_RUNS.lock()
+                        && let Some(r) = runs.get_mut(&bg_okr_id)
+                    {
+                        r.phase = GoRunPhase::Completed {
+                            passed: result.passed,
+                            total: result.total,
+                            all_passed: result.all_passed,
+                            feature_branch: result.feature_branch,
+                            summary,
+                        };
                     }
 
                     tracing::info!(
@@ -363,12 +369,12 @@ impl GoTool {
                     }
 
                     let error_msg = err.to_string();
-                    if let Ok(mut runs) = ACTIVE_GO_RUNS.lock() {
-                        if let Some(r) = runs.get_mut(&bg_okr_id) {
-                            r.phase = GoRunPhase::Failed {
-                                error: error_msg.clone(),
-                            };
-                        }
+                    if let Ok(mut runs) = ACTIVE_GO_RUNS.lock()
+                        && let Some(r) = runs.get_mut(&bg_okr_id)
+                    {
+                        r.phase = GoRunPhase::Failed {
+                            error: error_msg.clone(),
+                        };
                     }
 
                     tracing::error!(
@@ -512,46 +518,45 @@ impl GoTool {
         }
 
         // Read PRD file for story-level progress
-        if let Ok(prd_content) = std::fs::read_to_string(&run.prd_filename) {
-            if let Ok(prd) = serde_json::from_str::<Value>(&prd_content) {
-                if let Some(stories) = prd.get("user_stories").and_then(|s| s.as_array()) {
-                    output.push_str("\n## Stories\n\n");
-                    let mut passed_count = 0;
-                    for story in stories {
-                        let id = story.get("id").and_then(|v| v.as_str()).unwrap_or("?");
-                        let title = story.get("title").and_then(|v| v.as_str()).unwrap_or("?");
-                        let passes = story
-                            .get("passes")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-                        let icon = if passes {
-                            passed_count += 1;
-                            "✅"
-                        } else {
-                            "⏳"
-                        };
-                        output.push_str(&format!("- {icon} **{id}**: {title}\n"));
-                    }
-                    output.push_str(&format!(
-                        "\n**Progress:** {passed_count}/{} stories passed\n",
-                        stories.len()
-                    ));
-                }
+        if let Ok(prd_content) = std::fs::read_to_string(&run.prd_filename)
+            && let Ok(prd) = serde_json::from_str::<Value>(&prd_content)
+            && let Some(stories) = prd.get("user_stories").and_then(|s| s.as_array())
+        {
+            output.push_str("\n## Stories\n\n");
+            let mut passed_count = 0;
+            for story in stories {
+                let id = story.get("id").and_then(|v| v.as_str()).unwrap_or("?");
+                let title = story.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+                let passes = story
+                    .get("passes")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let icon = if passes {
+                    passed_count += 1;
+                    "✅"
+                } else {
+                    "⏳"
+                };
+                output.push_str(&format!("- {icon} **{id}**: {title}\n"));
             }
+            output.push_str(&format!(
+                "\n**Progress:** {passed_count}/{} stories passed\n",
+                stories.len()
+            ));
         }
 
         // Read progress file
-        if let Ok(progress) = std::fs::read_to_string(&run.progress_filename) {
-            if !progress.trim().is_empty() {
-                // Show last 30 lines to avoid overwhelming output
-                let lines: Vec<&str> = progress.lines().collect();
-                let start = lines.len().saturating_sub(30);
-                let tail: String = lines[start..].join("\n");
-                output.push_str(&format!(
-                    "\n## Progress Notes (last {} lines)\n\n```\n{tail}\n```\n",
-                    lines.len().min(30)
-                ));
-            }
+        if let Ok(progress) = std::fs::read_to_string(&run.progress_filename)
+            && !progress.trim().is_empty()
+        {
+            // Show last 30 lines to avoid overwhelming output
+            let lines: Vec<&str> = progress.lines().collect();
+            let start = lines.len().saturating_sub(30);
+            let tail: String = lines[start..].join("\n");
+            output.push_str(&format!(
+                "\n## Progress Notes (last {} lines)\n\n```\n{tail}\n```\n",
+                lines.len().min(30)
+            ));
         }
 
         // Hint for next action
@@ -709,10 +714,10 @@ fn resolve_provider(
     }
 
     // Last resort: first available provider
-    if let Some(name) = registry.list().into_iter().next() {
-        if let Some(provider) = registry.get(name) {
-            return Ok((provider, model.to_string()));
-        }
+    if let Some(name) = registry.list().into_iter().next()
+        && let Some(provider) = registry.get(name)
+    {
+        return Ok((provider, model.to_string()));
     }
 
     anyhow::bail!("No provider available for model '{model}' and no fallback providers found")

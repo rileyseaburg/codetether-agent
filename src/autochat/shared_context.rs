@@ -232,10 +232,10 @@ fn extract_context_delta_from_text(text: &str) -> Option<ContextDelta> {
         return Some(delta);
     }
 
-    if let FinalPayload::Semantic(payload) = FinalPayload::parse(text) {
-        if let Some(delta) = parse_json_payload::<ContextDelta>(&payload.answer) {
-            return Some(delta);
-        }
+    if let FinalPayload::Semantic(payload) = FinalPayload::parse(text)
+        && let Some(delta) = parse_json_payload::<ContextDelta>(&payload.answer)
+    {
+        return Some(delta);
     }
 
     None

@@ -110,7 +110,7 @@ pub struct SubTaskInfo {
 }
 
 /// State for the swarm view
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SwarmViewState {
     /// Whether swarm mode is active
     pub active: bool,
@@ -136,25 +136,6 @@ pub struct SwarmViewState {
     pub detail_scroll: usize,
     /// ListState for StatefulWidget rendering
     pub list_state: ListState,
-}
-
-impl Default for SwarmViewState {
-    fn default() -> Self {
-        Self {
-            active: false,
-            task: String::new(),
-            subtasks: Vec::new(),
-            current_stage: 0,
-            total_stages: 0,
-            stats: None,
-            error: None,
-            complete: false,
-            selected_index: 0,
-            detail_mode: false,
-            detail_scroll: 0,
-            list_state: ListState::default(),
-        }
-    }
 }
 
 impl SwarmViewState {

@@ -243,20 +243,21 @@ impl RlmRepl {
         }
 
         // Check for variable assignment
-        if let Some(eq_pos) = line.find('=') {
-            if !line.contains("==") && !line.starts_with("if ") {
-                let var_name = line[..eq_pos]
-                    .trim()
-                    .trim_start_matches("let ")
-                    .trim_start_matches("const ")
-                    .trim_start_matches("var ")
-                    .trim();
-                let expr = line[eq_pos + 1..].trim().trim_end_matches(';');
+        if let Some(eq_pos) = line.find('=')
+            && !line.contains("==")
+            && !line.starts_with("if ")
+        {
+            let var_name = line[..eq_pos]
+                .trim()
+                .trim_start_matches("let ")
+                .trim_start_matches("const ")
+                .trim_start_matches("var ")
+                .trim();
+            let expr = line[eq_pos + 1..].trim().trim_end_matches(';');
 
-                let value = self.evaluate_expression(expr);
-                self.set_var(var_name, value);
-                return None;
-            }
+            let value = self.evaluate_expression(expr);
+            self.set_var(var_name, value);
+            return None;
         }
 
         // Check for function calls that should output
@@ -824,41 +825,36 @@ impl RlmExecutor {
                         Some(RlmToolResult::Output(output)) => {
                             // Check for the llm_query sentinel
                             if let Ok(sentinel) = serde_json::from_str::<serde_json::Value>(&output)
-                            {
-                                if sentinel
+                                && sentinel
                                     .get("__rlm_llm_query")
                                     .and_then(|v| v.as_bool())
                                     .unwrap_or(false)
-                                {
-                                    let q = sentinel
-                                        .get("query")
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("");
-                                    let ctx_slice = sentinel
-                                        .get("context_slice")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    let llm_result =
-                                        self.handle_llm_query_direct(q, ctx_slice).await?;
-                                    self.trace_steps.push(TraceStep {
-                                        iteration: iterations,
-                                        action: format!(
-                                            "llm_query({})",
-                                            truncate_with_ellipsis(q, 120)
-                                        ),
-                                        output: truncate_with_ellipsis(&llm_result, 240),
-                                    });
-                                    self.context_trace.log_event(ContextEvent::ToolResult {
-                                        tool_call_id: call_id.clone(),
-                                        result_preview: truncate_with_ellipsis(&llm_result, 300),
-                                        tokens: ContextTrace::estimate_tokens(&llm_result),
-                                    });
-                                    tool_results.push(ContentPart::ToolResult {
-                                        tool_call_id: call_id.clone(),
-                                        content: llm_result,
-                                    });
-                                    continue;
-                                }
+                            {
+                                let q =
+                                    sentinel.get("query").and_then(|v| v.as_str()).unwrap_or("");
+                                let ctx_slice = sentinel
+                                    .get("context_slice")
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string());
+                                let llm_result = self.handle_llm_query_direct(q, ctx_slice).await?;
+                                self.trace_steps.push(TraceStep {
+                                    iteration: iterations,
+                                    action: format!(
+                                        "llm_query({})",
+                                        truncate_with_ellipsis(q, 120)
+                                    ),
+                                    output: truncate_with_ellipsis(&llm_result, 240),
+                                });
+                                self.context_trace.log_event(ContextEvent::ToolResult {
+                                    tool_call_id: call_id.clone(),
+                                    result_preview: truncate_with_ellipsis(&llm_result, 300),
+                                    tokens: ContextTrace::estimate_tokens(&llm_result),
+                                });
+                                tool_results.push(ContentPart::ToolResult {
+                                    tool_call_id: call_id.clone(),
+                                    content: llm_result,
+                                });
+                                continue;
                             }
                             // Normal REPL output
                             if self.verbose {
@@ -1001,10 +997,11 @@ impl RlmExecutor {
                 output: truncate_with_ellipsis(&execution_result.stdout, 400),
                 tokens: ContextTrace::estimate_tokens(&execution_result.stdout),
             });
-            if let Some(step) = self.trace_steps.last_mut() {
-                if step.iteration == iterations && step.output.is_empty() {
-                    step.output = Self::trace_output_for_storage(&execution_result.stdout);
-                }
+            if let Some(step) = self.trace_steps.last_mut()
+                && step.iteration == iterations
+                && step.output.is_empty()
+            {
+                step.output = Self::trace_output_for_storage(&execution_result.stdout);
             }
 
             // Add execution result as user message for next iteration

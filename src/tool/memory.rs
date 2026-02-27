@@ -135,12 +135,11 @@ impl MemoryStore {
             .values_mut()
             .filter(|entry| {
                 // Filter by tags if provided
-                if let Some(search_tags) = tags {
-                    if !search_tags.is_empty()
-                        && !search_tags.iter().any(|t| entry.tags.contains(t))
-                    {
-                        return false;
-                    }
+                if let Some(search_tags) = tags
+                    && !search_tags.is_empty()
+                    && !search_tags.iter().any(|t| entry.tags.contains(t))
+                {
+                    return false;
                 }
 
                 // Filter by query if provided
@@ -392,7 +391,7 @@ impl MemoryTool {
         });
         let limit = args["limit"].as_u64().map(|v| v as usize).unwrap_or(10);
 
-        let tags_ref = tags.as_ref().map(|v| v.as_slice());
+        let tags_ref = tags.as_deref();
 
         let results = {
             let mut store = self.store.lock().await;
@@ -437,7 +436,7 @@ impl MemoryTool {
 
         let entry = {
             let mut store = self.store.lock().await;
-            store.get(id).map(|e| e.clone())
+            store.get(id)
         };
 
         match entry {

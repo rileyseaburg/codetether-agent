@@ -23,6 +23,28 @@ const TOOL_ARGS_PREVIEW_MAX_LINES: usize = 10;
 const TOOL_ARGS_PREVIEW_MAX_BYTES: usize = 6_000;
 const TOOL_OUTPUT_PREVIEW_MAX_LINES: usize = 5;
 const TOOL_OUTPUT_PREVIEW_MAX_BYTES: usize = 4_000;
+const FILE_PICKER_MAX_ENTRIES: usize = 500;
+const FILE_SHARE_MAX_BYTES: usize = 64 * 1024;
+const FILE_PICKER_PREVIEW_MAX_BYTES: usize = 8 * 1024;
+const FILE_PICKER_PREVIEW_MAX_LINES: usize = 14;
+const FILE_PICKER_PREVIEW_DIR_ITEMS: usize = 10;
+const FILE_PICKER_PAGE_STEP: usize = 12;
+const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 90;
+const MAIN_PROCESSING_WATCHDOG_MAX_RESTARTS: u8 = 3;
+const SMART_SWITCH_MAX_RETRIES: u8 = 3;
+const SMART_SWITCH_PROVIDER_PRIORITY: [&str; 11] = [
+    "minimax",
+    "zai",
+    "openai-codex",
+    "openrouter",
+    "github-copilot",
+    "github-copilot-enterprise",
+    "minimax-credits",
+    "openai",
+    "anthropic",
+    "google",
+    "gemini-web",
+];
 const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
 const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
 const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
@@ -69,6 +91,7 @@ use crate::tui::ralph_view::{RalphEvent, RalphViewState, render_ralph_view};
 use crate::tui::swarm_view::{SwarmEvent, SwarmViewState, render_swarm_view};
 use crate::tui::theme::Theme;
 use crate::tui::token_display::TokenDisplay;
+use crate::tui::worker_bridge::{TuiWorkerBridge, WorkerBridgeCmd};
 use anyhow::Result;
 use base64::Engine;
 use crossterm::{
@@ -96,7 +119,7 @@ use ratatui::{
     },
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -191,6 +214,7 @@ enum ViewMode {
     SessionPicker,
     ModelPicker,
     AgentPicker,
+    FilePicker,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,6 +233,21 @@ enum WorkspaceEntryKind {
 struct WorkspaceEntry {
     name: String,
     kind: WorkspaceEntryKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FilePickerEntryKind {
+    Parent,
+    Directory,
+    File,
+}
+
+#[derive(Debug, Clone)]
+struct FilePickerEntry {
+    name: String,
+    path: PathBuf,
+    kind: FilePickerEntryKind,
+    size_bytes: Option<u64>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -275,6 +314,13 @@ struct App {
     // Agent picker state
     agent_picker_selected: usize,
     agent_picker_filter: String,
+    // File picker state
+    file_picker_dir: PathBuf,
+    file_picker_entries: Vec<FilePickerEntry>,
+    file_picker_selected: usize,
+    file_picker_filter: String,
+    file_picker_preview_title: String,
+    file_picker_preview_lines: Vec<String>,
     // Protocol registry view state
     protocol_selected: usize,
     protocol_scroll: usize,
@@ -316,6 +362,22 @@ struct App {
     cached_autochat_running: bool,
     /// Pending image attachments (base64 data URLs) to send with the next message
     pending_images: Vec<PendingImage>,
+    /// Last user prompt currently in flight for the main chat request.
+    main_inflight_prompt: Option<String>,
+    /// Original user prompt for watchdog recovery retries.
+    main_watchdog_root_prompt: Option<String>,
+    /// Last time we received a main-session event while processing.
+    main_last_event_at: Option<Instant>,
+    /// Number of watchdog restart attempts for current main in-flight request.
+    main_watchdog_restart_count: u8,
+    worker_bridge: Option<TuiWorkerBridge>,
+    worker_bridge_registered_agents: HashSet<String>,
+    worker_bridge_processing_state: Option<bool>,
+    worker_task_queue: VecDeque<crate::tui::worker_bridge::IncomingTask>,
+    worker_autorun_enabled: bool,
+    smart_switch_retry_count: u8,
+    smart_switch_attempted_models: HashSet<String>,
+    pending_smart_switch_retry: Option<PendingSmartSwitchRetry>,
 }
 
 /// A pending image attachment from clipboard paste
@@ -328,6 +390,12 @@ struct PendingImage {
     height: usize,
     /// Size in bytes (before base64 encoding)
     size_bytes: usize,
+}
+
+#[derive(Debug, Clone)]
+struct PendingSmartSwitchRetry {
+    prompt: String,
+    target_model: String,
 }
 
 #[allow(dead_code)]
@@ -2449,23 +2517,18 @@ async fn run_autochat_worker(
                 }
 
                 // Persist mid-run for real-time visibility (best-effort)
-                if let Some(ref run_id_str) = okr_run_id_str {
-                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-                        if let Some(run_uuid) =
-                            parse_uuid_guarded(run_id_str, "relay_mid_run_persist")
-                        {
-                            if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                                if run.is_resumable() {
-                                    run.iterations = turns as u32;
-                                    for (kr_id, value) in &kr_progress {
-                                        run.update_kr_progress(kr_id, *value);
-                                    }
-                                    run.status = OkrRunStatus::Running;
-                                    let _ = repo.update_run(run).await;
-                                }
-                            }
-                        }
+                if let Some(ref run_id_str) = okr_run_id_str
+                    && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+                    && let Some(run_uuid) = parse_uuid_guarded(run_id_str, "relay_mid_run_persist")
+                    && let Ok(Some(mut run)) = repo.get_run(run_uuid).await
+                    && run.is_resumable()
+                {
+                    run.iterations = turns as u32;
+                    for (kr_id, value) in &kr_progress {
+                        run.update_kr_progress(kr_id, *value);
                     }
+                    run.status = OkrRunStatus::Running;
+                    let _ = repo.update_run(run).await;
                 }
             }
             let can_attempt_spawn = dynamic_spawn_count < AUTOCHAT_MAX_DYNAMIC_SPAWNS
@@ -2581,79 +2644,71 @@ async fn run_autochat_worker(
     RelayCheckpoint::delete().await;
 
     // Update OKR run with progress if associated
-    if let Some(ref run_id_str) = okr_run_id_str {
-        if let Some(repo) = crate::okr::persistence::OkrRepository::from_config()
-            .await
-            .ok()
-        {
-            if let Some(run_uuid) = parse_uuid_guarded(run_id_str, "relay_completion_persist") {
-                if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                    // Update KR progress from checkpoint
-                    for (kr_id, value) in &kr_progress {
-                        run.update_kr_progress(kr_id, *value);
-                    }
+    if let Some(ref run_id_str) = okr_run_id_str
+        && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+        && let Some(run_uuid) = parse_uuid_guarded(run_id_str, "relay_completion_persist")
+        && let Ok(Some(mut run)) = repo.get_run(run_uuid).await
+    {
+        // Update KR progress from checkpoint
+        for (kr_id, value) in &kr_progress {
+            run.update_kr_progress(kr_id, *value);
+        }
 
-                    // Create outcomes per KR with progress (link to actual KR IDs)
-                    let relay_id = relay.relay_id().to_string();
-                    let base_evidence = vec![
-                        format!("relay:{}", relay_id),
-                        format!("turns:{}", turns),
-                        format!("agents:{}", ordered_agents.len()),
-                        format!("status:{}", status),
-                        format!("rlm_handoffs:{}", rlm_handoff_count),
-                        format!("rlm_context_deltas:{}", rlm_context_count),
-                        format!("shared_context_items:{}", shared_context.item_count()),
-                        format!("dynamic_spawns:{}", dynamic_spawn_count),
-                    ];
+        // Create outcomes per KR with progress (link to actual KR IDs)
+        let relay_id = relay.relay_id().to_string();
+        let base_evidence = vec![
+            format!("relay:{}", relay_id),
+            format!("turns:{}", turns),
+            format!("agents:{}", ordered_agents.len()),
+            format!("status:{}", status),
+            format!("rlm_handoffs:{}", rlm_handoff_count),
+            format!("rlm_context_deltas:{}", rlm_context_count),
+            format!("shared_context_items:{}", shared_context.item_count()),
+            format!("dynamic_spawns:{}", dynamic_spawn_count),
+        ];
 
-                    // Set outcome type based on status
-                    let outcome_type = if status == "converged" {
-                        KrOutcomeType::FeatureDelivered
-                    } else if status == crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED {
-                        KrOutcomeType::Evidence
-                    } else {
-                        KrOutcomeType::Evidence
-                    };
+        // Set outcome type based on status
+        let outcome_type = if status == "converged" {
+            KrOutcomeType::FeatureDelivered
+        } else if status == crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED {
+            KrOutcomeType::Evidence
+        } else {
+            KrOutcomeType::Evidence
+        };
 
-                    // Create one outcome per KR, linked to the actual KR ID
-                    for (kr_id_str, value) in &kr_progress {
-                        // Parse KR ID with guardrail to prevent NIL UUID linkage
-                        if let Some(kr_uuid) =
-                            parse_uuid_guarded(kr_id_str, "relay_outcome_kr_link")
-                        {
-                            let kr_description = format!(
-                                "Relay outcome for KR {}: {} agents, {} turns, status={}",
-                                kr_id_str,
-                                ordered_agents.len(),
-                                turns,
-                                status
-                            );
-                            run.outcomes.push({
-                                let mut outcome =
-                                    KrOutcome::new(kr_uuid, kr_description).with_value(*value);
-                                outcome.run_id = Some(run.id);
-                                outcome.outcome_type = outcome_type;
-                                outcome.evidence = base_evidence.clone();
-                                outcome.source = "autochat relay".to_string();
-                                outcome
-                            });
-                        }
-                    }
-
-                    // Mark complete or update status based on execution result
-                    if status == "converged" {
-                        run.complete();
-                    } else if status == "agent_error" || status == "bus_error" {
-                        run.status = OkrRunStatus::Failed;
-                    } else {
-                        run.status = OkrRunStatus::Completed;
-                    }
-                    // Clear checkpoint ID at completion - checkpoint lifecycle complete
-                    run.relay_checkpoint_id = None;
-                    let _ = repo.update_run(run).await;
-                }
+        // Create one outcome per KR, linked to the actual KR ID
+        for (kr_id_str, value) in &kr_progress {
+            // Parse KR ID with guardrail to prevent NIL UUID linkage
+            if let Some(kr_uuid) = parse_uuid_guarded(kr_id_str, "relay_outcome_kr_link") {
+                let kr_description = format!(
+                    "Relay outcome for KR {}: {} agents, {} turns, status={}",
+                    kr_id_str,
+                    ordered_agents.len(),
+                    turns,
+                    status
+                );
+                run.outcomes.push({
+                    let mut outcome = KrOutcome::new(kr_uuid, kr_description).with_value(*value);
+                    outcome.run_id = Some(run.id);
+                    outcome.outcome_type = outcome_type;
+                    outcome.evidence = base_evidence.clone();
+                    outcome.source = "autochat relay".to_string();
+                    outcome
+                });
             }
         }
+
+        // Mark complete or update status based on execution result
+        if status == "converged" {
+            run.complete();
+        } else if status == "agent_error" || status == "bus_error" {
+            run.status = OkrRunStatus::Failed;
+        } else {
+            run.status = OkrRunStatus::Completed;
+        }
+        // Clear checkpoint ID at completion - checkpoint lifecycle complete
+        run.relay_checkpoint_id = None;
+        let _ = repo.update_run(run).await;
     }
 
     let _ = tx
@@ -2791,23 +2846,19 @@ async fn resume_autochat_worker(
         };
 
     // Persist KR progress immediately after resuming from checkpoint
-    if !kr_progress.is_empty() {
-        if let Some(ref run_id_str) = okr_run_id_str {
-            if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-                if let Some(run_uuid) = parse_uuid_guarded(run_id_str, "resume_mid_run_persist") {
-                    if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                        if run.is_resumable() {
-                            run.iterations = turns as u32;
-                            for (kr_id, value) in &kr_progress {
-                                run.update_kr_progress(kr_id, *value);
-                            }
-                            run.status = OkrRunStatus::Running;
-                            let _ = repo.update_run(run).await;
-                        }
-                    }
-                }
-            }
+    if !kr_progress.is_empty()
+        && let Some(ref run_id_str) = okr_run_id_str
+        && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+        && let Some(run_uuid) = parse_uuid_guarded(run_id_str, "resume_mid_run_persist")
+        && let Ok(Some(mut run)) = repo.get_run(run_uuid).await
+        && run.is_resumable()
+    {
+        run.iterations = turns as u32;
+        for (kr_id, value) in &kr_progress {
+            run.update_kr_progress(kr_id, *value);
         }
+        run.status = OkrRunStatus::Running;
+        let _ = repo.update_run(run).await;
     }
 
     // Reload agent sessions from disk
@@ -3048,23 +3099,19 @@ async fn resume_autochat_worker(
                 }
 
                 // Persist mid-run for real-time visibility (best-effort)
-                if let Some(ref run_id_str) = okr_run_id_str {
-                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-                        if let Some(run_uuid) =
-                            parse_uuid_guarded(run_id_str, "resumed_relay_mid_run_persist")
-                        {
-                            if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                                if run.is_resumable() {
-                                    run.iterations = turns as u32;
-                                    for (kr_id, value) in &kr_progress {
-                                        run.update_kr_progress(kr_id, *value);
-                                    }
-                                    run.status = OkrRunStatus::Running;
-                                    let _ = repo.update_run(run).await;
-                                }
-                            }
-                        }
+                if let Some(ref run_id_str) = okr_run_id_str
+                    && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+                    && let Some(run_uuid) =
+                        parse_uuid_guarded(run_id_str, "resumed_relay_mid_run_persist")
+                    && let Ok(Some(mut run)) = repo.get_run(run_uuid).await
+                    && run.is_resumable()
+                {
+                    run.iterations = turns as u32;
+                    for (kr_id, value) in &kr_progress {
+                        run.update_kr_progress(kr_id, *value);
                     }
+                    run.status = OkrRunStatus::Running;
+                    let _ = repo.update_run(run).await;
                 }
             }
 
@@ -3181,76 +3228,66 @@ async fn resume_autochat_worker(
     RelayCheckpoint::delete().await;
 
     // Update OKR run with progress if associated
-    if let Some(ref run_id_str) = okr_run_id_str {
-        if let Some(repo) = crate::okr::persistence::OkrRepository::from_config()
-            .await
-            .ok()
-        {
-            if let Some(run_uuid) =
-                parse_uuid_guarded(run_id_str, "resumed_relay_completion_persist")
-            {
-                if let Ok(Some(mut run)) = repo.get_run(run_uuid).await {
-                    // Update KR progress from checkpoint
-                    for (kr_id, value) in &kr_progress {
-                        run.update_kr_progress(kr_id, *value);
-                    }
+    if let Some(ref run_id_str) = okr_run_id_str
+        && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+        && let Some(run_uuid) = parse_uuid_guarded(run_id_str, "resumed_relay_completion_persist")
+        && let Ok(Some(mut run)) = repo.get_run(run_uuid).await
+    {
+        // Update KR progress from checkpoint
+        for (kr_id, value) in &kr_progress {
+            run.update_kr_progress(kr_id, *value);
+        }
 
-                    // Create outcomes per KR with progress (link to actual KR IDs)
-                    let base_evidence = vec![
-                        format!("turns:{}", turns),
-                        format!("agents:{}", ordered_agents.len()),
-                        format!("status:{}", status),
-                        "resumed:true".to_string(),
-                        format!("rlm_handoffs:{}", rlm_handoff_count),
-                        format!("rlm_context_deltas:{}", rlm_context_count),
-                        format!("shared_context_items:{}", shared_context.item_count()),
-                    ];
+        // Create outcomes per KR with progress (link to actual KR IDs)
+        let base_evidence = vec![
+            format!("turns:{}", turns),
+            format!("agents:{}", ordered_agents.len()),
+            format!("status:{}", status),
+            "resumed:true".to_string(),
+            format!("rlm_handoffs:{}", rlm_handoff_count),
+            format!("rlm_context_deltas:{}", rlm_context_count),
+            format!("shared_context_items:{}", shared_context.item_count()),
+        ];
 
-                    let outcome_type = if status == "converged" {
-                        KrOutcomeType::FeatureDelivered
-                    } else {
-                        KrOutcomeType::Evidence
-                    };
+        let outcome_type = if status == "converged" {
+            KrOutcomeType::FeatureDelivered
+        } else {
+            KrOutcomeType::Evidence
+        };
 
-                    // Create one outcome per KR, linked to the actual KR ID
-                    for (kr_id_str, value) in &kr_progress {
-                        // Parse KR ID with guardrail to prevent NIL UUID linkage
-                        if let Some(kr_uuid) =
-                            parse_uuid_guarded(kr_id_str, "resumed_relay_outcome_kr_link")
-                        {
-                            let kr_description = format!(
-                                "Resumed relay outcome for KR {}: {} agents, {} turns, status={}",
-                                kr_id_str,
-                                ordered_agents.len(),
-                                turns,
-                                status
-                            );
-                            run.outcomes.push({
-                                let mut outcome =
-                                    KrOutcome::new(kr_uuid, kr_description).with_value(*value);
-                                outcome.run_id = Some(run.id);
-                                outcome.outcome_type = outcome_type;
-                                outcome.evidence = base_evidence.clone();
-                                outcome.source = "autochat relay (resumed)".to_string();
-                                outcome
-                            });
-                        }
-                    }
-
-                    // Mark complete or update status based on execution result
-                    if status == "converged" {
-                        run.complete();
-                    } else if status == "agent_error" || status == "bus_error" {
-                        run.status = OkrRunStatus::Failed;
-                    } else {
-                        run.status = OkrRunStatus::Completed;
-                    }
-                    // Clear checkpoint ID at completion - checkpoint lifecycle complete
-                    run.relay_checkpoint_id = None;
-                    let _ = repo.update_run(run).await;
-                }
+        // Create one outcome per KR, linked to the actual KR ID
+        for (kr_id_str, value) in &kr_progress {
+            // Parse KR ID with guardrail to prevent NIL UUID linkage
+            if let Some(kr_uuid) = parse_uuid_guarded(kr_id_str, "resumed_relay_outcome_kr_link") {
+                let kr_description = format!(
+                    "Resumed relay outcome for KR {}: {} agents, {} turns, status={}",
+                    kr_id_str,
+                    ordered_agents.len(),
+                    turns,
+                    status
+                );
+                run.outcomes.push({
+                    let mut outcome = KrOutcome::new(kr_uuid, kr_description).with_value(*value);
+                    outcome.run_id = Some(run.id);
+                    outcome.outcome_type = outcome_type;
+                    outcome.evidence = base_evidence.clone();
+                    outcome.source = "autochat relay (resumed)".to_string();
+                    outcome
+                });
             }
         }
+
+        // Mark complete or update status based on execution result
+        if status == "converged" {
+            run.complete();
+        } else if status == "agent_error" || status == "bus_error" {
+            run.status = OkrRunStatus::Failed;
+        } else {
+            run.status = OkrRunStatus::Completed;
+        }
+        // Clear checkpoint ID at completion - checkpoint lifecycle complete
+        run.relay_checkpoint_id = None;
+        let _ = repo.update_run(run).await;
     }
 
     let _ = tx
@@ -3310,7 +3347,7 @@ impl App {
                 ChatMessage::new("system", "Welcome to CodeTether Agent! Press ? for help."),
                 ChatMessage::new(
                     "assistant",
-                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR+PRD gated relay (requires approval, tracks outcomes)\n• /autochat <task> - PRD-gated relay by default (use --no-prd for tactical)\n• /autochat-local <task> - PRD-gated local relay (use --no-prd for tactical)\n• /local - switch active model to local CUDA\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
+                    "Quick start (easy mode):\n• Type a message to chat with the AI\n• /go <task> - OKR+PRD gated relay (requires approval, tracks outcomes)\n• /autochat <task> - PRD-gated relay by default (use --no-prd for tactical)\n• /autochat-local <task> - PRD-gated local relay (use --no-prd for tactical)\n• /local - switch active model to local CUDA\n• /file - open file picker and attach file content to your next message\n• /add <name> - create a helper teammate\n• /talk <name> <message> - message a teammate\n• /list - show teammates\n• /remove <name> - remove teammate\n• /home - return to main chat\n• /help - open help\n• CLI autonomy: codetether forage --top 5\n\nPower user mode: /spawn, /agent, /swarm, /ralph, /protocol",
                 ),
             ],
             current_agent: "build".to_string(),
@@ -3351,6 +3388,15 @@ impl App {
             model_picker_filter: String::new(),
             agent_picker_selected: 0,
             agent_picker_filter: String::new(),
+            file_picker_dir: workspace_root.clone(),
+            file_picker_entries: Vec::new(),
+            file_picker_selected: 0,
+            file_picker_filter: String::new(),
+            file_picker_preview_title: "No selection".to_string(),
+            file_picker_preview_lines: vec![
+                "Use ↑/↓ to pick a file.".to_string(),
+                "Press Enter to open a folder or attach a file.".to_string(),
+            ],
             protocol_selected: 0,
             protocol_scroll: 0,
             active_model: None,
@@ -3381,6 +3427,23 @@ impl App {
             cached_processing: false,
             cached_autochat_running: false,
             pending_images: Vec::new(),
+            main_inflight_prompt: None,
+            main_watchdog_root_prompt: None,
+            main_last_event_at: None,
+            main_watchdog_restart_count: 0,
+            worker_bridge: None,
+            worker_bridge_registered_agents: HashSet::new(),
+            worker_bridge_processing_state: None,
+            worker_task_queue: VecDeque::new(),
+            worker_autorun_enabled: std::env::var("CODETETHER_WORKER_AUTORUN")
+                .map(|value| {
+                    let v = value.trim().to_ascii_lowercase();
+                    matches!(v.as_str(), "1" | "true" | "yes" | "on")
+                })
+                .unwrap_or(true),
+            smart_switch_retry_count: 0,
+            smart_switch_attempted_models: HashSet::new(),
+            pending_smart_switch_retry: None,
         }
     }
 
@@ -3422,6 +3485,474 @@ impl App {
 
     fn protocol_registered_count(&self) -> usize {
         self.bus.as_ref().map_or(0, |bus| bus.registry.len())
+    }
+
+    fn bus_status_label_and_color(&self) -> (String, Color) {
+        let Some(bus) = &self.bus else {
+            return ("BUS off".to_string(), Color::DarkGray);
+        };
+
+        let event_count = self.bus_log_state.total_count();
+        let agent_count = self.protocol_registered_count();
+        let receiver_count = bus.receiver_count();
+
+        if event_count > 0 || agent_count > 0 || receiver_count > 1 {
+            (
+                format!("BUS active ({event_count}ev/{agent_count}ag/{receiver_count}rx)"),
+                Color::Green,
+            )
+        } else {
+            ("BUS idle".to_string(), Color::Yellow)
+        }
+    }
+
+    fn bus_status_badge_span(&self) -> Span<'static> {
+        let (label, color) = self.bus_status_label_and_color();
+        Span::styled(
+            format!(" {label} "),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        )
+    }
+
+    fn append_bus_status_with_separator(&self, spans: &mut Vec<Span<'static>>) {
+        spans.push(Span::raw(" | "));
+        spans.push(self.bus_status_badge_span());
+    }
+
+    fn send_worker_bridge_cmd(&self, cmd: WorkerBridgeCmd) {
+        let Some(bridge) = self.worker_bridge.as_ref() else {
+            return;
+        };
+        if let Err(err) = bridge.cmd_tx.try_send(cmd) {
+            tracing::debug!(error = %err, "Failed to send worker bridge command");
+        }
+    }
+
+    fn sync_worker_bridge_agents(&mut self) {
+        if self.worker_bridge.is_none() {
+            return;
+        }
+
+        let current_agents: HashSet<String> = self.spawned_agents.keys().cloned().collect();
+
+        for name in current_agents
+            .difference(&self.worker_bridge_registered_agents)
+            .cloned()
+        {
+            if let Some(agent) = self.spawned_agents.get(&name) {
+                self.send_worker_bridge_cmd(WorkerBridgeCmd::RegisterAgent {
+                    name,
+                    instructions: agent.instructions.clone(),
+                });
+            }
+        }
+
+        for name in self
+            .worker_bridge_registered_agents
+            .difference(&current_agents)
+            .cloned()
+        {
+            self.send_worker_bridge_cmd(WorkerBridgeCmd::DeregisterAgent { name });
+        }
+
+        self.worker_bridge_registered_agents = current_agents;
+    }
+
+    fn sync_worker_bridge_processing(&mut self) {
+        if self.worker_bridge.is_none() {
+            return;
+        }
+
+        let processing = self.is_processing
+            || self.autochat_running
+            || self
+                .spawned_agents
+                .values()
+                .any(|agent| agent.is_processing);
+
+        if self.worker_bridge_processing_state == Some(processing) {
+            return;
+        }
+
+        self.worker_bridge_processing_state = Some(processing);
+        self.send_worker_bridge_cmd(WorkerBridgeCmd::SetProcessing(processing));
+    }
+
+    fn sync_worker_bridge_state(&mut self) {
+        self.sync_worker_bridge_agents();
+        self.sync_worker_bridge_processing();
+    }
+
+    fn reset_smart_switch_state(&mut self) {
+        self.smart_switch_retry_count = 0;
+        self.smart_switch_attempted_models.clear();
+        self.pending_smart_switch_retry = None;
+    }
+
+    fn smart_switch_max_retries() -> u8 {
+        std::env::var("CODETETHER_SMART_SWITCH_MAX_RETRIES")
+            .ok()
+            .and_then(|v| v.parse::<u8>().ok())
+            .map(|v| v.clamp(1, 10))
+            .unwrap_or(SMART_SWITCH_MAX_RETRIES)
+    }
+
+    fn current_main_model_ref(&self) -> Option<String> {
+        self.session
+            .as_ref()
+            .and_then(|session| session.metadata.model.clone())
+            .or_else(|| self.active_model.clone())
+    }
+
+    fn smart_switch_candidates(&self, current_model: Option<&str>) -> Vec<String> {
+        let Some(registry) = self.provider_registry.as_ref() else {
+            return Vec::new();
+        };
+
+        let available: HashSet<String> = registry
+            .list()
+            .into_iter()
+            .map(normalize_provider_alias)
+            .map(ToString::to_string)
+            .collect();
+
+        let current_provider = current_model
+            .and_then(|model_ref| crate::provider::parse_model_string(model_ref).0)
+            .map(normalize_provider_alias)
+            .map(ToString::to_string);
+
+        let mut candidates = Vec::new();
+
+        if let Some(provider_name) = current_provider.as_deref()
+            && available.contains(provider_name)
+        {
+            for model_id in smart_switch_preferred_models(provider_name) {
+                candidates.push(format!("{provider_name}/{model_id}"));
+            }
+        }
+
+        for provider_name in SMART_SWITCH_PROVIDER_PRIORITY {
+            let normalized_provider = normalize_provider_alias(provider_name);
+            if Some(normalized_provider) == current_provider.as_deref() {
+                continue;
+            }
+            if !available.contains(normalized_provider) {
+                continue;
+            }
+            if let Some(model_id) = smart_switch_preferred_models(normalized_provider).first() {
+                candidates.push(format!("{normalized_provider}/{model_id}"));
+            }
+        }
+
+        let mut extra_providers: Vec<String> = available
+            .into_iter()
+            .filter(|provider_name| {
+                if Some(provider_name.as_str()) == current_provider.as_deref() {
+                    return false;
+                }
+                !SMART_SWITCH_PROVIDER_PRIORITY
+                    .iter()
+                    .any(|priority| normalize_provider_alias(priority) == provider_name)
+            })
+            .collect();
+        extra_providers.sort();
+
+        for provider_name in extra_providers {
+            if let Some(model_id) = smart_switch_preferred_models(&provider_name).first() {
+                candidates.push(format!("{provider_name}/{model_id}"));
+            }
+        }
+
+        candidates
+    }
+
+    fn maybe_schedule_smart_switch_retry(&mut self, err: &str) -> bool {
+        if self.pending_smart_switch_retry.is_some() || !is_retryable_provider_error(err) {
+            return false;
+        }
+
+        let max_retries = Self::smart_switch_max_retries();
+        if self.smart_switch_retry_count >= max_retries {
+            return false;
+        }
+
+        let base_prompt = self
+            .main_watchdog_root_prompt
+            .clone()
+            .or_else(|| self.main_inflight_prompt.clone());
+        let Some(prompt) = base_prompt else {
+            return false;
+        };
+
+        if let Some(current_model) = self.current_main_model_ref() {
+            self.smart_switch_attempted_models
+                .insert(smart_switch_model_key(&current_model));
+        }
+
+        let target_model = self
+            .smart_switch_candidates(self.current_main_model_ref().as_deref())
+            .into_iter()
+            .find(|candidate| {
+                !self
+                    .smart_switch_attempted_models
+                    .contains(&smart_switch_model_key(candidate))
+            });
+
+        let Some(target_model) = target_model else {
+            return false;
+        };
+
+        self.smart_switch_retry_count = self.smart_switch_retry_count.saturating_add(1);
+        self.smart_switch_attempted_models
+            .insert(smart_switch_model_key(&target_model));
+        self.pending_smart_switch_retry = Some(PendingSmartSwitchRetry {
+            prompt,
+            target_model: target_model.clone(),
+        });
+
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Smart switcher: transient provider failure detected. \
+Retrying with {target_model} (attempt {}/{}).",
+                self.smart_switch_retry_count, max_retries
+            ),
+        ));
+        self.scroll = SCROLL_BOTTOM;
+        true
+    }
+
+    fn apply_pending_smart_switch_retry(&mut self) -> bool {
+        let Some(retry) = self.pending_smart_switch_retry.take() else {
+            return false;
+        };
+
+        self.response_rx = None;
+        self.streaming_text = None;
+        self.current_tool = None;
+        self.current_tool_started_at = None;
+        self.processing_started_at = Some(Instant::now());
+        self.processing_message = Some(format!("Retrying via {}...", retry.target_model));
+        self.main_last_event_at = Some(Instant::now());
+
+        self.active_model = Some(retry.target_model.clone());
+        if let Some(session) = self.session.as_mut() {
+            session.metadata.model = Some(retry.target_model.clone());
+        }
+        if self.main_watchdog_root_prompt.is_none() {
+            self.main_watchdog_root_prompt = Some(retry.prompt.clone());
+        }
+
+        self.spawn_main_processing_task(retry.prompt, Vec::new());
+        true
+    }
+
+    fn reset_main_processing_state(&mut self) {
+        self.is_processing = false;
+        self.processing_message = None;
+        self.current_tool = None;
+        self.current_tool_started_at = None;
+        self.processing_started_at = None;
+        self.streaming_text = None;
+        self.response_rx = None;
+        self.main_inflight_prompt = None;
+        self.main_watchdog_root_prompt = None;
+        self.main_last_event_at = None;
+        self.main_watchdog_restart_count = 0;
+        self.reset_smart_switch_state();
+    }
+
+    fn main_watchdog_timeout_secs() -> u64 {
+        std::env::var("CODETETHER_MAIN_WATCHDOG_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .map(|v| v.clamp(20, 900))
+            .unwrap_or(MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS)
+    }
+
+    fn main_watchdog_max_restarts() -> u8 {
+        std::env::var("CODETETHER_MAIN_WATCHDOG_MAX_RESTARTS")
+            .ok()
+            .and_then(|v| v.parse::<u8>().ok())
+            .map(|v| v.clamp(1, 10))
+            .unwrap_or(MAIN_PROCESSING_WATCHDOG_MAX_RESTARTS)
+    }
+
+    fn build_main_watchdog_recovery_prompt(base_prompt: &str, attempt: u8) -> String {
+        format!(
+            "Watchdog recovery attempt {attempt}: previous run stalled. \
+Resume and complete the user request. If blocked, self-delegate to available helper agents and continue.\n\n\
+Original request:\n{base_prompt}"
+        )
+    }
+
+    fn spawn_main_processing_task(
+        &mut self,
+        message: String,
+        pending_images: Vec<crate::session::ImageAttachment>,
+    ) {
+        let Some(registry) = self.provider_registry.clone() else {
+            self.messages.push(ChatMessage::new(
+                "system",
+                "Providers are still loading; cannot send message yet.",
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            self.reset_main_processing_state();
+            return;
+        };
+
+        let Some(session_clone) = self.session.clone() else {
+            self.messages.push(ChatMessage::new(
+                "assistant",
+                "Error: session not initialized",
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            self.reset_main_processing_state();
+            return;
+        };
+
+        self.is_processing = true;
+        self.processing_message = Some("Thinking...".to_string());
+        self.current_tool = None;
+        self.current_tool_started_at = None;
+        self.processing_started_at = Some(Instant::now());
+        self.streaming_text = None;
+        self.main_inflight_prompt = Some(message.clone());
+        self.main_last_event_at = Some(Instant::now());
+
+        let (tx, rx) = mpsc::channel(100);
+        self.response_rx = Some(rx);
+
+        tokio::spawn(async move {
+            let mut session = session_clone;
+            let result = if pending_images.is_empty() {
+                session
+                    .prompt_with_events(&message, tx.clone(), registry)
+                    .await
+            } else {
+                session
+                    .prompt_with_events_and_images(&message, pending_images, tx.clone(), registry)
+                    .await
+            };
+
+            if let Err(err) = result {
+                tracing::error!(error = %err, "Agent processing failed");
+                session.add_message(crate::provider::Message {
+                    role: crate::provider::Role::Assistant,
+                    content: vec![crate::provider::ContentPart::Text {
+                        text: format!("Error: {err:#}"),
+                    }],
+                });
+                if let Err(save_err) = session.save().await {
+                    tracing::warn!(
+                        error = %save_err,
+                        session_id = %session.id,
+                        "Failed to save session after processing error"
+                    );
+                }
+                let _ = tx.send(SessionEvent::SessionSync(session)).await;
+                let _ = tx.send(SessionEvent::Error(format!("{err:#}"))).await;
+                let _ = tx.send(SessionEvent::Done).await;
+            }
+        });
+    }
+
+    fn maybe_watchdog_main_processing(&mut self) {
+        if !self.is_processing {
+            return;
+        }
+
+        let timeout_secs = Self::main_watchdog_timeout_secs();
+        let max_restarts = Self::main_watchdog_max_restarts();
+        let channel_closed = self
+            .response_rx
+            .as_ref()
+            .is_none_or(mpsc::Receiver::is_closed);
+        let stalled_by_time = self
+            .main_last_event_at
+            .map(|t| t.elapsed() >= Duration::from_secs(timeout_secs))
+            .unwrap_or(false);
+
+        if !channel_closed && !stalled_by_time {
+            return;
+        }
+
+        let reason = if channel_closed {
+            "response channel closed unexpectedly"
+        } else {
+            "no progress events received"
+        };
+
+        let base_prompt = self
+            .main_watchdog_root_prompt
+            .clone()
+            .or_else(|| self.main_inflight_prompt.clone());
+
+        if self.main_watchdog_restart_count < max_restarts
+            && let Some(base_prompt) = base_prompt
+        {
+            self.main_watchdog_restart_count += 1;
+            let attempt = self.main_watchdog_restart_count;
+            let recovery_prompt = Self::build_main_watchdog_recovery_prompt(&base_prompt, attempt);
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!(
+                    "Watchdog: main request stalled ({reason}); restarting attempt {}/{}.",
+                    self.main_watchdog_restart_count, max_restarts
+                ),
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            self.current_tool = None;
+            self.current_tool_started_at = None;
+            self.processing_message = Some("Recovering stalled request...".to_string());
+            self.streaming_text = None;
+            // Drop old receiver so stale worker updates do not continue mutating UI state.
+            self.response_rx = None;
+            self.main_last_event_at = Some(Instant::now());
+
+            if attempt >= 2 {
+                self.watchdog_nudge_helper_agent(&base_prompt, attempt);
+            }
+
+            self.spawn_main_processing_task(recovery_prompt, Vec::new());
+            return;
+        }
+
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Watchdog: main request stalled ({reason}) and restart limit reached. \
+                 Marking request as failed."
+            ),
+        ));
+        self.scroll = SCROLL_BOTTOM;
+        self.reset_main_processing_state();
+    }
+
+    fn watchdog_nudge_helper_agent(&mut self, base_prompt: &str, attempt: u8) {
+        let helper_name = self
+            .spawned_agents
+            .iter()
+            .find_map(|(name, agent)| (!agent.is_processing).then(|| name.clone()));
+
+        let Some(helper_name) = helper_name else {
+            return;
+        };
+
+        let helper_prompt = format!(
+            "Watchdog assist request (attempt {attempt}). The main agent stalled while handling:\n\
+{base_prompt}\n\n\
+Please take one concrete step to unblock progress and report results."
+        );
+
+        self.messages.push(ChatMessage::new(
+            "system",
+            format!(
+                "Watchdog: asking @{helper_name} to assist recovery for the stalled main request."
+            ),
+        ));
+        self.scroll = SCROLL_BOTTOM;
+        self.dispatch_to_agent_internal(&helper_name, &helper_prompt);
     }
 
     fn protocol_cards(&self) -> Vec<crate::a2a::types::AgentCard> {
@@ -3718,6 +4249,7 @@ impl App {
 
         // Easy-mode slash aliases (/go, /add, /talk, /list, ...)
         message = normalize_easy_command(&message);
+        self.sync_spawned_agents_from_tool_store();
 
         if message.trim() == "/help" {
             self.show_help = true;
@@ -3892,10 +4424,10 @@ impl App {
                 };
 
                 // Initialize OKR repository if not already done
-                if self.okr_repository.is_none() {
-                    if let Ok(repo) = OkrRepository::from_config().await {
-                        self.okr_repository = Some(std::sync::Arc::new(repo));
-                    }
+                if self.okr_repository.is_none()
+                    && let Ok(repo) = OkrRepository::from_config().await
+                {
+                    self.okr_repository = Some(std::sync::Arc::new(repo));
                 }
 
                 // Create pending OKR approval gate.
@@ -4004,6 +4536,17 @@ impl App {
             return;
         }
 
+        // /file command: open picker or attach a specific file path to the composer
+        if let Some(rest) = command_with_optional_args(&message, "/file") {
+            let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
+            if cleaned.is_empty() {
+                self.open_file_picker();
+            } else {
+                self.attach_file_to_input(Path::new(cleaned));
+            }
+            return;
+        }
+
         if message.trim() == "/archive" {
             let details = if let Some(path) = &self.chat_archive_path {
                 format!(
@@ -4030,6 +4573,7 @@ impl App {
                 | ViewMode::SessionPicker
                 | ViewMode::ModelPicker
                 | ViewMode::AgentPicker
+                | ViewMode::FilePicker
                 | ViewMode::BusLog
                 | ViewMode::Protocol => ViewMode::Swarm,
                 ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
@@ -4232,7 +4776,9 @@ impl App {
             }
 
             let name = name.to_string();
-            if self.spawned_agents.remove(&name).is_some() {
+            let removed_local = self.spawned_agents.remove(&name).is_some();
+            let removed_tool_store = crate::tool::agent::remove_agent(&name);
+            if removed_local || removed_tool_store {
                 // Remove its response channels
                 self.agent_response_rxs.retain(|(n, _)| n != &name);
                 self.streaming_agent_texts.remove(&name);
@@ -4401,14 +4947,13 @@ impl App {
                 .filter(|s| !s.is_empty());
 
             // If no specific session ID, check for an interrupted relay checkpoint first
-            if session_id.is_none() {
-                if let Some(checkpoint) =
+            if session_id.is_none()
+                && let Some(checkpoint) =
                     RelayCheckpoint::load_for_workspace(&self.workspace_dir).await
-                {
-                    self.messages.push(ChatMessage::new("user", "/resume"));
-                    self.resume_autochat_relay(checkpoint).await;
-                    return;
-                }
+            {
+                self.messages.push(ChatMessage::new("user", "/resume"));
+                self.resume_autochat_relay(checkpoint).await;
+                return;
             }
 
             let loaded = if let Some(id) = session_id {
@@ -4779,36 +5324,30 @@ impl App {
             }
         }
 
-        let session = match self.session.as_mut() {
-            Some(session) => session,
-            None => {
-                self.messages.push(ChatMessage::new(
-                    "assistant",
-                    "Error: session not initialized",
-                ));
-                return;
+        let selected_model_ref = {
+            let session = match self.session.as_mut() {
+                Some(session) => session,
+                None => {
+                    self.messages.push(ChatMessage::new(
+                        "assistant",
+                        "Error: session not initialized",
+                    ));
+                    return;
+                }
+            };
+
+            if let Some(model) = model {
+                session.metadata.model = Some(model);
             }
+
+            session.agent = current_agent;
+            session.metadata.model.clone()
         };
-
-        if let Some(model) = model {
-            session.metadata.model = Some(model);
+        self.reset_smart_switch_state();
+        if let Some(model_ref) = selected_model_ref.as_deref() {
+            self.smart_switch_attempted_models
+                .insert(smart_switch_model_key(model_ref));
         }
-
-        session.agent = current_agent;
-
-        // Set processing state
-        self.is_processing = true;
-        self.processing_message = Some("Thinking...".to_string());
-        self.current_tool = None;
-        self.current_tool_started_at = None;
-        self.processing_started_at = Some(Instant::now());
-        self.streaming_text = None;
-
-        let registry = self.provider_registry.clone().expect("checked above");
-
-        // Create channel for async communication
-        let (tx, rx) = mpsc::channel(100);
-        self.response_rx = Some(rx);
 
         // Take any pending images to send with this message
         let pending_images: Vec<crate::session::ImageAttachment> =
@@ -4819,54 +5358,15 @@ impl App {
                     mime_type: Some("image/png".to_string()),
                 })
                 .collect();
-
-        // Clone session for async processing
-        let session_clone = session.clone();
-        let message_clone = message.clone();
-
-        // Spawn async task to process the message with event streaming
-        tokio::spawn(async move {
-            let mut session = session_clone;
-            let result = if pending_images.is_empty() {
-                session
-                    .prompt_with_events(&message_clone, tx.clone(), registry)
-                    .await
-            } else {
-                session
-                    .prompt_with_events_and_images(
-                        &message_clone,
-                        pending_images,
-                        tx.clone(),
-                        registry,
-                    )
-                    .await
-            };
-
-            if let Err(err) = result {
-                tracing::error!(error = %err, "Agent processing failed");
-                session.add_message(crate::provider::Message {
-                    role: crate::provider::Role::Assistant,
-                    content: vec![crate::provider::ContentPart::Text {
-                        text: format!("Error: {err}"),
-                    }],
-                });
-                if let Err(save_err) = session.save().await {
-                    tracing::warn!(
-                        error = %save_err,
-                        session_id = %session.id,
-                        "Failed to save session after processing error"
-                    );
-                }
-                let _ = tx.send(SessionEvent::SessionSync(session)).await;
-                let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
-                let _ = tx.send(SessionEvent::Done).await;
-            }
-        });
+        self.main_watchdog_root_prompt = Some(message.clone());
+        self.main_watchdog_restart_count = 0;
+        self.spawn_main_processing_task(message.clone(), pending_images);
     }
 
     fn handle_response(&mut self, event: SessionEvent) {
         // Auto-scroll to bottom when new content arrives
         self.scroll = SCROLL_BOTTOM;
+        self.main_last_event_at = Some(Instant::now());
 
         match event {
             SessionEvent::Thinking => {
@@ -4879,10 +5379,10 @@ impl App {
             }
             SessionEvent::ToolCallStart { name, arguments } => {
                 // Flush any streaming text before showing tool call
-                if let Some(text) = self.streaming_text.take() {
-                    if !text.is_empty() {
-                        self.messages.push(ChatMessage::new("assistant", text));
-                    }
+                if let Some(text) = self.streaming_text.take()
+                    && !text.is_empty()
+                {
+                    self.messages.push(ChatMessage::new("assistant", text));
                 }
                 self.processing_message = Some(format!("Running {}...", name));
                 self.current_tool = Some(name.clone());
@@ -4986,23 +5486,20 @@ impl App {
             }
             SessionEvent::Error(err) => {
                 self.current_tool_started_at = None;
+                self.maybe_schedule_smart_switch_retry(&err);
                 self.messages
                     .push(ChatMessage::new("assistant", format!("Error: {}", err)));
             }
             SessionEvent::Done => {
-                self.is_processing = false;
-                self.processing_message = None;
-                self.current_tool = None;
-                self.current_tool_started_at = None;
-                self.processing_started_at = None;
-                self.streaming_text = None;
-                self.response_rx = None;
+                if !self.apply_pending_smart_switch_retry() {
+                    self.reset_main_processing_state();
+                }
             }
         }
     }
 
-    /// Send a message to a specific spawned agent
-    async fn send_to_agent(&mut self, agent_name: &str, message: &str, _config: &Config) {
+    /// Dispatch a message to a specific spawned agent without awaiting.
+    fn dispatch_to_agent_internal(&mut self, agent_name: &str, message: &str) {
         let Some(registry) = self.provider_registry.clone() else {
             self.messages.push(ChatMessage::new(
                 "system",
@@ -5037,7 +5534,7 @@ impl App {
                 session.add_message(crate::provider::Message {
                     role: crate::provider::Role::Assistant,
                     content: vec![crate::provider::ContentPart::Text {
-                        text: format!("Error: {err}"),
+                        text: format!("Error: {err:#}"),
                     }],
                 });
                 if let Err(save_err) = session.save().await {
@@ -5049,7 +5546,7 @@ impl App {
                     );
                 }
                 let _ = tx.send(SessionEvent::SessionSync(session)).await;
-                let _ = tx.send(SessionEvent::Error(format!("Error: {err}"))).await;
+                let _ = tx.send(SessionEvent::Error(format!("{err:#}"))).await;
                 let _ = tx.send(SessionEvent::Done).await;
             }
 
@@ -5068,6 +5565,34 @@ impl App {
                 );
             }
         });
+    }
+
+    /// Send a message to a specific spawned agent
+    async fn send_to_agent(&mut self, agent_name: &str, message: &str, _config: &Config) {
+        self.dispatch_to_agent_internal(agent_name, message);
+    }
+
+    fn worker_policy_user(&self) -> crate::server::policy::PolicyUser {
+        let roles = std::env::var("CODETETHER_POLICY_ROLES")
+            .ok()
+            .map(|raw| {
+                raw.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|roles| !roles.is_empty())
+            .unwrap_or_else(|| vec!["editor".to_string()]);
+
+        crate::server::policy::PolicyUser {
+            user_id: std::env::var("CODETETHER_ACTOR_ID")
+                .unwrap_or_else(|_| "tui-autonomous".to_string()),
+            roles,
+            tenant_id: std::env::var("CODETETHER_TENANT_ID").ok(),
+            scopes: Vec::new(),
+            auth_source: "keycloak".to_string(),
+        }
     }
 
     /// Handle an event from a spawned agent
@@ -5291,7 +5816,7 @@ impl App {
 
         if let SwarmEvent::Error(ref err) = event {
             self.messages
-                .push(ChatMessage::new("system", &format!("Swarm error: {}", err)));
+                .push(ChatMessage::new("system", format!("Swarm error: {}", err)));
         }
     }
 
@@ -5318,7 +5843,7 @@ impl App {
 
         if let RalphEvent::Error(ref err) = event {
             self.messages
-                .push(ChatMessage::new("system", &format!("Ralph error: {}", err)));
+                .push(ChatMessage::new("system", format!("Ralph error: {}", err)));
         }
     }
 
@@ -5549,18 +6074,18 @@ impl App {
         }
 
         // Fallback: also try from config
-        if models.is_empty() {
-            if let Ok(registry) = crate::provider::ProviderRegistry::from_config(config).await {
-                for provider_name in registry.list() {
-                    if let Some(provider) = registry.get(provider_name) {
-                        if let Ok(model_list) = provider.list_models().await {
-                            for m in model_list {
-                                let label = format!("{}/{}", provider_name, m.id);
-                                let value = format!("{}/{}", provider_name, m.id);
-                                let name = m.name.clone();
-                                models.push((label, value, name));
-                            }
-                        }
+        if models.is_empty()
+            && let Ok(registry) = crate::provider::ProviderRegistry::from_config(config).await
+        {
+            for provider_name in registry.list() {
+                if let Some(provider) = registry.get(provider_name)
+                    && let Ok(model_list) = provider.list_models().await
+                {
+                    for m in model_list {
+                        let label = format!("{}/{}", provider_name, m.id);
+                        let value = format!("{}/{}", provider_name, m.id);
+                        let name = m.name.clone();
+                        models.push((label, value, name));
                     }
                 }
             }
@@ -5651,8 +6176,40 @@ impl App {
         }
     }
 
+    /// Import sub-agents created via the `agent` tool into the TUI-local map.
+    ///
+    /// The tool runtime keeps a global store, while TUI commands/picker use
+    /// `self.spawned_agents`.
+    fn sync_spawned_agents_from_tool_store(&mut self) {
+        let bus = self.bus.clone();
+        for snapshot in crate::tool::agent::list_agent_snapshots() {
+            let agent_name = snapshot.name.clone();
+            let entry = self
+                .spawned_agents
+                .entry(agent_name.clone())
+                .or_insert(SpawnedAgent {
+                    name: snapshot.name,
+                    instructions: snapshot.instructions,
+                    session: snapshot.session,
+                    is_processing: false,
+                });
+
+            if let Some(ref b) = bus {
+                if entry.session.bus.is_none() {
+                    entry.session.bus = Some(b.clone());
+                }
+                if b.registry.get(&agent_name).is_none() {
+                    let handle = b.handle(&agent_name);
+                    handle.announce_ready(vec!["sub-agent".to_string(), agent_name.clone()]);
+                    tracing::info!(agent = %agent_name, "Auto-registered spawned agent on protocol bus");
+                }
+            }
+        }
+    }
+
     /// Open picker for choosing a spawned sub-agent to focus
     fn open_agent_picker(&mut self) {
+        self.sync_spawned_agents_from_tool_store();
         if self.spawned_agents.is_empty() {
             self.messages.push(ChatMessage::new(
                 "system",
@@ -5672,6 +6229,338 @@ impl App {
             0
         };
         self.view_mode = ViewMode::AgentPicker;
+    }
+
+    fn open_file_picker(&mut self) {
+        if !self.file_picker_dir.exists() {
+            self.file_picker_dir = self.workspace_dir.clone();
+        }
+        self.file_picker_filter.clear();
+        self.file_picker_selected = 0;
+
+        if let Err(err) = self.reload_file_picker_entries() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!(
+                    "Failed to open file picker in {}: {}",
+                    self.file_picker_dir.display(),
+                    err
+                ),
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            return;
+        }
+
+        self.view_mode = ViewMode::FilePicker;
+        self.refresh_file_picker_preview();
+    }
+
+    fn reload_file_picker_entries(&mut self) -> Result<()> {
+        let mut entries = Vec::new();
+
+        if let Some(parent) = self.file_picker_dir.parent() {
+            entries.push(FilePickerEntry {
+                name: "..".to_string(),
+                path: parent.to_path_buf(),
+                kind: FilePickerEntryKind::Parent,
+                size_bytes: None,
+            });
+        }
+
+        let read_dir = std::fs::read_dir(&self.file_picker_dir)?;
+        for entry in read_dir.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.is_empty() || should_skip_workspace_entry(&name) {
+                continue;
+            }
+
+            let file_type = match entry.file_type() {
+                Ok(ft) => ft,
+                Err(_) => continue,
+            };
+
+            let (kind, size_bytes) = if file_type.is_dir() {
+                (FilePickerEntryKind::Directory, None)
+            } else if file_type.is_file() {
+                let size = entry.metadata().ok().map(|m| m.len());
+                (FilePickerEntryKind::File, size)
+            } else {
+                continue;
+            };
+
+            entries.push(FilePickerEntry {
+                name,
+                path,
+                kind,
+                size_bytes,
+            });
+        }
+
+        entries.sort_by(|a, b| {
+            let rank = |kind: FilePickerEntryKind| match kind {
+                FilePickerEntryKind::Parent => 0_u8,
+                FilePickerEntryKind::Directory => 1,
+                FilePickerEntryKind::File => 2,
+            };
+            rank(a.kind)
+                .cmp(&rank(b.kind))
+                .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        });
+        entries.truncate(FILE_PICKER_MAX_ENTRIES);
+
+        self.file_picker_entries = entries;
+        if self.file_picker_selected >= self.file_picker_entries.len() {
+            self.file_picker_selected = self.file_picker_entries.len().saturating_sub(1);
+        }
+        self.refresh_file_picker_preview();
+
+        Ok(())
+    }
+
+    fn filtered_file_picker_entries(&self) -> Vec<(usize, &FilePickerEntry)> {
+        if self.file_picker_filter.is_empty() {
+            return self.file_picker_entries.iter().enumerate().collect();
+        }
+
+        let filter = self.file_picker_filter.to_lowercase();
+        self.file_picker_entries
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| {
+                entry.kind == FilePickerEntryKind::Parent
+                    || entry.name.to_lowercase().contains(&filter)
+            })
+            .collect()
+    }
+
+    fn file_picker_go_parent(&mut self) {
+        if let Some(parent) = self.file_picker_dir.parent() {
+            self.file_picker_dir = parent.to_path_buf();
+            self.file_picker_filter.clear();
+            self.file_picker_selected = 0;
+            if let Err(err) = self.reload_file_picker_entries() {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Failed to navigate to parent directory: {}", err),
+                ));
+                self.scroll = SCROLL_BOTTOM;
+            }
+        }
+    }
+
+    fn refresh_file_picker_preview(&mut self) {
+        let filtered = self.filtered_file_picker_entries();
+        if filtered.is_empty() {
+            self.file_picker_preview_title = "No selection".to_string();
+            self.file_picker_preview_lines = vec![
+                "No files match the current filter.".to_string(),
+                "Backspace clears the filter.".to_string(),
+            ];
+            return;
+        }
+
+        let selected_index = self
+            .file_picker_selected
+            .min(filtered.len().saturating_sub(1));
+
+        let selected = filtered
+            .get(selected_index)
+            .map(|(_, entry)| (*entry).clone());
+        drop(filtered);
+        self.file_picker_selected = selected_index;
+
+        let Some(entry) = selected else {
+            self.file_picker_preview_title = "No selection".to_string();
+            self.file_picker_preview_lines = vec!["Use ↑/↓ to pick a file.".to_string()];
+            return;
+        };
+
+        match entry.kind {
+            FilePickerEntryKind::Parent => {
+                self.file_picker_preview_title = "Parent directory".to_string();
+                self.file_picker_preview_lines = vec![
+                    format!(
+                        "Open: {}",
+                        display_path_for_workspace(&entry.path, &self.workspace_dir)
+                    ),
+                    "Press Enter to navigate up.".to_string(),
+                ];
+            }
+            FilePickerEntryKind::Directory => {
+                self.file_picker_preview_title = format!("Directory: {}", entry.name);
+                let mut preview = vec![format!(
+                    "Path: {}",
+                    display_path_for_workspace(&entry.path, &self.workspace_dir)
+                )];
+
+                match std::fs::read_dir(&entry.path) {
+                    Ok(read_dir) => {
+                        let mut names = Vec::new();
+                        let mut total = 0_usize;
+                        for child in read_dir.flatten() {
+                            let child_name = child.file_name().to_string_lossy().to_string();
+                            if child_name.is_empty() || should_skip_workspace_entry(&child_name) {
+                                continue;
+                            }
+
+                            total += 1;
+                            if names.len() < FILE_PICKER_PREVIEW_DIR_ITEMS {
+                                let suffix = match child.file_type() {
+                                    Ok(ft) if ft.is_dir() => "/",
+                                    _ => "",
+                                };
+                                names.push(format!("{child_name}{suffix}"));
+                            }
+                        }
+
+                        preview.push(format!("Items: {total}"));
+                        if names.is_empty() {
+                            preview.push("(empty directory)".to_string());
+                        } else {
+                            preview.push("".to_string());
+                            preview.extend(names.into_iter().map(|name| format!("• {name}")));
+                            let extra = total.saturating_sub(FILE_PICKER_PREVIEW_DIR_ITEMS);
+                            if extra > 0 {
+                                preview.push(format!("... and {extra} more"));
+                            }
+                        }
+                        preview.push("".to_string());
+                        preview.push("Press Enter to open this folder.".to_string());
+                    }
+                    Err(err) => {
+                        preview.push(format!("Failed to read directory: {err}"));
+                    }
+                }
+
+                self.file_picker_preview_lines = preview;
+            }
+            FilePickerEntryKind::File => {
+                self.file_picker_preview_title = format!("File: {}", entry.name);
+                let mut preview = vec![format!(
+                    "Path: {}",
+                    display_path_for_workspace(&entry.path, &self.workspace_dir)
+                )];
+                if let Some(size) = entry.size_bytes {
+                    preview.push(format!("Size: {}", format_bytes(size)));
+                }
+                preview.push("".to_string());
+
+                match read_file_preview_lines(
+                    &entry.path,
+                    FILE_PICKER_PREVIEW_MAX_BYTES,
+                    FILE_PICKER_PREVIEW_MAX_LINES,
+                ) {
+                    Ok((lines, truncated, binary)) => {
+                        if binary {
+                            preview.push("Binary file detected.".to_string());
+                            preview.push("Enter attaches metadata only.".to_string());
+                        } else {
+                            preview.push("Preview:".to_string());
+                            preview.extend(lines.into_iter().map(|line| format!("  {line}")));
+                            if truncated {
+                                preview.push("".to_string());
+                                preview.push(format!(
+                                    "(preview truncated to {} bytes / {} lines)",
+                                    FILE_PICKER_PREVIEW_MAX_BYTES, FILE_PICKER_PREVIEW_MAX_LINES
+                                ));
+                            }
+                        }
+                    }
+                    Err(err) => preview.push(format!("Failed to read file: {err}")),
+                }
+
+                self.file_picker_preview_lines = preview;
+            }
+        }
+    }
+
+    fn select_file_picker_entry(&mut self) {
+        let selected = self
+            .filtered_file_picker_entries()
+            .get(self.file_picker_selected)
+            .map(|(_, entry)| (*entry).clone());
+
+        let Some(entry) = selected else {
+            return;
+        };
+
+        match entry.kind {
+            FilePickerEntryKind::Parent | FilePickerEntryKind::Directory => {
+                self.file_picker_dir = entry.path;
+                self.file_picker_filter.clear();
+                self.file_picker_selected = 0;
+                if let Err(err) = self.reload_file_picker_entries() {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Failed to open directory: {}", err),
+                    ));
+                    self.scroll = SCROLL_BOTTOM;
+                }
+            }
+            FilePickerEntryKind::File => {
+                self.attach_file_to_input(&entry.path);
+            }
+        }
+    }
+
+    fn attach_file_to_input(&mut self, path: &Path) {
+        let file_path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            self.workspace_dir.join(path)
+        };
+
+        if !file_path.exists() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!("File not found: {}", file_path.display()),
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            return;
+        }
+
+        if !file_path.is_file() {
+            self.messages.push(ChatMessage::new(
+                "system",
+                format!("Not a file: {}", file_path.display()),
+            ));
+            self.scroll = SCROLL_BOTTOM;
+            return;
+        }
+
+        let display_path = display_path_for_workspace(&file_path, &self.workspace_dir);
+        match build_file_share_snippet(&file_path, &display_path, FILE_SHARE_MAX_BYTES) {
+            Ok((snippet, truncated, binary)) => {
+                if !self.input.trim().is_empty() {
+                    self.input.push_str("\n\n");
+                }
+                self.input.push_str(&snippet);
+                self.cursor_position = self.input.len();
+                self.view_mode = ViewMode::Chat;
+
+                let suffix = if binary {
+                    " (binary file metadata only)".to_string()
+                } else if truncated {
+                    format!(" (truncated to {} bytes)", FILE_SHARE_MAX_BYTES)
+                } else {
+                    String::new()
+                };
+
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Attached `{display_path}` to composer{suffix}. Press Enter to send.",),
+                ));
+                self.scroll = SCROLL_BOTTOM;
+            }
+            Err(err) => {
+                self.messages.push(ChatMessage::new(
+                    "system",
+                    format!("Failed to attach file {}: {}", file_path.display(), err),
+                ));
+                self.scroll = SCROLL_BOTTOM;
+            }
+        }
     }
 
     fn navigate_history(&mut self, direction: isize) {
@@ -6004,6 +6893,23 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let mut config = Config::load().await?;
     let mut theme = crate::tui::theme_utils::validate_theme(&config.load_theme());
 
+    match TuiWorkerBridge::spawn(config.a2a.server_url.clone(), None, None, bus.clone()).await {
+        Ok(Some(bridge)) => {
+            tracing::info!(
+                worker_id = %bridge.worker_id,
+                worker_name = %bridge.worker_name,
+                "TUI worker bridge connected"
+            );
+            app.worker_bridge = Some(bridge);
+        }
+        Ok(None) => {
+            tracing::debug!("TUI worker bridge disabled (no server/token)");
+        }
+        Err(err) => {
+            tracing::warn!(error = %err, "Failed to initialize TUI worker bridge");
+        }
+    }
+
     // Preload provider registry in the background so the UI stays responsive on first submit
     // (Vault/provider initialization can be slow, e.g. Vertex GLM service account parsing).
     let (provider_tx, mut provider_rx) =
@@ -6062,7 +6968,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     }
 
     // Track last config modification time for hot-reloading
-    let _config_paths = vec![
+    let _config_paths = [
         std::path::PathBuf::from("./codetether.toml"),
         std::path::PathBuf::from("./.codetether/config.toml"),
     ];
@@ -6085,10 +6991,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             let mut interval = tokio::time::interval(Duration::from_secs(5));
             loop {
                 interval.tick().await;
-                if let Ok(sessions) = list_sessions_paged(&workspace_dir, session_limit, 0).await {
-                    if session_tx.send(sessions).await.is_err() {
-                        break; // TUI closed
-                    }
+                if let Ok(sessions) = list_sessions_paged(&workspace_dir, session_limit, 0).await
+                    && session_tx.send(sessions).await.is_err()
+                {
+                    break; // TUI closed
                 }
             }
         });
@@ -6142,13 +7048,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
         // Check for theme changes if hot-reload is enabled
         if config.ui.hot_reload && last_check.elapsed() > Duration::from_secs(2) {
-            if let Ok(new_config) = Config::load().await {
-                if new_config.ui.theme != config.ui.theme
-                    || new_config.ui.custom_theme != config.ui.custom_theme
-                {
-                    theme = crate::tui::theme_utils::validate_theme(&new_config.load_theme());
-                    config = new_config;
-                }
+            if let Ok(new_config) = Config::load().await
+                && (new_config.ui.theme != config.ui.theme
+                    || new_config.ui.custom_theme != config.ui.custom_theme)
+            {
+                theme = crate::tui::theme_utils::validate_theme(&new_config.load_theme());
+                config = new_config;
             }
             last_check = Instant::now();
         }
@@ -6257,6 +7162,80 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
             } else {
                 app.chat_sync_rx = Some(rx);
+            }
+        }
+
+        app.maybe_watchdog_main_processing();
+
+        let mut incoming_tasks = Vec::new();
+        if let Some(bridge) = app.worker_bridge.as_mut() {
+            while let Ok(task) = bridge.task_rx.try_recv() {
+                incoming_tasks.push(task);
+            }
+        }
+        for task in incoming_tasks {
+            app.messages.push(ChatMessage::new(
+                "system",
+                format!(
+                    "Incoming task {}{}",
+                    task.task_id,
+                    if task.message.is_empty() {
+                        String::new()
+                    } else {
+                        format!(": {}", truncate_with_ellipsis(&task.message, 180))
+                    }
+                ),
+            ));
+            app.scroll = SCROLL_BOTTOM;
+            app.worker_task_queue.push_back(task);
+        }
+
+        app.sync_worker_bridge_state();
+
+        if app.worker_autorun_enabled
+            && !app.is_processing
+            && !app.autochat_running
+            && app.pending_okr_approval.is_none()
+            && app.provider_registry.is_some()
+            && let Some(task) = app.worker_task_queue.pop_front()
+        {
+            let task_text = task.message.trim().to_string();
+            if task_text.is_empty() {
+                tracing::warn!(task_id = %task.task_id, "Skipping worker task with empty message");
+            } else {
+                let user = app.worker_policy_user();
+                let resource = crate::server::policy::PolicyResource {
+                    resource_type: Some("worker_task".to_string()),
+                    id: Some(task.task_id.clone()),
+                    owner_id: task.from_agent.clone(),
+                    tenant_id: user.tenant_id.clone(),
+                };
+                let allowed =
+                    crate::server::policy::check_policy(&user, "agent:execute", Some(&resource))
+                        .await;
+                if allowed {
+                    app.messages.push(ChatMessage::new(
+                        "system",
+                        format!(
+                            "Auto-running worker task {}{}",
+                            task.task_id,
+                            task.from_agent
+                                .as_ref()
+                                .map(|agent| format!(" from @{agent}"))
+                                .unwrap_or_default()
+                        ),
+                    ));
+                    app.scroll = SCROLL_BOTTOM;
+                    app.input = task_text;
+                    app.cursor_position = app.input.len();
+                    app.submit_message(&config).await;
+                } else {
+                    app.messages.push(ChatMessage::new(
+                        "system",
+                        format!("OPA denied auto-run for worker task {}", task.task_id),
+                    ));
+                    app.scroll = SCROLL_BOTTOM;
+                }
             }
         }
 
@@ -6727,6 +7706,103 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 continue;
             }
 
+            // File picker overlay
+            if app.view_mode == ViewMode::FilePicker {
+                match key.code {
+                    KeyCode::Esc => {
+                        app.file_picker_filter.clear();
+                        app.view_mode = ViewMode::Chat;
+                    }
+                    KeyCode::Up | KeyCode::Char('k')
+                        if !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        if app.file_picker_selected > 0 {
+                            app.file_picker_selected -= 1;
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('j')
+                        if !key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        let filtered = app.filtered_file_picker_entries();
+                        if app.file_picker_selected < filtered.len().saturating_sub(1) {
+                            app.file_picker_selected += 1;
+                        }
+                    }
+                    KeyCode::Home => {
+                        app.file_picker_selected = 0;
+                    }
+                    KeyCode::End => {
+                        let filtered = app.filtered_file_picker_entries();
+                        app.file_picker_selected = filtered.len().saturating_sub(1);
+                    }
+                    KeyCode::PageUp => {
+                        app.file_picker_selected = app
+                            .file_picker_selected
+                            .saturating_sub(FILE_PICKER_PAGE_STEP);
+                    }
+                    KeyCode::PageDown => {
+                        let filtered = app.filtered_file_picker_entries();
+                        let max_index = filtered.len().saturating_sub(1);
+                        app.file_picker_selected =
+                            (app.file_picker_selected + FILE_PICKER_PAGE_STEP).min(max_index);
+                    }
+                    KeyCode::Enter | KeyCode::Right | KeyCode::Char('l')
+                        if !key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        app.select_file_picker_entry();
+                    }
+                    KeyCode::Left | KeyCode::Char('h')
+                        if !key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
+                        app.file_picker_go_parent();
+                    }
+                    KeyCode::Backspace => {
+                        if app.file_picker_filter.is_empty() {
+                            app.file_picker_go_parent();
+                        } else {
+                            app.file_picker_filter.pop();
+                            app.file_picker_selected = 0;
+                        }
+                    }
+                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.file_picker_filter.clear();
+                        app.file_picker_selected = 0;
+                    }
+                    KeyCode::Char('/') => {
+                        // no-op: keeps parity with other pickers to signal filter mode
+                    }
+                    KeyCode::F(5) => {
+                        if let Err(err) = app.reload_file_picker_entries() {
+                            app.messages.push(ChatMessage::new(
+                                "system",
+                                format!("Failed to refresh file picker: {}", err),
+                            ));
+                            app.scroll = SCROLL_BOTTOM;
+                        }
+                    }
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
+                    KeyCode::Char(c)
+                        if !key.modifiers.contains(KeyModifiers::CONTROL)
+                            && !key.modifiers.contains(KeyModifiers::ALT)
+                            && c != 'j'
+                            && c != 'k'
+                            && c != 'h'
+                            && c != 'l' =>
+                    {
+                        app.file_picker_filter.push(c);
+                        app.file_picker_selected = 0;
+                    }
+                    _ => {}
+                }
+                app.refresh_file_picker_preview();
+                continue;
+            }
+
             // Swarm view key handling
             if app.view_mode == ViewMode::Swarm {
                 match key.code {
@@ -7058,6 +8134,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         | ViewMode::SessionPicker
                         | ViewMode::ModelPicker
                         | ViewMode::AgentPicker
+                        | ViewMode::FilePicker
                         | ViewMode::Protocol
                         | ViewMode::BusLog => ViewMode::Swarm,
                         ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
@@ -7069,6 +8146,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         | ViewMode::SessionPicker
                         | ViewMode::ModelPicker
                         | ViewMode::AgentPicker
+                        | ViewMode::FilePicker
                         | ViewMode::Protocol
                         | ViewMode::BusLog => ViewMode::Swarm,
                         ViewMode::Swarm | ViewMode::Ralph => ViewMode::Chat,
@@ -7164,6 +8242,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         || app.view_mode == ViewMode::SessionPicker
                         || app.view_mode == ViewMode::ModelPicker
                         || app.view_mode == ViewMode::AgentPicker
+                        || app.view_mode == ViewMode::FilePicker
                     {
                         app.view_mode = ViewMode::Chat;
                     }
@@ -7174,6 +8253,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     app.open_model_picker(&config).await;
                 }
 
+                // File picker (Ctrl+O)
+                KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.open_file_picker();
+                }
+
                 // Agent picker (Ctrl+A)
                 KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     app.open_agent_picker();
@@ -7181,6 +8265,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
                 // Bus protocol log (Ctrl+L)
                 KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.view_mode = ViewMode::BusLog;
+                }
+                KeyCode::F(4) => {
                     app.view_mode = ViewMode::BusLog;
                 }
 
@@ -7285,7 +8372,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     if app.cursor_position > 0 {
                         // Find start of previous char
-                        let prev = app.input[..app.cursor_position].char_indices().rev().next();
+                        let prev = app.input[..app.cursor_position].char_indices().next_back();
                         if let Some((idx, ch)) = prev {
                             app.input.replace_range(idx..idx + ch.len_utf8(), "");
                             app.cursor_position = idx;
@@ -7311,7 +8398,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
                 KeyCode::Left => {
                     // Move left by one character (not byte)
-                    let prev = app.input[..app.cursor_position].char_indices().rev().next();
+                    let prev = app.input[..app.cursor_position].char_indices().next_back();
                     if let Some((idx, _)) = prev {
                         app.cursor_position = idx;
                     }
@@ -7411,7 +8498,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         f.render_widget(input, chunks[1]);
 
         // Status bar
-        let status_line = if app.swarm_state.detail_mode {
+        let mut status_line = if app.swarm_state.detail_mode {
             Line::from(vec![
                 Span::styled(
                     " AGENT DETAIL ",
@@ -7442,6 +8529,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 Span::raw(": Toggle view"),
             ])
         };
+        app.append_bus_status_with_separator(&mut status_line.spans);
         let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
         return;
@@ -7470,7 +8558,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             .wrap(Wrap { trim: false });
         f.render_widget(input, chunks[1]);
 
-        let status_line = if app.ralph_state.detail_mode {
+        let mut status_line = if app.ralph_state.detail_mode {
             Line::from(vec![
                 Span::styled(
                     " STORY DETAIL ",
@@ -7499,6 +8587,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
                 Span::raw(": Back"),
             ])
         };
+        app.append_bus_status_with_separator(&mut status_line.spans);
         let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
         return;
@@ -7532,12 +8621,12 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             app.bus_log_state.visible_count(),
             app.bus_log_state.total_count()
         );
-        let status_line = Line::from(vec![
+        let mut status_line = Line::from(vec![
             Span::styled(
                 " BUS LOG ",
                 Style::default().fg(Color::Black).bg(Color::Green),
             ),
-            Span::raw(&count_info),
+            Span::raw(count_info),
             Span::raw("| "),
             Span::styled("↑↓", Style::default().fg(Color::Yellow)),
             Span::raw(": Select | "),
@@ -7548,6 +8637,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
             Span::raw(": Back"),
         ]);
+        app.append_bus_status_with_separator(&mut status_line.spans);
         let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
         return;
@@ -7577,7 +8667,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         f.render_widget(input, chunks[1]);
 
         let cards = app.protocol_cards();
-        let status_line = Line::from(vec![
+        let mut status_line = Line::from(vec![
             Span::styled(
                 " PROTOCOL REGISTRY ",
                 Style::default().fg(Color::Black).bg(Color::Blue),
@@ -7590,6 +8680,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
             Span::raw(": Back"),
         ]);
+        app.append_bus_status_with_separator(&mut status_line.spans);
         let status = Paragraph::new(status_line);
         f.render_widget(status, chunks[2]);
         return;
@@ -7606,11 +8697,12 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             format!("filter: {}", app.model_picker_filter)
         };
 
+        let (bus_label, _) = app.bus_status_label_and_color();
         let picker_block = Block::default()
             .borders(Borders::ALL)
             .title(format!(
-                " Select Model (↑↓ navigate, Enter select, Esc cancel) [{}] ",
-                filter_display
+                " Select Model (↑↓ navigate, Enter select, Esc cancel) [{}] [{}] ",
+                filter_display, bus_label
             ))
             .border_style(Style::default().fg(Color::Magenta));
 
@@ -7830,6 +8922,7 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             ));
         }
 
+        app.append_bus_status_with_separator(&mut status_spans);
         let status = Paragraph::new(Line::from(status_spans));
         f.render_widget(status, chunks[1]);
         return;
@@ -7846,11 +8939,12 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
             format!("filter: {}", app.agent_picker_filter)
         };
 
+        let (bus_label, _) = app.bus_status_label_and_color();
         let picker_block = Block::default()
             .borders(Borders::ALL)
             .title(format!(
-                " Select Agent (↑↓ navigate, Enter focus, m main chat, Esc cancel) [{}] ",
-                filter_display
+                " Select Agent (↑↓ navigate, Enter focus, m main chat, Esc cancel) [{}] [{}] ",
+                filter_display, bus_label
             ))
             .border_style(Style::default().fg(Color::Magenta));
 
@@ -7936,6 +9030,155 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         return;
     }
 
+    // File picker view
+    if app.view_mode == ViewMode::FilePicker {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(1),    // File list
+                Constraint::Length(8), // Preview
+                Constraint::Length(1), // Status bar
+            ])
+            .split(f.area());
+
+        let filter_display = if app.file_picker_filter.is_empty() {
+            "filter: (type to search)".to_string()
+        } else {
+            format!("filter: {}", app.file_picker_filter)
+        };
+
+        let current_dir = app.file_picker_dir.display().to_string();
+        let filtered = app.filtered_file_picker_entries();
+        let list_block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(
+                " File Picker [{}] ",
+                truncate_with_ellipsis(&current_dir, 70)
+            ))
+            .border_style(Style::default().fg(Color::Yellow));
+
+        let mut list_lines: Vec<Line> = Vec::new();
+        list_lines.push(Line::styled(
+            format!(
+                "  {} shown / {} total • {}",
+                filtered.len(),
+                app.file_picker_entries.len(),
+                filter_display
+            ),
+            Style::default().fg(Color::DarkGray),
+        ));
+        list_lines.push(Line::styled(
+            "  Enter on file: attach to composer • Enter on folder: open folder",
+            Style::default().fg(Color::DarkGray),
+        ));
+        list_lines.push(Line::from(""));
+
+        if filtered.is_empty() {
+            list_lines.push(Line::styled(
+                "  No files match filter",
+                Style::default().fg(Color::DarkGray),
+            ));
+        } else {
+            for (display_idx, (_, entry)) in filtered.iter().enumerate() {
+                let is_selected = display_idx == app.file_picker_selected;
+                let marker = if is_selected { "▶" } else { " " };
+                let (tag, detail) = match entry.kind {
+                    FilePickerEntryKind::Parent => ("[..]", "parent".to_string()),
+                    FilePickerEntryKind::Directory => ("[dir]", "folder".to_string()),
+                    FilePickerEntryKind::File => (
+                        "[file]",
+                        entry
+                            .size_bytes
+                            .map(format_bytes)
+                            .unwrap_or_else(|| "-".to_string()),
+                    ),
+                };
+
+                let style = if is_selected {
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
+                } else if entry.kind == FilePickerEntryKind::Directory {
+                    Style::default().fg(Color::Cyan)
+                } else {
+                    Style::default()
+                };
+
+                list_lines.push(Line::styled(
+                    format!("  {marker} {tag} {}  ({detail})", entry.name),
+                    style,
+                ));
+
+                if is_selected {
+                    list_lines.push(Line::styled(
+                        format!(
+                            "     {}",
+                            display_path_for_workspace(&entry.path, &app.workspace_dir)
+                        ),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+            }
+        }
+
+        let list = Paragraph::new(list_lines)
+            .block(list_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(list, chunks[0]);
+
+        let preview_block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(
+                " {} ",
+                truncate_with_ellipsis(&app.file_picker_preview_title, 90)
+            ))
+            .border_style(Style::default().fg(Color::Cyan));
+
+        let preview_lines: Vec<Line> = if app.file_picker_preview_lines.is_empty() {
+            vec![Line::styled(
+                "  No preview available.",
+                Style::default().fg(Color::DarkGray),
+            )]
+        } else {
+            app.file_picker_preview_lines
+                .iter()
+                .map(|line| Line::styled(format!("  {line}"), Style::default()))
+                .collect()
+        };
+        let preview = Paragraph::new(preview_lines)
+            .block(preview_block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(preview, chunks[1]);
+
+        let mut status_line = Line::from(vec![
+            Span::styled(
+                " FILE PICKER ",
+                Style::default().fg(Color::Black).bg(Color::Yellow),
+            ),
+            Span::raw(" "),
+            Span::styled("↑↓/j/k", Style::default().fg(Color::Yellow)),
+            Span::raw(": Nav "),
+            Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
+            Span::raw(": Page "),
+            Span::styled("Enter/l", Style::default().fg(Color::Yellow)),
+            Span::raw(": Open folder / Attach file "),
+            Span::styled("h/←", Style::default().fg(Color::Yellow)),
+            Span::raw(": Parent "),
+            Span::styled("Type", Style::default().fg(Color::Yellow)),
+            Span::raw(": Filter "),
+            Span::styled("Ctrl+U", Style::default().fg(Color::Yellow)),
+            Span::raw(": Clear "),
+            Span::styled("F5", Style::default().fg(Color::Yellow)),
+            Span::raw(": Refresh "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": Cancel"),
+        ]);
+        app.append_bus_status_with_separator(&mut status_line.spans);
+        let status = Paragraph::new(status_line);
+        f.render_widget(status, chunks[2]);
+        return;
+    }
+
     // Build message lines once here — shared by both webview and classic layouts.
     // This avoids the per-frame allocation cost of calling build_message_lines twice.
     // We use a conservative width estimate (terminal width - 8) for the cache key;
@@ -7943,11 +9186,9 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
     let prefetch_width = f.area().width.saturating_sub(8) as usize;
     let _ = app.get_or_build_message_lines(theme, prefetch_width);
 
-    if app.chat_layout == ChatLayoutMode::Webview {
-        if render_webview_chat(f, app, theme) {
-            render_help_overlay_if_needed(f, app, theme);
-            return;
-        }
+    if app.chat_layout == ChatLayoutMode::Webview && render_webview_chat(f, app, theme) {
+        render_help_overlay_if_needed(f, app, theme);
+        return;
     }
 
     // Chat view (default)
@@ -8095,6 +9336,10 @@ fn ui(f: &mut Frame, app: &mut App, theme: &Theme) {
         0,
         Span::styled(model_status, Style::default().fg(Color::Cyan)),
     );
+    status_line
+        .spans
+        .insert(0, Span::styled("│ ", Style::default().fg(Color::DarkGray)));
+    status_line.spans.insert(0, app.bus_status_badge_span());
     if let Some(autochat_status) = app.autochat_status_label() {
         status_line.spans.insert(
             0,
@@ -8182,6 +9427,10 @@ fn render_webview_chat(f: &mut Frame, app: &mut App, theme: &Theme) -> bool {
         0,
         Span::styled(model_status, Style::default().fg(Color::Cyan)),
     );
+    status_line
+        .spans
+        .insert(0, Span::styled("│ ", Style::default().fg(Color::DarkGray)));
+    status_line.spans.insert(0, app.bus_status_badge_span());
     if let Some(autochat_status) = app.autochat_status_label() {
         status_line.spans.insert(
             0,
@@ -8425,6 +9674,7 @@ fn render_webview_header(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
     } else {
         "clean".to_string()
     };
+    let (bus_label, bus_color) = app.bus_status_label_and_color();
 
     let header_block = Block::default()
         .borders(Borders::ALL)
@@ -8472,6 +9722,11 @@ fn render_webview_header(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
                 Style::default().fg(theme.timestamp_color.to_color()),
             ),
             Span::styled(model_label, Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled(
+                bus_label,
+                Style::default().fg(bus_color).add_modifier(Modifier::BOLD),
+            ),
         ]),
     ];
 
@@ -8714,13 +9969,13 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         ]));
     }
 
-    if app.autochat_running {
-        if let Some(status) = app.autochat_status_label() {
-            lines.push(Line::from(vec![
-                Span::styled("Relay: ", label_style),
-                Span::styled(status, Style::default().fg(Color::Cyan)),
-            ]));
-        }
+    if app.autochat_running
+        && let Some(status) = app.autochat_status_label()
+    {
+        lines.push(Line::from(vec![
+            Span::styled("Relay: ", label_style),
+            Span::styled(status, Style::default().fg(Color::Cyan)),
+        ]));
     }
 
     lines.push(Line::from(vec![
@@ -8885,6 +10140,10 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("Model", Style::default().fg(Color::DarkGray)),
     ]));
     lines.push(Line::from(vec![
+        Span::styled("Ctrl+O  ", Style::default().fg(Color::Yellow)),
+        Span::styled("File Picker", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
         Span::styled("Ctrl+S  ", Style::default().fg(Color::Yellow)),
         Span::styled("Swarm", Style::default().fg(Color::DarkGray)),
     ]));
@@ -8892,6 +10151,17 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("?       ", Style::default().fg(Color::Yellow)),
         Span::styled("Help", Style::default().fg(Color::DarkGray)),
     ]));
+    lines.push(Line::from(""));
+    lines.push(Line::styled(
+        "Views",
+        Style::default().add_modifier(Modifier::BOLD),
+    ));
+    lines.push(Line::styled(
+        view_mode_compact_summary(),
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::DIM),
+    ));
 
     let panel = Paragraph::new(lines).block(block).wrap(Wrap { trim: true });
     f.render_widget(panel, area);
@@ -9182,76 +10452,75 @@ fn build_message_lines(app: &App, theme: &Theme, max_width: usize) -> Vec<Line<'
         }
 
         // Show usage indicator after assistant messages
-        if message.role == "assistant" {
-            if let Some(ref meta) = message.usage_meta {
-                let duration_str = if meta.duration_ms >= 60_000 {
-                    format!(
-                        "{}m{:02}.{}s",
-                        meta.duration_ms / 60_000,
-                        (meta.duration_ms % 60_000) / 1000,
-                        (meta.duration_ms % 1000) / 100
-                    )
-                } else {
-                    format!(
-                        "{}.{}s",
-                        meta.duration_ms / 1000,
-                        (meta.duration_ms % 1000) / 100
-                    )
-                };
-                let tokens_str =
-                    format!("{}→{} tokens", meta.prompt_tokens, meta.completion_tokens);
-                let cost_str = match meta.cost_usd {
-                    Some(c) if c < 0.01 => format!("${:.4}", c),
-                    Some(c) => format!("${:.2}", c),
-                    None => String::new(),
-                };
-                let dim_style = Style::default()
-                    .fg(theme.timestamp_color.to_color())
-                    .add_modifier(Modifier::DIM);
-                let mut spans = vec![Span::styled(
-                    format!("  ⏱ {} │ 📊 {}", duration_str, tokens_str),
-                    dim_style,
-                )];
-                if !cost_str.is_empty() {
-                    spans.push(Span::styled(format!(" │ 💰 {}", cost_str), dim_style));
-                }
-                message_lines.push(Line::from(spans));
+        if message.role == "assistant"
+            && let Some(ref meta) = message.usage_meta
+        {
+            let duration_str = if meta.duration_ms >= 60_000 {
+                format!(
+                    "{}m{:02}.{}s",
+                    meta.duration_ms / 60_000,
+                    (meta.duration_ms % 60_000) / 1000,
+                    (meta.duration_ms % 1000) / 100
+                )
+            } else {
+                format!(
+                    "{}.{}s",
+                    meta.duration_ms / 1000,
+                    (meta.duration_ms % 1000) / 100
+                )
+            };
+            let tokens_str = format!("{}→{} tokens", meta.prompt_tokens, meta.completion_tokens);
+            let cost_str = match meta.cost_usd {
+                Some(c) if c < 0.01 => format!("${:.4}", c),
+                Some(c) => format!("${:.2}", c),
+                None => String::new(),
+            };
+            let dim_style = Style::default()
+                .fg(theme.timestamp_color.to_color())
+                .add_modifier(Modifier::DIM);
+            let mut spans = vec![Span::styled(
+                format!("  ⏱ {} │ 📊 {}", duration_str, tokens_str),
+                dim_style,
+            )];
+            if !cost_str.is_empty() {
+                spans.push(Span::styled(format!(" │ 💰 {}", cost_str), dim_style));
             }
+            message_lines.push(Line::from(spans));
         }
 
         message_lines.push(Line::from(""));
     }
 
     // Show streaming text preview (text arriving before TextComplete finalizes it)
-    if let Some(ref streaming) = app.streaming_text {
-        if !streaming.is_empty() {
-            message_lines.push(Line::from(Span::styled(
-                "─".repeat(separator_width),
+    if let Some(ref streaming) = app.streaming_text
+        && !streaming.is_empty()
+    {
+        message_lines.push(Line::from(Span::styled(
+            "─".repeat(separator_width),
+            Style::default()
+                .fg(theme.timestamp_color.to_color())
+                .add_modifier(Modifier::DIM),
+        )));
+        message_lines.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", chrono::Local::now().format("%H:%M")),
                 Style::default()
                     .fg(theme.timestamp_color.to_color())
                     .add_modifier(Modifier::DIM),
-            )));
-            message_lines.push(Line::from(vec![
-                Span::styled(
-                    format!("[{}] ", chrono::Local::now().format("%H:%M")),
-                    Style::default()
-                        .fg(theme.timestamp_color.to_color())
-                        .add_modifier(Modifier::DIM),
-                ),
-                Span::styled("◆ ", theme.get_role_style("assistant")),
-                Span::styled("assistant", theme.get_role_style("assistant")),
-                Span::styled(
-                    " (streaming...)",
-                    Style::default()
-                        .fg(theme.timestamp_color.to_color())
-                        .add_modifier(Modifier::DIM),
-                ),
-            ]));
-            let formatter = MessageFormatter::new(max_width);
-            let formatted = formatter.format_content(streaming, "assistant");
-            message_lines.extend(formatted);
-            message_lines.push(Line::from(""));
-        }
+            ),
+            Span::styled("◆ ", theme.get_role_style("assistant")),
+            Span::styled("assistant", theme.get_role_style("assistant")),
+            Span::styled(
+                " (streaming...)",
+                Style::default()
+                    .fg(theme.timestamp_color.to_color())
+                    .add_modifier(Modifier::DIM),
+            ),
+        ]));
+        let formatter = MessageFormatter::new(max_width);
+        let formatted = formatter.format_content(streaming, "assistant");
+        message_lines.extend(formatted);
+        message_lines.push(Line::from(""));
     }
 
     let mut agent_streams = app.streaming_agent_texts.iter().collect::<Vec<_>>();
@@ -9414,12 +10683,16 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/resume", "Resume session or interrupted relay"),
         ("/new", "Start a new session"),
         ("/model", "Select or set model"),
+        ("/file", "Open file picker or attach /file <path>"),
         ("/webview", "Switch to webview layout"),
         ("/classic", "Switch to classic layout"),
         ("/inspector", "Toggle inspector pane"),
         ("/refresh", "Refresh workspace"),
         ("/archive", "Show persistent chat archive path"),
-        ("/view", "Toggle swarm view"),
+        (
+            "/view",
+            "Toggle Chat/Swarm view (see /help for all view modes)",
+        ),
         ("/buslog", "Show protocol bus log"),
         ("/protocol", "Show protocol registry"),
     ];
@@ -9537,7 +10810,6 @@ fn normalize_easy_command(input: &str) -> String {
 
 fn is_easy_go_command(input: &str) -> bool {
     let command = input
-        .trim_start()
         .split_whitespace()
         .next()
         .unwrap_or("")
@@ -9576,6 +10848,76 @@ fn next_go_model(current_model: Option<&str>) -> String {
         Some(model) if is_glm5_model(model) => GO_SWAP_MODEL_MINIMAX.to_string(),
         Some(model) if is_minimax_m25_model(model) => GO_SWAP_MODEL_GLM.to_string(),
         _ => GO_SWAP_MODEL_MINIMAX.to_string(),
+    }
+}
+
+fn normalize_provider_alias(provider_name: &str) -> &str {
+    if provider_name.eq_ignore_ascii_case("zhipuai") || provider_name.eq_ignore_ascii_case("z-ai") {
+        "zai"
+    } else {
+        provider_name
+    }
+}
+
+fn smart_switch_model_key(model_ref: &str) -> String {
+    model_ref.trim().to_ascii_lowercase()
+}
+
+fn is_retryable_provider_error(err: &str) -> bool {
+    let normalized = err.to_ascii_lowercase();
+    let transient_status_codes = [
+        " 429 ", " 500 ", " 502 ", " 503 ", " 504 ", " 520 ", " 521 ", " 522 ", " 523 ", " 524 ",
+        " 525 ", " 526 ", " 529 ", " 598 ", " 599 ", " 798 ",
+    ];
+    let non_retryable_status_codes = [" 400 ", " 401 ", " 403 ", " 404 ", " 422 "];
+    let markers = [
+        "429",
+        "rate limit",
+        "too many requests",
+        "quota exceeded",
+        "service unavailable",
+        "temporarily unavailable",
+        "bad gateway",
+        "gateway timeout",
+        "timed out",
+        "timeout",
+        "connection reset",
+        "connection refused",
+        "network error",
+        "unknown api error",
+        "api_error",
+        "unknown error",
+        "protocol error code 469",
+        "no text payload",
+    ];
+
+    // Check for non-retryable client errors first (4xx except 429)
+    if non_retryable_status_codes
+        .iter()
+        .any(|code| normalized.contains(code))
+    {
+        return false;
+    }
+
+    markers.iter().any(|marker| normalized.contains(marker))
+        || transient_status_codes
+            .iter()
+            .any(|code| normalized.contains(code))
+}
+
+fn smart_switch_preferred_models(provider_name: &str) -> &'static [&'static str] {
+    match provider_name {
+        "minimax" => &["MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
+        "minimax-credits" => &["MiniMax-M2.5-highspeed", "MiniMax-M2.1-highspeed"],
+        "zai" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
+        "openai-codex" => &["gpt-5-mini", "gpt-5", "gpt-5.1-codex"],
+        "openrouter" => &["z-ai/glm-5:free", "z-ai/glm-5", "moonshotai/kimi-k2:free"],
+        "github-copilot" | "github-copilot-enterprise" => &["gpt-5-mini", "gpt-4.1", "gpt-4o"],
+        "openai" => &["gpt-4o-mini", "gpt-4.1"],
+        "anthropic" => &["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022"],
+        "google" => &["gemini-2.5-flash", "gemini-2.5-pro"],
+        "gemini-web" => &["gemini-web-pro"],
+        _ => &[],
     }
 }
 
@@ -9890,6 +11232,96 @@ fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
     }
 }
 
+/// Read a small preview of a text file without loading the whole file.
+/// Returns (preview lines, truncated, binary_detected).
+fn read_file_preview_lines(
+    path: &Path,
+    max_bytes: usize,
+    max_lines: usize,
+) -> Result<(Vec<String>, bool, bool)> {
+    let mut file = std::fs::File::open(path)?;
+    let mut buffer = vec![0_u8; max_bytes.saturating_add(1)];
+    let bytes_read = file.read(&mut buffer)?;
+
+    let truncated_by_bytes = bytes_read > max_bytes;
+    buffer.truncate(bytes_read.min(max_bytes));
+
+    if buffer.contains(&0) {
+        return Ok((Vec::new(), truncated_by_bytes, true));
+    }
+
+    let text = String::from_utf8_lossy(&buffer).to_string();
+    let mut lines: Vec<String> = text
+        .lines()
+        .map(|line| truncate_with_ellipsis(line, 220))
+        .collect();
+
+    if lines.is_empty() {
+        lines.push("(empty file)".to_string());
+    }
+
+    let mut truncated = truncated_by_bytes;
+    if lines.len() > max_lines {
+        lines.truncate(max_lines);
+        truncated = true;
+    }
+
+    Ok((lines, truncated, false))
+}
+
+fn display_path_for_workspace(path: &Path, workspace_dir: &Path) -> String {
+    path.strip_prefix(workspace_dir)
+        .unwrap_or(path)
+        .display()
+        .to_string()
+}
+
+/// Build a text snippet that can be inserted into the composer to share a file with the model.
+/// Returns (snippet, truncated, binary).
+fn build_file_share_snippet(
+    path: &Path,
+    display_path: &str,
+    max_bytes: usize,
+) -> Result<(String, bool, bool)> {
+    let bytes = std::fs::read(path)?;
+
+    if bytes.contains(&0) {
+        let snippet = format!(
+            "Shared file: {display_path}\n[binary file, size: {}]",
+            format_bytes(bytes.len() as u64)
+        );
+        return Ok((snippet, false, true));
+    }
+
+    let mut text = String::from_utf8_lossy(&bytes).to_string();
+    let mut truncated = false;
+    if text.len() > max_bytes {
+        let mut end = max_bytes;
+        while end > 0 && !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+        truncated = true;
+    }
+
+    let language = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .filter(|ext| !ext.is_empty())
+        .unwrap_or("text");
+
+    let mut snippet = format!("Shared file: {display_path}\n~~~{language}\n{text}\n~~~");
+    if truncated {
+        snippet.push_str(&format!(
+            "\n[truncated to first {} bytes; original size: {}]",
+            max_bytes,
+            format_bytes(bytes.len() as u64)
+        ));
+    }
+
+    Ok((snippet, truncated, false))
+}
+
 fn message_clipboard_text(message: &ChatMessage) -> String {
     let mut prefix = String::new();
     if let Some(agent) = &message.agent_name {
@@ -9945,6 +11377,67 @@ fn osc52_copy(text: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+const ALL_VIEW_MODES: [ViewMode; 9] = [
+    ViewMode::Chat,
+    ViewMode::Swarm,
+    ViewMode::Ralph,
+    ViewMode::BusLog,
+    ViewMode::Protocol,
+    ViewMode::SessionPicker,
+    ViewMode::ModelPicker,
+    ViewMode::AgentPicker,
+    ViewMode::FilePicker,
+];
+
+fn view_mode_display_name(mode: ViewMode) -> &'static str {
+    match mode {
+        ViewMode::Chat => "Chat",
+        ViewMode::Swarm => "Swarm",
+        ViewMode::Ralph => "Ralph",
+        ViewMode::BusLog => "Bus Log",
+        ViewMode::Protocol => "Protocol",
+        ViewMode::SessionPicker => "Session Picker",
+        ViewMode::ModelPicker => "Model Picker",
+        ViewMode::AgentPicker => "Agent Picker",
+        ViewMode::FilePicker => "File Picker",
+    }
+}
+
+fn view_mode_shortcut_hint(mode: ViewMode) -> &'static str {
+    match mode {
+        ViewMode::Chat => "Default (Esc from any overlay)",
+        ViewMode::Swarm => "Ctrl+S / /view / F2",
+        ViewMode::Ralph => "/ralph",
+        ViewMode::BusLog => "Ctrl+L / F4 / /buslog",
+        ViewMode::Protocol => "Ctrl+P / /protocol",
+        ViewMode::SessionPicker => "/sessions",
+        ViewMode::ModelPicker => "Ctrl+M / /model",
+        ViewMode::AgentPicker => "Ctrl+A / /agent",
+        ViewMode::FilePicker => "Ctrl+O / /file",
+    }
+}
+
+fn view_mode_help_rows() -> Vec<String> {
+    ALL_VIEW_MODES
+        .into_iter()
+        .map(|mode| {
+            format!(
+                "{:<14} {}",
+                view_mode_display_name(mode),
+                view_mode_shortcut_hint(mode)
+            )
+        })
+        .collect()
+}
+
+fn view_mode_compact_summary() -> String {
+    ALL_VIEW_MODES
+        .into_iter()
+        .map(view_mode_display_name)
+        .collect::<Vec<_>>()
+        .join(" | ")
+}
+
 fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
     if !app.show_help {
         return;
@@ -9979,7 +11472,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         ]
     };
 
-    let help_text: Vec<String> = vec![
+    let mut help_text: Vec<String> = vec![
         "".to_string(),
         "  KEYBOARD SHORTCUTS".to_string(),
         "  ==================".to_string(),
@@ -9988,7 +11481,9 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Tab          Switch between build/plan agents".to_string(),
         "  Ctrl+A       Open spawned-agent picker".to_string(),
         "  Ctrl+M       Open model picker".to_string(),
+        "  Ctrl+O       Open file picker (attach file to composer)".to_string(),
         "  Ctrl+L       Protocol bus log".to_string(),
+        "  F4           Protocol bus log".to_string(),
         "  Ctrl+P       Protocol registry".to_string(),
         "  Ctrl+S       Toggle swarm view".to_string(),
         "  Ctrl+B       Toggle webview layout".to_string(),
@@ -10035,6 +11530,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /resume <id>    Resume specific session by ID".to_string(),
         "  /new            Start a fresh session".to_string(),
         "  /model          Open model picker (or /model <name>)".to_string(),
+        "  /file           Open file picker (or /file <path>)".to_string(),
         "  /view           Toggle swarm view".to_string(),
         "  /buslog         Show protocol bus log".to_string(),
         "  /protocol       Show protocol registry and AgentCards".to_string(),
@@ -10044,12 +11540,30 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  /refresh        Refresh workspace and sessions".to_string(),
         "  /archive        Show persistent chat archive path".to_string(),
         "".to_string(),
+        "  CLI AUTONOMY HELPERS (run from shell)".to_string(),
+        "  codetether forage --top 5".to_string(),
+        "  codetether forage --loop --interval-secs 120 --top 3".to_string(),
+        "  codetether forage --loop --execute --interval-secs 120 --top 3".to_string(),
+        "".to_string(),
         "  SESSION PICKER".to_string(),
         "  ↑/↓/j/k      Navigate sessions".to_string(),
         "  Enter         Load selected session".to_string(),
         "  d             Delete session (press twice to confirm)".to_string(),
         "  Type          Filter sessions by name/agent/ID".to_string(),
         "  Backspace     Clear filter character".to_string(),
+        "  Esc           Close picker".to_string(),
+        "".to_string(),
+        "  FILE PICKER".to_string(),
+        "  ↑/↓/j/k      Navigate files".to_string(),
+        "  PgUp/PgDn    Jump by page".to_string(),
+        "  Home/End     Jump to top/bottom".to_string(),
+        "  Enter/l       Open folder or attach selected file to composer".to_string(),
+        "  h/Left        Parent directory".to_string(),
+        "  Type          Filter file list".to_string(),
+        "  Ctrl+U        Clear filter".to_string(),
+        "  Backspace     Clear filter / go parent".to_string(),
+        "  F5            Refresh listing".to_string(),
+        "  Preview pane  Shows selected file/folder details".to_string(),
         "  Esc           Close picker".to_string(),
         "".to_string(),
         "  VIM-STYLE NAVIGATION".to_string(),
@@ -10070,6 +11584,14 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
         "  Press ? or Esc to close".to_string(),
         "".to_string(),
     ];
+
+    help_text.push("  VIEW MODES".to_string());
+    help_text.extend(
+        view_mode_help_rows()
+            .into_iter()
+            .map(|line| format!("  {line}")),
+    );
+    help_text.push("".to_string());
 
     let mut combined_text = token_info;
     combined_text.extend(model_section);
@@ -10113,9 +11635,11 @@ mod tests {
     use super::{
         AUTOCHAT_QUICK_DEMO_TASK, agent_avatar, agent_profile, command_with_optional_args,
         estimate_cost, extract_semantic_handoff_from_rlm, format_agent_identity,
-        format_relay_handoff_line, is_easy_go_command, is_secure_environment_from_values,
-        match_slash_command_hint, minio_fallback_endpoint, next_go_model, normalize_easy_command,
-        normalize_for_convergence, normalize_local_model_ref, normalize_minio_endpoint,
+        format_relay_handoff_line, is_easy_go_command, is_retryable_provider_error,
+        is_secure_environment_from_values, match_slash_command_hint, minio_fallback_endpoint,
+        next_go_model, normalize_easy_command, normalize_for_convergence,
+        normalize_local_model_ref, normalize_minio_endpoint, normalize_provider_alias,
+        smart_switch_model_key, view_mode_help_rows,
     };
 
     #[test]
@@ -10165,6 +11689,27 @@ mod tests {
     fn slash_hint_includes_autochat_local_command() {
         let hint = match_slash_command_hint("/autochat-local");
         assert!(hint.contains("/autochat-local"));
+    }
+
+    #[test]
+    fn slash_hint_includes_file_command() {
+        let hint = match_slash_command_hint("/file");
+        assert!(hint.contains("/file"));
+    }
+
+    #[test]
+    fn view_mode_help_rows_include_every_view_mode() {
+        let rows = view_mode_help_rows();
+        assert_eq!(rows.len(), 9);
+        assert!(rows.iter().any(|row| row.contains("Chat")));
+        assert!(rows.iter().any(|row| row.contains("Swarm")));
+        assert!(rows.iter().any(|row| row.contains("Ralph")));
+        assert!(rows.iter().any(|row| row.contains("Bus Log")));
+        assert!(rows.iter().any(|row| row.contains("Protocol")));
+        assert!(rows.iter().any(|row| row.contains("Session Picker")));
+        assert!(rows.iter().any(|row| row.contains("Model Picker")));
+        assert!(rows.iter().any(|row| row.contains("Agent Picker")));
+        assert!(rows.iter().any(|row| row.contains("File Picker")));
     }
 
     #[test]
@@ -10390,6 +11935,38 @@ mod tests {
         assert_eq!(
             next_go_model(Some("unknown/model")),
             "minimax-credits/MiniMax-M2.5-highspeed"
+        );
+    }
+
+    #[test]
+    fn smart_switch_marks_transient_provider_errors_retryable() {
+        assert!(is_retryable_provider_error(
+            "OpenAI API error (429 Too Many Requests): rate limit exceeded"
+        ));
+        assert!(is_retryable_provider_error(
+            "Gemini returned protocol error code 469 with no text payload"
+        ));
+        assert!(is_retryable_provider_error(
+            "Anthropic API error: unknown error, 520 (1000) (Some(\"api_error\"))"
+        ));
+        assert!(is_retryable_provider_error(
+            "Anthropic API error: unknown error, 798 (1000) (Some(\"api_error\"))"
+        ));
+    }
+
+    #[test]
+    fn smart_switch_ignores_non_retryable_bad_request_errors() {
+        assert!(!is_retryable_provider_error(
+            "OpenAI API error (400 Bad Request): Instructions are required"
+        ));
+    }
+
+    #[test]
+    fn smart_switch_normalizes_provider_aliases_and_model_keys() {
+        assert_eq!(normalize_provider_alias("z-ai"), "zai");
+        assert_eq!(
+            smart_switch_model_key("  Minimax-Credits/MiniMax-M2.5-Highspeed "),
+            "minimax-credits/minimax-m2.5-highspeed".to_string()
         );
     }
 }

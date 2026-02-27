@@ -492,10 +492,10 @@ fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
             path == rule.pattern || path.starts_with(&format!("{}/", rule.pattern))
         };
         if matches {
-            if let Some(allowed_methods) = rule.methods {
-                if !allowed_methods.contains(&method) {
-                    continue;
-                }
+            if let Some(allowed_methods) = rule.methods
+                && !allowed_methods.contains(&method)
+            {
+                continue;
             }
             return Some(rule.permission);
         }
@@ -980,14 +980,14 @@ async fn receive_task_event(
         "codetether.task.cancelled" => {
             tracing::info!("Task cancellation event received");
             // Update task status if we have the task_id
-            if let Some(data) = event.data {
-                if let Some(task_id) = data.get("task_id").and_then(|v| v.as_str()) {
-                    let _ = state
-                        .knative_tasks
-                        .update_status(task_id, "cancelled")
-                        .await;
-                    tracing::info!(task_id = %task_id, "Task cancelled");
-                }
+            if let Some(data) = event.data
+                && let Some(task_id) = data.get("task_id").and_then(|v| v.as_str())
+            {
+                let _ = state
+                    .knative_tasks
+                    .update_status(task_id, "cancelled")
+                    .await;
+                tracing::info!(task_id = %task_id, "Task cancelled");
             }
         }
         _ => {
@@ -2064,12 +2064,10 @@ fn topic_matches(topic: &str, pattern: &str) -> bool {
     if pattern == "*" {
         return true;
     }
-    if pattern.ends_with(".*") {
-        let prefix = &pattern[..pattern.len() - 2];
+    if let Some(prefix) = pattern.strip_suffix(".*") {
         return topic.starts_with(prefix);
     }
-    if pattern.starts_with(".*") {
-        let suffix = &pattern[2..];
+    if let Some(suffix) = pattern.strip_prefix(".*") {
         return topic.ends_with(suffix);
     }
     topic == pattern
@@ -2352,15 +2350,15 @@ async fn replay_session_events(
                     .unwrap_or(0);
 
                 // Filter by byte range if specified
-                if let Some(query_start) = query.start_offset {
-                    if end <= query_start {
-                        continue;
-                    }
+                if let Some(query_start) = query.start_offset
+                    && end <= query_start
+                {
+                    continue;
                 }
-                if let Some(query_end) = query.end_offset {
-                    if start >= query_end {
-                        continue;
-                    }
+                if let Some(query_end) = query.end_offset
+                    && start >= query_end
+                {
+                    continue;
                 }
 
                 // Read and parse events from this file
@@ -2713,12 +2711,12 @@ async fn list_agent_tasks(
     let tasks = state.knative_tasks.list().await;
     let filtered: Vec<_> = tasks
         .into_iter()
-        .filter(|t| params.status.as_ref().map_or(true, |s| t.status == *s))
+        .filter(|t| params.status.as_ref().is_none_or(|s| t.status == *s))
         .filter(|t| {
             params
                 .agent_type
                 .as_ref()
-                .map_or(true, |a| t.agent_type == *a)
+                .is_none_or(|a| t.agent_type == *a)
         })
         .collect();
     Json(serde_json::json!({ "tasks": filtered, "total": filtered.len() }))
@@ -3001,26 +2999,26 @@ async fn resume_codebase_session(
     };
 
     // If there's a prompt, execute it as a task
-    if let Some(prompt) = &req.prompt {
-        if !prompt.is_empty() {
-            match session.prompt(prompt).await {
-                Ok(result) => {
-                    session.save().await.ok();
-                    return Ok(Json(serde_json::json!({
-                        "session_id": session.id,
-                        "active_session_id": session.id,
-                        "status": "completed",
-                        "result": result.text,
-                    })));
-                }
-                Err(e) => {
-                    return Ok(Json(serde_json::json!({
-                        "session_id": session.id,
-                        "active_session_id": session.id,
-                        "status": "failed",
-                        "error": e.to_string(),
-                    })));
-                }
+    if let Some(prompt) = &req.prompt
+        && !prompt.is_empty()
+    {
+        match session.prompt(prompt).await {
+            Ok(result) => {
+                session.save().await.ok();
+                return Ok(Json(serde_json::json!({
+                    "session_id": session.id,
+                    "active_session_id": session.id,
+                    "status": "completed",
+                    "result": result.text,
+                })));
+            }
+            Err(e) => {
+                return Ok(Json(serde_json::json!({
+                    "session_id": session.id,
+                    "active_session_id": session.id,
+                    "status": "failed",
+                    "error": e.to_string(),
+                })));
             }
         }
     }

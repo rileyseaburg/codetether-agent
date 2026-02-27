@@ -1504,15 +1504,15 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
                 // Forward tool call events to Ralph UI while agent works
                 while !join.is_finished() {
                     while let Ok(event) = event_rx.try_recv() {
-                        if let Some(ref tx) = ralph_tx {
-                            if let SessionEvent::ToolCallStart { ref name, .. } = event {
-                                let _ = tx
-                                    .send(RalphEvent::StoryToolCall {
-                                        story_id: story_id.clone(),
-                                        tool_name: format!("@{to}: {name}"),
-                                    })
-                                    .await;
-                            }
+                        if let Some(ref tx) = ralph_tx
+                            && let SessionEvent::ToolCallStart { ref name, .. } = event
+                        {
+                            let _ = tx
+                                .send(RalphEvent::StoryToolCall {
+                                    story_id: story_id.clone(),
+                                    tool_name: format!("@{to}: {name}"),
+                                })
+                                .await;
                         }
                     }
                     tokio::time::sleep(std::time::Duration::from_millis(50)).await;

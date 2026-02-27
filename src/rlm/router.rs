@@ -359,11 +359,11 @@ impl RlmRouter {
             }
 
             // Check for abort
-            if let Some(ref abort) = ctx.abort {
-                if *abort.borrow() {
-                    warn!("RLM: Processing aborted");
-                    break;
-                }
+            if let Some(ref abort) = ctx.abort
+                && *abort.borrow()
+            {
+                warn!("RLM: Processing aborted");
+                break;
             }
 
             // Build completion request — include tool definitions

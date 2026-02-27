@@ -65,7 +65,7 @@ name = "codetether"
 path = "src/main.rs"
 
 [features]
-default = ["functiongemma"]
+default = []
 candle-cuda = ["candle-core/cuda", "candle-transformers/cuda"]
 candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
 candle-accelerate = ["candle-core/accelerate", "candle-transformers/accelerate"]

@@ -173,6 +173,19 @@ codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn real A
 codetether config --show                 # Show config
 ```
 
+### Autonomous Forage (OKR-Governed Loop)
+
+```bash
+# Top opportunities snapshot
+codetether forage --top 5
+
+# Autonomous loop (governed by OKRs)
+codetether forage --loop --interval-secs 120 --top 3
+
+# Autonomous + execute work
+codetether forage --loop --execute --interval-secs 120 --top 3
+```
+
 ## Security
 
 CodeTether treats security as non-optional infrastructure, not a feature flag.

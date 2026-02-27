@@ -571,7 +571,7 @@ impl ProviderMetrics {
         }
 
         let mut snapshots = Vec::new();
-        for (provider, mut reqs) in by_provider {
+        for (provider, reqs) in by_provider {
             if reqs.is_empty() {
                 continue;
             }

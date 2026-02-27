@@ -13,6 +13,12 @@ pub struct BatchTool {
     registry: Arc<RwLock<Option<Weak<ToolRegistry>>>>,
 }
 
+impl Default for BatchTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BatchTool {
     pub fn new() -> Self {
         Self {
@@ -34,7 +40,9 @@ struct Params {
 
 #[derive(Deserialize)]
 struct BatchCall {
+    #[serde(alias = "name")]
     tool: String,
+    #[serde(default, alias = "arguments", alias = "params")]
     args: Value,
 }
 
@@ -55,14 +63,19 @@ impl Tool for BatchTool {
             "properties": {
                 "calls": {
                     "type": "array",
-                    "description": "Array of tool calls to execute",
+                    "description": "Array of tool calls to execute. Preferred keys are `tool` + `args`; aliases `name` + `arguments` are also accepted for compatibility.",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "tool": {"type": "string", "description": "Tool ID to call"},
-                            "args": {"type": "object", "description": "Arguments for the tool"}
+                            "tool": {"type": "string", "description": "Tool ID to call (alias: `name`)"},
+                            "args": {"type": "object", "description": "Arguments for the tool (alias: `arguments`)"},
+                            "name": {"type": "string", "description": "Alias for `tool`"},
+                            "arguments": {"type": "object", "description": "Alias for `args`"}
                         },
-                        "required": ["tool", "args"]
+                        "anyOf": [
+                            { "required": ["tool", "args"] },
+                            { "required": ["name", "arguments"] }
+                        ]
                     }
                 }
             },
@@ -172,5 +185,44 @@ impl Tool for BatchTool {
         } else {
             Ok(ToolResult::error(summary).with_metadata("error_count", json!(error_count)))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Params;
+
+    #[test]
+    fn batch_call_accepts_name_arguments_aliases() {
+        let params: Params = serde_json::from_value(serde_json::json!({
+            "calls": [
+                {
+                    "name": "read",
+                    "arguments": { "path": "src/main.rs" }
+                }
+            ]
+        }))
+        .expect("should parse alias form");
+
+        assert_eq!(params.calls.len(), 1);
+        assert_eq!(params.calls[0].tool, "read");
+        assert_eq!(params.calls[0].args["path"], "src/main.rs");
+    }
+
+    #[test]
+    fn batch_call_accepts_tool_args_primary_form() {
+        let params: Params = serde_json::from_value(serde_json::json!({
+            "calls": [
+                {
+                    "tool": "read",
+                    "args": { "path": "src/main.rs" }
+                }
+            ]
+        }))
+        .expect("should parse primary form");
+
+        assert_eq!(params.calls.len(), 1);
+        assert_eq!(params.calls[0].tool, "read");
+        assert_eq!(params.calls[0].args["path"], "src/main.rs");
     }
 }

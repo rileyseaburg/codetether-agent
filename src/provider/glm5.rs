@@ -438,10 +438,10 @@ impl Provider for Glm5Provider {
         let mut content = Vec::new();
         let mut has_tool_calls = false;
 
-        if let Some(text) = &choice.message.content {
-            if !text.is_empty() {
-                content.push(ContentPart::Text { text: text.clone() });
-            }
+        if let Some(text) = &choice.message.content
+            && !text.is_empty()
+        {
+            content.push(ContentPart::Text { text: text.clone() });
         }
 
         if let Some(tool_calls) = &choice.message.tool_calls {
@@ -569,86 +569,78 @@ impl Provider for Glm5Provider {
                                 continue;
                             }
 
-                            if let Some(data) = line.strip_prefix("data: ") {
-                                if let Ok(parsed) = serde_json::from_str::<Glm5StreamResponse>(data)
-                                {
-                                    // Capture usage from the final chunk (stream_options)
-                                    let usage = parsed.usage.as_ref().map(|u| Usage {
-                                        prompt_tokens: u.prompt_tokens,
-                                        completion_tokens: u.completion_tokens,
-                                        total_tokens: u.total_tokens,
-                                        cache_read_tokens: None,
-                                        cache_write_tokens: None,
-                                    });
+                            if let Some(data) = line.strip_prefix("data: ")
+                                && let Ok(parsed) = serde_json::from_str::<Glm5StreamResponse>(data)
+                            {
+                                // Capture usage from the final chunk (stream_options)
+                                let usage = parsed.usage.as_ref().map(|u| Usage {
+                                    prompt_tokens: u.prompt_tokens,
+                                    completion_tokens: u.completion_tokens,
+                                    total_tokens: u.total_tokens,
+                                    cache_read_tokens: None,
+                                    cache_write_tokens: None,
+                                });
 
-                                    if let Some(choice) = parsed.choices.first() {
-                                        if let Some(ref content) = choice.delta.content {
-                                            text_buf.push_str(content);
-                                        }
+                                if let Some(choice) = parsed.choices.first() {
+                                    if let Some(ref content) = choice.delta.content {
+                                        text_buf.push_str(content);
+                                    }
 
-                                        // Streaming tool calls
-                                        if let Some(ref tool_calls) = choice.delta.tool_calls {
-                                            if !text_buf.is_empty() {
-                                                chunks.push(StreamChunk::Text(std::mem::take(
-                                                    &mut text_buf,
-                                                )));
-                                            }
-                                            for tc in tool_calls {
-                                                if let Some(ref func) = tc.function {
-                                                    if let Some(ref name) = func.name {
-                                                        chunks.push(StreamChunk::ToolCallStart {
-                                                            id: tc.id.clone().unwrap_or_default(),
-                                                            name: name.clone(),
-                                                        });
-                                                    }
-                                                    if let Some(ref args) = func.arguments {
-                                                        let delta = match args {
-                                                            Value::String(s) => s.clone(),
-                                                            other => serde_json::to_string(other)
-                                                                .unwrap_or_default(),
-                                                        };
-                                                        if !delta.is_empty() {
-                                                            chunks.push(
-                                                                StreamChunk::ToolCallDelta {
-                                                                    id: tc
-                                                                        .id
-                                                                        .clone()
-                                                                        .unwrap_or_default(),
-                                                                    arguments_delta: delta,
-                                                                },
-                                                            );
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if let Some(ref reason) = choice.finish_reason {
-                                            if !text_buf.is_empty() {
-                                                chunks.push(StreamChunk::Text(std::mem::take(
-                                                    &mut text_buf,
-                                                )));
-                                            }
-                                            if reason == "tool_calls" {
-                                                if let Some(ref tcs) = choice.delta.tool_calls {
-                                                    if let Some(tc) = tcs.last() {
-                                                        chunks.push(StreamChunk::ToolCallEnd {
-                                                            id: tc.id.clone().unwrap_or_default(),
-                                                        });
-                                                    }
-                                                }
-                                            }
-                                            chunks.push(StreamChunk::Done { usage });
-                                        }
-                                    } else if usage.is_some() {
-                                        // Usage-only chunk (empty choices)
+                                    // Streaming tool calls
+                                    if let Some(ref tool_calls) = choice.delta.tool_calls {
                                         if !text_buf.is_empty() {
                                             chunks.push(StreamChunk::Text(std::mem::take(
                                                 &mut text_buf,
                                             )));
                                         }
+                                        for tc in tool_calls {
+                                            if let Some(ref func) = tc.function {
+                                                if let Some(ref name) = func.name {
+                                                    chunks.push(StreamChunk::ToolCallStart {
+                                                        id: tc.id.clone().unwrap_or_default(),
+                                                        name: name.clone(),
+                                                    });
+                                                }
+                                                if let Some(ref args) = func.arguments {
+                                                    let delta = match args {
+                                                        Value::String(s) => s.clone(),
+                                                        other => serde_json::to_string(other)
+                                                            .unwrap_or_default(),
+                                                    };
+                                                    if !delta.is_empty() {
+                                                        chunks.push(StreamChunk::ToolCallDelta {
+                                                            id: tc.id.clone().unwrap_or_default(),
+                                                            arguments_delta: delta,
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if let Some(ref reason) = choice.finish_reason {
+                                        if !text_buf.is_empty() {
+                                            chunks.push(StreamChunk::Text(std::mem::take(
+                                                &mut text_buf,
+                                            )));
+                                        }
+                                        if reason == "tool_calls"
+                                            && let Some(ref tcs) = choice.delta.tool_calls
+                                            && let Some(tc) = tcs.last()
+                                        {
+                                            chunks.push(StreamChunk::ToolCallEnd {
+                                                id: tc.id.clone().unwrap_or_default(),
+                                            });
+                                        }
                                         chunks.push(StreamChunk::Done { usage });
                                     }
+                                } else if usage.is_some() {
+                                    // Usage-only chunk (empty choices)
+                                    if !text_buf.is_empty() {
+                                        chunks
+                                            .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
+                                    }
+                                    chunks.push(StreamChunk::Done { usage });
                                 }
                             }
                         }

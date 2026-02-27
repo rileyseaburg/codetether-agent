@@ -62,10 +62,10 @@ impl SkillTool {
                         skills.push(name.to_string());
                     }
                 }
-            } else if path.extension().is_some_and(|e| e == "md") {
-                if let Some(stem) = path.file_stem().and_then(|n| n.to_str()) {
-                    skills.push(stem.to_string());
-                }
+            } else if path.extension().is_some_and(|e| e == "md")
+                && let Some(stem) = path.file_stem().and_then(|n| n.to_str())
+            {
+                skills.push(stem.to_string());
             }
         }
 

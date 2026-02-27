@@ -15,6 +15,7 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 const DEFAULT_MAX_CHARS: usize = 200_000;
 
+#[allow(dead_code)]
 static RE_STRIP_SCRIPT_STYLE: Lazy<Regex> = Lazy::new(|| {
     // DEPRECATED: kept for backwards compatibility with old builds.
     // NOTE: The Rust `regex` crate does NOT support backreferences, so we do

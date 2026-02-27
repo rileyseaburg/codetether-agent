@@ -12,10 +12,11 @@ use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::path::PathBuf;
-use std::sync::Arc;
+use serde_json::{Value, json};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 use tokio::fs;
 use uuid::Uuid;
 
@@ -32,6 +33,218 @@ pub struct ImageAttachment {
 
 fn is_interactive_tool(tool_name: &str) -> bool {
     matches!(tool_name, "question")
+}
+
+fn enrich_tool_input_with_runtime_context(
+    tool_input: &Value,
+    current_model: Option<&str>,
+    session_id: &str,
+    agent_name: &str,
+) -> Value {
+    let mut enriched = tool_input.clone();
+    if let Value::Object(ref mut obj) = enriched {
+        if let Some(model) = current_model {
+            obj.entry("__ct_current_model".to_string())
+                .or_insert_with(|| json!(model));
+        }
+        obj.entry("__ct_session_id".to_string())
+            .or_insert_with(|| json!(session_id));
+        obj.entry("__ct_agent_name".to_string())
+            .or_insert_with(|| json!(agent_name));
+    }
+    enriched
+}
+
+const BUILD_MODE_TOOL_FIRST_NUDGE: &str = "Build mode policy reminder: execute directly. \
+Start by calling at least one appropriate tool now (or emit <tool_call> markup for non-native \
+tool providers). Do not ask for permission and do not provide a plan-only response.";
+const BUILD_MODE_TOOL_FIRST_MAX_RETRIES: u8 = 2;
+const MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES: u32 = 5;
+const CODESEARCH_THRASH_NUDGE: &str = "Stop brute-force codesearch variant retries. \
+You already got repeated \"No matches found\" results. Do not try punctuation/casing/underscore \
+variants of the same token again. Either switch to a broader strategy (e.g., inspect likely files \
+directly) or conclude the identifier is absent and continue with the best available evidence.";
+
+fn is_build_agent(agent_name: &str) -> bool {
+    agent_name.eq_ignore_ascii_case("build")
+}
+
+fn extract_text_content(parts: &[ContentPart]) -> String {
+    parts
+        .iter()
+        .filter_map(|part| match part {
+            ContentPart::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn is_codesearch_no_match_output(tool_name: &str, success: bool, output: &str) -> bool {
+    tool_name == "codesearch"
+        && success
+        && output
+            .to_ascii_lowercase()
+            .contains("no matches found for pattern:")
+}
+
+fn looks_like_build_execution_request(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let keywords = [
+        "fix",
+        "patch",
+        "implement",
+        "add",
+        "update",
+        "edit",
+        "change",
+        "refactor",
+        "debug",
+        "investigate",
+        "run",
+        "test",
+        "build",
+        "compile",
+        "create",
+        "remove",
+        "rename",
+        "wire",
+        "hook up",
+    ];
+    keywords.iter().any(|k| lower.contains(k))
+}
+
+fn is_affirmative_build_followup(text: &str) -> bool {
+    let lower = text.trim().to_ascii_lowercase();
+    let markers = [
+        "yes",
+        "yep",
+        "yeah",
+        "do it",
+        "go ahead",
+        "proceed",
+        "use the edit",
+        "use edit",
+        "apply it",
+        "ship it",
+        "fix it",
+    ];
+    markers
+        .iter()
+        .any(|m| lower == *m || lower.starts_with(&format!("{m} ")))
+}
+
+fn looks_like_proposed_change(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let markers = [
+        "use this exact block",
+        "now uses",
+        "apply",
+        "replace",
+        "patch",
+        "edit",
+        "change",
+        "update",
+        "fix",
+    ];
+    markers.iter().any(|m| lower.contains(m))
+}
+
+fn assistant_offered_next_step(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let offer_markers = [
+        "if you want",
+        "want me to",
+        "should i",
+        "next i can",
+        "i can also",
+        "i'm ready to",
+        "i am ready to",
+    ];
+    let action_markers = [
+        "patch",
+        "add",
+        "update",
+        "edit",
+        "change",
+        "fix",
+        "implement",
+        "style",
+        "tighten",
+        "apply",
+        "refactor",
+    ];
+    offer_markers.iter().any(|m| lower.contains(m))
+        && action_markers.iter().any(|m| lower.contains(m))
+}
+
+fn build_request_requires_tool(session_messages: &[Message], workspace_dir: &Path) -> bool {
+    let Some(text) = latest_user_text(session_messages) else {
+        return false;
+    };
+
+    if looks_like_build_execution_request(&text)
+        && !extract_candidate_file_paths(&text, workspace_dir, 1).is_empty()
+    {
+        return true;
+    }
+
+    if !is_affirmative_build_followup(&text) {
+        return false;
+    }
+
+    let mut skipped_latest_user = false;
+    for msg in session_messages.iter().rev() {
+        let msg_text = extract_text_content(&msg.content);
+        if msg_text.trim().is_empty() {
+            continue;
+        }
+
+        if matches!(msg.role, Role::User) && !skipped_latest_user {
+            skipped_latest_user = true;
+            continue;
+        }
+
+        if matches!(msg.role, Role::Assistant) && assistant_offered_next_step(&msg_text) {
+            return true;
+        }
+
+        if (looks_like_build_execution_request(&msg_text) || looks_like_proposed_change(&msg_text))
+            && !extract_candidate_file_paths(&msg_text, workspace_dir, 1).is_empty()
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn should_force_build_tool_first_retry(
+    agent_name: &str,
+    retry_count: u8,
+    tool_definitions: &[ToolDefinition],
+    session_messages: &[Message],
+    workspace_dir: &Path,
+    assistant_text: &str,
+    has_tool_calls: bool,
+) -> bool {
+    if retry_count >= BUILD_MODE_TOOL_FIRST_MAX_RETRIES
+        || !is_build_agent(agent_name)
+        || tool_definitions.is_empty()
+        || has_tool_calls
+    {
+        return false;
+    }
+
+    if assistant_text.trim().is_empty() {
+        return false;
+    }
+
+    if !build_request_requires_tool(session_messages, workspace_dir) {
+        return false;
+    }
+
+    true
 }
 
 fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
@@ -190,6 +403,257 @@ fn role_label(role: Role) -> &'static str {
         Role::Assistant => "Assistant",
         Role::Tool => "Tool",
     }
+}
+
+/// Build tool-calling instructions to inject into the system prompt for models
+/// that don't support native structured tool calls (e.g. gemini-web).
+/// Instructs the model to output `<tool_call>` XML blocks with JSON payloads.
+fn inject_tool_prompt(base_prompt: &str, tools: &[ToolDefinition]) -> String {
+    let tool_lines: String = tools
+        .iter()
+        .map(|t| format!("- {}: {}", t.name, t.description))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "{base_prompt}\n\n\
+         # Tool Use\n\
+         You have access to the following tools. To use a tool, output a \
+         <tool_call> XML block with a JSON object containing \"name\" and \
+         \"arguments\" fields. You may output multiple tool calls in one response.\n\n\
+         Example:\n\
+         <tool_call>\n\
+         {{\"name\": \"bash\", \"arguments\": {{\"command\": \"ls /tmp\"}}}}\n\
+         </tool_call>\n\n\
+         Available tools:\n{tool_lines}\n\n\
+         RULES:\n\
+         1. To use a tool, output <tool_call> blocks. Do NOT describe or \
+         simulate tool usage in plain text. Do NOT fabricate tool output.\n\
+         2. After a tool result is returned, review the result and provide \
+         your final answer in plain text WITHOUT any <tool_call> blocks. \
+         Only call another tool if the result was insufficient.\n\
+         3. Do NOT call the same tool with the same arguments more than once.\n\
+         4. Prefer the lsp tool for code intelligence (symbols/definitions/references). \
+         Prefer the bash tool for shell commands.\n\
+         5. During refactors, NEVER create placeholder/stub implementations \
+         (e.g., TODO, FIXME, \"not implemented\", \"fallback\"). Always preserve \
+         concrete behavior."
+    )
+}
+
+fn stub_marker_in_text(text: &str) -> Option<&'static str> {
+    let lower = text.to_ascii_lowercase();
+    let markers = [
+        "todo",
+        "fixme",
+        "placeholder implementation",
+        "<placeholder>",
+        "[placeholder]",
+        "{placeholder}",
+        "not implemented",
+        "fallback",
+        "stub",
+        "coming soon",
+        "unimplemented!(",
+        "todo!(",
+        "throw new error(\"not implemented",
+    ];
+    markers.into_iter().find(|m| lower.contains(m))
+}
+
+fn detect_stub_in_tool_input(tool_name: &str, tool_input: &Value) -> Option<String> {
+    let check = |label: &str, text: &str| {
+        stub_marker_in_text(text).map(|marker| format!("{label} contains stub marker \"{marker}\""))
+    };
+
+    match tool_name {
+        "write" => tool_input
+            .get("content")
+            .and_then(Value::as_str)
+            .and_then(|text| check("content", text)),
+        "edit" | "confirm_edit" => tool_input
+            .get("new_string")
+            .or_else(|| tool_input.get("newString"))
+            .and_then(Value::as_str)
+            .and_then(|text| check("new_string", text)),
+        "advanced_edit" => tool_input
+            .get("newString")
+            .and_then(Value::as_str)
+            .and_then(|text| check("newString", text)),
+        "multiedit" | "confirm_multiedit" => {
+            let edits = tool_input.get("edits").and_then(Value::as_array)?;
+            for (idx, edit) in edits.iter().enumerate() {
+                if let Some(reason) = edit
+                    .get("new_string")
+                    .or_else(|| edit.get("newString"))
+                    .and_then(Value::as_str)
+                    .and_then(|text| check(&format!("edits[{idx}].new_string"), text))
+                {
+                    return Some(reason);
+                }
+            }
+            None
+        }
+        "patch" => {
+            let patch = tool_input.get("patch").and_then(Value::as_str)?;
+            let added_lines = patch
+                .lines()
+                .filter(|line| line.starts_with('+') && !line.starts_with("+++"))
+                .map(|line| line.trim_start_matches('+'))
+                .collect::<Vec<_>>()
+                .join("\n");
+            if added_lines.is_empty() {
+                None
+            } else {
+                check("patch additions", &added_lines)
+            }
+        }
+        _ => None,
+    }
+}
+
+fn latest_user_text(messages: &[Message]) -> Option<String> {
+    messages.iter().rev().find_map(|m| {
+        if m.role != Role::User {
+            return None;
+        }
+        let text = m
+            .content
+            .iter()
+            .filter_map(|part| match part {
+                ContentPart::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        if text.trim().is_empty() {
+            None
+        } else {
+            Some(text)
+        }
+    })
+}
+
+fn extract_candidate_file_paths(text: &str, cwd: &Path, max_files: usize) -> Vec<String> {
+    static FILE_PATH_RE: OnceLock<Regex> = OnceLock::new();
+    let re = FILE_PATH_RE.get_or_init(|| {
+        Regex::new(
+            r"(?x)
+            (?P<path>
+              (?:\.?/)?(?:[A-Za-z0-9_.\-]+/)*
+              [A-Za-z0-9_.\-]+\.
+              (?:rs|ts|tsx|js|jsx|mjs|cjs|py|go|java|kt|swift|c|cc|cpp|h|hpp|cs|php|rb|scala|sql|json|ya?ml|toml)
+            )",
+        )
+        .unwrap()
+    });
+
+    let mut out = Vec::new();
+    for cap in re.captures_iter(text) {
+        let Some(raw) = cap.name("path").map(|m| m.as_str()) else {
+            continue;
+        };
+        let path = raw
+            .trim_matches(|c: char| {
+                matches!(
+                    c,
+                    '`' | '"' | '\'' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | ':'
+                )
+            })
+            .to_string();
+        if path.is_empty() || out.iter().any(|p| p == &path) {
+            continue;
+        }
+        if cwd.join(&path).exists() {
+            out.push(path);
+        }
+        if out.len() >= max_files {
+            break;
+        }
+    }
+    out
+}
+
+async fn build_proactive_lsp_context_message(
+    selected_provider: &str,
+    step: usize,
+    tool_registry: &ToolRegistry,
+    session_messages: &[Message],
+    workspace_dir: &Path,
+) -> Option<Message> {
+    // Keep this narrowly scoped to Gemini Web where the user requested
+    // proactive LSP context before tool-calling decisions.
+    if selected_provider != "gemini-web" || step != 1 {
+        return None;
+    }
+
+    let Some(lsp_tool) = tool_registry.get("lsp") else {
+        return None;
+    };
+
+    let Some(user_text) = latest_user_text(session_messages) else {
+        return None;
+    };
+
+    let max_files = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_FILES")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(1);
+
+    let max_chars = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_CHARS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(600);
+
+    let paths = extract_candidate_file_paths(&user_text, workspace_dir, max_files);
+    if paths.is_empty() {
+        return None;
+    }
+
+    let mut sections: Vec<String> = Vec::new();
+    for path in paths {
+        let args = json!({
+            "action": "documentSymbol",
+            "file_path": path,
+            "line": 1,
+            "column": 1
+        });
+
+        match lsp_tool.execute(args).await {
+            Ok(result) if result.success => {
+                sections.push(format!(
+                    "File: {}\n{}",
+                    path,
+                    truncate_with_ellipsis(&result.output, max_chars)
+                ));
+            }
+            Ok(result) => {
+                tracing::debug!(
+                    file = %path,
+                    output = %truncate_with_ellipsis(&result.output, 200),
+                    "Proactive LSP context skipped file due to unsuccessful result"
+                );
+            }
+            Err(e) => {
+                tracing::debug!(file = %path, error = %e, "Proactive LSP prefetch failed");
+            }
+        }
+    }
+
+    if sections.is_empty() {
+        return None;
+    }
+
+    Some(Message {
+        role: Role::System,
+        content: vec![ContentPart::Text {
+            text: format!(
+                "Proactive LSP context (prefetched). Use this to reason about file structure before issuing more tools.\n\n{}",
+                sections.join("\n\n---\n\n")
+            ),
+        }],
+    })
 }
 
 fn messages_to_rlm_context(messages: &[Message]) -> String {
@@ -676,10 +1140,13 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
-        // All current providers support native tool calling.  Hardcode to
-        // true so we skip the expensive list_models() API call on every message.
-
-        let model_supports_tools = true;
+        // Most providers support native tool calling.  For providers that
+        // don't (e.g. gemini-web), the FunctionGemma tool-call router will
+        // convert text-only responses into structured tool calls.
+        let model_supports_tools = !matches!(
+            selected_provider,
+            "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
+        );
 
         // Build system prompt with AGENTS.md
         let cwd = self
@@ -689,9 +1156,25 @@ impl Session {
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
         let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
 
+        // For models that don't support native tool calling, inject tool
+        // definitions into the system prompt so the model outputs <tool_call>
+        // XML blocks that the router can parse directly.
+        let system_prompt = if !model_supports_tools && !tool_definitions.is_empty() {
+            inject_tool_prompt(&system_prompt, &tool_definitions)
+        } else {
+            system_prompt
+        };
+
         // Run agentic loop with tool execution
         let max_steps = 50;
         let mut final_output = String::new();
+
+        // Track consecutive identical tool calls to detect infinite loops.
+        let mut last_tool_sig: Option<String> = None;
+        let mut consecutive_same_tool: u32 = 0;
+        let mut consecutive_codesearch_no_matches: u32 = 0;
+        let mut build_mode_tool_retry_count: u8 = 0;
+        const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
 
@@ -718,6 +1201,15 @@ impl Session {
             )
             .await?;
 
+            let proactive_lsp_message = build_proactive_lsp_context_message(
+                selected_provider,
+                step,
+                &tool_registry,
+                &self.messages,
+                &cwd,
+            )
+            .await;
+
             // Call the provider (retry once if the provider rejects due to an
             // unexpected context-length mismatch).
             let mut attempt = 0;
@@ -731,6 +1223,9 @@ impl Session {
                         text: system_prompt.clone(),
                     }],
                 }];
+                if let Some(msg) = &proactive_lsp_message {
+                    messages.push(msg.clone());
+                }
                 messages.extend(self.messages.clone());
 
                 // Create completion request with tools
@@ -806,6 +1301,44 @@ impl Session {
                 })
                 .collect();
 
+            let assistant_text = extract_text_content(&response.message.content);
+            if should_force_build_tool_first_retry(
+                &self.agent,
+                build_mode_tool_retry_count,
+                &tool_definitions,
+                &self.messages,
+                &cwd,
+                &assistant_text,
+                !tool_calls.is_empty(),
+            ) {
+                build_mode_tool_retry_count += 1;
+                tracing::warn!(
+                    step = step,
+                    agent = %self.agent,
+                    retry = build_mode_tool_retry_count,
+                    "Build mode tool-first guard triggered; retrying with execution nudge"
+                );
+                self.add_message(Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: BUILD_MODE_TOOL_FIRST_NUDGE.to_string(),
+                    }],
+                });
+                continue;
+            }
+            if !tool_calls.is_empty() {
+                build_mode_tool_retry_count = 0;
+            } else if is_build_agent(&self.agent)
+                && build_request_requires_tool(&self.messages, &cwd)
+                && build_mode_tool_retry_count >= BUILD_MODE_TOOL_FIRST_MAX_RETRIES
+            {
+                return Err(anyhow::anyhow!(
+                    "Build mode could not obtain tool calls for an explicit file-change request after {} retries. \
+                     Switch to a tool-capable model and try again.",
+                    BUILD_MODE_TOOL_FIRST_MAX_RETRIES
+                ));
+            }
+
             // Collect text output and publish thinking to bus
             for part in &response.message.content {
                 match part {
@@ -836,6 +1369,58 @@ impl Session {
                 break;
             }
 
+            // ── Loop detection: break if the same tool+args repeats too many times,
+            //    or if a non-native-tool model has used too many consecutive tool steps. ──
+            {
+                // Signature = sorted list of "name:args" for deterministic comparison.
+                let mut sigs: Vec<String> = tool_calls
+                    .iter()
+                    .map(|(_, name, args)| format!("{name}:{args}"))
+                    .collect();
+                sigs.sort();
+                let sig = sigs.join("|");
+
+                if last_tool_sig.as_deref() == Some(&sig) {
+                    consecutive_same_tool += 1;
+                } else {
+                    consecutive_same_tool = 1;
+                    last_tool_sig = Some(sig);
+                }
+
+                // For non-native-tool models, also guard against total tool steps.
+                // These models tend to always include <tool_call> blocks and never
+                // converge to a text-only answer on their own.
+                let force_answer = consecutive_same_tool > MAX_CONSECUTIVE_SAME_TOOL
+                    || (!model_supports_tools && step >= 3);
+
+                if force_answer {
+                    tracing::warn!(
+                        step = step,
+                        consecutive = consecutive_same_tool,
+                        "Breaking agent loop: forcing final answer",
+                    );
+                    // Strip ToolCall parts from the response so the model
+                    // doesn't see dangling calls without results.
+                    let mut nudge_msg = response.message.clone();
+                    nudge_msg
+                        .content
+                        .retain(|p| !matches!(p, ContentPart::ToolCall { .. }));
+                    if !nudge_msg.content.is_empty() {
+                        self.add_message(nudge_msg);
+                    }
+                    self.add_message(Message {
+                        role: Role::User,
+                        content: vec![ContentPart::Text {
+                            text: "STOP using tools. Provide your final answer NOW \
+                                   in plain text based on the tool results you already \
+                                   received. Do NOT output any <tool_call> blocks."
+                                .to_string(),
+                        }],
+                    });
+                    continue;
+                }
+            }
+
             // Add assistant message with tool calls
             self.add_message(response.message.clone());
 
@@ -846,6 +1431,7 @@ impl Session {
             );
 
             // Execute each tool call
+            let mut codesearch_thrash_guard_triggered = false;
             for (tool_id, tool_name, tool_input) in tool_calls {
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
 
@@ -875,10 +1461,31 @@ impl Session {
                     continue;
                 }
 
+                if let Some(reason) = detect_stub_in_tool_input(&tool_name, &tool_input) {
+                    tracing::warn!(tool = %tool_name, reason = %reason, "Blocking suspected stubbed edit");
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id,
+                            content: format!(
+                                "Error: Refactor guard rejected this edit: {reason}. \
+                                 Provide concrete, behavior-preserving implementation (no placeholders/stubs)."
+                            ),
+                        }],
+                    });
+                    continue;
+                }
+
                 // Get and execute the tool
                 let exec_start = std::time::Instant::now();
+                let exec_input = enrich_tool_input_with_runtime_context(
+                    &tool_input,
+                    self.metadata.model.as_deref(),
+                    &self.id,
+                    &self.agent,
+                );
                 let content = if let Some(tool) = tool_registry.get(&tool_name) {
-                    match tool.execute(tool_input.clone()).await {
+                    match tool.execute(exec_input).await {
                         Ok(result) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -939,6 +1546,8 @@ impl Session {
                 // Calculate duration for event stream
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 let success = !content.starts_with("Error:");
+                let codesearch_no_match =
+                    is_codesearch_no_match_output(&tool_name, success, &content);
 
                 // Publish full tool output to bus for training pipeline
                 // (before RLM truncation so we capture the complete output)
@@ -1062,6 +1671,34 @@ impl Session {
                         content,
                     }],
                 });
+
+                if is_build_agent(&self.agent) {
+                    if codesearch_no_match {
+                        consecutive_codesearch_no_matches += 1;
+                    } else {
+                        consecutive_codesearch_no_matches = 0;
+                    }
+
+                    if consecutive_codesearch_no_matches >= MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES {
+                        tracing::warn!(
+                            step = step,
+                            consecutive_codesearch_no_matches = consecutive_codesearch_no_matches,
+                            "Detected codesearch no-match thrash; nudging model to stop variant retries",
+                        );
+                        self.add_message(Message {
+                            role: Role::User,
+                            content: vec![ContentPart::Text {
+                                text: CODESEARCH_THRASH_NUDGE.to_string(),
+                            }],
+                        });
+                        codesearch_thrash_guard_triggered = true;
+                        break;
+                    }
+                }
+            }
+
+            if codesearch_thrash_guard_triggered {
+                continue;
             }
         }
 
@@ -1289,10 +1926,13 @@ impl Session {
         tracing::info!("Using model: {} via provider: {}", model, selected_provider);
         tracing::info!("Available tools: {}", tool_definitions.len());
 
-        // All current providers support native tool calling.  Hardcode to
-        // true so we skip the expensive list_models() API call on every message.
-
-        let model_supports_tools = true;
+        // Most providers support native tool calling.  For providers that
+        // don't (e.g. gemini-web), the FunctionGemma tool-call router will
+        // convert text-only responses into structured tool calls.
+        let model_supports_tools = !matches!(
+            selected_provider,
+            "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
+        );
 
         // Build system prompt
         let cwd = std::env::var("PWD")
@@ -1300,8 +1940,23 @@ impl Session {
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
         let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
 
+        // For models that don't support native tool calling, inject tool
+        // definitions into the system prompt.
+        let system_prompt = if !model_supports_tools && !tool_definitions.is_empty() {
+            inject_tool_prompt(&system_prompt, &tool_definitions)
+        } else {
+            system_prompt
+        };
+
         let mut final_output = String::new();
         let max_steps = 50;
+
+        // Track consecutive identical tool calls to detect infinite loops.
+        let mut last_tool_sig: Option<String> = None;
+        let mut consecutive_same_tool: u32 = 0;
+        let mut consecutive_codesearch_no_matches: u32 = 0;
+        let mut build_mode_tool_retry_count: u8 = 0;
+        const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
 
@@ -1329,6 +1984,15 @@ impl Session {
             )
             .await?;
 
+            let proactive_lsp_message = build_proactive_lsp_context_message(
+                selected_provider,
+                step,
+                &tool_registry,
+                &self.messages,
+                &cwd,
+            )
+            .await;
+
             // Build messages with system prompt first
             let mut messages = vec![Message {
                 role: Role::System,
@@ -1336,6 +2000,9 @@ impl Session {
                     text: system_prompt.clone(),
                 }],
             }];
+            if let Some(msg) = &proactive_lsp_message {
+                messages.push(msg.clone());
+            }
             messages.extend(self.messages.clone());
 
             let request = CompletionRequest {
@@ -1375,6 +2042,9 @@ impl Session {
                                     text: system_prompt.clone(),
                                 }],
                             }];
+                            if let Some(msg) = &proactive_lsp_message {
+                                messages.push(msg.clone());
+                            }
                             messages.extend(self.messages.clone());
                             let new_request = CompletionRequest {
                                 messages,
@@ -1447,6 +2117,44 @@ impl Session {
                 })
                 .collect();
 
+            let assistant_text = extract_text_content(&response.message.content);
+            if should_force_build_tool_first_retry(
+                &self.agent,
+                build_mode_tool_retry_count,
+                &tool_definitions,
+                &self.messages,
+                &cwd,
+                &assistant_text,
+                !tool_calls.is_empty(),
+            ) {
+                build_mode_tool_retry_count += 1;
+                tracing::warn!(
+                    step = step,
+                    agent = %self.agent,
+                    retry = build_mode_tool_retry_count,
+                    "Build mode tool-first guard triggered; retrying with execution nudge"
+                );
+                self.add_message(Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: BUILD_MODE_TOOL_FIRST_NUDGE.to_string(),
+                    }],
+                });
+                continue;
+            }
+            if !tool_calls.is_empty() {
+                build_mode_tool_retry_count = 0;
+            } else if is_build_agent(&self.agent)
+                && build_request_requires_tool(&self.messages, &cwd)
+                && build_mode_tool_retry_count >= BUILD_MODE_TOOL_FIRST_MAX_RETRIES
+            {
+                return Err(anyhow::anyhow!(
+                    "Build mode could not obtain tool calls for an explicit file-change request after {} retries. \
+                     Switch to a tool-capable model and try again.",
+                    BUILD_MODE_TOOL_FIRST_MAX_RETRIES
+                ));
+            }
+
             // Collect text output for this step
             // Collect thinking and text output
             let mut thinking_text = String::new();
@@ -1505,6 +2213,52 @@ impl Session {
                 break;
             }
 
+            // ── Loop detection: break if the same tool+args repeats too many times,
+            //    or if a non-native-tool model has used too many consecutive tool steps. ──
+            {
+                let mut sigs: Vec<String> = tool_calls
+                    .iter()
+                    .map(|(_, name, args)| format!("{name}:{args}"))
+                    .collect();
+                sigs.sort();
+                let sig = sigs.join("|");
+
+                if last_tool_sig.as_deref() == Some(&sig) {
+                    consecutive_same_tool += 1;
+                } else {
+                    consecutive_same_tool = 1;
+                    last_tool_sig = Some(sig);
+                }
+
+                let force_answer = consecutive_same_tool > MAX_CONSECUTIVE_SAME_TOOL
+                    || (!model_supports_tools && step >= 3);
+
+                if force_answer {
+                    tracing::warn!(
+                        step = step,
+                        consecutive = consecutive_same_tool,
+                        "Breaking agent loop: forcing final answer",
+                    );
+                    let mut nudge_msg = response.message.clone();
+                    nudge_msg
+                        .content
+                        .retain(|p| !matches!(p, ContentPart::ToolCall { .. }));
+                    if !nudge_msg.content.is_empty() {
+                        self.add_message(nudge_msg);
+                    }
+                    self.add_message(Message {
+                        role: Role::User,
+                        content: vec![ContentPart::Text {
+                            text: "STOP using tools. Provide your final answer NOW \
+                                   in plain text based on the tool results you already \
+                                   received. Do NOT output any <tool_call> blocks."
+                                .to_string(),
+                        }],
+                    });
+                    continue;
+                }
+            }
+
             self.add_message(response.message.clone());
 
             tracing::info!(
@@ -1514,6 +2268,7 @@ impl Session {
             );
 
             // Execute each tool call with events
+            let mut codesearch_thrash_guard_triggered = false;
             for (tool_id, tool_name, tool_input) in tool_calls {
                 let args_str = serde_json::to_string(&tool_input).unwrap_or_default();
                 let _ = event_tx
@@ -1559,9 +2314,38 @@ impl Session {
                     continue;
                 }
 
+                if let Some(reason) = detect_stub_in_tool_input(&tool_name, &tool_input) {
+                    tracing::warn!(tool = %tool_name, reason = %reason, "Blocking suspected stubbed edit");
+                    let content = format!(
+                        "Error: Refactor guard rejected this edit: {reason}. \
+                         Provide concrete, behavior-preserving implementation (no placeholders/stubs)."
+                    );
+                    let _ = event_tx
+                        .send(SessionEvent::ToolCallComplete {
+                            name: tool_name.clone(),
+                            output: content.clone(),
+                            success: false,
+                        })
+                        .await;
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id,
+                            content,
+                        }],
+                    });
+                    continue;
+                }
+
                 let exec_start = std::time::Instant::now();
+                let exec_input = enrich_tool_input_with_runtime_context(
+                    &tool_input,
+                    self.metadata.model.as_deref(),
+                    &self.id,
+                    &self.agent,
+                );
                 let (content, success) = if let Some(tool) = tool_registry.get(&tool_name) {
-                    match tool.execute(tool_input.clone()).await {
+                    match tool.execute(exec_input).await {
                         Ok(result) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -1621,6 +2405,8 @@ impl Session {
 
                 // Calculate total duration from exec_start (captured from line 772)
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
+                let codesearch_no_match =
+                    is_codesearch_no_match_output(&tool_name, success, &content);
 
                 // Publish full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
@@ -1759,6 +2545,34 @@ impl Session {
                         content,
                     }],
                 });
+
+                if is_build_agent(&self.agent) {
+                    if codesearch_no_match {
+                        consecutive_codesearch_no_matches += 1;
+                    } else {
+                        consecutive_codesearch_no_matches = 0;
+                    }
+
+                    if consecutive_codesearch_no_matches >= MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES {
+                        tracing::warn!(
+                            step = step,
+                            consecutive_codesearch_no_matches = consecutive_codesearch_no_matches,
+                            "Detected codesearch no-match thrash; nudging model to stop variant retries",
+                        );
+                        self.add_message(Message {
+                            role: Role::User,
+                            content: vec![ContentPart::Text {
+                                text: CODESEARCH_THRASH_NUDGE.to_string(),
+                            }],
+                        });
+                        codesearch_thrash_guard_triggered = true;
+                        break;
+                    }
+                }
+            }
+
+            if codesearch_thrash_guard_triggered {
+                continue;
             }
         }
 
@@ -1946,20 +2760,19 @@ pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
 
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false) {
-            if let Ok(content) = fs::read_to_string(&path).await {
-                if let Ok(session) = serde_json::from_str::<Session>(&content) {
-                    summaries.push(SessionSummary {
-                        id: session.id,
-                        title: session.title,
-                        created_at: session.created_at,
-                        updated_at: session.updated_at,
-                        message_count: session.messages.len(),
-                        agent: session.agent,
-                        directory: session.metadata.directory,
-                    });
-                }
-            }
+        if path.extension().map(|e| e == "json").unwrap_or(false)
+            && let Ok(content) = fs::read_to_string(&path).await
+            && let Ok(session) = serde_json::from_str::<Session>(&content)
+        {
+            summaries.push(SessionSummary {
+                id: session.id,
+                title: session.title,
+                created_at: session.created_at,
+                updated_at: session.updated_at,
+                message_count: session.messages.len(),
+                agent: session.agent,
+                directory: session.metadata.directory,
+            });
         }
     }
 
@@ -2060,7 +2873,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{choose_default_provider, resolve_provider_for_session_request};
+    use super::{
+        build_request_requires_tool, choose_default_provider, detect_stub_in_tool_input,
+        extract_candidate_file_paths, is_codesearch_no_match_output,
+        looks_like_build_execution_request, resolve_provider_for_session_request,
+        should_force_build_tool_first_retry,
+    };
+    use crate::provider::{ContentPart, Message, Role, ToolDefinition};
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn explicit_provider_must_not_fallback_when_unavailable() {
@@ -2087,5 +2909,277 @@ mod tests {
     fn default_provider_prefers_zai() {
         let providers = vec!["openai", "zai"];
         assert_eq!(choose_default_provider(&providers), Some("zai"));
+    }
+
+    #[test]
+    fn extract_candidate_file_paths_filters_to_existing_files() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::create_dir_all(root.join("api/src")).expect("mkdirs");
+        fs::write(root.join("api/src/index.ts"), "export {};").expect("write file");
+
+        let text = "Check api/src/index.ts and missing/path.ts";
+        let paths = extract_candidate_file_paths(text, root, 5);
+        assert_eq!(paths, vec!["api/src/index.ts".to_string()]);
+    }
+
+    #[test]
+    fn extract_candidate_file_paths_dedupes_and_respects_limit() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::create_dir_all(root.join("a")).expect("mkdirs");
+        fs::create_dir_all(root.join("b")).expect("mkdirs");
+        fs::write(root.join("a/one.ts"), "export {};").expect("write file");
+        fs::write(root.join("b/two.tsx"), "export {};").expect("write file");
+
+        let text = "a/one.ts a/one.ts b/two.tsx";
+        let paths = extract_candidate_file_paths(text, root, 1);
+        assert_eq!(paths, vec!["a/one.ts".to_string()]);
+    }
+
+    #[test]
+    fn detect_stub_in_tool_input_flags_write_placeholder_content() {
+        let args = json!({
+            "path": "src/demo.ts",
+            "content": "export function run(){ return \"Fallback prompt\"; } // Placeholder"
+        });
+        let reason = detect_stub_in_tool_input("write", &args);
+        assert!(reason.is_some());
+    }
+
+    #[test]
+    fn detect_stub_in_tool_input_allows_concrete_edit_content() {
+        let args = json!({
+            "old_string": "return a + b;",
+            "new_string": "return sanitize(a) + sanitize(b);"
+        });
+        let reason = detect_stub_in_tool_input("edit", &args);
+        assert!(reason.is_none());
+    }
+
+    #[test]
+    fn detect_stub_in_tool_input_flags_multiedit_stub_line() {
+        let args = json!({
+            "edits": [
+                {
+                    "file_path": "src/a.ts",
+                    "old_string": "x",
+                    "new_string": "throw new Error(\"Not implemented\")"
+                }
+            ]
+        });
+        let reason = detect_stub_in_tool_input("multiedit", &args);
+        assert!(reason.is_some());
+    }
+
+    #[test]
+    fn detect_stub_in_tool_input_allows_html_placeholder_attribute() {
+        let args = json!({
+            "old_string": "<input type=\"text\" />",
+            "new_string": "<input type=\"text\" placeholder=\"Search users\" />"
+        });
+        let reason = detect_stub_in_tool_input("edit", &args);
+        assert!(reason.is_none());
+    }
+
+    #[test]
+    fn detect_stub_in_tool_input_flags_placeholder_stub_phrase() {
+        let args = json!({
+            "path": "src/demo.ts",
+            "content": "// Placeholder implementation\nexport const run = () => null;"
+        });
+        let reason = detect_stub_in_tool_input("write", &args);
+        assert!(reason.is_some());
+    }
+
+    #[test]
+    fn looks_like_build_execution_request_detects_fix_prompt() {
+        assert!(looks_like_build_execution_request(
+            "yes fix it and patch src/tool/lsp.rs"
+        ));
+        assert!(!looks_like_build_execution_request(
+            "what does this module do?"
+        ));
+    }
+
+    #[test]
+    fn codesearch_no_match_detection_matches_expected_format() {
+        assert!(is_codesearch_no_match_output(
+            "codesearch",
+            true,
+            "No matches found for pattern: foo_bar"
+        ));
+    }
+
+    #[test]
+    fn codesearch_no_match_detection_matches_prefixed_output() {
+        assert!(is_codesearch_no_match_output(
+            "codesearch",
+            true,
+            "build step 1 codesearch: No matches found for pattern: foo_bar"
+        ));
+    }
+
+    #[test]
+    fn codesearch_no_match_detection_ignores_non_codesearch_tools() {
+        assert!(!is_codesearch_no_match_output(
+            "grep",
+            true,
+            "No matches found for pattern: foo_bar"
+        ));
+    }
+
+    #[test]
+    fn build_mode_tool_first_retry_triggers_for_deferral_reply() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::create_dir_all(root.join("src/provider")).expect("mkdirs");
+        fs::write(root.join("src/provider/gemini_web.rs"), "fn main(){}").expect("write file");
+
+        let tools = vec![ToolDefinition {
+            name: "bash".to_string(),
+            description: "Run shell commands".to_string(),
+            parameters: json!({"type":"object"}),
+        }];
+        let session_messages = vec![Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "fix src/provider/gemini_web.rs now".to_string(),
+            }],
+        }];
+
+        let should_retry = should_force_build_tool_first_retry(
+            "build",
+            0,
+            &tools,
+            &session_messages,
+            root,
+            "If you want, I can patch this next.",
+            false,
+        );
+
+        assert!(should_retry);
+    }
+
+    #[test]
+    fn build_mode_tool_first_retry_does_not_trigger_for_non_build_agent() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::create_dir_all(root.join("src/provider")).expect("mkdirs");
+        fs::write(root.join("src/provider/gemini_web.rs"), "fn main(){}").expect("write file");
+
+        let tools = vec![ToolDefinition {
+            name: "bash".to_string(),
+            description: "Run shell commands".to_string(),
+            parameters: json!({"type":"object"}),
+        }];
+        let session_messages = vec![Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "fix src/provider/gemini_web.rs now".to_string(),
+            }],
+        }];
+
+        let should_retry = should_force_build_tool_first_retry(
+            "plan",
+            0,
+            &tools,
+            &session_messages,
+            root,
+            "If you want, I can patch this next.",
+            false,
+        );
+
+        assert!(!should_retry);
+    }
+
+    #[test]
+    fn build_request_requires_tool_detects_existing_file_edit_prompt() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::create_dir_all(root.join("src/provider")).expect("mkdirs");
+        fs::write(root.join("src/provider/gemini_web.rs"), "fn main(){}").expect("write file");
+
+        let session_messages = vec![Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "In build mode, make a concrete change now: in src/provider/gemini_web.rs replace \"A\" with \"B\".".to_string(),
+            }],
+        }];
+
+        assert!(build_request_requires_tool(&session_messages, root));
+    }
+
+    #[test]
+    fn build_request_requires_tool_for_affirmative_followup_with_context() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        fs::write(root.join("rspack.config.js"), "module.exports = {};").expect("write file");
+
+        let session_messages = vec![
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "ws error in rspack.config.js".to_string(),
+                }],
+            },
+            Message {
+                role: Role::Assistant,
+                content: vec![ContentPart::Text {
+                    text: "Done — use this exact block in rspack.config.js".to_string(),
+                }],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "yes".to_string(),
+                }],
+            },
+        ];
+
+        assert!(build_request_requires_tool(&session_messages, root));
+    }
+
+    #[test]
+    fn build_request_requires_tool_for_affirmative_followup_after_assistant_offer() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        let session_messages = vec![
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "the banner is missing".to_string(),
+                }],
+            },
+            Message {
+                role: Role::Assistant,
+                content: vec![ContentPart::Text {
+                    text: "If you want, next I can tighten the Catalyst alert variant exactly."
+                        .to_string(),
+                }],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "yes".to_string(),
+                }],
+            },
+        ];
+
+        assert!(build_request_requires_tool(&session_messages, root));
+    }
+
+    #[test]
+    fn build_request_requires_tool_false_for_plain_yes_without_context() {
+        let dir = tempdir().expect("tempdir");
+        let root = dir.path();
+        let session_messages = vec![Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "yes".to_string(),
+            }],
+        }];
+
+        assert!(!build_request_requires_tool(&session_messages, root));
     }
 }

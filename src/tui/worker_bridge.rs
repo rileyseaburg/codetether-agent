@@ -278,13 +278,18 @@ impl TuiWorkerBridge {
                         // Handle command to register/deregister agents
                         Some(cmd) = cmd_rx.recv() => {
                             match cmd {
-                                WorkerBridgeCmd::RegisterAgent { name, instructions: _ } => {
+                                WorkerBridgeCmd::RegisterAgent { name, instructions } => {
                                     tracing::info!(agent = %name, "Registering sub-agent with A2A server");
-                                    // For now, just log - full implementation would POST to server
-                                    // The server tracks sub-agents via the heartbeat's agent list
+                                    tracing::debug!(
+                                        agent = %name,
+                                        instructions_len = instructions.len(),
+                                        "Tracking sub-agent in heartbeat state"
+                                    );
+                                    heartbeat_state.register_sub_agent(name).await;
                                 }
                                 WorkerBridgeCmd::DeregisterAgent { name } => {
                                     tracing::info!(agent = %name, "Deregistering sub-agent from A2A server");
+                                    heartbeat_state.deregister_sub_agent(&name).await;
                                 }
                                 WorkerBridgeCmd::SetProcessing(processing) => {
                                     let status = if processing {

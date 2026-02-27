@@ -20,6 +20,7 @@ mod cognition;
 mod config;
 mod crash;
 mod event_stream;
+mod forage;
 mod k8s;
 mod lsp;
 pub mod mcp;
@@ -90,7 +91,7 @@ fn resolve_rlm_provider_and_model(
                     anyhow::anyhow!(
                         "local_cuda selected explicitly but provider is unavailable. \
                          Build/install with CUDA support \
-                         (--features candle-cuda,functiongemma) and set \
+                         (--features candle-cuda) and set \
                          LOCAL_CUDA_MODEL_PATH + LOCAL_CUDA_TOKENIZER_PATH."
                     )
                 })?;
@@ -315,9 +316,9 @@ async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
     tracing::info!(provider = %provider_name, model = %model, "RLM provider resolved");
 
     let run_count = args.consensus_runs;
-    let run_temperature = args
-        .analysis_temperature
-        .unwrap_or_else(|| if run_count > 1 { 0.75 } else { 0.3 });
+    let run_temperature =
+        args.analysis_temperature
+            .unwrap_or(if run_count > 1 { 0.75 } else { 0.3 });
     let mut runs: Vec<(
         rlm::RlmAnalysisResult,
         Vec<rlm::TraceStep>,
@@ -576,10 +577,10 @@ async fn main() -> anyhow::Result<()> {
             let mut all_models: Vec<provider::ModelInfo> = Vec::new();
 
             for provider_name in registry.list() {
-                if let Some(filter) = &args.provider {
-                    if provider_name != filter.as_str() {
-                        continue;
-                    }
+                if let Some(filter) = &args.provider
+                    && provider_name != filter.as_str()
+                {
+                    continue;
                 }
                 if let Some(p) = registry.get(provider_name) {
                     match p.list_models().await {
@@ -627,18 +628,19 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
+        Some(Command::Forage(args)) => forage::execute(args).await,
         Some(Command::Worker(mut args)) => {
             // Auto-load saved credentials if no token provided
-            if args.token.is_none() {
-                if let Some(creds) = cli::auth::load_saved_credentials() {
-                    let target = args.server.trim_end_matches('/');
-                    let saved = creds.server.trim_end_matches('/');
-                    if saved == target {
-                        tracing::info!(email = %creds.email, server = %saved, "Using saved credentials from `codetether auth login`");
-                        args.token = Some(creds.access_token);
-                    } else {
-                        tracing::warn!(saved_server = %saved, target_server = %target, "Ignoring saved credentials for different server");
-                    }
+            if args.token.is_none()
+                && let Some(creds) = cli::auth::load_saved_credentials()
+            {
+                let target = args.server.trim_end_matches('/');
+                let saved = creds.server.trim_end_matches('/');
+                if saved == target {
+                    tracing::info!(email = %creds.email, server = %saved, "Using saved credentials from `codetether auth login`");
+                    args.token = Some(creds.access_token);
+                } else {
+                    tracing::warn!(saved_server = %saved, target_server = %target, "Ignoring saved credentials for different server");
                 }
             }
 
@@ -1153,10 +1155,10 @@ async fn main() -> anyhow::Result<()> {
                         for exec in file_execs.iter().take(args.limit) {
                             println!("- **{}** ({}ms)", exec.tool_name, exec.duration_ms);
                             for change in &exec.file_changes {
-                                if change.path == *file_path {
-                                    if let Some((start, end)) = change.line_range {
-                                        println!("  Lines {}-{}", start, end);
-                                    }
+                                if change.path == *file_path
+                                    && let Some((start, end)) = change.line_range
+                                {
+                                    println!("  Lines {}-{}", start, end);
                                 }
                             }
                         }

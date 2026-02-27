@@ -3,6 +3,7 @@ use candle_core::quantized::gguf_file;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 
+#[cfg(feature = "functiongemma")]
 use candle_transformers::models::quantized_gemma3;
 use candle_transformers::models::{
     quantized_llama, quantized_qwen2, quantized_qwen3, quantized_qwen3_moe,
@@ -410,6 +411,7 @@ pub(crate) struct CandleThinker {
     seed: u64,
     request_index: u64,
     eos_token_ids: HashSet<u32>,
+    #[allow(dead_code)]
     cached_tokens: Vec<u32>,
 }
 
@@ -419,6 +421,7 @@ enum CandleModel {
     Qwen3(quantized_qwen3::ModelWeights),
     Qwen3Moe(quantized_qwen3_moe::GGUFQWenMoE),
 
+    #[cfg(feature = "functiongemma")]
     Gemma3(quantized_gemma3::ModelWeights),
 }
 
@@ -430,6 +433,7 @@ impl CandleModel {
             Self::Qwen3(model) => Ok(model.forward(x, index_pos)?),
             Self::Qwen3Moe(model) => Ok(model.forward(x, index_pos)?),
 
+            #[cfg(feature = "functiongemma")]
             Self::Gemma3(model) => Ok(model.forward(x, index_pos)?),
         }
     }
@@ -497,6 +501,7 @@ impl CandleThinker {
                 .with_context(|| format!("failed to load qwen3_moe gguf from {}", model_path))?,
             ),
 
+            #[cfg(feature = "functiongemma")]
             "gemma" | "gemma2" | "gemma3" | "gemma-embedding" => CandleModel::Gemma3(
                 quantized_gemma3::ModelWeights::from_gguf(content, &mut reader, &device)
                     .with_context(|| format!("failed to load gemma3 gguf from {}", model_path))?,
@@ -547,43 +552,36 @@ impl CandleThinker {
         })
     }
 
+    /// Run inference using an already-formatted prompt string (no chat template wrapping).
+    #[cfg(feature = "functiongemma")]
+    pub(crate) fn think_raw(&mut self, raw_prompt: &str) -> Result<ThinkerOutput> {
+        self.think_inner(raw_prompt)
+    }
+
     pub(crate) fn think(
         &mut self,
         system_prompt: &str,
         user_prompt: &str,
     ) -> Result<ThinkerOutput> {
-        let started_at = Instant::now();
         let prompt = format_chat_prompt(&self.architecture, system_prompt, user_prompt);
+        self.think_inner(&prompt)
+    }
+
+    fn think_inner(&mut self, prompt: &str) -> Result<ThinkerOutput> {
+        let started_at = Instant::now();
         let encoding = self
             .tokenizer
-            .encode(prompt.as_str(), true)
+            .encode(prompt, true)
             .map_err(|e| anyhow!("tokenizer encode failed: {}", e))?;
         let mut tokens = encoding.get_ids().to_vec();
         if tokens.is_empty() {
             return Err(anyhow!("tokenizer produced an empty prompt token set"));
         }
 
-        // Truncate user content while preserving the system prompt prefix.
+        // Truncate to context window if needed — keep the tail of the prompt.
         if self.context_window > 8 && tokens.len() >= self.context_window {
-            let system_only = format_chat_prompt(&self.architecture, system_prompt, "");
-            let sys_encoding = self
-                .tokenizer
-                .encode(system_only.as_str(), true)
-                .map_err(|e| anyhow!("tokenizer encode failed (system): {}", e))?;
-            let sys_len = sys_encoding.get_ids().len();
             let budget = self.context_window.saturating_sub(8);
-            if sys_len < budget {
-                // Keep system prefix + tail of user content that fits
-                let tail_budget = budget.saturating_sub(sys_len);
-                let tail_start = tokens.len().saturating_sub(tail_budget);
-                let mut truncated = sys_encoding.get_ids().to_vec();
-                truncated.extend_from_slice(&tokens[tail_start..]);
-                tokens = truncated;
-            } else {
-                // System alone exceeds budget; keep only the tail
-                let keep = budget;
-                tokens = tokens[tokens.len().saturating_sub(keep)..].to_vec();
-            }
+            tokens = tokens[tokens.len().saturating_sub(budget)..].to_vec();
         }
         let prompt_token_count = tokens.len() as u32;
 
@@ -762,12 +760,11 @@ fn detect_context_window(content: &gguf_file::Content, architecture: &str) -> Op
 fn extract_gguf_eos_ids(content: &gguf_file::Content) -> Vec<u32> {
     let mut ids = Vec::new();
     for key in ["tokenizer.ggml.eos_token_id", "tokenizer.ggml.eot_token_id"] {
-        if let Some(v) = content.metadata.get(key) {
-            if let Ok(id) = v.to_u32() {
-                if !ids.contains(&id) {
-                    ids.push(id);
-                }
-            }
+        if let Some(v) = content.metadata.get(key)
+            && let Ok(id) = v.to_u32()
+            && !ids.contains(&id)
+        {
+            ids.push(id);
         }
     }
     ids

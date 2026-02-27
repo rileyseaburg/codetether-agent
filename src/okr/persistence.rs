@@ -27,11 +27,10 @@ struct OkrCache {
 impl OkrRepository {
     /// Create a new OKR repository with the given base path
     pub fn new(base_path: PathBuf) -> Self {
-        let repo = Self {
+        Self {
             base_path,
             cache: Arc::new(RwLock::new(OkrCache::default())),
-        };
-        repo
+        }
     }
 
     /// Create repository from Config::data_dir() or fallback to temp
@@ -187,12 +186,11 @@ impl OkrRepository {
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
-                if let Ok(data) = fs::read_to_string(&path).await {
-                    if let Ok(okr) = serde_json::from_str::<Okr>(&data) {
-                        okrs.push(okr);
-                    }
-                }
+            if path.extension().is_some_and(|e| e == "json")
+                && let Ok(data) = fs::read_to_string(&path).await
+                && let Ok(okr) = serde_json::from_str::<Okr>(&data)
+            {
+                okrs.push(okr);
             }
         }
 
@@ -337,12 +335,11 @@ impl OkrRepository {
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
-                if let Ok(data) = fs::read_to_string(&path).await {
-                    if let Ok(run) = serde_json::from_str::<OkrRun>(&data) {
-                        runs.push(run);
-                    }
-                }
+            if path.extension().is_some_and(|e| e == "json")
+                && let Ok(data) = fs::read_to_string(&path).await
+                && let Ok(run) = serde_json::from_str::<OkrRun>(&data)
+            {
+                runs.push(run);
             }
         }
 

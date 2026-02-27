@@ -123,12 +123,11 @@ impl VertexGlmProvider {
         // Check cache — refresh 5 minutes before expiration
         {
             let cache = self.cached_token.read().await;
-            if let Some(ref cached) = *cache {
-                if cached.expires_at
+            if let Some(ref cached) = *cache
+                && cached.expires_at
                     > std::time::Instant::now() + std::time::Duration::from_secs(300)
-                {
-                    return Ok(cached.token.clone());
-                }
+            {
+                return Ok(cached.token.clone());
             }
         }
 
@@ -545,10 +544,10 @@ impl Provider for VertexGlmProvider {
             let mut content = Vec::new();
             let mut has_tool_calls = false;
 
-            if let Some(text) = &choice.message.content {
-                if !text.is_empty() {
-                    content.push(ContentPart::Text { text: text.clone() });
-                }
+            if let Some(text) = &choice.message.content
+                && !text.is_empty()
+            {
+                content.push(ContentPart::Text { text: text.clone() });
             }
 
             if let Some(tool_calls) = &choice.message.tool_calls {
@@ -727,62 +726,53 @@ impl Provider for VertexGlmProvider {
                                     chunks.push(StreamChunk::Done { usage: None });
                                     continue;
                                 }
-                                if let Some(data) = line.strip_prefix("data: ") {
-                                    if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data)
-                                    {
-                                        if let Some(choice) = parsed.choices.first() {
-                                            if let Some(ref content) = choice.delta.content {
-                                                text_buf.push_str(content);
-                                            }
-                                            if let Some(ref tool_calls) = choice.delta.tool_calls {
-                                                if !text_buf.is_empty() {
-                                                    chunks.push(StreamChunk::Text(std::mem::take(
-                                                        &mut text_buf,
-                                                    )));
+                                if let Some(data) = line.strip_prefix("data: ")
+                                    && let Ok(parsed) = serde_json::from_str::<StreamResponse>(data)
+                                    && let Some(choice) = parsed.choices.first()
+                                {
+                                    if let Some(ref content) = choice.delta.content {
+                                        text_buf.push_str(content);
+                                    }
+                                    if let Some(ref tool_calls) = choice.delta.tool_calls {
+                                        if !text_buf.is_empty() {
+                                            chunks.push(StreamChunk::Text(std::mem::take(
+                                                &mut text_buf,
+                                            )));
+                                        }
+                                        for tc in tool_calls {
+                                            if let Some(ref func) = tc.function {
+                                                let id = tc.id.clone().unwrap_or_default();
+                                                if let Some(ref name) = func.name {
+                                                    chunks.push(StreamChunk::ToolCallStart {
+                                                        id: id.clone(),
+                                                        name: name.clone(),
+                                                    });
                                                 }
-                                                for tc in tool_calls {
-                                                    if let Some(ref func) = tc.function {
-                                                        let id = tc.id.clone().unwrap_or_default();
-                                                        if let Some(ref name) = func.name {
-                                                            chunks.push(
-                                                                StreamChunk::ToolCallStart {
-                                                                    id: id.clone(),
-                                                                    name: name.clone(),
-                                                                },
-                                                            );
-                                                        }
-                                                        if let Some(ref args) = func.arguments {
-                                                            chunks.push(
-                                                                StreamChunk::ToolCallDelta {
-                                                                    id: id.clone(),
-                                                                    arguments_delta: args.clone(),
-                                                                },
-                                                            );
-                                                        }
-                                                    }
+                                                if let Some(ref args) = func.arguments {
+                                                    chunks.push(StreamChunk::ToolCallDelta {
+                                                        id: id.clone(),
+                                                        arguments_delta: args.clone(),
+                                                    });
                                                 }
                                             }
-                                            if let Some(ref reason) = choice.finish_reason {
-                                                if !text_buf.is_empty() {
-                                                    chunks.push(StreamChunk::Text(std::mem::take(
-                                                        &mut text_buf,
-                                                    )));
-                                                }
-                                                if reason == "tool_calls" {
-                                                    if let Some(tc) = choice
-                                                        .delta
-                                                        .tool_calls
-                                                        .as_ref()
-                                                        .and_then(|t| t.last())
-                                                    {
-                                                        if let Some(id) = &tc.id {
-                                                            chunks.push(StreamChunk::ToolCallEnd {
-                                                                id: id.clone(),
-                                                            });
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                        }
+                                    }
+                                    if let Some(ref reason) = choice.finish_reason {
+                                        if !text_buf.is_empty() {
+                                            chunks.push(StreamChunk::Text(std::mem::take(
+                                                &mut text_buf,
+                                            )));
+                                        }
+                                        if reason == "tool_calls"
+                                            && let Some(tc) = choice
+                                                .delta
+                                                .tool_calls
+                                                .as_ref()
+                                                .and_then(|t| t.last())
+                                            && let Some(id) = &tc.id
+                                        {
+                                            chunks
+                                                .push(StreamChunk::ToolCallEnd { id: id.clone() });
                                         }
                                     }
                                 }

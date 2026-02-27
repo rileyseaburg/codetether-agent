@@ -118,8 +118,10 @@ impl Okr {
 /// OKR status enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum OkrStatus {
     /// Draft - not yet approved
+    #[default]
     Draft,
 
     /// Active - approved and in progress
@@ -133,12 +135,6 @@ pub enum OkrStatus {
 
     /// OnHold - temporarily paused
     OnHold,
-}
-
-impl Default for OkrStatus {
-    fn default() -> Self {
-        OkrStatus::Draft
-    }
 }
 
 /// A measurable key result within an OKR
@@ -258,8 +254,10 @@ impl KeyResult {
 /// Type of metric for a key result
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum KrMetricType {
     /// Progress percentage (0-100)
+    #[default]
     Progress,
 
     /// Count of items
@@ -275,17 +273,13 @@ pub enum KrMetricType {
     Quality,
 }
 
-impl Default for KrMetricType {
-    fn default() -> Self {
-        KrMetricType::Progress
-    }
-}
-
 /// Status of a key result
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum KeyResultStatus {
     /// Not yet started
+    #[default]
     Pending,
 
     /// Actively being worked on
@@ -299,12 +293,6 @@ pub enum KeyResultStatus {
 
     /// Failed to achieve target
     Failed,
-}
-
-impl Default for KeyResultStatus {
-    fn default() -> Self {
-        KeyResultStatus::Pending
-    }
 }
 
 /// An execution run of an OKR (multiple runs per OKR are allowed)
@@ -453,8 +441,10 @@ impl OkrRun {
 /// Status of an OKR run
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum OkrRunStatus {
     /// Draft - not yet submitted
+    #[default]
     Draft,
 
     /// Pending approval
@@ -483,12 +473,6 @@ pub enum OkrRunStatus {
 
     /// Cancelled
     Cancelled,
-}
-
-impl Default for OkrRunStatus {
-    fn default() -> Self {
-        OkrRunStatus::Draft
-    }
 }
 
 /// Approval decision for an OKR run
@@ -628,8 +612,10 @@ impl KrOutcome {
 /// Type of key result outcome
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum KrOutcomeType {
     /// Evidence/documentation
+    #[default]
     Evidence,
 
     /// Test pass
@@ -652,12 +638,6 @@ pub enum KrOutcomeType {
 
     /// Deployment
     Deployment,
-}
-
-impl Default for KrOutcomeType {
-    fn default() -> Self {
-        KrOutcomeType::Evidence
-    }
 }
 
 /// Validation errors for OKR entities

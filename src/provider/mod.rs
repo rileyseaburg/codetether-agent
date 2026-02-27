@@ -8,7 +8,102 @@ pub mod copilot;
 pub mod gemini_web;
 pub mod glm5;
 pub mod google;
+#[cfg(feature = "candle-cuda")]
 pub mod local_cuda;
+#[cfg(not(feature = "candle-cuda"))]
+#[allow(dead_code)]
+pub mod local_cuda {
+    use super::*;
+    use anyhow::{Result, anyhow};
+    use async_trait::async_trait;
+    use futures::stream::BoxStream;
+
+    fn feature_error() -> anyhow::Error {
+        anyhow!(
+            "local_cuda provider requires the 'candle-cuda' feature; rebuild with --features candle-cuda"
+        )
+    }
+
+    /// Stub provider type when CUDA support is not compiled in.
+    pub struct LocalCudaProvider;
+
+    impl LocalCudaProvider {
+        pub fn new(_model_name: String) -> Result<Self> {
+            Err(feature_error())
+        }
+
+        pub fn with_model(_model_name: String, _model_path: String) -> Result<Self> {
+            Err(feature_error())
+        }
+
+        pub fn with_paths(
+            _model_name: String,
+            _model_path: String,
+            _tokenizer_path: Option<String>,
+            _architecture: Option<String>,
+        ) -> Result<Self> {
+            Err(feature_error())
+        }
+
+        pub fn is_cuda_available() -> bool {
+            false
+        }
+
+        pub fn device_info() -> String {
+            "CUDA unavailable (candle-cuda feature disabled)".to_string()
+        }
+    }
+
+    #[async_trait]
+    impl Provider for LocalCudaProvider {
+        fn name(&self) -> &str {
+            "local_cuda"
+        }
+
+        async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+            Err(feature_error())
+        }
+
+        async fn complete(&self, _request: CompletionRequest) -> Result<CompletionResponse> {
+            Err(feature_error())
+        }
+
+        async fn complete_stream(
+            &self,
+            _request: CompletionRequest,
+        ) -> Result<BoxStream<'static, StreamChunk>> {
+            Err(feature_error())
+        }
+    }
+
+    /// Configuration for LocalCudaProvider.
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct LocalCudaConfig {
+        pub model_name: String,
+        pub model_path: Option<String>,
+        pub context_window: Option<usize>,
+        pub max_new_tokens: Option<usize>,
+        pub temperature: Option<f32>,
+        pub top_p: Option<f32>,
+        pub repeat_penalty: Option<f32>,
+        pub cuda_device: Option<usize>,
+    }
+
+    impl Default for LocalCudaConfig {
+        fn default() -> Self {
+            Self {
+                model_name: "qwen3-coder-next".to_string(),
+                model_path: None,
+                context_window: Some(8192),
+                max_new_tokens: Some(4096),
+                temperature: Some(0.7),
+                top_p: Some(0.9),
+                repeat_penalty: Some(1.1),
+                cuda_device: Some(0),
+            }
+        }
+    }
+}
 pub mod metrics;
 pub mod models;
 pub mod moonshot;
@@ -245,18 +340,18 @@ impl ProviderRegistry {
         }
 
         // Initialize Novita (OpenAI-compatible)
-        if let Some(provider_config) = config.providers.get("novita") {
-            if let Some(api_key) = &provider_config.api_key {
-                let base_url = provider_config
-                    .base_url
-                    .clone()
-                    .unwrap_or_else(|| "https://api.novita.ai/openai/v1".to_string());
-                registry.register(Arc::new(openai::OpenAIProvider::with_base_url(
-                    api_key.clone(),
-                    base_url,
-                    "novita",
-                )?));
-            }
+        if let Some(provider_config) = config.providers.get("novita")
+            && let Some(api_key) = &provider_config.api_key
+        {
+            let base_url = provider_config
+                .base_url
+                .clone()
+                .unwrap_or_else(|| "https://api.novita.ai/openai/v1".to_string());
+            registry.register(Arc::new(openai::OpenAIProvider::with_base_url(
+                api_key.clone(),
+                base_url,
+                "novita",
+            )?));
         }
 
         // Initialize Bedrock via AWS credentials (env vars or ~/.aws/credentials)
@@ -464,16 +559,23 @@ impl ProviderRegistry {
                     continue;
                 }
 
-                // Handle OpenAI Codex (ChatGPT subscription) before api_key extraction
-                // since it uses OAuth credentials (access_token, refresh_token, expires_at)
+                // Handle OpenAI Codex (ChatGPT subscription) before generic api_key extraction.
+                // Prefer OAuth ChatGPT credentials when present; fall back to exchanged API key only when OAuth is unavailable.
                 if matches!(provider_id.as_str(), "openai-codex" | "codex" | "chatgpt") {
                     let access_token = secrets.extra.get("access_token").and_then(|v| v.as_str());
                     let refresh_token = secrets.extra.get("refresh_token").and_then(|v| v.as_str());
                     let expires_at = secrets.extra.get("expires_at").and_then(|v| v.as_u64());
+                    let id_token = secrets.extra.get("id_token").and_then(|v| v.as_str());
+                    let chatgpt_account_id = secrets
+                        .extra
+                        .get("chatgpt_account_id")
+                        .and_then(|v| v.as_str());
 
                     match (access_token, refresh_token, expires_at) {
                         (Some(access), Some(refresh), Some(expires)) => {
                             let creds = openai_codex::OAuthCredentials {
+                                id_token: id_token.map(ToString::to_string),
+                                chatgpt_account_id: chatgpt_account_id.map(ToString::to_string),
                                 access_token: access.to_string(),
                                 refresh_token: refresh.to_string(),
                                 expires_at: expires,
@@ -483,9 +585,18 @@ impl ProviderRegistry {
                             registry.register(Arc::new(provider));
                         }
                         _ => {
-                            tracing::warn!(
-                                "openai-codex provider requires access_token, refresh_token, and expires_at in Vault secrets"
-                            );
+                            if let Some(api_key) =
+                                secrets.api_key.as_deref().filter(|key| !key.is_empty())
+                            {
+                                let provider = openai_codex::OpenAiCodexProvider::from_api_key(
+                                    api_key.to_string(),
+                                );
+                                registry.register(Arc::new(provider));
+                            } else {
+                                tracing::warn!(
+                                    "openai-codex provider requires OAuth access_token, refresh_token, and expires_at (or an exchanged api_key) in Vault secrets"
+                                );
+                            }
                         }
                     }
                     continue;
@@ -769,17 +880,18 @@ impl ProviderRegistry {
 
         // If Bedrock wasn't registered via Vault, try auto-detecting AWS credentials
         // (unless env fallback is disabled for security-hardened deployments)
-        if !registry.providers.contains_key("bedrock") && !disable_env_fallback {
-            if let Some(creds) = bedrock::AwsCredentials::from_environment() {
-                let region = bedrock::AwsCredentials::detect_region()
-                    .unwrap_or_else(|| "us-east-1".to_string());
-                match bedrock::BedrockProvider::with_credentials(creds, region) {
-                    Ok(p) => {
-                        tracing::info!("Registered Bedrock provider from local AWS credentials");
-                        registry.register(Arc::new(p));
-                    }
-                    Err(e) => tracing::warn!("Failed to init bedrock from AWS credentials: {}", e),
+        if !registry.providers.contains_key("bedrock")
+            && !disable_env_fallback
+            && let Some(creds) = bedrock::AwsCredentials::from_environment()
+        {
+            let region =
+                bedrock::AwsCredentials::detect_region().unwrap_or_else(|| "us-east-1".to_string());
+            match bedrock::BedrockProvider::with_credentials(creds, region) {
+                Ok(p) => {
+                    tracing::info!("Registered Bedrock provider from local AWS credentials");
+                    registry.register(Arc::new(p));
                 }
+                Err(e) => tracing::warn!("Failed to init bedrock from AWS credentials: {}", e),
             }
         }
 
@@ -851,36 +963,36 @@ impl ProviderRegistry {
         ];
 
         for (provider_id, env_var, constructor) in fallbacks {
-            if !registry.providers.contains_key(*provider_id) {
-                if let Ok(api_key) = std::env::var(env_var) {
-                    match constructor(api_key) {
-                        Ok(p) => {
-                            tracing::info!(
-                                "Registered {} provider from {} env var",
-                                provider_id,
-                                env_var
-                            );
-                            registry.register(p);
-                        }
-                        Err(e) => tracing::warn!("Failed to init {} from env: {}", provider_id, e),
+            if !registry.providers.contains_key(*provider_id)
+                && let Ok(api_key) = std::env::var(env_var)
+            {
+                match constructor(api_key) {
+                    Ok(p) => {
+                        tracing::info!(
+                            "Registered {} provider from {} env var",
+                            provider_id,
+                            env_var
+                        );
+                        registry.register(p);
                     }
+                    Err(e) => tracing::warn!("Failed to init {} from env: {}", provider_id, e),
                 }
             }
         }
 
         // GLM-5 FP8 on Vast.ai — requires GLM5_BASE_URL; GLM5_API_KEY is optional
-        if !registry.providers.contains_key("glm5") {
-            if let Ok(base_url) = std::env::var("GLM5_BASE_URL") {
-                let api_key = std::env::var("GLM5_API_KEY").unwrap_or_default();
-                let model_name =
-                    std::env::var("GLM5_MODEL").unwrap_or_else(|_| glm5::DEFAULT_MODEL.to_string());
-                match glm5::Glm5Provider::with_model(api_key, base_url, model_name) {
-                    Ok(p) => {
-                        tracing::info!("Registered glm5 provider from GLM5_BASE_URL env var");
-                        registry.register(Arc::new(p));
-                    }
-                    Err(e) => tracing::warn!("Failed to init glm5 from env: {}", e),
+        if !registry.providers.contains_key("glm5")
+            && let Ok(base_url) = std::env::var("GLM5_BASE_URL")
+        {
+            let api_key = std::env::var("GLM5_API_KEY").unwrap_or_default();
+            let model_name =
+                std::env::var("GLM5_MODEL").unwrap_or_else(|_| glm5::DEFAULT_MODEL.to_string());
+            match glm5::Glm5Provider::with_model(api_key, base_url, model_name) {
+                Ok(p) => {
+                    tracing::info!("Registered glm5 provider from GLM5_BASE_URL env var");
+                    registry.register(Arc::new(p));
                 }
+                Err(e) => tracing::warn!("Failed to init glm5 from env: {}", e),
             }
         }
 

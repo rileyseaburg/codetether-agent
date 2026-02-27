@@ -2,7 +2,7 @@
 
 use super::types::*;
 use crate::session::Session;
-use crate::telemetry::{ToolExecution, record_persistent};
+use crate::telemetry::record_persistent;
 use anyhow::Result;
 use axum::{
     Router,
