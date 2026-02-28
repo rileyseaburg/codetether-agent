@@ -3,22 +3,15 @@ use codetether_agent::tool::Tool;
 use codetether_agent::tool::edit::EditTool;
 use codetether_agent::tool::multiedit::MultiEditTool;
 use serde_json::{Value, json};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use tempfile::tempdir;
 use tokio::net::TcpListener;
 
 #[derive(Clone)]
 struct MockState {
     output: String,
-    ready: Arc<AtomicBool>,
 }
 
 async fn mock_morph_handler(State(state): State<MockState>) -> Json<Value> {
-    // Wait until the server is marked as ready
-    while !state.ready.load(Ordering::SeqCst) {
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
     Json(json!({
         "choices": [{
             "message": {
@@ -33,25 +26,12 @@ async fn spawn_mock_morph_server(
 ) -> anyhow::Result<(String, tokio::task::JoinHandle<()>)> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let addr = listener.local_addr()?;
-    let ready = Arc::new(AtomicBool::new(false));
-    let ready_clone = ready.clone();
-
     let app = Router::new()
         .route("/chat/completions", post(mock_morph_handler))
-        .with_state(MockState {
-            output,
-            ready: ready_clone,
-        });
-
+        .with_state(MockState { output });
     let handle = tokio::spawn(async move {
-        // Server is now ready to accept connections
-        ready.store(true, Ordering::SeqCst);
         let _ = axum::serve(listener, app).await;
     });
-
-    // Wait for server to be fully ready
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
     Ok((format!("http://{}", addr), handle))
 }
 
@@ -105,7 +85,6 @@ fn restore_env(
     }
 }
 
-// Force tests to run serially to avoid port conflicts
 #[tokio::test]
 async fn morph_backed_edit_tool_flow() -> anyhow::Result<()> {
     let dir = tempdir()?;
@@ -125,10 +104,6 @@ async fn morph_backed_edit_tool_flow() -> anyhow::Result<()> {
         }))
         .await?;
 
-    eprintln!(
-        "DEBUG edit result: success={}, output={}, metadata={:?}",
-        result.success, result.output, result.metadata
-    );
     assert!(result.success, "{}", result.output);
     assert_eq!(
         result
@@ -149,8 +124,6 @@ async fn morph_backed_edit_tool_flow() -> anyhow::Result<()> {
 
     restore_env(prev);
     handle.abort();
-    // Ensure clean shutdown before next test
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     Ok(())
 }
 
@@ -176,16 +149,10 @@ async fn morph_backed_multiedit_tool_flow() -> anyhow::Result<()> {
         .await?;
 
     assert!(result.success, "{}", result.output);
-    eprintln!(
-        "DEBUG multiedit result: success={}, output={}",
-        result.success, result.output
-    );
     let updated = tokio::fs::read_to_string(&file_path).await?;
     assert_eq!(updated, expected);
 
     restore_env(prev);
     handle.abort();
-    // Ensure clean shutdown before next test
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     Ok(())
 }
