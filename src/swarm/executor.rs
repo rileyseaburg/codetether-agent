@@ -1252,6 +1252,11 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             ),
                         };
 
+                        // Calculate actual retry info - attempt is 0-indexed, so attempt=0 means 1 attempt, attempt=1 means 2 attempts, etc.
+                        let total_attempts = attempt + 1;
+                        let actual_retry_attempts = if total_attempts > 1 { total_attempts - 1 } else { 0 };
+                        let was_retried = attempt > 0;
+
                         // Emit completion events
                         if let Some(ref tx) = event_tx {
                             let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
@@ -1286,11 +1291,16 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error,
                             artifacts: Vec::new(),
-                            retry_attempts: 0,
-                            is_retry: false,
+                            retry_attempts: actual_retry_attempts,
+                            is_retry: was_retried,
                         })
                     }
                     Err(e) => {
+                        // Calculate actual retry info - attempt is 0-indexed
+                        let total_attempts = attempt + 1;
+                        let actual_retry_attempts = if total_attempts > 1 { total_attempts - 1 } else { 0 };
+                        let was_retried = attempt > 0;
+
                         // Emit error events
                         if let Some(ref tx) = event_tx {
                             let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
@@ -1319,8 +1329,8 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: Some(e.to_string()),
                             artifacts: Vec::new(),
-                            retry_attempts: 0,
-                            is_retry: false,
+                            retry_attempts: actual_retry_attempts,
+                            is_retry: was_retried,
                         })
                     }
                 };
