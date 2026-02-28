@@ -13,7 +13,7 @@ use super::{
     },
     orchestrator::Orchestrator,
     result_store::ResultStore,
-    subtask::{SubTask, SubTaskResult, SubTaskStatus},
+    subtask::{SubTask, SubTaskResult, SubTaskStatus, is_transient_error},
 };
 use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};

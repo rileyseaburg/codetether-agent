@@ -184,21 +184,17 @@ pub struct SwarmConfig {
     #[serde(default)]
     pub k8s_subagent_image: Option<String>,
 
-    /// Maximum number of retry attempts for failed sub-agents.
+    /// Maximum number of retry attempts for transient failures (0 = no retries)
     #[serde(default = "default_max_retries")]
     pub max_retries: u32,
 
-    /// Initial delay in milliseconds before first retry.
-    #[serde(default = "default_retry_initial_delay_ms")]
-    pub retry_initial_delay_ms: u64,
+    /// Base delay in milliseconds for the first retry (exponential backoff)
+    #[serde(default = "default_base_delay_ms")]
+    pub base_delay_ms: u64,
 
-    /// Maximum delay in milliseconds between retries.
-    #[serde(default = "default_retry_max_delay_ms")]
-    pub retry_max_delay_ms: u64,
-
-    /// Multiplier for exponential backoff (e.g., 2.0 doubles delay each retry).
-    #[serde(default = "default_retry_backoff_multiplier")]
-    pub retry_backoff_multiplier: f64,
+    /// Maximum delay in milliseconds between retries (caps exponential growth)
+    #[serde(default = "default_max_delay_ms")]
+    pub max_delay_ms: u64,
 }
 
 /// Sub-agent execution mode.
@@ -230,16 +226,12 @@ fn default_max_retries() -> u32 {
     3
 }
 
-fn default_retry_initial_delay_ms() -> u64 {
-    1000
+fn default_base_delay_ms() -> u64 {
+    500
 }
 
-fn default_retry_max_delay_ms() -> u64 {
-    30000
-}
-
-fn default_retry_backoff_multiplier() -> f64 {
-    2.0
+fn default_max_delay_ms() -> u64 {
+    30_000
 }
 
 impl Default for SwarmConfig {
@@ -261,9 +253,8 @@ impl Default for SwarmConfig {
             k8s_pod_budget: 8,
             k8s_subagent_image: None,
             max_retries: 3,
-            retry_initial_delay_ms: 1000,
-            retry_max_delay_ms: 30000,
-            retry_backoff_multiplier: 2.0,
+            base_delay_ms: 500,
+            max_delay_ms: 30_000,
         }
     }
 }
@@ -301,17 +292,11 @@ pub struct SwarmStats {
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
 
-    /// Total number of retry attempts made
-    #[serde(default)]
-    pub total_retries: u32,
+    /// Total number of retry attempts across all sub-agents
+    pub total_retries: usize,
 
-    /// Number of subtasks that succeeded on retry
-    #[serde(default)]
-    pub recovered_on_retry: u32,
-
-    /// Number of subtasks that failed even after all retries
-    #[serde(default)]
-    pub failed_after_retries: u32,
+    /// Number of sub-agents that succeeded after at least one retry
+    pub subagents_recovered: usize,
 }
 
 /// Statistics for a single execution stage
