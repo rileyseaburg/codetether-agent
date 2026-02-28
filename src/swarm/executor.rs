@@ -540,9 +540,9 @@ impl SwarmExecutor {
     pub fn retry_config(&self) -> (u32, u64, u64, f64) {
         (
             self.config.max_retries,
-            self.config.retry_initial_delay_ms,
-            self.config.retry_max_delay_ms,
-            self.config.retry_backoff_multiplier,
+            self.config.base_delay_ms,
+            self.config.max_delay_ms,
+            2.0, // backoff multiplier
         )
     }
 
@@ -957,9 +957,9 @@ impl SwarmExecutor {
 
             // Retry configuration
             let max_retries = self.config.max_retries;
-            let retry_initial_delay_ms = self.config.retry_initial_delay_ms;
-            let retry_max_delay_ms = self.config.retry_max_delay_ms;
-            let retry_backoff_multiplier = self.config.retry_backoff_multiplier;
+            let base_delay_ms = self.config.base_delay_ms;
+            let max_delay_ms = self.config.max_delay_ms;
+            let 2.0 = self.config.2.0;
 
             // Create worktree for this sub-agent before spawning so the collapse controller
             // can monitor live branches while execution is in-flight.
@@ -1177,9 +1177,9 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             if should_retry {
                                 let delay = calculate_backoff_delay(
                                     attempt,
-                                    retry_initial_delay_ms,
-                                    retry_max_delay_ms,
-                                    retry_backoff_multiplier,
+                                    base_delay_ms,
+                                    max_delay_ms,
+                                    2.0,
                                 );
                                 tracing::warn!(
                                     subtask_id = %subtask_id,
@@ -1206,9 +1206,9 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             if should_retry {
                                 let delay = calculate_backoff_delay(
                                     attempt,
-                                    retry_initial_delay_ms,
-                                    retry_max_delay_ms,
-                                    retry_backoff_multiplier,
+                                    base_delay_ms,
+                                    max_delay_ms,
+                                    2.0,
                                 );
                                 tracing::warn!(
                                     subtask_id = %subtask_id,
@@ -1295,8 +1295,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error,
                             artifacts: Vec::new(),
-                            retry_attempts: actual_retry_attempts,
-                            is_retry: was_retried,
+                            retry_count: actual_retry_attempts,
                         })
                     }
                     Err(e) => {
@@ -1337,8 +1336,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: Some(e.to_string()),
                             artifacts: Vec::new(),
-                            retry_attempts: actual_retry_attempts,
-                            is_retry: was_retried,
+                            retry_count: actual_retry_attempts,
                         })
                     }
                 };
@@ -1390,8 +1388,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                     execution_time_ms: 0,
                                     error: Some(e.to_string()),
                                     artifacts: Vec::new(),
-                                    retry_attempts: 0,
-                                    is_retry: false,
+                                    retry_count: 0,
                                 },
                                 wt,
                             ));
@@ -1414,8 +1411,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                     execution_time_ms: 0,
                                     error: Some(format!("Task join error: {e}")),
                                     artifacts: Vec::new(),
-                                    retry_attempts: 0,
-                                    is_retry: false,
+                                    retry_count: 0,
                                 },
                                 wt,
                             ));
@@ -1736,8 +1732,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: 0,
                             error: Some(error_text),
                             artifacts: Vec::new(),
-                            is_retry: false,
-                            retry_attempts: 0,
+                            retry_count: 0,
                         });
                         continue;
                     }
@@ -1818,8 +1813,7 @@ fi",
                         execution_time_ms: 0,
                         error: Some(error_text),
                         artifacts: Vec::new(),
-                        is_retry: false,
-                        retry_attempts: 0,
+                        retry_count: 0,
                     });
                     continue;
                 }
@@ -1895,8 +1889,7 @@ fi",
                         execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
                         error: Some(reason),
                         artifacts: Vec::new(),
-                        is_retry: false,
-                        retry_attempts: 0,
+                        retry_count: 0,
                     });
                     continue;
                 }
@@ -1924,8 +1917,7 @@ fi",
                         execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
                         error: Some("Sub-agent pod disappeared".to_string()),
                         artifacts: Vec::new(),
-                        is_retry: false,
-                        retry_attempts: 0,
+                        retry_count: 0,
                     });
                     continue;
                 };
@@ -1959,8 +1951,7 @@ fi",
                         )
                     },
                     artifacts: Vec::new(),
-                    is_retry: false,
-                    retry_attempts: 0,
+                    retry_count: 0,
                 });
 
                 if let Some(reason) = kill_reasons.get(&subtask_id) {
@@ -2181,8 +2172,7 @@ fi",
                         execution_time_ms: elapsed_ms,
                         error: Some(format!("Cancelled by collapse controller: {}", kill.reason)),
                         artifacts: Vec::new(),
-                        is_retry: false,
-                        retry_attempts: 0,
+                        retry_count: 0,
                     });
                 }
             }
