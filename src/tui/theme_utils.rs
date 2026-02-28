@@ -5,10 +5,10 @@ use crate::tui::theme::{ColorDef, Theme};
 /// Check terminal color support via environment detection
 pub fn detect_color_support() -> ColorSupport {
     // Check COLORTERM for truecolor
-    if let Ok(colorterm) = std::env::var("COLORTERM") {
-        if colorterm == "truecolor" || colorterm == "24bit" {
-            return ColorSupport::TrueColor;
-        }
+    if let Ok(colorterm) = std::env::var("COLORTERM")
+        && (colorterm == "truecolor" || colorterm == "24bit")
+    {
+        return ColorSupport::TrueColor;
     }
 
     // Check TERM for 256 color support
@@ -146,9 +146,9 @@ fn rgb_to_named(r: u8, g: u8, b: u8) -> String {
     let mut min_distance = u32::MAX;
 
     for (name, (cr, cg, cb)) in colors.iter() {
-        let dr = (r as i32 - *cr as i32).unsigned_abs();
-        let dg = (g as i32 - *cg as i32).unsigned_abs();
-        let db = (b as i32 - *cb as i32).unsigned_abs();
+        let dr = (r as i32 - *cr).unsigned_abs();
+        let dg = (g as i32 - *cg).unsigned_abs();
+        let db = (b as i32 - *cb).unsigned_abs();
         let distance = dr * dr + dg * dg + db * db;
 
         if distance < min_distance {

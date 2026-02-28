@@ -121,10 +121,10 @@ fn collect_peers(raw_peers: &[String], self_url: &str) -> Vec<String> {
             continue;
         }
 
-        if let Ok(normalized) = normalize_base_url(raw) {
-            if normalized.trim_end_matches('/') != self_url {
-                dedup.insert(normalized);
-            }
+        if let Ok(normalized) = normalize_base_url(raw)
+            && normalized.trim_end_matches('/') != self_url
+        {
+            dedup.insert(normalized);
         }
     }
 
@@ -187,15 +187,15 @@ async fn discovery_loop(
                     "Discovered A2A peer"
                 );
 
-                if auto_introduce {
-                    if let Err(error) = send_intro(&endpoint, &agent_name, &self_url).await {
-                        tracing::warn!(
-                            agent = %agent_name,
-                            peer = %endpoint,
-                            error = %error,
-                            "Auto-intro message failed"
-                        );
-                    }
+                if auto_introduce
+                    && let Err(error) = send_intro(&endpoint, &agent_name, &self_url).await
+                {
+                    tracing::warn!(
+                        agent = %agent_name,
+                        peer = %endpoint,
+                        error = %error,
+                        "Auto-intro message failed"
+                    );
                 }
             }
         }

@@ -102,10 +102,10 @@ impl LspTransport {
                             if line.is_empty() {
                                 break; // End of headers
                             }
-                            if let Some(stripped) = line.strip_prefix("Content-Length:") {
-                                if let Ok(len) = stripped.trim().parse::<usize>() {
-                                    content_length = Some(len);
-                                }
+                            if let Some(stripped) = line.strip_prefix("Content-Length:")
+                                && let Ok(len) = stripped.trim().parse::<usize>()
+                            {
+                                content_length = Some(len);
                             }
                             // Ignore other headers (Content-Type, etc.)
                         }

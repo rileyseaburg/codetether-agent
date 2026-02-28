@@ -5,7 +5,7 @@
 //! can use all available tools.
 
 use super::{Tool, ToolResult};
-use crate::provider::{ContentPart, ProviderRegistry, Role};
+use crate::provider::{ContentPart, ProviderRegistry, Role, parse_model_string};
 use crate::session::{Session, SessionEvent};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -22,12 +22,35 @@ struct AgentEntry {
     session: Session,
 }
 
+#[derive(Clone)]
+pub struct AgentSnapshot {
+    pub name: String,
+    pub instructions: String,
+    pub session: Session,
+}
+
 lazy_static::lazy_static! {
     static ref AGENT_STORE: RwLock<HashMap<String, AgentEntry>> = RwLock::new(HashMap::new());
 }
 
 /// Lazily loaded provider registry — initialized on first agent interaction.
 static PROVIDER_REGISTRY: OnceCell<Arc<ProviderRegistry>> = OnceCell::const_new();
+
+pub fn list_agent_snapshots() -> Vec<AgentSnapshot> {
+    AGENT_STORE
+        .read()
+        .iter()
+        .map(|(name, entry)| AgentSnapshot {
+            name: name.clone(),
+            instructions: entry.instructions.clone(),
+            session: entry.session.clone(),
+        })
+        .collect()
+}
+
+pub fn remove_agent(name: &str) -> bool {
+    AGENT_STORE.write().remove(name).is_some()
+}
 
 async fn get_registry() -> Result<Arc<ProviderRegistry>> {
     let reg = PROVIDER_REGISTRY
@@ -39,7 +62,81 @@ async fn get_registry() -> Result<Arc<ProviderRegistry>> {
     Ok(reg.clone())
 }
 
+fn truncate_preview(input: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+
+    let mut chars = input.chars();
+    let preview: String = chars.by_ref().take(max_chars).collect();
+    if chars.next().is_some() {
+        format!("{preview}...")
+    } else {
+        preview
+    }
+}
+
+fn normalize_model_ref(model: &str) -> String {
+    model.trim().to_ascii_lowercase()
+}
+
+fn is_subscription_or_included_provider(provider: &str) -> bool {
+    matches!(
+        provider,
+        "openai-codex"
+            | "github-copilot"
+            | "github-copilot-enterprise"
+            | "gemini-web"
+            | "local_cuda"
+    )
+}
+
+fn is_explicit_free_model_id(model_id: &str) -> bool {
+    let lowered = model_id.to_ascii_lowercase();
+    lowered.contains(":free") || lowered.ends_with("-free")
+}
+
+async fn is_free_or_subscription_model(model_ref: &str, registry: &ProviderRegistry) -> bool {
+    let trimmed = model_ref.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let (provider_opt, model_id) = parse_model_string(trimmed);
+    let Some(provider_name) = provider_opt else {
+        return is_explicit_free_model_id(trimmed);
+    };
+
+    let provider_norm = provider_name.to_ascii_lowercase();
+    if is_subscription_or_included_provider(&provider_norm) || is_explicit_free_model_id(model_id) {
+        return true;
+    }
+
+    let Some(provider) = registry.get(provider_name) else {
+        return false;
+    };
+
+    let Ok(models) = provider.list_models().await else {
+        return false;
+    };
+
+    models.into_iter().any(|m| {
+        if !m.id.eq_ignore_ascii_case(model_id) {
+            return false;
+        }
+        let input = m.input_cost_per_million.unwrap_or(1.0);
+        let output = m.output_cost_per_million.unwrap_or(1.0);
+        input <= 0.0 && output <= 0.0
+    })
+}
+
 pub struct AgentTool;
+
+impl Default for AgentTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl AgentTool {
     pub fn new() -> Self {
@@ -58,6 +155,8 @@ struct Params {
     message: Option<String>,
     #[serde(default)]
     model: Option<String>,
+    #[serde(default, rename = "__ct_current_model")]
+    current_model: Option<String>,
 }
 
 #[async_trait]
@@ -100,7 +199,7 @@ impl Tool for AgentTool {
                 },
                 "model": {
                     "type": "string",
-                    "description": "Model to use for the agent (optional, defaults to current model). Format: provider/model"
+                    "description": "Model to use for the agent. Required for spawn. Must be provider/model and must be different from the caller model."
                 }
             },
             "required": ["action"]
@@ -118,6 +217,33 @@ impl Tool for AgentTool {
                 let instructions = p
                     .instructions
                     .ok_or_else(|| anyhow::anyhow!("instructions required for spawn"))?;
+                let requested_model = p.model.ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "model required for spawn. Policy: spawned agents must use a different free/subscription model."
+                    )
+                })?;
+                let current_model = p
+                    .current_model
+                    .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "cannot determine caller model for spawn policy. Set an explicit model before spawning."
+                        )
+                    })?;
+
+                if normalize_model_ref(&requested_model) == normalize_model_ref(&current_model) {
+                    return Ok(ToolResult::error(format!(
+                        "Spawn blocked: requested model '{requested_model}' must be different from caller model '{current_model}'."
+                    )));
+                }
+
+                let registry = get_registry().await?;
+                if !is_free_or_subscription_model(&requested_model, &registry).await {
+                    return Ok(ToolResult::error(format!(
+                        "Spawn blocked: model '{requested_model}' is not free/subscription-eligible. \
+                         Use a free tier (e.g. ':free') or subscription/included provider model."
+                    )));
+                }
 
                 {
                     let store = AGENT_STORE.read();
@@ -133,9 +259,7 @@ impl Tool for AgentTool {
                     .context("Failed to create session for sub-agent")?;
 
                 session.agent = name.clone();
-                if let Some(ref model) = p.model {
-                    session.metadata.model = Some(model.clone());
-                }
+                session.metadata.model = Some(requested_model.clone());
 
                 session.add_message(crate::provider::Message {
                     role: Role::System,
@@ -158,7 +282,7 @@ impl Tool for AgentTool {
 
                 tracing::info!(agent = %name, "Sub-agent spawned");
                 Ok(ToolResult::success(format!(
-                    "Spawned agent @{name}: {instructions}\nSend it a message with action \"message\"."
+                    "Spawned agent @{name} on model '{requested_model}': {instructions}\nSend it a message with action \"message\"."
                 )))
             }
 
@@ -231,11 +355,7 @@ impl Tool for AgentTool {
                                 tool_calls.push(json!({
                                     "tool": tool_name,
                                     "success": success,
-                                    "output_preview": if output.len() > 200 {
-                                        format!("{}...", &output[..200])
-                                    } else {
-                                        output
-                                    }
+                                    "output_preview": truncate_preview(&output, 200)
                                 }));
                             }
                             SessionEvent::Error(err) => {
@@ -364,5 +484,57 @@ impl Tool for AgentTool {
                 p.action
             ))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        is_explicit_free_model_id, is_free_or_subscription_model, normalize_model_ref,
+        truncate_preview,
+    };
+    use crate::provider::ProviderRegistry;
+
+    #[test]
+    fn truncate_preview_respects_char_boundaries() {
+        let input = "a".repeat(198) + "───";
+        let output = truncate_preview(&input, 200);
+        assert!(output.ends_with("..."));
+        assert!(output.starts_with(&"a".repeat(198)));
+    }
+
+    #[test]
+    fn truncate_preview_returns_original_when_short_enough() {
+        let input = "hello world";
+        assert_eq!(truncate_preview(input, 200), input);
+    }
+
+    #[test]
+    fn normalize_model_ref_trims_and_lowercases() {
+        assert_eq!(
+            normalize_model_ref("  OpenAI-Codex/GPT-5.1-Codex  "),
+            "openai-codex/gpt-5.1-codex"
+        );
+    }
+
+    #[test]
+    fn free_model_id_detection_handles_openrouter_suffix() {
+        assert!(is_explicit_free_model_id("z-ai/glm-5:free"));
+        assert!(is_explicit_free_model_id("kimi-k2-free"));
+        assert!(!is_explicit_free_model_id("gpt-4.1"));
+    }
+
+    #[tokio::test]
+    async fn free_or_subscription_model_accepts_known_included_provider() {
+        let registry = ProviderRegistry::new();
+        assert!(is_free_or_subscription_model("openai-codex/gpt-5-mini", &registry).await);
+    }
+
+    #[tokio::test]
+    async fn free_or_subscription_model_rejects_unknown_paid_model_without_metadata() {
+        let registry = ProviderRegistry::new();
+        assert!(
+            !is_free_or_subscription_model("anthropic/claude-sonnet-4-20250514", &registry).await
+        );
     }
 }

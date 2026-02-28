@@ -12,7 +12,7 @@ use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use crate::tui::swarm_view::SwarmEvent;
 use crate::worktree::WorktreeManager;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -1155,7 +1155,7 @@ impl RalphLoop {
     fn build_story_prompt(
         story: &UserStory,
         prd_info: &(String, String),
-        working_dir: &PathBuf,
+        working_dir: &Path,
     ) -> String {
         let wd = working_dir.display();
         format!(
@@ -1405,7 +1405,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         registry: &Arc<ProviderRegistry>,
         model: &str,
         prompt: &str,
-        working_dir: &PathBuf,
+        working_dir: &Path,
         ralph_tx: Option<mpsc::Sender<RalphEvent>>,
         story_id: String,
         bus: Option<Arc<AgentBus>>,
@@ -1504,15 +1504,15 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
                 // Forward tool call events to Ralph UI while agent works
                 while !join.is_finished() {
                     while let Ok(event) = event_rx.try_recv() {
-                        if let Some(ref tx) = ralph_tx {
-                            if let SessionEvent::ToolCallStart { ref name, .. } = event {
-                                let _ = tx
-                                    .send(RalphEvent::StoryToolCall {
-                                        story_id: story_id.clone(),
-                                        tool_name: format!("@{to}: {name}"),
-                                    })
-                                    .await;
-                            }
+                        if let Some(ref tx) = ralph_tx
+                            && let SessionEvent::ToolCallStart { ref name, .. } = event
+                        {
+                            let _ = tx
+                                .send(RalphEvent::StoryToolCall {
+                                    story_id: story_id.clone(),
+                                    tool_name: format!("@{to}: {name}"),
+                                })
+                                .await;
                         }
                     }
                     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1576,7 +1576,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
     async fn resolve_conflicts_static(
         provider: &Arc<dyn Provider>,
         model: &str,
-        working_dir: &PathBuf,
+        working_dir: &Path,
         story: &UserStory,
         conflicts: &[String],
         conflict_diffs: &[(String, String)],
@@ -1737,14 +1737,14 @@ Working directory: {}
     /// Returns the original directory if no Cargo.toml is found.
     ///
     /// This handles monorepo setups where the worktree root isn't the crate root.
-    fn find_cargo_root(dir: &PathBuf) -> PathBuf {
-        fn has_cargo_toml(path: &PathBuf) -> bool {
+    fn find_cargo_root(dir: &Path) -> PathBuf {
+        fn has_cargo_toml(path: &Path) -> bool {
             path.join("Cargo.toml").exists()
         }
 
         // Check current directory first
         if has_cargo_toml(dir) {
-            return dir.clone();
+            return dir.to_path_buf();
         }
 
         // Walk down into subdirectories (limited depth)
@@ -1787,13 +1787,13 @@ Working directory: {}
             dir = %dir.display(),
             "No Cargo.toml found, using worktree root for cargo commands"
         );
-        dir.clone()
+        dir.to_path_buf()
     }
 
     /// Run quality gates in a specific directory with event emission
     async fn run_quality_gates_in_dir_with_events(
         &self,
-        dir: &PathBuf,
+        dir: &Path,
         story_id: &str,
     ) -> anyhow::Result<bool> {
         // Find the Cargo root (where Cargo.toml lives)

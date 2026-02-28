@@ -162,6 +162,7 @@ pub struct DidOpenTextDocumentParams {
 /// DidCloseTextDocument parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct DidCloseTextDocumentParams {
     pub text_document: TextDocumentIdentifier,
 }
@@ -169,6 +170,7 @@ pub struct DidCloseTextDocumentParams {
 /// DidChangeTextDocument parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct DidChangeTextDocumentParams {
     pub text_document: VersionedTextDocumentIdentifier,
     pub content_changes: Vec<TextDocumentContentChangeEvent>,
@@ -176,6 +178,7 @@ pub struct DidChangeTextDocumentParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct VersionedTextDocumentIdentifier {
     pub uri: String,
     pub version: i32,
@@ -183,6 +186,7 @@ pub struct VersionedTextDocumentIdentifier {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct TextDocumentContentChangeEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub range: Option<Range>,

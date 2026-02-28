@@ -510,7 +510,7 @@ fn crash_upload_state_path(settings: &CrashReporterSettings) -> PathBuf {
         .report_dir
         .parent()
         .map(Path::to_path_buf)
-        .unwrap_or_else(|| codetether_data_dir());
+        .unwrap_or_else(codetether_data_dir);
     data_dir.join("telemetry").join(CRASH_UPLOAD_STATE_FILE)
 }
 

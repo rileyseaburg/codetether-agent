@@ -117,10 +117,10 @@ impl A2AClient {
     pub async fn call_rpc(&self, request: JsonRpcRequest) -> Result<JsonRpcResponse> {
         let mut req = self.client.post(&self.base_url);
 
-        if let Some(ref auth) = self.auth {
-            if let Some(ref creds) = auth.credentials {
-                req = req.bearer_auth(creds);
-            }
+        if let Some(ref auth) = self.auth
+            && let Some(ref creds) = auth.credentials
+        {
+            req = req.bearer_auth(creds);
         }
 
         let res = req

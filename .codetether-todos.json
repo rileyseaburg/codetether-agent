@@ -44,7 +44,7 @@
   {
     "id": "todo_1770153919560",
     "content": "Fix field `tx` in mcp/transport.rs - add logging or usage",
-    "status": "pending",
+    "status": "done",
     "priority": "high",
     "created_at": "2026-02-03T16:51:44.672607598+00:00"
   },
@@ -58,7 +58,7 @@
   {
     "id": "todo_1770153919562",
     "content": "Fix StepFun provider fields (id, index, role, code) - add to logging",
-    "status": "pending",
+    "status": "done",
     "priority": "high",
     "created_at": "2026-02-03T16:51:44.673428595+00:00"
   },
@@ -338,7 +338,7 @@
   {
     "id": "todo_1770543799861",
     "content": "Enhancement: Add sub-agent retry with exponential backoff on failure",
-    "status": "pending",
+    "status": "done",
     "priority": "high",
     "created_at": "2026-02-08T09:43:19.861901308+00:00"
   },
@@ -397,5 +397,12 @@
     "status": "pending",
     "priority": "high",
     "created_at": "2026-02-13T19:58:09.525774915+00:00"
+  },
+  {
+    "id": "todo_1772242471658",
+    "content": "Fixed clippy PathBuf warnings in ralph_loop.rs - changed &PathBuf to &Path in 5 function signatures",
+    "status": "done",
+    "priority": "medium",
+    "created_at": "2026-02-28T01:34:31.658625601+00:00"
   }
 ]

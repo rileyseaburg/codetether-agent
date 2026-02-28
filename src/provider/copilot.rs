@@ -209,10 +209,10 @@ impl CopilotProvider {
                     return false;
                 }
                 // Skip models with a disabled policy state
-                if let Some(ref policy) = model.policy {
-                    if policy.state.as_deref() == Some("disabled") {
-                        return false;
-                    }
+                if let Some(ref policy) = model.policy
+                    && policy.state.as_deref() == Some("disabled")
+                {
+                    return false;
                 }
                 true
             })
@@ -623,10 +623,10 @@ impl Provider for CopilotProvider {
         let mut content = Vec::new();
         let mut has_tool_calls = false;
 
-        if let Some(text) = &choice.message.content {
-            if !text.is_empty() {
-                content.push(ContentPart::Text { text: text.clone() });
-            }
+        if let Some(text) = &choice.message.content
+            && !text.is_empty()
+        {
+            content.push(ContentPart::Text { text: text.clone() });
         }
 
         if let Some(tool_calls) = &choice.message.tool_calls {

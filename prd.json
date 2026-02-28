@@ -15,6 +15,7 @@
         "Track retry attempts in SubTaskResult",
         "Update SwarmStats to include retry metrics"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 1,
       "depends_on": [],
@@ -31,6 +32,7 @@
         "Results are typed and deserialized safely",
         "Integration with dependency system - auto-trigger when dependency completes"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 1,
       "depends_on": [],
@@ -47,6 +49,7 @@
         "Expose rate limit status in SwarmStats",
         "Handle 429 responses with exponential backoff"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 2,
       "depends_on": [],
@@ -64,6 +67,7 @@
         "Privacy-preserving options (no content logging)",
         "Telemetry data persisted to disk for analysis"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 1,
       "depends_on": [],
@@ -80,6 +84,7 @@
         "Fix rlm/repl.rs unused variant",
         "All dead_code warnings resolved or justified"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 2,
       "depends_on": [],
@@ -96,6 +101,7 @@
         "Fix large_enum_variant warning (swarm/orchestrator.rs)",
         "All clippy warnings resolved"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 2,
       "depends_on": [],
@@ -112,6 +118,7 @@
         "Validate subtask dependencies for cycles",
         "Return detailed validation report"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 3,
       "depends_on": [],
@@ -128,6 +135,7 @@
         "Cache hit/miss metrics in SwarmStats",
         "Option to bypass cache per execution"
       ],
+      "verification_steps": [],
       "passes": false,
       "priority": 3,
       "depends_on": [],

@@ -73,7 +73,7 @@ impl ProtocolRelayRuntime {
     ///
     /// Publishes to both `agent.{to}` and `relay.{relay_id}` so downstream
     /// observers (TUI bus log, metrics) can trace the conversation flow.
-    pub fn send_handoff(&self, from: &str, to: &str, text: &str) {
+    pub fn send_handoff(&self, from: &str, to: &str, text: &str) -> String {
         let payload = BusMessage::AgentMessage {
             from: from.to_string(),
             to: to.to_string(),
@@ -82,11 +82,20 @@ impl ProtocolRelayRuntime {
             }],
         };
 
-        let correlation = Some(format!("{}:{}", self.relay_id, Uuid::new_v4()));
+        let correlation = format!("{}:{}", self.relay_id, Uuid::new_v4());
         let handle = self.bus.handle(from.to_string());
 
-        handle.send_with_correlation(format!("agent.{to}"), payload.clone(), correlation.clone());
-        handle.send_with_correlation(format!("relay.{}", self.relay_id), payload, correlation);
+        handle.send_with_correlation(
+            format!("agent.{to}"),
+            payload.clone(),
+            Some(correlation.clone()),
+        );
+        handle.send_with_correlation(
+            format!("relay.{}", self.relay_id),
+            payload,
+            Some(correlation.clone()),
+        );
+        correlation
     }
 }
 
@@ -128,7 +137,8 @@ mod tests {
         let relay = ProtocolRelayRuntime::with_relay_id(bus.clone(), "relay-test");
         let mut observer = bus.handle("observer");
 
-        relay.send_handoff("auto-planner", "auto-coder", "handoff payload");
+        let correlation = relay.send_handoff("auto-planner", "auto-coder", "handoff payload");
+        assert!(correlation.starts_with("relay-test:"));
 
         let first = timeout(Duration::from_millis(200), observer.recv())
             .await

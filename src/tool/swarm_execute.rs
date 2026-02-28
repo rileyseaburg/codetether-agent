@@ -242,12 +242,25 @@ impl Tool for SwarmExecuteTool {
         let (provider_name, model_name) = if let Some(ref model_str) = model {
             let (prov, mod_id) = parse_model_string(model_str);
             let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
-            (
-                prov.filter(|p| provider_list.contains(p))
-                    .unwrap_or(provider_list[0])
-                    .to_string(),
-                mod_id.to_string(),
-            )
+            let provider_name = if let Some(explicit_provider) = prov {
+                if provider_list.contains(&explicit_provider) {
+                    explicit_provider.to_string()
+                } else {
+                    return Ok(ToolResult::error(format!(
+                        "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
+                        explicit_provider,
+                        provider_list.join(", ")
+                    )));
+                }
+            } else {
+                provider_list[0].to_string()
+            };
+            let model_name = if mod_id.trim().is_empty() {
+                "glm-5".to_string()
+            } else {
+                mod_id.to_string()
+            };
+            (provider_name, model_name)
         } else {
             // Default to GLM-5 via Z.AI for swarm
             let provider = if provider_list.contains(&"zai") {

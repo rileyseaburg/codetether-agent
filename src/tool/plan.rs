@@ -184,13 +184,14 @@ impl Tool for PlanExitTool {
                 .ok_or_else(|| anyhow::anyhow!("No active plan"))?;
 
             // Mark step complete if specified
-            if let Some(step_num) = p.step_complete {
-                if step_num > 0 && step_num <= plan.steps.len() {
-                    let step = &mut plan.steps[step_num - 1];
-                    step.completed = true;
-                    step.notes = p.notes.clone();
-                    plan.current_step = step_num;
-                }
+            if let Some(step_num) = p.step_complete
+                && step_num > 0
+                && step_num <= plan.steps.len()
+            {
+                let step = &mut plan.steps[step_num - 1];
+                step.completed = true;
+                step.notes = p.notes.clone();
+                plan.current_step = step_num;
             }
 
             // Build status report

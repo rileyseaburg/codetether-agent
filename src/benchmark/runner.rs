@@ -58,10 +58,10 @@ impl BenchmarkRunner {
                 let tier = detect_tier(&filename);
 
                 // Filter by tier if specified
-                if let Some(filter_tier) = self.config.tier {
-                    if tier != filter_tier {
-                        continue;
-                    }
+                if let Some(filter_tier) = self.config.tier
+                    && tier != filter_tier
+                {
+                    continue;
                 }
 
                 prds.push((path, tier));
@@ -388,14 +388,14 @@ impl BenchmarkRunner {
 
             for (prd_path, tier) in &prds {
                 // Check cost ceiling before starting
-                if let Some(ceiling) = self.config.cost_ceiling_usd {
-                    if total_cost >= ceiling {
-                        warn!(
-                            "Cost ceiling ${:.2} reached — skipping remaining PRDs for model {}",
-                            ceiling, model_str
-                        );
-                        break;
-                    }
+                if let Some(ceiling) = self.config.cost_ceiling_usd
+                    && total_cost >= ceiling
+                {
+                    warn!(
+                        "Cost ceiling ${:.2} reached — skipping remaining PRDs for model {}",
+                        ceiling, model_str
+                    );
+                    break;
                 }
 
                 let prd_id = prd_path

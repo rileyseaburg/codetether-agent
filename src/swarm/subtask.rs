@@ -315,4 +315,12 @@ pub struct SubTaskResult {
 
     /// Artifacts produced
     pub artifacts: Vec<String>,
+
+    /// Number of retry attempts made (0 = first attempt, 1+ = retries)
+    #[serde(default)]
+    pub retry_attempts: u32,
+
+    /// Whether this result is from a retried execution
+    #[serde(default)]
+    pub is_retry: bool,
 }

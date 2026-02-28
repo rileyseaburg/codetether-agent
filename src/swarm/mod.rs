@@ -183,13 +183,31 @@ pub struct SwarmConfig {
     /// Optional container image override for Kubernetes sub-agent pods.
     #[serde(default)]
     pub k8s_subagent_image: Option<String>,
+
+    /// Maximum number of retry attempts for failed sub-agents.
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u32,
+
+    /// Initial delay in milliseconds before first retry.
+    #[serde(default = "default_retry_initial_delay_ms")]
+    pub retry_initial_delay_ms: u64,
+
+    /// Maximum delay in milliseconds between retries.
+    #[serde(default = "default_retry_max_delay_ms")]
+    pub retry_max_delay_ms: u64,
+
+    /// Multiplier for exponential backoff (e.g., 2.0 doubles delay each retry).
+    #[serde(default = "default_retry_backoff_multiplier")]
+    pub retry_backoff_multiplier: f64,
 }
 
 /// Sub-agent execution mode.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ExecutionMode {
     /// Run sub-agents as local async tasks in the current process.
+    #[default]
     LocalThread,
     /// Run sub-agents as isolated Kubernetes pods.
     KubernetesPod,
@@ -204,14 +222,24 @@ impl ExecutionMode {
     }
 }
 
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        Self::LocalThread
-    }
-}
-
 fn default_k8s_pod_budget() -> usize {
     8
+}
+
+fn default_max_retries() -> u32 {
+    3
+}
+
+fn default_retry_initial_delay_ms() -> u64 {
+    1000
+}
+
+fn default_retry_max_delay_ms() -> u64 {
+    30000
+}
+
+fn default_retry_backoff_multiplier() -> f64 {
+    2.0
 }
 
 impl Default for SwarmConfig {
@@ -232,6 +260,10 @@ impl Default for SwarmConfig {
             execution_mode: ExecutionMode::LocalThread,
             k8s_pod_budget: 8,
             k8s_subagent_image: None,
+            max_retries: 3,
+            retry_initial_delay_ms: 1000,
+            retry_max_delay_ms: 30000,
+            retry_backoff_multiplier: 2.0,
         }
     }
 }
@@ -268,6 +300,18 @@ pub struct SwarmStats {
 
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
+
+    /// Total number of retry attempts made
+    #[serde(default)]
+    pub total_retries: u32,
+
+    /// Number of subtasks that succeeded on retry
+    #[serde(default)]
+    pub recovered_on_retry: u32,
+
+    /// Number of subtasks that failed even after all retries
+    #[serde(default)]
+    pub failed_after_retries: u32,
 }
 
 /// Statistics for a single execution stage
@@ -307,8 +351,10 @@ impl SwarmStats {
 /// Decomposition strategy for breaking down tasks
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum DecompositionStrategy {
     /// Let the AI decide how to decompose
+    #[default]
     Automatic,
 
     /// Decompose by domain/specialty
@@ -322,12 +368,6 @@ pub enum DecompositionStrategy {
 
     /// Single agent (no decomposition)
     None,
-}
-
-impl Default for DecompositionStrategy {
-    fn default() -> Self {
-        Self::Automatic
-    }
 }
 
 /// Result of swarm execution

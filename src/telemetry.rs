@@ -505,8 +505,6 @@ impl CostEstimate {
     pub fn format_smart(&self) -> String {
         if self.total_cost < 0.01 {
             format!("${:.4}", self.total_cost)
-        } else if self.total_cost < 1.0 {
-            format!("${:.2}", self.total_cost)
         } else {
             format!("${:.2}", self.total_cost)
         }
@@ -571,7 +569,7 @@ impl ProviderMetrics {
         }
 
         let mut snapshots = Vec::new();
-        for (provider, mut reqs) in by_provider {
+        for (provider, reqs) in by_provider {
             if reqs.is_empty() {
                 continue;
             }

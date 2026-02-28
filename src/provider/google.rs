@@ -435,10 +435,10 @@ impl Provider for GoogleProvider {
         let mut content_parts = Vec::new();
         let mut has_tool_calls = false;
 
-        if let Some(text) = choice.message.content {
-            if !text.is_empty() {
-                content_parts.push(ContentPart::Text { text });
-            }
+        if let Some(text) = choice.message.content
+            && !text.is_empty()
+        {
+            content_parts.push(ContentPart::Text { text });
         }
 
         if let Some(tool_calls) = choice.message.tool_calls {

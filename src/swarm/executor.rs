@@ -179,10 +179,10 @@ fn summarize_removed_messages(messages: &[Message]) -> String {
 
     for msg in messages {
         for part in &msg.content {
-            if let ContentPart::ToolCall { name, .. } = part {
-                if !tool_calls.contains(name) {
-                    tool_calls.push(name.clone());
-                }
+            if let ContentPart::ToolCall { name, .. } = part
+                && !tool_calls.contains(name)
+            {
+                tool_calls.push(name.clone());
             }
         }
     }
@@ -295,6 +295,20 @@ pub enum AgentLoopExit {
     TimedOut,
 }
 
+/// Calculate the delay for exponential backoff
+///
+/// Uses the formula: min(initial_delay * multiplier^attempt, max_delay)
+fn calculate_backoff_delay(
+    attempt: u32,
+    initial_delay_ms: u64,
+    max_delay_ms: u64,
+    multiplier: f64,
+) -> Duration {
+    let delay_ms =
+        (initial_delay_ms as f64 * multiplier.powi(attempt as i32)).min(max_delay_ms as f64);
+    Duration::from_millis(delay_ms as u64)
+}
+
 fn compute_resource_health(pod_state: Option<&SubagentPodState>) -> (f32, u32) {
     let Some(pod_state) = pod_state else {
         return (0.2, 1);
@@ -373,10 +387,11 @@ async fn process_large_result_with_rlm(
 
     match executor.analyze(&query).await {
         Ok(result) => {
+            let bounded_answer = truncate_single_result(&result.answer, SIMPLE_TRUNCATE_CHARS * 2);
             tracing::info!(
                 tool = %tool_name,
                 original_len = content.len(),
-                summary_len = result.answer.len(),
+                summary_len = bounded_answer.len(),
                 iterations = result.iterations,
                 "RLM summarized large result"
             );
@@ -385,8 +400,8 @@ async fn process_large_result_with_rlm(
                 "[RLM Summary of {} output ({} chars → {} chars)]\n\n{}",
                 tool_name,
                 content.len(),
-                result.answer.len(),
-                result.answer
+                bounded_answer.len(),
+                bounded_answer
             )
         }
         Err(e) => {
@@ -521,6 +536,21 @@ impl SwarmExecutor {
         Ok(())
     }
 
+    /// Get the retry configuration
+    pub fn retry_config(&self) -> (u32, u64, u64, f64) {
+        (
+            self.config.max_retries,
+            self.config.retry_initial_delay_ms,
+            self.config.retry_max_delay_ms,
+            self.config.retry_backoff_multiplier,
+        )
+    }
+
+    /// Check if retries are enabled
+    pub fn retries_enabled(&self) -> bool {
+        self.config.max_retries > 0
+    }
+
     /// Send an event to the TUI if channel is connected (non-blocking)
     fn try_send_event(&self, event: SwarmEvent) {
         // Also emit on the agent bus if connected
@@ -621,7 +651,8 @@ impl SwarmExecutor {
         self.telemetry
             .lock()
             .await
-            .start_swarm(&swarm_id, subtasks.len(), &strategy_str);
+            .start_swarm(&swarm_id, subtasks.len(), &strategy_str)
+            .await;
 
         // Shared state for completed results
         let completed_results: Arc<RwLock<HashMap<String, String>>> =
@@ -724,7 +755,8 @@ impl SwarmExecutor {
         self.telemetry
             .lock()
             .await
-            .record_swarm_latency("total_execution", start_time.elapsed());
+            .record_swarm_latency("total_execution", start_time.elapsed())
+            .await;
 
         // Calculate final stats
         let stats = orchestrator.stats_mut();
@@ -737,7 +769,7 @@ impl SwarmExecutor {
         let success = all_results.iter().all(|r| r.success);
 
         // Complete telemetry collection
-        let telemetry_metrics = self.telemetry.lock().await.complete_swarm(success).await;
+        let _telemetry_metrics = self.telemetry.lock().await.complete_swarm(success).await;
         let result = self.aggregate_results(&all_results).await?;
 
         tracing::info!(
@@ -923,6 +955,12 @@ impl SwarmExecutor {
             let max_steps = self.config.max_steps_per_subagent;
             let timeout_secs = self.config.subagent_timeout_secs;
 
+            // Retry configuration
+            let max_retries = self.config.max_retries;
+            let retry_initial_delay_ms = self.config.retry_initial_delay_ms;
+            let retry_max_delay_ms = self.config.retry_max_delay_ms;
+            let retry_backoff_multiplier = self.config.retry_backoff_multiplier;
+
             // Create worktree for this sub-agent before spawning so the collapse controller
             // can monitor live branches while execution is in-flight.
             let worktree_info = if let Some(ref mgr) = worktree_manager {
@@ -1029,6 +1067,12 @@ Available tools:
 - prd: Generate structured PRD for complex tasks
 - ralph: Run autonomous agent loop on a PRD
 - swarm_share: Share results with other sub-agents running in parallel
+- agent: Spawn specialized helper agents when needed (smart delegation)
+
+SMART SPAWN POLICY (mandatory):
+- Any spawned agent MUST use a different model than your current model ('{}')
+- Spawned model MUST be free/subscription-eligible (e.g. '*:free', openai-codex/*, github-copilot/*, gemini-web/*, local_cuda/*)
+- Include `model` when calling agent.spawn
 
 SHARING RESULTS:
 Use swarm_share to collaborate with other sub-agents:
@@ -1051,6 +1095,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     subtask_id,
                     working_dir,
                     working_dir,
+                    model,
                     prd_filename,
                     prd_filename,
                     prd_filename
@@ -1090,21 +1135,106 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                 )));
                 let registry = Arc::new(agent_registry);
 
-                let result = run_agent_loop(
-                    provider,
-                    &model,
-                    &system_prompt,
-                    &user_prompt,
-                    tools,
-                    registry,
-                    max_steps,
-                    timeout_secs,
-                    event_tx.clone(),
-                    subtask_id.clone(),
-                    None,
-                    working_dir_path.clone(),
-                )
-                .await;
+                // Execute with exponential backoff retry
+                let mut attempt = 0u32;
+                let mut result: Result<(String, usize, usize, AgentLoopExit), anyhow::Error> =
+                    Err(anyhow::anyhow!("Not executed"));
+
+                while attempt <= max_retries {
+                    let _attempt_start = Instant::now();
+
+                    // Run the agent loop
+                    result = run_agent_loop(
+                        Arc::clone(&provider),
+                        &model,
+                        &system_prompt,
+                        &user_prompt,
+                        tools.clone(),
+                        Arc::clone(&registry),
+                        max_steps,
+                        timeout_secs,
+                        event_tx.clone(),
+                        subtask_id.clone(),
+                        None,
+                        working_dir_path.clone(),
+                    )
+                    .await;
+
+                    // Check if the attempt succeeded
+                    match &result {
+                        Ok((_, _, _, exit_reason)) => {
+                            if *exit_reason == AgentLoopExit::Completed {
+                                // Success - no need to retry
+                                tracing::info!(
+                                    subtask_id = %subtask_id,
+                                    attempt = attempt + 1,
+                                    "Sub-agent completed successfully on first attempt"
+                                );
+                                break;
+                            }
+                            // Failed but not an error - check if we should retry
+                            let should_retry = attempt < max_retries;
+                            if should_retry {
+                                let delay = calculate_backoff_delay(
+                                    attempt,
+                                    retry_initial_delay_ms,
+                                    retry_max_delay_ms,
+                                    retry_backoff_multiplier,
+                                );
+                                tracing::warn!(
+                                    subtask_id = %subtask_id,
+                                    attempt = attempt + 1,
+                                    max_retries = max_retries,
+                                    exit_reason = ?exit_reason,
+                                    delay_ms = delay.as_millis(),
+                                    "Sub-agent did not complete, retrying with backoff"
+                                );
+                                tokio::time::sleep(delay).await;
+                            } else {
+                                tracing::warn!(
+                                    subtask_id = %subtask_id,
+                                    attempt = attempt + 1,
+                                    max_retries = max_retries,
+                                    exit_reason = ?exit_reason,
+                                    "Sub-agent did not complete, retries exhausted"
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            // Error occurred - retry with backoff if we have retries left
+                            let should_retry = attempt < max_retries;
+                            if should_retry {
+                                let delay = calculate_backoff_delay(
+                                    attempt,
+                                    retry_initial_delay_ms,
+                                    retry_max_delay_ms,
+                                    retry_backoff_multiplier,
+                                );
+                                tracing::warn!(
+                                    subtask_id = %subtask_id,
+                                    attempt = attempt + 1,
+                                    max_retries = max_retries,
+                                    error = %e,
+                                    delay_ms = delay.as_millis(),
+                                    "Sub-agent error, retrying with backoff"
+                                );
+                                tokio::time::sleep(delay).await;
+                            } else {
+                                tracing::error!(
+                                    subtask_id = %subtask_id,
+                                    attempt = attempt + 1,
+                                    max_retries = max_retries,
+                                    error = %e,
+                                    "Sub-agent error, retries exhausted"
+                                );
+                            }
+                        }
+                    }
+
+                    attempt += 1;
+                }
+
+                let result = result;
 
                 let task_result = match result {
                     Ok((output, steps, tool_calls, exit_reason)) => {
@@ -1121,6 +1251,11 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                 Some(format!("Sub-agent timed out after {timeout_secs}s")),
                             ),
                         };
+
+                        // Calculate actual retry info - attempt is 0-indexed, so attempt=0 means 1 attempt, attempt=1 means 2 attempts, etc.
+                        let total_attempts = attempt + 1;
+                        let actual_retry_attempts = if total_attempts > 1 { total_attempts - 1 } else { 0 };
+                        let was_retried = attempt > 0;
 
                         // Emit completion events
                         if let Some(ref tx) = event_tx {
@@ -1156,9 +1291,16 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error,
                             artifacts: Vec::new(),
+                            retry_attempts: actual_retry_attempts,
+                            is_retry: was_retried,
                         })
                     }
                     Err(e) => {
+                        // Calculate actual retry info - attempt is 0-indexed
+                        let total_attempts = attempt + 1;
+                        let actual_retry_attempts = if total_attempts > 1 { total_attempts - 1 } else { 0 };
+                        let was_retried = attempt > 0;
+
                         // Emit error events
                         if let Some(ref tx) = event_tx {
                             let _ = tx.try_send(SwarmEvent::SubTaskUpdate {
@@ -1187,6 +1329,8 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: start.elapsed().as_millis() as u64,
                             error: Some(e.to_string()),
                             artifacts: Vec::new(),
+                            retry_attempts: actual_retry_attempts,
+                            is_retry: was_retried,
                         })
                     }
                 };
@@ -1238,6 +1382,8 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                     execution_time_ms: 0,
                                     error: Some(e.to_string()),
                                     artifacts: Vec::new(),
+                                    retry_attempts: 0,
+                                    is_retry: false,
                                 },
                                 wt,
                             ));
@@ -1260,6 +1406,8 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                                     execution_time_ms: 0,
                                     error: Some(format!("Task join error: {e}")),
                                     artifacts: Vec::new(),
+                                    retry_attempts: 0,
+                                    is_retry: false,
                                 },
                                 wt,
                             ));
@@ -1389,10 +1537,10 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     result.result.push_str(&format!(
                         "\n\n--- Collapse Controller ---\nBranch terminated: {reason}"
                     ));
-                    if let Some(ref mgr) = worktree_manager {
-                        if let Err(e) = mgr.cleanup(&wt.name).await {
-                            tracing::warn!(error = %e, "Failed to cleanup killed worktree");
-                        }
+                    if let Some(ref mgr) = worktree_manager
+                        && let Err(e) = mgr.cleanup(&wt.name).await
+                    {
+                        tracing::warn!(error = %e, "Failed to cleanup killed worktree");
                     }
                 } else if result.success && auto_merge {
                     if let Some(ref mgr) = worktree_manager {
@@ -1452,18 +1600,18 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
             }
 
             // Cache successful result
-            if result.success {
-                if let Some(ref cache_arc) = self.cache {
-                    let mut cache_guard: tokio::sync::MutexGuard<'_, SwarmCache> =
-                        cache_arc.lock().await;
-                    let cache_subtask = SubTask::new(&result.subtask_id, &result.result);
-                    if let Err(e) = cache_guard.put(&cache_subtask, &result).await {
-                        tracing::warn!(
-                            subtask_id = %result.subtask_id,
-                            error = %e,
-                            "Failed to cache subtask result"
-                        );
-                    }
+            if result.success
+                && let Some(ref cache_arc) = self.cache
+            {
+                let mut cache_guard: tokio::sync::MutexGuard<'_, SwarmCache> =
+                    cache_arc.lock().await;
+                let cache_subtask = SubTask::new(&result.subtask_id, &result.result);
+                if let Err(e) = cache_guard.put(&cache_subtask, &result).await {
+                    tracing::warn!(
+                        subtask_id = %result.subtask_id,
+                        error = %e,
+                        "Failed to cache subtask result"
+                    );
                 }
             }
 
@@ -1580,6 +1728,8 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                             execution_time_ms: 0,
                             error: Some(error_text),
                             artifacts: Vec::new(),
+                            is_retry: false,
+                            retry_attempts: 0,
                         });
                         continue;
                     }
@@ -1660,6 +1810,8 @@ fi",
                         execution_time_ms: 0,
                         error: Some(error_text),
                         artifacts: Vec::new(),
+                        is_retry: false,
+                        retry_attempts: 0,
                     });
                     continue;
                 }
@@ -1735,6 +1887,8 @@ fi",
                         execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
                         error: Some(reason),
                         artifacts: Vec::new(),
+                        is_retry: false,
+                        retry_attempts: 0,
                     });
                     continue;
                 }
@@ -1762,6 +1916,8 @@ fi",
                         execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
                         error: Some("Sub-agent pod disappeared".to_string()),
                         artifacts: Vec::new(),
+                        is_retry: false,
+                        retry_attempts: 0,
                     });
                     continue;
                 };
@@ -1795,6 +1951,8 @@ fi",
                         )
                     },
                     artifacts: Vec::new(),
+                    is_retry: false,
+                    retry_attempts: 0,
                 });
 
                 if let Some(reason) = kill_reasons.get(&subtask_id) {
@@ -1823,12 +1981,12 @@ fi",
                         .await
                         .insert(result.subtask_id.clone(), result.result.clone());
                 }
-                if result.success {
-                    if let Some(ref cache_arc) = self.cache {
-                        let mut cache_guard = cache_arc.lock().await;
-                        let cache_subtask = SubTask::new(&result.subtask_id, &result.result);
-                        let _ = cache_guard.put(&cache_subtask, &result).await;
-                    }
+                if result.success
+                    && let Some(ref cache_arc) = self.cache
+                {
+                    let mut cache_guard = cache_arc.lock().await;
+                    let cache_subtask = SubTask::new(&result.subtask_id, &result.result);
+                    let _ = cache_guard.put(&cache_subtask, &result).await;
                 }
 
                 self.try_send_event(SwarmEvent::SubTaskUpdate {
@@ -1883,7 +2041,7 @@ fi",
                     if let Some(probe) = latest_probe_from_logs(&logs) {
                         let compile_ok = pod_state
                             .as_ref()
-                            .map(|p| probe.compile_ok && p.phase.to_ascii_lowercase() != "failed")
+                            .map(|p| probe.compile_ok && !p.phase.eq_ignore_ascii_case("failed"))
                             .unwrap_or(probe.compile_ok);
                         observations.push(BranchObservation {
                             subtask_id: subtask_id.clone(),
@@ -1898,7 +2056,7 @@ fi",
                     }
                     let compile_ok = pod_state
                         .as_ref()
-                        .map(|p| p.phase.to_ascii_lowercase() != "failed")
+                        .map(|p| !p.phase.eq_ignore_ascii_case("failed"))
                         .unwrap_or(false);
                     observations.push(BranchObservation {
                         subtask_id: subtask_id.clone(),
@@ -2015,6 +2173,8 @@ fi",
                         execution_time_ms: elapsed_ms,
                         error: Some(format!("Cancelled by collapse controller: {}", kill.reason)),
                         artifacts: Vec::new(),
+                        is_retry: false,
+                        retry_attempts: 0,
                     });
                 }
             }
@@ -2134,10 +2294,10 @@ fn resolve_tool_paths(
 ) {
     match tool_name {
         "read" | "write" | "list" | "grep" | "codesearch" => {
-            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from) {
-                if !std::path::Path::new(&path).is_absolute() {
-                    args["path"] = serde_json::json!(working_dir.join(&path).display().to_string());
-                }
+            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from)
+                && !std::path::Path::new(&path).is_absolute()
+            {
+                args["path"] = serde_json::json!(working_dir.join(&path).display().to_string());
             }
         }
         "edit" => {
@@ -2145,11 +2305,9 @@ fn resolve_tool_paths(
                 .get("filePath")
                 .and_then(|v| v.as_str())
                 .map(String::from)
+                && !std::path::Path::new(&path).is_absolute()
             {
-                if !std::path::Path::new(&path).is_absolute() {
-                    args["filePath"] =
-                        serde_json::json!(working_dir.join(&path).display().to_string());
-                }
+                args["filePath"] = serde_json::json!(working_dir.join(&path).display().to_string());
             }
         }
         "glob" => {
@@ -2157,31 +2315,30 @@ fn resolve_tool_paths(
                 .get("pattern")
                 .and_then(|v| v.as_str())
                 .map(String::from)
+                && !std::path::Path::new(&pattern).is_absolute()
+                && !pattern.starts_with("*")
             {
-                if !std::path::Path::new(&pattern).is_absolute() && !pattern.starts_with("*") {
-                    args["pattern"] =
-                        serde_json::json!(working_dir.join(&pattern).display().to_string());
-                }
+                args["pattern"] =
+                    serde_json::json!(working_dir.join(&pattern).display().to_string());
             }
         }
         "multiedit" => {
             if let Some(edits) = args.get_mut("edits").and_then(|v| v.as_array_mut()) {
                 for edit in edits.iter_mut() {
                     if let Some(file) = edit.get("file").and_then(|v| v.as_str()).map(String::from)
+                        && !std::path::Path::new(&file).is_absolute()
                     {
-                        if !std::path::Path::new(&file).is_absolute() {
-                            edit["file"] =
-                                serde_json::json!(working_dir.join(&file).display().to_string());
-                        }
+                        edit["file"] =
+                            serde_json::json!(working_dir.join(&file).display().to_string());
                     }
                 }
             }
         }
         "patch" => {
-            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from) {
-                if !std::path::Path::new(&path).is_absolute() {
-                    args["file"] = serde_json::json!(working_dir.join(&path).display().to_string());
-                }
+            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from)
+                && !std::path::Path::new(&path).is_absolute()
+            {
+                args["file"] = serde_json::json!(working_dir.join(&path).display().to_string());
             }
         }
         "bash" => {
@@ -2308,19 +2465,19 @@ pub async fn run_agent_loop(
         }
 
         // Publish thinking/reasoning to bus for training data capture
-        if !thinking_parts.is_empty() {
-            if let Some(ref bus) = bus {
-                let thinking_text = thinking_parts.join("\n");
-                let handle = bus.handle(&subtask_id);
-                handle.send(
-                    format!("agent.{subtask_id}.thinking"),
-                    BusMessage::AgentThinking {
-                        agent_id: subtask_id.clone(),
-                        thinking: thinking_text,
-                        step: steps,
-                    },
-                );
-            }
+        if !thinking_parts.is_empty()
+            && let Some(ref bus) = bus
+        {
+            let thinking_text = thinking_parts.join("\n");
+            let handle = bus.handle(&subtask_id);
+            handle.send(
+                format!("agent.{subtask_id}.thinking"),
+                BusMessage::AgentThinking {
+                    agent_id: subtask_id.clone(),
+                    thinking: thinking_text,
+                    step: steps,
+                },
+            );
         }
 
         // Log assistant output
@@ -2421,6 +2578,17 @@ pub async fn run_agent_loop(
                 // Resolve relative file paths to the working directory (critical for worktree isolation)
                 if let Some(ref wd) = working_dir {
                     resolve_tool_paths(&tool_name, &mut args, wd);
+                }
+                if let Some(args_obj) = args.as_object_mut() {
+                    args_obj
+                        .entry("__ct_current_model".to_string())
+                        .or_insert_with(|| serde_json::json!(model));
+                    args_obj
+                        .entry("__ct_session_id".to_string())
+                        .or_insert_with(|| serde_json::json!(subtask_id.clone()));
+                    args_obj
+                        .entry("__ct_agent_name".to_string())
+                        .or_insert_with(|| serde_json::json!(format!("agent-{subtask_id}")));
                 }
 
                 match tool.execute(args).await {

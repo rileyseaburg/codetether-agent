@@ -39,7 +39,7 @@ impl LocalCudaProvider {
         if !cfg!(feature = "candle-cuda") {
             return Err(anyhow!(
                 "Local CUDA provider requires a CUDA-enabled build. \
-                 Reinstall with: cargo install --path . --force --features candle-cuda,functiongemma"
+                 Reinstall with: cargo install --path . --force --features candle-cuda"
             ));
         }
 

@@ -16,8 +16,29 @@ use std::sync::Arc;
 use tokio::sync::OnceCell;
 use uuid::Uuid;
 
+#[derive(Clone)]
+struct RelayRuntimeState {
+    runtime: Arc<ProtocolRelayRuntime>,
+    participants: Vec<String>,
+}
+
+impl RelayRuntimeState {
+    fn new(runtime: Arc<ProtocolRelayRuntime>) -> Self {
+        Self {
+            runtime,
+            participants: Vec::new(),
+        }
+    }
+
+    fn remember_participant(&mut self, participant: &str) {
+        if !self.participants.iter().any(|name| name == participant) {
+            self.participants.push(participant.to_string());
+        }
+    }
+}
+
 lazy_static::lazy_static! {
-    static ref RELAY_STORE: RwLock<HashMap<String, Arc<ProtocolRelayRuntime>>> = RwLock::new(HashMap::new());
+    static ref RELAY_STORE: RwLock<HashMap<String, RelayRuntimeState>> = RwLock::new(HashMap::new());
     static ref AGENT_BUS: OnceCell<Arc<AgentBus>> = OnceCell::const_new();
 }
 
@@ -33,9 +54,146 @@ async fn get_agent_bus() -> Result<Arc<AgentBus>> {
 
 pub struct RelayAutoChatTool;
 
+impl Default for RelayAutoChatTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RelayAutoChatTool {
     pub fn new() -> Self {
         Self
+    }
+
+    async fn get_or_create_runtime(&self, relay_id: &str) -> Result<Arc<ProtocolRelayRuntime>> {
+        if let Some(runtime) = {
+            let store = RELAY_STORE.read();
+            store.get(relay_id).map(|state| Arc::clone(&state.runtime))
+        } {
+            return Ok(runtime);
+        }
+
+        let bus = get_agent_bus().await?;
+        let runtime = Arc::new(ProtocolRelayRuntime::with_relay_id(
+            bus,
+            relay_id.to_string(),
+        ));
+        let mut store = RELAY_STORE.write();
+        let state = store
+            .entry(relay_id.to_string())
+            .or_insert_with(|| RelayRuntimeState::new(Arc::clone(&runtime)));
+        Ok(Arc::clone(&state.runtime))
+    }
+
+    fn remember_participant(relay_id: &str, participant: &str) {
+        let mut store = RELAY_STORE.write();
+        if let Some(state) = store.get_mut(relay_id) {
+            state.remember_participant(participant);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RelayAutoChatTool;
+    use serde_json::{Value, json};
+    use uuid::Uuid;
+
+    fn relay_id(prefix: &str) -> String {
+        format!("{prefix}-{}", Uuid::new_v4().simple())
+    }
+
+    fn parse_output_json(output: &str) -> Value {
+        serde_json::from_str(output).expect("tool output should be valid json")
+    }
+
+    #[tokio::test]
+    async fn list_agents_is_scoped_to_single_relay() {
+        let tool = RelayAutoChatTool::new();
+        let relay_a = relay_id("relay-a");
+        let relay_b = relay_id("relay-b");
+
+        tool.init_relay(
+            Some(relay_a.clone()),
+            Some("task a".to_string()),
+            None,
+            None,
+        )
+        .await
+        .expect("init relay a");
+        tool.init_relay(
+            Some(relay_b.clone()),
+            Some("task b".to_string()),
+            None,
+            None,
+        )
+        .await
+        .expect("init relay b");
+
+        tool.delegate_task(
+            Some(relay_a.clone()),
+            Some("agent-alpha".to_string()),
+            Some("do a".to_string()),
+            None,
+            None,
+        )
+        .await
+        .expect("delegate relay a");
+        tool.delegate_task(
+            Some(relay_b.clone()),
+            Some("agent-beta".to_string()),
+            Some("do b".to_string()),
+            None,
+            None,
+        )
+        .await
+        .expect("delegate relay b");
+
+        let result = tool
+            .list_agents(Some(relay_a))
+            .await
+            .expect("list agents for relay a");
+        assert!(result.success);
+        let payload = parse_output_json(&result.output);
+        let names: Vec<&str> = payload["agents"]
+            .as_array()
+            .expect("agents array")
+            .iter()
+            .filter_map(|agent| agent["name"].as_str())
+            .collect();
+
+        assert_eq!(names, vec!["agent-alpha"]);
+        assert_eq!(payload["count"], json!(1));
+    }
+
+    #[tokio::test]
+    async fn complete_relay_reports_unique_participant_count() {
+        let tool = RelayAutoChatTool::new();
+        let relay = relay_id("relay-complete");
+
+        tool.init_relay(Some(relay.clone()), Some("task".to_string()), None, None)
+            .await
+            .expect("init relay");
+
+        for target in ["agent-a", "agent-b", "agent-a"] {
+            tool.delegate_task(
+                Some(relay.clone()),
+                Some(target.to_string()),
+                Some("work".to_string()),
+                None,
+                None,
+            )
+            .await
+            .expect("delegate to participant");
+        }
+
+        let result = tool
+            .complete_relay(Some(relay))
+            .await
+            .expect("complete relay");
+        assert!(result.success);
+        let payload = parse_output_json(&result.output);
+        assert_eq!(payload["aggregated_results"]["total_agents"], json!(2));
     }
 }
 
@@ -176,12 +334,12 @@ impl RelayAutoChatTool {
             relay_id.unwrap_or_else(|| format!("relay-{}", &Uuid::new_v4().to_string()[..8]));
 
         let bus = get_agent_bus().await?;
-        let runtime = ProtocolRelayRuntime::with_relay_id(bus, relay_id.clone());
+        let runtime = Arc::new(ProtocolRelayRuntime::with_relay_id(bus, relay_id.clone()));
 
         // Store the runtime
         {
             let mut store = RELAY_STORE.write();
-            store.insert(relay_id.clone(), Arc::new(runtime.clone()));
+            store.insert(relay_id.clone(), RelayRuntimeState::new(runtime));
         }
 
         let response = json!({
@@ -242,26 +400,7 @@ impl RelayAutoChatTool {
         };
         let message = message.unwrap_or_else(|| "New task assigned".to_string());
 
-        // Get or create the runtime
-        let runtime = {
-            let store = RELAY_STORE.read();
-            store.get(&relay_id).cloned()
-        };
-
-        let runtime = match runtime {
-            Some(r) => r,
-            None => {
-                // Create a new runtime if it doesn't exist
-                let bus = get_agent_bus().await?;
-                let new_runtime = ProtocolRelayRuntime::with_relay_id(bus, relay_id.clone());
-                let arc_runtime = Arc::new(new_runtime);
-                {
-                    let mut store = RELAY_STORE.write();
-                    store.insert(relay_id.clone(), arc_runtime.clone());
-                }
-                arc_runtime
-            }
-        };
+        let runtime = self.get_or_create_runtime(&relay_id).await?;
 
         // Build context payload if provided
         let context_msg = if let Some(ref ctx) = context {
@@ -276,6 +415,7 @@ impl RelayAutoChatTool {
 
         // Send the delegation message
         runtime.send_handoff("system", &target_agent, &context_msg);
+        Self::remember_participant(&relay_id, &target_agent);
 
         let response = json!({
             "status": "delegated",
@@ -341,7 +481,7 @@ impl RelayAutoChatTool {
 
         let store = RELAY_STORE.read();
         let runtime = match store.get(&relay_id) {
-            Some(r) => r.clone(),
+            Some(state) => Arc::clone(&state.runtime),
             None => {
                 return Ok(ToolResult::structured_error(
                     "NOT_FOUND",
@@ -370,6 +510,7 @@ impl RelayAutoChatTool {
 
         // Send handoff
         runtime.send_handoff("previous_agent", &target_agent, &context_msg);
+        Self::remember_participant(&relay_id, &target_agent);
 
         let response = json!({
             "status": "handoff_complete",
@@ -431,16 +572,13 @@ impl RelayAutoChatTool {
             }
         };
 
-        let relay_exists = {
+        let participants = {
             let store = RELAY_STORE.read();
-            store.contains_key(&relay_id)
+            store.get(&relay_id).map(|state| state.participants.clone())
         };
 
-        if relay_exists {
-            let bus = get_agent_bus().await?;
-            let agents: Vec<Value> = bus
-                .registry
-                .agent_ids()
+        if let Some(participants) = participants {
+            let agents: Vec<Value> = participants
                 .iter()
                 .map(|name| json!({ "name": name }))
                 .collect();
@@ -476,13 +614,17 @@ impl RelayAutoChatTool {
         };
 
         // Get the runtime and shutdown agents
-        let runtime = {
+        let relay_state = {
             let mut store = RELAY_STORE.write();
             store.remove(&relay_id)
         };
 
-        if let Some(runtime) = runtime {
-            runtime.shutdown_agents(&[]); // Shutdown all registered agents
+        let total_agents = relay_state
+            .as_ref()
+            .map(|state| state.participants.len())
+            .unwrap_or(0);
+        if let Some(state) = relay_state {
+            state.runtime.shutdown_agents(&state.participants);
         }
 
         let response = json!({
@@ -491,7 +633,7 @@ impl RelayAutoChatTool {
             "message": "Relay completed successfully. Results aggregated.",
             "aggregated_results": {
                 "completed": true,
-                "total_agents": 0
+                "total_agents": total_agents
             }
         });
 

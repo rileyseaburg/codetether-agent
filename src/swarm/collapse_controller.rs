@@ -331,14 +331,13 @@ impl CollapseController {
         }
 
         // Never collapse every branch in a single sampling tick.
-        if killed_ids.len() == evaluations.len() {
-            if let Some(best) = evaluations
+        if killed_ids.len() == evaluations.len()
+            && let Some(best) = evaluations
                 .iter()
                 .max_by(|a, b| a.aggregate_score.total_cmp(&b.aggregate_score))
-            {
-                killed_ids.remove(&best.subtask_id);
-                kills.retain(|k| k.subtask_id != best.subtask_id);
-            }
+        {
+            killed_ids.remove(&best.subtask_id);
+            kills.retain(|k| k.subtask_id != best.subtask_id);
         }
 
         let alive: Vec<&BranchEvaluation> = evaluations

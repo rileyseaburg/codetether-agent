@@ -10,6 +10,45 @@
 
 use crate::provider::ToolDefinition;
 
+const MAX_TOOL_OUTPUT_LINES: usize = 1200;
+const MAX_TOOL_OUTPUT_CHARS: usize = 120_000;
+
+fn truncate_chars(input: &str, max_chars: usize) -> String {
+    if input.chars().count() <= max_chars {
+        return input.to_string();
+    }
+    input.chars().take(max_chars).collect()
+}
+
+fn clamp_tool_output(output: String, tool_name: &str) -> String {
+    let original_lines = output.lines().count();
+    let original_chars = output.chars().count();
+    let mut clamped = output;
+    let mut trimmed = false;
+
+    if original_lines > MAX_TOOL_OUTPUT_LINES {
+        clamped = clamped
+            .lines()
+            .take(MAX_TOOL_OUTPUT_LINES)
+            .collect::<Vec<_>>()
+            .join("\n");
+        trimmed = true;
+    }
+
+    if clamped.chars().count() > MAX_TOOL_OUTPUT_CHARS {
+        clamped = truncate_chars(&clamped, MAX_TOOL_OUTPUT_CHARS);
+        trimmed = true;
+    }
+
+    if trimmed {
+        clamped.push_str(&format!(
+            "\n\n[RLM TOOL OUTPUT TRUNCATED by {tool_name}: {original_lines} lines/{original_chars} chars → <= {MAX_TOOL_OUTPUT_LINES} lines/{MAX_TOOL_OUTPUT_CHARS} chars]"
+        ));
+    }
+
+    clamped
+}
+
 /// All RLM REPL operations as tool definitions.
 pub fn rlm_tool_definitions() -> Vec<ToolDefinition> {
     vec![
@@ -120,10 +159,7 @@ pub fn rlm_tool_definitions() -> Vec<ToolDefinition> {
                         "description": "Deprecated compatibility field; if used, must contain the FINAL(JSON) payload string."
                     }
                 },
-                "anyOf": [
-                    { "required": ["payload"] },
-                    { "required": ["answer"] }
-                ]
+                "additionalProperties": false
             }),
         },
         ToolDefinition {
@@ -165,12 +201,12 @@ pub fn dispatch_tool_call(
     match name {
         "rlm_head" => {
             let n = args.get("n").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
-            let output = repl.head(n).join("\n");
+            let output = clamp_tool_output(repl.head(n).join("\n"), "rlm_head");
             Some(RlmToolResult::Output(output))
         }
         "rlm_tail" => {
             let n = args.get("n").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
-            let output = repl.tail(n).join("\n");
+            let output = clamp_tool_output(repl.tail(n).join("\n"), "rlm_tail");
             Some(RlmToolResult::Output(output))
         }
         "rlm_grep" => {
@@ -184,7 +220,7 @@ pub fn dispatch_tool_call(
             if output.is_empty() {
                 Some(RlmToolResult::Output("(no matches)".to_string()))
             } else {
-                Some(RlmToolResult::Output(output))
+                Some(RlmToolResult::Output(clamp_tool_output(output, "rlm_grep")))
             }
         }
         "rlm_count" => {
@@ -195,7 +231,7 @@ pub fn dispatch_tool_call(
         "rlm_slice" => {
             let start = args.get("start").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
             let end = args.get("end").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-            let output = repl.slice(start, end).to_string();
+            let output = clamp_tool_output(repl.slice(start, end).to_string(), "rlm_slice");
             Some(RlmToolResult::Output(output))
         }
         "rlm_llm_query" => {
@@ -260,7 +296,10 @@ pub fn dispatch_tool_call(
                         "matches": matches
                     });
 
-                    Some(RlmToolResult::Output(output.to_string()))
+                    Some(RlmToolResult::Output(clamp_tool_output(
+                        output.to_string(),
+                        "rlm_ast_query",
+                    )))
                 }
                 Err(e) => Some(RlmToolResult::Output(format!("AST query error: {}", e))),
             }

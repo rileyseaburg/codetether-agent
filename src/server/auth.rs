@@ -36,23 +36,6 @@ pub struct JwtClaims {
     pub scopes: Vec<String>,
 }
 
-/// Request extension key for JWT claims.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct JwtClaimsKey;
-
-/// Application state that includes JWT claims for extraction in handlers.
-#[derive(Debug, Clone)]
-pub struct JwtAppState {
-    /// JWT claims extracted from the Bearer token.
-    pub jwt_claims: JwtClaims,
-}
-
-impl Default for JwtClaimsKey {
-    fn default() -> Self {
-        Self
-    }
-}
-
 /// Parse a JWT token and extract claims from the payload.
 /// Returns None if the token is not a valid JWT (e.g., it's a static token).
 pub fn extract_jwt_claims(token: &str) -> Option<JwtClaims> {
@@ -127,7 +110,7 @@ pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Resp
     let path = request.uri().path();
 
     // Allow public paths through without auth.
-    if PUBLIC_PATHS.iter().any(|p| path == *p) {
+    if PUBLIC_PATHS.contains(&path) {
         return Ok(next.run(request).await);
     }
 

@@ -115,6 +115,8 @@ mod tests {
             execution_time_ms: 1000,
             error: None,
             artifacts: Vec::new(),
+            is_retry: false,
+            retry_attempts: 0,
         };
         let logs = format!(
             "line\n{}{}\nline\n{}{}\n",

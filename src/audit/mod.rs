@@ -137,18 +137,18 @@ impl AuditLog {
     /// Record an audit entry.
     pub async fn record(&self, entry: AuditEntry) {
         // Persist to disk first (best effort).
-        if let Some(ref path) = self.sink_path {
-            if let Ok(line) = serde_json::to_string(&entry) {
-                use tokio::io::AsyncWriteExt;
-                if let Ok(mut file) = tokio::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(path)
-                    .await
-                {
-                    let _ = file.write_all(line.as_bytes()).await;
-                    let _ = file.write_all(b"\n").await;
-                }
+        if let Some(ref path) = self.sink_path
+            && let Ok(line) = serde_json::to_string(&entry)
+        {
+            use tokio::io::AsyncWriteExt;
+            if let Ok(mut file) = tokio::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .await
+            {
+                let _ = file.write_all(line.as_bytes()).await;
+                let _ = file.write_all(b"\n").await;
             }
         }
 
@@ -257,6 +257,7 @@ pub fn init_audit_log(log: AuditLog) -> Result<(), AuditLog> {
 }
 
 /// Get the global audit log (panics if not initialized).
+#[allow(dead_code)]
 pub fn audit_log() -> &'static AuditLog {
     AUDIT_LOG
         .get()

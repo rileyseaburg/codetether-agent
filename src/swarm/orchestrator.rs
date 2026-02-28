@@ -59,11 +59,24 @@ impl Orchestrator {
         let (provider, model) = if let Some(ref model_str) = model_str {
             let (prov, mod_id) = parse_model_string(model_str);
             let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
-            let provider = prov
-                .filter(|p| provider_list.contains(p))
-                .unwrap_or(provider_list[0])
-                .to_string();
-            let model = mod_id.to_string();
+            let provider = if let Some(explicit_provider) = prov {
+                if provider_list.contains(&explicit_provider) {
+                    explicit_provider.to_string()
+                } else {
+                    anyhow::bail!(
+                        "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
+                        explicit_provider,
+                        provider_list.join(", ")
+                    );
+                }
+            } else {
+                provider_list[0].to_string()
+            };
+            let model = if mod_id.trim().is_empty() {
+                Self::default_model_for_provider(&provider)
+            } else {
+                mod_id.to_string()
+            };
             (provider, model)
         } else {
             // Default to GLM-5 via Z.AI for swarm.
@@ -97,6 +110,7 @@ impl Orchestrator {
         match provider {
             "moonshotai" => "kimi-k2.5".to_string(),
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
+            "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
             "zhipuai" | "zai" => "glm-5".to_string(),

@@ -131,22 +131,22 @@ impl MoltbookClient {
     /// Try to build a client by reading the key from Vault, then env var.
     pub async fn from_vault_or_env() -> Result<Self> {
         // 1. Try Vault
-        if let Some(key) = crate::secrets::get_api_key(VAULT_PROVIDER_ID).await {
-            if !key.is_empty() {
-                tracing::info!("Moltbook API key loaded from Vault");
-                return Ok(Self::new(key));
-            }
+        if let Some(key) = crate::secrets::get_api_key(VAULT_PROVIDER_ID).await
+            && !key.is_empty()
+        {
+            tracing::info!("Moltbook API key loaded from Vault");
+            return Ok(Self::new(key));
         }
 
         // 2. Try env var (local dev convenience)
-        if let Ok(key) = std::env::var("MOLTBOOK_API_KEY") {
-            if !key.is_empty() {
-                tracing::warn!(
-                    "Moltbook API key loaded from MOLTBOOK_API_KEY env var — \
+        if let Ok(key) = std::env::var("MOLTBOOK_API_KEY")
+            && !key.is_empty()
+        {
+            tracing::warn!(
+                "Moltbook API key loaded from MOLTBOOK_API_KEY env var — \
                      consider storing it in Vault instead"
-                );
-                return Ok(Self::new(key));
-            }
+            );
+            return Ok(Self::new(key));
         }
 
         anyhow::bail!(
@@ -271,10 +271,10 @@ impl MoltbookClient {
             .get(&format!("/posts?sort={}&limit={}", sort, limit))
             .await?;
         // Try structured deserialization first
-        if let Ok(feed) = serde_json::from_str::<FeedResponse>(&resp) {
-            if feed.success {
-                return Ok(feed.posts);
-            }
+        if let Ok(feed) = serde_json::from_str::<FeedResponse>(&resp)
+            && feed.success
+        {
+            return Ok(feed.posts);
         }
         // Fallback: The API may return posts under different keys
         let val: serde_json::Value = serde_json::from_str(&resp)?;
@@ -339,10 +339,10 @@ impl MoltbookClient {
         }
 
         // Engage with top post if available
-        if let Some(top_post) = posts.first() {
-            if let Ok(resp) = self.upvote(&top_post.id).await {
-                summary.push_str(&format!("  Upvoted top post: {}\n", resp));
-            }
+        if let Some(top_post) = posts.first()
+            && let Ok(resp) = self.upvote(&top_post.id).await
+        {
+            summary.push_str(&format!("  Upvoted top post: {}\n", resp));
         }
 
         Ok(summary)

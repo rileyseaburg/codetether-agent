@@ -22,10 +22,30 @@ use super::tools::rlm_tool_definitions;
 
 /// Tools eligible for RLM routing
 fn rlm_eligible_tools() -> HashSet<&'static str> {
-    ["read", "glob", "grep", "bash", "search"]
-        .iter()
-        .copied()
-        .collect()
+    // NOTE: This list is intentionally biased toward tools that often return
+    // large blobs of text. The router still supports routing *any* tool output
+    // when it is clearly too large to fit in the model context window.
+    [
+        "read",
+        "glob",
+        "grep",
+        "bash",
+        "search",
+        // File/tree-ish tools can easily explode
+        "tree",
+        "diff",
+        "headtail",
+        // Web tools are a common source of huge HTML/JS blobs
+        "webfetch",
+        "websearch",
+        // Batch aggregates outputs and can exceed the window quickly
+        "batch",
+        // Code search can return large listings
+        "codesearch",
+    ]
+    .iter()
+    .copied()
+    .collect()
 }
 
 /// Context for routing decisions
@@ -99,20 +119,19 @@ impl RlmRouter {
         }
 
         // Mode: auto - route based on threshold
-        if !rlm_eligible_tools().contains(ctx.tool_id.as_str()) {
-            return RoutingResult {
-                should_route: false,
-                reason: "tool_not_eligible".to_string(),
-                estimated_tokens,
-            };
-        }
+        let eligible = rlm_eligible_tools().contains(ctx.tool_id.as_str())
+            || ctx.tool_id.as_str() == "session_context";
 
         // Check if output exceeds threshold relative to context window
         let threshold_tokens = (ctx.model_context_limit as f64 * config.threshold) as usize;
         if estimated_tokens > threshold_tokens {
             return RoutingResult {
                 should_route: true,
-                reason: "exceeds_threshold".to_string(),
+                reason: if eligible {
+                    "exceeds_threshold".to_string()
+                } else {
+                    "exceeds_threshold_ineligible_tool".to_string()
+                },
                 estimated_tokens,
             };
         }
@@ -123,10 +142,25 @@ impl RlmRouter {
             if projected_total > (ctx.model_context_limit as f64 * 0.8) as usize {
                 return RoutingResult {
                     should_route: true,
-                    reason: "would_overflow".to_string(),
+                    reason: if eligible {
+                        "would_overflow".to_string()
+                    } else {
+                        "would_overflow_ineligible_tool".to_string()
+                    },
                     estimated_tokens,
                 };
             }
+        }
+
+        // If the tool isn't in the preferred set, we normally avoid routing to
+        // reduce extra model calls. However, we *must* protect the main session
+        // context window from oversized blobs (e.g. raw HTML from web tools).
+        if !eligible {
+            return RoutingResult {
+                should_route: false,
+                reason: "tool_not_eligible".to_string(),
+                estimated_tokens,
+            };
         }
 
         RoutingResult {
@@ -325,11 +359,11 @@ impl RlmRouter {
             }
 
             // Check for abort
-            if let Some(ref abort) = ctx.abort {
-                if *abort.borrow() {
-                    warn!("RLM: Processing aborted");
-                    break;
-                }
+            if let Some(ref abort) = ctx.abort
+                && *abort.borrow()
+            {
+                warn!("RLM: Processing aborted");
+                break;
             }
 
             // Build completion request — include tool definitions
@@ -651,6 +685,23 @@ Be SPECIFIC - include actual file paths, function names, error messages. Generic
             "glob" => {
                 "Summarize the file listing. Group by directory, highlight important files. Be concise.".to_string()
             }
+            "webfetch" => {
+                let url = args.get("url").and_then(|v| v.as_str()).unwrap_or("unknown");
+                format!(
+                    "Extract and summarize the main human-readable content from this fetched web page (URL: {}). Ignore scripts, styles, navigation, cookie banners, and boilerplate. Preserve headings, lists, code blocks, and important links. Be concise.",
+                    url
+                )
+            }
+            "websearch" => {
+                let q = args.get("query").and_then(|v| v.as_str()).unwrap_or("unknown");
+                format!(
+                    "Summarize these web search results for query: \"{}\". List the most relevant results with titles and URLs, and note why each is relevant. Be concise.",
+                    q
+                )
+            }
+            "batch" => {
+                "Summarize the batch tool output. Group by sub-call, highlight failures/errors first, then key results. Keep actionable details: URLs, file paths, command outputs, and next steps.".to_string()
+            }
             "session_context" => {
                 r#"You are a CONTEXT MEMORY SYSTEM. Create a BRIEFING for an AI assistant to continue this conversation.
 
@@ -801,5 +852,41 @@ Be SPECIFIC with file paths, function names, error messages."#.to_string()
             success: false,
             error: Some("Model call failed".to_string()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_route_large_webfetch_output() {
+        let output = "a".repeat(200_000);
+        let ctx = RoutingContext {
+            tool_id: "webfetch".to_string(),
+            session_id: "s".to_string(),
+            call_id: None,
+            model_context_limit: 200_000,
+            current_context_tokens: Some(1000),
+        };
+        let cfg = RlmConfig::default();
+        let result = RlmRouter::should_route(&output, &ctx, &cfg);
+        assert!(result.should_route);
+    }
+
+    #[test]
+    fn should_route_large_output_for_unknown_tool_to_protect_context() {
+        let output = "a".repeat(200_000);
+        let ctx = RoutingContext {
+            tool_id: "some_new_tool".to_string(),
+            session_id: "s".to_string(),
+            call_id: None,
+            model_context_limit: 200_000,
+            current_context_tokens: Some(1000),
+        };
+        let cfg = RlmConfig::default();
+        let result = RlmRouter::should_route(&output, &ctx, &cfg);
+        assert!(result.should_route);
+        assert!(result.reason.contains("ineligible") || result.reason.contains("threshold"));
     }
 }

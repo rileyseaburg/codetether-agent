@@ -731,10 +731,8 @@ impl McpServer {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
 
-                if create_dirs {
-                    if let Some(parent) = std::path::Path::new(path).parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
+                if create_dirs && let Some(parent) = std::path::Path::new(path).parent() {
+                    std::fs::create_dir_all(parent)?;
                 }
 
                 std::fs::write(path, content)?;

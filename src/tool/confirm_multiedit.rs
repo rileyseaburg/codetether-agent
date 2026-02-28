@@ -30,6 +30,12 @@ pub struct EditPreview {
 
 pub struct ConfirmMultiEditTool;
 
+impl Default for ConfirmMultiEditTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfirmMultiEditTool {
     pub fn new() -> Self {
         Self
@@ -246,7 +252,7 @@ impl Tool for ConfirmMultiEditTool {
                 } else if style == "green" {
                     diff_output.push_str(&format!("\x1b[32m{}\x1b[0m", line.trim_end()));
                 } else {
-                    diff_output.push_str(&line.trim_end());
+                    diff_output.push_str(line.trim_end());
                 }
                 diff_output.push('\n');
             }

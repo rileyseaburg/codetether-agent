@@ -10,7 +10,72 @@ pub mod executor;
 pub mod persistence;
 mod thinker;
 
+#[cfg(feature = "functiongemma")]
 pub mod tool_router;
+
+#[cfg(not(feature = "functiongemma"))]
+#[allow(dead_code)]
+pub mod tool_router {
+    use super::thinker::CandleDevicePreference;
+    use crate::provider::{CompletionResponse, ToolDefinition};
+    use anyhow::Result;
+
+    /// No-op config when FunctionGemma support is not compiled in.
+    #[derive(Debug, Clone)]
+    pub struct ToolRouterConfig {
+        pub enabled: bool,
+        pub model_path: Option<String>,
+        pub tokenizer_path: Option<String>,
+        pub arch: String,
+        pub device: CandleDevicePreference,
+        pub max_tokens: usize,
+        pub temperature: f32,
+    }
+
+    impl Default for ToolRouterConfig {
+        fn default() -> Self {
+            Self {
+                enabled: false,
+                model_path: None,
+                tokenizer_path: None,
+                arch: "gemma3".to_string(),
+                device: CandleDevicePreference::Auto,
+                max_tokens: 128,
+                temperature: 0.1,
+            }
+        }
+    }
+
+    impl ToolRouterConfig {
+        pub fn from_env() -> Self {
+            Self::default()
+        }
+    }
+
+    /// No-op router when the `functiongemma` feature is disabled.
+    #[derive(Debug, Clone, Default)]
+    pub struct ToolCallRouter;
+
+    impl ToolCallRouter {
+        pub fn from_config(config: &ToolRouterConfig) -> Result<Option<Self>> {
+            if config.enabled {
+                tracing::debug!(
+                    "FunctionGemma requested but feature is disabled; rebuild with --features functiongemma"
+                );
+            }
+            Ok(None)
+        }
+
+        pub async fn maybe_reformat(
+            &self,
+            response: CompletionResponse,
+            _tools: &[ToolDefinition],
+            _model_supports_tools: bool,
+        ) -> CompletionResponse {
+            response
+        }
+    }
+}
 
 pub use thinker::{
     CandleDevicePreference, ThinkerBackend, ThinkerClient, ThinkerConfig, ThinkerOutput,
@@ -582,6 +647,12 @@ impl CognitionRuntime {
                 .unwrap_or_else(|_| {
                     std::env::var("AWS_DEFAULT_REGION").unwrap_or_else(|_| "us-west-2".to_string())
                 }),
+            bedrock_service_tier: std::env::var(
+                "CODETETHER_COGNITION_THINKER_BEDROCK_SERVICE_TIER",
+            )
+            .ok()
+            .map(|v| v.trim().to_ascii_lowercase())
+            .filter(|v| !v.is_empty()),
         };
 
         let mut runtime = Self::new_with_options(options);
@@ -667,7 +738,7 @@ impl CognitionRuntime {
                 )
             };
 
-        let runtime = Self {
+        Self {
             enabled: options.enabled,
             max_events: options.max_events.max(32),
             max_snapshots: options.max_snapshots.max(8),
@@ -690,9 +761,7 @@ impl CognitionRuntime {
             tools: None,
             receipts: Arc::new(RwLock::new(Vec::new())),
             pending_approvals: Arc::new(RwLock::new(HashMap::new())),
-        };
-
-        runtime
+        }
     }
 
     /// Whether cognition is enabled by feature flag.
@@ -1015,31 +1084,29 @@ impl CognitionRuntime {
                         }
 
                         // ── Step 6: Tool execution via capability leases ──
-                        if !is_fallback {
-                            if let Some(ref tool_registry) = tools {
-                                let allowed = {
-                                    let map = personas.read().await;
-                                    map.get(&work.persona_id)
-                                        .map(|p| p.policy.allowed_tools.clone())
-                                        .unwrap_or_default()
-                                };
-                                if !allowed.is_empty() {
-                                    let tool_results = executor::execute_tool_requests(
-                                        thinker.as_deref(),
-                                        tool_registry,
-                                        &work.persona_id,
-                                        &thought.thinking,
-                                        &allowed,
-                                    )
-                                    .await;
+                        if !is_fallback && let Some(ref tool_registry) = tools {
+                            let allowed = {
+                                let map = personas.read().await;
+                                map.get(&work.persona_id)
+                                    .map(|p| p.policy.allowed_tools.clone())
+                                    .unwrap_or_default()
+                            };
+                            if !allowed.is_empty() {
+                                let tool_results = executor::execute_tool_requests(
+                                    thinker.as_deref(),
+                                    tool_registry,
+                                    &work.persona_id,
+                                    &thought.thinking,
+                                    &allowed,
+                                )
+                                .await;
 
-                                    for result_event in tool_results {
-                                        new_events.push(result_event);
-                                        // Mark progress for tool execution
-                                        let mut map = personas.write().await;
-                                        if let Some(p) = map.get_mut(&work.persona_id) {
-                                            p.last_progress_at = Utc::now();
-                                        }
+                                for result_event in tool_results {
+                                    new_events.push(result_event);
+                                    // Mark progress for tool execution
+                                    let mut map = personas.write().await;
+                                    if let Some(p) = map.get_mut(&work.persona_id) {
+                                        p.last_progress_at = Utc::now();
                                     }
                                 }
                             }
@@ -1270,61 +1337,58 @@ impl CognitionRuntime {
                             let quorum_needed = proposal.quorum_needed.max(1);
 
                             // Check vote deadline
-                            if let Some(deadline) = proposal.vote_deadline {
-                                if now > deadline {
-                                    if proposal.votes.len() < quorum_needed {
-                                        // Timeout without quorum → attention item
-                                        attn_queue.push(AttentionItem {
-                                            id: Uuid::new_v4().to_string(),
-                                            topic: format!(
-                                                "Proposal vote timeout: {}",
-                                                proposal.title
-                                            ),
-                                            topic_tags: Vec::new(),
-                                            priority: 0.6,
-                                            source_type: AttentionSource::ProposalTimeout,
-                                            source_id: proposal.id.clone(),
-                                            assigned_persona: None,
-                                            created_at: now,
-                                            resolved_at: None,
-                                        });
-                                        proposal.status = ProposalStatus::Rejected;
-                                        continue;
-                                    }
-
-                                    // Deadline passed with quorum but missing required approvers → reject
-                                    let required_roles = gov
-                                        .required_approvers_by_role
-                                        .get(&proposal.risk)
-                                        .cloned()
-                                        .unwrap_or_default();
-                                    let all_required_met = required_roles.iter().all(|role| {
-                                        proposal.votes.iter().any(|(vid, vote)| {
-                                            *vote == ProposalVote::Approve
-                                                && persona_map
-                                                    .get(vid)
-                                                    .map(|p| &p.identity.role == role)
-                                                    .unwrap_or(false)
-                                        })
+                            if let Some(deadline) = proposal.vote_deadline
+                                && now > deadline
+                            {
+                                if proposal.votes.len() < quorum_needed {
+                                    // Timeout without quorum → attention item
+                                    attn_queue.push(AttentionItem {
+                                        id: Uuid::new_v4().to_string(),
+                                        topic: format!("Proposal vote timeout: {}", proposal.title),
+                                        topic_tags: Vec::new(),
+                                        priority: 0.6,
+                                        source_type: AttentionSource::ProposalTimeout,
+                                        source_id: proposal.id.clone(),
+                                        assigned_persona: None,
+                                        created_at: now,
+                                        resolved_at: None,
                                     });
-                                    if !all_required_met {
-                                        attn_queue.push(AttentionItem {
-                                            id: Uuid::new_v4().to_string(),
-                                            topic: format!(
-                                                "Missing required approvers: {}",
-                                                proposal.title
-                                            ),
-                                            topic_tags: Vec::new(),
-                                            priority: 0.7,
-                                            source_type: AttentionSource::ProposalTimeout,
-                                            source_id: proposal.id.clone(),
-                                            assigned_persona: None,
-                                            created_at: now,
-                                            resolved_at: None,
-                                        });
-                                        proposal.status = ProposalStatus::Rejected;
-                                        continue;
-                                    }
+                                    proposal.status = ProposalStatus::Rejected;
+                                    continue;
+                                }
+
+                                // Deadline passed with quorum but missing required approvers → reject
+                                let required_roles = gov
+                                    .required_approvers_by_role
+                                    .get(&proposal.risk)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                let all_required_met = required_roles.iter().all(|role| {
+                                    proposal.votes.iter().any(|(vid, vote)| {
+                                        *vote == ProposalVote::Approve
+                                            && persona_map
+                                                .get(vid)
+                                                .map(|p| &p.identity.role == role)
+                                                .unwrap_or(false)
+                                    })
+                                });
+                                if !all_required_met {
+                                    attn_queue.push(AttentionItem {
+                                        id: Uuid::new_v4().to_string(),
+                                        topic: format!(
+                                            "Missing required approvers: {}",
+                                            proposal.title
+                                        ),
+                                        topic_tags: Vec::new(),
+                                        priority: 0.7,
+                                        source_type: AttentionSource::ProposalTimeout,
+                                        source_id: proposal.id.clone(),
+                                        assigned_persona: None,
+                                        created_at: now,
+                                        resolved_at: None,
+                                    });
+                                    proposal.status = ProposalStatus::Rejected;
+                                    continue;
                                 }
                             }
 
@@ -2108,12 +2172,8 @@ fn fallback_phase_text(work: &ThoughtWorkItem, context: &[ThoughtEvent]) -> Stri
             "Phase: Observe | Goal: detect current customer/business risk | Signals: role={}; charter_focus={}; {} | Uncertainty: live customer-impact telemetry and current incident status are incomplete. | Next_Action: run targeted health/error checks for customer-facing flows and capture failure rate baselines.",
             work.role, charter, context_summary
         ),
-        ThoughtPhase::Reflect => format!(
-            "Phase: Reflect | Hypothesis: current instability risk is most likely in runtime reliability and dependency availability. | Rationale: recent context indicates unresolved operational uncertainty. | Business_Risk: outages can cause SLA breach, revenue loss, and trust erosion. | Validation_Next_Action: confirm via service health trend, dependency error distribution, and rollback readiness.",
-        ),
-        ThoughtPhase::Test => format!(
-            "Phase: Test | Check: verify customer-path service health against recent error spikes and release changes. | Procedure: collect latest health status, error counts, and recent deploy diffs; compare against baseline. | Expected_Result: pass if health is stable and error rate within baseline, fail otherwise. | Evidence_Quality: medium (depends on telemetry completeness). | Escalation_Trigger: escalate immediately on repeated customer-path failures or sustained elevated error rate.",
-        ),
+        ThoughtPhase::Reflect => "Phase: Reflect | Hypothesis: current instability risk is most likely in runtime reliability and dependency availability. | Rationale: recent context indicates unresolved operational uncertainty. | Business_Risk: outages can cause SLA breach, revenue loss, and trust erosion. | Validation_Next_Action: confirm via service health trend, dependency error distribution, and rollback readiness.".to_string(),
+        ThoughtPhase::Test => "Phase: Test | Check: verify customer-path service health against recent error spikes and release changes. | Procedure: collect latest health status, error counts, and recent deploy diffs; compare against baseline. | Expected_Result: pass if health is stable and error rate within baseline, fail otherwise. | Evidence_Quality: medium (depends on telemetry completeness). | Escalation_Trigger: escalate immediately on repeated customer-path failures or sustained elevated error rate.".to_string(),
         ThoughtPhase::Compress => format!(
             "Phase: Compress | State_Summary: reliability monitoring active with unresolved business-impact uncertainty. | Retained_Facts: role={} ; charter_focus={} ; {} | Open_Risks: potential customer-path instability ; incomplete evidence for confident closure. | Next_Process_Step: convert latest checks into prioritized remediation tasks and verify impact reduction.",
             work.role, charter, context_summary

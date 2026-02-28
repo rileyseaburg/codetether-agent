@@ -276,7 +276,8 @@ impl TraceValidator {
         };
 
         // Route based on payload kind first (more reliable than query classification)
-        let verdict = match &final_payload {
+
+        match &final_payload {
             FinalPayload::Grep(_) => {
                 self.validate_grep_payload(&final_payload, source, source_path, &query, base_trace)
             }
@@ -287,10 +288,10 @@ impl TraceValidator {
                 // Semantic queries are unverifiable
                 let mut trace = base_trace();
                 trace.verdict = "unverified".to_string();
-                return OracleResult::Unverified {
+                OracleResult::Unverified {
                     reason: "Semantic queries require LLM understanding - no deterministic oracle available".to_string(),
                     trace,
-                };
+                }
             }
             FinalPayload::Malformed { error, raw } => {
                 // If the model attempted JSON and failed to parse, keep a failed verdict.
@@ -331,9 +332,7 @@ impl TraceValidator {
                     }
                 }
             }
-        };
-
-        verdict
+        }
     }
 
     /// Validate multiple semantic runs using strict consensus.

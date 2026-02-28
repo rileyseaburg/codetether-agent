@@ -40,16 +40,16 @@ impl AwsCredentials {
         if let (Ok(key_id), Ok(secret)) = (
             std::env::var("AWS_ACCESS_KEY_ID"),
             std::env::var("AWS_SECRET_ACCESS_KEY"),
-        ) {
-            if !key_id.is_empty() && !secret.is_empty() {
-                return Some(Self {
-                    access_key_id: key_id,
-                    secret_access_key: secret,
-                    session_token: std::env::var("AWS_SESSION_TOKEN")
-                        .ok()
-                        .filter(|s| !s.is_empty()),
-                });
-            }
+        ) && !key_id.is_empty()
+            && !secret.is_empty()
+        {
+            return Some(Self {
+                access_key_id: key_id,
+                secret_access_key: secret,
+                session_token: std::env::var("AWS_SESSION_TOKEN")
+                    .ok()
+                    .filter(|s| !s.is_empty()),
+            });
         }
 
         // 2) Fall back to ~/.aws/credentials file
@@ -102,15 +102,15 @@ impl AwsCredentials {
     /// Detect region from AWS_REGION / AWS_DEFAULT_REGION env vars,
     /// then from ~/.aws/config.
     pub fn detect_region() -> Option<String> {
-        if let Ok(r) = std::env::var("AWS_REGION") {
-            if !r.is_empty() {
-                return Some(r);
-            }
+        if let Ok(r) = std::env::var("AWS_REGION")
+            && !r.is_empty()
+        {
+            return Some(r);
         }
-        if let Ok(r) = std::env::var("AWS_DEFAULT_REGION") {
-            if !r.is_empty() {
-                return Some(r);
-            }
+        if let Ok(r) = std::env::var("AWS_DEFAULT_REGION")
+            && !r.is_empty()
+        {
+            return Some(r);
         }
         // Try ~/.aws/config
         let profile = std::env::var("AWS_PROFILE").unwrap_or_else(|_| "default".to_string());
@@ -136,12 +136,12 @@ impl AwsCredentials {
             if !in_section {
                 continue;
             }
-            if let Some((k, v)) = trimmed.split_once('=') {
-                if k.trim() == "region" {
-                    let v = v.trim();
-                    if !v.is_empty() {
-                        return Some(v.to_string());
-                    }
+            if let Some((k, v)) = trimmed.split_once('=')
+                && k.trim() == "region"
+            {
+                let v = v.trim();
+                if !v.is_empty() {
+                    return Some(v.to_string());
                 }
             }
         }
@@ -181,6 +181,7 @@ impl std::fmt::Debug for BedrockProvider {
 
 impl BedrockProvider {
     /// Create from a bearer token (API Gateway / Vault key).
+    #[allow(dead_code)]
     pub fn new(api_key: String) -> Result<Self> {
         Self::with_region(api_key, DEFAULT_REGION.to_string())
     }
@@ -414,7 +415,9 @@ impl BedrockProvider {
     fn resolve_model_id(model: &str) -> &str {
         match model {
             // --- Anthropic Claude (verified via AWS CLI) ---
-            "claude-opus-4.6" | "claude-4.6-opus" => "us.anthropic.claude-opus-4-6-v1",
+            "claude-opus-4.6" | "claude-opus-4-6" | "claude-4.6-opus" => {
+                "us.anthropic.claude-opus-4-6-v1:0"
+            }
             "claude-opus-4.5" | "claude-4.5-opus" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
             "claude-opus-4.1" | "claude-4.1-opus" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
@@ -516,6 +519,13 @@ impl BedrockProvider {
         }
     }
 
+    fn configured_service_tier() -> Option<String> {
+        std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
+            .ok()
+            .map(|v| v.trim().to_ascii_lowercase())
+            .filter(|v| !v.is_empty())
+    }
+
     /// Dynamically discover available models from the Bedrock API.
     /// Merges foundation models with cross-region inference profiles.
     async fn discover_models(&self) -> Result<Vec<ModelInfo>> {
@@ -525,97 +535,87 @@ impl BedrockProvider {
         let fm_url = format!("{}/foundation-models", self.management_url());
         let fm_resp = self.send_request("GET", &fm_url, None, "bedrock").await;
 
-        if let Ok(resp) = fm_resp {
-            if resp.status().is_success() {
-                if let Ok(data) = resp.json::<Value>().await {
-                    if let Some(summaries) = data.get("modelSummaries").and_then(|v| v.as_array()) {
-                        for m in summaries {
-                            let model_id = m.get("modelId").and_then(|v| v.as_str()).unwrap_or("");
-                            let model_name =
-                                m.get("modelName").and_then(|v| v.as_str()).unwrap_or("");
-                            let provider_name =
-                                m.get("providerName").and_then(|v| v.as_str()).unwrap_or("");
+        if let Ok(resp) = fm_resp
+            && resp.status().is_success()
+            && let Ok(data) = resp.json::<Value>().await
+            && let Some(summaries) = data.get("modelSummaries").and_then(|v| v.as_array())
+        {
+            for m in summaries {
+                let model_id = m.get("modelId").and_then(|v| v.as_str()).unwrap_or("");
+                let model_name = m.get("modelName").and_then(|v| v.as_str()).unwrap_or("");
+                let provider_name = m.get("providerName").and_then(|v| v.as_str()).unwrap_or("");
 
-                            let output_modalities: Vec<&str> = m
-                                .get("outputModalities")
-                                .and_then(|v| v.as_array())
-                                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
-                                .unwrap_or_default();
+                let output_modalities: Vec<&str> = m
+                    .get("outputModalities")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
+                    .unwrap_or_default();
 
-                            let input_modalities: Vec<&str> = m
-                                .get("inputModalities")
-                                .and_then(|v| v.as_array())
-                                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
-                                .unwrap_or_default();
+                let input_modalities: Vec<&str> = m
+                    .get("inputModalities")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
+                    .unwrap_or_default();
 
-                            let inference_types: Vec<&str> = m
-                                .get("inferenceTypesSupported")
-                                .and_then(|v| v.as_array())
-                                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
-                                .unwrap_or_default();
+                let inference_types: Vec<&str> = m
+                    .get("inferenceTypesSupported")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
+                    .unwrap_or_default();
 
-                            // Only include TEXT output models with ON_DEMAND or INFERENCE_PROFILE inference
-                            if !output_modalities.contains(&"TEXT")
-                                || (!inference_types.contains(&"ON_DEMAND")
-                                    && !inference_types.contains(&"INFERENCE_PROFILE"))
-                            {
-                                continue;
-                            }
-
-                            // Skip non-chat models
-                            let name_lower = model_name.to_lowercase();
-                            if name_lower.contains("rerank")
-                                || name_lower.contains("embed")
-                                || name_lower.contains("safeguard")
-                                || name_lower.contains("sonic")
-                                || name_lower.contains("pegasus")
-                            {
-                                continue;
-                            }
-
-                            let streaming = m
-                                .get("responseStreamingSupported")
-                                .and_then(|v| v.as_bool())
-                                .unwrap_or(false);
-                            let vision = input_modalities.contains(&"IMAGE");
-
-                            // Models with INFERENCE_PROFILE support use cross-region
-                            // us. prefix; ON_DEMAND-only models use bare model IDs.
-                            // Amazon models never get the prefix.
-                            let actual_id = if model_id.starts_with("amazon.") {
-                                model_id.to_string()
-                            } else if inference_types.contains(&"INFERENCE_PROFILE") {
-                                format!("us.{}", model_id)
-                            } else {
-                                model_id.to_string()
-                            };
-
-                            let display_name = format!("{} (Bedrock)", model_name);
-
-                            models.insert(
-                                actual_id.clone(),
-                                ModelInfo {
-                                    id: actual_id,
-                                    name: display_name,
-                                    provider: "bedrock".to_string(),
-                                    context_window: Self::estimate_context_window(
-                                        model_id,
-                                        provider_name,
-                                    ),
-                                    max_output_tokens: Some(Self::estimate_max_output(
-                                        model_id,
-                                        provider_name,
-                                    )),
-                                    supports_vision: vision,
-                                    supports_tools: true,
-                                    supports_streaming: streaming,
-                                    input_cost_per_million: None,
-                                    output_cost_per_million: None,
-                                },
-                            );
-                        }
-                    }
+                // Only include TEXT output models with ON_DEMAND or INFERENCE_PROFILE inference
+                if !output_modalities.contains(&"TEXT")
+                    || (!inference_types.contains(&"ON_DEMAND")
+                        && !inference_types.contains(&"INFERENCE_PROFILE"))
+                {
+                    continue;
                 }
+
+                // Skip non-chat models
+                let name_lower = model_name.to_lowercase();
+                if name_lower.contains("rerank")
+                    || name_lower.contains("embed")
+                    || name_lower.contains("safeguard")
+                    || name_lower.contains("sonic")
+                    || name_lower.contains("pegasus")
+                {
+                    continue;
+                }
+
+                let streaming = m
+                    .get("responseStreamingSupported")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let vision = input_modalities.contains(&"IMAGE");
+
+                // Models with INFERENCE_PROFILE support use cross-region
+                // us. prefix; ON_DEMAND-only models use bare model IDs.
+                // Amazon models never get the prefix.
+                let actual_id = if model_id.starts_with("amazon.") {
+                    model_id.to_string()
+                } else if inference_types.contains(&"INFERENCE_PROFILE") {
+                    format!("us.{}", model_id)
+                } else {
+                    model_id.to_string()
+                };
+
+                let display_name = format!("{} (Bedrock)", model_name);
+
+                models.insert(
+                    actual_id.clone(),
+                    ModelInfo {
+                        id: actual_id,
+                        name: display_name,
+                        provider: "bedrock".to_string(),
+                        context_window: Self::estimate_context_window(model_id, provider_name),
+                        max_output_tokens: Some(Self::estimate_max_output(model_id, provider_name)),
+                        supports_vision: vision,
+                        supports_tools: true,
+                        supports_streaming: streaming,
+                        input_cost_per_million: None,
+                        output_cost_per_million: None,
+                    },
+                );
             }
         }
 
@@ -627,101 +627,92 @@ impl BedrockProvider {
         );
         let ip_resp = self.send_request("GET", &ip_url, None, "bedrock").await;
 
-        if let Ok(resp) = ip_resp {
-            if resp.status().is_success() {
-                if let Ok(data) = resp.json::<Value>().await {
-                    if let Some(profiles) = data
-                        .get("inferenceProfileSummaries")
-                        .and_then(|v| v.as_array())
-                    {
-                        for p in profiles {
-                            let pid = p
-                                .get("inferenceProfileId")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("");
-                            let pname = p
-                                .get("inferenceProfileName")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("");
+        if let Ok(resp) = ip_resp
+            && resp.status().is_success()
+            && let Ok(data) = resp.json::<Value>().await
+            && let Some(profiles) = data
+                .get("inferenceProfileSummaries")
+                .and_then(|v| v.as_array())
+        {
+            for p in profiles {
+                let pid = p
+                    .get("inferenceProfileId")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let pname = p
+                    .get("inferenceProfileName")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
 
-                            // Only US cross-region profiles
-                            if !pid.starts_with("us.") {
-                                continue;
-                            }
-
-                            // Skip already-discovered models
-                            if models.contains_key(pid) {
-                                continue;
-                            }
-
-                            // Skip non-text models
-                            let name_lower = pname.to_lowercase();
-                            if name_lower.contains("image")
-                                || name_lower.contains("stable ")
-                                || name_lower.contains("upscale")
-                                || name_lower.contains("embed")
-                                || name_lower.contains("marengo")
-                                || name_lower.contains("outpaint")
-                                || name_lower.contains("inpaint")
-                                || name_lower.contains("erase")
-                                || name_lower.contains("recolor")
-                                || name_lower.contains("replace")
-                                || name_lower.contains("style ")
-                                || name_lower.contains("background")
-                                || name_lower.contains("sketch")
-                                || name_lower.contains("control")
-                                || name_lower.contains("transfer")
-                                || name_lower.contains("sonic")
-                                || name_lower.contains("pegasus")
-                                || name_lower.contains("rerank")
-                            {
-                                continue;
-                            }
-
-                            // Guess vision from known model families
-                            let vision = pid.contains("llama3-2-11b")
-                                || pid.contains("llama3-2-90b")
-                                || pid.contains("pixtral")
-                                || pid.contains("claude-3")
-                                || pid.contains("claude-sonnet-4")
-                                || pid.contains("claude-opus-4")
-                                || pid.contains("claude-haiku-4");
-
-                            let display_name = pname.replace("US ", "");
-                            let display_name = format!("{} (Bedrock)", display_name.trim());
-
-                            // Extract provider hint from model ID
-                            let provider_hint = pid
-                                .strip_prefix("us.")
-                                .unwrap_or(pid)
-                                .split('.')
-                                .next()
-                                .unwrap_or("");
-
-                            models.insert(
-                                pid.to_string(),
-                                ModelInfo {
-                                    id: pid.to_string(),
-                                    name: display_name,
-                                    provider: "bedrock".to_string(),
-                                    context_window: Self::estimate_context_window(
-                                        pid,
-                                        provider_hint,
-                                    ),
-                                    max_output_tokens: Some(Self::estimate_max_output(
-                                        pid,
-                                        provider_hint,
-                                    )),
-                                    supports_vision: vision,
-                                    supports_tools: true,
-                                    supports_streaming: true,
-                                    input_cost_per_million: None,
-                                    output_cost_per_million: None,
-                                },
-                            );
-                        }
-                    }
+                // Only US cross-region profiles
+                if !pid.starts_with("us.") {
+                    continue;
                 }
+
+                // Skip already-discovered models
+                if models.contains_key(pid) {
+                    continue;
+                }
+
+                // Skip non-text models
+                let name_lower = pname.to_lowercase();
+                if name_lower.contains("image")
+                    || name_lower.contains("stable ")
+                    || name_lower.contains("upscale")
+                    || name_lower.contains("embed")
+                    || name_lower.contains("marengo")
+                    || name_lower.contains("outpaint")
+                    || name_lower.contains("inpaint")
+                    || name_lower.contains("erase")
+                    || name_lower.contains("recolor")
+                    || name_lower.contains("replace")
+                    || name_lower.contains("style ")
+                    || name_lower.contains("background")
+                    || name_lower.contains("sketch")
+                    || name_lower.contains("control")
+                    || name_lower.contains("transfer")
+                    || name_lower.contains("sonic")
+                    || name_lower.contains("pegasus")
+                    || name_lower.contains("rerank")
+                {
+                    continue;
+                }
+
+                // Guess vision from known model families
+                let vision = pid.contains("llama3-2-11b")
+                    || pid.contains("llama3-2-90b")
+                    || pid.contains("pixtral")
+                    || pid.contains("claude-3")
+                    || pid.contains("claude-sonnet-4")
+                    || pid.contains("claude-opus-4")
+                    || pid.contains("claude-haiku-4");
+
+                let display_name = pname.replace("US ", "");
+                let display_name = format!("{} (Bedrock)", display_name.trim());
+
+                // Extract provider hint from model ID
+                let provider_hint = pid
+                    .strip_prefix("us.")
+                    .unwrap_or(pid)
+                    .split('.')
+                    .next()
+                    .unwrap_or("");
+
+                models.insert(
+                    pid.to_string(),
+                    ModelInfo {
+                        id: pid.to_string(),
+                        name: display_name,
+                        provider: "bedrock".to_string(),
+                        context_window: Self::estimate_context_window(pid, provider_hint),
+                        max_output_tokens: Some(Self::estimate_max_output(pid, provider_hint)),
+                        supports_vision: vision,
+                        supports_tools: true,
+                        supports_streaming: true,
+                        input_cost_per_million: None,
+                        output_cost_per_million: None,
+                    },
+                );
             }
         }
 
@@ -747,33 +738,24 @@ impl BedrockProvider {
             300_000
         } else if id.contains("nova-micro") || id.contains("nova-2") {
             128_000
-        } else if id.contains("deepseek") {
-            128_000
-        } else if id.contains("llama4") {
+        } else if id.contains("llama4") || id.contains("jamba") {
             256_000
-        } else if id.contains("llama3") {
-            128_000
-        } else if id.contains("mistral-large-3") || id.contains("magistral") {
-            128_000
-        } else if id.contains("mistral") {
+        } else if id.contains("mistral") && !id.contains("large") && !id.contains("magistral") {
             32_000
-        } else if id.contains("qwen") {
-            128_000
-        } else if id.contains("kimi") {
-            128_000
-        } else if id.contains("jamba") {
-            256_000
-        } else if id.contains("glm") {
-            128_000
-        } else if id.contains("minimax") {
-            128_000
-        } else if id.contains("gemma") {
-            128_000
-        } else if id.contains("cohere") || id.contains("command") {
-            128_000
-        } else if id.contains("nemotron") {
-            128_000
-        } else if provider.to_lowercase().contains("amazon") {
+        } else if id.contains("deepseek")
+            || id.contains("llama3")
+            || id.contains("mistral-large-3")
+            || id.contains("magistral")
+            || id.contains("qwen")
+            || id.contains("kimi")
+            || id.contains("glm")
+            || id.contains("minimax")
+            || id.contains("gemma")
+            || id.contains("cohere")
+            || id.contains("command")
+            || id.contains("nemotron")
+            || provider.to_lowercase().contains("amazon")
+        {
             128_000
         } else {
             32_000
@@ -783,11 +765,11 @@ impl BedrockProvider {
     /// Estimate max output tokens based on model family
     fn estimate_max_output(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
-        if id.contains("claude-opus-4-6") {
-            32_000
-        } else if id.contains("claude-opus-4-5") {
-            32_000
-        } else if id.contains("claude-opus-4-1") {
+        if id.contains("claude-opus-4-6")
+            || id.contains("claude-opus-4-5")
+            || id.contains("claude-opus-4-1")
+            || id.contains("claude-opus-4")
+        {
             32_000
         } else if id.contains("claude-sonnet-4-6") {
             128_000
@@ -798,29 +780,23 @@ impl BedrockProvider {
             64_000
         } else if id.contains("claude-haiku-4-5") {
             16_384
-        } else if id.contains("claude-opus-4") {
-            32_000
         } else if id.contains("claude") {
             8_192
         } else if id.contains("nova") {
             5_000
-        } else if id.contains("deepseek") {
-            16_384
-        } else if id.contains("llama4") {
+        } else if id.contains("deepseek") || id.contains("llama4") || id.contains("mistral-large-3")
+        {
             16_384
         } else if id.contains("llama") {
             4_096
-        } else if id.contains("mistral-large-3") {
-            16_384
-        } else if id.contains("mistral") || id.contains("mixtral") {
+        } else if id.contains("mistral")
+            || id.contains("mixtral")
+            || id.contains("qwen")
+            || id.contains("kimi")
+        {
             8_192
-        } else if id.contains("qwen") {
-            8_192
-        } else if id.contains("kimi") {
-            8_192
-        } else if id.contains("jamba") {
-            4_096
         } else {
+            // jamba and other models
             4_096
         }
     }
@@ -861,26 +837,21 @@ impl BedrockProvider {
                 Role::User => {
                     let mut content_parts: Vec<Value> = Vec::new();
                     for part in &msg.content {
-                        match part {
-                            ContentPart::Text { text } => {
-                                if !text.trim().is_empty() {
-                                    content_parts.push(json!({"text": text}));
-                                }
-                            }
-                            _ => {}
+                        if let ContentPart::Text { text } = part
+                            && !text.trim().is_empty()
+                        {
+                            content_parts.push(json!({"text": text}));
                         }
                     }
                     if !content_parts.is_empty() {
                         // Merge into previous user message if the last message is also "user"
-                        if let Some(last) = api_messages.last_mut() {
-                            if last.get("role").and_then(|r| r.as_str()) == Some("user") {
-                                if let Some(arr) =
-                                    last.get_mut("content").and_then(|c| c.as_array_mut())
-                                {
-                                    arr.extend(content_parts);
-                                    continue;
-                                }
-                            }
+                        if let Some(last) = api_messages.last_mut()
+                            && last.get("role").and_then(|r| r.as_str()) == Some("user")
+                            && let Some(arr) =
+                                last.get_mut("content").and_then(|c| c.as_array_mut())
+                        {
+                            arr.extend(content_parts);
+                            continue;
                         }
                         api_messages.push(json!({
                             "role": "user",
@@ -922,15 +893,12 @@ impl BedrockProvider {
                         continue;
                     }
                     // Merge into previous assistant message if consecutive
-                    if let Some(last) = api_messages.last_mut() {
-                        if last.get("role").and_then(|r| r.as_str()) == Some("assistant") {
-                            if let Some(arr) =
-                                last.get_mut("content").and_then(|c| c.as_array_mut())
-                            {
-                                arr.extend(content_parts);
-                                continue;
-                            }
-                        }
+                    if let Some(last) = api_messages.last_mut()
+                        && last.get("role").and_then(|r| r.as_str()) == Some("assistant")
+                        && let Some(arr) = last.get_mut("content").and_then(|c| c.as_array_mut())
+                    {
+                        arr.extend(content_parts);
+                        continue;
                     }
                     api_messages.push(json!({
                         "role": "assistant",
@@ -964,15 +932,13 @@ impl BedrockProvider {
                     }
                     if !content_parts.is_empty() {
                         // Merge into previous user message (from earlier Tool messages)
-                        if let Some(last) = api_messages.last_mut() {
-                            if last.get("role").and_then(|r| r.as_str()) == Some("user") {
-                                if let Some(arr) =
-                                    last.get_mut("content").and_then(|c| c.as_array_mut())
-                                {
-                                    arr.extend(content_parts);
-                                    continue;
-                                }
-                            }
+                        if let Some(last) = api_messages.last_mut()
+                            && last.get("role").and_then(|r| r.as_str()) == Some("user")
+                            && let Some(arr) =
+                                last.get_mut("content").and_then(|c| c.as_array_mut())
+                        {
+                            arr.extend(content_parts);
+                            continue;
                         }
                         api_messages.push(json!({
                             "role": "user",
@@ -1130,6 +1096,17 @@ impl Provider for BedrockProvider {
         }
         body["inferenceConfig"] = inference_config;
 
+        if let Some(service_tier) = Self::configured_service_tier() {
+            tracing::debug!(
+                provider = "bedrock",
+                service_tier = %service_tier,
+                "Applying Bedrock service tier override"
+            );
+            body["additionalModelRequestFields"] = json!({
+                "service_tier": service_tier
+            });
+        }
+
         if !tools.is_empty() {
             body["toolConfig"] = json!({"tools": tools});
         }
@@ -1250,5 +1227,28 @@ impl Provider for BedrockProvider {
         Ok(Box::pin(futures::stream::once(async move {
             StreamChunk::Text(text)
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BedrockProvider;
+
+    #[test]
+    fn resolve_opus_46_alias_includes_profile_suffix() {
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4.6"),
+            "us.anthropic.claude-opus-4-6-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4-6"),
+            "us.anthropic.claude-opus-4-6-v1:0"
+        );
+    }
+
+    #[test]
+    fn resolve_model_id_passes_through_full_id() {
+        let model_id = "us.anthropic.claude-opus-4-6-v1:0";
+        assert_eq!(BedrockProvider::resolve_model_id(model_id), model_id);
     }
 }

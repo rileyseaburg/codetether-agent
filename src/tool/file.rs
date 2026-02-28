@@ -13,6 +13,12 @@ use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persis
 /// Read file contents
 pub struct ReadTool;
 
+impl Default for ReadTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReadTool {
     pub fn new() -> Self {
         Self
@@ -127,6 +133,12 @@ impl Tool for ReadTool {
 
 /// Write file contents
 pub struct WriteTool;
+
+impl Default for WriteTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl WriteTool {
     pub fn new() -> Self {
@@ -255,6 +267,12 @@ impl Tool for WriteTool {
 /// List directory contents
 pub struct ListTool;
 
+impl Default for ListTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ListTool {
     pub fn new() -> Self {
         Self
@@ -330,6 +348,12 @@ impl Tool for ListTool {
 
 /// Find files using glob patterns
 pub struct GlobTool;
+
+impl Default for GlobTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl GlobTool {
     pub fn new() -> Self {

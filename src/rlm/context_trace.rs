@@ -172,7 +172,12 @@ impl ContextTrace {
         if self.max_tokens == 0 {
             0.0
         } else {
-            (self.total_tokens as f32 / self.max_tokens as f32) * 100.0
+            // Use integer math to avoid floating point noise (e.g. 15.000001).
+            // We keep 1 decimal place of precision.
+            let total = self.total_tokens as u64;
+            let max = self.max_tokens as u64;
+            let tenths = (total.saturating_mul(1000) + (max / 2)).saturating_div(max);
+            (tenths as f32) / 10.0
         }
     }
 
