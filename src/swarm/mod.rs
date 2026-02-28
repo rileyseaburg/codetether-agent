@@ -292,11 +292,6 @@ pub struct SwarmStats {
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
 
-    /// Total number of retry attempts across all sub-agents
-    pub total_retries: usize,
-
-    /// Number of sub-agents that succeeded after at least one retry
-    pub subagents_recovered: usize,
 }
 
 /// Statistics for a single execution stage
@@ -330,6 +325,22 @@ impl SwarmStats {
     /// Calculate critical path from stages
     pub fn calculate_critical_path(&mut self) {
         self.critical_path_length = self.stages.iter().map(|s| s.max_steps).sum();
+    }
+
+    /// Merge cache statistics from a [`CacheStats`] snapshot into these stats
+    pub fn merge_cache_stats(&mut self, cache_stats: &cache::CacheStats) {
+        self.cache_hits = cache_stats.hits;
+        self.cache_misses = cache_stats.misses;
+    }
+
+    /// Cache hit rate (0.0 to 1.0); returns 0.0 when no cache lookups occurred
+    pub fn cache_hit_rate(&self) -> f64 {
+        let total = self.cache_hits + self.cache_misses;
+        if total == 0 {
+            0.0
+        } else {
+            self.cache_hits as f64 / total as f64
+        }
     }
 }
 
