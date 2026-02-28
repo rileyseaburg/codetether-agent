@@ -366,7 +366,7 @@ impl Tool for AgentTool {
                                 agent_done = true;
                             }
                             SessionEvent::SessionSync(synced) => {
-                                session = synced;
+                                session = *synced;
                             }
                             _ => {}
                         },

@@ -2583,7 +2583,9 @@ impl Session {
 
         // Text was already sent per-step via TextComplete events.
         // Send updated session state so the caller can sync back.
-        let _ = event_tx.send(SessionEvent::SessionSync(self.clone())).await;
+        let _ = event_tx
+            .send(SessionEvent::SessionSync(Box::new(self.clone())))
+            .await;
         let _ = event_tx.send(SessionEvent::Done).await;
 
         Ok(SessionResult {
@@ -2738,7 +2740,7 @@ pub enum SessionEvent {
         model: String,
     },
     /// Updated session state for caller to sync back
-    SessionSync(Session),
+    SessionSync(Box<Session>),
     /// Processing complete
     Done,
     /// Error occurred

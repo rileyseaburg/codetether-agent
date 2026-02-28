@@ -1254,7 +1254,11 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
 
                         // Calculate actual retry info - attempt is 0-indexed, so attempt=0 means 1 attempt, attempt=1 means 2 attempts, etc.
                         let total_attempts = attempt + 1;
-                        let actual_retry_attempts = if total_attempts > 1 { total_attempts - 1 } else { 0 };
+                        let actual_retry_attempts = if total_attempts > 1 {
+                            total_attempts - 1
+                        } else {
+                            0
+                        };
                         let was_retried = attempt > 0;
 
                         // Emit completion events
@@ -1298,7 +1302,11 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     Err(e) => {
                         // Calculate actual retry info - attempt is 0-indexed
                         let total_attempts = attempt + 1;
-                        let actual_retry_attempts = if total_attempts > 1 { total_attempts - 1 } else { 0 };
+                        let actual_retry_attempts = if total_attempts > 1 {
+                            total_attempts - 1
+                        } else {
+                            0
+                        };
                         let was_retried = attempt > 0;
 
                         // Emit error events
