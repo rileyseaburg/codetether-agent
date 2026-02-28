@@ -106,6 +106,12 @@ impl std::fmt::Debug for OpenAiCodexProvider {
     }
 }
 
+impl Default for OpenAiCodexProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OpenAiCodexProvider {
     pub fn from_api_key(api_key: String) -> Self {
         Self {

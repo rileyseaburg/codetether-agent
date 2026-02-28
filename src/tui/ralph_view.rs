@@ -529,13 +529,7 @@ fn render_story_list(f: &mut Frame, state: &mut RalphViewState, area: Rect) {
                 let qc_summary: Vec<&str> = story
                     .quality_checks
                     .iter()
-                    .map(|(name, passed)| {
-                        if *passed {
-                            name.as_str()
-                        } else {
-                            name.as_str()
-                        }
-                    })
+                    .map(|(name, _passed)| name.as_str())
                     .collect();
                 if !qc_summary.is_empty() {
                     let checks: String = story

@@ -160,48 +160,60 @@ async fn build_tree(
         .await
         .with_context(|| format!("Failed to read directory: {}", path.display()))?;
 
-    while let Ok(Some(entry)) = dir.next_entry().await {
-        let name = entry.file_name().to_string_lossy().to_string();
+    loop {
+        match dir.next_entry().await {
+            Ok(Some(entry)) => {
+                let name = entry.file_name().to_string_lossy().to_string();
 
-        // Skip hidden files unless requested
-        if !show_hidden && name.starts_with('.') {
-            continue;
-        }
+                // Skip hidden files unless requested
+                if !show_hidden && name.starts_with('.') {
+                    continue;
+                }
 
-        // Skip common ignored directories
-        if respect_gitignore {
-            let skip_dirs = [
-                "node_modules",
-                "target",
-                ".git",
-                "__pycache__",
-                ".venv",
-                "dist",
-                ".next",
-                "vendor",
-            ];
-            if skip_dirs.contains(&name.as_str()) {
+                // Skip common ignored directories
+                if respect_gitignore {
+                    let skip_dirs = [
+                        "node_modules",
+                        "target",
+                        ".git",
+                        "__pycache__",
+                        ".venv",
+                        "dist",
+                        ".next",
+                        "vendor",
+                    ];
+                    if skip_dirs.contains(&name.as_str()) {
+                        continue;
+                    }
+                }
+
+                let file_type = match entry.file_type().await {
+                    Ok(ft) => ft,
+                    Err(e) => {
+                        tracing::warn!(path = %entry.path().display(), error = %e, "Failed to get file type, skipping");
+                        continue;
+                    }
+                };
+
+                let size = if show_size {
+                    entry.metadata().await.map(|m| m.len()).unwrap_or(0)
+                } else {
+                    0
+                };
+
+                entries.push(TreeEntry {
+                    name,
+                    path: entry.path(),
+                    is_dir: file_type.is_dir(),
+                    size,
+                });
+            }
+            Ok(None) => break, // End of directory
+            Err(e) => {
+                tracing::warn!(path = %path.display(), error = %e, "Error reading directory entry, continuing");
                 continue;
             }
         }
-
-        let file_type = match entry.file_type().await {
-            Ok(ft) => ft,
-            Err(_) => continue,
-        };
-
-        let size = if show_size {
-            entry.metadata().await.map(|m| m.len()).unwrap_or(0)
-        } else {
-            0
-        };
-
-        entries.push(TreeEntry {
-            name,
-            path: entry.path(),
-            is_dir: file_type.is_dir(),
-            size,
-        });
     }
 
     // Sort entries: directories first, then files, alphabetically

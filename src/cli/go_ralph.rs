@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 use crate::bus::AgentBus;
 use crate::okr::{KrOutcome, KrOutcomeType, Okr, OkrRun, OkrRunStatus};
@@ -263,6 +264,89 @@ Rules:
     anyhow::bail!("Failed to extract valid PRD JSON after 3 attempts. Last error: {last_error}");
 }
 
+/// Generate a PRD with automatic model retry on failure.
+/// Tries the primary model first, then attempts alternative models if it fails.
+/// This makes autonomous execution more robust against transient provider issues.
+pub async fn generate_prd_with_model_retry(
+    task: &str,
+    okr: &Okr,
+    primary_provider: Arc<dyn Provider>,
+    primary_model: &str,
+    registry: Option<&ProviderRegistry>,
+) -> Result<Prd> {
+    // Try primary model first
+    match generate_prd_from_task(task, okr, primary_provider.as_ref(), primary_model).await {
+        Ok(prd) => {
+            info!(model = %primary_model, "PRD generated with primary model");
+            return Ok(prd);
+        }
+        Err(e) => {
+            warn!(model = %primary_model, error = %e, "Primary model failed, trying alternatives");
+        }
+    }
+
+    // If registry provided, try alternative models
+    if let Some(reg) = registry {
+        let alternatives = get_model_alternatives(primary_model, reg);
+
+        for (provider_name, alt_model) in alternatives {
+            if let Some(provider) = reg.get(provider_name) {
+                info!(model = %alt_model, provider = %provider_name, "Trying alternative model");
+                match generate_prd_from_task(task, okr, provider.as_ref(), &alt_model).await {
+                    Ok(prd) => {
+                        info!(model = %alt_model, "PRD generated with alternative model");
+                        return Ok(prd);
+                    }
+                    Err(e) => {
+                        warn!(model = %alt_model, error = %e, "Alternative model failed");
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    // If we get here, all models failed - return original error
+    generate_prd_from_task(task, okr, primary_provider.as_ref(), primary_model).await
+}
+
+/// Get ordered list of alternative models for PRD generation.
+/// Excludes the primary model to avoid redundant attempts.
+fn get_model_alternatives<'a>(
+    primary_model: &'a str,
+    registry: &'a ProviderRegistry,
+) -> Vec<(&'a str, String)> {
+    let mut alternatives = Vec::new();
+
+    // Known good models for PRD generation (reasoning-capable models work best)
+    // Ordered by preference - most capable first
+    let model_preferences = [
+        ("openai", "gpt-4o"),
+        ("openai", "gpt-4o-mini"),
+        ("anthropic", "claude-sonnet-4-20250514"),
+        ("anthropic", "claude-3-5-sonnet-20241022"),
+        ("google", "gemini-2.0-flash"),
+        ("openrouter", "openai/gpt-4o"),
+        ("openrouter", "anthropic/claude-3.5-sonnet"),
+        ("zai", "glm-5"),
+    ];
+
+    for (provider, model) in model_preferences {
+        // Skip if this is the primary model
+        let model_string = format!("{}/{}", provider, model);
+        if model_string == primary_model || model == primary_model {
+            continue;
+        }
+
+        // Only add if provider is available in registry
+        if registry.get(provider).is_some() {
+            alternatives.push((provider, model_string));
+        }
+    }
+
+    alternatives
+}
+
 /// Run Ralph loop for a `/go` task, mapping results back to OKR.
 pub async fn execute_go_ralph(
     task: &str,
@@ -275,9 +359,11 @@ pub async fn execute_go_ralph(
     max_concurrent_stories: usize,
     registry: Option<Arc<ProviderRegistry>>,
 ) -> Result<GoRalphResult> {
-    // Step 1: Generate PRD from task + KRs
+    // Step 1: Generate PRD from task + KRs (with automatic model retry)
     tracing::info!(task = %task, okr_id = %okr.id, "Generating PRD from task and key results");
-    let prd = generate_prd_from_task(task, okr, provider.as_ref(), model).await?;
+    let registry_ref = registry.as_ref().map(|r| r.as_ref());
+    let prd = generate_prd_with_model_retry(task, okr, Arc::clone(&provider), model, registry_ref)
+        .await?;
 
     // Step 2: Save PRD to disk
     let prd_filename = format!("prd_{}.json", okr_run.id.to_string().replace('-', "_"));

@@ -294,6 +294,7 @@ impl ModelCatalog {
         let preferred_ids = [
             "claude-sonnet-4-6",
             "claude-sonnet-4-20250514",
+            "claude-opus-4-6",
             "claude-opus-4-20250514",
             "gpt-5-codex",
             "gpt-5.1-codex",

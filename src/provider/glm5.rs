@@ -73,6 +73,7 @@ impl Glm5Provider {
     ///
     /// `base_url` should be the full base URL including `/v1`, e.g.
     /// `https://<vast-endpoint>.vast.ai/v1`.
+    #[allow(dead_code)]
     pub fn new(api_key: String, base_url: String) -> Result<Self> {
         Self::with_model(api_key, base_url, DEFAULT_MODEL.to_string())
     }

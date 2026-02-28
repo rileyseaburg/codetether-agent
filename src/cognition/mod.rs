@@ -647,6 +647,12 @@ impl CognitionRuntime {
                 .unwrap_or_else(|_| {
                     std::env::var("AWS_DEFAULT_REGION").unwrap_or_else(|_| "us-west-2".to_string())
                 }),
+            bedrock_service_tier: std::env::var(
+                "CODETETHER_COGNITION_THINKER_BEDROCK_SERVICE_TIER",
+            )
+            .ok()
+            .map(|v| v.trim().to_ascii_lowercase())
+            .filter(|v| !v.is_empty()),
         };
 
         let mut runtime = Self::new_with_options(options);

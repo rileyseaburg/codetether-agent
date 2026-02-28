@@ -97,6 +97,7 @@ impl LspClient {
     }
 
     /// Shutdown the language server
+    #[allow(dead_code)]
     pub async fn shutdown(&self) -> Result<()> {
         let response = self.transport.request("shutdown", None).await?;
 
@@ -136,6 +137,7 @@ impl LspClient {
     }
 
     /// Close a text document
+    #[allow(dead_code)]
     pub async fn close_document(&self, path: &Path) -> Result<()> {
         let uri = path_to_uri(path);
 
@@ -155,6 +157,7 @@ impl LspClient {
     }
 
     /// Update a text document
+    #[allow(dead_code)]
     pub async fn change_document(&self, path: &Path, content: &str) -> Result<()> {
         let uri = path_to_uri(path);
         let mut open_docs = self.open_documents.write().await;
@@ -385,17 +388,20 @@ impl LspClient {
     }
 
     /// Get the server capabilities
+    #[allow(dead_code)]
     pub async fn capabilities(&self) -> Option<lsp_types::ServerCapabilities> {
         self.server_capabilities.read().await.clone()
     }
 
     /// Check if this client handles the given file extension
+    #[allow(dead_code)]
     pub fn handles_file(&self, path: &Path) -> bool {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         self.config.file_extensions.iter().any(|fe| fe == ext)
     }
 
     /// Check if this client handles a language by name
+    #[allow(dead_code)]
     pub fn handles_language(&self, language: &str) -> bool {
         let extensions = match language {
             "rust" => &["rs"][..],
@@ -458,11 +464,9 @@ fn parse_location_response(response: JsonRpcResponse, _operation: &str) -> Resul
         return Ok(LspActionResult::Definition {
             locations: links
                 .into_iter()
-                .filter_map(|link| {
-                    Some(LocationInfo {
-                        uri: link.target_uri.to_string(),
-                        range: RangeInfo::from(link.target_selection_range),
-                    })
+                .map(|link| LocationInfo {
+                    uri: link.target_uri.to_string(),
+                    range: RangeInfo::from(link.target_selection_range),
                 })
                 .collect(),
         });
@@ -685,12 +689,14 @@ impl LspManager {
     }
 
     /// Check if any registered client handles the given file.
+    #[allow(dead_code)]
     pub async fn handles_file(&self, path: &Path) -> bool {
         let clients = self.clients.read().await;
         clients.values().any(|c| c.handles_file(path))
     }
 
     /// Get capabilities for a specific language server.
+    #[allow(dead_code)]
     pub async fn capabilities_for(&self, language: &str) -> Option<lsp_types::ServerCapabilities> {
         let clients = self.clients.read().await;
         if let Some(client) = clients.get(language) {
@@ -701,6 +707,7 @@ impl LspManager {
     }
 
     /// Close a document across all relevant clients.
+    #[allow(dead_code)]
     pub async fn close_document(&self, path: &Path) -> Result<()> {
         if let Ok(client) = self.get_client_for_file(path).await {
             client.close_document(path).await?;
@@ -709,6 +716,7 @@ impl LspManager {
     }
 
     /// Notify clients of a document change.
+    #[allow(dead_code)]
     pub async fn change_document(&self, path: &Path, content: &str) -> Result<()> {
         if let Ok(client) = self.get_client_for_file(path).await {
             client.change_document(path, content).await?;
@@ -717,6 +725,7 @@ impl LspManager {
     }
 
     /// Shutdown all clients
+    #[allow(dead_code)]
     pub async fn shutdown_all(&self) {
         let clients = self.clients.read().await;
         for (lang, client) in clients.iter() {

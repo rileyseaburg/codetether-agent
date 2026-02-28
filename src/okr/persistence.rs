@@ -392,6 +392,7 @@ impl OkrRepository {
     // ============ Utility Methods ============
 
     /// Clear the in-memory cache (useful for forcing reload from disk)
+    #[allow(dead_code)]
     pub async fn clear_cache(&self) {
         let mut cache = self.cache.write().await;
         cache.okrs.clear();

@@ -603,6 +603,7 @@ impl KrOutcome {
     }
 
     /// Add evidence link
+    #[allow(dead_code)]
     pub fn add_evidence(mut self, evidence: impl Into<String>) -> Self {
         self.evidence.push(evidence.into());
         self

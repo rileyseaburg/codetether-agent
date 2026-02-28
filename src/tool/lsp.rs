@@ -91,6 +91,7 @@ impl LspTool {
     }
 
     /// Shutdown all LSP clients, releasing resources.
+    #[allow(dead_code)]
     pub async fn shutdown_all(&self) {
         let cell = LSP_MANAGER.get_or_init(|| Arc::new(RwLock::new(None)));
         let guard = cell.read().await;

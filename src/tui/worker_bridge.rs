@@ -51,6 +51,7 @@ pub struct TuiWorkerBridge {
     /// Receiver for incoming tasks
     pub task_rx: mpsc::Receiver<IncomingTask>,
     /// Handle for the bridge task (for shutdown)
+    #[allow(dead_code)]
     pub handle: tokio::task::JoinHandle<()>,
 }
 

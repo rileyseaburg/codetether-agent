@@ -299,6 +299,43 @@ impl ProviderRegistry {
         self.providers.keys().map(|s| s.as_str()).collect()
     }
 
+    /// Resolve a model string to a provider.
+    ///
+    /// Accepts model strings in formats:
+    /// - "provider/model" (e.g., "openai/gpt-4o")
+    /// - "model" (uses first available provider)
+    ///
+    /// Returns the provider and the model name to use.
+    pub fn resolve_model(&self, model_str: &str) -> Result<(Arc<dyn Provider>, String)> {
+        let (provider_name, model) = parse_model_string(model_str);
+
+        if let Some(provider_name) = provider_name {
+            // Normalize provider aliases
+            let normalized = match provider_name {
+                "local-cuda" | "localcuda" => "local_cuda",
+                "zhipuai" => "zai",
+                other => other,
+            };
+
+            let provider = self.providers.get(normalized).cloned().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Provider '{}' not found. Available: {:?}",
+                    normalized,
+                    self.list()
+                )
+            })?;
+            Ok((provider, model.to_string()))
+        } else {
+            // No provider specified - use first available
+            let first_provider = self
+                .providers
+                .values()
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("No providers available in registry"))?;
+            Ok((first_provider.clone(), model_str.to_string()))
+        }
+    }
+
     /// Initialize with default providers from config
     pub async fn from_config(config: &crate::config::Config) -> Result<Self> {
         let mut registry = Self::new();

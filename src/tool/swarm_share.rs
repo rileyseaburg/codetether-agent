@@ -21,6 +21,20 @@ impl SwarmShareTool {
     pub fn new(store: Arc<ResultStore>, producer_id: String) -> Self {
         Self { store, producer_id }
     }
+
+    /// Create with default ResultStore and empty producer ID (for registry registration)
+    pub fn with_defaults() -> Self {
+        Self {
+            store: ResultStore::new_arc(),
+            producer_id: String::new(),
+        }
+    }
+}
+
+impl Default for SwarmShareTool {
+    fn default() -> Self {
+        Self::with_defaults()
+    }
 }
 
 #[derive(Deserialize)]

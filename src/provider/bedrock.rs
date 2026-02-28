@@ -181,6 +181,7 @@ impl std::fmt::Debug for BedrockProvider {
 
 impl BedrockProvider {
     /// Create from a bearer token (API Gateway / Vault key).
+    #[allow(dead_code)]
     pub fn new(api_key: String) -> Result<Self> {
         Self::with_region(api_key, DEFAULT_REGION.to_string())
     }
@@ -414,7 +415,9 @@ impl BedrockProvider {
     fn resolve_model_id(model: &str) -> &str {
         match model {
             // --- Anthropic Claude (verified via AWS CLI) ---
-            "claude-opus-4.6" | "claude-4.6-opus" => "us.anthropic.claude-opus-4-6-v1",
+            "claude-opus-4.6" | "claude-opus-4-6" | "claude-4.6-opus" => {
+                "us.anthropic.claude-opus-4-6-v1:0"
+            }
             "claude-opus-4.5" | "claude-4.5-opus" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
             "claude-opus-4.1" | "claude-4.1-opus" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
@@ -514,6 +517,13 @@ impl BedrockProvider {
             // Pass through full model IDs unchanged
             other => other,
         }
+    }
+
+    fn configured_service_tier() -> Option<String> {
+        std::env::var("CODETETHER_BEDROCK_SERVICE_TIER")
+            .ok()
+            .map(|v| v.trim().to_ascii_lowercase())
+            .filter(|v| !v.is_empty())
     }
 
     /// Dynamically discover available models from the Bedrock API.
@@ -728,9 +738,7 @@ impl BedrockProvider {
             300_000
         } else if id.contains("nova-micro") || id.contains("nova-2") {
             128_000
-        } else if id.contains("llama4") {
-            256_000
-        } else if id.contains("jamba") {
+        } else if id.contains("llama4") || id.contains("jamba") {
             256_000
         } else if id.contains("mistral") && !id.contains("large") && !id.contains("magistral") {
             32_000
@@ -787,9 +795,8 @@ impl BedrockProvider {
             || id.contains("kimi")
         {
             8_192
-        } else if id.contains("jamba") {
-            4_096
         } else {
+            // jamba and other models
             4_096
         }
     }
@@ -1089,6 +1096,17 @@ impl Provider for BedrockProvider {
         }
         body["inferenceConfig"] = inference_config;
 
+        if let Some(service_tier) = Self::configured_service_tier() {
+            tracing::debug!(
+                provider = "bedrock",
+                service_tier = %service_tier,
+                "Applying Bedrock service tier override"
+            );
+            body["additionalModelRequestFields"] = json!({
+                "service_tier": service_tier
+            });
+        }
+
         if !tools.is_empty() {
             body["toolConfig"] = json!({"tools": tools});
         }
@@ -1209,5 +1227,28 @@ impl Provider for BedrockProvider {
         Ok(Box::pin(futures::stream::once(async move {
             StreamChunk::Text(text)
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BedrockProvider;
+
+    #[test]
+    fn resolve_opus_46_alias_includes_profile_suffix() {
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4.6"),
+            "us.anthropic.claude-opus-4-6-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4-6"),
+            "us.anthropic.claude-opus-4-6-v1:0"
+        );
+    }
+
+    #[test]
+    fn resolve_model_id_passes_through_full_id() {
+        let model_id = "us.anthropic.claude-opus-4-6-v1:0";
+        assert_eq!(BedrockProvider::resolve_model_id(model_id), model_id);
     }
 }

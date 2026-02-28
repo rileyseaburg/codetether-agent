@@ -16,6 +16,7 @@ pub struct WorktreeInfo {
     /// Branch name
     pub branch: String,
     /// Whether this worktree is active
+    #[allow(dead_code)]
     pub active: bool,
 }
 
@@ -55,6 +56,7 @@ impl WorktreeManager {
     }
 
     /// Create a worktree manager with explicit repo path
+    #[allow(dead_code)]
     pub fn with_repo(base_dir: impl Into<PathBuf>, repo_path: impl Into<PathBuf>) -> Self {
         Self {
             base_dir: base_dir.into(),
@@ -168,6 +170,7 @@ impl WorktreeManager {
     }
 
     /// Get information about a worktree
+    #[allow(dead_code)]
     pub async fn get(&self, name: &str) -> Option<WorktreeInfo> {
         let worktrees = self.worktrees.lock().await;
         worktrees.iter().find(|w| w.name == name).cloned()

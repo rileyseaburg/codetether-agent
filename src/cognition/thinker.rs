@@ -75,6 +75,7 @@ pub struct ThinkerConfig {
     pub candle_repeat_last_n: usize,
     pub candle_seed: u64,
     pub bedrock_region: String,
+    pub bedrock_service_tier: Option<String>,
 }
 
 impl Default for ThinkerConfig {
@@ -98,6 +99,7 @@ impl Default for ThinkerConfig {
             candle_repeat_last_n: 64,
             candle_seed: 42,
             bedrock_region: "us-west-2".to_string(),
+            bedrock_service_tier: None,
         }
     }
 }
@@ -211,7 +213,7 @@ impl ThinkerClient {
         let model_id = &self.config.model;
 
         // Build Bedrock Converse request body
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "system": [{"text": system_prompt}],
             "messages": [{
                 "role": "user",
@@ -222,6 +224,12 @@ impl ThinkerClient {
                 "temperature": self.config.temperature
             }
         });
+
+        if let Some(service_tier) = self.config.bedrock_service_tier.as_ref() {
+            body["additionalModelRequestFields"] = serde_json::json!({
+                "service_tier": service_tier
+            });
+        }
 
         let body_bytes = serde_json::to_vec(&body)?;
         let encoded_model_id = model_id.replace(':', "%3A");

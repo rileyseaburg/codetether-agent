@@ -40,6 +40,7 @@ impl SkillTool {
     }
 
     /// Get the skill cache for internal tracking
+    #[allow(dead_code)]
     pub fn cache(&self) -> &HashMap<String, String> {
         &self.cache
     }

@@ -65,6 +65,7 @@ impl WorkerServerState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_heartbeat(mut self, state: Option<Arc<HeartbeatState>>) -> Self {
         self.heartbeat_state = state.clone();
         self
@@ -76,6 +77,7 @@ impl WorkerServerState {
     }
 
     /// Get the heartbeat state (for HTTP server)
+    #[allow(dead_code)]
     pub async fn heartbeat_state(&self) -> Arc<HeartbeatState> {
         let guard: Option<Arc<HeartbeatState>> = self.internal_heartbeat.lock().await.clone();
         guard.unwrap_or_else(|| {
@@ -93,10 +95,12 @@ impl WorkerServerState {
         *self.worker_id.lock().await = Some(worker_id);
     }
 
+    #[allow(dead_code)]
     pub async fn worker_id(&self) -> String {
         self.worker_id.lock().await.clone().unwrap_or_default()
     }
 
+    #[allow(dead_code)]
     pub async fn is_connected(&self) -> bool {
         *self.connected.lock().await
     }
@@ -106,12 +110,6 @@ impl WorkerServerState {
         // Optional: could also check heartbeat_state for active task count
         *self.connected.lock().await
     }
-}
-
-/// Start the worker HTTP server with default state
-pub async fn start_worker_server(args: WorkerServerArgs) -> Result<()> {
-    let state = WorkerServerState::new();
-    start_worker_server_with_state(args, state).await
 }
 
 /// Start the worker HTTP server with custom state
