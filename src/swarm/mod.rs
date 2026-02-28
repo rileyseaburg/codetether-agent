@@ -292,6 +292,11 @@ pub struct SwarmStats {
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
 
+    /// Number of cache hits (subtasks served from cache)
+    pub cache_hits: u64,
+
+    /// Number of cache misses (subtasks that required execution)
+    pub cache_misses: u64,
 }
 
 /// Statistics for a single execution stage

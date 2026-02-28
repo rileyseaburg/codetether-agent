@@ -809,7 +809,7 @@ async fn execute_opportunity_with_swarm(
                     result.stats.subagents_spawned,
                     result.stats.subagents_completed,
                     result.stats.subagents_failed,
-                    result.stats.total_retries
+                    result.subtask_results.iter().map(|r| r.retry_count).sum::<u32>() as usize
                 ))
             } else {
                 let error = result.error.unwrap_or_else(|| {

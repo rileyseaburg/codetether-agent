@@ -359,3 +359,4 @@ pub struct SubTaskResult {
 
     /// Number of retry attempts before this result was produced
     pub retry_count: u32,
+}

@@ -959,7 +959,6 @@ impl SwarmExecutor {
             let max_retries = self.config.max_retries;
             let base_delay_ms = self.config.base_delay_ms;
             let max_delay_ms = self.config.max_delay_ms;
-            let 2.0 = self.config.2.0;
 
             // Create worktree for this sub-agent before spawning so the collapse controller
             // can monitor live branches while execution is in-flight.
