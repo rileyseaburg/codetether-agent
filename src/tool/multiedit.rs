@@ -26,6 +26,28 @@ impl MultiEditTool {
     }
 }
 
+fn apply_exact_replace(
+    content: &str,
+    old_string: &str,
+    new_string: &str,
+    file: &str,
+    index: usize,
+) -> std::result::Result<String, String> {
+    let count = content.matches(old_string).count();
+    if count == 0 {
+        let preview: String = old_string.chars().take(80).collect();
+        return Err(format!(
+            "edits[{index}] {file}: old_string not found. First 80 chars: \"{preview}\""
+        ));
+    }
+    if count > 1 {
+        return Err(format!(
+            "edits[{index}] {file}: old_string found {count} times (must be unique). Add more context."
+        ));
+    }
+    Ok(content.replacen(old_string, new_string, 1))
+}
+
 #[async_trait]
 impl Tool for MultiEditTool {
     fn id(&self) -> &str {
@@ -39,7 +61,8 @@ impl Tool for MultiEditTool {
     fn description(&self) -> &str {
         "Apply multiple file edits atomically. Validates all edits, then writes all changes. \
          If any edit fails validation, no files are modified. Each edit replaces old_string \
-         with new_string in the given file."
+         with new_string in the given file. Uses Morph backend by default (disable with \
+         CODETETHER_MORPH_TOOL_BACKEND=0); instruction/update can guide Morph behavior per edit."
     }
 
     fn parameters(&self) -> Value {
@@ -63,9 +86,17 @@ impl Tool for MultiEditTool {
                             "new_string": {
                                 "type": "string",
                                 "description": "The replacement string"
+                            },
+                            "instruction": {
+                                "type": "string",
+                                "description": "Optional Morph instruction for this edit."
+                            },
+                            "update": {
+                                "type": "string",
+                                "description": "Optional Morph update snippet for this edit."
                             }
                         },
-                        "required": ["file", "old_string", "new_string"]
+                        "required": ["file"]
                     }
                 }
             },
@@ -118,11 +149,15 @@ impl Tool for MultiEditTool {
         // ── Extract and validate each edit entry ────────────────────
         struct EditOp {
             file: String,
-            old_string: String,
-            new_string: String,
+            old_string: Option<String>,
+            new_string: Option<String>,
+            instruction: Option<String>,
+            update: Option<String>,
+            use_morph: bool,
         }
 
         let mut ops: Vec<EditOp> = Vec::with_capacity(edits_arr.len());
+        let morph_enabled = super::morph_backend::should_use_morph_backend();
         for (i, entry) in edits_arr.iter().enumerate() {
             let file = match entry.get("file").and_then(|v| v.as_str()) {
                 Some(f) => f.to_string(),
@@ -138,38 +173,51 @@ impl Tool for MultiEditTool {
                     ));
                 }
             };
-            let old_string = match entry.get("old_string").and_then(|v| v.as_str()) {
-                Some(s) => s.to_string(),
-                None => {
-                    return Ok(ToolResult::structured_error(
-                        "INVALID_ARGUMENT",
-                        "multiedit",
-                        &format!("edits[{i}] ({file}): missing or non-string 'old_string' field"),
-                        Some(vec!["edits", "old_string"]),
-                        Some(
-                            json!({"file": file, "old_string": "exact text to find", "new_string": "replacement"}),
-                        ),
-                    ));
-                }
-            };
-            let new_string = match entry.get("new_string").and_then(|v| v.as_str()) {
-                Some(s) => s.to_string(),
-                None => {
-                    return Ok(ToolResult::structured_error(
-                        "INVALID_ARGUMENT",
-                        "multiedit",
-                        &format!("edits[{i}] ({file}): missing or non-string 'new_string' field"),
-                        Some(vec!["edits", "new_string"]),
-                        Some(
-                            json!({"file": file, "old_string": old_string, "new_string": "replacement text"}),
-                        ),
-                    ));
-                }
-            };
+            let old_string = entry
+                .get("old_string")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let new_string = entry
+                .get("new_string")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let instruction = entry
+                .get("instruction")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let update = entry
+                .get("update")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let has_replacement_pair = old_string.is_some() && new_string.is_some();
+            let use_morph = morph_enabled
+                && (instruction.is_some() || update.is_some() || has_replacement_pair);
+
+            if !use_morph && (old_string.is_none() || new_string.is_none()) {
+                return Ok(ToolResult::structured_error(
+                    "INVALID_ARGUMENT",
+                    "multiedit",
+                    &format!(
+                        "edits[{i}] ({file}): provide old_string/new_string, or enable Morph backend and provide instruction/update"
+                    ),
+                    Some(vec!["edits"]),
+                    Some(json!({
+                        "file": file,
+                        "old_string": "exact text to find",
+                        "new_string": "replacement text",
+                        "instruction": "Optional Morph instruction",
+                        "update": "Optional Morph update snippet"
+                    })),
+                ));
+            }
+
             ops.push(EditOp {
                 file,
                 old_string,
                 new_string,
+                instruction,
+                update,
+                use_morph,
             });
         }
 
@@ -201,24 +249,83 @@ impl Tool for MultiEditTool {
                 continue;
             };
 
-            let count = content.matches(&op.old_string).count();
-            if count == 0 {
-                let preview: String = op.old_string.chars().take(80).collect();
-                errors.push(format!(
-                    "edits[{i}] {}: old_string not found. First 80 chars: \"{}\"",
-                    op.file, preview
-                ));
-                continue;
-            }
-            if count > 1 {
-                errors.push(format!(
-                    "edits[{i}] {}: old_string found {count} times (must be unique). Add more context.",
-                    op.file
-                ));
-                continue;
-            }
+            let new_content = if op.use_morph {
+                let inferred_instruction = op
+                    .instruction
+                    .clone()
+                    .or_else(|| {
+                        op.old_string
+                            .as_deref()
+                            .zip(op.new_string.as_deref())
+                            .map(|(old, new)| {
+                                format!(
+                                    "Replace the target snippet exactly once while preserving behavior.\nOld snippet:\n{old}\n\nNew snippet:\n{new}"
+                                )
+                            })
+                    })
+                    .unwrap_or_else(|| {
+                        "Apply the requested update precisely and return only the updated file."
+                            .to_string()
+                    });
+                let inferred_update = op
+                    .update
+                    .clone()
+                    .or_else(|| {
+                        op.old_string
+                            .as_deref()
+                            .zip(op.new_string.as_deref())
+                            .map(|(old, new)| {
+                                format!(
+                                    "// Replace this snippet:\n{old}\n// With this snippet:\n{new}\n// ...existing code..."
+                                )
+                            })
+                    })
+                    .unwrap_or_else(|| "// ...existing code...".to_string());
 
-            let new_content = content.replacen(&op.old_string, &op.new_string, 1);
+                match super::morph_backend::apply_edit_with_morph(
+                    &content,
+                    &inferred_instruction,
+                    &inferred_update,
+                )
+                .await
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        if let (Some(old_string), Some(new_string)) =
+                            (op.old_string.as_deref(), op.new_string.as_deref())
+                        {
+                            tracing::warn!(
+                                file = %op.file,
+                                error = %e,
+                                "Morph backend failed for multiedit op; falling back to exact replacement"
+                            );
+                            match apply_exact_replace(&content, old_string, new_string, &op.file, i)
+                            {
+                                Ok(c) => c,
+                                Err(msg) => {
+                                    errors.push(msg);
+                                    continue;
+                                }
+                            }
+                        } else {
+                            errors
+                                .push(format!("edits[{i}] {}: Morph backend failed: {e}", op.file));
+                            continue;
+                        }
+                    }
+                }
+            } else {
+                let old_string = op.old_string.as_deref().unwrap_or_default();
+                let new_string = op.new_string.as_deref().unwrap_or_default();
+                match apply_exact_replace(&content, old_string, new_string, &op.file, i) {
+                    Ok(c) => c,
+                    Err(msg) => {
+                        errors.push(msg);
+                        continue;
+                    }
+                }
+            };
+
             content_cache.insert(path.clone(), new_content.clone());
             validated.push((path, content, new_content));
         }

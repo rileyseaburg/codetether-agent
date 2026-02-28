@@ -33,7 +33,9 @@ impl Tool for EditTool {
     }
 
     fn description(&self) -> &str {
-        "edit(path: string, old_string: string, new_string: string) - Edit a file by replacing an exact string with new content. Include enough context (3+ lines before and after) to uniquely identify the location."
+        "edit(path: string, old_string: string, new_string: string) - Edit a file by replacing an exact string with new content. Include enough context (3+ lines before and after) to uniquely identify the location. \
+         Uses Morph backend by default (disable with CODETETHER_MORPH_TOOL_BACKEND=0). \
+         Optional instruction/update can guide Morph behavior."
     }
 
     fn parameters(&self) -> Value {
@@ -51,13 +53,23 @@ impl Tool for EditTool {
                 "new_string": {
                     "type": "string",
                     "description": "The string to replace old_string with"
+                },
+                "instruction": {
+                    "type": "string",
+                    "description": "Optional Morph instruction."
+                },
+                "update": {
+                    "type": "string",
+                    "description": "Optional Morph update snippet."
                 }
             },
-            "required": ["path", "old_string", "new_string"],
+            "required": ["path"],
             "example": {
                 "path": "src/main.rs",
                 "old_string": "fn old_function() {\n    println!(\"old\");\n}",
-                "new_string": "fn new_function() {\n    println!(\"new\");\n}"
+                "new_string": "fn new_function() {\n    println!(\"new\");\n}",
+                "instruction": "Refactor while preserving behavior",
+                "update": "fn new_function() {\n// ...existing code...\n}"
             }
         })
     }
@@ -77,33 +89,153 @@ impl Tool for EditTool {
                 ));
             }
         };
-        let old_string = match args["old_string"].as_str() {
+        let old_string = args["old_string"].as_str();
+        let new_string = args["new_string"].as_str();
+        let instruction = args["instruction"].as_str();
+        let update = args["update"].as_str();
+        let morph_enabled = super::morph_backend::should_use_morph_backend();
+        let morph_requested = instruction.is_some() || update.is_some();
+        let has_replacement_pair = old_string.is_some() && new_string.is_some();
+        let use_morph = morph_enabled && (morph_requested || has_replacement_pair);
+
+        // Read the file
+        let content = fs::read_to_string(path).await?;
+
+        if use_morph {
+            let inferred_instruction = instruction
+                .map(str::to_string)
+                .or_else(|| {
+                    old_string.zip(new_string).map(|(old, new)| {
+                        format!(
+                            "Replace the target snippet exactly once while preserving behavior.\nOld snippet:\n{old}\n\nNew snippet:\n{new}"
+                        )
+                    })
+                })
+                .unwrap_or_else(|| {
+                    "Apply the requested update precisely and return only the updated file."
+                        .to_string()
+                });
+            let inferred_update = update
+                .map(str::to_string)
+                .or_else(|| {
+                    old_string.zip(new_string).map(|(old, new)| {
+                        format!(
+                            "// Replace this snippet:\n{old}\n// With this snippet:\n{new}\n// ...existing code..."
+                        )
+                    })
+                })
+                .unwrap_or_else(|| "// ...existing code...".to_string());
+
+            let morph_result = match super::morph_backend::apply_edit_with_morph(
+                &content,
+                &inferred_instruction,
+                &inferred_update,
+            )
+            .await
+            {
+                Ok(updated) => Some(updated),
+                Err(e) => {
+                    if has_replacement_pair {
+                        tracing::warn!(
+                            path = %path,
+                            error = %e,
+                            "Morph backend failed for edit; falling back to exact replacement"
+                        );
+                        None
+                    } else {
+                        return Ok(ToolResult::structured_error(
+                            "MORPH_BACKEND_FAILED",
+                            "edit",
+                            &e.to_string(),
+                            None,
+                            Some(json!({
+                                "hint": "Configure OpenRouter provider credentials in Vault/provider registry, or supply old_string/new_string for exact replacement fallback"
+                            })),
+                        ));
+                    }
+                }
+            };
+
+            if let Some(new_content) = morph_result {
+                if new_content == content {
+                    return Ok(ToolResult::structured_error(
+                        "NO_OP",
+                        "edit",
+                        "Morph backend returned unchanged content.",
+                        None,
+                        Some(json!({"path": path})),
+                    ));
+                }
+
+                let diff = TextDiff::from_lines(&content, &new_content);
+                let mut diff_output = String::new();
+                let mut added = 0;
+                let mut removed = 0;
+                for change in diff.iter_all_changes() {
+                    let (sign, style) = match change.tag() {
+                        ChangeTag::Delete => {
+                            removed += 1;
+                            ("-", "red")
+                        }
+                        ChangeTag::Insert => {
+                            added += 1;
+                            ("+", "green")
+                        }
+                        ChangeTag::Equal => (" ", "default"),
+                    };
+                    let line = format!("{}{}", sign, change);
+                    if style == "red" {
+                        diff_output.push_str(&format!("\x1b[31m{}\x1b[0m", line.trim_end()));
+                    } else if style == "green" {
+                        diff_output.push_str(&format!("\x1b[32m{}\x1b[0m", line.trim_end()));
+                    } else {
+                        diff_output.push_str(line.trim_end());
+                    }
+                    diff_output.push('\n');
+                }
+
+                let mut metadata = std::collections::HashMap::new();
+                metadata.insert("requires_confirmation".to_string(), serde_json::json!(true));
+                metadata.insert("diff".to_string(), serde_json::json!(diff_output.trim()));
+                metadata.insert("added_lines".to_string(), serde_json::json!(added));
+                metadata.insert("removed_lines".to_string(), serde_json::json!(removed));
+                metadata.insert("path".to_string(), serde_json::json!(path));
+                metadata.insert("old_string".to_string(), serde_json::json!(content));
+                metadata.insert("new_string".to_string(), serde_json::json!(new_content));
+                metadata.insert("backend".to_string(), serde_json::json!("morph"));
+
+                return Ok(ToolResult {
+                    output: format!("Changes require confirmation:\n\n{}", diff_output.trim()),
+                    success: true,
+                    metadata,
+                });
+            }
+        }
+
+        let old_string = match old_string {
             Some(s) => s,
             None => {
                 return Ok(ToolResult::structured_error(
                     "INVALID_ARGUMENT",
                     "edit",
-                    "old_string is required",
+                    "old_string is required when no Morph guidance is provided",
                     Some(vec!["old_string"]),
                     Some(json!({"path": path, "old_string": "old text", "new_string": "new text"})),
                 ));
             }
         };
-        let new_string = match args["new_string"].as_str() {
+        let new_string = match new_string {
             Some(s) => s,
             None => {
                 return Ok(ToolResult::structured_error(
                     "INVALID_ARGUMENT",
                     "edit",
-                    "new_string is required",
+                    "new_string is required when no Morph guidance is provided",
                     Some(vec!["new_string"]),
                     Some(json!({"path": path, "old_string": old_string, "new_string": "new text"})),
                 ));
             }
         };
-
-        // Read the file
-        let content = fs::read_to_string(path).await?;
 
         // Count occurrences
         let count = content.matches(old_string).count();

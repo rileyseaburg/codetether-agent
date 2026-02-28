@@ -20,6 +20,7 @@ pub mod lsp;
 pub mod mcp_bridge;
 pub mod mcp_tools;
 pub mod memory;
+pub mod morph_backend;
 pub mod multiedit;
 pub mod okr;
 pub mod patch;
