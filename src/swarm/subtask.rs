@@ -358,5 +358,6 @@ pub struct SubTaskResult {
     pub artifacts: Vec<String>,
 
     /// Number of retry attempts before this result was produced
+    #[serde(default)]
     pub retry_count: u32,
 }
