@@ -183,6 +183,18 @@ pub struct SwarmConfig {
     /// Optional container image override for Kubernetes sub-agent pods.
     #[serde(default)]
     pub k8s_subagent_image: Option<String>,
+
+    /// Maximum number of retry attempts for transient failures (0 = no retries)
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u32,
+
+    /// Base delay in milliseconds for the first retry (exponential backoff)
+    #[serde(default = "default_base_delay_ms")]
+    pub base_delay_ms: u64,
+
+    /// Maximum delay in milliseconds between retries (caps exponential growth)
+    #[serde(default = "default_max_delay_ms")]
+    pub max_delay_ms: u64,
 }
 
 /// Sub-agent execution mode.
@@ -214,6 +226,18 @@ fn default_k8s_pod_budget() -> usize {
     8
 }
 
+fn default_max_retries() -> u32 {
+    3
+}
+
+fn default_base_delay_ms() -> u64 {
+    500
+}
+
+fn default_max_delay_ms() -> u64 {
+    30_000
+}
+
 impl Default for SwarmConfig {
     fn default() -> Self {
         Self {
@@ -232,6 +256,9 @@ impl Default for SwarmConfig {
             execution_mode: ExecutionMode::LocalThread,
             k8s_pod_budget: 8,
             k8s_subagent_image: None,
+            max_retries: 3,
+            base_delay_ms: 500,
+            max_delay_ms: 30_000,
         }
     }
 }
@@ -268,6 +295,12 @@ pub struct SwarmStats {
 
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
+
+    /// Total number of retry attempts across all sub-agents
+    pub total_retries: usize,
+
+    /// Number of sub-agents that succeeded after at least one retry
+    pub subagents_recovered: usize,
 }
 
 /// Statistics for a single execution stage
