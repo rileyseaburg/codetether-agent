@@ -512,9 +512,8 @@ async fn main() -> anyhow::Result<()> {
     // Initialize tracing
     if is_tui {
         // For TUI, log to file to avoid corrupting the display
-        let log_dir = directories::ProjectDirs::from("com", "codetether", "codetether-agent")
-            .map(|p| p.data_dir().to_path_buf())
-            .unwrap_or_else(|| std::path::PathBuf::from("/tmp"));
+        let log_dir = config::Config::data_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("/tmp/codetether-agent"));
         let _ = std::fs::create_dir_all(&log_dir);
         let log_file = std::fs::File::create(log_dir.join("tui.log")).ok();
 

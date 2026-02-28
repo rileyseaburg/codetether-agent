@@ -632,7 +632,7 @@ impl RlmExecutor {
              Now analyze the context. Use 1-2 commands if needed, then call FINAL() with valid JSON payload.",
             self.repl.context().len(),
             self.repl.lines().len(),
-            self.repl.head(25).join("\n")
+            truncate_with_ellipsis(&self.repl.head(25).join("\n"), 8_000)
         );
 
         let mut messages = vec![

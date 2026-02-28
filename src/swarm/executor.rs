@@ -387,10 +387,11 @@ async fn process_large_result_with_rlm(
 
     match executor.analyze(&query).await {
         Ok(result) => {
+            let bounded_answer = truncate_single_result(&result.answer, SIMPLE_TRUNCATE_CHARS * 2);
             tracing::info!(
                 tool = %tool_name,
                 original_len = content.len(),
-                summary_len = result.answer.len(),
+                summary_len = bounded_answer.len(),
                 iterations = result.iterations,
                 "RLM summarized large result"
             );
@@ -399,8 +400,8 @@ async fn process_large_result_with_rlm(
                 "[RLM Summary of {} output ({} chars → {} chars)]\n\n{}",
                 tool_name,
                 content.len(),
-                result.answer.len(),
-                result.answer
+                bounded_answer.len(),
+                bounded_answer
             )
         }
         Err(e) => {

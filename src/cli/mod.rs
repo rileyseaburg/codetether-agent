@@ -830,7 +830,7 @@ pub struct OkrArgs {
 #[command(
     about = "OKR-governed autonomous opportunity scanner/executor",
     long_about = "Scan OKRs/KRs for high-priority opportunities and optionally execute the top selections with the build agent.",
-    after_long_help = "Examples:\n  codetether forage --top 5\n  codetether forage --loop --interval-secs 600\n  codetether forage --loop --execute --top 1 --interval-secs 600 --max-cycles 48 --run-timeout-secs 900 --model minimax/MiniMax-M2.5"
+    after_long_help = "Examples:\n  codetether forage --top 5\n  codetether forage --loop --interval-secs 600\n  codetether forage --loop --execute --top 1 --interval-secs 600 --max-cycles 48 --run-timeout-secs 900 --model minimax/MiniMax-M2.5\n  codetether forage --loop --execute --execution-engine swarm --swarm-max-subagents 8 --swarm-strategy auto --model openai-codex/gpt-5.1-codex"
 )]
 pub struct ForageArgs {
     /// Show top-N opportunities each cycle
@@ -853,8 +853,26 @@ pub struct ForageArgs {
     #[arg(long)]
     pub execute: bool,
 
-    /// Execution engine for `--execute`: run | swarm
-    #[arg(long, default_value = "run", value_parser = ["run", "swarm"])]
+    /// Moonshot mission statement(s) used as a strategic rubric for prioritization.
+    ///
+    /// Repeat the flag to provide multiple missions.
+    #[arg(long = "moonshot")]
+    pub moonshots: Vec<String>,
+
+    /// Optional file containing moonshot mission statements (JSON array or newline-delimited text).
+    #[arg(long)]
+    pub moonshot_file: Option<PathBuf>,
+
+    /// Require minimum moonshot alignment for an opportunity to be selected.
+    #[arg(long)]
+    pub moonshot_required: bool,
+
+    /// Minimum moonshot alignment ratio when `--moonshot-required` is enabled.
+    #[arg(long, default_value = "0.10")]
+    pub moonshot_min_alignment: f64,
+
+    /// Execution engine for `--execute`: run | swarm | go
+    #[arg(long, default_value = "run", value_parser = ["run", "swarm", "go"])]
     pub execution_engine: String,
 
     /// Timeout per execution task in seconds (only used with --execute)

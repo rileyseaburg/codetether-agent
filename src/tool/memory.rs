@@ -57,6 +57,8 @@ impl MemoryEntry {
         self
     }
 
+    /// Set the source of this memory entry
+    #[allow(dead_code)]
     pub fn with_source(mut self, source: impl Into<String>) -> Self {
         self.source = Some(source.into());
         self
@@ -82,9 +84,9 @@ pub struct MemoryStore {
 impl MemoryStore {
     /// Get the default memory file path
     pub fn default_path() -> std::path::PathBuf {
-        directories::ProjectDirs::from("com", "codetether", "codetether")
-            .map(|p| p.data_dir().join("memory.json"))
-            .unwrap_or_else(|| PathBuf::from(".codetether/memory.json"))
+        crate::config::Config::data_dir()
+            .map(|p| p.join("memory.json"))
+            .unwrap_or_else(|| PathBuf::from(".codetether-agent/memory.json"))
     }
 
     /// Load from disk

@@ -2670,8 +2670,6 @@ async fn run_autochat_worker(
         // Set outcome type based on status
         let outcome_type = if status == "converged" {
             KrOutcomeType::FeatureDelivered
-        } else if status == crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED {
-            KrOutcomeType::Evidence
         } else {
             KrOutcomeType::Evidence
         };
@@ -3337,8 +3335,8 @@ async fn resume_autochat_worker(
 impl App {
     fn new() -> Self {
         let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let chat_archive_path = directories::ProjectDirs::from("com", "codetether", "codetether")
-            .map(|dirs| dirs.data_local_dir().join("chat_events.jsonl"));
+        let chat_archive_path =
+            crate::config::Config::data_dir().map(|dir| dir.join("chat_events.jsonl"));
 
         Self {
             input: String::new(),
@@ -6877,14 +6875,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
     // Spawn a forwarder task: bus broadcast → mpsc channel for the TUI event loop
     tokio::spawn(async move {
-        loop {
-            match bus_handle.recv().await {
-                Some(env) => {
-                    if bus_tx.send(env).await.is_err() {
-                        break; // TUI closed
-                    }
-                }
-                None => break, // bus closed
+        while let Some(env) = bus_handle.recv().await {
+            if bus_tx.send(env).await.is_err() {
+                break; // TUI closed
             }
         }
     });

@@ -1,14 +1,20 @@
 use crate::a2a::types::{Part, TaskState};
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
+use crate::bus::s3_sink::{BusS3Sink, BusS3SinkConfig};
 use crate::bus::{AgentBus, BusHandle, BusMessage};
 use crate::cli::{ForageArgs, RunArgs};
-use crate::okr::{KeyResult, Okr, OkrRepository, OkrStatus};
+use crate::okr::{
+    KeyResult, KrOutcome, KrOutcomeType, Okr, OkrRepository, OkrRun, OkrRunStatus, OkrStatus,
+};
+use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::json;
 use std::cmp::Ordering;
+use std::collections::{BTreeSet, HashSet};
+use std::process::Command;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -23,15 +29,34 @@ struct ForageOpportunity {
     progress: f64,
     remaining: f64,
     target_date: Option<DateTime<Utc>>,
+    moonshot_alignment: f64,
+    moonshot_hits: Vec<String>,
     prompt: String,
+}
+
+#[derive(Debug, Clone, Default)]
+struct MoonshotRubric {
+    goals: Vec<String>,
+    required: bool,
+    min_alignment: f64,
+}
+
+#[derive(Debug, Clone)]
+struct ExecutionOutcome {
+    detail: String,
+    changed_files: Vec<String>,
 }
 
 pub async fn execute(args: ForageArgs) -> Result<()> {
     ensure_audit_log_initialized().await;
     let repo = OkrRepository::from_config().await?;
+    let moonshot_rubric = load_moonshot_rubric(&args).await?;
+    if args.execute {
+        seed_default_okr_if_empty(&repo).await?;
+    }
     let bus = AgentBus::new().into_arc();
-    // Mirror CLI/TUI behavior: archive forage bus traffic to S3 when configured.
-    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+    // For forage autonomy, require active S3 archival for bus traffic.
+    let mut s3_sync_handle = Some(start_required_bus_s3_sink(bus.clone()).await?);
     let forage_id = "forage-runtime";
     let bus_handle = bus.handle(forage_id);
     let mut observer = bus.handle("forage-observer");
@@ -59,6 +84,9 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
             "swarm_max_steps": args.swarm_max_steps,
             "swarm_subagent_timeout_secs": args.swarm_subagent_timeout_secs,
             "model": args.model,
+            "moonshot_goals": moonshot_rubric.goals.clone(),
+            "moonshot_required": moonshot_rubric.required,
+            "moonshot_min_alignment": moonshot_rubric.min_alignment,
         })),
         None,
         None,
@@ -70,6 +98,7 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
     let mut cycle: usize = 0;
 
     loop {
+        ensure_s3_sync_alive(&mut s3_sync_handle).await?;
         cycle = cycle.saturating_add(1);
         let cycle_task_id = format!("forage-cycle-{cycle}");
         let _ = bus_handle.send_task_update(
@@ -77,7 +106,7 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
             TaskState::Working,
             Some("scanning OKR opportunities".to_string()),
         );
-        let opportunities = build_opportunities(&repo).await?;
+        let opportunities = build_opportunities(&repo, &moonshot_rubric).await?;
         let selected: Vec<ForageOpportunity> = opportunities.into_iter().take(top).collect();
         let _ = bus_handle.send(
             format!("forage.{cycle_task_id}.summary"),
@@ -140,6 +169,18 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
                         "   Progress: {:.1}% complete",
                         item.progress.clamp(0.0, 1.0) * 100.0
                     );
+                    if !moonshot_rubric.goals.is_empty() {
+                        let hits = if item.moonshot_hits.is_empty() {
+                            "none".to_string()
+                        } else {
+                            item.moonshot_hits.join(" | ")
+                        };
+                        println!(
+                            "   Moonshot alignment: {:.1}% (hits: {})",
+                            item.moonshot_alignment * 100.0,
+                            hits
+                        );
+                    }
                 }
             }
         }
@@ -178,11 +219,27 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
                     )),
                 );
                 match execute_opportunity(item, &args).await {
-                    Ok(detail) => {
+                    Ok(execution_outcome) => {
+                        if let Err(err) = record_execution_success_to_okr(
+                            &repo,
+                            item,
+                            &args,
+                            &execution_outcome,
+                            cycle,
+                        )
+                        .await
+                        {
+                            tracing::warn!(
+                                okr_id = %item.okr_id,
+                                key_result_id = %item.key_result_id,
+                                error = %err,
+                                "Failed to persist forage execution progress to OKR"
+                            );
+                        }
                         let _ = bus_handle.send_task_update(
                             &exec_task_id,
                             TaskState::Completed,
-                            Some(detail.clone()),
+                            Some(execution_outcome.detail.clone()),
                         );
                         log_audit(
                             AuditCategory::Cognition,
@@ -193,7 +250,8 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
                                 "score": item.score,
                                 "okr_title": item.okr_title,
                                 "key_result_title": item.key_result_title,
-                                "detail": detail,
+                                "detail": execution_outcome.detail,
+                                "changed_files": execution_outcome.changed_files,
                             })),
                             Some(item.okr_id),
                             None,
@@ -267,11 +325,299 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
     Ok(())
 }
 
-async fn execute_opportunity(item: &ForageOpportunity, args: &ForageArgs) -> Result<String> {
-    match args.execution_engine.as_str() {
-        "swarm" => execute_opportunity_with_swarm(item, args).await,
-        _ => execute_opportunity_with_run(item, args).await,
+async fn seed_default_okr_if_empty(repo: &OkrRepository) -> Result<()> {
+    let existing = repo.list_okrs().await?;
+    if !existing.is_empty() {
+        return Ok(());
     }
+
+    let mut okr = Okr::new(
+        "Mission: Autonomous Business-Aligned Execution",
+        "Autonomously execute concrete, behavior-preserving code changes that align to business goals and produce measurable progress.",
+    );
+    okr.status = OkrStatus::Active;
+    let okr_id = okr.id;
+    okr.add_key_result(KeyResult::new(okr_id, "Key Result 1", 100.0, "%"));
+    okr.add_key_result(KeyResult::new(
+        okr_id,
+        "Team produces actionable handoff",
+        100.0,
+        "%",
+    ));
+    okr.add_key_result(KeyResult::new(okr_id, "No critical errors", 100.0, "%"));
+
+    let _ = repo.create_okr(okr).await?;
+    tracing::info!(okr_id = %okr_id, "Seeded default OKR for forage execution");
+    Ok(())
+}
+
+async fn start_required_bus_s3_sink(
+    bus: std::sync::Arc<AgentBus>,
+) -> Result<tokio::task::JoinHandle<Result<()>>> {
+    let config = BusS3SinkConfig::from_env_or_vault().await.context(
+        "Forage requires S3 bus archival. Configure MINIO_*/CODETETHER_CHAT_SYNC_MINIO_* or Vault provider 'chat-sync-minio'.",
+    )?;
+    let sink = BusS3Sink::from_config(bus, config)
+        .await
+        .context("Failed to initialize required S3 bus sink for forage")?;
+    Ok(tokio::spawn(async move { sink.run().await }))
+}
+
+async fn ensure_s3_sync_alive(
+    handle: &mut Option<tokio::task::JoinHandle<Result<()>>>,
+) -> Result<()> {
+    let Some(inner) = handle.as_ref() else {
+        anyhow::bail!("S3 sync task missing");
+    };
+    if !inner.is_finished() {
+        return Ok(());
+    }
+
+    let finished = handle.take().expect("checked is_some");
+    match finished.await {
+        Ok(Ok(())) => {
+            anyhow::bail!("S3 sync task exited unexpectedly");
+        }
+        Ok(Err(err)) => Err(anyhow::anyhow!("S3 sync task failed: {err:#}")),
+        Err(join_err) => Err(anyhow::anyhow!("S3 sync task join failure: {join_err}")),
+    }
+}
+
+async fn record_execution_success_to_okr(
+    repo: &OkrRepository,
+    item: &ForageOpportunity,
+    args: &ForageArgs,
+    execution_outcome: &ExecutionOutcome,
+    cycle: usize,
+) -> Result<()> {
+    let Some(mut okr) = repo.get_okr(item.okr_id).await? else {
+        anyhow::bail!("OKR {} not found", item.okr_id);
+    };
+
+    let Some(kr) = okr
+        .key_results
+        .iter_mut()
+        .find(|kr| kr.id == item.key_result_id)
+    else {
+        anyhow::bail!("KR {} not found in OKR {}", item.key_result_id, item.okr_id);
+    };
+
+    let enforce_concrete_file_evidence =
+        args.execution_engine == "swarm" || args.execution_engine == "go";
+    let has_file_evidence = !execution_outcome.changed_files.is_empty();
+    let before_progress = kr.progress();
+    if !enforce_concrete_file_evidence || has_file_evidence {
+        let increment_ratio = success_progress_increment_ratio(kr);
+        if kr.target_value > 0.0 && increment_ratio > 0.0 {
+            let increment_value = (kr.target_value * increment_ratio).max(0.0);
+            let new_value = (kr.current_value + increment_value).min(kr.target_value);
+            kr.update_progress(new_value);
+        }
+    }
+    let after_progress = kr.progress();
+
+    let mut kr_outcome = KrOutcome::new(
+        kr.id,
+        if enforce_concrete_file_evidence && !has_file_evidence {
+            format!(
+                "Forage cycle {cycle} execution succeeded via '{}' but no concrete changed-file evidence was found; KR progress not incremented.",
+                args.execution_engine
+            )
+        } else {
+            format!(
+                "Forage cycle {cycle} execution succeeded via '{}' and advanced this KR.",
+                args.execution_engine
+            )
+        },
+    );
+    kr_outcome.outcome_type = KrOutcomeType::CodeChange;
+    kr_outcome.value = Some((after_progress * 100.0).clamp(0.0, 100.0));
+    kr_outcome.source = "forage-runtime".to_string();
+    kr_outcome.evidence = vec![
+        format!("cycle:{cycle}"),
+        format!("engine:{}", args.execution_engine),
+        format!("model:{}", args.model.as_deref().unwrap_or("default")),
+        format!("score:{:.3}", item.score),
+        format!("okr_id:{}", item.okr_id),
+        format!("kr_id:{}", item.key_result_id),
+        format!("progress_before_pct:{:.2}", before_progress * 100.0),
+        format!("progress_after_pct:{:.2}", after_progress * 100.0),
+        format!(
+            "detail:{}",
+            normalize_prompt_field(&execution_outcome.detail, 320)
+        ),
+        format!("concrete_file_evidence:{}", has_file_evidence),
+    ];
+    let max_files = 40usize;
+    for path in execution_outcome.changed_files.iter().take(max_files) {
+        kr_outcome.evidence.push(format!("file:{path}"));
+    }
+    if execution_outcome.changed_files.len() > max_files {
+        kr_outcome.evidence.push(format!(
+            "files_truncated:{}",
+            execution_outcome.changed_files.len() - max_files
+        ));
+    }
+    kr.add_outcome(kr_outcome);
+
+    if matches!(okr.status, OkrStatus::Draft | OkrStatus::OnHold) && after_progress > 0.0 {
+        okr.status = OkrStatus::Active;
+    }
+    if okr.is_complete() {
+        okr.status = OkrStatus::Completed;
+    }
+
+    let _ = repo.update_okr(okr).await?;
+    Ok(())
+}
+
+fn success_progress_increment_ratio(kr: &KeyResult) -> f64 {
+    if kr.target_value <= 0.0 {
+        return 0.0;
+    }
+    let remaining_ratio = ((kr.target_value - kr.current_value) / kr.target_value).clamp(0.0, 1.0);
+    (remaining_ratio * 0.25).clamp(0.05, 0.15)
+}
+
+fn snapshot_git_changed_files() -> Option<BTreeSet<String>> {
+    let cwd = std::env::current_dir().ok()?;
+    let is_git_repo = Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(&cwd)
+        .output()
+        .ok()?
+        .status
+        .success();
+    if !is_git_repo {
+        return None;
+    }
+
+    let mut changed = BTreeSet::new();
+    changed.extend(git_name_list(&cwd, &["diff", "--name-only"]));
+    changed.extend(git_name_list(&cwd, &["diff", "--name-only", "--cached"]));
+    changed.extend(git_name_list(
+        &cwd,
+        &["ls-files", "--others", "--exclude-standard"],
+    ));
+    Some(changed)
+}
+
+fn git_name_list(cwd: &std::path::Path, args: &[&str]) -> Vec<String> {
+    let Ok(output) = Command::new("git").args(args).current_dir(cwd).output() else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+async fn execute_opportunity(
+    item: &ForageOpportunity,
+    args: &ForageArgs,
+) -> Result<ExecutionOutcome> {
+    let before = snapshot_git_changed_files();
+    let detail = match args.execution_engine.as_str() {
+        "swarm" => execute_opportunity_with_swarm(item, args).await?,
+        "go" => execute_opportunity_with_go(item, args).await?,
+        _ => execute_opportunity_with_run(item, args).await?,
+    };
+    let after = snapshot_git_changed_files();
+    let changed_files = match (before, after) {
+        (Some(before_set), Some(after_set)) => after_set.difference(&before_set).cloned().collect(),
+        (_, Some(after_set)) => after_set.into_iter().collect(),
+        _ => Vec::new(),
+    };
+
+    // Run quality gates to verify the changes work
+    let quality_result = run_quality_gates(&changed_files).await;
+
+    let final_detail = match quality_result {
+        Ok(qr) => format!("{}\n\nQuality gates: {}", detail, qr),
+        Err(e) => {
+            tracing::warn!(error = %e, "Quality gates failed to run");
+            detail
+        }
+    };
+
+    Ok(ExecutionOutcome {
+        detail: final_detail,
+        changed_files,
+    })
+}
+
+/// Run quality gates (cargo check/test) to verify changes work
+async fn run_quality_gates(changed_files: &[String]) -> Result<String> {
+    // Only run quality gates if there are Rust files changed
+    let has_rust_files = changed_files.iter().any(|f| f.ends_with(".rs"));
+
+    if !has_rust_files {
+        return Ok("no Rust files changed, skipping quality gates".to_string());
+    }
+
+    let mut results = Vec::new();
+
+    // Run cargo check (fast type checking)
+    let check_output = Command::new("cargo")
+        .args(["check", "--message-format=short"])
+        .output();
+
+    match check_output {
+        Ok(output) => {
+            let status = if output.status.success() {
+                "PASS"
+            } else {
+                "FAIL"
+            };
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let summary = if stderr.len() > 200 {
+                format!("{} [...truncated]", &stderr[..200])
+            } else if stderr.is_empty() {
+                "no errors".to_string()
+            } else {
+                stderr.to_string()
+            };
+            results.push(format!("cargo check: {} - {}", status, summary));
+        }
+        Err(e) => {
+            results.push(format!("cargo check: ERROR - {}", e));
+        }
+    }
+
+    // Run cargo test (if check passed or for important changes)
+    let test_output = Command::new("cargo")
+        .args(["test", "--quiet", "--", "--nocapture"])
+        .output();
+
+    match test_output {
+        Ok(output) => {
+            let status = if output.status.success() {
+                "PASS"
+            } else {
+                "FAIL"
+            };
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let summary = if stdout.len() > 300 {
+                format!("{} [...truncated]", &stdout[..300])
+            } else if stdout.is_empty() {
+                "no test output".to_string()
+            } else {
+                stdout.to_string()
+            };
+            results.push(format!("cargo test: {} - {}", status, summary));
+        }
+        Err(e) => {
+            results.push(format!("cargo test: ERROR - {}", e));
+        }
+    }
+
+    Ok(results.join("\n"))
 }
 
 async fn execute_opportunity_with_run(
@@ -344,6 +690,97 @@ async fn execute_opportunity_with_swarm(
         }
         Ok(Err(err)) => Err(err),
         Err(_) => anyhow::bail!("swarm execution timed out after {timeout_secs}s"),
+    }
+}
+
+/// Execute opportunity using the Ralph PRD-driven autonomous loop (go engine)
+async fn execute_opportunity_with_go(
+    item: &ForageOpportunity,
+    args: &ForageArgs,
+) -> Result<String> {
+    use crate::cli::go_ralph::execute_go_ralph;
+
+    let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
+    let model = args
+        .model
+        .clone()
+        .unwrap_or_else(|| "anthropic/claude-sonnet-4-20250514".to_string());
+
+    // Load provider registry and get a provider
+    let registry = ProviderRegistry::from_vault()
+        .await
+        .context("Failed to load provider registry for go engine")?;
+
+    let (provider, resolved_model) = registry
+        .resolve_model(&model)
+        .with_context(|| format!("Failed to resolve model '{}' for go engine", model))?;
+
+    // Load the OKR to get full context for PRD generation
+    let repo = OkrRepository::from_config()
+        .await
+        .context("Failed to load OKR repository")?;
+
+    let mut okr = repo
+        .get_okr(item.okr_id)
+        .await?
+        .with_context(|| format!("OKR {} not found", item.okr_id))?;
+
+    // Create an OKR run for this execution
+    let mut okr_run = OkrRun::new(item.okr_id, format!("forage-cycle-{}", item.key_result_id));
+    okr_run.submit_for_approval()?;
+    okr_run.record_decision(crate::okr::ApprovalDecision::approve(
+        okr_run.id,
+        "Auto-approved from forage execution",
+    ));
+
+    // Build the task from the opportunity
+    let task = item.prompt.clone();
+
+    // Execute the Ralph PRD-driven autonomous loop
+    match tokio::time::timeout(
+        Duration::from_secs(timeout_secs),
+        execute_go_ralph(
+            &task,
+            &mut okr,
+            &mut okr_run,
+            provider,
+            &resolved_model,
+            10,   // max_iterations
+            None, // bus - could pass bus here for inter-iteration learning
+            3,    // max_concurrent_stories
+            None, // registry - passed via RalphLoop.with_registry if needed
+        ),
+    )
+    .await
+    {
+        Ok(Ok(result)) => {
+            if result.all_passed {
+                Ok(format!(
+                    "go execution completed - all {}/{} stories passed (iterations: {}/{}, branch: {})",
+                    result.passed,
+                    result.total,
+                    result.iterations,
+                    result.max_iterations,
+                    result.feature_branch
+                ))
+            } else {
+                Ok(format!(
+                    "go execution completed - {}/{} stories passed (iterations: {}/{}, branch: {}, status: {:?})",
+                    result.passed,
+                    result.total,
+                    result.iterations,
+                    result.max_iterations,
+                    result.feature_branch,
+                    result.status
+                ))
+            }
+        }
+        Ok(Err(err)) => {
+            // Update run status to failed
+            okr_run.status = OkrRunStatus::Failed;
+            Err(err).context("go execution failed")
+        }
+        Err(_) => anyhow::bail!("go execution timed out after {timeout_secs}s"),
     }
 }
 
@@ -427,12 +864,71 @@ fn flush_bus_observer(observer: &mut BusHandle, cycle: usize, json_mode: bool) {
     }
 }
 
-async fn build_opportunities(repo: &OkrRepository) -> Result<Vec<ForageOpportunity>> {
-    let okrs = repo.list_okrs().await?;
-    Ok(collect_opportunities(&okrs))
+async fn load_moonshot_rubric(args: &ForageArgs) -> Result<MoonshotRubric> {
+    let mut goals = args
+        .moonshots
+        .iter()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+
+    if let Some(path) = &args.moonshot_file {
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .with_context(|| format!("Failed to read moonshot file: {}", path.display()))?;
+
+        if let Ok(json_list) = serde_json::from_str::<Vec<String>>(&content) {
+            goals.extend(
+                json_list
+                    .into_iter()
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+            );
+        } else {
+            goals.extend(
+                content
+                    .lines()
+                    .map(str::trim)
+                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
+                    .map(ToString::to_string),
+            );
+        }
+    }
+
+    let mut deduped = Vec::new();
+    let mut seen = HashSet::new();
+    for goal in goals {
+        let key = goal.to_ascii_lowercase();
+        if seen.insert(key) {
+            deduped.push(goal);
+        }
+    }
+
+    Ok(MoonshotRubric {
+        goals: deduped,
+        required: args.moonshot_required,
+        min_alignment: args.moonshot_min_alignment.clamp(0.0, 1.0),
+    })
 }
 
+async fn build_opportunities(
+    repo: &OkrRepository,
+    moonshots: &MoonshotRubric,
+) -> Result<Vec<ForageOpportunity>> {
+    let okrs = repo.list_okrs().await?;
+    Ok(collect_opportunities_with_rubric(&okrs, moonshots))
+}
+
+#[cfg(test)]
 fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
+    collect_opportunities_with_rubric(okrs, &MoonshotRubric::default())
+}
+
+fn collect_opportunities_with_rubric(
+    okrs: &[Okr],
+    moonshots: &MoonshotRubric,
+) -> Vec<ForageOpportunity> {
     let now = Utc::now();
     let mut items = Vec::new();
 
@@ -449,8 +945,22 @@ fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
             }
             let remaining = (1.0 - progress).clamp(0.0, 1.0);
             let urgency_bonus = urgency_bonus(okr.target_date, now);
-            let score = (remaining * status_weight) + urgency_bonus;
-            let prompt = build_execution_prompt(okr, kr);
+            let alignment_context = format!(
+                "{} {} {} {}",
+                okr.title, okr.description, kr.title, kr.description
+            );
+            let moonshot_alignment = moonshot_alignment_score(&alignment_context, &moonshots.goals);
+            if moonshots.required && moonshot_alignment < moonshots.min_alignment {
+                continue;
+            }
+            let moonshot_hits = matching_moonshots(&alignment_context, &moonshots.goals);
+            let moonshot_bonus = if moonshots.goals.is_empty() {
+                0.0
+            } else {
+                (moonshot_alignment * 0.5).min(0.5)
+            };
+            let score = (remaining * status_weight) + urgency_bonus + moonshot_bonus;
+            let prompt = build_execution_prompt(okr, kr, moonshots, moonshot_alignment);
 
             items.push(ForageOpportunity {
                 score,
@@ -462,6 +972,8 @@ fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
                 progress,
                 remaining,
                 target_date: okr.target_date,
+                moonshot_alignment,
+                moonshot_hits,
                 prompt,
             });
         }
@@ -477,6 +989,61 @@ fn collect_opportunities(okrs: &[Okr]) -> Vec<ForageOpportunity> {
         },
     );
     items
+}
+
+fn tokenize_for_alignment(value: &str) -> HashSet<String> {
+    value
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| s.len() >= 4)
+        .collect()
+}
+
+fn moonshot_alignment_score(context: &str, goals: &[String]) -> f64 {
+    if goals.is_empty() {
+        return 0.0;
+    }
+
+    let context_tokens = tokenize_for_alignment(context);
+    if context_tokens.is_empty() {
+        return 0.0;
+    }
+
+    goals
+        .iter()
+        .map(|goal| {
+            let goal_tokens = tokenize_for_alignment(goal);
+            if goal_tokens.is_empty() {
+                return 0.0;
+            }
+            let overlap = goal_tokens.intersection(&context_tokens).count() as f64;
+            overlap / goal_tokens.len() as f64
+        })
+        .fold(0.0, f64::max)
+}
+
+fn matching_moonshots(context: &str, goals: &[String]) -> Vec<String> {
+    if goals.is_empty() {
+        return Vec::new();
+    }
+    let context_tokens = tokenize_for_alignment(context);
+    let mut hits = goals
+        .iter()
+        .filter_map(|goal| {
+            let goal_tokens = tokenize_for_alignment(goal);
+            if goal_tokens.is_empty() {
+                return None;
+            }
+            let overlap = goal_tokens.intersection(&context_tokens).count();
+            if overlap == 0 {
+                None
+            } else {
+                Some((overlap, goal.clone()))
+            }
+        })
+        .collect::<Vec<_>>();
+    hits.sort_by(|a, b| b.0.cmp(&a.0));
+    hits.into_iter().take(3).map(|(_, goal)| goal).collect()
 }
 
 fn status_weight(status: OkrStatus) -> f64 {
@@ -507,7 +1074,45 @@ fn urgency_bonus(target_date: Option<DateTime<Utc>>, now: DateTime<Utc>) -> f64 
     }
 }
 
-fn build_execution_prompt(okr: &Okr, kr: &KeyResult) -> String {
+const MAX_PROMPT_FIELD_CHARS: usize = 1_200;
+
+fn normalize_prompt_field(value: &str, max_chars: usize) -> String {
+    let compact = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    let normalized_max = max_chars.max(32);
+    if compact.chars().count() <= normalized_max {
+        return compact;
+    }
+
+    let mut truncated = compact.chars().take(normalized_max).collect::<String>();
+    truncated.push_str(" ...(truncated)");
+    truncated
+}
+
+fn build_execution_prompt(
+    okr: &Okr,
+    kr: &KeyResult,
+    moonshots: &MoonshotRubric,
+    moonshot_alignment: f64,
+) -> String {
+    let objective = normalize_prompt_field(&okr.title, MAX_PROMPT_FIELD_CHARS);
+    let objective_description = normalize_prompt_field(&okr.description, MAX_PROMPT_FIELD_CHARS);
+    let key_result = normalize_prompt_field(&kr.title, MAX_PROMPT_FIELD_CHARS);
+    let key_result_description = normalize_prompt_field(&kr.description, MAX_PROMPT_FIELD_CHARS);
+    let moonshot_section = if moonshots.goals.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\nMoonshot Rubric (strategy filter):\n- {}\nCurrent alignment score: {:.1}%\nDecision rule: prioritize changes that clearly advance one or more moonshots and explain which mission the change moves.",
+            moonshots
+                .goals
+                .iter()
+                .map(|g| normalize_prompt_field(g, 160))
+                .collect::<Vec<_>>()
+                .join("\n- "),
+            moonshot_alignment * 100.0
+        )
+    };
+
     format!(
         "Business-goal execution task.\n\
 Objective: {}\n\
@@ -516,15 +1121,18 @@ Key Result: {}\n\
 KR Description: {}\n\
 Current: {:.3} {} | Target: {:.3} {}\n\n\
 Execute one concrete, behavior-preserving code change that measurably advances this key result. \
-Use tools, validate the change, and report exact evidence tied to the KR.",
-        okr.title,
-        okr.description,
-        kr.title,
-        kr.description,
+Use tools, validate the change, and report exact evidence tied to the KR.\n\
+Focus on local repository changes first; do not do broad web research unless required by the KR.\n\
+Return exact changed file paths and at least one verification command result.{}",
+        objective,
+        objective_description,
+        key_result,
+        key_result_description,
         kr.current_value,
         kr.unit,
         kr.target_value,
-        kr.unit
+        kr.unit,
+        moonshot_section
     )
 }
 
@@ -542,9 +1150,16 @@ impl ForageOpportunity {
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_opportunities, status_weight, urgency_bonus};
+    use super::{
+        ExecutionOutcome, ForageOpportunity, MoonshotRubric, collect_opportunities,
+        collect_opportunities_with_rubric, normalize_prompt_field, record_execution_success_to_okr,
+        seed_default_okr_if_empty, status_weight, success_progress_increment_ratio, urgency_bonus,
+    };
+    use crate::cli::ForageArgs;
     use crate::okr::{KeyResult, Okr, OkrStatus};
     use chrono::{Duration, Utc};
+    use tempfile::tempdir;
+    use uuid::Uuid;
 
     #[test]
     fn status_weight_prioritizes_active_okrs() {
@@ -593,10 +1208,248 @@ mod tests {
     }
 
     #[test]
+    fn moonshot_rubric_filters_low_alignment_work() {
+        let mut okr = Okr::new(
+            "Improve parser latency",
+            "Reduce p95 latency for parser pipeline",
+        );
+        okr.status = OkrStatus::Active;
+        let mut kr = KeyResult::new(okr.id, "Parser p95 under 50ms", 100.0, "%");
+        kr.update_progress(10.0);
+        okr.add_key_result(kr);
+
+        let rubric = MoonshotRubric {
+            goals: vec!["eliminate billing fraud globally".to_string()],
+            required: true,
+            min_alignment: 0.4,
+        };
+
+        let items = collect_opportunities_with_rubric(&[okr], &rubric);
+        assert!(
+            items.is_empty(),
+            "non-aligned work should be filtered out when moonshot is required"
+        );
+    }
+
+    #[test]
     fn forage_timeout_bounds_are_clamped() {
         let low = 5u64.clamp(30, 86_400);
         let high = 999_999u64.clamp(30, 86_400);
         assert_eq!(low, 30);
         assert_eq!(high, 86_400);
+    }
+
+    #[test]
+    fn normalize_prompt_field_compacts_and_truncates() {
+        let input = "alpha   beta\n\n gamma    delta";
+        assert_eq!(normalize_prompt_field(input, 128), "alpha beta gamma delta");
+
+        let long = "x".repeat(400);
+        let normalized = normalize_prompt_field(&long, 64);
+        assert!(normalized.ends_with("...(truncated)"));
+        assert!(normalized.len() > 64);
+    }
+
+    #[test]
+    fn success_progress_increment_ratio_is_bounded() {
+        let mut kr = KeyResult::new(Uuid::new_v4(), "KR", 100.0, "%");
+        kr.update_progress(0.0);
+        let high_remaining = success_progress_increment_ratio(&kr);
+        assert!((high_remaining - 0.15).abs() < f64::EPSILON);
+
+        kr.update_progress(95.0);
+        let low_remaining = success_progress_increment_ratio(&kr);
+        assert!((low_remaining - 0.05).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn record_execution_success_updates_kr_progress_and_evidence() {
+        let dir = tempdir().expect("create tempdir");
+        let repo = crate::okr::OkrRepository::new(dir.path().to_path_buf());
+
+        let mut okr = Okr::new("Autonomous Business-Aligned Execution", "Test objective");
+        okr.status = OkrStatus::Active;
+        let mut kr = KeyResult::new(okr.id, "KR1", 100.0, "%");
+        kr.update_progress(0.0);
+        let kr_id = kr.id;
+        okr.add_key_result(kr);
+        let okr_id = okr.id;
+        let _ = repo.create_okr(okr).await.expect("create okr");
+
+        let item = ForageOpportunity {
+            score: 1.35,
+            okr_id,
+            okr_title: "Autonomous Business-Aligned Execution".to_string(),
+            okr_status: OkrStatus::Active,
+            key_result_id: kr_id,
+            key_result_title: "KR1".to_string(),
+            progress: 0.0,
+            remaining: 1.0,
+            target_date: None,
+            moonshot_alignment: 0.0,
+            moonshot_hits: Vec::new(),
+            prompt: "test prompt".to_string(),
+        };
+        let args = ForageArgs {
+            top: 3,
+            loop_mode: false,
+            interval_secs: 120,
+            max_cycles: 1,
+            execute: true,
+            moonshots: Vec::new(),
+            moonshot_file: None,
+            moonshot_required: false,
+            moonshot_min_alignment: 0.10,
+            execution_engine: "run".to_string(),
+            run_timeout_secs: 900,
+            fail_fast: false,
+            swarm_strategy: "auto".to_string(),
+            swarm_max_subagents: 8,
+            swarm_max_steps: 100,
+            swarm_subagent_timeout_secs: 300,
+            model: Some("openai-codex/gpt-5.1-codex".to_string()),
+            json: false,
+        };
+
+        let execution_outcome = ExecutionOutcome {
+            detail: "run execution completed".to_string(),
+            changed_files: vec!["src/forage/mod.rs".to_string()],
+        };
+        record_execution_success_to_okr(&repo, &item, &args, &execution_outcome, 1)
+            .await
+            .expect("record success");
+
+        let saved = repo
+            .get_okr(okr_id)
+            .await
+            .expect("read okr")
+            .expect("okr exists");
+        let saved_kr = saved
+            .key_results
+            .into_iter()
+            .find(|k| k.id == kr_id)
+            .expect("kr exists");
+        assert!(saved_kr.current_value > 0.0);
+        assert_eq!(saved_kr.outcomes.len(), 1);
+        assert!(
+            saved_kr.outcomes[0]
+                .evidence
+                .iter()
+                .any(|entry| entry.starts_with("engine:run"))
+        );
+    }
+
+    #[tokio::test]
+    async fn swarm_success_without_file_evidence_does_not_increment_progress() {
+        let dir = tempdir().expect("create tempdir");
+        let repo = crate::okr::OkrRepository::new(dir.path().to_path_buf());
+
+        let mut okr = Okr::new("Autonomous Business-Aligned Execution", "Test objective");
+        okr.status = OkrStatus::Active;
+        let mut kr = KeyResult::new(okr.id, "KR1", 100.0, "%");
+        kr.update_progress(10.0);
+        let kr_id = kr.id;
+        okr.add_key_result(kr);
+        let okr_id = okr.id;
+        let _ = repo.create_okr(okr).await.expect("create okr");
+
+        let item = ForageOpportunity {
+            score: 1.35,
+            okr_id,
+            okr_title: "Autonomous Business-Aligned Execution".to_string(),
+            okr_status: OkrStatus::Active,
+            key_result_id: kr_id,
+            key_result_title: "KR1".to_string(),
+            progress: 0.10,
+            remaining: 0.90,
+            target_date: None,
+            moonshot_alignment: 0.0,
+            moonshot_hits: Vec::new(),
+            prompt: "test prompt".to_string(),
+        };
+        let args = ForageArgs {
+            top: 3,
+            loop_mode: false,
+            interval_secs: 120,
+            max_cycles: 1,
+            execute: true,
+            moonshots: Vec::new(),
+            moonshot_file: None,
+            moonshot_required: false,
+            moonshot_min_alignment: 0.10,
+            execution_engine: "swarm".to_string(),
+            run_timeout_secs: 900,
+            fail_fast: false,
+            swarm_strategy: "auto".to_string(),
+            swarm_max_subagents: 8,
+            swarm_max_steps: 100,
+            swarm_subagent_timeout_secs: 300,
+            model: Some("openai-codex/gpt-5.1-codex".to_string()),
+            json: false,
+        };
+        let execution_outcome = ExecutionOutcome {
+            detail: "swarm execution completed".to_string(),
+            changed_files: Vec::new(),
+        };
+        record_execution_success_to_okr(&repo, &item, &args, &execution_outcome, 2)
+            .await
+            .expect("record success");
+
+        let saved = repo
+            .get_okr(okr_id)
+            .await
+            .expect("read okr")
+            .expect("okr exists");
+        let saved_kr = saved
+            .key_results
+            .into_iter()
+            .find(|k| k.id == kr_id)
+            .expect("kr exists");
+        assert_eq!(saved_kr.current_value, 10.0);
+        assert_eq!(saved_kr.outcomes.len(), 1);
+        assert!(
+            saved_kr.outcomes[0]
+                .evidence
+                .iter()
+                .any(|entry| entry == "concrete_file_evidence:false")
+        );
+    }
+
+    #[tokio::test]
+    async fn seed_default_okr_populates_empty_repo() {
+        let dir = tempdir().expect("create tempdir");
+        let repo = crate::okr::OkrRepository::new(dir.path().to_path_buf());
+
+        seed_default_okr_if_empty(&repo)
+            .await
+            .expect("seed should succeed");
+
+        let okrs = repo.list_okrs().await.expect("list okrs");
+        assert_eq!(okrs.len(), 1);
+        assert_eq!(
+            okrs[0].title,
+            "Mission: Autonomous Business-Aligned Execution"
+        );
+        assert_eq!(okrs[0].status, OkrStatus::Active);
+        assert_eq!(okrs[0].key_results.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn seed_default_okr_is_noop_when_repo_not_empty() {
+        let dir = tempdir().expect("create tempdir");
+        let repo = crate::okr::OkrRepository::new(dir.path().to_path_buf());
+
+        let mut existing = Okr::new("Existing Objective", "Do not overwrite");
+        existing.status = OkrStatus::Active;
+        existing.add_key_result(KeyResult::new(existing.id, "KR1", 100.0, "%"));
+        let _ = repo.create_okr(existing).await.expect("create existing");
+
+        seed_default_okr_if_empty(&repo)
+            .await
+            .expect("seed should succeed");
+
+        let okrs = repo.list_okrs().await.expect("list okrs");
+        assert_eq!(okrs.len(), 1);
+        assert_eq!(okrs[0].title, "Existing Objective");
     }
 }

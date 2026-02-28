@@ -21,6 +21,7 @@ CodeTether Agent `v4.0.0` is a major release delivering zero-latency local infer
 - Worker deployments automatically gain CloudEvent push-based dispatch; no `--server` polling changes required.
 - Enable local CUDA inference by building with `--features candle-cuda` and setting `CODETETHER_TOOL_ROUTER_DEVICE=cuda`.
 - Amazon Bedrock users: update cost-tracking dashboards to reflect the new per-token rates.
+- Optional Bedrock service tier overrides: set `CODETETHER_BEDROCK_SERVICE_TIER` (provider path) or `CODETETHER_COGNITION_THINKER_BEDROCK_SERVICE_TIER` (cognition thinker path) to values like `standard`, `priority`, or `flex`.
 
 ## Notable Prior Milestones
 
@@ -184,7 +185,25 @@ codetether forage --loop --interval-secs 120 --top 3
 
 # Autonomous + execute work
 codetether forage --loop --execute --interval-secs 120 --top 3
+
+# Smart swarms in forage loop (agents can delegate with spawn policy enforcement)
+codetether forage --loop --execute --execution-engine swarm --interval-secs 120 --top 3 \
+  --swarm-max-subagents 8 --swarm-strategy auto --model openai-codex/gpt-5.1-codex
+
+# Moonshot rubric: mission statements that bias prioritization/selection
+codetether forage --loop --execute --execution-engine swarm --interval-secs 120 --top 3 \
+  --moonshot "Autonomous agents continuously ship measurable customer value" \
+  --moonshot "Reliability first: no data loss in long-running autonomy"
+
+# Strict moonshot gate: only execute opportunities aligned to missions
+codetether forage --loop --execute --execution-engine swarm --interval-secs 120 --top 3 \
+  --moonshot-file ./.codetether-agent/moonshots.txt \
+  --moonshot-required --moonshot-min-alignment 0.25
 ```
+
+Notes:
+- In `--execute` mode, if the OKR repository is empty, forage auto-seeds a default mission OKR so the loop can self-start.
+- Without `--execute`, forage does not auto-seed and only reports existing opportunities.
 
 ## Security
 
@@ -205,6 +224,7 @@ CodeTether treats security as non-optional infrastructure, not a feature flag.
 |----------|---------|-------------|
 | `CODETETHER_AUTH_TOKEN` | (auto-generated) | Bearer token for API auth. If unset, HMAC-SHA256 token is generated from hostname + timestamp. |
 | `KUBERNETES_SERVICE_HOST` | — | Set automatically inside K8s. Enables self-deployment features. |
+| `CODETETHER_DATA_DIR` | workspace `/.codetether-agent` | Override runtime data directory (sessions, OKRs, forage audit, cache). |
 
 ### Security API Endpoints
 
@@ -469,7 +489,7 @@ The terminal UI includes a webview layout, model selector, session picker, swarm
 | `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |
 | `vertex-glm` | `zai-org/glm-5-maas` | GLM-5 via Google Cloud Vertex AI (service account JWT auth) |
-| `bedrock` | — | Amazon Bedrock Converse API |
+| `bedrock` | `amazon.nova-lite-v1:0` (balanced/fast), `us.anthropic.claude-opus-4-6-v1:0` (heavy) | Amazon Bedrock Converse API |
 
 All keys stored in Vault at `secret/codetether/providers/<name>`.
 
@@ -571,38 +591,38 @@ codetether mcp serve --bus-url URL # With agent bus integration
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CodeTether Platform                       │
-│                 (A2A Server at api.codetether.run)           │
+│                    CodeTether Platform                      │
+│                 (A2A Server at api.codetether.run)          │
 └───────────────┬───────────────────────┬─────────────────────┘
                 │ SSE/JSON-RPC          │ gRPC (A2A proto)
                 ▼                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    codetether-agent                          │
+│                    codetether-agent                         │
 │                                                             │
 │   ┌───────────────────────────────────────────────────┐     │
-│   │              Agent Message Bus                     │     │
-│   │   (broadcast pub/sub, topic routing, BusHandle)    │     │
+│   │              Agent Message Bus                    │     │
+│   │   (broadcast pub/sub, topic routing, BusHandle)   │     │
 │   └──┬──────────┬──────────┬──────────┬───────────────┘     │
-│      │          │          │          │                      │
-│   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐             │
-│   │ A2A  │  │ Swarm│  │ Tool │  │  Provider  │             │
-│   │Worker│  │ Exec │  │System│  │   Layer    │             │
-│   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘             │
+│      │          │          │          │                     │
+│   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐               │
+│   │ A2A  │  │ Swarm│  │ Tool │  │  Provider │               │
+│   │Worker│  │ Exec │  │System│  │   Layer   │               │
+│   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘               │
 │      │         │         │         │                        │
-│   ┌──┴─────────┴─────────┴─────────┴──┐                    │
-│   │         Agent Registry             │                    │
-│   │  (AgentCard, ephemeral sub-agents) │                    │
-│   └───────────────────────────────────┘                    │
+│   ┌──┴─────────┴─────────┴─────────┴──┐                     │
+│   │         Agent Registry            │                     │
+│   │  (AgentCard, ephemeral sub-agents)│                     │
+│   └───────────────────────────────────┘                     │
 │                                                             │
-│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│   │JSON-RPC  │  │ gRPC     │  │ Auth     │  │ Audit    │  │
-│   │(Axum)    │  │ (Tonic)  │  │ (Bearer) │  │ (JSONL)  │  │
-│   │:4096     │  │ :50051   │  │ Mandatory│  │ Append   │  │
-│   └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
-│   ┌──────────┐  ┌──────────┐  ┌──────────────────────┐    │
-│   │ Sandbox  │  │ K8s Mgr  │  │  HashiCorp Vault     │    │
-│   │ (Ed25519)│  │ (Deploy) │  │  (API Keys)          │    │
-│   └──────────┘  └──────────┘  └──────────────────────┘    │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐ ┌──────────┐     │
+│   │JSON-RPC  │  │ gRPC     │  │ Auth     │ │ Audit    │     │
+│   │(Axum)    │  │ (Tonic)  │  │ (Bearer) │ │ (JSONL)  │     │
+│   │:4096     │  │ :50051   │  │ Mandatory│ │ Append   │     │
+│   └──────────┘  └──────────┘  └──────────┘ └──────────┘     │
+│   ┌──────────┐  ┌──────────┐  ┌──────────────────────┐      │
+│   │ Sandbox  │  │ K8s Mgr  │  │  HashiCorp Vault     │      │
+│   │ (Ed25519)│  │ (Deploy) │  │  (API Keys)          │      │
+│   └──────────┘  └──────────┘  └──────────────────────┘      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -897,13 +917,13 @@ Actual resource usage from implementing 20 user stories autonomously:
 ┌─────────────────────────────────────────────────────────────────┐
 │           Dogfooding Task: 20 Stories, Same Model (Kimi K2.5)   │
 │                                                                 │
-│  Metric              CodeTether           agent (estimated)  │
+│  Metric              CodeTether           agent (estimated)     │
 │  ────────────────────────────────────────────────────────────── │
 │  Total Time          29.5 min             100 min (3.4x slower) │
 │  Wall Clock          1,770 sec            6,000 sec             │
 │  Iterations          20                   20                    │
-│  Spawn Overhead      20 × 1.5ms = 30ms   20 × 7.5ms = 150ms   │
-│  Startup Overhead    20 × 13ms = 260ms   20 × 37ms = 740ms    │
+│  Spawn Overhead      20 × 1.5ms = 30ms   20 × 7.5ms = 150ms     │
+│  Startup Overhead    20 × 13ms = 260ms   20 × 37ms = 740ms      │
 │  Peak Memory         ~55 MB               ~280 MB               │
 │  Tokens Used         500K                 ~1.5M (subagent init) │
 │  Token Cost          $3.75                ~$11.25               │

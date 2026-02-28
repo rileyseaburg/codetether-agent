@@ -35,9 +35,8 @@ const MAX_STATE_FILE_BYTES: u64 = 100 * 1024 * 1024; // 100 MB
 
 /// Get the persistence file path.
 fn state_path() -> PathBuf {
-    let base = directories::ProjectDirs::from("com", "codetether", "codetether")
-        .map(|d| d.data_local_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("/tmp/codetether"));
+    let base =
+        crate::config::Config::data_dir().unwrap_or_else(|| PathBuf::from("/tmp/codetether-agent"));
     base.join("cognition").join("state.json")
 }
 

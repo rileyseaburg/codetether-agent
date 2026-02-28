@@ -9,7 +9,7 @@ use anyhow::Result;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 
 /// Main configuration structure
@@ -334,8 +334,17 @@ impl Config {
 
     /// Get the data directory path
     pub fn data_dir() -> Option<PathBuf> {
-        ProjectDirs::from("ai", "codetether", "codetether-agent")
-            .map(|dirs| dirs.data_dir().to_path_buf())
+        if let Ok(explicit) = std::env::var("CODETETHER_DATA_DIR") {
+            let explicit = explicit.trim();
+            if !explicit.is_empty() {
+                return Some(PathBuf::from(explicit));
+            }
+        }
+
+        workspace_data_dir().or_else(|| {
+            ProjectDirs::from("ai", "codetether", "codetether-agent")
+                .map(|dirs| dirs.data_dir().to_path_buf())
+        })
     }
 
     /// Initialize default configuration file
@@ -529,9 +538,29 @@ fn parse_bool(value: &str) -> Result<bool> {
     }
 }
 
+fn workspace_data_dir() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    Some(workspace_data_dir_from(&cwd))
+}
+
+fn workspace_data_dir_from(start: &Path) -> PathBuf {
+    detect_workspace_root(start)
+        .unwrap_or_else(|| start.to_path_buf())
+        .join(".codetether-agent")
+}
+
+fn detect_workspace_root(start: &Path) -> Option<PathBuf> {
+    start
+        .ancestors()
+        .find(|path| path.join(".git").exists())
+        .map(Path::to_path_buf)
+}
+
 #[cfg(test)]
 mod tests {
     use super::Config;
+    use super::{detect_workspace_root, workspace_data_dir_from};
+    use tempfile::tempdir;
 
     #[test]
     fn migrates_legacy_kimi_default_to_zai_glm5() {
@@ -573,5 +602,39 @@ mod tests {
 
         assert_eq!(cfg.default_provider.as_deref(), Some("zai"));
         assert_eq!(cfg.default_model.as_deref(), Some("zai/glm-5"));
+    }
+
+    #[test]
+    fn detects_workspace_root_using_git_marker() {
+        let temp = tempdir().expect("tempdir");
+        let repo_root = temp.path().join("repo");
+        std::fs::create_dir_all(repo_root.join(".git")).expect("create .git");
+        let nested = repo_root.join("src").join("nested");
+        std::fs::create_dir_all(&nested).expect("create nested");
+
+        let detected = detect_workspace_root(&nested);
+        assert_eq!(detected.as_deref(), Some(repo_root.as_path()));
+    }
+
+    #[test]
+    fn workspace_data_dir_defaults_to_workspace_root() {
+        let temp = tempdir().expect("tempdir");
+        let repo_root = temp.path().join("repo");
+        std::fs::create_dir_all(repo_root.join(".git")).expect("create .git");
+        let nested = repo_root.join("api").join("src");
+        std::fs::create_dir_all(&nested).expect("create nested");
+
+        let data_dir = workspace_data_dir_from(&nested);
+        assert_eq!(data_dir, repo_root.join(".codetether-agent"));
+    }
+
+    #[test]
+    fn workspace_data_dir_falls_back_to_start_when_not_git_repo() {
+        let temp = tempdir().expect("tempdir");
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
+
+        let data_dir = workspace_data_dir_from(&workspace);
+        assert_eq!(data_dir, workspace.join(".codetether-agent"));
     }
 }

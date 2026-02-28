@@ -151,9 +151,9 @@ impl SwarmCache {
 
     /// Get the default cache directory
     fn default_cache_dir() -> PathBuf {
-        directories::ProjectDirs::from("com", "codetether", "agent")
-            .map(|dirs| dirs.cache_dir().join("swarm"))
-            .unwrap_or_else(|| PathBuf::from(".cache/swarm"))
+        crate::config::Config::data_dir()
+            .map(|dirs| dirs.join("cache").join("swarm"))
+            .unwrap_or_else(|| PathBuf::from(".codetether-agent/cache/swarm"))
     }
 
     /// Generate a cache key from task content using SHA-256
