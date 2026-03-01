@@ -415,10 +415,10 @@ impl Provider for OpenAIProvider {
         Ok(stream
             .map(|result| match result {
                 Ok(response) => {
-                    if let Some(choice) = response.choices.first() {
-                        if let Some(content) = &choice.delta.content {
-                            return StreamChunk::Text(content.clone());
-                        }
+                    if let Some(choice) = response.choices.first()
+                        && let Some(content) = &choice.delta.content
+                    {
+                        return StreamChunk::Text(content.clone());
                     }
                     StreamChunk::Text(String::new())
                 }

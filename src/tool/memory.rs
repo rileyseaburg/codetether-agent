@@ -57,6 +57,8 @@ impl MemoryEntry {
         self
     }
 
+    /// Set the source of this memory entry
+    #[allow(dead_code)]
     pub fn with_source(mut self, source: impl Into<String>) -> Self {
         self.source = Some(source.into());
         self
@@ -82,9 +84,9 @@ pub struct MemoryStore {
 impl MemoryStore {
     /// Get the default memory file path
     pub fn default_path() -> std::path::PathBuf {
-        directories::ProjectDirs::from("com", "codetether", "codetether")
-            .map(|p| p.data_dir().join("memory.json"))
-            .unwrap_or_else(|| PathBuf::from(".codetether/memory.json"))
+        crate::config::Config::data_dir()
+            .map(|p| p.join("memory.json"))
+            .unwrap_or_else(|| PathBuf::from(".codetether-agent/memory.json"))
     }
 
     /// Load from disk
@@ -135,12 +137,11 @@ impl MemoryStore {
             .values_mut()
             .filter(|entry| {
                 // Filter by tags if provided
-                if let Some(search_tags) = tags {
-                    if !search_tags.is_empty()
-                        && !search_tags.iter().any(|t| entry.tags.contains(t))
-                    {
-                        return false;
-                    }
+                if let Some(search_tags) = tags
+                    && !search_tags.is_empty()
+                    && !search_tags.iter().any(|t| entry.tags.contains(t))
+                {
+                    return false;
                 }
 
                 // Filter by query if provided
@@ -392,7 +393,7 @@ impl MemoryTool {
         });
         let limit = args["limit"].as_u64().map(|v| v as usize).unwrap_or(10);
 
-        let tags_ref = tags.as_ref().map(|v| v.as_slice());
+        let tags_ref = tags.as_deref();
 
         let results = {
             let mut store = self.store.lock().await;
@@ -437,7 +438,7 @@ impl MemoryTool {
 
         let entry = {
             let mut store = self.store.lock().await;
-            store.get(id).map(|e| e.clone())
+            store.get(id)
         };
 
         match entry {

@@ -41,6 +41,7 @@ pub struct HeartbeatState {
     pub agent_name: String,
     pub status: Arc<Mutex<WorkerStatus>>,
     pub active_task_count: Arc<Mutex<usize>>,
+    pub sub_agents: Arc<Mutex<HashSet<String>>>,
 }
 
 impl HeartbeatState {
@@ -50,6 +51,7 @@ impl HeartbeatState {
             agent_name,
             status: Arc::new(Mutex::new(WorkerStatus::Idle)),
             active_task_count: Arc::new(Mutex::new(0)),
+            sub_agents: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 
@@ -60,9 +62,30 @@ impl HeartbeatState {
     pub async fn set_task_count(&self, count: usize) {
         *self.active_task_count.lock().await = count;
     }
+
+    pub async fn register_sub_agent(&self, agent_name: String) {
+        self.sub_agents.lock().await.insert(agent_name);
+    }
+
+    pub async fn deregister_sub_agent(&self, agent_name: &str) {
+        self.sub_agents.lock().await.remove(agent_name);
+    }
+
+    pub async fn sub_agents_snapshot(&self) -> Vec<String> {
+        let mut names = self
+            .sub_agents
+            .lock()
+            .await
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        names.sort();
+        names
+    }
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct CognitionHeartbeatConfig {
     pub enabled: bool,
     pub source_base_url: String,
@@ -554,7 +577,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "zhipuai" | "zai" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "qwen/qwen3-coder-next".to_string(),
-            "bedrock" => "us.anthropic.claude-sonnet-4-20250514-v1:0".to_string(),
+            "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
             _ => "glm-5".to_string(),
         },
         _ => match provider {
@@ -627,15 +650,15 @@ fn metadata_usize(
             if let Some(v) = value.as_u64() {
                 return usize::try_from(v).ok();
             }
-            if let Some(v) = value.as_i64() {
-                if v >= 0 {
-                    return usize::try_from(v as u64).ok();
-                }
+            if let Some(v) = value.as_i64()
+                && v >= 0
+            {
+                return usize::try_from(v as u64).ok();
             }
-            if let Some(v) = value.as_str() {
-                if let Ok(parsed) = v.trim().parse::<usize>() {
-                    return Some(parsed);
-                }
+            if let Some(v) = value.as_str()
+                && let Ok(parsed) = v.trim().parse::<usize>()
+            {
+                return Some(parsed);
             }
         }
     }
@@ -651,15 +674,15 @@ fn metadata_u64(
             if let Some(v) = value.as_u64() {
                 return Some(v);
             }
-            if let Some(v) = value.as_i64() {
-                if v >= 0 {
-                    return Some(v as u64);
-                }
+            if let Some(v) = value.as_i64()
+                && v >= 0
+            {
+                return Some(v as u64);
             }
-            if let Some(v) = value.as_str() {
-                if let Ok(parsed) = v.trim().parse::<u64>() {
-                    return Some(parsed);
-                }
+            if let Some(v) = value.as_str()
+                && let Ok(parsed) = v.trim().parse::<u64>()
+            {
+                return Some(parsed);
             }
         }
     }
@@ -715,10 +738,10 @@ async fn resolve_swarm_model(
     explicit_model: Option<String>,
     model_tier: Option<&str>,
 ) -> Option<String> {
-    if let Some(model) = explicit_model {
-        if !model.trim().is_empty() {
-            return Some(model);
-        }
+    if let Some(model) = explicit_model
+        && !model.trim().is_empty()
+    {
+        return Some(model);
     }
 
     let registry = ProviderRegistry::from_vault().await.ok()?;
@@ -1564,13 +1587,11 @@ async fn execute_swarm_with_policy(
         while final_result.is_none() {
             tokio::select! {
                 maybe_event = event_rx.recv() => {
-                    if let Some(event) = maybe_event {
-                        if let Some(ref cb) = output_callback {
-                            if let Some(line) = format_swarm_event_for_output(&event) {
+                    if let Some(event) = maybe_event
+                        && let Some(ref cb) = output_callback
+                            && let Some(line) = format_swarm_event_for_output(&event) {
                                 cb(line);
                             }
-                        }
-                    }
                 }
                 join_result = &mut exec_handle => {
                     let joined = join_result.map_err(|e| anyhow::anyhow!("Swarm join failure: {}", e))?;
@@ -1580,10 +1601,10 @@ async fn execute_swarm_with_policy(
         }
 
         while let Ok(event) = event_rx.try_recv() {
-            if let Some(ref cb) = output_callback {
-                if let Some(line) = format_swarm_event_for_output(&event) {
-                    cb(line);
-                }
+            if let Some(ref cb) = output_callback
+                && let Some(line) = format_swarm_event_for_output(&event)
+            {
+                cb(line);
             }
         }
 
@@ -1662,15 +1683,19 @@ async fn execute_session_with_policy(
     };
 
     let provider_slice = providers.as_slice();
-    let provider_requested_but_unavailable = provider_name
-        .as_deref()
-        .map(|p| !providers.contains(&p))
-        .unwrap_or(false);
+    if let Some(explicit_provider) = provider_name.as_deref()
+        && !providers.contains(&explicit_provider)
+    {
+        anyhow::bail!(
+            "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
+            explicit_provider,
+            providers.join(", ")
+        );
+    }
 
     // Determine which provider to use, preferring explicit request first, then model tier.
     let selected_provider = provider_name
         .as_deref()
-        .filter(|p| providers.contains(p))
         .unwrap_or_else(|| choose_provider_for_tier(provider_slice, model_tier));
 
     let provider = registry
@@ -1690,9 +1715,8 @@ async fn execute_session_with_policy(
         session.generate_title().await?;
     }
 
-    // Determine model. If a specific provider was requested but not available,
-    // ignore that model id and fall back to the tier-based default model.
-    let model = if !model_id.is_empty() && !provider_requested_but_unavailable {
+    // Determine model.
+    let model = if !model_id.is_empty() {
         model_id
     } else {
         default_model_for_provider(selected_provider, model_tier)
@@ -1788,13 +1812,13 @@ async fn execute_session_with_policy(
 
         // Collect text output and stream it
         for part in &response.message.content {
-            if let ContentPart::Text { text } = part {
-                if !text.is_empty() {
-                    final_output.push_str(text);
-                    final_output.push('\n');
-                    if let Some(ref cb) = output_callback {
-                        cb(text.clone());
-                    }
+            if let ContentPart::Text { text } = part
+                && !text.is_empty()
+            {
+                final_output.push_str(text);
+                final_output.push('\n');
+                if let Some(ref cb) = output_callback {
+                    cb(text.clone());
                 }
             }
         }
@@ -2018,11 +2042,13 @@ pub fn start_heartbeat(
             }
 
             let status_str = heartbeat_state.status.lock().await.as_str().to_string();
+            let sub_agents = heartbeat_state.sub_agents_snapshot().await;
             let base_payload = serde_json::json!({
                 "worker_id": &heartbeat_state.worker_id,
                 "agent_name": &heartbeat_state.agent_name,
                 "status": status_str,
                 "active_task_count": active_count,
+                "sub_agents": sub_agents,
             });
             let mut payload = base_payload.clone();
             let mut included_cognition_payload = false;

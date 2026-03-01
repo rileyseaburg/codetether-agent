@@ -1,0 +1,32 @@
+{
+  "entries": {
+    "e4d351b2-9216-494f-b0f3-c618f488be3b": {
+      "id": "e4d351b2-9216-494f-b0f3-c618f488be3b",
+      "content": "Rust programming insights",
+      "tags": [
+        "rust",
+        "programming"
+      ],
+      "created_at": "2026-02-28T20:20:23.360261782Z",
+      "accessed_at": "2026-02-28T20:20:23.360261782Z",
+      "access_count": 0,
+      "scope": null,
+      "source": null,
+      "importance": 3
+    },
+    "04390932-b66f-4d25-ad74-abdc0f958b41": {
+      "id": "04390932-b66f-4d25-ad74-abdc0f958b41",
+      "content": "Python tips",
+      "tags": [
+        "python",
+        "programming"
+      ],
+      "created_at": "2026-02-28T20:20:23.361334392Z",
+      "accessed_at": "2026-02-28T20:20:23.361334392Z",
+      "access_count": 0,
+      "scope": null,
+      "source": null,
+      "importance": 3
+    }
+  }
+}

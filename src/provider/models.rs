@@ -294,6 +294,7 @@ impl ModelCatalog {
         let preferred_ids = [
             "claude-sonnet-4-6",
             "claude-sonnet-4-20250514",
+            "claude-opus-4-6",
             "claude-opus-4-20250514",
             "gpt-5-codex",
             "gpt-5.1-codex",
@@ -302,6 +303,7 @@ impl ModelCatalog {
             "gemini-2.5-pro",
             "deepseek-v3.2",
             "step-3.5-flash",
+            "glm-5-fp8",
             "glm-5",
             "z-ai/glm-5",
         ];

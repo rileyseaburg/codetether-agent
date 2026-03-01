@@ -20,6 +20,7 @@ pub mod lsp;
 pub mod mcp_bridge;
 pub mod mcp_tools;
 pub mod memory;
+pub mod morph_backend;
 pub mod multiedit;
 pub mod okr;
 pub mod patch;
@@ -242,6 +243,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::DiffTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
+        registry.register(Arc::new(edit::EditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
         registry.register(Arc::new(lsp::LspTool::with_root(
             std::env::current_dir()
@@ -299,6 +301,7 @@ impl ToolRegistry {
         registry.register(Arc::new(file_extras::DiffTool::new()));
         registry.register(Arc::new(search::GrepTool::new()));
         registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
+        registry.register(Arc::new(edit::EditTool::new()));
         registry.register(Arc::new(bash::BashTool::new()));
         registry.register(Arc::new(lsp::LspTool::with_root(
             std::env::current_dir()

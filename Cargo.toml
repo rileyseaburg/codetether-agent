@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "4.0.0"
+version = "4.0.0-alpha-0.1"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -65,7 +65,7 @@ name = "codetether"
 path = "src/main.rs"
 
 [features]
-default = ["functiongemma"]
+default = []
 candle-cuda = ["candle-core/cuda", "candle-transformers/cuda"]
 candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
 candle-accelerate = ["candle-core/accelerate", "candle-transformers/accelerate"]

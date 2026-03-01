@@ -6,6 +6,7 @@
 pub mod a2a;
 pub mod agent;
 pub mod audit;
+pub mod autochat;
 pub mod benchmark;
 pub mod bus;
 pub mod cli;
@@ -25,6 +26,7 @@ pub mod server;
 pub mod session;
 pub mod swarm;
 pub mod telemetry;
+pub mod tls;
 pub mod tool;
 pub mod tui;
 pub mod worker_server;

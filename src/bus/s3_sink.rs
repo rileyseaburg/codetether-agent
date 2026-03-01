@@ -224,12 +224,11 @@ fn env_non_empty(key: &str) -> Option<String> {
 /// Extract a string value from `ProviderSecrets.extra`, trying multiple key names.
 fn vault_extra_str(secrets: &secrets::ProviderSecrets, keys: &[&str]) -> Option<String> {
     for key in keys {
-        if let Some(val) = secrets.extra.get(*key) {
-            if let Some(s) = val.as_str() {
-                if !s.is_empty() {
-                    return Some(s.to_string());
-                }
-            }
+        if let Some(val) = secrets.extra.get(*key)
+            && let Some(s) = val.as_str()
+            && !s.is_empty()
+        {
+            return Some(s.to_string());
         }
     }
     None
@@ -632,6 +631,7 @@ pub struct BusS3Sink {
 }
 
 impl BusS3Sink {
+    #[allow(dead_code)]
     /// Create a new bus S3 sink
     pub async fn new(
         bus: Arc<AgentBus>,
@@ -679,6 +679,7 @@ impl BusS3Sink {
         })
     }
 
+    #[allow(dead_code)]
     /// Create sink from environment variables
     pub async fn from_env(bus: Arc<AgentBus>) -> Result<Self> {
         let config = BusS3SinkConfig::from_env()?;
@@ -754,11 +755,10 @@ impl BusS3Sink {
                         }
                         Err(broadcast::error::RecvError::Closed) => {
                             info!("Bus channel closed, shutting down S3 sink");
-                            if !batch.is_empty() {
-                                if let Err(e) = self.flush_batch(&mut batch, &mut batch_start).await {
+                            if !batch.is_empty()
+                                && let Err(e) = self.flush_batch(&mut batch, &mut batch_start).await {
                                     error!(error = %e, "Failed to flush final batch");
                                 }
-                            }
                             return Ok(());
                         }
                     }
@@ -855,11 +855,13 @@ impl BusS3Sink {
         Ok(())
     }
 
+    #[allow(dead_code)]
     /// Get the bucket name
     pub fn bucket(&self) -> &str {
         &self.config.bucket
     }
 
+    #[allow(dead_code)]
     /// Get the prefix
     pub fn prefix(&self) -> &str {
         &self.config.prefix

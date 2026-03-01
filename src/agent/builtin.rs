@@ -3,6 +3,15 @@
 use super::{AgentInfo, AgentMode};
 use std::path::Path;
 
+const BUILD_MODE_GUARDRAIL: &str = "\n\n## Build Mode Guardrail\n\
+In build mode, do not ask the user for permission to continue (for example: \
+\"should I go ahead?\", \"want me to proceed?\"). \
+Execute the next concrete implementation step directly unless a hard blocker exists \
+(missing requirements, destructive risk, or unavailable dependencies). \
+When tools are available and the request is implementation/debugging work, \
+start by using tools instead of giving a plan-only response. \
+Never respond with \"if you want, I can...\" in build mode.";
+
 /// The default "build" agent - full access for development work
 pub fn build_agent() -> AgentInfo {
     AgentInfo {
@@ -76,7 +85,9 @@ Always:
 - Be concise and helpful
 - Show your work by using tools
 - Explain what you're doing
-- Ask clarifying questions when needed
+- In build mode, execute directly. Do not ask for permission to proceed (e.g., "should I go ahead?").
+- For implementation/debugging requests in build mode, lead with concrete tool use, not pseudo-patches or future-step proposals.
+- Ask clarifying questions only when blocked by missing requirements or ambiguity
 - Follow best practices for the language/framework being used
 
 Current working directory: {cwd}
@@ -127,10 +138,10 @@ pub fn load_agents_md(start_dir: &Path) -> Option<(String, std::path::PathBuf)> 
 
     loop {
         let agents_path = current.join("AGENTS.md");
-        if agents_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&agents_path) {
-                return Some((content, agents_path));
-            }
+        if agents_path.exists()
+            && let Ok(content) = std::fs::read_to_string(&agents_path)
+        {
+            return Some((content, agents_path));
         }
 
         // Stop traversal at repository boundary.
@@ -157,10 +168,10 @@ pub fn load_all_agents_md(start_dir: &Path) -> Vec<(String, std::path::PathBuf)>
 
     loop {
         let agents_path = current.join("AGENTS.md");
-        if agents_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&agents_path) {
-                results.push((content, agents_path));
-            }
+        if agents_path.exists()
+            && let Ok(content) = std::fs::read_to_string(&agents_path)
+        {
+            results.push((content, agents_path));
         }
 
         // Stop traversal at repository boundary.
@@ -201,7 +212,7 @@ pub fn build_system_prompt(cwd: &Path) -> String {
     let agents_files = load_all_agents_md(cwd);
 
     if agents_files.is_empty() {
-        return base_prompt;
+        return format!("{base_prompt}{BUILD_MODE_GUARDRAIL}");
     }
 
     // Build the AGENTS.md section - include all found files, closest last (takes precedence)
@@ -219,7 +230,7 @@ pub fn build_system_prompt(cwd: &Path) -> String {
         agents_section.push_str("\n\n");
     }
 
-    format!("{base_prompt}{agents_section}")
+    format!("{base_prompt}{agents_section}{BUILD_MODE_GUARDRAIL}")
 }
 
 /// Build a complete system prompt for the plan agent, including AGENTS.md content if present.
@@ -248,7 +259,7 @@ pub fn build_plan_system_prompt(cwd: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{load_agents_md, load_all_agents_md};
+    use super::{build_system_prompt, load_agents_md, load_all_agents_md};
     use tempfile::tempdir;
 
     #[test]
@@ -291,5 +302,13 @@ mod tests {
         assert_eq!(loaded[0].1, sub_agents);
         assert_eq!(loaded[1].1, repo_agents);
         assert!(!loaded.iter().any(|(_, path)| path == &parent_agents));
+    }
+
+    #[test]
+    fn build_system_prompt_includes_non_interactive_build_guardrail() {
+        let tmp = tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".git")).expect("create .git dir");
+        let prompt = build_system_prompt(tmp.path());
+        assert!(prompt.contains("do not ask the user for permission to continue"));
     }
 }

@@ -141,10 +141,10 @@ fn block_anchor_replacer(content: &str, find: &str) -> Vec<String> {
             best = Some((start, end));
         }
     }
-    if best_sim >= 0.3 {
-        if let Some((s, e)) = best {
-            return vec![orig_lines[s..=e].join("\n")];
-        }
+    if best_sim >= 0.3
+        && let Some((s, e)) = best
+    {
+        return vec![orig_lines[s..=e].join("\n")];
     }
     vec![]
 }

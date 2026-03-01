@@ -44,10 +44,10 @@ impl ApplyPatchTool {
                 current_file = Some(path.to_string());
             } else if line.starts_with("@@ ") {
                 // Hunk header: @@ -start,count +start,count @@
-                if let Some(hunk) = current_hunk.take() {
-                    if let Some(file) = &current_file {
-                        hunks.push(hunk.build(file.clone()));
-                    }
+                if let Some(hunk) = current_hunk.take()
+                    && let Some(file) = &current_file
+                {
+                    hunks.push(hunk.build(file.clone()));
                 }
 
                 let parts: Vec<&str> = line.split_whitespace().collect();
@@ -79,10 +79,10 @@ impl ApplyPatchTool {
         }
 
         // Finalize last hunk
-        if let Some(hunk) = current_hunk {
-            if let Some(file) = &current_file {
-                hunks.push(hunk.build(file.clone()));
-            }
+        if let Some(hunk) = current_hunk
+            && let Some(file) = &current_file
+        {
+            hunks.push(hunk.build(file.clone()));
         }
 
         Ok(hunks)

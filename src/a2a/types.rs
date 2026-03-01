@@ -423,7 +423,7 @@ pub enum SecurityScheme {
     OAuth2 {
         #[serde(skip_serializing_if = "Option::is_none")]
         description: Option<String>,
-        flows: OAuthFlows,
+        flows: Box<OAuthFlows>,
     },
     #[serde(rename = "openIdConnect")]
     OpenIdConnect {

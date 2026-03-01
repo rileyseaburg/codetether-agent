@@ -20,7 +20,7 @@ impl MetricsProvider {
         Arc::new(Self { inner })
     }
 
-    fn record_request(&self, model: &str, latency_ms: u64, usage: &Usage, success: bool) {
+    async fn record_request(&self, model: &str, latency_ms: u64, usage: &Usage, success: bool) {
         let record = ProviderRequestRecord {
             provider: self.inner.name().to_string(),
             model: model.to_string(),
@@ -44,7 +44,7 @@ impl MetricsProvider {
             "Provider request completed"
         );
 
-        PROVIDER_METRICS.record(record);
+        PROVIDER_METRICS.record(record).await;
     }
 }
 
@@ -65,12 +65,14 @@ impl Provider for MetricsProvider {
         match self.inner.complete(request).await {
             Ok(response) => {
                 let latency_ms = start.elapsed().as_millis() as u64;
-                self.record_request(&model, latency_ms, &response.usage, true);
+                self.record_request(&model, latency_ms, &response.usage, true)
+                    .await;
                 Ok(response)
             }
             Err(e) => {
                 let latency_ms = start.elapsed().as_millis() as u64;
-                self.record_request(&model, latency_ms, &Usage::default(), false);
+                self.record_request(&model, latency_ms, &Usage::default(), false)
+                    .await;
                 Err(e)
             }
         }
@@ -108,7 +110,7 @@ impl Provider for MetricsProvider {
                     ttft_ms: None,
                     success: false,
                 };
-                PROVIDER_METRICS.record(record);
+                PROVIDER_METRICS.record(record).await;
                 Err(e)
             }
         }
@@ -188,7 +190,8 @@ impl futures::Stream for StreamMetricsWrapper {
                     "Provider streaming request completed"
                 );
 
-                PROVIDER_METRICS.record(record);
+                let metrics = PROVIDER_METRICS.clone();
+                tokio::spawn(async move { metrics.record(record).await });
             }
             Poll::Ready(Some(StreamChunk::Error(_))) if !self.recorded => {
                 self.recorded = true;
@@ -205,7 +208,8 @@ impl futures::Stream for StreamMetricsWrapper {
                     ttft_ms: Some(self.ttft_ms),
                     success: false,
                 };
-                PROVIDER_METRICS.record(record);
+                let metrics = PROVIDER_METRICS.clone();
+                tokio::spawn(async move { metrics.record(record).await });
             }
             _ => {}
         }

@@ -49,6 +49,7 @@ pub enum GrepVerification {
 /// Grep-based oracle for validating pattern-match queries.
 pub struct GrepOracle {
     /// Source code content
+    #[allow(dead_code)]
     source: String,
     /// Source code as lines (1-indexed when displayed)
     source_lines: Vec<String>,
@@ -174,10 +175,10 @@ impl GrepOracle {
         ];
 
         for (pattern_re, grep_pattern) in patterns {
-            if let Ok(re) = Regex::new(pattern_re) {
-                if re.is_match(&lower) {
-                    return Some(grep_pattern.to_string());
-                }
+            if let Ok(re) = Regex::new(pattern_re)
+                && re.is_match(&lower)
+            {
+                return Some(grep_pattern.to_string());
             }
         }
 
@@ -317,12 +318,11 @@ impl GrepOracle {
         let line_re = Regex::new(r"(?i)(?:line\s+|L)?(\d+):\s*(.+)").ok()?;
 
         for line in text.lines() {
-            if let Some(cap) = line_re.captures(line) {
-                if let (Some(num), Some(content)) = (cap.get(1), cap.get(2)) {
-                    if let Ok(line_num) = num.as_str().parse::<usize>() {
-                        results.push((line_num, content.as_str().trim().to_string()));
-                    }
-                }
+            if let Some(cap) = line_re.captures(line)
+                && let (Some(num), Some(content)) = (cap.get(1), cap.get(2))
+                && let Ok(line_num) = num.as_str().parse::<usize>()
+            {
+                results.push((line_num, content.as_str().trim().to_string()));
             }
         }
 

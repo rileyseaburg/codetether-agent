@@ -151,9 +151,9 @@ impl SwarmCache {
 
     /// Get the default cache directory
     fn default_cache_dir() -> PathBuf {
-        directories::ProjectDirs::from("com", "codetether", "agent")
-            .map(|dirs| dirs.cache_dir().join("swarm"))
-            .unwrap_or_else(|| PathBuf::from(".cache/swarm"))
+        crate::config::Config::data_dir()
+            .map(|dirs| dirs.join("cache").join("swarm"))
+            .unwrap_or_else(|| PathBuf::from(".codetether-agent/cache/swarm"))
     }
 
     /// Generate a cache key from task content using SHA-256
@@ -316,7 +316,7 @@ impl SwarmCache {
         let mut entries = fs::read_dir(&self.cache_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
+            if path.extension().is_some_and(|e| e == "json") {
                 let _ = fs::remove_file(&path).await;
             }
         }
@@ -363,22 +363,22 @@ impl SwarmCache {
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
-                if let Some(key) = path.file_stem().and_then(|s| s.to_str()) {
-                    match fs::read_to_string(&path).await {
-                        Ok(json) => {
-                            if let Ok(cache_entry) = serde_json::from_str::<CacheEntry>(&json) {
-                                if !cache_entry.is_expired(ttl) {
-                                    self.index.insert(key.to_string(), cache_entry);
-                                } else {
-                                    self.stats.expired_removed += 1;
-                                    let _ = fs::remove_file(&path).await;
-                                }
+            if path.extension().is_some_and(|e| e == "json")
+                && let Some(key) = path.file_stem().and_then(|s| s.to_str())
+            {
+                match fs::read_to_string(&path).await {
+                    Ok(json) => {
+                        if let Ok(cache_entry) = serde_json::from_str::<CacheEntry>(&json) {
+                            if !cache_entry.is_expired(ttl) {
+                                self.index.insert(key.to_string(), cache_entry);
+                            } else {
+                                self.stats.expired_removed += 1;
+                                let _ = fs::remove_file(&path).await;
                             }
                         }
-                        Err(e) => {
-                            tracing::warn!(path = %path.display(), error = %e, "Failed to read cache entry");
-                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(path = %path.display(), error = %e, "Failed to read cache entry");
                     }
                 }
             }
@@ -414,6 +414,7 @@ mod tests {
             execution_time_ms: 1000,
             error: None,
             artifacts: vec![],
+            retry_count: 0,
         }
     }
 

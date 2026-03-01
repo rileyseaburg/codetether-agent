@@ -323,26 +323,26 @@ impl Provider for MoonshotProvider {
             .ok_or_else(|| anyhow::anyhow!("No choices"))?;
 
         // Log reasoning/thinking content if present (Kimi K2 models)
-        if let Some(ref reasoning) = choice.message.reasoning_content {
-            if !reasoning.is_empty() {
-                tracing::info!(
-                    reasoning_len = reasoning.len(),
-                    "Model reasoning/thinking content received"
-                );
-                tracing::debug!(
-                    reasoning = %reasoning,
-                    "Full model reasoning"
-                );
-            }
+        if let Some(ref reasoning) = choice.message.reasoning_content
+            && !reasoning.is_empty()
+        {
+            tracing::info!(
+                reasoning_len = reasoning.len(),
+                "Model reasoning/thinking content received"
+            );
+            tracing::debug!(
+                reasoning = %reasoning,
+                "Full model reasoning"
+            );
         }
 
         let mut content = Vec::new();
         let mut has_tool_calls = false;
 
-        if let Some(text) = &choice.message.content {
-            if !text.is_empty() {
-                content.push(ContentPart::Text { text: text.clone() });
-            }
+        if let Some(text) = &choice.message.content
+            && !text.is_empty()
+        {
+            content.push(ContentPart::Text { text: text.clone() });
         }
 
         if let Some(tool_calls) = &choice.message.tool_calls {

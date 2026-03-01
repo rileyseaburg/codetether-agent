@@ -183,13 +183,27 @@ pub struct SwarmConfig {
     /// Optional container image override for Kubernetes sub-agent pods.
     #[serde(default)]
     pub k8s_subagent_image: Option<String>,
+
+    /// Maximum number of retry attempts for transient failures (0 = no retries)
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u32,
+
+    /// Base delay in milliseconds for the first retry (exponential backoff)
+    #[serde(default = "default_base_delay_ms")]
+    pub base_delay_ms: u64,
+
+    /// Maximum delay in milliseconds between retries (caps exponential growth)
+    #[serde(default = "default_max_delay_ms")]
+    pub max_delay_ms: u64,
 }
 
 /// Sub-agent execution mode.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ExecutionMode {
     /// Run sub-agents as local async tasks in the current process.
+    #[default]
     LocalThread,
     /// Run sub-agents as isolated Kubernetes pods.
     KubernetesPod,
@@ -204,14 +218,20 @@ impl ExecutionMode {
     }
 }
 
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        Self::LocalThread
-    }
-}
-
 fn default_k8s_pod_budget() -> usize {
     8
+}
+
+fn default_max_retries() -> u32 {
+    3
+}
+
+fn default_base_delay_ms() -> u64 {
+    500
+}
+
+fn default_max_delay_ms() -> u64 {
+    30_000
 }
 
 impl Default for SwarmConfig {
@@ -232,6 +252,9 @@ impl Default for SwarmConfig {
             execution_mode: ExecutionMode::LocalThread,
             k8s_pod_budget: 8,
             k8s_subagent_image: None,
+            max_retries: 3,
+            base_delay_ms: 500,
+            max_delay_ms: 30_000,
         }
     }
 }
@@ -268,6 +291,12 @@ pub struct SwarmStats {
 
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
+
+    /// Number of cache hits (subtasks served from cache)
+    pub cache_hits: u64,
+
+    /// Number of cache misses (subtasks that required execution)
+    pub cache_misses: u64,
 }
 
 /// Statistics for a single execution stage
@@ -302,13 +331,31 @@ impl SwarmStats {
     pub fn calculate_critical_path(&mut self) {
         self.critical_path_length = self.stages.iter().map(|s| s.max_steps).sum();
     }
+
+    /// Merge cache statistics from a [`CacheStats`] snapshot into these stats
+    pub fn merge_cache_stats(&mut self, cache_stats: &cache::CacheStats) {
+        self.cache_hits = cache_stats.hits;
+        self.cache_misses = cache_stats.misses;
+    }
+
+    /// Cache hit rate (0.0 to 1.0); returns 0.0 when no cache lookups occurred
+    pub fn cache_hit_rate(&self) -> f64 {
+        let total = self.cache_hits + self.cache_misses;
+        if total == 0 {
+            0.0
+        } else {
+            self.cache_hits as f64 / total as f64
+        }
+    }
 }
 
 /// Decomposition strategy for breaking down tasks
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum DecompositionStrategy {
     /// Let the AI decide how to decompose
+    #[default]
     Automatic,
 
     /// Decompose by domain/specialty
@@ -322,12 +369,6 @@ pub enum DecompositionStrategy {
 
     /// Single agent (no decomposition)
     None,
-}
-
-impl Default for DecompositionStrategy {
-    fn default() -> Self {
-        Self::Automatic
-    }
 }
 
 /// Result of swarm execution

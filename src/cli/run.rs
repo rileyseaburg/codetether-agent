@@ -1,10 +1,17 @@
 //! Non-interactive run command
 
 use super::RunArgs;
+use crate::autochat::model_rotation::{RelayModelRotation, build_round_robin_model_rotation};
+use crate::autochat::shared_context::{
+    SharedRelayContext, compose_prompt_with_context, distill_context_delta_with_rlm,
+    drain_context_updates, publish_context_delta,
+};
+use crate::autochat::transport::{attach_handoff_receiver, consume_handoff_by_correlation};
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
 use crate::config::Config;
 use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
+use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::Session;
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -12,13 +19,18 @@ use std::collections::HashMap;
 use std::io::Write;
 use uuid::Uuid;
 
-const AUTOCHAT_MAX_AGENTS: usize = 100;
-const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
-const AUTOCHAT_MAX_ROUNDS: usize = 3;
-const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = 3;
-const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = 800;
-const AUTOCHAT_QUICK_DEMO_TASK: &str = "Self-organize into the right specialties for this task, then relay one concrete implementation plan with clear next handoffs.";
-const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M2.5";
+const AUTOCHAT_MAX_AGENTS: usize = crate::autochat::AUTOCHAT_MAX_AGENTS;
+const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
+const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
+const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = crate::autochat::AUTOCHAT_MAX_DYNAMIC_SPAWNS;
+const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = crate::autochat::AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
+const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
+const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
+const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
+const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
+// Easy-go defaults should be fast and cheap. We use the dedicated
+// minimax-credits provider and the highspeed variant by default.
+const GO_DEFAULT_MODEL: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
@@ -107,6 +119,8 @@ struct AutochatCliResult {
     final_handoff: String,
     summary: String,
     failure: Option<String>,
+    shared_context_items: usize,
+    rlm_context_count: usize,
 }
 
 fn slugify_label(value: &str) -> String {
@@ -210,11 +224,7 @@ fn build_runtime_profile_from_plan(
         }
     }
 
-    for required in ["relay", "context-handoff", "autochat"] {
-        if !capabilities.iter().any(|capability| capability == required) {
-            capabilities.push(required.to_string());
-        }
-    }
+    crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
 
     Some(RelayProfile {
         name: name.clone(),
@@ -250,36 +260,7 @@ fn resolve_provider_for_model_autochat(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
     model_ref: &str,
 ) -> Option<(std::sync::Arc<dyn crate::provider::Provider>, String)> {
-    let (provider_name, model_name) = crate::provider::parse_model_string(model_ref);
-    if let Some(provider_name) = provider_name
-        && let Some(provider) = registry.get(provider_name)
-    {
-        return Some((provider, model_name.to_string()));
-    }
-
-    let fallbacks = [
-        "zai",
-        "openai",
-        "github-copilot",
-        "anthropic",
-        "openrouter",
-        "novita",
-        "moonshotai",
-        "google",
-    ];
-
-    for provider_name in fallbacks {
-        if let Some(provider) = registry.get(provider_name) {
-            return Some((provider, model_ref.to_string()));
-        }
-    }
-
-    registry
-        .list()
-        .first()
-        .copied()
-        .and_then(|name| registry.get(name))
-        .map(|provider| (provider, model_ref.to_string()))
+    crate::autochat::model_rotation::resolve_provider_for_model_autochat(registry, model_ref)
 }
 
 fn default_relay_okr_template(okr_id: Uuid, task: &str) -> Okr {
@@ -354,6 +335,7 @@ async fn plan_okr_draft_with_registry(
     registry: &std::sync::Arc<crate::provider::ProviderRegistry>,
 ) -> Option<PlannedOkrDraft> {
     let (provider, model_name) = resolve_provider_for_model_autochat(registry, model_ref)?;
+    let model_name_for_log = model_name.clone();
 
     // Keep prompt short-ish: this happens *before* the approval gate.
     let request = crate::provider::CompletionRequest {
@@ -403,7 +385,22 @@ async fn plan_okr_draft_with_registry(
         .collect::<Vec<_>>()
         .join("\n");
 
-    extract_json_payload::<PlannedOkrDraft>(&text)
+    tracing::debug!(
+        model = %model_name_for_log,
+        response_len = text.len(),
+        response_preview = %text.chars().take(500).collect::<String>(),
+        "OKR draft model response"
+    );
+
+    let parsed = extract_json_payload::<PlannedOkrDraft>(&text);
+    if parsed.is_none() {
+        tracing::warn!(
+            model = %model_name_for_log,
+            response_preview = %text.chars().take(500).collect::<String>(),
+            "Failed to parse OKR draft JSON from model response"
+        );
+    }
+    parsed
 }
 
 async fn plan_relay_profiles_with_registry(
@@ -572,18 +569,25 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     let easy_go_requested = is_easy_go_command(message);
     let normalized = normalize_cli_go_command(message);
     if let Some(rest) = command_with_optional_args(&normalized, "/autochat") {
-        let Some((agent_count, parsed_task)) = parse_autochat_args(rest) else {
+        let Some(parsed) = crate::autochat::parse_autochat_request(
+            rest,
+            AUTOCHAT_DEFAULT_AGENTS,
+            AUTOCHAT_QUICK_DEMO_TASK,
+        ) else {
             anyhow::bail!(
-                "Usage: /autochat [count] <task>\nEasy mode: /go <task>\ncount range: 2-{} (default: {})",
+                "Usage: /autochat [count] [--no-prd] <task>\nEasy mode: /go <task>\ncount range: 2-{} (default: {})",
                 AUTOCHAT_MAX_AGENTS,
                 AUTOCHAT_DEFAULT_AGENTS
             );
         };
+        let agent_count = parsed.agent_count;
+        let parsed_task = parsed.task;
         let task = if easy_go_requested {
-            validate_easy_go_task(parsed_task)?
+            validate_easy_go_task(&parsed_task)?
         } else {
-            normalize_go_task_input(parsed_task)
+            normalize_go_task_input(&parsed_task)
         };
+        let require_prd = easy_go_requested || !parsed.bypass_prd;
 
         if !(2..=AUTOCHAT_MAX_AGENTS).contains(&agent_count) {
             anyhow::bail!(
@@ -600,14 +604,14 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             easy_go_requested,
         );
 
-        // For /go commands (not /autochat), require OKR approval then execute via Ralph
-        if easy_go_requested {
-            // For /go, default to max concurrency (run all stories in parallel)
-            // unless the user explicitly specified a count like "/go 5 task"
-            let max_concurrent = if rest.trim().starts_with(|c: char| c.is_ascii_digit()) {
-                agent_count
-            } else {
+        // PRD-gated execution path (mandatory for /go and default for /autochat)
+        if require_prd {
+            // For /go, default to max concurrency (run all stories in parallel) unless
+            // the user explicitly specified a count. /autochat keeps the requested count.
+            let max_concurrent = if easy_go_requested && !parsed.explicit_count {
                 AUTOCHAT_MAX_AGENTS
+            } else {
+                agent_count
             };
             // Create OKR draft (LLM-proposed, with safe fallback)
             let okr_id = Uuid::new_v4();
@@ -639,7 +643,12 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             let _ = run.submit_for_approval();
 
             // Show OKR draft
-            println!("\n⚠️  /go OKR Draft\n");
+            let command_label = if easy_go_requested {
+                "/go"
+            } else {
+                "/autochat"
+            };
+            println!("\n⚠️  {command_label} OKR Draft\n");
             println!("Task: {}", truncate_with_ellipsis(&task, 80));
             println!("Agents: {} | Model: {}", agent_count, model);
             if let Some(note) = draft_note {
@@ -662,7 +671,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             if input != "y" && input != "yes" {
                 run.record_decision(ApprovalDecision::deny(run.id, "User denied via CLI"));
                 println!("❌ OKR denied. Relay not started.");
-                println!("Use /autochat for tactical execution without OKR tracking.");
+                println!("Use /autochat --no-prd for tactical execution without OKR/PRD tracking.");
                 return Ok(());
             }
 
@@ -742,7 +751,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
             return Ok(());
         }
 
-        // Plain /autochat (no OKR) — use traditional relay
+        // Explicit tactical /autochat path (requires --no-prd)
         let relay_result = run_protocol_first_relay(agent_count, &task, &model, None, None).await?;
         match args.format.as_str() {
             "json" => println!("{}", serde_json::to_string_pretty(&relay_result)?),
@@ -882,7 +891,6 @@ fn normalize_cli_go_command(input: &str) -> String {
 
 fn is_easy_go_command(input: &str) -> bool {
     let command = input
-        .trim_start()
         .split_whitespace()
         .next()
         .unwrap_or("")
@@ -929,30 +937,6 @@ Use a concise objective sentence instead, e.g. `/go implement /v1/agent/* compat
     Ok(normalized)
 }
 
-fn parse_autochat_args(rest: &str) -> Option<(usize, &str)> {
-    let rest = rest.trim();
-    if rest.is_empty() {
-        return None;
-    }
-
-    let mut parts = rest.splitn(2, char::is_whitespace);
-    let first = parts.next().unwrap_or("").trim();
-    if first.is_empty() {
-        return None;
-    }
-
-    if let Ok(count) = first.parse::<usize>() {
-        let task = parts.next().unwrap_or("").trim();
-        if task.is_empty() {
-            Some((count, AUTOCHAT_QUICK_DEMO_TASK))
-        } else {
-            Some((count, task))
-        }
-    } else {
-        Some((AUTOCHAT_DEFAULT_AGENTS, rest))
-    }
-}
-
 fn resolve_autochat_model(
     cli_model: Option<&str>,
     env_model: Option<&str>,
@@ -988,13 +972,8 @@ fn build_relay_profiles(count: usize) -> Vec<RelayProfile> {
              Include one clear recommendation for what the next agent should do.\n\
              If the task scope is too large, explicitly call out missing specialties and handoff boundaries.",
         );
-        let capabilities = vec![
-            "generalist".to_string(),
-            "self-organizing".to_string(),
-            "relay".to_string(),
-            "context-handoff".to_string(),
-            "autochat".to_string(),
-        ];
+        let mut capabilities = vec!["generalist".to_string(), "self-organizing".to_string()];
+        crate::autochat::ensure_required_relay_capabilities(&mut capabilities);
 
         profiles.push(RelayProfile {
             name,
@@ -1028,24 +1007,60 @@ fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
 }
 
 fn normalize_for_convergence(text: &str) -> String {
-    let mut normalized = String::with_capacity(text.len().min(512));
-    let mut last_was_space = false;
+    crate::autochat::normalize_for_convergence(text, 280)
+}
 
-    for ch in text.chars() {
-        if ch.is_ascii_alphanumeric() {
-            normalized.push(ch.to_ascii_lowercase());
-            last_was_space = false;
-        } else if ch.is_whitespace() && !last_was_space {
-            normalized.push(' ');
-            last_was_space = true;
-        }
+fn extract_semantic_handoff_from_rlm(answer: &str) -> String {
+    match FinalPayload::parse(answer) {
+        FinalPayload::Semantic(payload) => payload.answer,
+        _ => answer.trim().to_string(),
+    }
+}
 
-        if normalized.len() >= 280 {
-            break;
+async fn prepare_autochat_handoff_with_registry(
+    task: &str,
+    from_agent: &str,
+    output: &str,
+    model_ref: &str,
+    registry: Option<&std::sync::Arc<crate::provider::ProviderRegistry>>,
+) -> (String, bool) {
+    let mut used_rlm = false;
+    let mut relay_payload = if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
+        truncate_with_ellipsis(output, AUTOCHAT_RLM_FALLBACK_CHARS)
+    } else {
+        output.to_string()
+    };
+
+    if let Some(registry) = registry
+        && let Some((provider, model_name)) =
+            resolve_provider_for_model_autochat(registry, model_ref)
+    {
+        let mut executor =
+            RlmExecutor::new(output.to_string(), provider, model_name).with_max_iterations(2);
+        match executor.analyze(AUTOCHAT_RLM_HANDOFF_QUERY).await {
+            Ok(result) => {
+                let normalized = extract_semantic_handoff_from_rlm(&result.answer);
+                if !normalized.is_empty() {
+                    relay_payload = normalized;
+                    used_rlm = true;
+                }
+            }
+            Err(err) => {
+                tracing::warn!(
+                    error = %err,
+                    "CLI RLM handoff normalization failed; using fallback payload"
+                );
+            }
         }
     }
 
-    normalized.trim().to_string()
+    (
+        format!(
+            "Relay task:\n{task}\n\nIncoming handoff from @{from_agent}:\n{relay_payload}\n\n\
+             Continue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent."
+        ),
+        used_rlm,
+    )
 }
 
 async fn run_protocol_first_relay(
@@ -1094,10 +1109,18 @@ async fn run_protocol_first_relay(
         .map(|profile| profile.name.clone())
         .collect();
     let mut sessions: HashMap<String, Session> = HashMap::new();
+    let mut relay_receivers: HashMap<String, crate::bus::BusHandle> = HashMap::new();
+    let mut agent_models: HashMap<String, String> = HashMap::new();
+    let mut model_rotation = if let Some(registry) = &registry {
+        build_round_robin_model_rotation(registry, model_ref).await
+    } else {
+        RelayModelRotation::fallback(model_ref)
+    };
 
     for profile in &profiles {
+        let assigned_model_ref = model_rotation.next_model_ref(model_ref);
         let mut session = Session::new().await?;
-        session.metadata.model = Some(model_ref.to_string());
+        session.metadata.model = Some(assigned_model_ref.clone());
         session.agent = profile.name.clone();
         session.bus = Some(bus.clone());
         session.add_message(Message {
@@ -1106,7 +1129,9 @@ async fn run_protocol_first_relay(
                 text: profile.instructions.clone(),
             }],
         });
+        agent_models.insert(profile.name.clone(), assigned_model_ref);
         sessions.insert(profile.name.clone(), session);
+        attach_handoff_receiver(&mut relay_receivers, bus.clone(), &profile.name);
     }
 
     if ordered_agents.len() < 2 {
@@ -1114,6 +1139,8 @@ async fn run_protocol_first_relay(
     }
 
     relay.register_agents(&relay_profiles);
+    let mut context_receiver = bus.handle(format!("relay-context-{}", relay.relay_id()));
+    let mut shared_context = SharedRelayContext::default();
 
     // Load KR targets if OKR is associated
     let kr_targets: std::collections::HashMap<String, f64> =
@@ -1143,7 +1170,9 @@ async fn run_protocol_first_relay(
     let mut convergence_hits = 0usize;
     let mut turns = 0usize;
     let mut dynamic_spawn_count = 0usize;
-    let mut status = "max_rounds_reached".to_string();
+    let mut rlm_handoff_count = 0usize;
+    let mut rlm_context_count = 0usize;
+    let mut status = crate::autochat::AUTOCHAT_STATUS_MAX_ROUNDS_REACHED.to_string();
     let mut failure_note: Option<String> = None;
 
     'relay_loop: for round in 1..=AUTOCHAT_MAX_ROUNDS {
@@ -1161,7 +1190,26 @@ async fn run_protocol_first_relay(
             };
 
             turns += 1;
-            relay.send_handoff(&from, &to, &baton);
+            let _ =
+                drain_context_updates(&mut context_receiver, relay.relay_id(), &mut shared_context);
+            let correlation_id = relay.send_handoff(&from, &to, &baton);
+            let consumed_handoff = match consume_handoff_by_correlation(
+                &mut relay_receivers,
+                &to,
+                &correlation_id,
+            )
+            .await
+            {
+                Ok(handoff) => handoff,
+                Err(err) => {
+                    status = "bus_error".to_string();
+                    failure_note = Some(format!(
+                        "Failed to consume handoff for @{to} (correlation={correlation_id}): {err}"
+                    ));
+                    break 'relay_loop;
+                }
+            };
+            let prompt_input = compose_prompt_with_context(&consumed_handoff, &shared_context);
 
             let Some(mut session) = sessions.remove(&to) else {
                 status = "agent_error".to_string();
@@ -1169,7 +1217,7 @@ async fn run_protocol_first_relay(
                 break 'relay_loop;
             };
 
-            let output = match session.prompt(&baton).await {
+            let output = match session.prompt(&prompt_input).await {
                 Ok(response) => response.text,
                 Err(err) => {
                     status = "agent_error".to_string();
@@ -1189,10 +1237,40 @@ async fn run_protocol_first_relay(
             }
             previous_normalized = Some(normalized);
 
-            baton = format!(
-                "Relay task:\n{task}\n\nIncoming handoff from @{to}:\n{}\n\nContinue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent.",
-                truncate_with_ellipsis(&output, 3_500)
+            let turn_model_ref = agent_models
+                .get(&to)
+                .map(String::as_str)
+                .unwrap_or(model_ref);
+            let (next_handoff, used_rlm) = prepare_autochat_handoff_with_registry(
+                task,
+                &to,
+                &output,
+                turn_model_ref,
+                registry.as_ref(),
+            )
+            .await;
+            if used_rlm {
+                rlm_handoff_count += 1;
+            }
+            let turn_context_provider = registry
+                .as_ref()
+                .and_then(|r| resolve_provider_for_model_autochat(r, turn_model_ref));
+            let (context_delta, used_context_rlm) =
+                distill_context_delta_with_rlm(&output, task, &to, turn_context_provider).await;
+            if used_context_rlm {
+                rlm_context_count += 1;
+            }
+            shared_context.merge_delta(&context_delta);
+            let publisher = bus.handle(to.clone());
+            publish_context_delta(
+                &publisher,
+                relay.relay_id(),
+                &to,
+                round,
+                turns,
+                &context_delta,
             );
+            baton = next_handoff;
 
             // Update KR progress after each turn
             if !kr_targets.is_empty() {
@@ -1208,19 +1286,17 @@ async fn run_protocol_first_relay(
                 }
 
                 // Persist mid-run (best-effort)
-                if let Some(run_id) = okr_run_id {
-                    if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-                        if let Ok(Some(mut run)) = repo.get_run(run_id).await {
-                            if run.is_resumable() {
-                                run.iterations = turns as u32;
-                                for (kr_id, value) in &kr_progress {
-                                    run.update_kr_progress(kr_id, *value);
-                                }
-                                run.status = crate::okr::OkrRunStatus::Running;
-                                let _ = repo.update_run(run).await;
-                            }
-                        }
+                if let Some(run_id) = okr_run_id
+                    && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+                    && let Ok(Some(mut run)) = repo.get_run(run_id).await
+                    && run.is_resumable()
+                {
+                    run.iterations = turns as u32;
+                    for (kr_id, value) in &kr_progress {
+                        run.update_kr_progress(kr_id, *value);
                     }
+                    run.status = crate::okr::OkrRunStatus::Running;
+                    let _ = repo.update_run(run).await;
                 }
             }
 
@@ -1242,7 +1318,8 @@ async fn run_protocol_first_relay(
             {
                 match Session::new().await {
                     Ok(mut spawned_session) => {
-                        spawned_session.metadata.model = Some(model_ref.to_string());
+                        let spawned_model_ref = model_rotation.next_model_ref(model_ref);
+                        spawned_session.metadata.model = Some(spawned_model_ref.clone());
                         spawned_session.agent = profile.name.clone();
                         spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(Message {
@@ -1256,8 +1333,10 @@ async fn run_protocol_first_relay(
                             name: profile.name.clone(),
                             capabilities: profile.capabilities.clone(),
                         }]);
+                        attach_handoff_receiver(&mut relay_receivers, bus.clone(), &profile.name);
 
                         ordered_agents.insert(idx + 1, profile.name.clone());
+                        agent_models.insert(profile.name.clone(), spawned_model_ref);
                         sessions.insert(profile.name.clone(), spawned_session);
                         dynamic_spawn_count += 1;
 
@@ -1289,64 +1368,63 @@ async fn run_protocol_first_relay(
     relay.shutdown_agents(&ordered_agents);
 
     // Update OKR run with final progress if associated
-    if let Some(run_id) = okr_run_id {
-        if let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await {
-            if let Ok(Some(mut run)) = repo.get_run(run_id).await {
-                // Update KR progress from execution
-                for (kr_id, value) in &kr_progress {
-                    run.update_kr_progress(kr_id, *value);
-                }
+    if let Some(run_id) = okr_run_id
+        && let Ok(repo) = crate::okr::persistence::OkrRepository::from_config().await
+        && let Ok(Some(mut run)) = repo.get_run(run_id).await
+    {
+        // Update KR progress from execution
+        for (kr_id, value) in &kr_progress {
+            run.update_kr_progress(kr_id, *value);
+        }
 
-                // Create outcomes per KR with progress (link to actual KR IDs)
-                let base_evidence = vec![
-                    format!("relay:{}", relay.relay_id()),
-                    format!("turns:{}", turns),
-                    format!("agents:{}", ordered_agents.len()),
-                    format!("status:{}", status),
-                ];
+        // Create outcomes per KR with progress (link to actual KR IDs)
+        let base_evidence = vec![
+            format!("relay:{}", relay.relay_id()),
+            format!("turns:{}", turns),
+            format!("agents:{}", ordered_agents.len()),
+            format!("status:{}", status),
+            format!("rlm_handoffs:{}", rlm_handoff_count),
+            format!("dynamic_spawns:{}", dynamic_spawn_count),
+        ];
 
-                let outcome_type = if status == "converged" {
-                    crate::okr::KrOutcomeType::FeatureDelivered
-                } else {
-                    crate::okr::KrOutcomeType::Evidence
-                };
+        let outcome_type = if status == "converged" {
+            crate::okr::KrOutcomeType::FeatureDelivered
+        } else {
+            crate::okr::KrOutcomeType::Evidence
+        };
 
-                // Create one outcome per KR, linked to the actual KR ID
-                for (kr_id_str, value) in &kr_progress {
-                    // Parse KR ID with guardrail to prevent NIL UUID linkage
-                    if let Some(kr_uuid) =
-                        parse_uuid_guarded(kr_id_str, "cli_relay_outcome_kr_link")
-                    {
-                        let kr_description = format!(
-                            "CLI relay outcome for KR {}: {} agents, {} turns, status={}",
-                            kr_id_str,
-                            ordered_agents.len(),
-                            turns,
-                            status
-                        );
-                        run.outcomes.push({
-                            let mut outcome = crate::okr::KrOutcome::new(kr_uuid, kr_description)
-                                .with_value(*value);
-                            outcome.run_id = Some(run.id);
-                            outcome.outcome_type = outcome_type;
-                            outcome.evidence = base_evidence.clone();
-                            outcome.source = "cli relay".to_string();
-                            outcome
-                        });
-                    }
-                }
-
-                // Mark complete or update status based on execution result
-                if status == "converged" {
-                    run.complete();
-                } else if status == "agent_error" {
-                    run.status = crate::okr::OkrRunStatus::Failed;
-                } else {
-                    run.status = crate::okr::OkrRunStatus::Completed;
-                }
-                let _ = repo.update_run(run).await;
+        // Create one outcome per KR, linked to the actual KR ID
+        for (kr_id_str, value) in &kr_progress {
+            // Parse KR ID with guardrail to prevent NIL UUID linkage
+            if let Some(kr_uuid) = parse_uuid_guarded(kr_id_str, "cli_relay_outcome_kr_link") {
+                let kr_description = format!(
+                    "CLI relay outcome for KR {}: {} agents, {} turns, status={}",
+                    kr_id_str,
+                    ordered_agents.len(),
+                    turns,
+                    status
+                );
+                run.outcomes.push({
+                    let mut outcome =
+                        crate::okr::KrOutcome::new(kr_uuid, kr_description).with_value(*value);
+                    outcome.run_id = Some(run.id);
+                    outcome.outcome_type = outcome_type;
+                    outcome.evidence = base_evidence.clone();
+                    outcome.source = "cli relay".to_string();
+                    outcome
+                });
             }
         }
+
+        // Mark complete or update status based on execution result
+        if status == "converged" {
+            run.complete();
+        } else if status == "agent_error" || status == "bus_error" {
+            run.status = crate::okr::OkrRunStatus::Failed;
+        } else {
+            run.status = crate::okr::OkrRunStatus::Completed;
+        }
+        let _ = repo.update_run(run).await;
     }
 
     let mut summary = format!(
@@ -1364,6 +1442,18 @@ async fn run_protocol_first_relay(
     } else {
         summary.push_str("\n\nTeam planning: fallback self-organizing profiles.");
     }
+    if rlm_handoff_count > 0 {
+        summary.push_str(&format!("\nRLM-normalized handoffs: {rlm_handoff_count}"));
+    }
+    if rlm_context_count > 0 {
+        summary.push_str(&format!("\nRLM context deltas: {rlm_context_count}"));
+    }
+    if shared_context.item_count() > 0 {
+        summary.push_str(&format!(
+            "\nShared context items: {}",
+            shared_context.item_count()
+        ));
+    }
     if dynamic_spawn_count > 0 {
         summary.push_str(&format!("\nDynamic relay spawns: {dynamic_spawn_count}"));
     }
@@ -1378,6 +1468,8 @@ async fn run_protocol_first_relay(
         final_handoff: baton,
         summary,
         failure: failure_note,
+        shared_context_items: shared_context.item_count(),
+        rlm_context_count,
     })
 }
 
@@ -1387,8 +1479,8 @@ mod tests {
     use super::{
         AUTOCHAT_QUICK_DEMO_TASK, PlannedRelayResponse, build_runtime_profile_from_plan,
         command_with_optional_args, extract_json_payload, is_easy_go_command,
-        normalize_cli_go_command, normalize_go_task_input, parse_autochat_args,
-        resolve_autochat_model, validate_easy_go_task,
+        normalize_cli_go_command, normalize_go_task_input, resolve_autochat_model,
+        validate_easy_go_task,
     };
 
     #[test]
@@ -1409,17 +1501,23 @@ mod tests {
 
     #[test]
     fn parse_autochat_args_supports_default_count() {
+        let parsed =
+            crate::autochat::parse_autochat_request("build a relay", 3, AUTOCHAT_QUICK_DEMO_TASK)
+                .expect("valid args");
         assert_eq!(
-            parse_autochat_args("build a relay").expect("valid args"),
-            (3, "build a relay")
+            (parsed.agent_count, parsed.task.as_str()),
+            (3, "build a relay"),
         );
     }
 
     #[test]
     fn parse_autochat_args_supports_explicit_count() {
+        let parsed =
+            crate::autochat::parse_autochat_request("4 build a relay", 3, AUTOCHAT_QUICK_DEMO_TASK)
+                .expect("valid args");
         assert_eq!(
-            parse_autochat_args("4 build a relay").expect("valid args"),
-            (4, "build a relay")
+            (parsed.agent_count, parsed.task.as_str()),
+            (4, "build a relay"),
         );
     }
 

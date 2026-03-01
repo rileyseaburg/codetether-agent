@@ -6,7 +6,6 @@ pub mod s3_sink;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tokio::sync::broadcast;
 
 /// Chat event types
@@ -61,6 +60,7 @@ impl ChatEvent {
 /// Event types that can be streamed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum Event {
     /// Tool execution started
     ToolStarted {
@@ -82,22 +82,26 @@ pub enum Event {
 }
 
 /// Event stream handle
+#[allow(dead_code)]
 pub struct EventStream {
     sender: broadcast::Sender<Event>,
 }
 
 impl EventStream {
+    #[allow(dead_code)]
     /// Create a new event stream
     pub fn new() -> Self {
         let (sender, _) = broadcast::channel(256);
         Self { sender }
     }
 
+    #[allow(dead_code)]
     /// Subscribe to events
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
         self.sender.subscribe()
     }
 
+    #[allow(dead_code)]
     /// Send an event
     pub fn send(&self, event: Event) -> Result<()> {
         self.sender.send(event)?;

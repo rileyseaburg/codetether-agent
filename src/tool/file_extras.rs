@@ -10,6 +10,12 @@ use tokio::fs;
 /// Tree view of directory structure
 pub struct TreeTool;
 
+impl Default for TreeTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TreeTool {
     pub fn new() -> Self {
         Self
@@ -154,48 +160,60 @@ async fn build_tree(
         .await
         .with_context(|| format!("Failed to read directory: {}", path.display()))?;
 
-    while let Ok(Some(entry)) = dir.next_entry().await {
-        let name = entry.file_name().to_string_lossy().to_string();
+    loop {
+        match dir.next_entry().await {
+            Ok(Some(entry)) => {
+                let name = entry.file_name().to_string_lossy().to_string();
 
-        // Skip hidden files unless requested
-        if !show_hidden && name.starts_with('.') {
-            continue;
-        }
+                // Skip hidden files unless requested
+                if !show_hidden && name.starts_with('.') {
+                    continue;
+                }
 
-        // Skip common ignored directories
-        if respect_gitignore {
-            let skip_dirs = [
-                "node_modules",
-                "target",
-                ".git",
-                "__pycache__",
-                ".venv",
-                "dist",
-                ".next",
-                "vendor",
-            ];
-            if skip_dirs.contains(&name.as_str()) {
+                // Skip common ignored directories
+                if respect_gitignore {
+                    let skip_dirs = [
+                        "node_modules",
+                        "target",
+                        ".git",
+                        "__pycache__",
+                        ".venv",
+                        "dist",
+                        ".next",
+                        "vendor",
+                    ];
+                    if skip_dirs.contains(&name.as_str()) {
+                        continue;
+                    }
+                }
+
+                let file_type = match entry.file_type().await {
+                    Ok(ft) => ft,
+                    Err(e) => {
+                        tracing::warn!(path = %entry.path().display(), error = %e, "Failed to get file type, skipping");
+                        continue;
+                    }
+                };
+
+                let size = if show_size {
+                    entry.metadata().await.map(|m| m.len()).unwrap_or(0)
+                } else {
+                    0
+                };
+
+                entries.push(TreeEntry {
+                    name,
+                    path: entry.path(),
+                    is_dir: file_type.is_dir(),
+                    size,
+                });
+            }
+            Ok(None) => break, // End of directory
+            Err(e) => {
+                tracing::warn!(path = %path.display(), error = %e, "Error reading directory entry, continuing");
                 continue;
             }
         }
-
-        let file_type = match entry.file_type().await {
-            Ok(ft) => ft,
-            Err(_) => continue,
-        };
-
-        let size = if show_size {
-            entry.metadata().await.map(|m| m.len()).unwrap_or(0)
-        } else {
-            0
-        };
-
-        entries.push(TreeEntry {
-            name,
-            path: entry.path(),
-            is_dir: file_type.is_dir(),
-            size,
-        });
     }
 
     // Sort entries: directories first, then files, alphabetically
@@ -268,6 +286,12 @@ fn format_size(bytes: u64) -> String {
 
 /// File information tool - get metadata about a file
 pub struct FileInfoTool;
+
+impl Default for FileInfoTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl FileInfoTool {
     pub fn new() -> Self {
@@ -351,11 +375,11 @@ impl Tool for FileInfoTool {
         }
 
         // Modified time
-        if let Ok(modified) = metadata.modified() {
-            if let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH) {
-                let secs = duration.as_secs();
-                info.push(format!("Modified: {} seconds since epoch", secs));
-            }
+        if let Ok(modified) = metadata.modified()
+            && let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH)
+        {
+            let secs = duration.as_secs();
+            info.push(format!("Modified: {} seconds since epoch", secs));
         }
 
         // For files, get additional info
@@ -417,6 +441,12 @@ impl Tool for FileInfoTool {
 
 /// Head/Tail tool - quickly peek at file beginning or end
 pub struct HeadTailTool;
+
+impl Default for HeadTailTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl HeadTailTool {
     pub fn new() -> Self {
@@ -531,6 +561,12 @@ impl Tool for HeadTailTool {
 
 /// Diff tool - compare files or show git diff
 pub struct DiffTool;
+
+impl Default for DiffTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DiffTool {
     pub fn new() -> Self {

@@ -283,7 +283,7 @@ pub async fn execute_sandboxed(
 
     let work_dir = working_dir
         .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| std::env::temp_dir());
+        .unwrap_or_else(std::env::temp_dir);
 
     let mut cmd = Command::new(command);
     cmd.args(args)

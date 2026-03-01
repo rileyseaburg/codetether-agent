@@ -10,6 +10,12 @@ use serde_json::{Value, json};
 /// Search for text in files
 pub struct GrepTool;
 
+impl Default for GrepTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GrepTool {
     pub fn new() -> Self {
         Self
@@ -109,13 +115,12 @@ impl Tool for GrepTool {
             let path = entry.path();
 
             // Check include pattern
-            if let Some(include_pattern) = include {
-                if !glob::Pattern::new(include_pattern)
+            if let Some(include_pattern) = include
+                && !glob::Pattern::new(include_pattern)
                     .map(|p| p.matches_path(path))
                     .unwrap_or(false)
-                {
-                    continue;
-                }
+            {
+                continue;
             }
 
             // Read and search file

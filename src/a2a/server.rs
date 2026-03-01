@@ -1,8 +1,8 @@
 //! A2A Server - serve as an A2A agent
 
 use super::types::*;
-use crate::session::Session;
-use crate::telemetry::{ToolExecution, record_persistent};
+use crate::session::{Session, SessionEvent};
+use crate::telemetry::record_persistent;
 use anyhow::Result;
 use axum::{
     Router,
@@ -14,6 +14,7 @@ use axum::{
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::mpsc;
 use uuid::Uuid;
 
 /// A2A Server state
@@ -21,14 +22,26 @@ use uuid::Uuid;
 pub struct A2AServer {
     tasks: Arc<DashMap<String, Task>>,
     agent_card: AgentCard,
+    /// Optional bus for emitting session events for SSE streaming
+    bus: Option<Arc<crate::bus::AgentBus>>,
 }
 
 impl A2AServer {
-    /// Create a new A2A server
+    /// Create a new A2A server without a bus
     pub fn new(agent_card: AgentCard) -> Self {
         Self {
             tasks: Arc::new(DashMap::new()),
             agent_card,
+            bus: None,
+        }
+    }
+
+    /// Create a new A2A server with a bus for event streaming
+    pub fn with_bus(agent_card: AgentCard, bus: Arc<crate::bus::AgentBus>) -> Self {
+        Self {
+            tasks: Arc::new(DashMap::new()),
+            agent_card,
+            bus: Some(bus),
         }
     }
 
@@ -500,14 +513,19 @@ async fn handle_message_stream(
         return Err(JsonRpcError::invalid_params("No text content in message"));
     }
 
-    // Spawn async processing
+    // Spawn async processing with event streaming
     let tasks = server.tasks.clone();
     let context_id = params.message.context_id.clone();
     let spawn_task_id = task_id.clone();
+    let bus = server.bus.clone();
 
     tokio::spawn(async move {
         let task_id = spawn_task_id;
         let started_at = Instant::now();
+
+        // Create a channel for session events
+        let (event_tx, mut event_rx) = mpsc::channel::<SessionEvent>(256);
+
         let mut session = match Session::new().await {
             Ok(s) => s,
             Err(e) => {
@@ -534,7 +552,100 @@ async fn handle_message_stream(
             }
         };
 
-        match session.prompt(&prompt).await {
+        // Spawn a task to forward session events to the bus
+        let bus_clone = bus.clone();
+        let task_id_clone = task_id.clone();
+        tokio::spawn(async move {
+            while let Some(event) = event_rx.recv().await {
+                let event_data = match &event {
+                    SessionEvent::Thinking => {
+                        serde_json::json!({ "type": "thinking" })
+                    }
+                    SessionEvent::ToolCallStart { name, arguments } => {
+                        serde_json::json!({
+                            "type": "tool_call_start",
+                            "name": name,
+                            "arguments": arguments
+                        })
+                    }
+                    SessionEvent::ToolCallComplete {
+                        name,
+                        output,
+                        success,
+                    } => {
+                        serde_json::json!({
+                            "type": "tool_call_complete",
+                            "name": name,
+                            "output": output.chars().take(500).collect::<String>(),
+                            "success": success
+                        })
+                    }
+                    SessionEvent::TextChunk(text) => {
+                        serde_json::json!({ "type": "text_chunk", "text": text })
+                    }
+                    SessionEvent::TextComplete(text) => {
+                        serde_json::json!({ "type": "text_complete", "text": text })
+                    }
+                    SessionEvent::ThinkingComplete(thought) => {
+                        serde_json::json!({ "type": "thinking_complete", "thought": thought })
+                    }
+                    SessionEvent::UsageReport {
+                        prompt_tokens,
+                        completion_tokens,
+                        duration_ms,
+                        model,
+                    } => {
+                        serde_json::json!({
+                            "type": "usage_report",
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "duration_ms": duration_ms,
+                            "model": model
+                        })
+                    }
+                    SessionEvent::Done => {
+                        serde_json::json!({ "type": "done" })
+                    }
+                    SessionEvent::Error(err) => {
+                        serde_json::json!({ "type": "error", "error": err })
+                    }
+                    SessionEvent::SessionSync(_) => {
+                        continue; // Don't emit session sync to SSE
+                    }
+                };
+
+                // Emit to bus for SSE subscribers
+                if let Some(ref bus) = bus_clone {
+                    let handle = bus.handle("a2a-stream");
+                    handle.send(
+                        format!("task.{}", task_id_clone),
+                        crate::bus::BusMessage::TaskUpdate {
+                            task_id: task_id_clone.clone(),
+                            state: crate::a2a::types::TaskState::Working,
+                            message: Some(serde_json::to_string(&event_data).unwrap_or_default()),
+                        },
+                    );
+                }
+            }
+        });
+
+        // Use prompt_with_events for streaming
+        let registry = match crate::provider::ProviderRegistry::from_vault().await {
+            Ok(r) => Arc::new(r),
+            Err(e) => {
+                tracing::error!("Failed to load provider registry: {}", e);
+                if let Some(mut t) = tasks.get_mut(&task_id) {
+                    t.status.state = TaskState::Failed;
+                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                }
+                return;
+            }
+        };
+
+        match session
+            .prompt_with_events(&prompt, event_tx, registry)
+            .await
+        {
             Ok(result) => {
                 let result_text = result.text;
                 let response_message = Message {

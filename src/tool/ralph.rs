@@ -21,6 +21,12 @@ pub struct RalphTool {
     model: String,
 }
 
+impl Default for RalphTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RalphTool {
     pub fn new() -> Self {
         Self {

@@ -15,6 +15,12 @@ use crate::telemetry::{FileChange, TOOL_EXECUTIONS, ToolExecution, record_persis
 
 pub struct ConfirmEditTool;
 
+impl Default for ConfirmEditTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfirmEditTool {
     pub fn new() -> Self {
         Self
@@ -170,7 +176,7 @@ impl Tool for ConfirmEditTool {
             } else if style == "green" {
                 diff_output.push_str(&format!("\x1b[32m{}\x1b[0m", line.trim_end()));
             } else {
-                diff_output.push_str(&line.trim_end());
+                diff_output.push_str(line.trim_end());
             }
             diff_output.push('\n');
         }

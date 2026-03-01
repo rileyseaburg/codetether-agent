@@ -46,6 +46,8 @@ async fn main() -> Result<()> {
             .unwrap_or_else(|_| {
                 std::env::var("AWS_DEFAULT_REGION").unwrap_or_else(|_| "us-west-2".to_string())
             }),
+        bedrock_service_tier: std::env::var("CODETETHER_COGNITION_THINKER_BEDROCK_SERVICE_TIER")
+            .ok(),
     };
 
     println!("Creating thinker client...");

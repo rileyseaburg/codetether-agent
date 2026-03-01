@@ -142,7 +142,7 @@ pub struct RalphStoryInfo {
 // ---------------------------------------------------------------------------
 
 /// State for the Ralph view
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RalphViewState {
     /// Whether Ralph mode is active
     pub active: bool,
@@ -170,26 +170,6 @@ pub struct RalphViewState {
     pub detail_scroll: usize,
     /// ListState for StatefulWidget rendering
     pub list_state: ListState,
-}
-
-impl Default for RalphViewState {
-    fn default() -> Self {
-        Self {
-            active: false,
-            project: String::new(),
-            feature: String::new(),
-            stories: Vec::new(),
-            current_iteration: 0,
-            max_iterations: 0,
-            complete: false,
-            final_status: None,
-            error: None,
-            selected_index: 0,
-            detail_mode: false,
-            detail_scroll: 0,
-            list_state: ListState::default(),
-        }
-    }
 }
 
 impl RalphViewState {
@@ -549,13 +529,7 @@ fn render_story_list(f: &mut Frame, state: &mut RalphViewState, area: Rect) {
                 let qc_summary: Vec<&str> = story
                     .quality_checks
                     .iter()
-                    .map(|(name, passed)| {
-                        if *passed {
-                            name.as_str()
-                        } else {
-                            name.as_str()
-                        }
-                    })
+                    .map(|(name, _passed)| name.as_str())
                     .collect();
                 if !qc_summary.is_empty() {
                     let checks: String = story

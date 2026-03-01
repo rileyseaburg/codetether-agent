@@ -35,9 +35,8 @@ const MAX_STATE_FILE_BYTES: u64 = 100 * 1024 * 1024; // 100 MB
 
 /// Get the persistence file path.
 fn state_path() -> PathBuf {
-    let base = directories::ProjectDirs::from("com", "codetether", "codetether")
-        .map(|d| d.data_local_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("/tmp/codetether"));
+    let base =
+        crate::config::Config::data_dir().unwrap_or_else(|| PathBuf::from("/tmp/codetether-agent"));
     base.join("cognition").join("state.json")
 }
 
@@ -64,11 +63,11 @@ fn referenced_event_ids(
 fn trim_event_for_storage(event: &ThoughtEvent) -> ThoughtEvent {
     let mut trimmed = event.clone();
     // Trim thinking field if present
-    if let Some(thinking) = trimmed.payload.get("thinking").and_then(|v| v.as_str()) {
-        if thinking.len() > 500 {
-            let short = &thinking[..500];
-            trimmed.payload["thinking"] = serde_json::Value::String(format!("{}...", short));
-        }
+    if let Some(thinking) = trimmed.payload.get("thinking").and_then(|v| v.as_str())
+        && thinking.len() > 500
+    {
+        let short = &thinking[..500];
+        trimmed.payload["thinking"] = serde_json::Value::String(format!("{}...", short));
     }
     trimmed
 }

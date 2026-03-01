@@ -128,12 +128,11 @@ impl VertexAnthropicProvider {
         // Check cache — refresh 5 minutes before expiration
         {
             let cache = self.cached_token.read().await;
-            if let Some(ref cached) = *cache {
-                if cached.expires_at
+            if let Some(ref cached) = *cache
+                && cached.expires_at
                     > std::time::Instant::now() + std::time::Duration::from_secs(300)
-                {
-                    return Ok(cached.token.clone());
-                }
+            {
+                return Ok(cached.token.clone());
             }
         }
 
@@ -784,12 +783,11 @@ impl Provider for VertexAnthropicProvider {
 
                                     match event_type {
                                         "content_block_delta" => {
-                                            if let Some(delta) = event.get("delta") {
-                                                if let Some(text) =
+                                            if let Some(delta) = event.get("delta")
+                                                && let Some(text) =
                                                     delta.get("text").and_then(Value::as_str)
-                                                {
-                                                    text_buf.push_str(text);
-                                                }
+                                            {
+                                                text_buf.push_str(text);
                                             }
                                         }
                                         "content_block_start" => {
