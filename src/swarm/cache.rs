@@ -414,8 +414,7 @@ mod tests {
             execution_time_ms: 1000,
             error: None,
             artifacts: vec![],
-            is_retry: false,
-            retry_attempts: 0,
+            retry_count: 0,
         }
     }
 
