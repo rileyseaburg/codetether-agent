@@ -830,7 +830,7 @@ pub struct OkrArgs {
 #[command(
     about = "OKR-governed autonomous opportunity scanner/executor",
     long_about = "Scan OKRs/KRs for high-priority opportunities and optionally execute the top selections with the build agent.",
-    after_long_help = "Examples:\n  codetether forage --top 5\n  codetether forage --loop --interval-secs 600\n  codetether forage --loop --execute --top 1 --interval-secs 600 --max-cycles 48 --run-timeout-secs 900 --model minimax/MiniMax-M2.5\n  codetether forage --loop --execute --execution-engine swarm --swarm-max-subagents 8 --swarm-strategy auto --model openai-codex/gpt-5.1-codex"
+    after_long_help = "Examples:\n  codetether forage --top 5\n  codetether forage --loop --interval-secs 600\n  codetether forage --loop --execute --top 1 --interval-secs 600 --max-cycles 48 --run-timeout-secs 900 --model minimax/MiniMax-M2.5\n  codetether forage --loop --execute --execution-engine swarm --swarm-max-subagents 8 --swarm-strategy auto --model zai/glm-5"
 )]
 pub struct ForageArgs {
     /// Show top-N opportunities each cycle
@@ -852,6 +852,10 @@ pub struct ForageArgs {
     /// Execute selected opportunities via `codetether run`
     #[arg(long)]
     pub execute: bool,
+
+    /// Disable S3/MinIO archival requirement (for local-only execution)
+    #[arg(long)]
+    pub no_s3: bool,
 
     /// Moonshot mission statement(s) used as a strategic rubric for prioritization.
     ///

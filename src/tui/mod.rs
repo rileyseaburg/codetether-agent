@@ -447,7 +447,7 @@ enum AutochatUiEvent {
     SystemMessage(String),
     AgentEvent {
         agent_name: String,
-        event: SessionEvent,
+        event: Box<SessionEvent>,
     },
     Completed {
         summary: String,
@@ -2415,7 +2415,7 @@ async fn run_autochat_worker(
                         let _ = tx
                             .send(AutochatUiEvent::AgentEvent {
                                 agent_name: to.clone(),
-                                event,
+                                event: Box::new(event),
                             })
                             .await;
                     }
@@ -2437,7 +2437,7 @@ async fn run_autochat_worker(
                     let _ = tx
                         .send(AutochatUiEvent::AgentEvent {
                             agent_name: to.clone(),
-                            event,
+                            event: Box::new(event),
                         })
                         .await;
                 }
@@ -2995,7 +2995,7 @@ async fn resume_autochat_worker(
                         let _ = tx
                             .send(AutochatUiEvent::AgentEvent {
                                 agent_name: to.clone(),
-                                event,
+                                event: Box::new(event),
                             })
                             .await;
                     }
@@ -3017,7 +3017,7 @@ async fn resume_autochat_worker(
                     let _ = tx
                         .send(AutochatUiEvent::AgentEvent {
                             agent_name: to.clone(),
-                            event,
+                            event: Box::new(event),
                         })
                         .await;
                 }
@@ -3848,7 +3848,7 @@ Original request:\n{base_prompt}"
                         "Failed to save session after processing error"
                     );
                 }
-                let _ = tx.send(SessionEvent::SessionSync(session)).await;
+                let _ = tx.send(SessionEvent::SessionSync(Box::new(session))).await;
                 let _ = tx.send(SessionEvent::Error(format!("{err:#}"))).await;
                 let _ = tx.send(SessionEvent::Done).await;
             }
@@ -5480,7 +5480,7 @@ Please take one concrete step to unblock progress and report results."
             SessionEvent::SessionSync(session) => {
                 // Sync the updated session (with full conversation history) back
                 // so subsequent messages include prior context.
-                self.session = Some(session);
+                self.session = Some(*session);
             }
             SessionEvent::Error(err) => {
                 self.current_tool_started_at = None;
@@ -5543,7 +5543,7 @@ Please take one concrete step to unblock progress and report results."
                         "Failed to save spawned-agent session after processing error"
                     );
                 }
-                let _ = tx.send(SessionEvent::SessionSync(session)).await;
+                let _ = tx.send(SessionEvent::SessionSync(Box::new(session))).await;
                 let _ = tx.send(SessionEvent::Error(format!("{err:#}"))).await;
                 let _ = tx.send(SessionEvent::Done).await;
             }
@@ -5708,7 +5708,7 @@ Please take one concrete step to unblock progress and report results."
             }
             SessionEvent::SessionSync(session) => {
                 if let Some(agent) = self.spawned_agents.get_mut(agent_name) {
-                    agent.session = session;
+                    agent.session = *session;
                 }
             }
             SessionEvent::Error(err) => {
@@ -5749,7 +5749,7 @@ Please take one concrete step to unblock progress and report results."
             }
             AutochatUiEvent::AgentEvent { agent_name, event } => {
                 self.autochat_status = Some(format!("Streaming from @{agent_name}…"));
-                self.handle_agent_response(&agent_name, event);
+                self.handle_agent_response(&agent_name, *event);
                 false
             }
             AutochatUiEvent::Completed {

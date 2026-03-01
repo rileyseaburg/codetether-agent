@@ -79,4 +79,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 
 git commit -m "$COMMIT_MSG"
-git push origin main
+# Get current branch name and push to it
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Pushing to branch: $CURRENT_BRANCH"
+git push origin "$CURRENT_BRANCH"

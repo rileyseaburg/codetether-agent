@@ -14,6 +14,12 @@ CodeTether Agent `v4.0.0` is a major release delivering zero-latency local infer
 - **CloudEvent Task Notification** — Worker now receives task notifications via Knative Eventing. The `/task` endpoint extracts `task_id` from the CloudEvent payload and immediately polls for pending tasks, eliminating SSE polling delay.
 - **Claude Opus 4.6 Bedrock Pricing** — Reflects new Amazon Bedrock rates: input $5.00/1M tokens (was $15.00, −67%) and output $25.00/1M tokens (was $75.00, −67%). 200 K context limit added for Opus 4.6. TUI token display updated.
 - **Windows Installer Fix** — `install.ps1` now tries multiple artifact formats (msvc + zip for GitHub Actions, gnu + tar.gz for Jenkins) and auto-detects the correct binary. Improved error messages when no binary is available.
+### v4.0.1 — Swarm Reliability & Morph Backend
+
+- **Morph AI Backend** — Integrated Morph AI backend into `edit` and `multiedit` tools for intelligent, AI-assisted code modifications with fallback to exact string replacement.
+- **Swarm Retry Improvements** — Refactored retry logic with configurable `base_delay_ms` and `max_delay_ms` parameters. Added `retry_count` to `SubTaskResult` for tracking retry attempts.
+- **Forage Enhancements** — Added `--no-s3` flag for local-only execution. Improved OKR seeding with moonshot-derived objectives. KR progress now requires quality gates to pass.
+- **Memory Optimizations** — `SessionEvent::SessionSync` and `AutochatUiEvent::AgentEvent` now use heap allocation via Box.
 
 ### Upgrading to v4.0
 
@@ -179,6 +185,7 @@ codetether config --show                 # Show config
 ```bash
 # Top opportunities snapshot
 codetether forage --top 5
+codetether forage --top 5 --no-s3  # Local only, skip S3
 
 # Autonomous loop (governed by OKRs)
 codetether forage --loop --interval-secs 120 --top 3
@@ -204,6 +211,8 @@ codetether forage --loop --execute --execution-engine swarm --interval-secs 120 
 Notes:
 - In `--execute` mode, if the OKR repository is empty, forage auto-seeds a default mission OKR so the loop can self-start.
 - Without `--execute`, forage does not auto-seed and only reports existing opportunities.
+- Use `--no-s3` to disable S3 archival for local-only execution.
+- KR progress is only recorded when quality gates (cargo check, cargo test) pass.
 
 ## Security
 
@@ -1016,4 +1025,3 @@ cargo fmt                    # Format
 ## License
 
 MIT
-# Test commit script fix

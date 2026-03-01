@@ -184,21 +184,17 @@ pub struct SwarmConfig {
     #[serde(default)]
     pub k8s_subagent_image: Option<String>,
 
-    /// Maximum number of retry attempts for failed sub-agents.
+    /// Maximum number of retry attempts for transient failures (0 = no retries)
     #[serde(default = "default_max_retries")]
     pub max_retries: u32,
 
-    /// Initial delay in milliseconds before first retry.
-    #[serde(default = "default_retry_initial_delay_ms")]
-    pub retry_initial_delay_ms: u64,
+    /// Base delay in milliseconds for the first retry (exponential backoff)
+    #[serde(default = "default_base_delay_ms")]
+    pub base_delay_ms: u64,
 
-    /// Maximum delay in milliseconds between retries.
-    #[serde(default = "default_retry_max_delay_ms")]
-    pub retry_max_delay_ms: u64,
-
-    /// Multiplier for exponential backoff (e.g., 2.0 doubles delay each retry).
-    #[serde(default = "default_retry_backoff_multiplier")]
-    pub retry_backoff_multiplier: f64,
+    /// Maximum delay in milliseconds between retries (caps exponential growth)
+    #[serde(default = "default_max_delay_ms")]
+    pub max_delay_ms: u64,
 }
 
 /// Sub-agent execution mode.
@@ -230,16 +226,12 @@ fn default_max_retries() -> u32 {
     3
 }
 
-fn default_retry_initial_delay_ms() -> u64 {
-    1000
+fn default_base_delay_ms() -> u64 {
+    500
 }
 
-fn default_retry_max_delay_ms() -> u64 {
-    30000
-}
-
-fn default_retry_backoff_multiplier() -> f64 {
-    2.0
+fn default_max_delay_ms() -> u64 {
+    30_000
 }
 
 impl Default for SwarmConfig {
@@ -261,9 +253,8 @@ impl Default for SwarmConfig {
             k8s_pod_budget: 8,
             k8s_subagent_image: None,
             max_retries: 3,
-            retry_initial_delay_ms: 1000,
-            retry_max_delay_ms: 30000,
-            retry_backoff_multiplier: 2.0,
+            base_delay_ms: 500,
+            max_delay_ms: 30_000,
         }
     }
 }
@@ -301,17 +292,11 @@ pub struct SwarmStats {
     /// Rate limiting statistics
     pub rate_limit_stats: RateLimitStats,
 
-    /// Total number of retry attempts made
-    #[serde(default)]
-    pub total_retries: u32,
+    /// Number of cache hits (subtasks served from cache)
+    pub cache_hits: u64,
 
-    /// Number of subtasks that succeeded on retry
-    #[serde(default)]
-    pub recovered_on_retry: u32,
-
-    /// Number of subtasks that failed even after all retries
-    #[serde(default)]
-    pub failed_after_retries: u32,
+    /// Number of cache misses (subtasks that required execution)
+    pub cache_misses: u64,
 }
 
 /// Statistics for a single execution stage
@@ -345,6 +330,22 @@ impl SwarmStats {
     /// Calculate critical path from stages
     pub fn calculate_critical_path(&mut self) {
         self.critical_path_length = self.stages.iter().map(|s| s.max_steps).sum();
+    }
+
+    /// Merge cache statistics from a [`CacheStats`] snapshot into these stats
+    pub fn merge_cache_stats(&mut self, cache_stats: &cache::CacheStats) {
+        self.cache_hits = cache_stats.hits;
+        self.cache_misses = cache_stats.misses;
+    }
+
+    /// Cache hit rate (0.0 to 1.0); returns 0.0 when no cache lookups occurred
+    pub fn cache_hit_rate(&self) -> f64 {
+        let total = self.cache_hits + self.cache_misses;
+        if total == 0 {
+            0.0
+        } else {
+            self.cache_hits as f64 / total as f64
+        }
     }
 }
 

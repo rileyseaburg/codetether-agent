@@ -1,0 +1,14 @@
+{
+  "report_version": 1,
+  "report_id": "0fbe241e-6494-4e8f-977c-165ef6117adf",
+  "occurred_at": "2026-03-01T01:45:56.256655596Z",
+  "app_version": "4.0.0-alpha-0.1",
+  "command_line": "codetether",
+  "os": "linux",
+  "arch": "x86_64",
+  "process_id": 4021493,
+  "thread_name": "tokio-runtime-worker",
+  "panic_message": "byte index 200 is not a char boundary; it is inside '✓' (bytes 199..202) of `{\"id\":\"05f2cd4d509b3087516abc7aeb542caf\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"MiniMax-M2.5\",\"content\":[{\"thinking\":\"Now I have the accurate function line counts:\\n\\n- `get_registry`: 8 lines ✓\\n- `normalize_model`: (missing - single line?)\\n- `is`[...]",
+  "panic_location": "src/provider/anthropic.rs:523:18",
+  "backtrace": "   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: <unknown>\n  13: <unknown>\n  14: <unknown>\n  15: <unknown>\n  16: <unknown>\n  17: <unknown>\n  18: <unknown>\n  19: <unknown>\n  20: <unknown>\n  21: <unknown>\n"
+}
