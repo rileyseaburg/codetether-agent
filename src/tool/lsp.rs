@@ -73,6 +73,39 @@ fn get_file_path_arg(args: &Value) -> Option<&str> {
     args["file_path"].as_str().or_else(|| args["path"].as_str())
 }
 
+fn action_from_command(command: &str) -> Option<&'static str> {
+    match command {
+        "textDocument/definition" => Some("goToDefinition"),
+        "textDocument/references" => Some("findReferences"),
+        "textDocument/hover" => Some("hover"),
+        "textDocument/documentSymbol" => Some("documentSymbol"),
+        "workspace/symbol" => Some("workspaceSymbol"),
+        "textDocument/implementation" => Some("goToImplementation"),
+        "textDocument/completion" => Some("completion"),
+        _ => None,
+    }
+}
+
+fn resolve_action_raw(args: &Value) -> Result<String> {
+    if let Some(action) = args["action"].as_str() {
+        return Ok(action.to_string());
+    }
+
+    if let Some(command) = args["command"].as_str() {
+        if let Some(mapped) = action_from_command(command) {
+            return Ok(mapped.to_string());
+        }
+
+        return Err(anyhow::anyhow!(
+            "Unsupported lsp command: {command}. Use action with one of: \
+             goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, \
+             goToImplementation, completion"
+        ));
+    }
+
+    Err(anyhow::anyhow!("action is required"))
+}
+
 /// LSP Tool for performing Language Server Protocol operations
 pub struct LspTool {
     root_uri: Option<String>,
@@ -193,10 +226,8 @@ impl Tool for LspTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let action_raw = args["action"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("action is required"))?;
-        let action = LspOperation::parse(action_raw)
+        let action_raw = resolve_action_raw(&args)?;
+        let action = LspOperation::parse(&action_raw)
             .ok_or_else(|| anyhow::anyhow!("Unknown action: {}", action_raw))?;
 
         // Get the LSP manager and client
@@ -403,7 +434,7 @@ fn format_result(result: LspActionResult) -> Result<ToolResult> {
 
 #[cfg(test)]
 mod tests {
-    use super::{LspOperation, get_file_path_arg};
+    use super::{LspOperation, get_file_path_arg, resolve_action_raw};
     use serde_json::json;
 
     #[test]
@@ -436,5 +467,26 @@ mod tests {
             "path": "src/lib.rs"
         });
         assert_eq!(get_file_path_arg(&args_with_path), Some("src/lib.rs"));
+    }
+
+    #[test]
+    fn maps_command_aliases_to_actions() {
+        let args = json!({
+            "command": "textDocument/hover",
+            "file_path": "src/lib.rs",
+            "line": 1,
+            "column": 1
+        });
+        let action = resolve_action_raw(&args).expect("command should map");
+        assert_eq!(action, "hover");
+    }
+
+    #[test]
+    fn rejects_unsupported_command_with_helpful_error() {
+        let args = json!({
+            "command": "workspace/diagnostics"
+        });
+        let err = resolve_action_raw(&args).expect_err("unsupported command should error");
+        assert!(err.to_string().contains("Unsupported lsp command"));
     }
 }
