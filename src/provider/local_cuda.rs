@@ -34,6 +34,25 @@ struct ModelCache {
 }
 
 impl LocalCudaProvider {
+    fn strip_inline_think_blocks(raw: &str) -> String {
+        let mut remaining = raw;
+        let mut visible = String::new();
+
+        while let Some(start) = remaining.find("<think>") {
+            visible.push_str(&remaining[..start]);
+            let after_start = &remaining[start + "<think>".len()..];
+            if let Some(end) = after_start.find("</think>") {
+                remaining = &after_start[end + "</think>".len()..];
+            } else {
+                remaining = "";
+                break;
+            }
+        }
+
+        visible.push_str(remaining);
+        visible.trim().to_string()
+    }
+
     /// Create a new LocalCudaProvider
     pub fn new(model_name: String) -> Result<Self> {
         if !cfg!(feature = "candle-cuda") {
@@ -144,10 +163,7 @@ impl LocalCudaProvider {
 
         let requested_max_tokens = request.max_tokens.unwrap_or(512).max(1);
         let max_tokens_cap = parse_env_usize(
-            &[
-                "LOCAL_CUDA_MAX_TOKENS",
-                "CODETETHER_LOCAL_CUDA_MAX_TOKENS",
-            ],
+            &["LOCAL_CUDA_MAX_TOKENS", "CODETETHER_LOCAL_CUDA_MAX_TOKENS"],
             1200,
         )
         .max(1);
@@ -337,7 +353,7 @@ impl Provider for LocalCudaProvider {
             "Local CUDA inference completed"
         );
 
-        let text = output.text.trim().to_string();
+        let text = Self::strip_inline_think_blocks(&output.text);
         Ok(CompletionResponse {
             message: Message {
                 role: Role::Assistant,
@@ -347,8 +363,8 @@ impl Provider for LocalCudaProvider {
                 prompt_tokens: output.prompt_tokens.unwrap_or(0) as usize,
                 completion_tokens: output.completion_tokens.unwrap_or(0) as usize,
                 total_tokens: output.total_tokens.unwrap_or(0) as usize,
-                cache_read_tokens: None,
-                cache_write_tokens: None,
+                cache_read_tokens: output.cache_read_tokens.map(|v| v as usize),
+                cache_write_tokens: output.cache_write_tokens.map(|v| v as usize),
             },
             finish_reason: Self::map_finish_reason(output.finish_reason.as_deref()),
         })
@@ -474,6 +490,21 @@ impl Default for LocalCudaConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_strip_inline_think_blocks() {
+        let raw = "<think>internal plan</think>\n\nHello! How can I help?";
+        let cleaned = LocalCudaProvider::strip_inline_think_blocks(raw);
+        assert_eq!(cleaned, "Hello! How can I help?");
+
+        let raw_multiple = "before <think>a</think> middle <think>b</think> after";
+        let cleaned_multiple = LocalCudaProvider::strip_inline_think_blocks(raw_multiple);
+        assert_eq!(cleaned_multiple, "before  middle  after");
+
+        let raw_unclosed = "<think>partial chain";
+        let cleaned_unclosed = LocalCudaProvider::strip_inline_think_blocks(raw_unclosed);
+        assert!(cleaned_unclosed.is_empty());
+    }
 
     #[test]
     fn test_local_cuda_provider_creation() {

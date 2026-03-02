@@ -112,6 +112,10 @@ pub struct ThinkerOutput {
     pub prompt_tokens: Option<u32>,
     pub completion_tokens: Option<u32>,
     pub total_tokens: Option<u32>,
+    #[cfg_attr(not(feature = "candle-cuda"), allow(dead_code))]
+    pub cache_read_tokens: Option<u32>,
+    #[cfg_attr(not(feature = "candle-cuda"), allow(dead_code))]
+    pub cache_write_tokens: Option<u32>,
 }
 
 #[derive(Clone)]
@@ -286,6 +290,8 @@ impl ThinkerClient {
             prompt_tokens,
             completion_tokens,
             total_tokens: prompt_tokens.zip(completion_tokens).map(|(p, c)| p + c),
+            cache_read_tokens: None,
+            cache_write_tokens: None,
         })
     }
 
@@ -384,6 +390,8 @@ impl ThinkerClient {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens,
                 total_tokens: usage.total_tokens,
+                cache_read_tokens: None,
+                cache_write_tokens: None,
             };
 
             tracing::debug!(
@@ -419,7 +427,6 @@ pub(crate) struct CandleThinker {
     seed: u64,
     request_index: u64,
     eos_token_ids: HashSet<u32>,
-    #[allow(dead_code)]
     cached_tokens: Vec<u32>,
 }
 
@@ -444,6 +451,28 @@ impl CandleModel {
             #[cfg(feature = "functiongemma")]
             Self::Gemma3(model) => Ok(model.forward(x, index_pos)?),
         }
+    }
+
+    fn reset_kv_cache_for_new_request(&mut self) -> Result<()> {
+        match self {
+            // quantized_qwen3 uses ConcatKvCache and requires explicit reset for unrelated prompts.
+            Self::Qwen3(model) => {
+                model.clear_kv_cache();
+                Ok(())
+            }
+            // quantized_qwen3_moe in candle-transformers 0.9.2 does not expose KV reset.
+            Self::Qwen3Moe(_) => Err(anyhow!(
+                "qwen3_moe runtime cannot reset KV cache in this build; restart local runtime or use qwen3"
+            )),
+            Self::Llama(_) | Self::Qwen2(_) => Ok(()),
+
+            #[cfg(feature = "functiongemma")]
+            Self::Gemma3(_) => Ok(()),
+        }
+    }
+
+    fn can_extend_cached_prefix(&self) -> bool {
+        true
     }
 }
 
@@ -601,38 +630,68 @@ impl CandleThinker {
             self.top_p.map(|v| v as f64),
         );
 
-        let mut index_pos = 0usize;
+        let mut cache_read_tokens = 0u32;
+        let mut cache_write_tokens = 0u32;
+
+        let can_extend_prefix = self.model.can_extend_cached_prefix()
+            && !self.cached_tokens.is_empty()
+            && tokens.len() > self.cached_tokens.len()
+            && tokens.starts_with(&self.cached_tokens);
+
+        let mut index_pos = if can_extend_prefix {
+            cache_read_tokens = self.cached_tokens.len() as u32;
+            self.cached_tokens.len()
+        } else {
+            if !self.cached_tokens.is_empty() {
+                self.model.reset_kv_cache_for_new_request()?;
+            }
+            0
+        };
+
+        let prefill = if index_pos == 0 {
+            tokens.as_slice()
+        } else {
+            &tokens[index_pos..]
+        };
+        if prefill.is_empty() {
+            // Exact-token prompt replay has no extra tokens to prefill, so do a fresh prefill.
+            self.model.reset_kv_cache_for_new_request()?;
+            index_pos = 0;
+        }
+
+        let prefill = if index_pos == 0 {
+            tokens.as_slice()
+        } else {
+            &tokens[index_pos..]
+        };
+        cache_write_tokens = cache_write_tokens.saturating_add(prefill.len() as u32);
+
+        let input = Tensor::new(prefill, &self.device)?
+            .unsqueeze(0)
+            .context("failed to create candle input tensor")?;
+        let mut logits = self
+            .model
+            .forward(&input, index_pos)
+            .context("candle model forward failed")?;
+        index_pos += prefill.len();
+        logits = logits
+            .squeeze(0)
+            .context("failed to squeeze logits batch dimension")?;
+
         let mut generated: Vec<u32> = Vec::with_capacity(self.max_tokens);
         let mut finish_reason = "length".to_string();
 
         for _ in 0..self.max_tokens {
-            let ctxt: &[u32] = if index_pos == 0 {
-                tokens.as_slice()
-            } else {
-                &tokens[tokens.len() - 1..]
-            };
-
-            let input = Tensor::new(ctxt, &self.device)?
-                .unsqueeze(0)
-                .context("failed to create candle input tensor")?;
-            let mut logits = self
-                .model
-                .forward(&input, index_pos)
-                .context("candle model forward failed")?;
-            index_pos += ctxt.len();
-            logits = logits
-                .squeeze(0)
-                .context("failed to squeeze logits batch dimension")?;
-
-            let logits = if self.repeat_penalty > 1.0 {
+            let sampling_logits = if self.repeat_penalty > 1.0 {
                 let start_at = tokens.len().saturating_sub(self.repeat_last_n);
                 apply_repeat_penalty(&logits, self.repeat_penalty, &tokens[start_at..])
                     .context("failed to apply repeat penalty")?
             } else {
-                logits
+                logits.clone()
             };
 
-            let next_token = sample_next_token_with_fallback(&mut logits_processor, &logits)?;
+            let next_token =
+                sample_next_token_with_fallback(&mut logits_processor, &sampling_logits)?;
             if self.eos_token_ids.contains(&next_token) {
                 finish_reason = "stop".to_string();
                 break;
@@ -640,11 +699,24 @@ impl CandleThinker {
 
             tokens.push(next_token);
             generated.push(next_token);
+            cache_write_tokens = cache_write_tokens.saturating_add(1);
 
             if tokens.len() + 1 >= self.context_window {
                 finish_reason = "length".to_string();
                 break;
             }
+
+            let input = Tensor::new(&tokens[tokens.len() - 1..], &self.device)?
+                .unsqueeze(0)
+                .context("failed to create candle input tensor")?;
+            logits = self
+                .model
+                .forward(&input, index_pos)
+                .context("candle model forward failed")?;
+            index_pos += 1;
+            logits = logits
+                .squeeze(0)
+                .context("failed to squeeze logits batch dimension")?;
         }
 
         let text = self
@@ -652,12 +724,15 @@ impl CandleThinker {
             .decode(&generated, true)
             .map_err(|e| anyhow!("tokenizer decode failed: {}", e))?;
         let completion_tokens = generated.len() as u32;
+        self.cached_tokens = tokens;
 
         tracing::debug!(
             model = %self.model_label,
             latency_ms = started_at.elapsed().as_millis(),
             prompt_tokens = prompt_token_count,
             completion_tokens = completion_tokens,
+            cache_read_tokens = cache_read_tokens,
+            cache_write_tokens = cache_write_tokens,
             "candle thinker generated thought"
         );
 
@@ -668,6 +743,8 @@ impl CandleThinker {
             prompt_tokens: Some(prompt_token_count),
             completion_tokens: Some(completion_tokens),
             total_tokens: Some(prompt_token_count + completion_tokens),
+            cache_read_tokens: Some(cache_read_tokens),
+            cache_write_tokens: Some(cache_write_tokens),
         })
     }
 }
