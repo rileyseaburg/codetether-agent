@@ -480,10 +480,7 @@ fn list_tools_bootstrap_output(tools: &[ToolDefinition], tool_input: &Value) -> 
         .filter(|s| !s.is_empty());
 
     if let Some(name) = requested_tool {
-        if let Some(found) = tools
-            .iter()
-            .find(|t| t.name.eq_ignore_ascii_case(name))
-        {
+        if let Some(found) = tools.iter().find(|t| t.name.eq_ignore_ascii_case(name)) {
             return serde_json::to_string_pretty(&json!({
                 "mode": "tool",
                 "tool": {
