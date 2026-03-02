@@ -1,0 +1,41 @@
+{
+  "id": "00b64566-c3ab-4110-b299-a602ee25e77e",
+  "title": "hello",
+  "created_at": "2026-03-02T17:57:05.025646967Z",
+  "updated_at": "2026-03-02T17:57:10.891750910Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hello"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "<think>\nOkay, the user said \"hello\". I need to respond appropriately. Since they're just greeting, I should acknowledge them. But wait, I need to check if there's a tool that should be used here. The available tools are list_tools and others like bash or lsp. But the user didn't ask for anything specific. They just greeted me. So, no tool is needed here. I should just reply with a friendly hello in plain text. No <tool_call> blocks required. Let me make sure I'm not missing any hidden request. Nope, seems like a simple greeting. So, respond with \"Hello!\" and that's it.\n</think>\n\nHello! How can I assist you today?"
+        }
+      ]
+    }
+  ],
+  "tool_uses": [],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null
+  },
+  "agent": "build",
+  "metadata": {
+    "directory": "/home/riley/A2A-Server-MCP/codetether-agent",
+    "model": "local_cuda/qwen3.5-4b",
+    "shared": false,
+    "share_url": null
+  }
+}

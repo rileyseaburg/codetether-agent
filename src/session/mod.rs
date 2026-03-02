@@ -35,6 +35,18 @@ fn is_interactive_tool(tool_name: &str) -> bool {
     matches!(tool_name, "question")
 }
 
+fn is_local_cuda_provider(provider: &str) -> bool {
+    matches!(provider, "local-cuda" | "local_cuda" | "localcuda")
+}
+
+fn local_cuda_light_system_prompt() -> String {
+    std::env::var("CODETETHER_LOCAL_CUDA_SYSTEM_PROMPT").unwrap_or_else(|_| {
+        "You are CodeTether local CUDA assistant. Be concise and execution-focused. \
+Use tools only when needed. For tool discovery, call list_tools first, then call specific tools with valid JSON arguments. \
+Do not invent tool outputs.".to_string()
+    })
+}
+
 fn enrich_tool_input_with_runtime_context(
     tool_input: &Value,
     current_model: Option<&str>,
@@ -440,6 +452,95 @@ fn inject_tool_prompt(base_prompt: &str, tools: &[ToolDefinition]) -> String {
     )
 }
 
+fn list_tools_bootstrap_definition() -> ToolDefinition {
+    ToolDefinition {
+        name: "list_tools".to_string(),
+        description: "List available tools (optionally filter by query) or fetch a full schema for one tool via {\"tool\":\"name\"}.".to_string(),
+        parameters: json!({
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Optional substring filter over tool names/descriptions"
+                },
+                "tool": {
+                    "type": "string",
+                    "description": "Optional exact tool name to return full schema"
+                }
+            }
+        }),
+    }
+}
+
+fn list_tools_bootstrap_output(tools: &[ToolDefinition], tool_input: &Value) -> String {
+    let requested_tool = tool_input
+        .get("tool")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+
+    if let Some(name) = requested_tool {
+        if let Some(found) = tools
+            .iter()
+            .find(|t| t.name.eq_ignore_ascii_case(name))
+        {
+            return serde_json::to_string_pretty(&json!({
+                "mode": "tool",
+                "tool": {
+                    "name": found.name,
+                    "description": found.description,
+                    "parameters": found.parameters
+                }
+            }))
+            .unwrap_or_else(|_| format!("tool: {}", found.name));
+        }
+        return serde_json::to_string_pretty(&json!({
+            "mode": "tool",
+            "error": format!("Tool '{}' not found", name)
+        }))
+        .unwrap_or_else(|_| format!("Tool '{}' not found", name));
+    }
+
+    let query = tool_input
+        .get("query")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_ascii_lowercase());
+
+    let mut listed: Vec<Value> = tools
+        .iter()
+        .filter(|t| {
+            if let Some(q) = &query {
+                t.name.to_ascii_lowercase().contains(q)
+                    || t.description.to_ascii_lowercase().contains(q)
+            } else {
+                true
+            }
+        })
+        .map(|t| {
+            json!({
+                "name": t.name,
+                "description": t.description,
+            })
+        })
+        .collect();
+
+    listed.sort_by(|a, b| {
+        let an = a["name"].as_str().unwrap_or_default();
+        let bn = b["name"].as_str().unwrap_or_default();
+        an.cmp(bn)
+    });
+
+    serde_json::to_string_pretty(&json!({
+        "mode": "list",
+        "count": listed.len(),
+        "tools": listed,
+        "hint": "Call list_tools with {\"tool\":\"<name>\"} to fetch full parameter schema for one tool."
+    }))
+    .unwrap_or_else(|_| "{\"mode\":\"list\",\"error\":\"serialization_failed\"}".to_string())
+}
+
 fn stub_marker_in_text(text: &str) -> Option<&'static str> {
     let lower = text.to_ascii_lowercase();
     let markers = [
@@ -760,11 +861,11 @@ impl Session {
             "google" => "gemini-2.5-pro".to_string(),
             "local_cuda" => std::env::var("LOCAL_CUDA_MODEL")
                 .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
-                .unwrap_or_else(|_| "qwen3-coder-next".to_string()),
+                .unwrap_or_else(|_| "qwen3.5-4b".to_string()),
             "zhipuai" | "zai" => "glm-5".to_string(),
             // OpenRouter uses model IDs like "z-ai/glm-5".
             "openrouter" => "z-ai/glm-5".to_string(),
-            "novita" => "qwen/qwen3-coder-next".to_string(),
+            "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
             _ => "glm-5".to_string(),
         }
@@ -1147,6 +1248,11 @@ impl Session {
             selected_provider,
             "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
         );
+        let advertised_tool_definitions = if model_supports_tools {
+            tool_definitions.clone()
+        } else {
+            vec![list_tools_bootstrap_definition()]
+        };
 
         // Build system prompt with AGENTS.md
         let cwd = self
@@ -1154,13 +1260,17 @@ impl Session {
             .directory
             .clone()
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-        let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+        let system_prompt = if is_local_cuda_provider(selected_provider) {
+            local_cuda_light_system_prompt()
+        } else {
+            crate::agent::builtin::build_system_prompt(&cwd)
+        };
 
         // For models that don't support native tool calling, inject tool
         // definitions into the system prompt so the model outputs <tool_call>
         // XML blocks that the router can parse directly.
-        let system_prompt = if !model_supports_tools && !tool_definitions.is_empty() {
-            inject_tool_prompt(&system_prompt, &tool_definitions)
+        let system_prompt = if !model_supports_tools && !advertised_tool_definitions.is_empty() {
+            inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
         } else {
             system_prompt
         };
@@ -1197,7 +1307,7 @@ impl Session {
                 Arc::clone(&provider),
                 &model,
                 &system_prompt,
-                &tool_definitions,
+                &advertised_tool_definitions,
             )
             .await?;
 
@@ -1231,7 +1341,7 @@ impl Session {
                 // Create completion request with tools
                 let request = CompletionRequest {
                     messages,
-                    tools: tool_definitions.clone(),
+                    tools: advertised_tool_definitions.clone(),
                     model: model.clone(),
                     temperature,
                     top_p: None,
@@ -1434,6 +1544,18 @@ impl Session {
             let mut codesearch_thrash_guard_triggered = false;
             for (tool_id, tool_name, tool_input) in tool_calls {
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+
+                if tool_name == "list_tools" {
+                    let content = list_tools_bootstrap_output(&tool_definitions, &tool_input);
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id,
+                            content,
+                        }],
+                    });
+                    continue;
+                }
 
                 // Publish tool request to bus for training pipeline
                 if let Some(ref bus) = self.bus {
@@ -1933,17 +2055,26 @@ impl Session {
             selected_provider,
             "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
         );
+        let advertised_tool_definitions = if model_supports_tools {
+            tool_definitions.clone()
+        } else {
+            vec![list_tools_bootstrap_definition()]
+        };
 
         // Build system prompt
         let cwd = std::env::var("PWD")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
-        let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+        let system_prompt = if is_local_cuda_provider(selected_provider) {
+            local_cuda_light_system_prompt()
+        } else {
+            crate::agent::builtin::build_system_prompt(&cwd)
+        };
 
         // For models that don't support native tool calling, inject tool
         // definitions into the system prompt.
-        let system_prompt = if !model_supports_tools && !tool_definitions.is_empty() {
-            inject_tool_prompt(&system_prompt, &tool_definitions)
+        let system_prompt = if !model_supports_tools && !advertised_tool_definitions.is_empty() {
+            inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
         } else {
             system_prompt
         };
@@ -1980,7 +2111,7 @@ impl Session {
                 Arc::clone(&provider),
                 &model,
                 &system_prompt,
-                &tool_definitions,
+                &advertised_tool_definitions,
             )
             .await?;
 
@@ -2007,7 +2138,7 @@ impl Session {
 
             let request = CompletionRequest {
                 messages,
-                tools: tool_definitions.clone(),
+                tools: advertised_tool_definitions.clone(),
                 model: model.clone(),
                 temperature,
                 top_p: None,
@@ -2048,7 +2179,7 @@ impl Session {
                             messages.extend(self.messages.clone());
                             let new_request = CompletionRequest {
                                 messages,
-                                tools: tool_definitions.clone(),
+                                tools: advertised_tool_definitions.clone(),
                                 model: model.clone(),
                                 temperature,
                                 top_p: None,
@@ -2279,6 +2410,25 @@ impl Session {
                     .await;
 
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
+
+                if tool_name == "list_tools" {
+                    let content = list_tools_bootstrap_output(&tool_definitions, &tool_input);
+                    let _ = event_tx
+                        .send(SessionEvent::ToolCallComplete {
+                            name: tool_name.clone(),
+                            output: content.clone(),
+                            success: true,
+                        })
+                        .await;
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id,
+                            content,
+                        }],
+                    });
+                    continue;
+                }
 
                 // Publish tool request to bus for training pipeline
                 if let Some(ref bus) = self.bus {

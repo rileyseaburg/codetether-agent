@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
         endpoint: std::env::var("CODETETHER_COGNITION_THINKER_BASE_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:11434/v1/chat/completions".to_string()),
         model: std::env::var("CODETETHER_COGNITION_THINKER_MODEL")
-            .unwrap_or_else(|_| "qwen2.5:3b-instruct".to_string()),
+            .unwrap_or_else(|_| "qwen3.5-4b".to_string()),
         api_key: std::env::var("CODETETHER_COGNITION_THINKER_API_KEY").ok(),
         temperature: 0.2,
         top_p: None,

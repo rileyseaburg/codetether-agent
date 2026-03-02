@@ -6,6 +6,7 @@
 use super::{Tool, ToolResult};
 use crate::provider::{ProviderRegistry, parse_model_string};
 use crate::swarm::executor::run_agent_loop;
+use crate::swarm::orchestrator::{choose_default_provider, default_model_for_provider};
 use crate::tool::ToolRegistry;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -238,7 +239,7 @@ impl Tool for SwarmExecuteTool {
             ));
         }
 
-        // Determine model to use
+        // Determine provider/model to use
         let (provider_name, model_name) = if let Some(ref model_str) = model {
             let (prov, mod_id) = parse_model_string(model_str);
             let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
@@ -253,25 +254,22 @@ impl Tool for SwarmExecuteTool {
                     )));
                 }
             } else {
-                provider_list[0].to_string()
+                choose_default_provider(provider_list.as_slice())
+                    .ok_or_else(|| anyhow::anyhow!("No providers available for swarm execution"))?
+                    .to_string()
             };
             let model_name = if mod_id.trim().is_empty() {
-                "glm-5".to_string()
+                default_model_for_provider(&provider_name)
             } else {
                 mod_id.to_string()
             };
             (provider_name, model_name)
         } else {
-            // Default to GLM-5 via Z.AI for swarm
-            let provider = if provider_list.contains(&"zai") {
-                "zai".to_string()
-            } else if provider_list.contains(&"openrouter") {
-                "openrouter".to_string()
-            } else {
-                provider_list[0].to_string()
-            };
-            let model = "glm-5".to_string();
-            (provider, model)
+            let provider_name = choose_default_provider(provider_list.as_slice())
+                .ok_or_else(|| anyhow::anyhow!("No providers available for swarm execution"))?
+                .to_string();
+            let model_name = default_model_for_provider(&provider_name);
+            (provider_name, model_name)
         };
 
         let provider = providers

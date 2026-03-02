@@ -1,0 +1,41 @@
+{
+  "id": "1071c10d-df9e-4f9e-9542-50dc71cbc72e",
+  "title": "hello",
+  "created_at": "2026-03-02T16:40:57.754075485Z",
+  "updated_at": "2026-03-02T16:41:01.899480604Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hello"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "<think>"
+        }
+      ]
+    }
+  ],
+  "tool_uses": [],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null
+  },
+  "agent": "build",
+  "metadata": {
+    "directory": "/home/riley/A2A-Server-MCP/codetether-agent",
+    "model": "local_cuda/qwen3.5-4b",
+    "shared": false,
+    "share_url": null
+  }
+}

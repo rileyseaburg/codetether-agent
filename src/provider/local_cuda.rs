@@ -142,6 +142,17 @@ impl LocalCudaProvider {
             ));
         }
 
+        let requested_max_tokens = request.max_tokens.unwrap_or(512).max(1);
+        let max_tokens_cap = parse_env_usize(
+            &[
+                "LOCAL_CUDA_MAX_TOKENS",
+                "CODETETHER_LOCAL_CUDA_MAX_TOKENS",
+            ],
+            1200,
+        )
+        .max(1);
+        let effective_max_tokens = requested_max_tokens.min(max_tokens_cap);
+
         let mut config = ThinkerConfig {
             enabled: true,
             backend: ThinkerBackend::Candle,
@@ -179,7 +190,7 @@ impl LocalCudaProvider {
                 )
             }),
             top_p: request.top_p,
-            max_tokens: request.max_tokens.unwrap_or(512).max(1),
+            max_tokens: effective_max_tokens,
             ..ThinkerConfig::default()
         };
         config.timeout_ms = parse_env_u64(
@@ -191,6 +202,8 @@ impl LocalCudaProvider {
             model = %config.model,
             device = ?config.candle_device,
             cuda_ordinal = config.candle_cuda_ordinal,
+            requested_max_tokens = requested_max_tokens,
+            max_tokens_cap = max_tokens_cap,
             max_tokens = config.max_tokens,
             "Initialized Local CUDA runtime configuration"
         );
@@ -425,7 +438,7 @@ impl LocalCudaProvider {
 /// Configuration for LocalCudaProvider
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LocalCudaConfig {
-    /// Model name (e.g., "qwen3-coder-next", "deepseek-coder-6.7b")
+    /// Model name (e.g., "qwen3.5-4b", "deepseek-coder-6.7b")
     pub model_name: String,
     /// Path to the model weights (GGUF or safetensors format)
     pub model_path: Option<String>,
@@ -446,7 +459,7 @@ pub struct LocalCudaConfig {
 impl Default for LocalCudaConfig {
     fn default() -> Self {
         Self {
-            model_name: "qwen3-coder-next".to_string(),
+            model_name: "qwen3.5-4b".to_string(),
             model_path: None,
             context_window: Some(8192),
             max_new_tokens: Some(4096),

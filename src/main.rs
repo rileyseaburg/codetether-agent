@@ -70,13 +70,13 @@ fn local_cuda_runtime_configured() -> bool {
 fn local_cuda_model_name() -> String {
     std::env::var("LOCAL_CUDA_MODEL")
         .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
-        .unwrap_or_else(|_| "qwen3-coder-next".to_string())
+        .unwrap_or_else(|_| "qwen3.5-4b".to_string())
 }
 
 fn default_openrouter_rlm_model() -> String {
     std::env::var("CODETETHER_RLM_DEFAULT_MODEL")
         .or_else(|_| std::env::var("OPENROUTER_RLM_MODEL"))
-        .unwrap_or_else(|_| "qwen/qwen3-coder-next".to_string())
+        .unwrap_or_else(|_| "Qwen/Qwen3.5-35B-A3B".to_string())
 }
 
 fn resolve_rlm_provider_and_model(
@@ -679,7 +679,7 @@ async fn main() -> anyhow::Result<()> {
                 max_subagents: args.max_subagents,
                 max_steps_per_subagent: args.max_steps,
                 subagent_timeout_secs: args.timeout,
-                model: args.model.clone().or_else(|| Some("zai/glm-5".to_string())),
+                model: args.model.clone(),
                 execution_mode: ExecutionMode::from_cli_value(&args.execution_mode),
                 k8s_pod_budget: args.k8s_pod_budget,
                 k8s_subagent_image: args.k8s_image.clone(),

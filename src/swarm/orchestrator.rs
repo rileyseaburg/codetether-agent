@@ -70,24 +70,21 @@ impl Orchestrator {
                     );
                 }
             } else {
-                provider_list[0].to_string()
+                choose_default_provider(provider_list.as_slice())
+                    .ok_or_else(|| anyhow::anyhow!("No providers available for orchestration"))?
+                    .to_string()
             };
             let model = if mod_id.trim().is_empty() {
-                Self::default_model_for_provider(&provider)
+                default_model_for_provider(&provider)
             } else {
                 mod_id.to_string()
             };
             (provider, model)
         } else {
-            // Default to GLM-5 via Z.AI for swarm.
-            let provider = if provider_list.contains(&"zai") {
-                "zai".to_string()
-            } else if provider_list.contains(&"openrouter") {
-                "openrouter".to_string()
-            } else {
-                provider_list[0].to_string()
-            };
-            let model = Self::default_model_for_provider(&provider);
+            let provider = choose_default_provider(provider_list.as_slice())
+                .ok_or_else(|| anyhow::anyhow!("No providers available for orchestration"))?
+                .to_string();
+            let model = default_model_for_provider(&provider);
             (provider, model)
         };
 
@@ -103,22 +100,6 @@ impl Orchestrator {
             provider,
             stats: SwarmStats::default(),
         })
-    }
-
-    /// Get default model for a provider
-    fn default_model_for_provider(provider: &str) -> String {
-        match provider {
-            "moonshotai" => "kimi-k2.5".to_string(),
-            "anthropic" => "claude-sonnet-4-20250514".to_string(),
-            "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
-            "openai" => "gpt-4o".to_string(),
-            "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
-            "openrouter" => "z-ai/glm-5".to_string(),
-            "novita" => "qwen/qwen3-coder-next".to_string(),
-            "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
-            _ => "glm-5".to_string(),
-        }
     }
 
     fn prefers_temperature_one(model: &str) -> bool {
@@ -477,6 +458,44 @@ Decompose the task now:"#,
     /// Get current provider
     pub fn provider(&self) -> &str {
         &self.provider
+    }
+}
+
+pub(crate) fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
+    let preferred = [
+        "zai",
+        "github-copilot",
+        "github-copilot-enterprise",
+        "openai-codex",
+        "openai",
+        "anthropic",
+        "moonshotai",
+        "openrouter",
+        "novita",
+        "google",
+        "bedrock",
+    ];
+    for name in preferred {
+        if let Some(found) = providers.iter().copied().find(|p| *p == name) {
+            return Some(found);
+        }
+    }
+    providers.first().copied()
+}
+
+/// Get default model for a provider.
+pub(crate) fn default_model_for_provider(provider: &str) -> String {
+    match provider {
+        "moonshotai" => "kimi-k2.5".to_string(),
+        "anthropic" => "claude-sonnet-4-20250514".to_string(),
+        "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
+        "openai" => "gpt-4o".to_string(),
+        "google" => "gemini-2.5-pro".to_string(),
+        "zhipuai" | "zai" => "glm-5".to_string(),
+        "openrouter" => "z-ai/glm-5".to_string(),
+        "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
+        "github-copilot" | "github-copilot-enterprise" | "openai-codex" => "gpt-5-mini".to_string(),
+        _ => "glm-5".to_string(),
     }
 }
 

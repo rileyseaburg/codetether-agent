@@ -81,6 +81,8 @@ For complex tasks, use the `agent` tool to spawn focused sub-agents:
 - Each sub-agent has its own conversation history and full tool access
 - Use sub-agents when a task benefits from a dedicated focus or parallel exploration
 
+For broad tasks with multiple independent workstreams, prefer `swarm_execute` to run subtasks in parallel.
+
 Always:
 - Be concise and helpful
 - Show your work by using tools

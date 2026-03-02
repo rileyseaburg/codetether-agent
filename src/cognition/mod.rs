@@ -615,7 +615,7 @@ impl CognitionRuntime {
                     .unwrap_or_else(|_| "http://127.0.0.1:11434/v1".to_string()),
             ),
             model: std::env::var("CODETETHER_COGNITION_THINKER_MODEL")
-                .unwrap_or_else(|_| "qwen2.5:3b-instruct".to_string()),
+                .unwrap_or_else(|_| "qwen3.5-4b".to_string()),
             api_key: std::env::var("CODETETHER_COGNITION_THINKER_API_KEY").ok(),
             temperature: env_f32("CODETETHER_COGNITION_THINKER_TEMPERATURE", 0.2),
             top_p: std::env::var("CODETETHER_COGNITION_THINKER_TOP_P")

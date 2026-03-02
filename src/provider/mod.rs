@@ -92,7 +92,7 @@ pub mod local_cuda {
     impl Default for LocalCudaConfig {
         fn default() -> Self {
             Self {
-                model_name: "qwen3-coder-next".to_string(),
+                model_name: "qwen3.5-4b".to_string(),
                 model_path: None,
                 context_window: Some(8192),
                 max_new_tokens: Some(4096),
@@ -686,7 +686,7 @@ impl ProviderRegistry {
                         .get("model_name")
                         .and_then(|v| v.as_str())
                         .or_else(|| secrets.extra.get("model").and_then(|v| v.as_str()))
-                        .unwrap_or("qwen3-coder-next")
+                        .unwrap_or("qwen3.5-4b")
                         .to_string();
                     let model_path = secrets
                         .extra
@@ -1104,7 +1104,7 @@ impl ProviderRegistry {
                 .unwrap_or(false);
             let model_name = std::env::var("LOCAL_CUDA_MODEL")
                 .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
-                .unwrap_or_else(|_| "qwen3-coder-next".to_string());
+                .unwrap_or_else(|_| "qwen3.5-4b".to_string());
             let model_path = std::env::var("LOCAL_CUDA_MODEL_PATH")
                 .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL_PATH"))
                 .ok();

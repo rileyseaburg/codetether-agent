@@ -54,7 +54,7 @@ const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESH
 const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
 const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen2.5-coder-7b";
+const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen3.5-4b";
 const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
 const GO_SWAP_MODEL_MINIMAX: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
@@ -5981,10 +5981,7 @@ Please take one concrete step to unblock progress and report results."
             .push(ChatMessage::new("user", format!("/swarm {}", task)));
 
         // Get model from config
-        let model = config
-            .default_model
-            .clone()
-            .or_else(|| Some("zai/glm-5".to_string()));
+        let model = config.default_model.clone();
 
         // Configure swarm
         let swarm_config = SwarmConfig {
@@ -11496,7 +11493,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
             .to_string(),
         "  /autochat-local [count] [--no-prd] <task>  Local relay; PRD-gated unless --no-prd"
             .to_string(),
-        "  /local [model]  Switch active model to local CUDA (example: /local qwen2.5-coder-7b)"
+        "  /local [model]  Switch active model to local CUDA (example: /local qwen3.5-4b)"
             .to_string(),
         "".to_string(),
         "  EASY MODE".to_string(),
@@ -11708,12 +11705,12 @@ mod tests {
     #[test]
     fn normalize_local_model_ref_adds_local_provider_prefix() {
         assert_eq!(
-            normalize_local_model_ref("qwen2.5-coder-7b"),
-            "local_cuda/qwen2.5-coder-7b"
+            normalize_local_model_ref("qwen3.5-4b"),
+            "local_cuda/qwen3.5-4b"
         );
         assert_eq!(
-            normalize_local_model_ref("local_cuda/qwen2.5-coder-7b"),
-            "local_cuda/qwen2.5-coder-7b"
+            normalize_local_model_ref("local_cuda/qwen3.5-4b"),
+            "local_cuda/qwen3.5-4b"
         );
     }
 

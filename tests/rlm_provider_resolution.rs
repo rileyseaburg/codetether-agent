@@ -42,7 +42,7 @@ fn rlm_explicit_local_cuda_does_not_fallback() {
             "fn main() {}",
             "--json",
             "--model",
-            "local_cuda/qwen3-coder-next",
+            "local_cuda/qwen3.5-4b",
         ])
         .env("VAULT_ADDR", "http://127.0.0.1:1")
         .env("VAULT_TOKEN", "dummy")

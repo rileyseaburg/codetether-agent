@@ -13,7 +13,7 @@ Run model-driven code navigation with deterministic verification always on, whil
 3. Oracle verdicts are non-blocking for process exit (`failed` verdict does not force non-zero exit).
 4. Static no-provider fallback is removed from `rlm`; provider resolution is fail-fast.
 5. Provider strategy is local-first (`local_cuda`), then OpenRouter fallback when no explicit provider is pinned.
-6. Default cloud model baseline is Qwen 3.5 coder family (`qwen/qwen3.5-coder-7b`) unless overridden.
+6. Default cloud model baseline is Qwen 3.5 family (`Qwen/Qwen3.5-35B-A3B`) unless overridden.
 7. Trace persistence writes full envelope records for all verdicts (`golden`, `failed`, `unverified`, `consensus`).
 8. Remote persistence target defaults to MinIO/S3 using Bus S3 credential resolution.
 9. Remote outages do not drop traces; traces spool locally and can be synced later.

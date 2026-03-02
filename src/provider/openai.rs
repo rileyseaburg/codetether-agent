@@ -101,7 +101,7 @@ impl OpenAIProvider {
             "cerebras" => vec![
                 ("llama3.1-8b", "Llama 3.1 8B"),
                 ("llama-3.3-70b", "Llama 3.3 70B"),
-                ("qwen-3-32b", "Qwen 3 32B"),
+                ("qwen-3.5-32b", "Qwen 3.5 32B"),
                 ("gpt-oss-120b", "GPT-OSS 120B"),
             ],
 
@@ -114,7 +114,7 @@ impl OpenAIProvider {
             ],
             "zhipuai" => vec![],
             "novita" => vec![
-                ("qwen/qwen3-coder-next", "Qwen 3 Coder Next"),
+                ("Qwen/Qwen3.5-35B-A3B", "Qwen 3.5 35B A3B"),
                 ("deepseek/deepseek-v3-0324", "DeepSeek V3"),
                 ("meta-llama/llama-3.1-70b-instruct", "Llama 3.1 70B"),
                 ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
