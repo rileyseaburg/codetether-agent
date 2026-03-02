@@ -53,7 +53,7 @@ pub struct ActiveGoRun {
 }
 
 /// Global registry of active (and recently completed) go runs.
-static ACTIVE_GO_RUNS: std::sync::LazyLock<Mutex<HashMap<String, ActiveGoRun>>> =
+pub static ACTIVE_GO_RUNS: std::sync::LazyLock<Mutex<HashMap<String, ActiveGoRun>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Deserialize)]

@@ -188,6 +188,20 @@ pub struct CompletionRequest {
     pub stop: Vec<String>,
 }
 
+/// Request to generate embeddings
+#[derive(Debug, Clone)]
+pub struct EmbeddingRequest {
+    pub model: String,
+    pub inputs: Vec<String>,
+}
+
+/// Response from an embedding request
+#[derive(Debug, Clone)]
+pub struct EmbeddingResponse {
+    pub embeddings: Vec<Vec<f32>>,
+    pub usage: Usage,
+}
+
 /// A streaming chunk from the model
 #[derive(Debug, Clone)]
 pub enum StreamChunk {
@@ -244,6 +258,11 @@ pub trait Provider: Send + Sync {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>>;
+
+    /// Generate embeddings
+    async fn embed(&self, _request: EmbeddingRequest) -> Result<EmbeddingResponse> {
+        anyhow::bail!("Provider '{}' does not support embeddings", self.name())
+    }
 }
 
 /// Information about a model
@@ -709,6 +728,23 @@ impl ProviderRegistry {
                     continue;
                 }
 
+                // Hugging Face endpoint (OpenAI-compatible embeddings API), API key optional.
+                if provider_id == "huggingface" {
+                    if let Some(base_url) = secrets.base_url.clone() {
+                        match openai::OpenAIProvider::with_base_url_optional_key(
+                            secrets.api_key.clone(),
+                            base_url,
+                            "huggingface",
+                        ) {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init huggingface: {}", e),
+                        }
+                    } else {
+                        tracing::warn!("huggingface provider requires base_url in Vault secrets");
+                    }
+                    continue;
+                }
+
                 let api_key = match secrets.api_key {
                     Some(key) => key,
                     None => continue,
@@ -965,6 +1001,7 @@ impl ProviderRegistry {
     /// - `ANTHROPIC_API_KEY` → Registers Anthropic provider
     /// - `GOOGLE_API_KEY` → Registers Google provider
     /// - `OPENROUTER_API_KEY` → Registers OpenRouter provider
+    /// - `HF_BASE_URL`/`HUGGINGFACE_BASE_URL` (+ optional `HF_TOKEN`/`HUGGINGFACE_API_KEY`) → Registers Hugging Face provider
     /// - `CODETETHER_LOCAL_CUDA=1` (or `LOCAL_CUDA_MODEL*`) → Registers Local CUDA provider
     ///
     /// # Security Warning
@@ -1013,6 +1050,34 @@ impl ProviderRegistry {
                         registry.register(p);
                     }
                     Err(e) => tracing::warn!("Failed to init {} from env: {}", provider_id, e),
+                }
+            }
+        }
+
+        if !registry.providers.contains_key("huggingface") {
+            let huggingface_base_url = std::env::var("HF_BASE_URL")
+                .ok()
+                .or_else(|| std::env::var("HUGGINGFACE_BASE_URL").ok())
+                .or_else(|| std::env::var("HUGGINGFACE_ENDPOINT").ok());
+
+            if let Some(base_url) = huggingface_base_url {
+                let api_key = std::env::var("HF_TOKEN")
+                    .ok()
+                    .or_else(|| std::env::var("HUGGINGFACE_API_KEY").ok())
+                    .filter(|value| !value.trim().is_empty());
+
+                match openai::OpenAIProvider::with_base_url_optional_key(
+                    api_key,
+                    base_url,
+                    "huggingface",
+                ) {
+                    Ok(p) => {
+                        tracing::info!(
+                            "Registered huggingface provider from HF_BASE_URL/HUGGINGFACE_BASE_URL env vars"
+                        );
+                        registry.register(Arc::new(p));
+                    }
+                    Err(e) => tracing::warn!("Failed to init huggingface from env: {}", e),
                 }
             }
         }

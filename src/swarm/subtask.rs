@@ -286,6 +286,47 @@ pub struct ToolCallRecord {
     pub success: bool,
 }
 
+/// Determine whether an error message represents a transient failure that
+/// is safe to retry (network issues, rate limiting, timeouts).
+///
+/// Returns `true` if the error is likely transient and a retry may succeed.
+pub fn is_transient_error(error: &str) -> bool {
+    let lower = error.to_ascii_lowercase();
+    // Rate limiting
+    if lower.contains("rate limit")
+        || lower.contains("ratelimit")
+        || lower.contains("too many requests")
+        || lower.contains("429")
+    {
+        return true;
+    }
+    // Timeout / connection issues
+    if lower.contains("timeout")
+        || lower.contains("timed out")
+        || lower.contains("connection reset")
+        || lower.contains("connection refused")
+        || lower.contains("broken pipe")
+        || lower.contains("network")
+        || lower.contains("socket")
+        || lower.contains("io error")
+    {
+        return true;
+    }
+    // Transient server errors
+    if lower.contains("503")
+        || lower.contains("502")
+        || lower.contains("504")
+        || lower.contains("service unavailable")
+        || lower.contains("bad gateway")
+        || lower.contains("gateway timeout")
+        || lower.contains("overloaded")
+        || lower.contains("temporarily unavailable")
+    {
+        return true;
+    }
+    false
+}
+
 /// Result of a subtask execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubTaskResult {
@@ -316,11 +357,7 @@ pub struct SubTaskResult {
     /// Artifacts produced
     pub artifacts: Vec<String>,
 
-    /// Number of retry attempts made (0 = first attempt, 1+ = retries)
+    /// Number of retry attempts before this result was produced
     #[serde(default)]
-    pub retry_attempts: u32,
-
-    /// Whether this result is from a retried execution
-    #[serde(default)]
-    pub is_retry: bool,
+    pub retry_count: u32,
 }

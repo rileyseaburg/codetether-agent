@@ -259,6 +259,10 @@ impl AnthropicProvider {
     }
 }
 
+fn safe_char_prefix(input: &str, max_chars: usize) -> String {
+    input.chars().take(max_chars).collect()
+}
+
 #[derive(Debug, Deserialize)]
 struct AnthropicResponse {
     #[allow(dead_code)]
@@ -520,7 +524,7 @@ impl Provider for AnthropicProvider {
 
         let response: AnthropicResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Anthropic response: {}",
-            &text[..text.len().min(200)]
+            safe_char_prefix(&text, 200)
         ))?;
 
         tracing::debug!(
@@ -694,5 +698,12 @@ mod tests {
 
         assert_eq!(provider.name(), "minimax");
         assert!(provider.enable_prompt_caching);
+    }
+
+    #[test]
+    fn safe_char_prefix_handles_multibyte_characters() {
+        let s = "abc✓def";
+        assert_eq!(safe_char_prefix(s, 4), "abc✓");
+        assert_eq!(safe_char_prefix(s, 7), s);
     }
 }

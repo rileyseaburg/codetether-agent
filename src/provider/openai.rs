@@ -1,8 +1,8 @@
 //! OpenAI provider implementation
 
 use super::{
-    CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
-    Role, StreamChunk, ToolDefinition, Usage,
+    CompletionRequest, CompletionResponse, ContentPart, EmbeddingRequest, EmbeddingResponse,
+    FinishReason, Message, ModelInfo, Provider, Role, StreamChunk, ToolDefinition, Usage,
 };
 use anyhow::Result;
 use async_openai::{
@@ -19,16 +19,21 @@ use async_openai::{
 };
 use async_trait::async_trait;
 use futures::StreamExt;
+use reqwest::Client as HttpClient;
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     provider_name: String,
+    api_key: Option<String>,
+    api_base: String,
+    http: HttpClient,
 }
 
 impl std::fmt::Debug for OpenAIProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OpenAIProvider")
             .field("provider_name", &self.provider_name)
+            .field("api_base", &self.api_base)
             .field("client", &"<async_openai::Client>")
             .finish()
     }
@@ -41,27 +46,52 @@ impl OpenAIProvider {
             api_key_len = api_key.len(),
             "Creating OpenAI provider"
         );
-        let config = OpenAIConfig::new().with_api_key(api_key);
+        let config = OpenAIConfig::new().with_api_key(api_key.clone());
+        let api_base = "https://api.openai.com/v1".to_string();
         Ok(Self {
             client: Client::with_config(config),
             provider_name: "openai".to_string(),
+            api_key: Some(api_key),
+            api_base,
+            http: HttpClient::builder()
+                .timeout(std::time::Duration::from_secs(45))
+                .build()?,
         })
     }
 
     /// Create with custom base URL (for OpenAI-compatible providers like Moonshot)
     pub fn with_base_url(api_key: String, base_url: String, provider_name: &str) -> Result<Self> {
+        Self::with_base_url_optional_key(Some(api_key), base_url, provider_name)
+    }
+
+    /// Create with custom base URL and optional API key.
+    ///
+    /// Useful for private in-cluster OpenAI-compatible endpoints that rely on
+    /// network policy instead of bearer authentication.
+    pub fn with_base_url_optional_key(
+        api_key: Option<String>,
+        base_url: String,
+        provider_name: &str,
+    ) -> Result<Self> {
+        let api_key = api_key.filter(|key| !key.trim().is_empty());
         tracing::debug!(
             provider = provider_name,
             base_url = %base_url,
-            api_key_len = api_key.len(),
+            api_key_len = api_key.as_ref().map(|key| key.len()).unwrap_or(0),
             "Creating OpenAI-compatible provider"
         );
         let config = OpenAIConfig::new()
-            .with_api_key(api_key)
-            .with_api_base(base_url);
+            .with_api_key(api_key.clone().unwrap_or_default())
+            .with_api_base(base_url.clone());
+        let api_base = base_url.trim_end_matches('/').to_string();
         Ok(Self {
             client: Client::with_config(config),
             provider_name: provider_name.to_string(),
+            api_key,
+            api_base,
+            http: HttpClient::builder()
+                .timeout(std::time::Duration::from_secs(45))
+                .build()?,
         })
     }
 
@@ -426,11 +456,105 @@ impl Provider for OpenAIProvider {
             })
             .boxed())
     }
+
+    async fn embed(&self, request: EmbeddingRequest) -> Result<EmbeddingResponse> {
+        if request.inputs.is_empty() {
+            return Ok(EmbeddingResponse {
+                embeddings: Vec::new(),
+                usage: Usage::default(),
+            });
+        }
+
+        let url = format!("{}/embeddings", self.api_base.trim_end_matches('/'));
+        let body = OpenAIEmbeddingRequest {
+            model: request.model,
+            input: request.inputs,
+        };
+
+        let mut request_builder = self.http.post(url);
+        if let Some(api_key) = self.api_key.as_deref().filter(|key| !key.is_empty()) {
+            request_builder = request_builder.bearer_auth(api_key);
+        }
+        let response = request_builder.json(&body).send().await?;
+
+        let status = response.status();
+        let text = response.text().await?;
+        if !status.is_success() {
+            anyhow::bail!(
+                "embedding request failed ({status}): {}",
+                safe_char_prefix(&text, 500)
+            );
+        }
+
+        let mut payload: OpenAIEmbeddingResponse = serde_json::from_str(&text)?;
+        payload.data.sort_by_key(|item| item.index);
+        let embeddings: Vec<Vec<f32>> = payload
+            .data
+            .into_iter()
+            .map(|item| item.embedding)
+            .collect();
+
+        if embeddings.len() != body.input.len() {
+            anyhow::bail!(
+                "embedding response length mismatch: expected {}, got {}",
+                body.input.len(),
+                embeddings.len()
+            );
+        }
+
+        let prompt_tokens = payload.usage.prompt_tokens.unwrap_or(0) as usize;
+        let total_tokens = payload
+            .usage
+            .total_tokens
+            .unwrap_or(payload.usage.prompt_tokens.unwrap_or(0))
+            as usize;
+
+        Ok(EmbeddingResponse {
+            embeddings,
+            usage: Usage {
+                prompt_tokens,
+                completion_tokens: 0,
+                total_tokens,
+                ..Default::default()
+            },
+        })
+    }
+}
+
+fn safe_char_prefix(input: &str, max_chars: usize) -> String {
+    input.chars().take(max_chars).collect()
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenAIEmbeddingRequest {
+    model: String,
+    input: Vec<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct OpenAIEmbeddingResponse {
+    data: Vec<OpenAIEmbeddingData>,
+    #[serde(default)]
+    usage: OpenAIEmbeddingUsage,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct OpenAIEmbeddingData {
+    index: usize,
+    embedding: Vec<f32>,
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+struct OpenAIEmbeddingUsage {
+    #[serde(default)]
+    prompt_tokens: Option<u32>,
+    #[serde(default)]
+    total_tokens: Option<u32>,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::OpenAIProvider;
+    use super::{OpenAIProvider, Provider};
 
     #[test]
     fn detects_minimax_chat_setting_error_variants() {
@@ -443,5 +567,17 @@ mod tests {
         assert!(!OpenAIProvider::is_minimax_chat_setting_error(
             "rate limit exceeded"
         ));
+    }
+
+    #[test]
+    fn supports_openai_compatible_provider_without_api_key() {
+        let provider = OpenAIProvider::with_base_url_optional_key(
+            None,
+            "http://localhost:8080/v1".to_string(),
+            "huggingface",
+        )
+        .expect("provider should initialize without API key");
+
+        assert_eq!(provider.name(), "huggingface");
     }
 }

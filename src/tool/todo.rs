@@ -26,6 +26,7 @@ pub enum TodoStatus {
     #[default]
     Pending,
     #[serde(alias = "in_progress")]
+    #[serde(alias = "inprogress")]
     InProgress,
     Done,
     Blocked,
@@ -144,7 +145,7 @@ impl Tool for TodoReadTool {
         json!({
             "type": "object",
             "properties": {
-                "status": {"type": "string", "enum": ["pending", "in_progress", "done", "blocked"]},
+                "status": {"type": "string", "enum": ["pending", "in_progress", "inprogress", "done", "blocked"]},
                 "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]}
             }
         })
@@ -164,7 +165,7 @@ impl Tool for TodoReadTool {
                 if let Some(ref status) = p.status {
                     let expected = match status.as_str() {
                         "pending" => TodoStatus::Pending,
-                        "in_progress" => TodoStatus::InProgress,
+                        "in_progress" | "inprogress" => TodoStatus::InProgress,
                         "done" => TodoStatus::Done,
                         "blocked" => TodoStatus::Blocked,
                         _ => return true,
@@ -235,7 +236,7 @@ impl Tool for TodoWriteTool {
                 "action": {"type": "string", "enum": ["add", "update", "delete", "clear"], "description": "Action to perform"},
                 "id": {"type": "string", "description": "Todo ID (for update/delete)"},
                 "content": {"type": "string", "description": "Todo content (for add/update)"},
-                "status": {"type": "string", "enum": ["pending", "in_progress", "done", "blocked"]},
+                "status": {"type": "string", "enum": ["pending", "in_progress", "inprogress", "done", "blocked"]},
                 "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]}
             },
             "required": ["action"]
@@ -254,7 +255,7 @@ impl Tool for TodoWriteTool {
                 let status = p
                     .status
                     .map(|s| match s.as_str() {
-                        "in_progress" => TodoStatus::InProgress,
+                        "in_progress" | "inprogress" => TodoStatus::InProgress,
                         "done" => TodoStatus::Done,
                         "blocked" => TodoStatus::Blocked,
                         _ => TodoStatus::Pending,
@@ -294,7 +295,7 @@ impl Tool for TodoWriteTool {
                 }
                 if let Some(status) = p.status {
                     todo.status = match status.as_str() {
-                        "in_progress" => TodoStatus::InProgress,
+                        "in_progress" | "inprogress" => TodoStatus::InProgress,
                         "done" => TodoStatus::Done,
                         "blocked" => TodoStatus::Blocked,
                         _ => TodoStatus::Pending,
