@@ -21,6 +21,7 @@ mod config;
 mod crash;
 mod event_stream;
 mod forage;
+mod indexer;
 mod k8s;
 mod lsp;
 pub mod mcp;
@@ -626,6 +627,7 @@ async fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Forage(args)) => forage::execute(args).await,
         Some(Command::Worker(mut args)) => {

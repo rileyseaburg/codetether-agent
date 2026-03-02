@@ -591,7 +591,6 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         "Audit log initialized"
     );
 
-    
     // Create agent bus for in-process communication
     let bus = AgentBus::new().into_arc();
 

@@ -174,11 +174,14 @@ codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
 codetether worker --server URL           # A2A worker mode (+ HTTP probes on :8080 by default)
 codetether auth codex                    # OAuth login for OpenAI Codex using ChatGPT subscription
 codetether auth copilot --client-id ID   # OAuth login for GitHub Copilot
+codetether index --path src --json       # Build codebase index with mandatory local open-source embeddings
 codetether okr list                      # List OKRs
 codetether okr report --id <uuid>        # Show OKR or run report
 codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn real A2A agent with auto-discovery
 codetether config --show                 # Show config
 ```
+
+`codetether index` always generates embeddings locally (no paid API required). Use `--embedding-model`, `--embedding-dimensions`, `--embedding-batch-size`, and `--embedding-input-chars` to tune behavior.
 
 ### Autonomous Forage (OKR-Governed Loop)
 

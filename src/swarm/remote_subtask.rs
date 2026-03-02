@@ -128,7 +128,7 @@ Use tools to execute the task and summarize concrete outputs.",
                 execution_time_ms: started.elapsed().as_millis() as u64,
                 error,
                 artifacts: Vec::new(),
-                
+
                 retry_count: 0,
             }
         }
@@ -142,7 +142,7 @@ Use tools to execute the task and summarize concrete outputs.",
             execution_time_ms: started.elapsed().as_millis() as u64,
             error: Some(error.to_string()),
             artifacts: Vec::new(),
-            
+
             retry_count: 0,
         },
     };

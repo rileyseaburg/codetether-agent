@@ -3,7 +3,10 @@
 //! Wraps any `Provider` to automatically record latency, throughput,
 //! and tokens-per-second via the global `PROVIDER_METRICS` registry.
 
-use super::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk, Usage};
+use super::{
+    CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, ModelInfo,
+    Provider, StreamChunk, Usage,
+};
 use crate::telemetry::{PROVIDER_METRICS, ProviderRequestRecord};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -114,6 +117,10 @@ impl Provider for MetricsProvider {
                 Err(e)
             }
         }
+    }
+
+    async fn embed(&self, request: EmbeddingRequest) -> Result<EmbeddingResponse> {
+        self.inner.embed(request).await
     }
 }
 
