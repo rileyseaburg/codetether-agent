@@ -616,7 +616,9 @@ impl ProviderRegistry {
                 }
 
                 // Handle OpenAI Codex (ChatGPT subscription) before generic api_key extraction.
-                // Prefer OAuth ChatGPT credentials when present; fall back to exchanged API key only when OAuth is unavailable.
+                // Prefer an exchanged OpenAI API key when available so modern /v1/responses
+                // surfaces (including WebSocket mode) use standard API auth. Fall back to
+                // ChatGPT OAuth credentials when no exchanged API key is available.
                 if matches!(provider_id.as_str(), "openai-codex" | "codex" | "chatgpt") {
                     let access_token = secrets.extra.get("access_token").and_then(|v| v.as_str());
                     let refresh_token = secrets.extra.get("refresh_token").and_then(|v| v.as_str());
@@ -626,29 +628,28 @@ impl ProviderRegistry {
                         .extra
                         .get("chatgpt_account_id")
                         .and_then(|v| v.as_str());
+                    let exchanged_api_key =
+                        secrets.api_key.as_deref().filter(|key| !key.is_empty());
 
-                    match (access_token, refresh_token, expires_at) {
-                        (Some(access), Some(refresh), Some(expires)) => {
-                            let creds = openai_codex::OAuthCredentials {
-                                id_token: id_token.map(ToString::to_string),
-                                chatgpt_account_id: chatgpt_account_id.map(ToString::to_string),
-                                access_token: access.to_string(),
-                                refresh_token: refresh.to_string(),
-                                expires_at: expires,
-                            };
-                            let provider =
-                                openai_codex::OpenAiCodexProvider::from_credentials(creds);
-                            registry.register(Arc::new(provider));
-                        }
-                        _ => {
-                            if let Some(api_key) =
-                                secrets.api_key.as_deref().filter(|key| !key.is_empty())
-                            {
-                                let provider = openai_codex::OpenAiCodexProvider::from_api_key(
-                                    api_key.to_string(),
-                                );
+                    if let Some(api_key) = exchanged_api_key {
+                        let provider =
+                            openai_codex::OpenAiCodexProvider::from_api_key(api_key.to_string());
+                        registry.register(Arc::new(provider));
+                    } else {
+                        match (access_token, refresh_token, expires_at) {
+                            (Some(access), Some(refresh), Some(expires)) => {
+                                let creds = openai_codex::OAuthCredentials {
+                                    id_token: id_token.map(ToString::to_string),
+                                    chatgpt_account_id: chatgpt_account_id.map(ToString::to_string),
+                                    access_token: access.to_string(),
+                                    refresh_token: refresh.to_string(),
+                                    expires_at: expires,
+                                };
+                                let provider =
+                                    openai_codex::OpenAiCodexProvider::from_credentials(creds);
                                 registry.register(Arc::new(provider));
-                            } else {
+                            }
+                            _ => {
                                 tracing::warn!(
                                     "openai-codex provider requires OAuth access_token, refresh_token, and expires_at (or an exchanged api_key) in Vault secrets"
                                 );

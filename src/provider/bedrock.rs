@@ -219,8 +219,7 @@ impl BedrockProvider {
     /// Public wrapper for sending a signed Converse API request.
     /// Used by the thinker backend.
     pub async fn send_converse_request(&self, url: &str, body: &[u8]) -> Result<reqwest::Response> {
-        self.send_request("POST", url, Some(body), "bedrock")
-            .await
+        self.send_request("POST", url, Some(body), "bedrock").await
     }
 
     fn validate_auth(&self) -> Result<()> {

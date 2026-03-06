@@ -33,7 +33,10 @@ use tokio_tungstenite::{
     },
 };
 
-const OPENAI_REALTIME_WS_URL: &str = "wss://api.openai.com/v1/realtime";
+const OPENAI_API_URL: &str = "https://api.openai.com/v1";
+const CHATGPT_CODEX_API_URL: &str = "https://chatgpt.com/backend-api/codex";
+const OPENAI_RESPONSES_WS_URL: &str = "wss://api.openai.com/v1/responses";
+const CHATGPT_CODEX_RESPONSES_WS_URL: &str = "wss://chatgpt.com/backend-api/codex/responses";
 const AUTH_ISSUER: &str = "https://auth.openai.com";
 const AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
@@ -49,6 +52,12 @@ enum ThinkingLevel {
     Low,
     Medium,
     High,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResponsesWsBackend {
+    OpenAi,
+    ChatGptCodex,
 }
 
 impl ThinkingLevel {
@@ -334,41 +343,39 @@ impl OpenAiCodexProvider {
         CLIENT_ID
     }
 
-    fn realtime_ws_url_with_base(base_url: &str, model: &str) -> String {
-        let separator = if base_url.contains('?') { '&' } else { '?' };
-        format!("{base_url}{separator}model={}", urlencoding::encode(model))
+    fn responses_ws_url_with_base(base_url: &str) -> String {
+        base_url.to_string()
     }
 
-    pub fn realtime_ws_url(model: &str) -> String {
-        Self::realtime_ws_url_with_base(OPENAI_REALTIME_WS_URL, model)
+    pub fn responses_ws_url() -> String {
+        Self::responses_ws_url_with_base(OPENAI_RESPONSES_WS_URL)
     }
 
-    fn build_realtime_request_with_base_url_and_account_id(
+    fn build_responses_ws_request_with_base_url_and_account_id(
         base_url: &str,
         token: &str,
-        model: &str,
         chatgpt_account_id: Option<&str>,
     ) -> Result<Request<()>> {
         if token.trim().is_empty() {
-            anyhow::bail!("Realtime WebSocket token cannot be empty");
+            anyhow::bail!("Responses WebSocket token cannot be empty");
         }
 
-        let url = Self::realtime_ws_url_with_base(base_url, model);
+        let url = Self::responses_ws_url_with_base(base_url);
         let mut request = url
             .into_client_request()
-            .context("Failed to build Realtime WebSocket request")?;
+            .context("Failed to build Responses WebSocket request")?;
         request.headers_mut().insert(
             "Authorization",
             HeaderValue::from_str(&format!("Bearer {token}"))
-                .context("Failed to build Realtime Authorization header")?,
+                .context("Failed to build Responses Authorization header")?,
         );
         request.headers_mut().insert(
             "User-Agent",
-            HeaderValue::from_static("codetether-realtime/1.0"),
+            HeaderValue::from_static("codetether-responses-ws/1.0"),
         );
         if let Some(account_id) = chatgpt_account_id.filter(|id| !id.trim().is_empty()) {
             request.headers_mut().insert(
-                "chatgpt-account-id",
+                "ChatGPT-Account-ID",
                 HeaderValue::from_str(account_id)
                     .context("Failed to build ChatGPT account header")?,
             );
@@ -376,45 +383,64 @@ impl OpenAiCodexProvider {
         Ok(request)
     }
 
-    fn build_realtime_request_with_base_url(
+    fn build_responses_ws_request_with_base_url(
         base_url: &str,
         token: &str,
-        model: &str,
     ) -> Result<Request<()>> {
-        Self::build_realtime_request_with_base_url_and_account_id(base_url, token, model, None)
+        Self::build_responses_ws_request_with_base_url_and_account_id(base_url, token, None)
     }
 
-    fn build_realtime_request_with_account_id(
+    fn build_responses_ws_request_with_account_id(
         token: &str,
-        model: &str,
         chatgpt_account_id: Option<&str>,
     ) -> Result<Request<()>> {
-        Self::build_realtime_request_with_base_url_and_account_id(
-            OPENAI_REALTIME_WS_URL,
+        Self::build_responses_ws_request_with_base_url_and_account_id(
+            OPENAI_RESPONSES_WS_URL,
             token,
-            model,
             chatgpt_account_id,
         )
     }
 
-    async fn connect_realtime_with_token(
+    fn build_chatgpt_responses_ws_request(
+        token: &str,
+        chatgpt_account_id: Option<&str>,
+    ) -> Result<Request<()>> {
+        Self::build_responses_ws_request_with_base_url_and_account_id(
+            CHATGPT_CODEX_RESPONSES_WS_URL,
+            token,
+            chatgpt_account_id,
+        )
+    }
+
+    async fn connect_responses_ws_with_token(
         &self,
         token: &str,
-        model: &str,
         chatgpt_account_id: Option<&str>,
+        backend: ResponsesWsBackend,
     ) -> Result<OpenAiRealtimeConnection> {
-        let request =
-            Self::build_realtime_request_with_account_id(token, model, chatgpt_account_id)?;
+        let request = match backend {
+            ResponsesWsBackend::OpenAi => {
+                Self::build_responses_ws_request_with_account_id(token, chatgpt_account_id)?
+            }
+            ResponsesWsBackend::ChatGptCodex => {
+                Self::build_chatgpt_responses_ws_request(token, chatgpt_account_id)?
+            }
+        };
         let (stream, _response) = connect_async(request)
             .await
-            .context("Failed to connect to OpenAI Realtime WebSocket")?;
+            .context("Failed to connect to OpenAI Responses WebSocket")?;
         Ok(OpenAiRealtimeConnection::new(stream))
     }
 
-    pub async fn connect_realtime(&self, model: &str) -> Result<OpenAiRealtimeConnection> {
+    pub async fn connect_responses_ws(&self) -> Result<OpenAiRealtimeConnection> {
         let token = self.get_access_token().await?;
         let account_id = self.resolved_chatgpt_account_id(&token);
-        self.connect_realtime_with_token(&token, model, account_id.as_deref())
+        let backend = if self.using_chatgpt_backend() {
+            ResponsesWsBackend::ChatGptCodex
+        } else {
+            ResponsesWsBackend::OpenAi
+        };
+        self.connect_responses_ws_with_token(&token, account_id.as_deref(), backend)
             .await
     }
 
@@ -1066,40 +1092,54 @@ impl OpenAiCodexProvider {
         format!("OpenAI API error ({status}): {body}")
     }
 
-    fn build_realtime_response_create_event(
+    fn build_responses_ws_create_event(
         request: &CompletionRequest,
         model: &str,
         reasoning_effort: Option<ThinkingLevel>,
+    ) -> Value {
+        Self::build_responses_ws_create_event_for_backend(
+            request,
+            model,
+            reasoning_effort,
+            ResponsesWsBackend::OpenAi,
+        )
+    }
+
+    fn build_responses_ws_create_event_for_backend(
+        request: &CompletionRequest,
+        model: &str,
+        reasoning_effort: Option<ThinkingLevel>,
+        backend: ResponsesWsBackend,
     ) -> Value {
         let instructions = Self::extract_responses_instructions(&request.messages);
         let input = Self::convert_messages_to_responses_input(&request.messages);
         let tools = Self::convert_responses_tools(&request.tools);
 
-        let mut response = json!({
-            "conversation": "none",
+        let mut event = json!({
+            "type": "response.create",
+            "model": model,
+            "store": false,
             "instructions": instructions,
             "input": input,
-            "output_modalities": ["text"],
-            "tool_choice": "auto",
-            "parallel_tool_calls": true,
         });
 
         if !tools.is_empty() {
-            response["tools"] = json!(tools);
+            event["tools"] = json!(tools);
         }
         if let Some(level) = reasoning_effort {
-            response["reasoning"] = json!({ "effort": level.as_str() });
+            event["reasoning"] = json!({ "effort": level.as_str() });
         }
-        if let Some(max_tokens) = request.max_tokens {
-            response["max_output_tokens"] = json!(max_tokens);
+        if backend == ResponsesWsBackend::OpenAi {
+            event["tool_choice"] = json!("auto");
+            event["parallel_tool_calls"] = json!(true);
+        }
+        if backend == ResponsesWsBackend::OpenAi
+            && let Some(max_tokens) = request.max_tokens
+        {
+            event["max_output_tokens"] = json!(max_tokens);
         }
 
-        response["model"] = json!(model);
-
-        json!({
-            "type": "response.create",
-            "response": response
-        })
+        event
     }
 
     fn finish_responses_tool_call(
@@ -1549,13 +1589,26 @@ impl OpenAiCodexProvider {
         let account_id = self.resolved_chatgpt_account_id(&access_token).context(
             "OpenAI Codex OAuth token is missing ChatGPT workspace/account ID. Re-run `codetether auth codex --device-code`.",
         )?;
-        self.complete_stream_with_realtime(
-            request,
-            access_token,
-            Some(account_id),
-            "chatgpt-codex-realtime",
-        )
-        .await
+        match self
+            .complete_stream_with_realtime(
+                request.clone(),
+                access_token.clone(),
+                Some(account_id.clone()),
+                "chatgpt-codex-responses-ws",
+                ResponsesWsBackend::ChatGptCodex,
+            )
+            .await
+        {
+            Ok(stream) => Ok(stream),
+            Err(error) => {
+                tracing::warn!(
+                    error = %error,
+                    "Responses WebSocket connect failed for ChatGPT Codex backend; falling back to HTTP responses streaming"
+                );
+                self.complete_stream_with_chatgpt_http_responses(request, access_token, account_id)
+                    .await
+            }
+        }
     }
 
     async fn complete_stream_with_openai_responses(
@@ -1563,8 +1616,192 @@ impl OpenAiCodexProvider {
         request: CompletionRequest,
         api_key: String,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        self.complete_stream_with_realtime(request, api_key, None, "openai-realtime")
+        match self
+            .complete_stream_with_realtime(
+                request.clone(),
+                api_key.clone(),
+                None,
+                "openai-responses-ws",
+                ResponsesWsBackend::OpenAi,
+            )
             .await
+        {
+            Ok(stream) => Ok(stream),
+            Err(error) => {
+                tracing::warn!(
+                    error = %error,
+                    "Responses WebSocket connect failed for OpenAI backend; falling back to HTTP responses streaming"
+                );
+                self.complete_stream_with_openai_http_responses(request, api_key)
+                    .await
+            }
+        }
+    }
+
+    async fn complete_stream_with_chatgpt_http_responses(
+        &self,
+        request: CompletionRequest,
+        access_token: String,
+        account_id: String,
+    ) -> Result<BoxStream<'static, StreamChunk>> {
+        let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
+        let instructions = Self::extract_responses_instructions(&request.messages);
+        let input = Self::convert_messages_to_responses_input(&request.messages);
+        let tools = Self::convert_responses_tools(&request.tools);
+
+        let mut body = json!({
+            "model": model,
+            "instructions": instructions,
+            "input": input,
+            "stream": true,
+            "store": false,
+            "tool_choice": "auto",
+            "parallel_tool_calls": true,
+        });
+
+        if !tools.is_empty() {
+            body["tools"] = json!(tools);
+        }
+        if let Some(level) = reasoning_effort {
+            body["reasoning"] = json!({ "effort": level.as_str() });
+        }
+
+        tracing::info!(
+            backend = "chatgpt-codex-responses-http",
+            instructions_len = body
+                .get("instructions")
+                .and_then(|v| v.as_str())
+                .map(str::len)
+                .unwrap_or(0),
+            input_items = body
+                .get("input")
+                .and_then(|v| v.as_array())
+                .map(Vec::len)
+                .unwrap_or(0),
+            has_tools = !tools.is_empty(),
+            "Sending HTTP responses request"
+        );
+
+        let response = self
+            .client
+            .post(format!("{}/responses", CHATGPT_CODEX_API_URL))
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("chatgpt-account-id", account_id)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .context("Failed to send streaming request to ChatGPT Codex backend")?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            anyhow::bail!(Self::format_openai_api_error(status, &body, &request.model));
+        }
+
+        let stream = async_stream::stream! {
+            let mut parser = ResponsesSseParser::default();
+            let mut byte_stream = response.bytes_stream();
+
+            while let Some(result) = byte_stream.next().await {
+                match result {
+                    Ok(bytes) => {
+                        for chunk in Self::parse_responses_sse_bytes(&mut parser, &bytes) {
+                            yield chunk;
+                        }
+                    }
+                    Err(error) => yield StreamChunk::Error(error.to_string()),
+                }
+            }
+
+            for chunk in Self::finish_responses_sse_parser(&mut parser) {
+                yield chunk;
+            }
+        };
+
+        Ok(Box::pin(stream))
+    }
+
+    async fn complete_stream_with_openai_http_responses(
+        &self,
+        request: CompletionRequest,
+        api_key: String,
+    ) -> Result<BoxStream<'static, StreamChunk>> {
+        let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
+        let instructions = Self::extract_responses_instructions(&request.messages);
+        let input = Self::convert_messages_to_responses_input(&request.messages);
+        let tools = Self::convert_responses_tools(&request.tools);
+
+        let mut body = json!({
+            "model": model,
+            "instructions": instructions,
+            "input": input,
+            "stream": true,
+            "store": false,
+            "tool_choice": "auto",
+            "parallel_tool_calls": true,
+        });
+
+        if !tools.is_empty() {
+            body["tools"] = json!(tools);
+        }
+        if let Some(level) = reasoning_effort {
+            body["reasoning"] = json!({ "effort": level.as_str() });
+        }
+
+        tracing::info!(
+            backend = "openai-responses-http",
+            instructions_len = body
+                .get("instructions")
+                .and_then(|v| v.as_str())
+                .map(str::len)
+                .unwrap_or(0),
+            input_items = body
+                .get("input")
+                .and_then(|v| v.as_array())
+                .map(Vec::len)
+                .unwrap_or(0),
+            has_tools = !tools.is_empty(),
+            "Sending HTTP responses request"
+        );
+
+        let response = self
+            .client
+            .post(format!("{}/responses", OPENAI_API_URL))
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .context("Failed to send streaming request to OpenAI responses API")?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            anyhow::bail!(Self::format_openai_api_error(status, &body, &request.model));
+        }
+
+        let stream = async_stream::stream! {
+            let mut parser = ResponsesSseParser::default();
+            let mut byte_stream = response.bytes_stream();
+
+            while let Some(result) = byte_stream.next().await {
+                match result {
+                    Ok(bytes) => {
+                        for chunk in Self::parse_responses_sse_bytes(&mut parser, &bytes) {
+                            yield chunk;
+                        }
+                    }
+                    Err(error) => yield StreamChunk::Error(error.to_string()),
+                }
+            }
+
+            for chunk in Self::finish_responses_sse_parser(&mut parser) {
+                yield chunk;
+            }
+        };
+
+        Ok(Box::pin(stream))
     }
 
     async fn complete_stream_with_realtime(
@@ -1573,33 +1810,40 @@ impl OpenAiCodexProvider {
         access_token: String,
         chatgpt_account_id: Option<String>,
         backend: &'static str,
+        ws_backend: ResponsesWsBackend,
     ) -> Result<BoxStream<'static, StreamChunk>> {
         let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
-        let body = Self::build_realtime_response_create_event(&request, &model, reasoning_effort);
+        let body = Self::build_responses_ws_create_event_for_backend(
+            &request,
+            &model,
+            reasoning_effort,
+            ws_backend,
+        );
         tracing::info!(
             backend = backend,
             instructions_len = body
-                .get("response")
-                .and_then(|v| v.get("instructions"))
+                .get("instructions")
                 .and_then(|v| v.as_str())
                 .map(str::len)
                 .unwrap_or(0),
             input_items = body
-                .get("response")
-                .and_then(|v| v.get("input"))
+                .get("input")
                 .and_then(|v| v.as_array())
                 .map(Vec::len)
                 .unwrap_or(0),
             has_tools = body
-                .get("response")
-                .and_then(|v| v.get("tools"))
+                .get("tools")
                 .and_then(|v| v.as_array())
                 .is_some_and(|tools| !tools.is_empty()),
-            "Sending realtime response request"
+            "Sending responses websocket request"
         );
 
         let connection = self
-            .connect_realtime_with_token(&access_token, &model, chatgpt_account_id.as_deref())
+            .connect_responses_ws_with_token(
+                &access_token,
+                chatgpt_account_id.as_deref(),
+                ws_backend,
+            )
             .await?;
 
         let stream = async_stream::stream! {
@@ -1950,18 +2194,14 @@ mod tests {
     }
 
     #[test]
-    fn realtime_request_uses_bearer_auth_and_model_query() {
-        let request = OpenAiCodexProvider::build_realtime_request_with_base_url(
-            "wss://example.com/v1/realtime",
+    fn responses_ws_request_uses_bearer_auth() {
+        let request = OpenAiCodexProvider::build_responses_ws_request_with_base_url(
+            "wss://example.com/v1/responses",
             "test-token",
-            "gpt-realtime",
         )
         .expect("request should build");
 
-        assert_eq!(
-            request.uri().to_string(),
-            "wss://example.com/v1/realtime?model=gpt-realtime"
-        );
+        assert_eq!(request.uri().to_string(), "wss://example.com/v1/responses");
         assert_eq!(
             request
                 .headers()
@@ -1974,16 +2214,15 @@ mod tests {
                 .headers()
                 .get("User-Agent")
                 .and_then(|v| v.to_str().ok()),
-            Some("codetether-realtime/1.0")
+            Some("codetether-responses-ws/1.0")
         );
     }
 
     #[test]
-    fn realtime_request_includes_chatgpt_account_id_when_provided() {
-        let request = OpenAiCodexProvider::build_realtime_request_with_base_url_and_account_id(
-            "wss://example.com/v1/realtime",
+    fn responses_ws_request_includes_chatgpt_account_id_when_provided() {
+        let request = OpenAiCodexProvider::build_responses_ws_request_with_base_url_and_account_id(
+            "wss://example.com/v1/responses",
             "test-token",
-            "gpt-5.4",
             Some("org_123"),
         )
         .expect("request should build");
@@ -1998,7 +2237,7 @@ mod tests {
     }
 
     #[test]
-    fn builds_realtime_response_create_event_for_tools() {
+    fn builds_responses_ws_create_event_for_tools() {
         let request = CompletionRequest {
             messages: vec![
                 Message {
@@ -2032,7 +2271,7 @@ mod tests {
             stop: Vec::new(),
         };
 
-        let event = OpenAiCodexProvider::build_realtime_response_create_event(
+        let event = OpenAiCodexProvider::build_responses_ws_create_event(
             &request,
             "gpt-5.4",
             Some(ThinkingLevel::High),
@@ -2042,45 +2281,25 @@ mod tests {
             event.get("type").and_then(Value::as_str),
             Some("response.create")
         );
+        assert_eq!(event.get("model").and_then(Value::as_str), Some("gpt-5.4"));
+        assert_eq!(event.get("store").and_then(Value::as_bool), Some(false));
         assert_eq!(
-            event
-                .get("response")
-                .and_then(|v| v.get("model"))
-                .and_then(Value::as_str),
-            Some("gpt-5.4")
-        );
-        assert_eq!(
-            event
-                .get("response")
-                .and_then(|v| v.get("conversation"))
-                .and_then(Value::as_str),
-            Some("none")
-        );
-        assert_eq!(
-            event
-                .get("response")
-                .and_then(|v| v.get("max_output_tokens"))
-                .and_then(Value::as_u64),
+            event.get("max_output_tokens").and_then(Value::as_u64),
             Some(8192)
         );
         assert_eq!(
-            event
-                .get("response")
-                .and_then(|v| v.get("tools"))
-                .and_then(Value::as_array)
-                .map(Vec::len),
+            event.get("tools").and_then(Value::as_array).map(Vec::len),
             Some(1)
         );
     }
 
     #[tokio::test]
-    async fn realtime_connection_round_trips_json_events() {
+    async fn responses_ws_connection_round_trips_json_events() {
         let (client_io, server_io) = duplex(16 * 1024);
 
         let server = tokio::spawn(async move {
             let callback = |request: &ServerRequest, response: ServerResponse| {
-                assert_eq!(request.uri().path(), "/v1/realtime");
-                assert_eq!(request.uri().query(), Some("model=gpt-realtime"));
+                assert_eq!(request.uri().path(), "/v1/responses");
                 assert_eq!(
                     request
                         .headers()
@@ -2105,7 +2324,7 @@ mod tests {
                         serde_json::from_str(&text).expect("server should parse JSON event");
                     assert_eq!(
                         event.get("type").and_then(Value::as_str),
-                        Some("session.update")
+                        Some("response.create")
                     );
                 }
                 other => panic!("expected text frame, got {other:?}"),
@@ -2113,16 +2332,15 @@ mod tests {
 
             socket
                 .send(WsMessage::Text(
-                    json!({ "type": "session.created" }).to_string().into(),
+                    json!({ "type": "response.created" }).to_string().into(),
                 ))
                 .await
                 .expect("server should send response");
         });
 
-        let request = OpenAiCodexProvider::build_realtime_request_with_base_url(
-            "ws://localhost/v1/realtime",
+        let request = OpenAiCodexProvider::build_responses_ws_request_with_base_url(
+            "ws://localhost/v1/responses",
             "test-token",
-            "gpt-realtime",
         )
         .expect("client request should build");
         let (stream, _) = client_async(request, client_io)
@@ -2131,7 +2349,7 @@ mod tests {
         let mut connection = OpenAiRealtimeConnection::new(stream);
 
         connection
-            .send_event(&json!({ "type": "session.update" }))
+            .send_event(&json!({ "type": "response.create", "model": "gpt-5.4", "input": [] }))
             .await
             .expect("client should send event");
         let event = connection
@@ -2141,7 +2359,7 @@ mod tests {
             .expect("client should receive session event");
         assert_eq!(
             event.get("type").and_then(Value::as_str),
-            Some("session.created")
+            Some("response.created")
         );
         connection
             .close()
