@@ -454,7 +454,7 @@ impl LocalCudaProvider {
 /// Configuration for LocalCudaProvider
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LocalCudaConfig {
-    /// Model name (e.g., "qwen3.5-4b", "deepseek-coder-6.7b")
+    /// Model name (e.g., "qwen3.5-9b", "deepseek-coder-6.7b")
     pub model_name: String,
     /// Path to the model weights (GGUF or safetensors format)
     pub model_path: Option<String>,
@@ -475,7 +475,7 @@ pub struct LocalCudaConfig {
 impl Default for LocalCudaConfig {
     fn default() -> Self {
         Self {
-            model_name: "qwen3.5-4b".to_string(),
+            model_name: "qwen3.5-9b".to_string(),
             model_path: None,
             context_window: Some(8192),
             max_new_tokens: Some(4096),

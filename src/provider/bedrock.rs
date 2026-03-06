@@ -219,7 +219,7 @@ impl BedrockProvider {
     /// Public wrapper for sending a signed Converse API request.
     /// Used by the thinker backend.
     pub async fn send_converse_request(&self, url: &str, body: &[u8]) -> Result<reqwest::Response> {
-        self.send_request("POST", url, Some(body), "bedrock-runtime")
+        self.send_request("POST", url, Some(body), "bedrock")
             .await
     }
 
@@ -240,7 +240,7 @@ impl BedrockProvider {
     }
 
     fn base_url(&self) -> String {
-        format!("https://bedrock-runtime.{}.amazonaws.com", self.region)
+        format!("https://bedrock.{}.amazonaws.com", self.region)
     }
 
     /// Management API URL (for listing models, not inference)
@@ -1118,7 +1118,7 @@ impl Provider for BedrockProvider {
 
         let body_bytes = serde_json::to_vec(&body)?;
         let response = self
-            .send_request("POST", &url, Some(&body_bytes), "bedrock-runtime")
+            .send_request("POST", &url, Some(&body_bytes), "bedrock")
             .await?;
 
         let status = response.status();

@@ -73,11 +73,15 @@ const BUILD_MODE_TOOL_FIRST_NUDGE: &str = "Build mode policy reminder: execute d
 Start by calling at least one appropriate tool now (or emit <tool_call> markup for non-native \
 tool providers). Do not ask for permission and do not provide a plan-only response.";
 const BUILD_MODE_TOOL_FIRST_MAX_RETRIES: u8 = 2;
+const NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES: u8 = 1;
 const MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES: u32 = 5;
 const CODESEARCH_THRASH_NUDGE: &str = "Stop brute-force codesearch variant retries. \
 You already got repeated \"No matches found\" results. Do not try punctuation/casing/underscore \
 variants of the same token again. Either switch to a broader strategy (e.g., inspect likely files \
 directly) or conclude the identifier is absent and continue with the best available evidence.";
+const NATIVE_TOOL_PROMISE_NUDGE: &str = "You said you would use tools. Do not describe the tool \
+call or promise a next step. Emit the actual tool call now. If native tool calling fails, emit a \
+<tool_call> JSON block immediately instead of prose.";
 
 fn is_build_agent(agent_name: &str) -> bool {
     agent_name.eq_ignore_ascii_case("build")
@@ -355,6 +359,106 @@ fn should_force_build_tool_first_retry(
     }
 
     true
+}
+
+fn provider_has_flaky_native_tool_calling(provider_name: &str, model: &str) -> bool {
+    let provider = provider_name.to_ascii_lowercase();
+    let model = model.to_ascii_lowercase();
+    provider == "minimax"
+        || provider == "minimax-credits"
+        || model.contains("minimax")
+        || model.contains("m2.5")
+}
+
+fn assistant_claims_imminent_tool_use(text: &str, tool_definitions: &[ToolDefinition]) -> bool {
+    let lower = text.trim().to_ascii_lowercase();
+    if lower.is_empty() {
+        return false;
+    }
+
+    let explicit_markers = [
+        "tool call",
+        "tool calls",
+        "use a tool",
+        "use tools",
+        "call the",
+        "invoke the",
+        "let me use",
+        "i'll use",
+        "i will use",
+        "i'm going to use",
+        "i am going to use",
+    ];
+    if explicit_markers.iter().any(|m| lower.contains(m)) {
+        return true;
+    }
+
+    let action_markers = [
+        "let me check",
+        "let me inspect",
+        "let me search",
+        "let me read",
+        "let me open",
+        "first, i'll",
+        "first i will",
+        "i'll check",
+        "i'll inspect",
+        "i'll search",
+        "i'll read",
+        "i'll open",
+        "i'll look through",
+        "i'll examine",
+        "i will check",
+        "i will inspect",
+        "i will search",
+        "i will read",
+        "i will open",
+        "i will examine",
+    ];
+    if action_markers.iter().any(|m| lower.contains(m))
+        && tool_definitions.iter().any(|tool| {
+            let name = tool.name.to_ascii_lowercase();
+            lower.contains(&name)
+                || matches!(
+                    name.as_str(),
+                    "bash"
+                        | "read"
+                        | "write"
+                        | "edit"
+                        | "advanced_edit"
+                        | "multiedit"
+                        | "codesearch"
+                        | "glob"
+                        | "grep"
+                        | "ls"
+                        | "cat"
+                        | "lsp"
+                )
+        })
+    {
+        return true;
+    }
+
+    false
+}
+
+fn should_retry_missing_native_tool_call(
+    provider_name: &str,
+    model: &str,
+    retry_count: u8,
+    tool_definitions: &[ToolDefinition],
+    assistant_text: &str,
+    has_tool_calls: bool,
+) -> bool {
+    if retry_count >= NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES
+        || has_tool_calls
+        || tool_definitions.is_empty()
+        || !provider_has_flaky_native_tool_calling(provider_name, model)
+    {
+        return false;
+    }
+
+    assistant_claims_imminent_tool_use(assistant_text, tool_definitions)
 }
 
 fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
@@ -707,6 +811,81 @@ fn detect_stub_in_tool_input(tool_name: &str, tool_input: &Value) -> Option<Stri
     }
 }
 
+fn normalize_tool_call_for_execution(tool_name: &str, tool_input: &Value) -> (String, Value) {
+    let mut normalized_name = tool_name.to_string();
+    let mut normalized_input = tool_input.clone();
+
+    if tool_name == "advanced_edit" {
+        normalized_name = "edit".to_string();
+    }
+
+    if matches!(
+        normalized_name.as_str(),
+        "edit" | "confirm_edit" | "advanced_edit"
+    ) {
+        if let Some(obj) = normalized_input.as_object_mut() {
+            if obj.get("path").is_none() {
+                if let Some(v) = obj.get("filePath").cloned() {
+                    obj.insert("path".to_string(), v);
+                } else if let Some(v) = obj.get("file").cloned() {
+                    obj.insert("path".to_string(), v);
+                }
+            }
+            if obj.get("old_string").is_none()
+                && let Some(v) = obj.get("oldString").cloned()
+            {
+                obj.insert("old_string".to_string(), v);
+            }
+            if obj.get("new_string").is_none()
+                && let Some(v) = obj.get("newString").cloned()
+            {
+                obj.insert("new_string".to_string(), v);
+            }
+        }
+    }
+
+    if matches!(normalized_name.as_str(), "multiedit" | "confirm_multiedit")
+        && let Some(obj) = normalized_input.as_object_mut()
+    {
+        if obj.get("edits").is_none() {
+            if let Some(v) = obj.get("changes").cloned() {
+                obj.insert("edits".to_string(), v);
+            } else if let Some(v) = obj.get("operations").cloned() {
+                obj.insert("edits".to_string(), v);
+            } else if obj.get("file").is_some() || obj.get("path").is_some() {
+                let single = Value::Object(obj.clone());
+                obj.insert("edits".to_string(), Value::Array(vec![single]));
+            }
+        }
+
+        if let Some(edits) = obj.get_mut("edits").and_then(Value::as_array_mut) {
+            for edit in edits {
+                if let Some(edit_obj) = edit.as_object_mut() {
+                    if edit_obj.get("file").is_none() {
+                        if let Some(v) = edit_obj.get("filePath").cloned() {
+                            edit_obj.insert("file".to_string(), v);
+                        } else if let Some(v) = edit_obj.get("path").cloned() {
+                            edit_obj.insert("file".to_string(), v);
+                        }
+                    }
+                    if edit_obj.get("old_string").is_none()
+                        && let Some(v) = edit_obj.get("oldString").cloned()
+                    {
+                        edit_obj.insert("old_string".to_string(), v);
+                    }
+                    if edit_obj.get("new_string").is_none()
+                        && let Some(v) = edit_obj.get("newString").cloned()
+                    {
+                        edit_obj.insert("new_string".to_string(), v);
+                    }
+                }
+            }
+        }
+    }
+
+    (normalized_name, normalized_input)
+}
+
 fn latest_user_text(messages: &[Message]) -> Option<String> {
     messages.iter().rev().find_map(|m| {
         if m.role != Role::User {
@@ -956,7 +1135,7 @@ impl Session {
             "google" => "gemini-2.5-pro".to_string(),
             "local_cuda" => std::env::var("LOCAL_CUDA_MODEL")
                 .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
-                .unwrap_or_else(|_| "qwen3.5-4b".to_string()),
+                .unwrap_or_else(|_| "qwen3.5-9b".to_string()),
             "zhipuai" | "zai" => "glm-5".to_string(),
             // OpenRouter uses model IDs like "z-ai/glm-5".
             "openrouter" => "z-ai/glm-5".to_string(),
@@ -1379,6 +1558,7 @@ impl Session {
         let mut consecutive_same_tool: u32 = 0;
         let mut consecutive_codesearch_no_matches: u32 = 0;
         let mut build_mode_tool_retry_count: u8 = 0;
+        let mut native_tool_promise_retry_count: u8 = 0;
         const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
@@ -1532,8 +1712,34 @@ impl Session {
                 });
                 continue;
             }
+            if should_retry_missing_native_tool_call(
+                selected_provider,
+                &model,
+                native_tool_promise_retry_count,
+                &tool_definitions,
+                &assistant_text,
+                !tool_calls.is_empty(),
+            ) {
+                native_tool_promise_retry_count += 1;
+                tracing::warn!(
+                    step = step,
+                    provider = selected_provider,
+                    model = %model,
+                    retry = native_tool_promise_retry_count,
+                    "Model described a tool step without emitting a tool call; retrying with corrective nudge"
+                );
+                self.add_message(response.message.clone());
+                self.add_message(Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: NATIVE_TOOL_PROMISE_NUDGE.to_string(),
+                    }],
+                });
+                continue;
+            }
             if !tool_calls.is_empty() {
                 build_mode_tool_retry_count = 0;
+                native_tool_promise_retry_count = 0;
             } else if is_build_agent(&self.agent)
                 && build_request_requires_tool(&self.messages, &cwd)
                 && build_mode_tool_retry_count >= BUILD_MODE_TOOL_FIRST_MAX_RETRIES
@@ -1639,6 +1845,8 @@ impl Session {
             // Execute each tool call
             let mut codesearch_thrash_guard_triggered = false;
             for (tool_id, tool_name, tool_input) in tool_calls {
+                let (tool_name, tool_input) =
+                    normalize_tool_call_for_execution(&tool_name, &tool_input);
                 tracing::info!(tool = %tool_name, tool_id = %tool_id, "Executing tool");
 
                 if tool_name == "list_tools" {
@@ -2183,6 +2391,7 @@ impl Session {
         let mut consecutive_same_tool: u32 = 0;
         let mut consecutive_codesearch_no_matches: u32 = 0;
         let mut build_mode_tool_retry_count: u8 = 0;
+        let mut native_tool_promise_retry_count: u8 = 0;
         const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
 
         // Initialise the FunctionGemma tool-call router (feature-gated, opt-in).
@@ -2370,8 +2579,34 @@ impl Session {
                 });
                 continue;
             }
+            if should_retry_missing_native_tool_call(
+                selected_provider,
+                &model,
+                native_tool_promise_retry_count,
+                &tool_definitions,
+                &assistant_text,
+                !tool_calls.is_empty(),
+            ) {
+                native_tool_promise_retry_count += 1;
+                tracing::warn!(
+                    step = step,
+                    provider = selected_provider,
+                    model = %model,
+                    retry = native_tool_promise_retry_count,
+                    "Model described a tool step without emitting a tool call; retrying with corrective nudge"
+                );
+                self.add_message(response.message.clone());
+                self.add_message(Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: NATIVE_TOOL_PROMISE_NUDGE.to_string(),
+                    }],
+                });
+                continue;
+            }
             if !tool_calls.is_empty() {
                 build_mode_tool_retry_count = 0;
+                native_tool_promise_retry_count = 0;
             } else if is_build_agent(&self.agent)
                 && build_request_requires_tool(&self.messages, &cwd)
                 && build_mode_tool_retry_count >= BUILD_MODE_TOOL_FIRST_MAX_RETRIES
@@ -2498,6 +2733,8 @@ impl Session {
             // Execute each tool call with events
             let mut codesearch_thrash_guard_triggered = false;
             for (tool_id, tool_name, tool_input) in tool_calls {
+                let (tool_name, tool_input) =
+                    normalize_tool_call_for_execution(&tool_name, &tool_input);
                 let args_str = serde_json::to_string(&tool_input).unwrap_or_default();
                 let _ = event_tx
                     .send(SessionEvent::ToolCallStart {
@@ -3123,10 +3360,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        build_request_requires_tool, choose_default_provider, detect_stub_in_tool_input,
-        extract_candidate_file_paths, is_codesearch_no_match_output,
+        assistant_claims_imminent_tool_use, build_request_requires_tool, choose_default_provider,
+        detect_stub_in_tool_input, extract_candidate_file_paths, is_codesearch_no_match_output,
         looks_like_build_execution_request, normalize_textual_tool_calls,
-        resolve_provider_for_session_request, should_force_build_tool_first_retry,
+        normalize_tool_call_for_execution, resolve_provider_for_session_request,
+        should_force_build_tool_first_retry, should_retry_missing_native_tool_call,
     };
     use crate::provider::{
         CompletionResponse, ContentPart, FinishReason, Message, Role, ToolDefinition, Usage,
@@ -3199,6 +3437,58 @@ mod tests {
                 .iter()
                 .all(|p| !matches!(p, ContentPart::ToolCall { .. }))
         );
+    }
+
+    #[test]
+    fn assistant_claims_imminent_tool_use_detects_minimax_style_prose() {
+        let tools = vec![ToolDefinition {
+            name: "bash".to_string(),
+            description: "shell".to_string(),
+            parameters: json!({"type":"object"}),
+        }];
+
+        assert!(assistant_claims_imminent_tool_use(
+            "First, I'll use bash to inspect the repo and then patch the issue.",
+            &tools,
+        ));
+        assert!(!assistant_claims_imminent_tool_use(
+            "The fix is to update the parser and rerun tests.",
+            &tools,
+        ));
+    }
+
+    #[test]
+    fn should_retry_missing_native_tool_call_targets_minimax_only() {
+        let tools = vec![ToolDefinition {
+            name: "bash".to_string(),
+            description: "shell".to_string(),
+            parameters: json!({"type":"object"}),
+        }];
+
+        assert!(should_retry_missing_native_tool_call(
+            "minimax",
+            "MiniMax-M2.5",
+            0,
+            &tools,
+            "I'll use bash to inspect the repository first.",
+            false,
+        ));
+        assert!(!should_retry_missing_native_tool_call(
+            "anthropic",
+            "claude-sonnet-4",
+            0,
+            &tools,
+            "I'll use bash to inspect the repository first.",
+            false,
+        ));
+        assert!(!should_retry_missing_native_tool_call(
+            "minimax",
+            "MiniMax-M2.5",
+            1,
+            &tools,
+            "I'll use bash to inspect the repository first.",
+            false,
+        ));
     }
 
     #[test]
@@ -3498,5 +3788,37 @@ mod tests {
         }];
 
         assert!(!build_request_requires_tool(&session_messages, root));
+    }
+
+    #[test]
+    fn normalize_tool_call_for_execution_maps_advanced_edit_to_edit_shape() {
+        let args = json!({
+            "filePath": "src/lib.rs",
+            "oldString": "old",
+            "newString": "new"
+        });
+        let (name, normalized) = normalize_tool_call_for_execution("advanced_edit", &args);
+        assert_eq!(name, "edit");
+        assert_eq!(normalized["path"], "src/lib.rs");
+        assert_eq!(normalized["old_string"], "old");
+        assert_eq!(normalized["new_string"], "new");
+    }
+
+    #[test]
+    fn normalize_tool_call_for_execution_maps_multiedit_aliases() {
+        let args = json!({
+            "changes": [
+                {
+                    "filePath": "src/main.rs",
+                    "oldString": "old",
+                    "newString": "new"
+                }
+            ]
+        });
+        let (name, normalized) = normalize_tool_call_for_execution("multiedit", &args);
+        assert_eq!(name, "multiedit");
+        assert_eq!(normalized["edits"][0]["file"], "src/main.rs");
+        assert_eq!(normalized["edits"][0]["old_string"], "old");
+        assert_eq!(normalized["edits"][0]["new_string"], "new");
     }
 }

@@ -70,7 +70,7 @@ fn local_cuda_runtime_configured() -> bool {
 fn local_cuda_model_name() -> String {
     std::env::var("LOCAL_CUDA_MODEL")
         .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
-        .unwrap_or_else(|_| "qwen3.5-4b".to_string())
+        .unwrap_or_else(|_| "qwen3.5-9b".to_string())
 }
 
 fn default_openrouter_rlm_model() -> String {

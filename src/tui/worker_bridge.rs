@@ -107,7 +107,7 @@ impl TuiWorkerBridge {
         );
 
         // Create channels
-        let (cmd_tx, cmd_rx) = mpsc::channel::<WorkerBridgeCmd>(32);
+        let (cmd_tx, cmd_rx) = mpsc::channel::<WorkerBridgeCmd>(256);
         let (task_tx, task_rx) = mpsc::channel::<IncomingTask>(64);
 
         // Create shared state

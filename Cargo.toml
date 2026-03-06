@@ -75,6 +75,7 @@ functiongemma = []
 [dependencies]
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.28.0", features = ["rustls-tls-native-roots"] }
 
 # Clipboard support
 arboard = "3.4"

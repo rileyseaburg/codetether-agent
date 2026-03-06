@@ -34,7 +34,7 @@
   "agent": "build",
   "metadata": {
     "directory": "/home/riley/A2A-Server-MCP/codetether-agent",
-    "model": "local_cuda/qwen3.5-4b",
+    "model": "local_cuda/qwen3.5-9b",
     "shared": false,
     "share_url": null
   }

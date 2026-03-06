@@ -84,7 +84,7 @@ impl Default for ThinkerConfig {
             enabled: false,
             backend: ThinkerBackend::OpenAICompat,
             endpoint: "http://127.0.0.1:11434/v1/chat/completions".to_string(),
-            model: "qwen3.5-4b".to_string(),
+            model: "qwen3.5-9b".to_string(),
             api_key: None,
             temperature: 0.2,
             top_p: None,

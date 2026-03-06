@@ -54,7 +54,7 @@ const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESH
 const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
 const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen3.5-4b";
+const AUTOCHAT_LOCAL_DEFAULT_MODEL: &str = "local_cuda/qwen3.5-9b";
 const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
 const GO_SWAP_MODEL_MINIMAX: &str = "minimax-credits/MiniMax-M2.5-highspeed";
 const CHAT_SYNC_DEFAULT_INTERVAL_SECS: u64 = 15;
@@ -1577,6 +1577,12 @@ fn sanitize_relay_agent_name(value: &str) -> String {
     truncate_with_ellipsis(&base, 48)
         .trim_end_matches("...")
         .to_string()
+}
+
+fn sanitize_spawned_agent_name(value: &str) -> String {
+    let slug = slugify_label(value);
+    let bounded = truncate_with_ellipsis(&slug, 48);
+    bounded.trim_end_matches("...").to_string()
 }
 
 fn unique_relay_agent_name(base: &str, existing: &[String]) -> String {
@@ -3517,13 +3523,15 @@ impl App {
         spans.push(self.bus_status_badge_span());
     }
 
-    fn send_worker_bridge_cmd(&self, cmd: WorkerBridgeCmd) {
+    fn send_worker_bridge_cmd(&self, cmd: WorkerBridgeCmd) -> bool {
         let Some(bridge) = self.worker_bridge.as_ref() else {
-            return;
+            return false;
         };
         if let Err(err) = bridge.cmd_tx.try_send(cmd) {
             tracing::debug!(error = %err, "Failed to send worker bridge command");
+            return false;
         }
+        true
     }
 
     fn sync_worker_bridge_agents(&mut self) {
@@ -3532,16 +3540,19 @@ impl App {
         }
 
         let current_agents: HashSet<String> = self.spawned_agents.keys().cloned().collect();
+        let mut next_registered = self.worker_bridge_registered_agents.clone();
 
         for name in current_agents
             .difference(&self.worker_bridge_registered_agents)
             .cloned()
         {
             if let Some(agent) = self.spawned_agents.get(&name) {
-                self.send_worker_bridge_cmd(WorkerBridgeCmd::RegisterAgent {
-                    name,
+                if self.send_worker_bridge_cmd(WorkerBridgeCmd::RegisterAgent {
+                    name: name.clone(),
                     instructions: agent.instructions.clone(),
-                });
+                }) {
+                    next_registered.insert(name);
+                }
             }
         }
 
@@ -3550,10 +3561,13 @@ impl App {
             .difference(&current_agents)
             .cloned()
         {
-            self.send_worker_bridge_cmd(WorkerBridgeCmd::DeregisterAgent { name });
+            if self.send_worker_bridge_cmd(WorkerBridgeCmd::DeregisterAgent { name: name.clone() })
+            {
+                next_registered.remove(&name);
+            }
         }
 
-        self.worker_bridge_registered_agents = current_agents;
+        self.worker_bridge_registered_agents = next_registered;
     }
 
     fn sync_worker_bridge_processing(&mut self) {
@@ -3573,7 +3587,7 @@ impl App {
         }
 
         self.worker_bridge_processing_state = Some(processing);
-        self.send_worker_bridge_cmd(WorkerBridgeCmd::SetProcessing(processing));
+        let _ = self.send_worker_bridge_cmd(WorkerBridgeCmd::SetProcessing(processing));
     }
 
     fn sync_worker_bridge_state(&mut self) {
@@ -4618,19 +4632,33 @@ Please take one concrete step to unblock progress and report results."
                 return;
             } else {
                 let mut parts = rest.splitn(2, char::is_whitespace);
-                let name = parts.next().unwrap_or("").trim();
-                if name.is_empty() {
+                let raw_name = parts.next().unwrap_or("").trim();
+                if raw_name.is_empty() {
                     self.messages.push(ChatMessage::new(
                         "system",
                         "Usage: /spawn <name> [instructions]\nEasy mode: /add <name>",
                     ));
                     return;
                 }
+                let name = sanitize_spawned_agent_name(raw_name);
+                if name.is_empty() {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        "Agent name must contain at least one letter or number.",
+                    ));
+                    return;
+                }
+                if name != raw_name {
+                    self.messages.push(ChatMessage::new(
+                        "system",
+                        format!("Normalized agent name to @{name} (from `{raw_name}`)."),
+                    ));
+                }
 
                 let instructions = parts.next().map(str::trim).filter(|s| !s.is_empty());
                 match instructions {
                     Some(custom) => (name.to_string(), custom.to_string(), false),
-                    None => (name.to_string(), default_instructions(name), true),
+                    None => (name.to_string(), default_instructions(&name), true),
                 }
             };
 
@@ -4661,7 +4689,9 @@ Please take one concrete step to unblock progress and report results."
                             text: format!(
                                 "You are @{name}, a specialized sub-agent. {instructions}\n\n\
                                  When you receive a message from another agent (prefixed with their name), \
-                                 respond helpfully. Keep responses concise and focused on your specialty."
+                                 respond helpfully. Keep responses concise and focused on your specialty.\n\
+                                 If you edit code, keep changes minimal and scoped to the explicit request. \
+                                 Avoid unrelated refactors or formatting churn."
                             ),
                         }],
                     });
@@ -11493,7 +11523,7 @@ fn render_help_overlay_if_needed(f: &mut Frame, app: &App, theme: &Theme) {
             .to_string(),
         "  /autochat-local [count] [--no-prd] <task>  Local relay; PRD-gated unless --no-prd"
             .to_string(),
-        "  /local [model]  Switch active model to local CUDA (example: /local qwen3.5-4b)"
+        "  /local [model]  Switch active model to local CUDA (example: /local qwen3.5-9b)"
             .to_string(),
         "".to_string(),
         "  EASY MODE".to_string(),
@@ -11705,12 +11735,12 @@ mod tests {
     #[test]
     fn normalize_local_model_ref_adds_local_provider_prefix() {
         assert_eq!(
-            normalize_local_model_ref("qwen3.5-4b"),
-            "local_cuda/qwen3.5-4b"
+            normalize_local_model_ref("qwen3.5-9b"),
+            "local_cuda/qwen3.5-9b"
         );
         assert_eq!(
-            normalize_local_model_ref("local_cuda/qwen3.5-4b"),
-            "local_cuda/qwen3.5-4b"
+            normalize_local_model_ref("local_cuda/qwen3.5-9b"),
+            "local_cuda/qwen3.5-9b"
         );
     }
 

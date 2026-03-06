@@ -12,18 +12,28 @@ use super::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use futures::StreamExt;
 use futures::stream::BoxStream;
+use futures::{SinkExt, StreamExt};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::io::ErrorKind;
 use std::sync::Arc;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::TcpStream;
 use tokio::sync::RwLock;
+use tokio_tungstenite::{
+    MaybeTlsStream, WebSocketStream, connect_async,
+    tungstenite::{
+        Error as WsError, Message as WsMessage,
+        client::IntoClientRequest,
+        http::{HeaderValue, Request},
+    },
+};
 
-const OPENAI_API_URL: &str = "https://api.openai.com/v1";
-const CHATGPT_CODEX_API_URL: &str = "https://chatgpt.com/backend-api/codex";
+const OPENAI_REALTIME_WS_URL: &str = "wss://api.openai.com/v1/realtime";
 const AUTH_ISSUER: &str = "https://auth.openai.com";
 const AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
@@ -85,6 +95,98 @@ pub struct OAuthCredentials {
 struct PkcePair {
     verifier: String,
     challenge: String,
+}
+
+#[derive(Debug, Default)]
+struct ResponsesToolState {
+    call_id: String,
+    name: Option<String>,
+    started: bool,
+    finished: bool,
+    emitted_arguments: String,
+}
+
+#[derive(Debug, Default)]
+struct ResponsesSseParser {
+    line_buffer: String,
+    event_data_lines: Vec<String>,
+    tools: HashMap<String, ResponsesToolState>,
+}
+
+pub struct OpenAiRealtimeConnection<S = MaybeTlsStream<TcpStream>> {
+    stream: WebSocketStream<S>,
+}
+
+impl<S> std::fmt::Debug for OpenAiRealtimeConnection<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenAiRealtimeConnection").finish()
+    }
+}
+
+impl<S> OpenAiRealtimeConnection<S>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    fn new(stream: WebSocketStream<S>) -> Self {
+        Self { stream }
+    }
+
+    pub async fn send_event(&mut self, event: &Value) -> Result<()> {
+        let payload = serde_json::to_string(event).context("Failed to serialize Realtime event")?;
+        self.stream
+            .send(WsMessage::Text(payload.into()))
+            .await
+            .context("Failed to send Realtime event")?;
+        Ok(())
+    }
+
+    pub async fn recv_event(&mut self) -> Result<Option<Value>> {
+        while let Some(message) = self.stream.next().await {
+            let message = message.context("Realtime WebSocket receive failed")?;
+            match message {
+                WsMessage::Text(text) => {
+                    let event = serde_json::from_str(&text)
+                        .context("Failed to parse Realtime text event")?;
+                    return Ok(Some(event));
+                }
+                WsMessage::Binary(bytes) => {
+                    let text = String::from_utf8(bytes.to_vec())
+                        .context("Realtime binary event was not valid UTF-8")?;
+                    let event = serde_json::from_str(&text)
+                        .context("Failed to parse Realtime binary event")?;
+                    return Ok(Some(event));
+                }
+                WsMessage::Ping(payload) => {
+                    self.stream
+                        .send(WsMessage::Pong(payload))
+                        .await
+                        .context("Failed to respond to Realtime ping")?;
+                }
+                WsMessage::Pong(_) => {}
+                WsMessage::Frame(_) => {}
+                WsMessage::Close(_) => return Ok(None),
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub async fn close(&mut self) -> Result<()> {
+        match self.stream.send(WsMessage::Close(None)).await {
+            Ok(()) => {}
+            Err(WsError::ConnectionClosed) | Err(WsError::AlreadyClosed) => {}
+            Err(WsError::Io(err))
+                if matches!(
+                    err.kind(),
+                    ErrorKind::BrokenPipe
+                        | ErrorKind::ConnectionReset
+                        | ErrorKind::ConnectionAborted
+                        | ErrorKind::NotConnected
+                ) => {}
+            Err(err) => return Err(err).context("Failed to close Realtime WebSocket"),
+        }
+        Ok(())
+    }
 }
 
 pub struct OpenAiCodexProvider {
@@ -230,6 +332,90 @@ impl OpenAiCodexProvider {
 
     pub fn oauth_client_id() -> &'static str {
         CLIENT_ID
+    }
+
+    fn realtime_ws_url_with_base(base_url: &str, model: &str) -> String {
+        let separator = if base_url.contains('?') { '&' } else { '?' };
+        format!("{base_url}{separator}model={}", urlencoding::encode(model))
+    }
+
+    pub fn realtime_ws_url(model: &str) -> String {
+        Self::realtime_ws_url_with_base(OPENAI_REALTIME_WS_URL, model)
+    }
+
+    fn build_realtime_request_with_base_url_and_account_id(
+        base_url: &str,
+        token: &str,
+        model: &str,
+        chatgpt_account_id: Option<&str>,
+    ) -> Result<Request<()>> {
+        if token.trim().is_empty() {
+            anyhow::bail!("Realtime WebSocket token cannot be empty");
+        }
+
+        let url = Self::realtime_ws_url_with_base(base_url, model);
+        let mut request = url
+            .into_client_request()
+            .context("Failed to build Realtime WebSocket request")?;
+        request.headers_mut().insert(
+            "Authorization",
+            HeaderValue::from_str(&format!("Bearer {token}"))
+                .context("Failed to build Realtime Authorization header")?,
+        );
+        request.headers_mut().insert(
+            "User-Agent",
+            HeaderValue::from_static("codetether-realtime/1.0"),
+        );
+        if let Some(account_id) = chatgpt_account_id.filter(|id| !id.trim().is_empty()) {
+            request.headers_mut().insert(
+                "chatgpt-account-id",
+                HeaderValue::from_str(account_id)
+                    .context("Failed to build ChatGPT account header")?,
+            );
+        }
+        Ok(request)
+    }
+
+    fn build_realtime_request_with_base_url(
+        base_url: &str,
+        token: &str,
+        model: &str,
+    ) -> Result<Request<()>> {
+        Self::build_realtime_request_with_base_url_and_account_id(base_url, token, model, None)
+    }
+
+    fn build_realtime_request_with_account_id(
+        token: &str,
+        model: &str,
+        chatgpt_account_id: Option<&str>,
+    ) -> Result<Request<()>> {
+        Self::build_realtime_request_with_base_url_and_account_id(
+            OPENAI_REALTIME_WS_URL,
+            token,
+            model,
+            chatgpt_account_id,
+        )
+    }
+
+    async fn connect_realtime_with_token(
+        &self,
+        token: &str,
+        model: &str,
+        chatgpt_account_id: Option<&str>,
+    ) -> Result<OpenAiRealtimeConnection> {
+        let request =
+            Self::build_realtime_request_with_account_id(token, model, chatgpt_account_id)?;
+        let (stream, _response) = connect_async(request)
+            .await
+            .context("Failed to connect to OpenAI Realtime WebSocket")?;
+        Ok(OpenAiRealtimeConnection::new(stream))
+    }
+
+    pub async fn connect_realtime(&self, model: &str) -> Result<OpenAiRealtimeConnection> {
+        let token = self.get_access_token().await?;
+        let account_id = self.resolved_chatgpt_account_id(&token);
+        self.connect_realtime_with_token(&token, model, account_id.as_deref())
+            .await
     }
 
     /// Exchange authorization code for tokens
@@ -759,6 +945,14 @@ impl OpenAiCodexProvider {
         }
     }
 
+    fn extract_json_string(value: Option<&Value>) -> Option<String> {
+        match value {
+            Some(Value::String(text)) => Some(text.clone()),
+            Some(other) => serde_json::to_string(other).ok(),
+            None => None,
+        }
+    }
+
     #[allow(dead_code)]
     fn parse_responses_output_parts(output: &[Value]) -> (Vec<ContentPart>, bool) {
         let mut parts = Vec::new();
@@ -872,6 +1066,370 @@ impl OpenAiCodexProvider {
         format!("OpenAI API error ({status}): {body}")
     }
 
+    fn build_realtime_response_create_event(
+        request: &CompletionRequest,
+        model: &str,
+        reasoning_effort: Option<ThinkingLevel>,
+    ) -> Value {
+        let instructions = Self::extract_responses_instructions(&request.messages);
+        let input = Self::convert_messages_to_responses_input(&request.messages);
+        let tools = Self::convert_responses_tools(&request.tools);
+
+        let mut response = json!({
+            "conversation": "none",
+            "instructions": instructions,
+            "input": input,
+            "output_modalities": ["text"],
+            "tool_choice": "auto",
+            "parallel_tool_calls": true,
+        });
+
+        if !tools.is_empty() {
+            response["tools"] = json!(tools);
+        }
+        if let Some(level) = reasoning_effort {
+            response["reasoning"] = json!({ "effort": level.as_str() });
+        }
+        if let Some(max_tokens) = request.max_tokens {
+            response["max_output_tokens"] = json!(max_tokens);
+        }
+
+        response["model"] = json!(model);
+
+        json!({
+            "type": "response.create",
+            "response": response
+        })
+    }
+
+    fn finish_responses_tool_call(
+        parser: &mut ResponsesSseParser,
+        key: &str,
+        chunks: &mut Vec<StreamChunk>,
+    ) {
+        if let Some(state) = parser.tools.get_mut(key)
+            && !state.finished
+        {
+            chunks.push(StreamChunk::ToolCallEnd {
+                id: state.call_id.clone(),
+            });
+            state.finished = true;
+        }
+    }
+
+    fn parse_responses_event(
+        parser: &mut ResponsesSseParser,
+        event: &Value,
+        chunks: &mut Vec<StreamChunk>,
+    ) {
+        match event.get("type").and_then(Value::as_str) {
+            Some("response.output_text.delta") => {
+                if let Some(delta) = event.get("delta").and_then(Value::as_str) {
+                    chunks.push(StreamChunk::Text(delta.to_string()));
+                }
+            }
+            Some("response.output_item.added") => {
+                if let Some(item) = event.get("item") {
+                    Self::record_responses_tool_item(parser, item, chunks, false);
+                }
+            }
+            Some("response.function_call_arguments.delta") => {
+                Self::record_responses_tool_arguments(parser, &event, chunks, false);
+            }
+            Some("response.function_call_arguments.done") => {
+                Self::record_responses_tool_arguments(parser, &event, chunks, true);
+            }
+            Some("response.output_item.done") => {
+                if let Some(item) = event.get("item")
+                    && item.get("type").and_then(Value::as_str) == Some("function_call")
+                    && let Some(key) = item
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .or_else(|| item.get("call_id").and_then(Value::as_str))
+                {
+                    Self::record_responses_tool_item(parser, item, chunks, true);
+                    Self::finish_responses_tool_call(parser, key, chunks);
+                }
+            }
+            Some("response.completed") | Some("response.done") => {
+                if let Some(output) = event
+                    .get("response")
+                    .and_then(|response| response.get("output"))
+                    .and_then(Value::as_array)
+                {
+                    for item in output {
+                        if item.get("type").and_then(Value::as_str) == Some("function_call")
+                            && let Some(key) = item
+                                .get("id")
+                                .and_then(Value::as_str)
+                                .or_else(|| item.get("call_id").and_then(Value::as_str))
+                        {
+                            Self::record_responses_tool_item(parser, item, chunks, true);
+                            Self::finish_responses_tool_call(parser, key, chunks);
+                        }
+                    }
+                }
+                let failed_message = event
+                    .get("response")
+                    .and_then(|response| response.get("status"))
+                    .and_then(Value::as_str)
+                    .filter(|status| matches!(*status, "failed" | "cancelled" | "incomplete"))
+                    .map(|_| {
+                        event
+                            .get("response")
+                            .and_then(|response| response.get("error"))
+                            .and_then(|error| error.get("message"))
+                            .and_then(Value::as_str)
+                            .unwrap_or("Response failed")
+                            .to_string()
+                    });
+                if let Some(message) = failed_message {
+                    chunks.push(StreamChunk::Error(message));
+                    return;
+                }
+                let usage = event
+                    .get("response")
+                    .and_then(|response| response.get("usage"))
+                    .map(|usage| Self::parse_responses_usage(Some(usage)));
+                chunks.push(StreamChunk::Done { usage });
+            }
+            Some("response.failed") => {
+                let message = event
+                    .get("response")
+                    .and_then(|response| response.get("error"))
+                    .and_then(|error| error.get("message"))
+                    .or_else(|| event.get("error").and_then(|error| error.get("message")))
+                    .and_then(Value::as_str)
+                    .unwrap_or("Response failed")
+                    .to_string();
+                chunks.push(StreamChunk::Error(message));
+            }
+            Some("error") => {
+                let message = event
+                    .get("error")
+                    .and_then(|error| error.get("message"))
+                    .or_else(|| event.get("message"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("Realtime error")
+                    .to_string();
+                chunks.push(StreamChunk::Error(message));
+            }
+            _ => {}
+        }
+    }
+
+    fn parse_responses_sse_event(
+        parser: &mut ResponsesSseParser,
+        data: &str,
+        chunks: &mut Vec<StreamChunk>,
+    ) {
+        if data == "[DONE]" {
+            chunks.push(StreamChunk::Done { usage: None });
+            return;
+        }
+
+        let Ok(event): Result<Value, _> = serde_json::from_str(data) else {
+            return;
+        };
+
+        Self::parse_responses_event(parser, &event, chunks);
+    }
+
+    fn record_responses_tool_item(
+        parser: &mut ResponsesSseParser,
+        item: &Value,
+        chunks: &mut Vec<StreamChunk>,
+        include_arguments: bool,
+    ) -> Option<String> {
+        if item.get("type").and_then(Value::as_str) != Some("function_call") {
+            return None;
+        }
+
+        let key = item
+            .get("id")
+            .and_then(Value::as_str)
+            .or_else(|| item.get("call_id").and_then(Value::as_str))?;
+        let call_id = item
+            .get("call_id")
+            .and_then(Value::as_str)
+            .or_else(|| item.get("id").and_then(Value::as_str))?
+            .to_string();
+        let name = item.get("name").and_then(Value::as_str).map(str::to_string);
+        let arguments = if include_arguments {
+            Self::extract_json_string(item.get("arguments"))
+        } else {
+            None
+        };
+
+        let state = parser
+            .tools
+            .entry(key.to_string())
+            .or_insert_with(|| ResponsesToolState {
+                call_id: call_id.clone(),
+                ..ResponsesToolState::default()
+            });
+        if state.call_id.is_empty() {
+            state.call_id = call_id.clone();
+        }
+        if state.name.is_none() {
+            state.name = name;
+        }
+        if !state.started
+            && let Some(name) = state.name.clone()
+        {
+            chunks.push(StreamChunk::ToolCallStart {
+                id: state.call_id.clone(),
+                name,
+            });
+            state.started = true;
+        }
+        if let Some(arguments) = arguments {
+            Self::emit_missing_responses_tool_arguments(state, arguments, chunks);
+        }
+
+        Some(state.call_id.clone())
+    }
+
+    fn record_responses_tool_arguments(
+        parser: &mut ResponsesSseParser,
+        event: &Value,
+        chunks: &mut Vec<StreamChunk>,
+        use_final_arguments: bool,
+    ) {
+        let key = event
+            .get("item_id")
+            .and_then(Value::as_str)
+            .or_else(|| event.get("call_id").and_then(Value::as_str));
+        let Some(key) = key else {
+            return;
+        };
+
+        let fallback_call_id = event
+            .get("call_id")
+            .and_then(Value::as_str)
+            .unwrap_or(key)
+            .to_string();
+        let state = parser
+            .tools
+            .entry(key.to_string())
+            .or_insert_with(|| ResponsesToolState {
+                call_id: fallback_call_id.clone(),
+                ..ResponsesToolState::default()
+            });
+        if state.call_id.is_empty() {
+            state.call_id = fallback_call_id;
+        }
+
+        if !state.started
+            && let Some(name) = event.get("name").and_then(Value::as_str)
+        {
+            state.name = Some(name.to_string());
+            chunks.push(StreamChunk::ToolCallStart {
+                id: state.call_id.clone(),
+                name: name.to_string(),
+            });
+            state.started = true;
+        }
+
+        let arguments = if use_final_arguments {
+            Self::extract_json_string(event.get("arguments")).or_else(|| {
+                event
+                    .get("delta")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+        } else {
+            event
+                .get("delta")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
+
+        if let Some(arguments) = arguments {
+            Self::emit_missing_responses_tool_arguments(state, arguments, chunks);
+        }
+    }
+
+    fn emit_missing_responses_tool_arguments(
+        state: &mut ResponsesToolState,
+        arguments: String,
+        chunks: &mut Vec<StreamChunk>,
+    ) {
+        let delta = if arguments.starts_with(&state.emitted_arguments) {
+            arguments[state.emitted_arguments.len()..].to_string()
+        } else if state.emitted_arguments.is_empty() {
+            arguments.clone()
+        } else if arguments == state.emitted_arguments {
+            String::new()
+        } else {
+            arguments.clone()
+        };
+
+        if !delta.is_empty() {
+            chunks.push(StreamChunk::ToolCallDelta {
+                id: state.call_id.clone(),
+                arguments_delta: delta.clone(),
+            });
+            state.emitted_arguments.push_str(&delta);
+        }
+    }
+
+    fn parse_responses_sse_bytes(
+        parser: &mut ResponsesSseParser,
+        bytes: &[u8],
+    ) -> Vec<StreamChunk> {
+        parser.line_buffer.push_str(&String::from_utf8_lossy(bytes));
+        let mut chunks = Vec::new();
+
+        while let Some(line_end) = parser.line_buffer.find('\n') {
+            let mut line = parser.line_buffer[..line_end].to_string();
+            parser.line_buffer.drain(..=line_end);
+
+            if line.ends_with('\r') {
+                line.pop();
+            }
+
+            if line.is_empty() {
+                if !parser.event_data_lines.is_empty() {
+                    let data = parser.event_data_lines.join("\n");
+                    parser.event_data_lines.clear();
+                    Self::parse_responses_sse_event(parser, &data, &mut chunks);
+                }
+                continue;
+            }
+
+            if let Some(data) = line.strip_prefix("data:") {
+                let data = data.strip_prefix(' ').unwrap_or(data);
+                parser.event_data_lines.push(data.to_string());
+            }
+        }
+
+        chunks
+    }
+
+    fn finish_responses_sse_parser(parser: &mut ResponsesSseParser) -> Vec<StreamChunk> {
+        let mut chunks = Vec::new();
+
+        if !parser.line_buffer.is_empty() {
+            let mut line = std::mem::take(&mut parser.line_buffer);
+            if line.ends_with('\r') {
+                line.pop();
+            }
+            if let Some(data) = line.strip_prefix("data:") {
+                let data = data.strip_prefix(' ').unwrap_or(data);
+                parser.event_data_lines.push(data.to_string());
+            }
+        }
+
+        if !parser.event_data_lines.is_empty() {
+            let data = parser.event_data_lines.join("\n");
+            parser.event_data_lines.clear();
+            Self::parse_responses_sse_event(parser, &data, &mut chunks);
+        }
+
+        chunks
+    }
+
     async fn complete_with_chatgpt_responses(
         &self,
         request: CompletionRequest,
@@ -921,6 +1479,8 @@ impl OpenAiCodexProvider {
                             name,
                             arguments: String::new(),
                         });
+                    } else if tools[idx].name == "tool" {
+                        tools[idx].name = name;
                     }
                 }
                 StreamChunk::ToolCallDelta {
@@ -989,137 +1549,13 @@ impl OpenAiCodexProvider {
         let account_id = self.resolved_chatgpt_account_id(&access_token).context(
             "OpenAI Codex OAuth token is missing ChatGPT workspace/account ID. Re-run `codetether auth codex --device-code`.",
         )?;
-
-        let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
-        let instructions = Self::extract_responses_instructions(&request.messages);
-        let input = Self::convert_messages_to_responses_input(&request.messages);
-        let tools = Self::convert_responses_tools(&request.tools);
-
-        let mut body = json!({
-            "model": model,
-            "instructions": instructions,
-            "input": input,
-            "stream": true,
-            "store": false,
-            "tool_choice": "auto",
-            "parallel_tool_calls": true,
-        });
-
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-        }
-        if let Some(level) = reasoning_effort {
-            body["reasoning"] = json!({ "effort": level.as_str() });
-        }
-        tracing::info!(
-            backend = "chatgpt-codex",
-            instructions_len = body
-                .get("instructions")
-                .and_then(|v| v.as_str())
-                .map(str::len)
-                .unwrap_or(0),
-            input_items = body
-                .get("input")
-                .and_then(|v| v.as_array())
-                .map(Vec::len)
-                .unwrap_or(0),
-            has_tools = !tools.is_empty(),
-            "Sending responses request"
-        );
-
-        let response = self
-            .client
-            .post(format!("{}/responses", CHATGPT_CODEX_API_URL))
-            .header("Authorization", format!("Bearer {}", access_token))
-            .header("chatgpt-account-id", account_id)
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .context("Failed to send streaming request to ChatGPT Codex backend")?;
-
-        let status = response.status();
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            anyhow::bail!(Self::format_openai_api_error(status, &body, &request.model));
-        }
-
-        let stream = response.bytes_stream().flat_map(|result| match result {
-            Ok(bytes) => {
-                let text = String::from_utf8_lossy(&bytes);
-                let mut chunks = Vec::new();
-
-                for line in text.lines() {
-                    if !line.starts_with("data: ") {
-                        continue;
-                    }
-                    let data = &line[6..];
-                    if data == "[DONE]" {
-                        chunks.push(StreamChunk::Done { usage: None });
-                        continue;
-                    }
-
-                    let Ok(event): Result<Value, _> = serde_json::from_str(data) else {
-                        continue;
-                    };
-                    match event.get("type").and_then(Value::as_str) {
-                        Some("response.output_text.delta") => {
-                            if let Some(delta) = event.get("delta").and_then(Value::as_str) {
-                                chunks.push(StreamChunk::Text(delta.to_string()));
-                            }
-                        }
-                        Some("response.output_item.done") => {
-                            if let Some(item) = event.get("item")
-                                && item.get("type").and_then(Value::as_str) == Some("function_call")
-                            {
-                                let call_id = item
-                                    .get("call_id")
-                                    .or_else(|| item.get("id"))
-                                    .and_then(Value::as_str);
-                                let name = item.get("name").and_then(Value::as_str);
-                                let arguments = item.get("arguments").and_then(Value::as_str);
-
-                                if let (Some(call_id), Some(name)) = (call_id, name) {
-                                    chunks.push(StreamChunk::ToolCallStart {
-                                        id: call_id.to_string(),
-                                        name: name.to_string(),
-                                    });
-                                    if let Some(arguments) = arguments {
-                                        chunks.push(StreamChunk::ToolCallDelta {
-                                            id: call_id.to_string(),
-                                            arguments_delta: arguments.to_string(),
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                        Some("response.completed") | Some("response.done") => {
-                            let usage = event
-                                .get("response")
-                                .and_then(|response| response.get("usage"))
-                                .map(|usage| Self::parse_responses_usage(Some(usage)));
-                            chunks.push(StreamChunk::Done { usage });
-                        }
-                        Some("response.failed") => {
-                            let message = event
-                                .get("response")
-                                .and_then(|response| response.get("error"))
-                                .and_then(|error| error.get("message"))
-                                .and_then(Value::as_str)
-                                .unwrap_or("Response failed")
-                                .to_string();
-                            chunks.push(StreamChunk::Error(message));
-                        }
-                        _ => {}
-                    }
-                }
-
-                futures::stream::iter(chunks)
-            }
-            Err(e) => futures::stream::iter(vec![StreamChunk::Error(e.to_string())]),
-        });
-
-        Ok(Box::pin(stream))
+        self.complete_stream_with_realtime(
+            request,
+            access_token,
+            Some(account_id),
+            "chatgpt-codex-realtime",
+        )
+        .await
     }
 
     async fn complete_stream_with_openai_responses(
@@ -1127,133 +1563,85 @@ impl OpenAiCodexProvider {
         request: CompletionRequest,
         api_key: String,
     ) -> Result<BoxStream<'static, StreamChunk>> {
+        self.complete_stream_with_realtime(request, api_key, None, "openai-realtime")
+            .await
+    }
+
+    async fn complete_stream_with_realtime(
+        &self,
+        request: CompletionRequest,
+        access_token: String,
+        chatgpt_account_id: Option<String>,
+        backend: &'static str,
+    ) -> Result<BoxStream<'static, StreamChunk>> {
         let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
-        let instructions = Self::extract_responses_instructions(&request.messages);
-        let input = Self::convert_messages_to_responses_input(&request.messages);
-        let tools = Self::convert_responses_tools(&request.tools);
-
-        let mut body = json!({
-            "model": model,
-            "instructions": instructions,
-            "input": input,
-            "stream": true,
-            "store": false,
-            "tool_choice": "auto",
-            "parallel_tool_calls": true,
-        });
-
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-        }
-        if let Some(level) = reasoning_effort {
-            body["reasoning"] = json!({ "effort": level.as_str() });
-        }
+        let body = Self::build_realtime_response_create_event(&request, &model, reasoning_effort);
         tracing::info!(
-            backend = "openai-responses",
+            backend = backend,
             instructions_len = body
-                .get("instructions")
+                .get("response")
+                .and_then(|v| v.get("instructions"))
                 .and_then(|v| v.as_str())
                 .map(str::len)
                 .unwrap_or(0),
             input_items = body
-                .get("input")
+                .get("response")
+                .and_then(|v| v.get("input"))
                 .and_then(|v| v.as_array())
                 .map(Vec::len)
                 .unwrap_or(0),
-            has_tools = !tools.is_empty(),
-            "Sending responses request"
+            has_tools = body
+                .get("response")
+                .and_then(|v| v.get("tools"))
+                .and_then(|v| v.as_array())
+                .is_some_and(|tools| !tools.is_empty()),
+            "Sending realtime response request"
         );
 
-        let response = self
-            .client
-            .post(format!("{}/responses", OPENAI_API_URL))
-            .header("Authorization", format!("Bearer {}", api_key))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .context("Failed to send streaming request to OpenAI responses API")?;
+        let connection = self
+            .connect_realtime_with_token(&access_token, &model, chatgpt_account_id.as_deref())
+            .await?;
 
-        let status = response.status();
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            anyhow::bail!(Self::format_openai_api_error(status, &body, &request.model));
-        }
+        let stream = async_stream::stream! {
+            let mut connection = connection;
+            let mut parser = ResponsesSseParser::default();
+            if let Err(error) = connection.send_event(&body).await {
+                yield StreamChunk::Error(error.to_string());
+                let _ = connection.close().await;
+                return;
+            }
 
-        let stream = response.bytes_stream().flat_map(|result| match result {
-            Ok(bytes) => {
-                let text = String::from_utf8_lossy(&bytes);
-                let mut chunks = Vec::new();
-
-                for line in text.lines() {
-                    if !line.starts_with("data: ") {
-                        continue;
-                    }
-                    let data = &line[6..];
-                    if data == "[DONE]" {
-                        chunks.push(StreamChunk::Done { usage: None });
-                        continue;
-                    }
-
-                    let Ok(event): Result<Value, _> = serde_json::from_str(data) else {
-                        continue;
-                    };
-                    match event.get("type").and_then(Value::as_str) {
-                        Some("response.output_text.delta") => {
-                            if let Some(delta) = event.get("delta").and_then(Value::as_str) {
-                                chunks.push(StreamChunk::Text(delta.to_string()));
+            let mut saw_terminal = false;
+            loop {
+                match connection.recv_event().await {
+                    Ok(Some(event)) => {
+                        let mut chunks = Vec::new();
+                        Self::parse_responses_event(&mut parser, &event, &mut chunks);
+                        for chunk in chunks {
+                            if matches!(chunk, StreamChunk::Done { .. } | StreamChunk::Error(_)) {
+                                saw_terminal = true;
                             }
+                            yield chunk;
                         }
-                        Some("response.output_item.done") => {
-                            if let Some(item) = event.get("item")
-                                && item.get("type").and_then(Value::as_str) == Some("function_call")
-                            {
-                                let call_id = item
-                                    .get("call_id")
-                                    .or_else(|| item.get("id"))
-                                    .and_then(Value::as_str);
-                                let name = item.get("name").and_then(Value::as_str);
-                                let arguments = item.get("arguments").and_then(Value::as_str);
-
-                                if let (Some(call_id), Some(name)) = (call_id, name) {
-                                    chunks.push(StreamChunk::ToolCallStart {
-                                        id: call_id.to_string(),
-                                        name: name.to_string(),
-                                    });
-                                    if let Some(arguments) = arguments {
-                                        chunks.push(StreamChunk::ToolCallDelta {
-                                            id: call_id.to_string(),
-                                            arguments_delta: arguments.to_string(),
-                                        });
-                                    }
-                                }
-                            }
+                        if saw_terminal {
+                            break;
                         }
-                        Some("response.completed") | Some("response.done") => {
-                            let usage = event
-                                .get("response")
-                                .and_then(|response| response.get("usage"))
-                                .map(|usage| Self::parse_responses_usage(Some(usage)));
-                            chunks.push(StreamChunk::Done { usage });
+                    }
+                    Ok(None) => {
+                        if !saw_terminal {
+                            yield StreamChunk::Error("Realtime WebSocket closed before response completion".to_string());
                         }
-                        Some("response.failed") => {
-                            let message = event
-                                .get("response")
-                                .and_then(|response| response.get("error"))
-                                .and_then(|error| error.get("message"))
-                                .and_then(Value::as_str)
-                                .unwrap_or("Response failed")
-                                .to_string();
-                            chunks.push(StreamChunk::Error(message));
-                        }
-                        _ => {}
+                        break;
+                    }
+                    Err(error) => {
+                        yield StreamChunk::Error(error.to_string());
+                        break;
                     }
                 }
-
-                futures::stream::iter(chunks)
             }
-            Err(e) => futures::stream::iter(vec![StreamChunk::Error(e.to_string())]),
-        });
+
+            let _ = connection.close().await;
+        };
 
         Ok(Box::pin(stream))
     }
@@ -1328,6 +1716,30 @@ impl Provider for OpenAiCodexProvider {
                 output_cost_per_million: Some(0.0),
             },
             ModelInfo {
+                id: "gpt-5.4".to_string(),
+                name: "GPT-5.4".to_string(),
+                provider: "openai-codex".to_string(),
+                context_window: 272_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.0),
+                output_cost_per_million: Some(0.0),
+            },
+            ModelInfo {
+                id: "gpt-5.4-pro".to_string(),
+                name: "GPT-5.4 Pro".to_string(),
+                provider: "openai-codex".to_string(),
+                context_window: 272_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.0),
+                output_cost_per_million: Some(0.0),
+            },
+            ModelInfo {
                 id: "o3".to_string(),
                 name: "O3".to_string(),
                 provider: "openai-codex".to_string(),
@@ -1383,6 +1795,15 @@ impl Provider for OpenAiCodexProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::stream;
+    use tokio::io::duplex;
+    use tokio_tungstenite::{
+        accept_hdr_async, client_async,
+        tungstenite::{
+            Message as WsMessage,
+            handshake::server::{Request as ServerRequest, Response as ServerResponse},
+        },
+    };
 
     #[test]
     fn test_generate_pkce() {
@@ -1431,6 +1852,18 @@ mod tests {
         let (model, level) = OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-4o:high");
         assert_eq!(model, "gpt-4o");
         assert_eq!(level, None);
+    }
+
+    #[tokio::test]
+    async fn lists_gpt_5_4_models() {
+        let provider = OpenAiCodexProvider::new();
+        let models = provider
+            .list_models()
+            .await
+            .expect("model listing should succeed");
+
+        assert!(models.iter().any(|model| model.id == "gpt-5.4"));
+        assert!(models.iter().any(|model| model.id == "gpt-5.4-pro"));
     }
 
     #[test]
@@ -1514,5 +1947,363 @@ mod tests {
         let input = OpenAiCodexProvider::convert_messages_to_responses_input(&messages);
         assert_eq!(input.len(), 1);
         assert_eq!(input[0].get("role").and_then(Value::as_str), Some("user"));
+    }
+
+    #[test]
+    fn realtime_request_uses_bearer_auth_and_model_query() {
+        let request = OpenAiCodexProvider::build_realtime_request_with_base_url(
+            "wss://example.com/v1/realtime",
+            "test-token",
+            "gpt-realtime",
+        )
+        .expect("request should build");
+
+        assert_eq!(
+            request.uri().to_string(),
+            "wss://example.com/v1/realtime?model=gpt-realtime"
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get("Authorization")
+                .and_then(|v| v.to_str().ok()),
+            Some("Bearer test-token")
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get("User-Agent")
+                .and_then(|v| v.to_str().ok()),
+            Some("codetether-realtime/1.0")
+        );
+    }
+
+    #[test]
+    fn realtime_request_includes_chatgpt_account_id_when_provided() {
+        let request = OpenAiCodexProvider::build_realtime_request_with_base_url_and_account_id(
+            "wss://example.com/v1/realtime",
+            "test-token",
+            "gpt-5.4",
+            Some("org_123"),
+        )
+        .expect("request should build");
+
+        assert_eq!(
+            request
+                .headers()
+                .get("chatgpt-account-id")
+                .and_then(|v| v.to_str().ok()),
+            Some("org_123")
+        );
+    }
+
+    #[test]
+    fn builds_realtime_response_create_event_for_tools() {
+        let request = CompletionRequest {
+            messages: vec![
+                Message {
+                    role: Role::System,
+                    content: vec![ContentPart::Text {
+                        text: "System prompt".to_string(),
+                    }],
+                },
+                Message {
+                    role: Role::User,
+                    content: vec![ContentPart::Text {
+                        text: "Inspect the repo".to_string(),
+                    }],
+                },
+            ],
+            tools: vec![ToolDefinition {
+                name: "read".to_string(),
+                description: "Read a file".to_string(),
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string" }
+                    },
+                    "required": ["path"]
+                }),
+            }],
+            model: "gpt-5.4".to_string(),
+            temperature: None,
+            top_p: None,
+            max_tokens: Some(8192),
+            stop: Vec::new(),
+        };
+
+        let event = OpenAiCodexProvider::build_realtime_response_create_event(
+            &request,
+            "gpt-5.4",
+            Some(ThinkingLevel::High),
+        );
+
+        assert_eq!(
+            event.get("type").and_then(Value::as_str),
+            Some("response.create")
+        );
+        assert_eq!(
+            event
+                .get("response")
+                .and_then(|v| v.get("model"))
+                .and_then(Value::as_str),
+            Some("gpt-5.4")
+        );
+        assert_eq!(
+            event
+                .get("response")
+                .and_then(|v| v.get("conversation"))
+                .and_then(Value::as_str),
+            Some("none")
+        );
+        assert_eq!(
+            event
+                .get("response")
+                .and_then(|v| v.get("max_output_tokens"))
+                .and_then(Value::as_u64),
+            Some(8192)
+        );
+        assert_eq!(
+            event
+                .get("response")
+                .and_then(|v| v.get("tools"))
+                .and_then(Value::as_array)
+                .map(Vec::len),
+            Some(1)
+        );
+    }
+
+    #[tokio::test]
+    async fn realtime_connection_round_trips_json_events() {
+        let (client_io, server_io) = duplex(16 * 1024);
+
+        let server = tokio::spawn(async move {
+            let callback = |request: &ServerRequest, response: ServerResponse| {
+                assert_eq!(request.uri().path(), "/v1/realtime");
+                assert_eq!(request.uri().query(), Some("model=gpt-realtime"));
+                assert_eq!(
+                    request
+                        .headers()
+                        .get("Authorization")
+                        .and_then(|v| v.to_str().ok()),
+                    Some("Bearer test-token")
+                );
+                Ok(response)
+            };
+
+            let mut socket = accept_hdr_async(server_io, callback)
+                .await
+                .expect("server websocket handshake should succeed");
+            let message = socket
+                .next()
+                .await
+                .expect("server should receive message")
+                .expect("server message should be valid");
+            match message {
+                WsMessage::Text(text) => {
+                    let event: Value =
+                        serde_json::from_str(&text).expect("server should parse JSON event");
+                    assert_eq!(
+                        event.get("type").and_then(Value::as_str),
+                        Some("session.update")
+                    );
+                }
+                other => panic!("expected text frame, got {other:?}"),
+            }
+
+            socket
+                .send(WsMessage::Text(
+                    json!({ "type": "session.created" }).to_string().into(),
+                ))
+                .await
+                .expect("server should send response");
+        });
+
+        let request = OpenAiCodexProvider::build_realtime_request_with_base_url(
+            "ws://localhost/v1/realtime",
+            "test-token",
+            "gpt-realtime",
+        )
+        .expect("client request should build");
+        let (stream, _) = client_async(request, client_io)
+            .await
+            .expect("client websocket handshake should succeed");
+        let mut connection = OpenAiRealtimeConnection::new(stream);
+
+        connection
+            .send_event(&json!({ "type": "session.update" }))
+            .await
+            .expect("client should send event");
+        let event = connection
+            .recv_event()
+            .await
+            .expect("client should read event")
+            .expect("client should receive session event");
+        assert_eq!(
+            event.get("type").and_then(Value::as_str),
+            Some("session.created")
+        );
+        connection
+            .close()
+            .await
+            .expect("client should close cleanly");
+
+        server.await.expect("server task should finish");
+    }
+
+    #[test]
+    fn responses_sse_parser_buffers_split_tool_call_events() {
+        let mut parser = ResponsesSseParser::default();
+
+        let chunk1 = br#"data: {"type":"response.output_item.added","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"bash"}}
+
+da"#;
+        let first = OpenAiCodexProvider::parse_responses_sse_bytes(&mut parser, chunk1);
+        assert_eq!(first.len(), 1);
+        match &first[0] {
+            StreamChunk::ToolCallStart { id, name } => {
+                assert_eq!(id, "call_1");
+                assert_eq!(name, "bash");
+            }
+            other => panic!("expected tool start, got {other:?}"),
+        }
+
+        let chunk2 = br#"ta: {"type":"response.function_call_arguments.delta","item_id":"fc_1","delta":"{\"command\":"}
+
+data: {"type":"response.function_call_arguments.delta","item_id":"fc_1","delta":"\"ls\"}"}
+
+data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"bash","arguments":"{\"command\":\"ls\"}"}}
+
+data: {"type":"response.completed","response":{"usage":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}}
+
+"#;
+        let second = OpenAiCodexProvider::parse_responses_sse_bytes(&mut parser, chunk2);
+
+        assert_eq!(second.len(), 4);
+        match &second[0] {
+            StreamChunk::ToolCallDelta {
+                id,
+                arguments_delta,
+            } => {
+                assert_eq!(id, "call_1");
+                assert_eq!(arguments_delta, "{\"command\":");
+            }
+            other => panic!("expected first tool delta, got {other:?}"),
+        }
+        match &second[1] {
+            StreamChunk::ToolCallDelta {
+                id,
+                arguments_delta,
+            } => {
+                assert_eq!(id, "call_1");
+                assert_eq!(arguments_delta, "\"ls\"}");
+            }
+            other => panic!("expected second tool delta, got {other:?}"),
+        }
+        match &second[2] {
+            StreamChunk::ToolCallEnd { id } => assert_eq!(id, "call_1"),
+            other => panic!("expected tool end, got {other:?}"),
+        }
+        match &second[3] {
+            StreamChunk::Done { usage } => {
+                let usage = usage.as_ref().expect("expected usage");
+                assert_eq!(usage.prompt_tokens, 11);
+                assert_eq!(usage.completion_tokens, 7);
+                assert_eq!(usage.total_tokens, 18);
+            }
+            other => panic!("expected done, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn responses_sse_parser_falls_back_to_done_item_arguments() {
+        let mut parser = ResponsesSseParser::default();
+        let bytes = br#"data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_2","call_id":"call_2","name":"read","arguments":"{\"path\":\"src/main.rs\"}"}}
+
+"#;
+
+        let chunks = OpenAiCodexProvider::parse_responses_sse_bytes(&mut parser, bytes);
+        assert_eq!(chunks.len(), 3);
+        match &chunks[0] {
+            StreamChunk::ToolCallStart { id, name } => {
+                assert_eq!(id, "call_2");
+                assert_eq!(name, "read");
+            }
+            other => panic!("expected tool start, got {other:?}"),
+        }
+        match &chunks[1] {
+            StreamChunk::ToolCallDelta {
+                id,
+                arguments_delta,
+            } => {
+                assert_eq!(id, "call_2");
+                assert_eq!(arguments_delta, "{\"path\":\"src/main.rs\"}");
+            }
+            other => panic!("expected tool delta, got {other:?}"),
+        }
+        match &chunks[2] {
+            StreamChunk::ToolCallEnd { id } => assert_eq!(id, "call_2"),
+            other => panic!("expected tool end, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn responses_sse_parser_flushes_final_event_without_trailing_blank_line() {
+        let mut parser = ResponsesSseParser::default();
+        let bytes = br#"data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_3","call_id":"call_3","name":"read","arguments":"{\"path\":\"src/lib.rs\"}"}}"#;
+
+        let first = OpenAiCodexProvider::parse_responses_sse_bytes(&mut parser, bytes);
+        assert!(first.is_empty());
+
+        let flushed = OpenAiCodexProvider::finish_responses_sse_parser(&mut parser);
+        assert_eq!(flushed.len(), 3);
+        match &flushed[0] {
+            StreamChunk::ToolCallStart { id, name } => {
+                assert_eq!(id, "call_3");
+                assert_eq!(name, "read");
+            }
+            other => panic!("expected tool start, got {other:?}"),
+        }
+        match &flushed[1] {
+            StreamChunk::ToolCallDelta {
+                id,
+                arguments_delta,
+            } => {
+                assert_eq!(id, "call_3");
+                assert_eq!(arguments_delta, "{\"path\":\"src/lib.rs\"}");
+            }
+            other => panic!("expected tool delta, got {other:?}"),
+        }
+        match &flushed[2] {
+            StreamChunk::ToolCallEnd { id } => assert_eq!(id, "call_3"),
+            other => panic!("expected tool end, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn collect_stream_completion_updates_tool_name_after_early_delta() {
+        let stream = stream::iter(vec![
+            StreamChunk::ToolCallDelta {
+                id: "call_4".to_string(),
+                arguments_delta: "{\"path\":\"src/provider/openai_codex.rs\"}".to_string(),
+            },
+            StreamChunk::ToolCallStart {
+                id: "call_4".to_string(),
+                name: "read".to_string(),
+            },
+            StreamChunk::Done { usage: None },
+        ]);
+
+        let response = OpenAiCodexProvider::collect_stream_completion(Box::pin(stream))
+            .await
+            .expect("stream completion should succeed");
+
+        assert!(matches!(
+            response.message.content.first(),
+            Some(ContentPart::ToolCall { id, name, arguments, .. })
+                if id == "call_4"
+                    && name == "read"
+                    && arguments == "{\"path\":\"src/provider/openai_codex.rs\"}"
+        ));
     }
 }

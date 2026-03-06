@@ -91,11 +91,15 @@ fn normalize_model(model: &str) -> String {
 }
 
 const SUBSCRIPTION_PROVIDERS: &[&str] = &[
+    // Subscription / OAuth providers (no per-token billing at all)
     "openai-codex",
     "github-copilot",
     "github-copilot-enterprise",
     "gemini-web",
     "local_cuda",
+    // Our hosted subscription providers (flat-rate, no per-token cost)
+    "zai",
+    "glm5",
 ];
 fn is_subscription_provider(p: &str) -> bool {
     SUBSCRIPTION_PROVIDERS.contains(&p)
@@ -193,7 +197,12 @@ async fn handle_spawn(params: &Params) -> Result<ToolResult> {
     let registry = get_registry().await?;
     if !is_free_or_eligible(requested, &registry).await {
         return Ok(ToolResult::error(format!(
-            "Spawn blocked: '{requested}' not free/subscription-eligible."
+            "Spawn blocked: '{requested}' is not free/subscription-eligible. \
+             Options: (1) OpenRouter ':free' models e.g. \
+             'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-coder:free', 'openai/gpt-oss-120b:free'; \
+             (2) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
+             (3) OAuth providers: 'openai-codex/<model>', 'github-copilot/<model>', \
+             'gemini-web/<model>', 'local_cuda/<model>'."
         )));
     }
 
@@ -394,7 +403,14 @@ impl Tool for AgentTool {
         "Sub-Agent"
     }
     fn description(&self) -> &str {
-        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, kill."
+        "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, kill. \
+         IMPORTANT: spawned agents must use a free/subscription-eligible model. Valid options: \
+         (1) Any OpenRouter ':free' model e.g. 'meta-llama/llama-3.3-70b-instruct:free', \
+         'qwen/qwen3-coder:free', 'openai/gpt-oss-120b:free'; \
+         (2) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
+         (3) OAuth providers: 'openai-codex/<model>', 'github-copilot/<model>', \
+         'gemini-web/<model>', 'local_cuda/<model>'. \
+         Bare paid model names like 'gpt-4o-mini' or 'anthropic/claude-sonnet-4-20250514' will be blocked."
     }
 
     fn parameters(&self) -> Value {
@@ -405,7 +421,18 @@ impl Tool for AgentTool {
                 "name": { "type": "string", "description": "Agent name (required for spawn, message, kill)" },
                 "instructions": { "type": "string", "description": "System instructions (required for spawn)" },
                 "message": { "type": "string", "description": "Message to send (required for message)" },
-                "model": { "type": "string", "description": "Model for spawned agent (required for spawn)" }
+                "model": {
+                    "type": "string",
+                    "description": "Model for spawned agent (required for spawn). Must be free/subscription-eligible. \
+                                    Valid options: \
+                                    (1) OpenRouter ':free' models: 'meta-llama/llama-3.3-70b-instruct:free', \
+                                    'qwen/qwen3-coder:free', 'openai/gpt-oss-120b:free', \
+                                    'google/gemma-3-27b-it:free', 'nousresearch/hermes-3-llama-3.1-405b:free'; \
+                                    (2) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
+                                    (3) OAuth providers: 'openai-codex/<model>', \
+                                    'github-copilot/<model>', 'gemini-web/<model>', 'local_cuda/<model>'. \
+                                    Bare paid names like 'gpt-4o-mini' are NOT allowed."
+                }
             },
             "required": ["action"]
         })

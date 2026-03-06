@@ -466,8 +466,16 @@ fn truncate_goal(goal: &str, max_chars: usize) -> String {
     if trimmed.chars().count() <= max_chars {
         return trimmed.to_string();
     }
-    let mut out = trimmed.chars().take(max_chars).collect::<String>();
-    out.push_str("...");
+    truncate_chars_with_suffix(trimmed, max_chars, "...")
+}
+
+fn truncate_chars_with_suffix(value: &str, max_chars: usize, suffix: &str) -> String {
+    if value.chars().count() <= max_chars {
+        return value.to_string();
+    }
+
+    let mut out = value.chars().take(max_chars).collect::<String>();
+    out.push_str(suffix);
     out
 }
 
@@ -714,8 +722,8 @@ async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
                 "FAIL"
             };
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let summary = if stderr.len() > 200 {
-                format!("{} [...truncated]", &stderr[..200])
+            let summary = if stderr.chars().count() > 200 {
+                truncate_chars_with_suffix(stderr.as_ref(), 200, " [...truncated]")
             } else if stderr.is_empty() {
                 "no errors".to_string()
             } else {
@@ -743,8 +751,8 @@ async fn run_quality_gates(changed_files: &[String]) -> Result<(String, bool)> {
                 "FAIL"
             };
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let summary = if stdout.len() > 300 {
-                format!("{} [...truncated]", &stdout[..300])
+            let summary = if stdout.chars().count() > 300 {
+                truncate_chars_with_suffix(stdout.as_ref(), 300, " [...truncated]")
             } else if stdout.is_empty() {
                 "no test output".to_string()
             } else {

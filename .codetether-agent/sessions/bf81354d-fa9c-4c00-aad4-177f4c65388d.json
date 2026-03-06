@@ -36,7 +36,7 @@
       "content": [
         {
           "type": "text",
-          "text": "Error: local_cuda inference failed for model qwen3.5-4b: candle model forward failed: shape mismatch in broadcast_add, lhs: [1, 32, 454, 900], rhs: [1, 1, 454, 454]"
+          "text": "Error: local_cuda inference failed for model qwen3.5-9b: candle model forward failed: shape mismatch in broadcast_add, lhs: [1, 32, 454, 900], rhs: [1, 1, 454, 454]"
         }
       ]
     }
@@ -52,7 +52,7 @@
   "agent": "build",
   "metadata": {
     "directory": "/home/riley/A2A-Server-MCP/codetether-agent",
-    "model": "local_cuda/qwen3.5-4b",
+    "model": "local_cuda/qwen3.5-9b",
     "shared": false,
     "share_url": null
   }
