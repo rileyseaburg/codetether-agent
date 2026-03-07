@@ -239,7 +239,7 @@ impl BedrockProvider {
     }
 
     fn base_url(&self) -> String {
-        format!("https://bedrock.{}.amazonaws.com", self.region)
+        format!("https://bedrock-runtime.{}.amazonaws.com", self.region)
     }
 
     /// Management API URL (for listing models, not inference)
@@ -430,6 +430,15 @@ impl BedrockProvider {
             "claude-haiku-4.5" | "claude-4.5-haiku" => {
                 "us.anthropic.claude-haiku-4-5-20251001-v1:0"
             }
+            // Handle full IDs without version suffix (common user input)
+            "us.anthropic.claude-sonnet-4-6" => "us.anthropic.claude-sonnet-4-6-v1:0",
+            "us.anthropic.claude-sonnet-4-5" => "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "us.anthropic.claude-sonnet-4" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "us.anthropic.claude-opus-4-6" => "us.anthropic.claude-opus-4-6-v1:0",
+            "us.anthropic.claude-opus-4-5" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
+            "us.anthropic.claude-opus-4-1" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
+            "us.anthropic.claude-opus-4" => "us.anthropic.claude-opus-4-20250514-v1:0",
+            "us.anthropic.claude-haiku-4-5" => "us.anthropic.claude-haiku-4-5-20251001-v1:0",
             "claude-3.7-sonnet" | "claude-sonnet-3.7" => {
                 "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
             }

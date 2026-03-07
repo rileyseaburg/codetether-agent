@@ -1,0 +1,41 @@
+{
+  "id": "7cde3d60-e048-4365-9872-49496c0faa89",
+  "title": "test",
+  "created_at": "2026-03-07T23:17:59.527890175Z",
+  "updated_at": "2026-03-07T23:17:59.661877289Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "test"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Error: Failed to parse Bedrock response: {\"Output\":{\"__type\":\"com.amazon.coral.service#UnknownOperationException\"},\"Version\":\"1.0\"}: missing field `output` at line 1 column 90"
+        }
+      ]
+    }
+  ],
+  "tool_uses": [],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null
+  },
+  "agent": "build",
+  "metadata": {
+    "directory": "/home/riley/A2A-Server-MCP/.codetether-agent.codetether-worktrees/tui-codetether-agent",
+    "model": "bedrock/us.anthropic.claude-sonnet-4-6",
+    "shared": false,
+    "share_url": null
+  }
+}
