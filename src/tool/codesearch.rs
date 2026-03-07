@@ -90,7 +90,7 @@ impl CodeSearchTool {
                         .to_string_lossy()
                         .to_string(),
                     line: idx + 1,
-                    content: line.to_string(),
+                    matched_line: line.to_string(),
                     context: context_lines.join("\n"),
                 });
             }
@@ -103,9 +103,14 @@ impl CodeSearchTool {
 struct Match {
     path: String,
     line: usize,
-    #[allow(dead_code)]
-    content: String,
+    matched_line: String,
     context: String,
+}
+
+impl std::fmt::Display for Match {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}: {}", self.path, self.line, self.matched_line)
+    }
 }
 
 #[derive(Deserialize)]
