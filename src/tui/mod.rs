@@ -30,7 +30,6 @@ const FILE_PICKER_PREVIEW_MAX_LINES: usize = 14;
 const FILE_PICKER_PREVIEW_DIR_ITEMS: usize = 10;
 const FILE_PICKER_PAGE_STEP: usize = 12;
 const MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS: u64 = 90;
-const MAIN_PROCESSING_WATCHDOG_MAX_RESTARTS: u8 = 3;
 const SMART_SWITCH_MAX_RETRIES: u8 = 3;
 const SMART_SWITCH_PROVIDER_PRIORITY: [&str; 11] = [
     "minimax",
@@ -1961,7 +1960,7 @@ async fn decide_dynamic_spawn_with_registry(
         return None;
     }
 
-    let profile = decision.profile?;
+    let profile = decision.profile.unwrap();
     let (name, instructions, capabilities) =
         build_runtime_profile_from_plan(profile, ordered_agents)?;
     let reason = if decision.reason.trim().is_empty() {
@@ -3782,14 +3781,6 @@ Retrying with {target_model} (attempt {}/{}).",
             .unwrap_or(MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS)
     }
 
-    fn main_watchdog_max_restarts() -> u8 {
-        std::env::var("CODETETHER_MAIN_WATCHDOG_MAX_RESTARTS")
-            .ok()
-            .and_then(|v| v.parse::<u8>().ok())
-            .map(|v| v.clamp(1, 10))
-            .unwrap_or(MAIN_PROCESSING_WATCHDOG_MAX_RESTARTS)
-    }
-
     fn build_main_watchdog_recovery_prompt(base_prompt: &str, attempt: u8) -> String {
         format!(
             "Watchdog recovery attempt {attempt}: previous run stalled. \
@@ -3875,7 +3866,6 @@ Original request:\n{base_prompt}"
         }
 
         let timeout_secs = Self::main_watchdog_timeout_secs();
-        let max_restarts = Self::main_watchdog_max_restarts();
         let channel_closed = self
             .response_rx
             .as_ref()
@@ -3900,17 +3890,15 @@ Original request:\n{base_prompt}"
             .clone()
             .or_else(|| self.main_inflight_prompt.clone());
 
-        if self.main_watchdog_restart_count < max_restarts
-            && let Some(base_prompt) = base_prompt
-        {
-            self.main_watchdog_restart_count += 1;
+        // Never give up - always retry with recovery prompt
+        if let Some(base_prompt) = base_prompt {
+            self.main_watchdog_restart_count = self.main_watchdog_restart_count.saturating_add(1);
             let attempt = self.main_watchdog_restart_count;
             let recovery_prompt = Self::build_main_watchdog_recovery_prompt(&base_prompt, attempt);
             self.messages.push(ChatMessage::new(
                 "system",
                 format!(
-                    "Watchdog: main request stalled ({reason}); restarting attempt {}/{}.",
-                    self.main_watchdog_restart_count, max_restarts
+                    "Watchdog: main request stalled ({reason}); restarting attempt {attempt}."
                 ),
             ));
             self.scroll = SCROLL_BOTTOM;
@@ -3927,18 +3915,7 @@ Original request:\n{base_prompt}"
             }
 
             self.spawn_main_processing_task(recovery_prompt, Vec::new());
-            return;
         }
-
-        self.messages.push(ChatMessage::new(
-            "system",
-            format!(
-                "Watchdog: main request stalled ({reason}) and restart limit reached. \
-                 Marking request as failed."
-            ),
-        ));
-        self.scroll = SCROLL_BOTTOM;
-        self.reset_main_processing_state();
     }
 
     fn watchdog_nudge_helper_agent(&mut self, base_prompt: &str, attempt: u8) {
@@ -7297,7 +7274,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         }
 
         if let Event::Key(key) = ev {
-            // Only handle key press events (not release or repeat-release).
+            // Only handle key press events (not release or repeat).
             // Crossterm 0.29+ emits Press, Repeat, and Release events;
             // processing all of them causes double character entry.
             if !matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
@@ -7524,7 +7501,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         };
 
                                         // Process each content part separately
-                                        // (consistent with /resume command)
                                         for part in &msg.content {
                                             match part {
                                                 ContentPart::Text { text } => {
@@ -7597,14 +7573,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                                 }
                                                 ContentPart::File { path, mime_type } => {
                                                     app.messages.push(
-                                                        ChatMessage::new(
-                                                            role_str,
-                                                            format!("📎 {path}"),
-                                                        )
-                                                        .with_message_type(MessageType::File {
-                                                            path: path.clone(),
-                                                            mime_type: mime_type.clone(),
-                                                        }),
+                                                        ChatMessage::new(role_str, format!("📎 {path}"))
+                                                            .with_message_type(MessageType::File {
+                                                                path: path.clone(),
+                                                                mime_type: mime_type.clone(),
+                                                            }),
                                                     );
                                                 }
                                                 ContentPart::Thinking { text } => {
@@ -8134,7 +8107,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         // Deny: record decision and show denial message
                         pending
                             .run
-                            .record_decision(crate::okr::ApprovalDecision::deny(
+                            .record_decision(ApprovalDecision::deny(
                                 pending.run.id,
                                 "User denied via TUI keypress",
                             ));
@@ -10701,7 +10674,7 @@ fn match_slash_command_hint(input: &str) -> String {
         ("/undo", "Undo last message and response"),
         ("/sessions", "Open session picker"),
         ("/resume", "Resume session or interrupted relay"),
-        ("/new", "Start a new session"),
+        ("/new", "Start a fresh session"),
         ("/model", "Select or set model"),
         ("/file", "Open file picker or attach /file <path>"),
         ("/webview", "Switch to webview layout"),
@@ -11733,7 +11706,7 @@ mod tests {
     }
 
     #[test]
-    fn normalize_local_model_ref_adds_local_provider_prefix() {
+    fn normalize_local_model_ref_adds_prefix() {
         assert_eq!(
             normalize_local_model_ref("qwen3.5-9b"),
             "local_cuda/qwen3.5-9b"

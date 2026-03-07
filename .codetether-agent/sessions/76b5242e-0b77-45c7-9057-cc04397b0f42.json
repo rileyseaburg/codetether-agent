@@ -1,0 +1,41 @@
+{
+  "id": "76b5242e-0b77-45c7-9057-cc04397b0f42",
+  "title": "say hello",
+  "created_at": "2026-03-07T16:59:50.713380683Z",
+  "updated_at": "2026-03-07T16:59:53.598272758Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "say hello"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello! How can I assist you today?"
+        }
+      ]
+    }
+  ],
+  "tool_uses": [],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null
+  },
+  "agent": "build",
+  "metadata": {
+    "directory": "/home/riley/A2A-Server-MCP/codetether-agent",
+    "model": "github-copilot/gpt-4o-mini",
+    "shared": false,
+    "share_url": null
+  }
+}

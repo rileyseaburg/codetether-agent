@@ -65,7 +65,7 @@
   {
     "id": "todo_1770153919563",
     "content": "Fix field `content` in tool/codesearch.rs - add to display/debug",
-    "status": "inprogress",
+    "status": "done",
     "priority": "high",
     "created_at": "2026-02-03T16:51:44.674002993+00:00"
   },
@@ -225,7 +225,7 @@
   },
   {
     "id": "todo_1770153919586",
-    "content": "Implement telemetry collection for success metrics: token usage, latency histograms, pass rate counters, Prometheus/OpenTelemetry export, privacy-preserving options",
+    "content": "Partial - src/telemetry.rs exists with:\n✓ Token usage tracking (global counters, model-specific)\n✓ Tool execution counters\n✓ Provider metrics\n✓ Cost estimation\n✓ Swarm telemetry collector\nMISSING:\n- Latency histograms\n- Prometheus export endpoint\n- OpenTelemetry integration\n- Privacy-preserving options (PII redaction)",
     "status": "inprogress",
     "priority": "high",
     "created_at": "2026-02-03T18:51:45.153605193+00:00"
@@ -288,8 +288,8 @@
   },
   {
     "id": "todo_1770282492393",
-    "content": "Assess src/tui/ for terminal UI documentation and user experience",
-    "status": "inprogress",
+    "content": "TUI Assessment Complete - 16K lines across 10 modules. Key findings:\n- No unimplemented code (no todo!/unimplemented! macros)\n- Main mod.rs is 12K lines (could benefit from further modularization)\n- Documentation coverage: 4 modules have doc comments, 6 need improvement\n- All core features working: chat, swarm view, ralph view, worker bridge\n- Constants well-documented with clear purpose\n- Theme system and token display properly abstracted",
+    "status": "done",
     "priority": "high",
     "created_at": "2026-02-05T09:08:12.393314282+00:00"
   },
