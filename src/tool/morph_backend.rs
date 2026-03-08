@@ -25,11 +25,11 @@ static MORPH_PROVIDER_REGISTRY: OnceCell<Arc<ProviderRegistry>> = OnceCell::cons
 
 fn backend_enabled() -> bool {
     match std::env::var("CODETETHER_MORPH_TOOL_BACKEND") {
-        Ok(v) => {
-            let normalized = v.trim().to_ascii_lowercase();
-            !matches!(normalized.as_str(), "0" | "false" | "no" | "off")
-        }
-        Err(_) => true,
+        Ok(v) => matches!(
+            v.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        ),
+        Err(_) => false,
     }
 }
 

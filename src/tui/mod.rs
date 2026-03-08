@@ -3897,9 +3897,7 @@ Original request:\n{base_prompt}"
             let recovery_prompt = Self::build_main_watchdog_recovery_prompt(&base_prompt, attempt);
             self.messages.push(ChatMessage::new(
                 "system",
-                format!(
-                    "Watchdog: main request stalled ({reason}); restarting attempt {attempt}."
-                ),
+                format!("Watchdog: main request stalled ({reason}); restarting attempt {attempt}."),
             ));
             self.scroll = SCROLL_BOTTOM;
             self.current_tool = None;
@@ -7573,11 +7571,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                                 }
                                                 ContentPart::File { path, mime_type } => {
                                                     app.messages.push(
-                                                        ChatMessage::new(role_str, format!("📎 {path}"))
-                                                            .with_message_type(MessageType::File {
-                                                                path: path.clone(),
-                                                                mime_type: mime_type.clone(),
-                                                            }),
+                                                        ChatMessage::new(
+                                                            role_str,
+                                                            format!("📎 {path}"),
+                                                        )
+                                                        .with_message_type(MessageType::File {
+                                                            path: path.clone(),
+                                                            mime_type: mime_type.clone(),
+                                                        }),
                                                     );
                                                 }
                                                 ContentPart::Thinking { text } => {
@@ -8105,12 +8106,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 {
                     if let Some(mut pending) = app.pending_okr_approval.take() {
                         // Deny: record decision and show denial message
-                        pending
-                            .run
-                            .record_decision(ApprovalDecision::deny(
-                                pending.run.id,
-                                "User denied via TUI keypress",
-                            ));
+                        pending.run.record_decision(ApprovalDecision::deny(
+                            pending.run.id,
+                            "User denied via TUI keypress",
+                        ));
                         app.messages.push(ChatMessage::new(
                             "system",
                             "❌ OKR denied. Relay not started.\n\nUse /autochat --no-prd for tactical execution without OKR/PRD tracking.",

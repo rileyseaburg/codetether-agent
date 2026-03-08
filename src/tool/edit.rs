@@ -34,8 +34,8 @@ impl Tool for EditTool {
 
     fn description(&self) -> &str {
         "edit(path: string, old_string: string, new_string: string) - Edit a file by replacing an exact string with new content. Include enough context (3+ lines before and after) to uniquely identify the location. \
-         Uses Morph backend by default (disable with CODETETHER_MORPH_TOOL_BACKEND=0). \
-         Optional instruction/update can guide Morph behavior."
+            Morph backend is available only when explicitly enabled with CODETETHER_MORPH_TOOL_BACKEND=1. \
+            Optional instruction/update can guide Morph behavior."
     }
 
     fn parameters(&self) -> Value {
@@ -96,7 +96,7 @@ impl Tool for EditTool {
         let morph_enabled = super::morph_backend::should_use_morph_backend();
         let morph_requested = instruction.is_some() || update.is_some();
         let has_replacement_pair = old_string.is_some() && new_string.is_some();
-        let use_morph = morph_enabled && (morph_requested || has_replacement_pair);
+        let use_morph = morph_enabled && morph_requested;
 
         // Read the file
         let content = fs::read_to_string(path).await?;
@@ -218,7 +218,7 @@ impl Tool for EditTool {
                 return Ok(ToolResult::structured_error(
                     "INVALID_ARGUMENT",
                     "edit",
-                    "old_string is required when no Morph guidance is provided",
+                    "old_string is required unless Morph backend is enabled and instruction/update are provided",
                     Some(vec!["old_string"]),
                     Some(json!({"path": path, "old_string": "old text", "new_string": "new text"})),
                 ));
@@ -230,7 +230,7 @@ impl Tool for EditTool {
                 return Ok(ToolResult::structured_error(
                     "INVALID_ARGUMENT",
                     "edit",
-                    "new_string is required when no Morph guidance is provided",
+                    "new_string is required unless Morph backend is enabled and instruction/update are provided",
                     Some(vec!["new_string"]),
                     Some(json!({"path": path, "old_string": old_string, "new_string": "new text"})),
                 ));

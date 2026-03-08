@@ -61,8 +61,9 @@ impl Tool for MultiEditTool {
     fn description(&self) -> &str {
         "Apply multiple file edits atomically. Validates all edits, then writes all changes. \
          If any edit fails validation, no files are modified. Each edit replaces old_string \
-         with new_string in the given file. Uses Morph backend by default (disable with \
-         CODETETHER_MORPH_TOOL_BACKEND=0); instruction/update can guide Morph behavior per edit."
+            with new_string in the given file. Morph backend is available only when explicitly \
+            enabled with CODETETHER_MORPH_TOOL_BACKEND=1; instruction/update can guide Morph \
+            behavior per edit."
     }
 
     fn parameters(&self) -> Value {
@@ -189,9 +190,7 @@ impl Tool for MultiEditTool {
                 .get("update")
                 .and_then(|v| v.as_str())
                 .map(str::to_string);
-            let has_replacement_pair = old_string.is_some() && new_string.is_some();
-            let use_morph = morph_enabled
-                && (instruction.is_some() || update.is_some() || has_replacement_pair);
+            let use_morph = morph_enabled && (instruction.is_some() || update.is_some());
 
             if !use_morph && (old_string.is_none() || new_string.is_none()) {
                 return Ok(ToolResult::structured_error(
