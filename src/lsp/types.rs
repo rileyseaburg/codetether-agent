@@ -36,6 +36,10 @@ fn default_timeout() -> u64 {
     30000
 }
 
+fn rust_timeout() -> u64 {
+    120000
+}
+
 impl Default for LspConfig {
     fn default() -> Self {
         Self {
@@ -366,9 +370,10 @@ impl From<CompletionItem> for CompletionItemInfo {
 pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
     match language {
         "rust" => Some(LspConfig {
-            command: "rust-analyzer".to_string(),
-            args: vec![],
+            command: rust_analyzer_command(),
+            args: rust_analyzer_args(),
             file_extensions: vec!["rs".to_string()],
+            timeout_ms: rust_timeout(),
             ..Default::default()
         }),
         "typescript" | "javascript" => Some(LspConfig {
@@ -411,6 +416,26 @@ pub fn get_language_server_config(language: &str) -> Option<LspConfig> {
     }
 }
 
+fn rust_analyzer_command() -> String {
+    if which::which("rust-analyzer").is_ok() {
+        "rust-analyzer".to_string()
+    } else {
+        "rustup".to_string()
+    }
+}
+
+fn rust_analyzer_args() -> Vec<String> {
+    if which::which("rust-analyzer").is_ok() {
+        Vec::new()
+    } else {
+        vec![
+            "run".to_string(),
+            "stable".to_string(),
+            "rust-analyzer".to_string(),
+        ]
+    }
+}
+
 /// Returns the install command for a language server binary, if known.
 fn install_command_for(command: &str) -> Option<&'static [&'static str]> {
     match command {
@@ -431,38 +456,72 @@ fn install_command_for(command: &str) -> Option<&'static [&'static str]> {
 
 /// Ensure a language server binary is available, installing it if possible.
 pub async fn ensure_server_installed(config: &LspConfig) -> Result<()> {
-    // Check if the binary is already on PATH
+    // Check if the binary is already on PATH.
     if which::which(&config.command).is_ok() {
         return Ok(());
     }
 
+    // rust-analyzer is commonly installed via rustup but may not be visible on PATH
+    // in the current process environment. Fall back to `rustup run <toolchain> rust-analyzer`.
+    if config.command == "rust-analyzer" {
+        let rustup_status = tokio::process::Command::new("rustup")
+            .args(["run", "stable", "rust-analyzer", "--version"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .await;
+
+        if let Ok(status) = rustup_status
+            && status.success()
+        {
+            return Ok(());
+        }
+    }
+
     let Some(install_args) = install_command_for(&config.command) else {
         return Err(anyhow::anyhow!(
-            "Language server '{}' not found and no auto-install available. \
-             Install it manually.",
+            "Language server '{}' not found and no auto-install available. Install it manually.",
             config.command,
         ));
     };
 
     info!(command = %config.command, "Language server not found, installing...");
 
-    let status = tokio::process::Command::new(install_args[0])
+    let output = tokio::process::Command::new(install_args[0])
         .args(&install_args[1..])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .status()
+        .output()
         .await?;
 
-    if !status.success() {
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         return Err(anyhow::anyhow!(
-            "Failed to install '{}' (exit code {:?}). Install it manually.",
+            "Failed to install '{}' (exit code {:?}). stdout: {} stderr: {}",
             config.command,
-            status.code(),
+            output.status.code(),
+            stdout,
+            stderr,
         ));
     }
 
     // Verify installation succeeded
     if which::which(&config.command).is_err() {
+        if config.command == "rust-analyzer" {
+            let rustup_status = tokio::process::Command::new("rustup")
+                .args(["run", "stable", "rust-analyzer", "--version"])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .await;
+            if let Ok(status) = rustup_status
+                && status.success()
+            {
+                info!(command = %config.command, "Language server installed and available via rustup run stable");
+                return Ok(());
+            }
+        }
         warn!(command = %config.command, "Install succeeded but binary still not found on PATH");
     } else {
         info!(command = %config.command, "Language server installed successfully");

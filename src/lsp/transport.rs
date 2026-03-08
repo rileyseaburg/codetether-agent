@@ -8,7 +8,7 @@
 //! ```
 
 use super::types::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -28,22 +28,33 @@ pub struct LspTransport {
     request_id: AtomicI64,
     /// Whether the server is initialized
     initialized: std::sync::atomic::AtomicBool,
+    /// Per-request timeout in milliseconds.
+    timeout_ms: u64,
+    /// Recent stderr lines from the language server for diagnostics.
+    recent_stderr: Arc<RwLock<Vec<String>>>,
+    /// Server command for diagnostics.
+    command: String,
 }
 
 impl LspTransport {
     /// Spawn a language server and create a transport
-    pub async fn spawn(command: &str, args: &[String]) -> Result<Self> {
+    pub async fn spawn(command: &str, args: &[String], timeout_ms: u64) -> Result<Self> {
         let mut child = Command::new(command)
             .args(args)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::inherit())
-            .spawn()?;
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .with_context(|| format!("Failed to spawn language server '{command}'"))?;
 
         let stdout = child
             .stdout
             .take()
             .ok_or_else(|| anyhow::anyhow!("No stdout"))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("No stderr"))?;
         let mut stdin = child
             .stdin
             .take()
@@ -52,6 +63,7 @@ impl LspTransport {
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
         let pending: Arc<RwLock<std::collections::HashMap<i64, oneshot::Sender<JsonRpcResponse>>>> =
             Arc::new(RwLock::new(std::collections::HashMap::new()));
+        let recent_stderr = Arc::new(RwLock::new(Vec::new()));
 
         // Writer task - sends messages with Content-Length framing
         let pending_clone = Arc::clone(&pending);
@@ -77,6 +89,37 @@ impl LspTransport {
             }
             // Clear pending requests on shutdown
             pending_clone.write().await.clear();
+        });
+
+        // Stderr task - capture recent diagnostics from the language server.
+        let recent_stderr_clone = Arc::clone(&recent_stderr);
+        let stderr_command = command.to_string();
+        tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr);
+            let mut line = String::new();
+            loop {
+                line.clear();
+                match reader.read_line(&mut line).await {
+                    Ok(0) => return,
+                    Ok(_) => {
+                        let trimmed = line.trim().to_string();
+                        if trimmed.is_empty() {
+                            continue;
+                        }
+                        warn!(command = %stderr_command, stderr = %trimmed, "Language server stderr");
+                        let mut guard = recent_stderr_clone.write().await;
+                        guard.push(trimmed);
+                        if guard.len() > 20 {
+                            let excess = guard.len() - 20;
+                            guard.drain(0..excess);
+                        }
+                    }
+                    Err(e) => {
+                        warn!(command = %stderr_command, error = %e, "Failed reading language server stderr");
+                        return;
+                    }
+                }
+            }
         });
 
         // Reader task - parses Content-Length framed responses
@@ -163,6 +206,9 @@ impl LspTransport {
             pending,
             request_id: AtomicI64::new(1),
             initialized: std::sync::atomic::AtomicBool::new(false),
+            timeout_ms,
+            recent_stderr,
+            command: command.to_string(),
         })
     }
 
@@ -182,12 +228,34 @@ impl LspTransport {
         self.tx.send(json).await?;
 
         // Wait for response with timeout
-        let response = tokio::time::timeout(std::time::Duration::from_secs(30), rx)
+        let response = tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), rx)
             .await
-            .map_err(|_| anyhow::anyhow!("LSP request timeout for method: {}", method))?
+            .map_err(|_| {
+                let stderr_summary = self.stderr_summary();
+                anyhow::anyhow!(
+                    "LSP request timeout for method: {} (server: {}, timeout: {}ms{})",
+                    method,
+                    self.command,
+                    self.timeout_ms,
+                    stderr_summary
+                        .as_deref()
+                        .map(|summary| format!(", recent stderr: {summary}"))
+                        .unwrap_or_default()
+                )
+            })?
             .map_err(|_| anyhow::anyhow!("LSP response channel closed"))?;
 
         Ok(response)
+    }
+
+    fn stderr_summary(&self) -> Option<String> {
+        self.recent_stderr.try_read().ok().and_then(|lines| {
+            if lines.is_empty() {
+                None
+            } else {
+                Some(lines.join(" | "))
+            }
+        })
     }
 
     /// Send a notification (no response expected)

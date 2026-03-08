@@ -27,6 +27,13 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_model_string_openai_codex_format() {
+        let (provider, model) = parse_model_string("openai-codex/gpt-5.4");
+        assert_eq!(provider, Some("openai-codex"));
+        assert_eq!(model, "gpt-5.4");
+    }
+
+    #[test]
     fn test_parse_model_string_with_version() {
         for model_id in &[
             "gpt-5-codex",

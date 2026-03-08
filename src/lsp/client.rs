@@ -34,7 +34,8 @@ impl LspClient {
         // Auto-install the language server if it's not on PATH
         super::types::ensure_server_installed(&config).await?;
 
-        let transport = LspTransport::spawn(&config.command, &config.args).await?;
+        let transport =
+            LspTransport::spawn(&config.command, &config.args, config.timeout_ms).await?;
 
         Ok(Self {
             transport,

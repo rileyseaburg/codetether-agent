@@ -1164,11 +1164,27 @@ impl Default for ProviderRegistry {
     }
 }
 
-/// Parse a model string in the format "provider/model"
+/// Parse a model string into `(provider, model)`.
+///
+/// Supports:
+/// - `provider/model` → (`provider`, `model`)
+/// - nested provider namespaces like `openai-codex/gpt-5.4`
+/// - OpenRouter-style paths like `openrouter/openai/gpt-5-codex`
+///
+/// For three-or-more path segments, we treat the first segment as the provider and
+/// the remainder as the model ID. This preserves model namespaces such as
+/// `openai/gpt-5-codex` while still handling ordinary `provider/model` forms.
 pub fn parse_model_string(s: &str) -> (Option<&str>, &str) {
-    if let Some((provider, model)) = s.split_once('/') {
-        (Some(provider), model)
-    } else {
-        (None, s)
+    let mut parts = s.split('/');
+    let Some(first) = parts.next() else {
+        return (None, s);
+    };
+
+    let remainder_start = first.len();
+    if remainder_start >= s.len() {
+        return (None, s);
     }
+
+    let remainder = &s[remainder_start + 1..];
+    (Some(first), remainder)
 }

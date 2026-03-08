@@ -224,6 +224,42 @@ impl Default for OpenAiCodexProvider {
 }
 
 impl OpenAiCodexProvider {
+    fn chatgpt_supported_models() -> &'static [&'static str] {
+        &[
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5.1-codex",
+            "gpt-5.2",
+            "gpt-5.3-codex",
+            "gpt-5.4",
+            "o3",
+            "o4-mini",
+        ]
+    }
+
+    fn model_is_supported_by_backend(&self, model: &str) -> bool {
+        if !self.using_chatgpt_backend() {
+            return true;
+        }
+        Self::chatgpt_supported_models().contains(&model)
+    }
+
+    fn validate_model_for_backend(&self, model: &str) -> Result<()> {
+        if self.model_is_supported_by_backend(model) {
+            return Ok(());
+        }
+
+        if self.using_chatgpt_backend() {
+            anyhow::bail!(
+                "Model '{}' is not supported when using Codex with a ChatGPT account. Supported models: {}",
+                model,
+                Self::chatgpt_supported_models().join(", ")
+            );
+        }
+
+        Ok(())
+    }
+
     pub fn from_api_key(api_key: String) -> Self {
         Self {
             client: Client::new(),
@@ -1898,7 +1934,7 @@ impl Provider for OpenAiCodexProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        Ok(vec![
+        let mut models = vec![
             ModelInfo {
                 id: "gpt-5".to_string(),
                 name: "GPT-5".to_string(),
@@ -2007,10 +2043,17 @@ impl Provider for OpenAiCodexProvider {
                 input_cost_per_million: Some(0.0),
                 output_cost_per_million: Some(0.0),
             },
-        ])
+        ];
+
+        if self.using_chatgpt_backend() {
+            models.retain(|model| Self::chatgpt_supported_models().contains(&model.id.as_str()));
+        }
+
+        Ok(models)
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+        self.validate_model_for_backend(&request.model)?;
         let access_token = self.get_access_token().await?;
         if self.using_chatgpt_backend() {
             return self
@@ -2025,6 +2068,7 @@ impl Provider for OpenAiCodexProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<BoxStream<'static, StreamChunk>> {
+        self.validate_model_for_backend(&request.model)?;
         let access_token = self.get_access_token().await?;
         if self.using_chatgpt_backend() {
             return self
@@ -2107,7 +2151,27 @@ mod tests {
             .expect("model listing should succeed");
 
         assert!(models.iter().any(|model| model.id == "gpt-5.4"));
-        assert!(models.iter().any(|model| model.id == "gpt-5.4-pro"));
+        assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));
+    }
+
+    #[test]
+    fn rejects_pro_model_for_chatgpt_backend() {
+        let provider = OpenAiCodexProvider::new();
+        let err = provider
+            .validate_model_for_backend("gpt-5.4-pro")
+            .expect_err("chatgpt backend should reject unsupported model");
+        assert!(
+            err.to_string()
+                .contains("not supported when using Codex with a ChatGPT account")
+        );
+    }
+
+    #[test]
+    fn allows_pro_model_for_api_key_backend() {
+        let provider = OpenAiCodexProvider::from_api_key("test-key".to_string());
+        provider
+            .validate_model_for_backend("gpt-5.4-pro")
+            .expect("api key backend should allow pro model");
     }
 
     #[test]
