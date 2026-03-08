@@ -6,7 +6,7 @@ use std::io::{self, Read};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 #[derive(Debug, Default)]
 pub struct GitCredentialQuery {
@@ -122,12 +122,88 @@ pub async fn run_git_credential_helper(args: &crate::cli::GitCredentialHelperArg
     .await?;
 
     if let Some(creds) = credentials {
-        println!("username={}", creds.username);
-        println!("password={}", creds.password);
-        println!();
+        if should_delegate_to_gh_cli(&query, &creds)
+            && emit_credentials_via_gh_cli(&query, &creds).is_ok()
+        {
+            return Ok(());
+        }
+
+        print_git_credentials(&creds);
     }
 
     Ok(())
+}
+
+fn should_delegate_to_gh_cli(
+    query: &GitCredentialQuery,
+    credentials: &GitCredentialMaterial,
+) -> bool {
+    let host = query
+        .host
+        .as_deref()
+        .or(credentials.host.as_deref())
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    host == "github.com"
+}
+
+fn emit_credentials_via_gh_cli(
+    query: &GitCredentialQuery,
+    credentials: &GitCredentialMaterial,
+) -> Result<()> {
+    let mut child = Command::new("gh")
+        .args(["auth", "git-credential", "get"])
+        .env("GH_TOKEN", &credentials.password)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn gh auth git-credential")?;
+
+    let request = render_gh_credential_query(query, credentials);
+    if let Some(mut stdin) = child.stdin.take() {
+        use std::io::Write;
+        stdin
+            .write_all(request.as_bytes())
+            .context("Failed to write Git credential request to gh")?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .context("Failed to read gh auth git-credential output")?;
+    if output.status.success() {
+        return Ok(());
+    }
+
+    Err(anyhow!(
+        "gh auth git-credential failed: {}",
+        String::from_utf8_lossy(&output.stderr).trim()
+    ))
+}
+
+fn render_gh_credential_query(
+    query: &GitCredentialQuery,
+    credentials: &GitCredentialMaterial,
+) -> String {
+    let mut request = String::new();
+    let protocol = query.protocol.as_deref().unwrap_or("https");
+    request.push_str(&format!("protocol={protocol}\n"));
+
+    if let Some(host) = query.host.as_deref().or(credentials.host.as_deref()) {
+        request.push_str(&format!("host={}\n", host.trim()));
+    }
+    if let Some(path) = query.path.as_deref().or(credentials.path.as_deref()) {
+        request.push_str(&format!("path={}\n", path.trim()));
+    }
+    request.push('\n');
+    request
+}
+
+fn print_git_credentials(credentials: &GitCredentialMaterial) {
+    println!("username={}", credentials.username);
+    println!("password={}", credentials.password);
+    println!();
 }
 
 pub fn configure_repo_git_auth(repo_path: &Path, workspace_id: &str) -> Result<PathBuf> {
@@ -251,4 +327,51 @@ fn read_git_credential_query_from_stdin() -> Result<GitCredentialQuery> {
 
 fn shell_single_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        GitCredentialMaterial, GitCredentialQuery, render_gh_credential_query,
+        should_delegate_to_gh_cli,
+    };
+
+    fn sample_credentials() -> GitCredentialMaterial {
+        GitCredentialMaterial {
+            username: "x-access-token".to_string(),
+            password: "secret".to_string(),
+            expires_at: None,
+            token_type: "github_app".to_string(),
+            host: Some("github.com".to_string()),
+            path: Some("owner/repo.git".to_string()),
+        }
+    }
+
+    #[test]
+    fn delegates_to_gh_for_github_host() {
+        let mut query = GitCredentialQuery::default();
+        query.host = Some("github.com".to_string());
+
+        assert!(should_delegate_to_gh_cli(&query, &sample_credentials()));
+    }
+
+    #[test]
+    fn skips_gh_for_non_github_host() {
+        let mut query = GitCredentialQuery::default();
+        query.host = Some("gitlab.com".to_string());
+
+        assert!(!should_delegate_to_gh_cli(&query, &sample_credentials()));
+    }
+
+    #[test]
+    fn renders_git_credential_payload_for_gh() {
+        let mut query = GitCredentialQuery::default();
+        query.protocol = Some("https".to_string());
+
+        let rendered = render_gh_credential_query(&query, &sample_credentials());
+        assert!(rendered.contains("protocol=https\n"));
+        assert!(rendered.contains("host=github.com\n"));
+        assert!(rendered.contains("path=owner/repo.git\n"));
+        assert!(rendered.ends_with("\n\n"));
+    }
 }
