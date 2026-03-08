@@ -3777,7 +3777,7 @@ Retrying with {target_model} (attempt {}/{}).",
         std::env::var("CODETETHER_MAIN_WATCHDOG_TIMEOUT_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
-            .map(|v| v.clamp(20, 900))
+            .map(|v| v.clamp(60, 900))
             .unwrap_or(MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS)
     }
 
