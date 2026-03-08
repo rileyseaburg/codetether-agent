@@ -48,7 +48,89 @@ struct ExecutionOutcome {
     quality_gates_passed: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ForageSelectionSummary {
+    pub okr_title: String,
+    pub key_result_title: String,
+    pub score: f64,
+    pub progress: f64,
+    pub remaining: f64,
+    pub moonshot_alignment: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ForageRunSummary {
+    pub cycles_completed: usize,
+    pub execute_requested: bool,
+    pub execution_engine: String,
+    pub total_selected: usize,
+    pub total_executed: usize,
+    pub total_execution_failures: usize,
+    pub last_cycle_selected: Vec<ForageSelectionSummary>,
+}
+
+impl ForageRunSummary {
+    fn summarize_selection(selected: &[ForageOpportunity]) -> Vec<ForageSelectionSummary> {
+        selected
+            .iter()
+            .map(|item| ForageSelectionSummary {
+                okr_title: item.okr_title.clone(),
+                key_result_title: item.key_result_title.clone(),
+                score: item.score,
+                progress: item.progress,
+                remaining: item.remaining,
+                moonshot_alignment: item.moonshot_alignment,
+            })
+            .collect()
+    }
+
+    pub fn render_text(&self) -> String {
+        let mut lines = vec![format!(
+            "Forage completed {} cycle(s); selected {} opportunity(s) total.",
+            self.cycles_completed, self.total_selected
+        )];
+
+        if self.last_cycle_selected.is_empty() {
+            lines.push("No forage opportunities were selected in the final cycle.".to_string());
+        } else {
+            lines.push(format!(
+                "Final cycle selected {} opportunity(s):",
+                self.last_cycle_selected.len()
+            ));
+            for (idx, item) in self.last_cycle_selected.iter().take(5).enumerate() {
+                lines.push(format!(
+                    "{}. {} -> {} (score {:.3}, remaining {:.1}%)",
+                    idx + 1,
+                    item.okr_title,
+                    item.key_result_title,
+                    item.score,
+                    item.remaining * 100.0
+                ));
+            }
+            if self.last_cycle_selected.len() > 5 {
+                lines.push(format!(
+                    "... and {} more final-cycle opportunities",
+                    self.last_cycle_selected.len() - 5
+                ));
+            }
+        }
+
+        if self.execute_requested {
+            lines.push(format!(
+                "Execution engine: {}. Attempted {} execution(s) with {} failure(s).",
+                self.execution_engine, self.total_executed, self.total_execution_failures
+            ));
+        }
+
+        lines.join("\n")
+    }
+}
+
 pub async fn execute(args: ForageArgs) -> Result<()> {
+    execute_with_summary(args).await.map(|_| ())
+}
+
+pub async fn execute_with_summary(args: ForageArgs) -> Result<ForageRunSummary> {
     ensure_audit_log_initialized().await;
     let repo = OkrRepository::from_config().await?;
     let moonshot_rubric = load_moonshot_rubric(&args).await?;
@@ -103,6 +185,15 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
     let top = args.top.clamp(1, 50);
     let interval_secs = args.interval_secs.clamp(5, 86_400);
     let mut cycle: usize = 0;
+    let mut summary = ForageRunSummary {
+        cycles_completed: 0,
+        execute_requested: args.execute,
+        execution_engine: args.execution_engine.clone(),
+        total_selected: 0,
+        total_executed: 0,
+        total_execution_failures: 0,
+        last_cycle_selected: Vec::new(),
+    };
 
     loop {
         // Only check S3 health if S3 is required
@@ -206,6 +297,9 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
                 }
             }
         }
+        summary.cycles_completed = cycle;
+        summary.total_selected = summary.total_selected.saturating_add(selected.len());
+        summary.last_cycle_selected = ForageRunSummary::summarize_selection(&selected);
         log_audit(
             AuditCategory::Cognition,
             "forage.cycle",
@@ -240,6 +334,7 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
                         args.execution_engine, item.okr_title, item.key_result_title
                     )),
                 );
+                summary.total_executed = summary.total_executed.saturating_add(1);
                 match execute_opportunity(item, &args).await {
                     Ok(execution_outcome) => {
                         if let Err(err) = record_execution_success_to_okr(
@@ -281,6 +376,8 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
                         .await;
                     }
                     Err(err) => {
+                        summary.total_execution_failures =
+                            summary.total_execution_failures.saturating_add(1);
                         let error_message = format!("{err:#}");
                         let _ = bus_handle.send_task_update(
                             &exec_task_id,
@@ -344,7 +441,7 @@ pub async fn execute(args: ForageArgs) -> Result<()> {
     )
     .await;
 
-    Ok(())
+    Ok(summary)
 }
 
 async fn seed_default_okr_if_empty(repo: &OkrRepository) -> Result<()> {

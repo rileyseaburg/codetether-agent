@@ -2,7 +2,7 @@
 
 use crate::a2a::git_credentials::{configure_repo_git_auth, write_git_credential_helper_script};
 use crate::bus::AgentBus;
-use crate::cli::A2aArgs;
+use crate::cli::{A2aArgs, ForageArgs};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
@@ -502,7 +502,7 @@ pub const DEFAULT_A2A_SERVER_URL: &str = "https://api.codetether.run";
 
 /// Capabilities of the codetether-agent worker
 const BASE_WORKER_CAPABILITIES: &[&str] = &[
-    "ralph", "swarm", "rlm", "a2a", "mcp", "grpc", "grpc-web", "jsonrpc",
+    "forage", "ralph", "swarm", "rlm", "a2a", "mcp", "grpc", "grpc-web", "jsonrpc",
 ];
 
 fn worker_capabilities() -> Vec<String> {
@@ -649,6 +649,10 @@ fn is_swarm_agent(agent_type: &str) -> bool {
     )
 }
 
+fn is_forage_agent(agent_type: &str) -> bool {
+    agent_type.trim().eq_ignore_ascii_case("forage")
+}
+
 fn metadata_lookup<'a>(
     metadata: &'a serde_json::Map<String, serde_json::Value>,
     key: &str,
@@ -664,6 +668,12 @@ fn metadata_lookup<'a>(
         .or_else(|| {
             metadata
                 .get("swarm")
+                .and_then(|v| v.as_object())
+                .and_then(|obj| obj.get(key))
+        })
+        .or_else(|| {
+            metadata
+                .get("forage")
                 .and_then(|v| v.as_object())
                 .and_then(|obj| obj.get(key))
         })
@@ -751,6 +761,150 @@ fn metadata_bool(
         }
     }
     None
+}
+
+fn metadata_f64(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<f64> {
+    for key in keys {
+        if let Some(value) = metadata_lookup(metadata, key) {
+            if let Some(v) = value.as_f64() {
+                return Some(v);
+            }
+            if let Some(v) = value.as_i64() {
+                return Some(v as f64);
+            }
+            if let Some(v) = value.as_u64() {
+                return Some(v as f64);
+            }
+            if let Some(v) = value.as_str()
+                && let Ok(parsed) = v.trim().parse::<f64>()
+            {
+                return Some(parsed);
+            }
+        }
+    }
+    None
+}
+
+fn metadata_string_list(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Vec<String> {
+    for key in keys {
+        let Some(value) = metadata_lookup(metadata, key) else {
+            continue;
+        };
+
+        if let Some(items) = value.as_array() {
+            let parsed = items
+                .iter()
+                .filter_map(|item| item.as_str())
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>();
+            if !parsed.is_empty() {
+                return parsed;
+            }
+        }
+
+        if let Some(value) = value.as_str() {
+            let parsed = value
+                .split(['\n', ','])
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>();
+            if !parsed.is_empty() {
+                return parsed;
+            }
+        }
+    }
+
+    Vec::new()
+}
+
+fn normalize_forage_execution_engine(value: Option<String>) -> String {
+    match value
+        .as_deref()
+        .unwrap_or("run")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "swarm" => "swarm".to_string(),
+        "go" => "go".to_string(),
+        _ => "run".to_string(),
+    }
+}
+
+fn normalize_forage_swarm_strategy(value: Option<String>) -> String {
+    match value
+        .as_deref()
+        .unwrap_or("auto")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "domain" => "domain".to_string(),
+        "data" => "data".to_string(),
+        "stage" => "stage".to_string(),
+        "none" => "none".to_string(),
+        _ => "auto".to_string(),
+    }
+}
+
+fn build_forage_args(
+    prompt: &str,
+    title: &str,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    selected_model: Option<String>,
+) -> ForageArgs {
+    let mut moonshots = metadata_string_list(
+        metadata,
+        &["moonshots", "moonshot", "goals", "mission", "missions"],
+    );
+    if moonshots.is_empty() {
+        let fallback = prompt.trim();
+        if !fallback.is_empty() {
+            moonshots.push(fallback.to_string());
+        } else if !title.trim().is_empty() {
+            moonshots.push(title.trim().to_string());
+        }
+    }
+
+    ForageArgs {
+        top: metadata_usize(metadata, &["top"]).unwrap_or(3),
+        loop_mode: metadata_bool(metadata, &["loop", "loop_mode"]).unwrap_or(false),
+        interval_secs: metadata_u64(metadata, &["interval_secs", "interval"]).unwrap_or(120),
+        max_cycles: metadata_usize(metadata, &["max_cycles"]).unwrap_or(0),
+        execute: metadata_bool(metadata, &["execute"]).unwrap_or(false),
+        // Task-queue forage should run without requiring S3 archival by default.
+        no_s3: metadata_bool(metadata, &["no_s3", "local_only"]).unwrap_or(true),
+        moonshots,
+        moonshot_file: metadata_str(metadata, &["moonshot_file"]).map(PathBuf::from),
+        moonshot_required: metadata_bool(metadata, &["moonshot_required"]).unwrap_or(false),
+        moonshot_min_alignment: metadata_f64(metadata, &["moonshot_min_alignment"]).unwrap_or(0.10),
+        execution_engine: normalize_forage_execution_engine(metadata_str(
+            metadata,
+            &["execution_engine", "engine"],
+        )),
+        run_timeout_secs: metadata_u64(metadata, &["run_timeout_secs", "timeout_secs", "timeout"])
+            .unwrap_or(900),
+        fail_fast: metadata_bool(metadata, &["fail_fast"]).unwrap_or(false),
+        swarm_strategy: normalize_forage_swarm_strategy(metadata_str(
+            metadata,
+            &["swarm_strategy", "strategy"],
+        )),
+        swarm_max_subagents: metadata_usize(metadata, &["swarm_max_subagents"]).unwrap_or(8),
+        swarm_max_steps: metadata_usize(metadata, &["swarm_max_steps"]).unwrap_or(100),
+        swarm_subagent_timeout_secs: metadata_u64(metadata, &["swarm_subagent_timeout_secs"])
+            .unwrap_or(300),
+        model: selected_model,
+        json: metadata_bool(metadata, &["json"]).unwrap_or(false),
+    }
 }
 
 fn parse_swarm_strategy(
@@ -1349,6 +1503,9 @@ async fn handle_task(
     let raw_agent = task_str(task, "agent_type")
         .or_else(|| task_str(task, "agent"))
         .unwrap_or("build");
+    let prompt = task_str(task, "prompt")
+        .or_else(|| task_str(task, "description"))
+        .unwrap_or(title);
 
     if raw_agent.eq_ignore_ascii_case("clone_repo") {
         let (status, result, error) =
@@ -1365,6 +1522,24 @@ async fn handle_task(
         )
         .await?;
         tracing::info!(task_id, status, "Clone task released");
+        return Ok(());
+    }
+
+    if is_forage_agent(raw_agent) {
+        let (status, result, error) =
+            match handle_forage_task(title, prompt, &metadata, selected_model.clone()).await {
+                Ok(message) => ("completed", Some(message), None),
+                Err(err) => {
+                    tracing::error!(task_id, error = %err, "Forage task failed");
+                    ("failed", None, Some(format!("Error: {}", err)))
+                }
+            };
+
+        release_task_result(
+            client, server, token, worker_id, task_id, status, result, error, None,
+        )
+        .await?;
+        tracing::info!(task_id, status, "Forage task released");
         return Ok(());
     }
 
@@ -1410,10 +1585,6 @@ async fn handle_task(
     if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
     }
-
-    let prompt = task_str(task, "prompt")
-        .or_else(|| task_str(task, "description"))
-        .unwrap_or(title);
 
     tracing::info!("Executing prompt: {}", prompt);
 
@@ -1541,6 +1712,17 @@ async fn handle_task(
 
     tracing::info!("Task released: {} with status: {}", task_id, status);
     Ok(())
+}
+
+async fn handle_forage_task(
+    title: &str,
+    prompt: &str,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    selected_model: Option<String>,
+) -> Result<String> {
+    let forage_args = build_forage_args(prompt, title, metadata, selected_model);
+    let summary = crate::forage::execute_with_summary(forage_args).await?;
+    Ok(summary.render_text())
 }
 
 async fn handle_clone_repo_task(
@@ -2712,4 +2894,89 @@ async fn sync_workspaces_from_server(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn metadata_lookup_reads_nested_forage_keys() {
+        let metadata = json!({
+            "forage": {
+                "execute": true,
+                "top": 5,
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert_eq!(metadata_bool(&metadata, &["execute"]), Some(true));
+        assert_eq!(metadata_usize(&metadata, &["top"]), Some(5));
+    }
+
+    #[test]
+    fn build_forage_args_defaults_prompt_to_moonshot_and_local_mode() {
+        let metadata = serde_json::Map::new();
+        let args = build_forage_args(
+            "Expand enterprise adoption in regulated markets",
+            "forage task",
+            &metadata,
+            Some("openrouter/z-ai/glm-5".to_string()),
+        );
+
+        assert_eq!(
+            args.moonshots,
+            vec!["Expand enterprise adoption in regulated markets".to_string()]
+        );
+        assert!(args.no_s3);
+        assert_eq!(args.model.as_deref(), Some("openrouter/z-ai/glm-5"));
+        assert_eq!(args.execution_engine, "run");
+    }
+
+    #[test]
+    fn build_forage_args_honors_nested_forage_configuration() {
+        let metadata = json!({
+            "forage": {
+                "top": 7,
+                "loop": true,
+                "max_cycles": 2,
+                "execute": true,
+                "no_s3": false,
+                "moonshots": ["Ship autonomous OKR execution", "Reduce operator toil"],
+                "moonshot_required": true,
+                "moonshot_min_alignment": "0.25",
+                "execution_engine": "swarm",
+                "run_timeout_secs": 1200,
+                "fail_fast": true,
+                "swarm_strategy": "stage",
+                "swarm_max_subagents": 4,
+                "swarm_max_steps": 42,
+                "swarm_subagent_timeout_secs": 180
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        let args = build_forage_args("fallback prompt", "title", &metadata, None);
+
+        assert_eq!(args.top, 7);
+        assert!(args.loop_mode);
+        assert_eq!(args.max_cycles, 2);
+        assert!(args.execute);
+        assert!(!args.no_s3);
+        assert_eq!(args.moonshots.len(), 2);
+        assert!(args.moonshot_required);
+        assert!((args.moonshot_min_alignment - 0.25).abs() < f64::EPSILON);
+        assert_eq!(args.execution_engine, "swarm");
+        assert_eq!(args.run_timeout_secs, 1200);
+        assert!(args.fail_fast);
+        assert_eq!(args.swarm_strategy, "stage");
+        assert_eq!(args.swarm_max_subagents, 4);
+        assert_eq!(args.swarm_max_steps, 42);
+        assert_eq!(args.swarm_subagent_timeout_secs, 180);
+    }
 }

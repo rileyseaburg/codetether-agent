@@ -13,6 +13,7 @@ pub mod cli;
 pub mod cognition;
 pub mod config;
 pub mod event_stream;
+pub mod forage;
 pub mod indexer;
 pub mod k8s;
 pub mod lsp;
