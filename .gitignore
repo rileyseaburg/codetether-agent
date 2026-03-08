@@ -33,3 +33,6 @@ jenkins-quantum-forge*.pem
 
 jenkinsfile.sh
 
+
+# Agent runtime artifacts (sessions, chat logs)
+.codetether-agent/

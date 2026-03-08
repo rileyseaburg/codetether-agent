@@ -420,6 +420,7 @@ impl BedrockProvider {
             "claude-opus-4.5" | "claude-4.5-opus" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
             "claude-opus-4.1" | "claude-4.1-opus" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
             "claude-opus-4" | "claude-4-opus" => "us.anthropic.claude-opus-4-20250514-v1:0",
+
             "claude-sonnet-4.6" | "claude-4.6-sonnet" | "claude-sonnet-4-6" => {
                 "us.anthropic.claude-sonnet-4-6-v1:0"
             }
@@ -760,9 +761,7 @@ impl BedrockProvider {
             || id.contains("minimax")
             || id.contains("gemma")
             || id.contains("cohere")
-            || id.contains("command")
-            || id.contains("nemotron")
-            || provider.to_lowercase().contains("amazon")
+            || id.contains("amazon")
         {
             128_000
         } else {
@@ -801,6 +800,11 @@ impl BedrockProvider {
             || id.contains("mixtral")
             || id.contains("qwen")
             || id.contains("kimi")
+            || id.contains("glm")
+            || id.contains("minimax")
+            || id.contains("gemma")
+            || id.contains("cohere")
+            || id.contains("amazon")
         {
             8_192
         } else {
