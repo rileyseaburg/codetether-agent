@@ -672,6 +672,9 @@ async fn main() -> anyhow::Result<()> {
                 result
             }
         }
+        Some(Command::GitCredentialHelper(args)) => {
+            a2a::git_credentials::run_git_credential_helper(&args).await
+        }
         Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
         Some(Command::Swarm(args)) => {

@@ -1,19 +1,22 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
+use crate::a2a::git_credentials::{configure_repo_git_auth, write_git_credential_helper_script};
 use crate::bus::AgentBus;
 use crate::cli::A2aArgs;
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::swarm_view::SwarmEvent;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use futures::StreamExt;
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::process::Command;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
@@ -141,6 +144,19 @@ struct CognitionLatestSnapshot {
     metadata: HashMap<String, serde_json::Value>,
 }
 
+#[derive(Debug, Deserialize)]
+struct RegisteredWorkspaceRecord {
+    id: String,
+    name: String,
+    path: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    agent_config: serde_json::Map<String, serde_json::Value>,
+    git_url: Option<String>,
+    git_branch: Option<String>,
+}
+
 // Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
@@ -148,6 +164,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         .name
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = generate_worker_id();
+    export_worker_runtime_env(server, &args.token, &worker_id);
 
     let codebases: Vec<String> = args
         .workspaces
@@ -202,6 +219,12 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     {
         let codebases = shared_codebases.lock().await.clone();
         register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+    }
+
+    if let Err(e) =
+        sync_workspaces_from_server(&client, server, &args.token, &shared_codebases).await
+    {
+        tracing::warn!(error = %e, "Initial workspace sync failed");
     }
 
     // Fetch pending tasks
@@ -287,6 +310,7 @@ pub async fn run_with_state(
         .name
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = generate_worker_id();
+    export_worker_runtime_env(server, &args.token, &worker_id);
 
     // Share worker_id with HTTP server
     server_state.set_worker_id(worker_id.clone()).await;
@@ -349,6 +373,12 @@ pub async fn run_with_state(
     {
         let codebases = shared_codebases.lock().await.clone();
         register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+    }
+
+    if let Err(e) =
+        sync_workspaces_from_server(&client, server, &args.token, &shared_codebases).await
+    {
+        tracing::warn!(error = %e, "Initial workspace sync failed");
     }
 
     // Mark as connected
@@ -445,6 +475,19 @@ pub fn generate_worker_id() -> String {
         chrono::Utc::now().timestamp(),
         rand::random::<u64>()
     )
+}
+
+fn export_worker_runtime_env(server: &str, token: &Option<String>, worker_id: &str) {
+    // SAFETY: The worker sets these process-wide variables once during startup before
+    // spawning Git helper child processes. They are required so Git credential helpers
+    // invoked by later shell/git commands can reach the control plane securely.
+    unsafe {
+        std::env::set_var("CODETETHER_SERVER", server);
+        std::env::set_var("CODETETHER_WORKER_ID", worker_id);
+        if let Some(token) = token {
+            std::env::set_var("CODETETHER_TOKEN", token);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1303,6 +1346,27 @@ async fn handle_task(
         .or_else(|| task_str(task, "model"))
         .or_else(|| metadata_lookup(&metadata, "model").and_then(|v| v.as_str()));
     let selected_model = raw_model.map(model_ref_to_provider_model);
+    let raw_agent = task_str(task, "agent_type")
+        .or_else(|| task_str(task, "agent"))
+        .unwrap_or("build");
+
+    if raw_agent.eq_ignore_ascii_case("clone_repo") {
+        let (status, result, error) =
+            match handle_clone_repo_task(client, server, token, worker_id, task, &metadata).await {
+                Ok(message) => ("completed", Some(message), None),
+                Err(err) => {
+                    tracing::error!(task_id, error = %err, "Clone task failed");
+                    ("failed", None, Some(format!("Error: {}", err)))
+                }
+            };
+
+        release_task_result(
+            client, server, token, worker_id, task_id, status, result, error, None,
+        )
+        .await?;
+        tracing::info!(task_id, status, "Clone task released");
+        return Ok(());
+    }
 
     // Resume existing session when requested; fall back to a fresh session if missing.
     let mut session = if let Some(ref sid) = resume_session_id {
@@ -1325,9 +1389,6 @@ async fn handle_task(
         Session::new().await?
     };
 
-    let raw_agent = task_str(task, "agent_type")
-        .or_else(|| task_str(task, "agent"))
-        .unwrap_or("build");
     // Normalize agent: only "build", "plan", and swarm types are valid.
     // Map deprecated/unknown agent types (e.g. "general", "explore") to "build".
     let agent_type = if is_swarm_agent(raw_agent) {
@@ -1465,12 +1526,262 @@ async fn handle_task(
         }
     };
 
-    // Release the task with full details
+    release_task_result(
+        client,
+        server,
+        token,
+        worker_id,
+        task_id,
+        status,
+        result,
+        error,
+        Some(session_id.unwrap_or_else(|| session.id.clone())),
+    )
+    .await?;
+
+    tracing::info!("Task released: {} with status: {}", task_id, status);
+    Ok(())
+}
+
+async fn handle_clone_repo_task(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    task: &serde_json::Value,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> Result<String> {
+    let workspace_id = metadata_str(metadata, &["workspace_id"])
+        .or_else(|| task_str(task, "workspace_id").map(|value| value.to_string()))
+        .ok_or_else(|| anyhow::anyhow!("Clone task is missing workspace_id metadata"))?;
+    let workspace = fetch_workspace_record(client, server, token, &workspace_id).await?;
+    let git_url = workspace
+        .git_url
+        .clone()
+        .or_else(|| metadata_str(metadata, &["git_url"]))
+        .ok_or_else(|| anyhow::anyhow!("Workspace {} is missing git_url", workspace_id))?;
+    let branch = workspace
+        .git_branch
+        .clone()
+        .or_else(|| metadata_str(metadata, &["git_branch"]))
+        .unwrap_or_else(|| "main".to_string());
+    let repo_path = resolve_workspace_clone_path(&workspace_id, &workspace.path);
+
+    if let Some(parent) = repo_path.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .with_context(|| format!("Failed to create repo parent {}", parent.display()))?;
+    }
+
+    let temp_helper_path =
+        git_clone_base_dir().join(format!(".{}-git-credential-helper", workspace_id));
+    write_git_credential_helper_script(&temp_helper_path, &workspace_id)?;
+
+    let clone_result = async {
+        let git_dir = repo_path.join(".git");
+        if git_dir.exists() {
+            configure_repo_git_auth(&repo_path, &workspace_id)?;
+            run_git_command_at(
+                Some(&repo_path),
+                vec!["fetch".to_string(), "origin".to_string(), branch.clone()],
+            )
+            .await?;
+            run_git_command_at(
+                Some(&repo_path),
+                vec!["checkout".to_string(), branch.clone()],
+            )
+            .await?;
+            run_git_command_at(
+                Some(&repo_path),
+                vec![
+                    "pull".to_string(),
+                    "--ff-only".to_string(),
+                    "origin".to_string(),
+                    branch.clone(),
+                ],
+            )
+            .await?;
+        } else {
+            if repo_path.exists() {
+                anyhow::bail!(
+                    "Clone target {} already exists but is not a Git repository",
+                    repo_path.display()
+                );
+            }
+
+            run_git_command_at(
+                None,
+                vec![
+                    "-c".to_string(),
+                    format!("credential.helper={}", temp_helper_path.display()),
+                    "-c".to_string(),
+                    "credential.useHttpPath=true".to_string(),
+                    "clone".to_string(),
+                    "--single-branch".to_string(),
+                    "--branch".to_string(),
+                    branch.clone(),
+                    git_url.clone(),
+                    repo_path.display().to_string(),
+                ],
+            )
+            .await?;
+            configure_repo_git_auth(&repo_path, &workspace_id)?;
+        }
+
+        register_cloned_workspace(client, server, token, worker_id, &workspace, &repo_path).await?;
+
+        Ok::<String, anyhow::Error>(format!(
+            "Repository ready at {} (branch: {})",
+            repo_path.display(),
+            branch
+        ))
+    }
+    .await;
+
+    let _ = tokio::fs::remove_file(&temp_helper_path).await;
+    clone_result
+}
+
+async fn fetch_workspace_record(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    workspace_id: &str,
+) -> Result<RegisteredWorkspaceRecord> {
+    let mut req = client.get(format!(
+        "{}/v1/agent/workspaces/{}",
+        server.trim_end_matches('/'),
+        workspace_id
+    ));
+    if let Some(token) = token {
+        req = req.bearer_auth(token);
+    }
+
+    let response = req
+        .send()
+        .await
+        .with_context(|| format!("Failed to load workspace {}", workspace_id))?;
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!(
+            "Failed to fetch workspace {} ({}): {}",
+            workspace_id,
+            status,
+            body
+        );
+    }
+
+    response
+        .json::<RegisteredWorkspaceRecord>()
+        .await
+        .with_context(|| format!("Failed to decode workspace {} response", workspace_id))
+}
+
+async fn register_cloned_workspace(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    workspace: &RegisteredWorkspaceRecord,
+    repo_path: &Path,
+) -> Result<()> {
+    let mut req = client.post(format!(
+        "{}/v1/agent/workspaces",
+        server.trim_end_matches('/')
+    ));
+    if let Some(token) = token {
+        req = req.bearer_auth(token);
+    }
+
+    let response = req
+        .json(&serde_json::json!({
+            "name": workspace.name,
+            "path": repo_path.display().to_string(),
+            "description": workspace.description,
+            "agent_config": workspace.agent_config,
+            "worker_id": worker_id,
+        }))
+        .send()
+        .await
+        .context("Failed to register cloned workspace with server")?;
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!(
+            "Failed to register cloned workspace {} ({}): {}",
+            workspace.id,
+            status,
+            body
+        );
+    }
+
+    Ok(())
+}
+
+fn resolve_workspace_clone_path(workspace_id: &str, preferred_path: &str) -> PathBuf {
+    let preferred = preferred_path.trim();
+    if preferred.is_empty() {
+        return git_clone_base_dir().join(workspace_id);
+    }
+
+    let preferred_path = PathBuf::from(preferred);
+    let legacy_root = Path::new("/var/lib/codetether/repos");
+    let configured_root = git_clone_base_dir();
+    if preferred_path.starts_with(legacy_root)
+        && preferred_path.file_name().and_then(|name| name.to_str()) == Some(workspace_id)
+        && configured_root != legacy_root
+    {
+        return configured_root.join(workspace_id);
+    }
+
+    preferred_path
+}
+
+fn git_clone_base_dir() -> PathBuf {
+    std::env::var("GIT_CLONE_BASE")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/var/lib/codetether/repos"))
+}
+
+async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
+    let mut command = Command::new("git");
+    if let Some(dir) = current_dir {
+        command.current_dir(dir);
+    }
+
+    let output = command
+        .args(args.iter().map(String::as_str))
+        .output()
+        .await
+        .context("Failed to execute git command")?;
+
+    if output.status.success() {
+        return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+    }
+
+    Err(anyhow::anyhow!(
+        "Git command failed: {}",
+        String::from_utf8_lossy(&output.stderr).trim()
+    ))
+}
+
+async fn release_task_result(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    task_id: &str,
+    status: &str,
+    result: Option<String>,
+    error: Option<String>,
+    session_id: Option<String>,
+) -> Result<()> {
     let mut req = client
         .post(format!("{}/v1/worker/tasks/release", server))
         .header("X-Worker-ID", worker_id);
-    if let Some(t) = token {
-        req = req.bearer_auth(t);
+    if let Some(token) = token {
+        req = req.bearer_auth(token);
     }
 
     req.json(&serde_json::json!({
@@ -1478,12 +1789,12 @@ async fn handle_task(
         "status": status,
         "result": result,
         "error": error,
-        "session_id": session_id.unwrap_or_else(|| session.id.clone()),
+        "session_id": session_id,
     }))
     .send()
-    .await?;
+    .await
+    .context("Failed to release task result")?;
 
-    tracing::info!("Task released: {} with status: {}", task_id, status);
     Ok(())
 }
 
@@ -2273,6 +2584,36 @@ fn env_u64(name: &str, default: u64) -> u64 {
         .unwrap_or(default)
 }
 
+fn maybe_configure_repo_git_auth_from_entry(entry: &serde_json::Value) {
+    let Some(workspace_id) = entry.get("id").and_then(|v| v.as_str()) else {
+        return;
+    };
+    let Some(path) = entry.get("path").and_then(|v| v.as_str()) else {
+        return;
+    };
+    let has_git_remote = entry
+        .get("git_url")
+        .and_then(|v| v.as_str())
+        .is_some_and(|value| !value.trim().is_empty());
+    if !has_git_remote {
+        return;
+    }
+
+    let repo_path = Path::new(path);
+    if !repo_path.join(".git").exists() {
+        return;
+    }
+
+    if let Err(error) = configure_repo_git_auth(repo_path, workspace_id) {
+        tracing::debug!(
+            workspace_id,
+            path,
+            error = %error,
+            "Workspace sync could not install Git credential helper"
+        );
+    }
+}
+
 /// Start a background task that periodically fetches the server's workspace list
 /// and auto-registers any whose path exists on this machine's filesystem.
 /// This lets workers pick up new codebases without restarting.
@@ -2325,16 +2666,21 @@ async fn sync_workspaces_from_server(
     let data: serde_json::Value = res.json().await?;
 
     // Server returns { workspaces: [...] } or { codebases: [...] }
-    let entries = data["workspaces"]
-        .as_array()
-        .or_else(|| data["codebases"].as_array())
-        .cloned()
-        .unwrap_or_default();
+    let entries = if let Some(arr) = data.as_array() {
+        arr.clone()
+    } else {
+        data["workspaces"]
+            .as_array()
+            .or_else(|| data["codebases"].as_array())
+            .cloned()
+            .unwrap_or_default()
+    };
 
     let mut new_paths: Vec<String> = Vec::new();
     {
         let current = shared_codebases.lock().await;
         for entry in &entries {
+            maybe_configure_repo_git_auth_from_entry(entry);
             let path = match entry["path"].as_str().filter(|p| !p.is_empty()) {
                 Some(p) => p,
                 None => continue,

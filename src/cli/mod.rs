@@ -66,6 +66,10 @@ pub enum Command {
     /// A2A worker mode (explicit - also the default)
     Worker(A2aArgs),
 
+    /// Internal command: Git credential helper for worker-managed repositories.
+    #[command(hide = true)]
+    GitCredentialHelper(GitCredentialHelperArgs),
+
     /// Spawn an A2A agent runtime with auto card registration and peer discovery
     Spawn(SpawnArgs),
 
@@ -308,6 +312,28 @@ pub struct A2aArgs {
     /// Disable the worker HTTP server (for environments without K8s)
     #[arg(long, env = "CODETETHER_WORKER_HTTP_DISABLED")]
     pub no_http_server: bool,
+}
+
+#[derive(Parser, Debug, Clone)]
+pub struct GitCredentialHelperArgs {
+    /// Workspace/codebase ID for which Git credentials should be minted.
+    #[arg(long = "workspace-id", alias = "codebase-id")]
+    pub workspace_id: String,
+
+    /// CodeTether server URL.
+    #[arg(long, env = "CODETETHER_SERVER")]
+    pub server: Option<String>,
+
+    /// CodeTether bearer token.
+    #[arg(long, env = "CODETETHER_TOKEN")]
+    pub token: Option<String>,
+
+    /// Worker ID requesting the credential.
+    #[arg(long, env = "CODETETHER_WORKER_ID")]
+    pub worker_id: Option<String>,
+
+    /// Git helper operation (get/store/erase). Git passes this positionally.
+    pub operation: Option<String>,
 }
 
 #[derive(Parser, Debug, Clone)]

@@ -9,6 +9,7 @@
 
 pub mod bridge;
 pub mod client;
+pub mod git_credentials;
 pub mod grpc;
 pub mod server;
 pub mod spawn;
