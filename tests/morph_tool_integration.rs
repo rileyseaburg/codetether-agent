@@ -105,16 +105,39 @@ fn restore_backend_env(prev_backend: Option<String>) {
     }
 }
 
+/// RAII guard to restore environment variable on drop
+struct EnvGuard {
+    key: &'static str,
+    prev_value: Option<String>,
+}
+
+impl EnvGuard {
+    fn new(key: &'static str) -> Self {
+        let prev_value = std::env::var(key).ok();
+        Self { key, prev_value }
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        unsafe {
+            match &self.prev_value {
+                Some(v) => std::env::set_var(self.key, v),
+                None => std::env::remove_var(self.key),
+            }
+        }
+    }
+}
+
 #[test]
 fn morph_backend_is_opt_in() {
-    let prev_backend = std::env::var("CODETETHER_MORPH_TOOL_BACKEND").ok();
+    let _guard = EnvGuard::new("CODETETHER_MORPH_TOOL_BACKEND");
     unsafe {
         std::env::remove_var("CODETETHER_MORPH_TOOL_BACKEND");
     }
 
     assert!(!morph_backend::should_use_morph_backend());
-
-    restore_backend_env(prev_backend);
+    // _guard restores env var on drop, even if assertion panics
 }
 
 #[tokio::test]
