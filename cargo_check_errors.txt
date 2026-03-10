@@ -1,0 +1,554 @@
+   Compiling codetether-agent v4.1.3 (/home/riley/A2A-Server-MCP/codetether-agent)
+warning: codetether-agent@4.1.3: Using protoc from /home/riley/.local/bin/protoc
+error[E0432]: unresolved imports `self::helper::provider::known_good_router_candidates`, `self::helper::provider::choose_router_target`, `self::helper::provider::enrich_tool_input_with_runtime_context`, `self::helper::provider::is_interactive_tool`, `self::helper::provider::is_local_cuda_provider`, `self::helper::provider::local_cuda_light_system_prompt`
+  --> src/session/mod.rs:37:233
+   |
+37 | ...e, known_good_router_candidates, choose_router_target, enrich_tool_input_with_runtime_context, is_interactive_tool, is_local_cuda_provider, local_cuda_light_system_prompt};
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `local_cuda_light_system_prompt` in `session::helper::provider`
+   |       |                             |                     |                                       |                    |
+   |       |                             |                     |                                       |                    no `is_local_cuda_provider` in `session::helper::provider`
+   |       |                             |                     |                                       no `is_interactive_tool` in `session::helper::provider`
+   |       |                             |                     no `enrich_tool_input_with_runtime_context` in `session::helper::provider`
+   |       |                             no `choose_router_target` in `session::helper::provider`
+   |       no `known_good_router_candidates` in `session::helper::provider`
+
+warning: unused import: `ToolDefinition`
+ --> src/session/helper/stream.rs:1:78
+  |
+1 | ...Message, Role, StreamChunk, ToolDefinition, Usage};
+  |                                ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `serde_json::Value`
+ --> src/session/helper/stream.rs:5:5
+  |
+5 | use serde_json::Value;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+ --> src/session/helper/stream.rs:7:5
+  |
+7 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: unused import: `Role`
+ --> src/session/helper/error.rs:1:45
+  |
+1 | use crate::provider::{ContentPart, Message, Role};
+  |                                             ^^^^
+
+warning: unused imports: `CompletionResponse`, `FinishReason`, and `StreamChunk`
+  --> src/session/mod.rs:11:5
+   |
+11 |     CompletionResponse, ContentPart, FinishReason, Message, Role, StreamChunk, T...
+   |     ^^^^^^^^^^^^^^^^^^               ^^^^^^^^^^^^                 ^^^^^^^^^^^
+
+warning: unused import: `stream::BoxStream`
+  --> src/session/mod.rs:19:26
+   |
+19 | use futures::{StreamExt, stream::BoxStream};
+   |                          ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `regex::Regex`
+  --> src/session/mod.rs:20:5
+   |
+20 | use regex::Regex;
+   |     ^^^^^^^^^^^^
+
+warning: unused import: `Value`
+  --> src/session/mod.rs:22:18
+   |
+22 | use serde_json::{Value, json};
+   |                  ^^^^^
+
+warning: unused import: `std::collections::HashMap`
+  --> src/session/mod.rs:23:5
+   |
+23 | use std::collections::HashMap;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Path`
+  --> src/session/mod.rs:24:17
+   |
+24 | use std::path::{Path, PathBuf};
+   |                 ^^^^
+
+warning: unused import: `OnceLock`
+  --> src/session/mod.rs:25:22
+   |
+25 | use std::sync::{Arc, OnceLock};
+   |                      ^^^^^^^^
+
+warning: unused imports: `extract_candidate_file_paths`, `latest_user_text`, and `role_label`
+  --> src/session/mod.rs:31:48
+   |
+31 | ...t, latest_user_text, extract_candidate_file_paths, truncate_with_ellipsis, role_label};
+   |       ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^                          ^^^^^^^^^^
+
+warning: unused imports: `extract_markup_tool_calls` and `tool_call_markup_re`
+  --> src/session/mod.rs:33:28
+   |
+33 | ...::{extract_markup_tool_calls, normalize_textual_tool_calls, tool_call_markup_re};
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^                                ^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `assistant_offered_next_step`, `is_affirmative_build_followup`, `looks_like_build_execution_request`, and `looks_like_proposed_change`
+  --> src/session/mod.rs:34:109
+   |
+34 | ...l, assistant_offered_next_step, is_affirmative_build_followup, looks_like_build_execution_request, looks_like_proposed_change};
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `estimate_tokens_for_part` and `estimate_tokens_for_tools`
+  --> src/session/mod.rs:35:84
+   |
+35 | ...s, estimate_tokens_for_part, estimate_tokens_for_messages, estimate_tokens_for_tools, e...
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `assistant_claims_imminent_tool_use`, `choose_default_provider`, and `provider_has_flaky_native_tool_calling`
+  --> src/session/mod.rs:37:30
+   |
+37 | ...::{provider_has_flaky_native_tool_calling, assistant_claims_imminent_tool_use, should_retry_missing_native_tool_call, choose_default_provider, r...
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `is_transient_error`
+  --> src/swarm/executor.rs:16:54
+   |
+16 |     subtask::{SubTask, SubTaskResult, SubTaskStatus, is_transient_error},
+   |                                                      ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::time::Instant`
+ --> src/tui/app/state.rs:1:5
+  |
+1 | use std::time::Instant;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Deserialize` and `Serialize`
+ --> src/tui/app/state.rs:2:13
+  |
+2 | use serde::{Deserialize, Serialize};
+  |             ^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused import: `crate::tui::swarm_view::AgentMessageEntry`
+ --> src/tui/app/state.rs:5:5
+  |
+5 | use crate::tui::swarm_view::AgentMessageEntry;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::tui::swarm_view::SubTaskInfo`
+ --> src/tui/app/state.rs:6:5
+  |
+6 | use crate::tui::swarm_view::SubTaskInfo;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::tui::swarm_view::AgentToolCallDetail`
+ --> src/tui/app/state.rs:7:5
+  |
+7 | use crate::tui::swarm_view::AgentToolCallDetail;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `SubTaskStatus` and `SubTask`
+ --> src/tui/app/state.rs:8:29
+  |
+8 | use crate::swarm::subtask::{SubTask, SubTaskStatus};
+  |                             ^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused import: `crate::swarm::SwarmStats`
+ --> src/tui/app/state.rs:9:5
+  |
+9 | use crate::swarm::SwarmStats;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `RalphStoryInfo` and `RalphStoryStatus`
+  --> src/tui/app/state.rs:10:30
+   |
+10 | use crate::tui::ralph_view::{RalphStoryInfo, RalphStoryStatus};
+   |                              ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `tokio::sync::mpsc`
+ --> src/tui/app/run.rs:1:5
+  |
+1 | use tokio::sync::mpsc;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::time::Instant`
+ --> src/tui/app/run.rs:2:5
+  |
+2 | use std::time::Instant;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SessionEvent`
+ --> src/tui/app/run.rs:8:35
+  |
+8 | use crate::tui::app::state::{App, SessionEvent};
+  |                                   ^^^^^^^^^^^^
+
+warning: unused imports: `Cell`, `Clear`, `Color`, `Line`, `ListItem`, `List`, `Modifier`, `Rect`, `Row`, `ScrollbarOrientation`, `ScrollbarState`, `Scrollbar`, `Span`, `Style`, `Stylize`, `Table`, `Text`, `Wrap`, and `backend::Backend`
+ --> src/tui/ui/main.rs:2:5
+  |
+2 |     backend::Backend,
+  |     ^^^^^^^^^^^^^^^^
+3 |     layout::{Constraint, Direction, Layout, Rect},
+  |                                             ^^^^
+4 |     style::{Color, Modifier, Style, Stylize},
+  |             ^^^^^  ^^^^^^^^  ^^^^^  ^^^^^^^
+5 |     text::{Line, Span, Text},
+  |            ^^^^  ^^^^  ^^^^
+6 |     widgets::{
+7 |         Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation,
+  |                         ^^^^^  ^^^^  ^^^^^^^^             ^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+8 |         ScrollbarState, Table, Cell, Row, Wrap,
+  |         ^^^^^^^^^^^^^^  ^^^^^  ^^^^  ^^^  ^^^^
+
+warning: unused import: `crate::tui::chat::message::*`
+  --> src/tui/ui/main.rs:13:5
+   |
+13 | use crate::tui::chat::message::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::tui::models::*`
+  --> src/tui/ui/main.rs:14:5
+   |
+14 | use crate::tui::models::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::tui::constants::*`
+  --> src/tui/ui/main.rs:15:5
+   |
+15 | use crate::tui::constants::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `PathBuf` and `Path`
+ --> src/tui/utils/helpers.rs:1:17
+  |
+1 | use std::path::{Path, PathBuf};
+  |                 ^^^^  ^^^^^^^
+
+error[E0425]: cannot find function `list_tools_bootstrap_definition` in this scope
+   --> src/session/mod.rs:534:18
+    |
+534 |             vec![list_tools_bootstrap_definition()]
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `inject_tool_prompt` in this scope
+   --> src/session/mod.rs:553:13
+    |
+553 | ...   inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
+    |       ^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `build_proactive_lsp_context_message` in this scope
+   --> src/session/mod.rs:595:41
+    |
+595 | ...e = build_proactive_lsp_context_message(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0282]: type annotations needed for `std::option::Option<_>`
+   --> src/session/mod.rs:595:17
+    |
+595 | ...   let proactive_lsp_message = build_proactive_lsp_context_message(
+    |           ^^^^^^^^^^^^^^^^^^^^^
+...
+618 | ...           messages.push(msg.clone());
+    |                             --- type must be known at this point
+    |
+help: consider giving `proactive_lsp_message` an explicit type, where the placeholders `_` are specified
+    |
+595 |             let proactive_lsp_message: std::option::Option<T> = build_proactive_lsp_context_message(
+    |                                      ++++++++++++++++++++++++
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+   --> src/session/mod.rs:636:44
+    |
+636 | ...empt == 1 && is_prompt_too_long_error(&e, &self.id) {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^     -------- unexpected argument #2 of type `&std::string::String`
+    |
+note: function defined here
+   --> src/session/helper/error.rs:62:8
+    |
+ 62 | pub fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove the extra argument
+    |
+636 -                         if attempt == 1 && is_prompt_too_long_error(&e, &self.id) {
+636 +                         if attempt == 1 && is_prompt_too_long_error(&e) {
+    |
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+   --> src/session/mod.rs:714:16
+    |
+714 |               if should_force_build_tool_first_retry(
+    |  ________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+715 | |                 &self.agent,
+716 | |                 build_mode_tool_retry_count,
+717 | |                 &tool_definitions,
+...   |
+721 | |                 !tool_calls.is_empty(),
+722 | |             ) {
+    | |_____________- argument #8 of type `u8` is missing
+    |
+note: function defined here
+   --> src/session/helper/build.rs:51:8
+    |
+ 51 | pub fn should_force_build_tool_first_retry(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 59 |     build_mode_tool_first_max_retries: u8,
+    |     -------------------------------------
+help: provide the argument
+    |
+714 |             if should_force_build_tool_first_retry(
+...
+721 |                 !tool_calls.is_empty(),
+722 ~                 /* u8 */,
+723 ~             ) {
+    |
+
+error[E0061]: this function takes 7 arguments but 6 arguments were supplied
+   --> src/session/mod.rs:738:16
+    |
+738 |               if should_retry_missing_native_tool_call(
+    |  ________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+739 | |                 selected_provider,
+740 | |                 &model,
+741 | |                 native_tool_promise_retry_count,
+...   |
+744 | |                 !tool_calls.is_empty(),
+745 | |             ) {
+    | |_____________- argument #7 of type `u8` is missing
+    |
+note: function defined here
+   --> src/session/helper/provider.rs:54:8
+    |
+ 54 | pub fn should_retry_missing_native_tool_call(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 61 |     native_tool_promise_retry_max_retries: u8,
+    |     -----------------------------------------
+help: provide the argument
+    |
+738 |             if should_retry_missing_native_tool_call(
+...
+744 |                 !tool_calls.is_empty(),
+745 ~                 /* u8 */,
+746 ~             ) {
+    |
+
+error[E0425]: cannot find function `normalize_tool_call_for_execution` in this scope
+   --> src/session/mod.rs:872:21
+    |
+872 | ...   normalize_tool_call_for_execution(&tool_name, &tool_input);
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `list_tools_bootstrap_output` in this scope
+   --> src/session/mod.rs:876:35
+    |
+876 | ...ntent = list_tools_bootstrap_output(&tool_definitions, &tool_input);
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0282]: type annotations needed
+   --> src/session/mod.rs:895:40
+    |
+895 | ...                   tool_name: tool_name.clone(),
+    |                                  ^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+   --> src/session/mod.rs:896:40
+    |
+896 | ...                   arguments: tool_input.clone(),
+    |                                  ^^^^^^^^^^ cannot infer type
+
+error[E0425]: cannot find function `detect_stub_in_tool_input` in this scope
+   --> src/session/mod.rs:913:39
+    |
+913 | ...eason) = detect_stub_in_tool_input(&tool_name, &tool_input) {
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `is_codesearch_no_match_output` in this scope
+   --> src/session/mod.rs:999:21
+    |
+999 | ...   is_codesearch_no_match_output(&tool_name, success, &content);
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `list_tools_bootstrap_definition` in this scope
+    --> src/session/mod.rs:1388:18
+     |
+1388 |             vec![list_tools_bootstrap_definition()]
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `inject_tool_prompt` in this scope
+    --> src/session/mod.rs:1404:13
+     |
+1404 | ...   inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
+     |       ^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `build_proactive_lsp_context_message` in this scope
+    --> src/session/mod.rs:1446:41
+     |
+1446 | ...e = build_proactive_lsp_context_message(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0282]: type annotations needed for `std::option::Option<_>`
+    --> src/session/mod.rs:1446:17
+     |
+1446 | ...   let proactive_lsp_message = build_proactive_lsp_context_message(
+     |           ^^^^^^^^^^^^^^^^^^^^^
+...
+1463 | ...       messages.push(msg.clone());
+     |                         --- type must be known at this point
+     |
+help: consider giving `proactive_lsp_message` an explicit type, where the placeholders `_` are specified
+     |
+1446 |             let proactive_lsp_message: std::option::Option<T> = build_proactive_lsp_context_message(
+     |                                      ++++++++++++++++++++++++
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+    --> src/session/mod.rs:1492:44
+     |
+1492 | ...pt == 1 && is_prompt_too_long_error(&e, &self.id) {
+     |               ^^^^^^^^^^^^^^^^^^^^^^^^     -------- unexpected argument #2 of type `&std::string::String`
+     |
+note: function defined here
+    --> src/session/helper/error.rs:62:8
+     |
+  62 | pub fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove the extra argument
+     |
+1492 -                         if attempt == 1 && is_prompt_too_long_error(&e, &self.id) {
+1492 +                         if attempt == 1 && is_prompt_too_long_error(&e) {
+     |
+
+error[E0282]: type annotations needed
+    --> src/session/mod.rs:1512:47
+     |
+1512 | ...                   messages.push(msg.clone());
+     |                                     ^^^ cannot infer type
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+    --> src/session/mod.rs:1592:16
+     |
+1592 |               if should_force_build_tool_first_retry(
+     |  ________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+1593 | |                 &self.agent,
+1594 | |                 build_mode_tool_retry_count,
+1595 | |                 &tool_definitions,
+...    |
+1599 | |                 !tool_calls.is_empty(),
+1600 | |             ) {
+     | |_____________- argument #8 of type `u8` is missing
+     |
+note: function defined here
+    --> src/session/helper/build.rs:51:8
+     |
+  51 | pub fn should_force_build_tool_first_retry(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  59 |     build_mode_tool_first_max_retries: u8,
+     |     -------------------------------------
+help: provide the argument
+     |
+1592 |             if should_force_build_tool_first_retry(
+ ...
+1599 |                 !tool_calls.is_empty(),
+1600 ~                 /* u8 */,
+1601 ~             ) {
+     |
+
+error[E0061]: this function takes 7 arguments but 6 arguments were supplied
+    --> src/session/mod.rs:1616:16
+     |
+1616 |               if should_retry_missing_native_tool_call(
+     |  ________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+1617 | |                 selected_provider,
+1618 | |                 &model,
+1619 | |                 native_tool_promise_retry_count,
+...    |
+1622 | |                 !tool_calls.is_empty(),
+1623 | |             ) {
+     | |_____________- argument #7 of type `u8` is missing
+     |
+note: function defined here
+    --> src/session/helper/provider.rs:54:8
+     |
+  54 | pub fn should_retry_missing_native_tool_call(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  61 |     native_tool_promise_retry_max_retries: u8,
+     |     -----------------------------------------
+help: provide the argument
+     |
+1616 |             if should_retry_missing_native_tool_call(
+ ...
+1622 |                 !tool_calls.is_empty(),
+1623 ~                 /* u8 */,
+1624 ~             ) {
+     |
+
+error[E0425]: cannot find function `normalize_tool_call_for_execution` in this scope
+    --> src/session/mod.rs:1771:21
+     |
+1771 | ...   normalize_tool_call_for_execution(&tool_name, &tool_input);
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0282]: type annotations needed
+    --> src/session/mod.rs:1775:31
+     |
+1775 |                         name: tool_name.clone(),
+     |                               ^^^^^^^^^ cannot infer type
+
+error[E0425]: cannot find function `list_tools_bootstrap_output` in this scope
+    --> src/session/mod.rs:1783:35
+     |
+1783 | ...ntent = list_tools_bootstrap_output(&tool_definitions, &tool_input);
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0282]: type annotations needed
+    --> src/session/mod.rs:1772:32
+     |
+1772 | ...    let args_str = serde_json::to_string(&tool_input).unwrap_or_def...
+     |                       ^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `to_string`
+...
+1810 | ...                arguments: tool_input.clone(),
+     |                               ---------- type must be known at this point
+     |
+help: consider specifying the generic argument
+     |
+1772 |                 let args_str = serde_json::to_string::<T>(&tool_input).unwrap_or_default();
+     |                                                     +++++
+
+error[E0425]: cannot find function `detect_stub_in_tool_input` in this scope
+    --> src/session/mod.rs:1835:39
+     |
+1835 | ...eason) = detect_stub_in_tool_input(&tool_name, &tool_input) {
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `is_codesearch_no_match_output` in this scope
+    --> src/session/mod.rs:1927:21
+     |
+1927 | ...   is_codesearch_no_match_output(&tool_name, success, &content);
+     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+warning: unused variable: `was_retried`
+    --> src/swarm/executor.rs:1261:29
+     |
+1261 |                         let was_retried = attempt > 0;
+     |                             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_was_retried`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `was_retried`
+    --> src/swarm/executor.rs:1308:29
+     |
+1308 |                         let was_retried = attempt > 0;
+     |                             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_was_retried`
+
+warning: unused variable: `i`
+   --> src/tui/symbol_search.rs:181:16
+    |
+181 |         .map(|(i, sym)| {
+    |                ^ help: if this is intentional, prefix it with an underscore: `_i`
+
+Some errors have detailed explanations: E0061, E0282, E0425, E0432.
+For more information about an error, try `rustc --explain E0061`.
+warning: `codetether-agent` (lib) generated 36 warnings
+warning: codetether-agent@4.1.3: Using protoc from /home/riley/.local/bin/protoc
+error: could not compile `codetether-agent` (lib) due to 28 previous errors; 36 warnings emitted

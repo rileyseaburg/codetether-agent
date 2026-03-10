@@ -3,11 +3,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ViewMode {
     Chat,
+    Sessions,
     Swarm,
     Ralph,
-    Sessions,
+    Bus,
     Help,
     Settings,
+    Lsp,
+    Rlm,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -47,7 +50,7 @@ pub struct WorkspaceSnapshot {
     pub captured_at: std::time::Instant,
 }
 
-pub enum WorkspaceEntryKind { File, Directory }
-
-// Re-export specific events if they were previously in mod.rs
-pub use crate::tui::app::state::{SessionEvent, SwarmEvent, RalphEvent};
+pub enum WorkspaceEntryKind {
+    File,
+    Directory,
+}
