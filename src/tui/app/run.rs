@@ -166,6 +166,42 @@ async fn refresh_symbol_search(app: &mut App) {
     }
 }
 
+async fn handle_slash_command(app: &mut App, cwd: &std::path::Path, command: &str) {
+    match command.trim() {
+        "/help" | "/?" => app.state.set_view_mode(ViewMode::Help),
+        "/sessions" | "/session" => {
+            refresh_sessions(app, cwd).await;
+            app.state.set_view_mode(ViewMode::Sessions);
+            app.state.status = "Session picker".to_string();
+        }
+        "/swarm" => app.state.set_view_mode(ViewMode::Swarm),
+        "/ralph" => app.state.set_view_mode(ViewMode::Ralph),
+        "/bus" | "/logs" => app.state.set_view_mode(ViewMode::Bus),
+        "/settings" => app.state.set_view_mode(ViewMode::Settings),
+        "/lsp" => app.state.set_view_mode(ViewMode::Lsp),
+        "/rlm" => app.state.set_view_mode(ViewMode::Rlm),
+        "/chat" => return_to_chat(app),
+        "/symbols" | "/symbol" => {
+            app.state.symbol_search.open();
+            app.state.status = "Symbol search".to_string();
+        }
+        "/new" => {
+            app.state.messages.clear();
+            app.state.chat_scroll = 0;
+            app.state.status = "New chat buffer".to_string();
+            app.state.set_view_mode(ViewMode::Chat);
+        }
+        "/keys" => {
+            app.state.status =
+                "Slash commands: /help /sessions /swarm /ralph /bus /settings /lsp /rlm /symbols /chat /new"
+                    .to_string();
+        }
+        other => {
+            app.state.status = format!("Unknown command: {other}");
+        }
+    }
+}
+
 pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
     if let Some(project) = project {
         std::env::set_current_dir(&project)?;
@@ -208,7 +244,7 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
     sync_messages_from_session(&mut app, &session);
     refresh_sessions(&mut app, &cwd).await;
     if app.state.messages.is_empty() {
-        app.state.status = "Ready — type a message and press Enter.".to_string();
+        app.state.status = "Ready — type a message, or use /help for commands.".to_string();
     } else {
         app.state.status = "Loaded previous workspace session".to_string();
     }
@@ -344,22 +380,6 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
                 Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
                     KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
                     KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
-                    KeyCode::F(1) => app.state.set_view_mode(ViewMode::Help),
-                    KeyCode::F(2) => {
-                        if app.state.view_mode == ViewMode::Sessions {
-                            return_to_chat(&mut app);
-                        } else {
-                            refresh_sessions(&mut app, &cwd).await;
-                            app.state.set_view_mode(ViewMode::Sessions);
-                            app.state.status = "Session picker".to_string();
-                        }
-                    }
-                    KeyCode::F(3) => app.state.set_view_mode(ViewMode::Swarm),
-                    KeyCode::F(4) => app.state.set_view_mode(ViewMode::Ralph),
-                    KeyCode::F(5) => app.state.set_view_mode(ViewMode::Bus),
-                    KeyCode::F(6) => app.state.set_view_mode(ViewMode::Settings),
-                    KeyCode::F(7) => app.state.set_view_mode(ViewMode::Lsp),
-                    KeyCode::F(8) => app.state.set_view_mode(ViewMode::Rlm),
                     KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.state.symbol_search.open();
                         app.state.status = "Symbol search".to_string();
@@ -379,9 +399,7 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
                             }
                         }
                     }
-                    KeyCode::Up if symbol_search_active(&app) => {
-                        app.state.symbol_search.select_prev();
-                    }
+                    KeyCode::Up if symbol_search_active(&app) => app.state.symbol_search.select_prev(),
                     KeyCode::Up => match app.state.view_mode {
                         ViewMode::Sessions => app.state.sessions_select_prev(),
                         ViewMode::Swarm => {
@@ -407,9 +425,7 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
                         }
                         _ => app.state.scroll_up(1),
                     },
-                    KeyCode::Down if symbol_search_active(&app) => {
-                        app.state.symbol_search.select_next();
-                    }
+                    KeyCode::Down if symbol_search_active(&app) => app.state.symbol_search.select_next(),
                     KeyCode::Down => match app.state.view_mode {
                         ViewMode::Sessions => app.state.sessions_select_next(),
                         ViewMode::Swarm => {
@@ -536,7 +552,12 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
                                 app.state.status = "Still processing previous request…".to_string();
                             } else {
                                 let prompt = app.state.input.trim().to_string();
-                                if !prompt.is_empty() {
+                                if prompt.starts_with('/') {
+                                    handle_slash_command(&mut app, &cwd, &prompt).await;
+                                    app.state.input.clear();
+                                    app.state.input_cursor = 0;
+                                    app.state.input_scroll = 0;
+                                } else if !prompt.is_empty() {
                                     app.state
                                         .messages
                                         .push(ChatMessage::new(MessageType::User, prompt.clone()));
@@ -579,6 +600,11 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
                             refresh_symbol_search(&mut app).await;
                         } else if app.state.view_mode == ViewMode::Chat && !app.state.processing {
                             app.state.delete_backspace();
+                            if app.state.input.is_empty() {
+                                app.state.input_mode = InputMode::Normal;
+                            } else if app.state.input.starts_with('/') {
+                                app.state.input_mode = InputMode::Command;
+                            }
                         }
                     }
                     KeyCode::Char('g') if app.state.view_mode == ViewMode::Bus => {
@@ -608,7 +634,13 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
                             && !key.modifiers.contains(KeyModifiers::ALT)
                             && !app.state.processing
                         {
-                            app.state.input_mode = InputMode::Editing;
+                            app.state.input_mode = if app.state.input.is_empty() && c == '/' {
+                                InputMode::Command
+                            } else if app.state.input.starts_with('/') || c == '/' {
+                                InputMode::Command
+                            } else {
+                                InputMode::Editing
+                            };
                             app.state.insert_char(c);
                         }
                     }

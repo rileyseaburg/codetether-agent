@@ -12,7 +12,7 @@ pub fn render_sessions_summary(f: &mut Frame, area: Rect, count: usize, selected
         Line::from(format!("Sessions found: {count}")),
         Line::from(format!("Selected index: {selected}")),
         Line::from(""),
-        Line::from("Press F2 to open the full session picker from chat."),
+        Line::from("Use /sessions from chat to open the full session picker."),
     ];
 
     let widget = Paragraph::new(lines)

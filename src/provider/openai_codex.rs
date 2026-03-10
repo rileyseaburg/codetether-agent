@@ -839,6 +839,7 @@ impl OpenAiCodexProvider {
 
     fn convert_messages_to_responses_input(messages: &[Message]) -> Vec<Value> {
         let mut input = Vec::new();
+        let mut known_tool_call_ids = std::collections::HashSet::new();
 
         for msg in messages {
             match msg.role {
@@ -894,6 +895,7 @@ impl OpenAiCodexProvider {
                             ..
                         } = part
                         {
+                            known_tool_call_ids.insert(id.clone());
                             input.push(json!({
                                 "type": "function_call",
                                 "call_id": id,
@@ -910,11 +912,18 @@ impl OpenAiCodexProvider {
                             content,
                         } = part
                         {
-                            input.push(json!({
-                                "type": "function_call_output",
-                                "call_id": tool_call_id,
-                                "output": content,
-                            }));
+                            if known_tool_call_ids.contains(tool_call_id) {
+                                input.push(json!({
+                                    "type": "function_call_output",
+                                    "call_id": tool_call_id,
+                                    "output": content,
+                                }));
+                            } else {
+                                tracing::warn!(
+                                    tool_call_id = %tool_call_id,
+                                    "Skipping orphaned function_call_output while building Codex responses input"
+                                );
+                            }
                         }
                     }
                 }

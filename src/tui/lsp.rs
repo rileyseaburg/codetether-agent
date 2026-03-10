@@ -23,7 +23,7 @@ pub fn render_lsp(f: &mut Frame, area: Rect, cwd: &str, status: &str) {
         Line::from("Planned next step: connect symbol search and diagnostics navigation."),
         Line::from("For now, use this view as a dedicated workspace/introspection panel."),
         Line::from(""),
-        Line::from("Use F1 for help and Esc to return to chat."),
+        Line::from("Use /help for commands and Esc or /chat to return to chat."),
     ];
 
     let widget = Paragraph::new(lines)

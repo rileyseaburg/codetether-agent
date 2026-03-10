@@ -8,12 +8,12 @@ use ratatui::{
 
 use crate::tui::app::state::App;
 use crate::tui::bus_log::render_bus_log;
-use crate::tui::color_palette::ColorPalette;
 use crate::tui::chat::message::MessageType;
+use crate::tui::color_palette::ColorPalette;
 use crate::tui::help::render_help;
 use crate::tui::lsp::render_lsp;
 use crate::tui::message_formatter::MessageFormatter;
-use crate::tui::models::ViewMode;
+use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::ralph_view::render_ralph_view;
 use crate::tui::rlm::render_rlm;
 use crate::tui::settings::render_settings;
@@ -81,6 +81,12 @@ fn render_chat_view(f: &mut Frame, app: &mut App) {
         .map(|id| format!("session {id}"))
         .unwrap_or_else(|| "new session".to_string());
 
+    let mode_text = match app.state.input_mode {
+        InputMode::Normal => "normal",
+        InputMode::Editing => "edit",
+        InputMode::Command => "command",
+    };
+
     let header = Paragraph::new(vec![Line::from(vec![
         Span::raw("Status: ").dim(),
         Span::styled(
@@ -94,7 +100,9 @@ fn render_chat_view(f: &mut Frame, app: &mut App) {
         Span::raw("  •  ").dim(),
         Span::raw(session_text).dim(),
         Span::raw("  •  ").dim(),
-        Span::raw("F1 help F2 sessions F3 swarm F4 ralph F5 bus F6 settings F7 lsp F8 rlm Ctrl+T symbols").dim(),
+        Span::raw(format!("mode {mode_text}")).dim(),
+        Span::raw("  •  ").dim(),
+        Span::raw("Try /help /sessions /bus /symbols").dim(),
     ])])
     .block(
         Block::default()
@@ -106,7 +114,9 @@ fn render_chat_view(f: &mut Frame, app: &mut App) {
 
     let mut lines: Vec<Line<'static>> = Vec::new();
     if app.state.messages.is_empty() {
-        lines.push(Line::from("No messages yet. Type a prompt and press Enter.".dim()));
+        lines.push(Line::from(
+            "No messages yet. Type a prompt and press Enter, or use /help.".dim(),
+        ));
     } else {
         for msg in &app.state.messages {
             let (label, role) = match msg.message_type {
@@ -159,8 +169,13 @@ fn render_chat_view(f: &mut Frame, app: &mut App) {
         .take(visible_width)
         .collect::<String>();
 
+    let input_title = if matches!(app.state.input_mode, InputMode::Command) {
+        "Command"
+    } else {
+        "Input"
+    };
     let input = Paragraph::new(visible_input)
-        .block(Block::default().borders(Borders::ALL).title("Input"));
+        .block(Block::default().borders(Borders::ALL).title(input_title));
     f.render_widget(input, chunks[2]);
 
     let input_inner_x = chunks[2].x.saturating_add(1);
@@ -175,7 +190,7 @@ fn render_chat_view(f: &mut Frame, app: &mut App) {
     f.set_cursor_position((cursor_x, input_inner_y));
 
     let help = Paragraph::new(
-        "Enter send • ↑/↓ scroll • PgUp/PgDn scroll faster • ←/→ move cursor • Ctrl+←/→ word jump • Home/End jump • Del delete-at-cursor • Ctrl+T symbols • F2 sessions • F5 bus • Backspace delete • Esc normal mode • Ctrl+C/Ctrl+Q quit",
+        "Slash commands: /help /sessions /swarm /ralph /bus /settings /lsp /rlm /symbols /chat /new • Enter runs command or sends prompt • Ctrl+T symbols • Esc back • Ctrl+C/Ctrl+Q quit",
     )
     .block(Block::default().borders(Borders::ALL).title("Help"))
     .wrap(Wrap { trim: true });
@@ -230,7 +245,7 @@ fn render_sessions_view(f: &mut Frame, app: &mut App) {
         .highlight_symbol("> ");
     f.render_stateful_widget(list, chunks[1], &mut state);
 
-    let help = Paragraph::new("↑/↓ select • Enter load selected session • F1/F3/F4/F5/F6/F7/F8 switch views • F2/Esc back to chat • Ctrl+C/Ctrl+Q quit")
+    let help = Paragraph::new("↑/↓ select • Enter load selected session • Esc or /chat back to chat • /help for commands")
         .block(Block::default().borders(Borders::ALL).title("Help"))
         .wrap(Wrap { trim: true });
     f.render_widget(help, chunks[2]);
