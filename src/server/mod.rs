@@ -1134,11 +1134,21 @@ async fn prompt_session(
         "Received prompt request"
     );
 
-    // TODO: Implement actual prompting
-    Err((
-        StatusCode::NOT_IMPLEMENTED,
-        "Prompt execution not yet implemented".to_string(),
-    ))
+    let mut session = crate::session::Session::load(&id)
+        .await
+        .map_err(|e| (StatusCode::NOT_FOUND, e.to_string()))?;
+
+    let result = session.prompt(&req.message).await.map_err(|e| {
+        tracing::error!(session_id = %id, error = %e, "Session prompt failed");
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+    session.save().await.map_err(|e| {
+        tracing::error!(session_id = %id, error = %e, "Failed to save session after prompt");
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+    Ok(Json(result))
 }
 
 /// Get configuration

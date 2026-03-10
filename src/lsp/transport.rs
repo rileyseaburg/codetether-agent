@@ -9,6 +9,7 @@
 
 use super::types::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -23,7 +24,7 @@ pub struct LspTransport {
     /// Channel for sending messages
     tx: mpsc::Sender<String>,
     /// Pending requests waiting for responses
-    pending: Arc<RwLock<std::collections::HashMap<i64, oneshot::Sender<JsonRpcResponse>>>>,
+    pending: Arc<RwLock<HashMap<i64, oneshot::Sender<JsonRpcResponse>>>>,
     /// Request ID counter
     request_id: AtomicI64,
     /// Whether the server is initialized
@@ -34,6 +35,8 @@ pub struct LspTransport {
     recent_stderr: Arc<RwLock<Vec<String>>>,
     /// Server command for diagnostics.
     command: String,
+    /// Last diagnostics published by the language server, keyed by URI.
+    diagnostics: Arc<RwLock<HashMap<String, Vec<lsp_types::Diagnostic>>>>,
 }
 
 impl LspTransport {
@@ -61,9 +64,10 @@ impl LspTransport {
             .ok_or_else(|| anyhow::anyhow!("No stdin"))?;
 
         let (write_tx, mut write_rx) = mpsc::channel::<String>(100);
-        let pending: Arc<RwLock<std::collections::HashMap<i64, oneshot::Sender<JsonRpcResponse>>>> =
-            Arc::new(RwLock::new(std::collections::HashMap::new()));
+        let pending: Arc<RwLock<HashMap<i64, oneshot::Sender<JsonRpcResponse>>>> =
+            Arc::new(RwLock::new(HashMap::new()));
         let recent_stderr = Arc::new(RwLock::new(Vec::new()));
+        let diagnostics = Arc::new(RwLock::new(HashMap::new()));
 
         // Writer task - sends messages with Content-Length framing
         let pending_clone = Arc::clone(&pending);
@@ -87,7 +91,6 @@ impl LspTransport {
                     break;
                 }
             }
-            // Clear pending requests on shutdown
             pending_clone.write().await.clear();
         });
 
@@ -122,14 +125,14 @@ impl LspTransport {
             }
         });
 
-        // Reader task - parses Content-Length framed responses
+        // Reader task - parses Content-Length framed responses and notifications.
         let pending_clone = Arc::clone(&pending);
+        let diagnostics_clone = Arc::clone(&diagnostics);
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout);
             let mut header_buf = String::new();
 
             loop {
-                // Read headers until empty line
                 header_buf.clear();
                 let mut content_length: Option<usize> = None;
 
@@ -143,14 +146,13 @@ impl LspTransport {
                         Ok(_) => {
                             let line = header_buf.trim();
                             if line.is_empty() {
-                                break; // End of headers
+                                break;
                             }
                             if let Some(stripped) = line.strip_prefix("Content-Length:")
                                 && let Ok(len) = stripped.trim().parse::<usize>()
                             {
                                 content_length = Some(len);
                             }
-                            // Ignore other headers (Content-Type, etc.)
                         }
                         Err(e) => {
                             error!("Failed to read header from LSP server: {}", e);
@@ -164,31 +166,57 @@ impl LspTransport {
                     continue;
                 };
 
-                // Read the body
                 let mut body_buf = vec![0u8; len];
                 match reader.read_exact(&mut body_buf).await {
                     Ok(_) => {
                         let body = String::from_utf8_lossy(&body_buf);
                         trace!("LSP RX: {}", body);
 
-                        // Parse as JSON-RPC response
-                        match serde_json::from_str::<JsonRpcResponse>(&body) {
-                            Ok(response) => {
-                                // Find and complete the pending request
-                                let mut pending_guard = pending_clone.write().await;
-                                if let Some(tx) = pending_guard.remove(&response.id) {
-                                    let id = response.id;
-                                    if tx.send(response).is_err() {
-                                        warn!("Request {} receiver dropped", id);
+                        if let Ok(response) = serde_json::from_str::<JsonRpcResponse>(&body) {
+                            let mut pending_guard = pending_clone.write().await;
+                            if let Some(tx) = pending_guard.remove(&response.id) {
+                                let id = response.id;
+                                if tx.send(response).is_err() {
+                                    warn!("Request {} receiver dropped", id);
+                                }
+                            } else {
+                                debug!("Received response for unknown request {}", response.id);
+                            }
+                            continue;
+                        }
+
+                        match serde_json::from_str::<serde_json::Value>(&body) {
+                            Ok(value) => {
+                                if value.get("method").and_then(serde_json::Value::as_str)
+                                    == Some("textDocument/publishDiagnostics")
+                                {
+                                    if let Some(params) = value.get("params") {
+                                        let uri = params
+                                            .get("uri")
+                                            .and_then(serde_json::Value::as_str)
+                                            .unwrap_or_default()
+                                            .to_string();
+                                        let diagnostics = params
+                                            .get("diagnostics")
+                                            .cloned()
+                                            .and_then(|v| serde_json::from_value(v).ok())
+                                            .unwrap_or_default();
+                                        if !uri.is_empty() {
+                                            diagnostics_clone
+                                                .write()
+                                                .await
+                                                .insert(uri, diagnostics);
+                                        }
                                     }
                                 } else {
-                                    // Could be a response to a notification or unknown request
-                                    debug!("Received response for unknown request {}", response.id);
+                                    debug!(
+                                        "Ignoring LSP notification/message without tracked handler: {}",
+                                        body
+                                    );
                                 }
                             }
                             Err(e) => {
-                                // Might be a notification (no id) or malformed
-                                debug!("Failed to parse LSP response: {} - body: {}", e, body);
+                                debug!("Failed to parse LSP message: {} - body: {}", e, body);
                             }
                         }
                     }
@@ -209,6 +237,7 @@ impl LspTransport {
             timeout_ms,
             recent_stderr,
             command: command.to_string(),
+            diagnostics,
         })
     }
 
@@ -227,7 +256,6 @@ impl LspTransport {
         let json = serde_json::to_string(&request)?;
         self.tx.send(json).await?;
 
-        // Wait for response with timeout
         let response = tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), rx)
             .await
             .map_err(|_| {
@@ -264,6 +292,11 @@ impl LspTransport {
         let json = serde_json::to_string(&notification)?;
         self.tx.send(json).await?;
         Ok(())
+    }
+
+    /// Return the last diagnostics published by the language server.
+    pub async fn diagnostics_snapshot(&self) -> HashMap<String, Vec<lsp_types::Diagnostic>> {
+        self.diagnostics.read().await.clone()
     }
 
     /// Check if the server is initialized

@@ -10,7 +10,9 @@
 
 use crate::bus::BusEnvelope;
 use chrono::{DateTime, Utc};
+use serde::Deserialize;
 use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::RwLock;
@@ -38,6 +40,8 @@ pub struct BusBridge {
     total_received: Arc<AtomicU64>,
     /// URL we connect to.
     bus_url: String,
+    /// Optional bearer token for authenticated bus endpoints.
+    auth_token: Option<String>,
     /// Max buffer capacity.
     capacity: usize,
 }
@@ -45,11 +49,17 @@ pub struct BusBridge {
 impl BusBridge {
     /// Create a new bridge (does **not** start the background task).
     pub fn new(bus_url: String) -> Self {
+        Self::with_auth(bus_url, None)
+    }
+
+    /// Create a new bridge with an optional bearer token.
+    pub fn with_auth(bus_url: String, auth_token: Option<String>) -> Self {
         Self {
             buffer: Arc::new(RwLock::new(VecDeque::with_capacity(DEFAULT_BUFFER_SIZE))),
             connected: Arc::new(AtomicBool::new(false)),
             total_received: Arc::new(AtomicU64::new(0)),
             bus_url,
+            auth_token,
             capacity: DEFAULT_BUFFER_SIZE,
         }
     }
@@ -136,11 +146,17 @@ impl BusBridge {
     /// Single SSE connection attempt.  Reads until the stream closes or errors.
     async fn read_sse_stream(&self) -> anyhow::Result<()> {
         let client = reqwest::Client::new();
-        let resp = client
+        let mut req = client
             .get(&self.bus_url)
-            .header("Accept", "text/event-stream")
-            .send()
-            .await?;
+            .header("Accept", "text/event-stream");
+        if let Some(token) = self
+            .auth_token
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+        {
+            req = req.bearer_auth(token);
+        }
+        let resp = req.send().await?;
 
         if !resp.status().is_success() {
             anyhow::bail!("SSE endpoint returned {}", resp.status());
@@ -219,6 +235,178 @@ impl BusBridge {
     }
 }
 
+/// Resolve a worker's first-class bus connection via the control plane.
+pub async fn resolve_worker_bus_url(
+    control_plane_url: &str,
+    worker_id: &str,
+    token: Option<&str>,
+) -> anyhow::Result<String> {
+    let worker_url = format!(
+        "{}/v1/agent/workers/{}",
+        control_plane_url.trim_end_matches('/'),
+        worker_id
+    );
+
+    let client = reqwest::Client::new();
+    let mut req = client.get(worker_url);
+    if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
+        req = req.bearer_auth(token);
+    }
+
+    let worker: serde_json::Value = req.send().await?.error_for_status()?.json().await?;
+
+    let has_bus_interface = worker
+        .get("interfaces")
+        .and_then(|value| value.get("bus"))
+        .and_then(|value| value.get("stream_url"))
+        .and_then(|value| value.as_str())
+        .is_some();
+    let has_http_interface = worker
+        .get("interfaces")
+        .and_then(|value| value.get("http"))
+        .and_then(|value| value.get("base_url"))
+        .and_then(|value| value.as_str())
+        .is_some();
+
+    if has_bus_interface || has_http_interface {
+        return Ok(format!(
+            "{}/v1/agent/workers/{}/bus/stream",
+            control_plane_url.trim_end_matches('/'),
+            worker_id
+        ));
+    }
+
+    anyhow::bail!(
+        "Worker '{}' does not advertise a first-class bus interface",
+        worker_id
+    )
+}
+
+#[derive(Debug, Deserialize)]
+struct WorkspaceSummary {
+    id: String,
+    path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WorkspaceDetails {
+    worker_id: Option<String>,
+}
+
+pub async fn resolve_worker_bus_url_for_workspace(
+    control_plane_url: &str,
+    workspace_id: &str,
+    token: Option<&str>,
+) -> anyhow::Result<String> {
+    let workspace_url = format!(
+        "{}/v1/agent/workspaces/{}",
+        control_plane_url.trim_end_matches('/'),
+        urlencoding::encode(workspace_id)
+    );
+
+    let client = reqwest::Client::new();
+    let mut req = client.get(workspace_url);
+    if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
+        req = req.bearer_auth(token);
+    }
+
+    let workspace: WorkspaceDetails = req.send().await?.error_for_status()?.json().await?;
+    let worker_id = workspace
+        .worker_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Workspace '{}' is not currently assigned to a worker; pass --worker-id or register the workspace on a worker",
+                workspace_id
+            )
+        })?;
+
+    resolve_worker_bus_url(control_plane_url, worker_id, token).await
+}
+
+pub async fn resolve_workspace_id_from_path(
+    control_plane_url: &str,
+    workspace_root: &Path,
+    token: Option<&str>,
+) -> anyhow::Result<Option<String>> {
+    let workspace_root = normalize_local_path(workspace_root)?;
+    let workspace_root = workspace_root.to_string_lossy().to_string();
+    let workspaces_url = format!(
+        "{}/v1/agent/workspaces",
+        control_plane_url.trim_end_matches('/')
+    );
+
+    let client = reqwest::Client::new();
+    let mut req = client.get(workspaces_url);
+    if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
+        req = req.bearer_auth(token);
+    }
+
+    let workspaces: Vec<WorkspaceSummary> = req.send().await?.error_for_status()?.json().await?;
+    Ok(best_workspace_match(&workspace_root, &workspaces).map(|workspace| workspace.id.clone()))
+}
+
+/// Resolve the default worker bus connection when the control plane has exactly
+/// one active worker advertising a first-class bus/http interface.
+pub async fn resolve_default_worker_bus_url(
+    control_plane_url: &str,
+    token: Option<&str>,
+) -> anyhow::Result<String> {
+    let workers_url = format!(
+        "{}/v1/agent/workers",
+        control_plane_url.trim_end_matches('/')
+    );
+
+    let client = reqwest::Client::new();
+    let mut req = client.get(workers_url);
+    if let Some(token) = token.filter(|value| !value.trim().is_empty()) {
+        req = req.bearer_auth(token);
+    }
+
+    let workers: Vec<serde_json::Value> = req.send().await?.error_for_status()?.json().await?;
+
+    let candidates = workers
+        .into_iter()
+        .filter(|worker| {
+            let status = worker
+                .get("status")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default();
+            status == "active"
+                && worker
+                    .get("interfaces")
+                    .and_then(|value| value.as_object())
+                    .map(|value| !value.is_empty())
+                    .unwrap_or(false)
+        })
+        .collect::<Vec<_>>();
+
+    match candidates.as_slice() {
+        [worker] => {
+            let worker_id = worker
+                .get("worker_id")
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| anyhow::anyhow!("Active worker is missing worker_id"))?;
+            resolve_worker_bus_url(control_plane_url, worker_id, token).await
+        }
+        [] => anyhow::bail!(
+            "No active workers with first-class interfaces were found; deploy/register a worker or provide --worker-id"
+        ),
+        workers => {
+            let worker_ids = workers
+                .iter()
+                .filter_map(|worker| worker.get("worker_id").and_then(|value| value.as_str()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            anyhow::bail!(
+                "Multiple active workers are registered ({worker_ids}); provide --worker-id to choose one"
+            )
+        }
+    }
+}
+
 /// Status snapshot returned by [`BusBridge::status`].
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct BusBridgeStatus {
@@ -242,6 +430,78 @@ fn topic_matches(topic: &str, pattern: &str) -> bool {
         return topic.ends_with(suffix);
     }
     topic == pattern
+}
+
+fn normalize_local_path(path: &Path) -> anyhow::Result<PathBuf> {
+    if path.is_absolute() {
+        return Ok(path.to_path_buf());
+    }
+
+    Ok(std::env::current_dir()?.join(path))
+}
+
+fn best_workspace_match<'a>(
+    workspace_root: &str,
+    workspaces: &'a [WorkspaceSummary],
+) -> Option<&'a WorkspaceSummary> {
+    let direct = workspaces
+        .iter()
+        .filter_map(|workspace| {
+            let path = workspace.path.as_deref()?;
+            if workspace_root == path || workspace_root.starts_with(&format!("{}/", path)) {
+                Some((path.len(), workspace))
+            } else {
+                None
+            }
+        })
+        .max_by_key(|(path_len, _)| *path_len)
+        .map(|(_, workspace)| workspace);
+
+    if direct.is_some() {
+        return direct;
+    }
+
+    let mut scored: Vec<(usize, &WorkspaceSummary)> = workspaces
+        .iter()
+        .filter_map(|workspace| {
+            let path = workspace.path.as_deref()?;
+            let score = shared_path_suffix_score(workspace_root, path);
+            (score > 0).then_some((score, workspace))
+        })
+        .collect();
+
+    scored.sort_by(|left, right| right.0.cmp(&left.0));
+
+    match scored.as_slice() {
+        [] => None,
+        [(score, workspace), ..] => {
+            let is_unique_best = scored
+                .get(1)
+                .map(|(next_score, _)| next_score < score)
+                .unwrap_or(true);
+            if is_unique_best {
+                Some(*workspace)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+fn shared_path_suffix_score(left: &str, right: &str) -> usize {
+    let left_parts: Vec<&str> = left.split('/').filter(|part| !part.is_empty()).collect();
+    let right_parts: Vec<&str> = right.split('/').filter(|part| !part.is_empty()).collect();
+
+    let mut score = 0usize;
+    for (left_part, right_part) in left_parts.iter().rev().zip(right_parts.iter().rev()) {
+        if left_part == right_part {
+            score += 1;
+        } else {
+            break;
+        }
+    }
+
+    score
 }
 
 #[cfg(test)]

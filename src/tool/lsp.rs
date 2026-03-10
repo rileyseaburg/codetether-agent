@@ -23,6 +23,7 @@ enum LspOperation {
     WorkspaceSymbol,
     GoToImplementation,
     Completion,
+    Diagnostics,
 }
 
 impl LspOperation {
@@ -41,6 +42,7 @@ impl LspOperation {
                 Some(Self::GoToImplementation)
             }
             "completion" => Some(Self::Completion),
+            "diagnostics" => Some(Self::Diagnostics),
             _ => None,
         }
     }
@@ -52,7 +54,7 @@ impl LspOperation {
             | Self::Hover
             | Self::GoToImplementation
             | Self::Completion => true,
-            Self::DocumentSymbol | Self::WorkspaceSymbol => false,
+            Self::DocumentSymbol | Self::WorkspaceSymbol | Self::Diagnostics => false,
         }
     }
 
@@ -65,6 +67,7 @@ impl LspOperation {
             Self::WorkspaceSymbol => "workspaceSymbol",
             Self::GoToImplementation => "goToImplementation",
             Self::Completion => "completion",
+            Self::Diagnostics => "diagnostics",
         }
     }
 }
@@ -99,7 +102,7 @@ fn resolve_action_raw(args: &Value) -> Result<String> {
         return Err(anyhow::anyhow!(
             "Unsupported lsp command: {command}. Use action with one of: \
              goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, \
-             goToImplementation, completion"
+             goToImplementation, completion, diagnostics"
         ));
     }
 
@@ -134,7 +137,7 @@ impl LspTool {
     }
 
     /// Get or initialize the LSP manager
-    async fn get_manager(&self) -> Arc<LspManager> {
+    pub async fn get_manager(&self) -> Arc<LspManager> {
         let cell = LSP_MANAGER.get_or_init(|| Arc::new(RwLock::new(None)));
         let mut guard = cell.write().await;
 
@@ -142,7 +145,7 @@ impl LspTool {
             *guard = Some(Arc::new(LspManager::new(self.root_uri.clone())));
         }
 
-        Arc::clone(guard.as_ref().unwrap())
+        Arc::clone(guard.as_ref().expect("LSP manager should initialize"))
     }
 }
 
@@ -163,7 +166,7 @@ impl Tool for LspTool {
     }
 
     fn description(&self) -> &str {
-        "Perform Language Server Protocol (LSP) operations such as go-to-definition, find-references, hover, document-symbol, workspace-symbol, and more. This tool enables AI agents to query language servers for code intelligence features. Supports rust-analyzer, typescript-language-server, pylsp, gopls, and clangd."
+        "Perform Language Server Protocol (LSP) operations such as go-to-definition, find-references, hover, document-symbol, workspace-symbol, diagnostics, and more. This tool enables AI agents to query language servers for code intelligence features. Supports rust-analyzer, typescript-language-server, pylsp, gopls, and clangd."
     }
 
     fn parameters(&self) -> Value {
@@ -190,7 +193,8 @@ impl Tool for LspTool {
                         "goToImplementation",
                         "go-to-implementation",
                         "go_to_implementation",
-                        "completion"
+                        "completion",
+                        "diagnostics"
                     ]
                 },
                 "file_path": {
@@ -230,10 +234,8 @@ impl Tool for LspTool {
         let action = LspOperation::parse(&action_raw)
             .ok_or_else(|| anyhow::anyhow!("Unknown action: {}", action_raw))?;
 
-        // Get the LSP manager and client
         let manager = self.get_manager().await;
 
-        // For workspace symbol search, we don't need a file
         if action == LspOperation::WorkspaceSymbol {
             let query = args["query"].as_str().unwrap_or("");
             let language = get_file_path_arg(&args).and_then(detect_language_from_path);
@@ -241,7 +243,6 @@ impl Tool for LspTool {
             let client = if let Some(lang) = language {
                 manager.get_client(lang).await?
             } else {
-                // Default to rust if we can't detect
                 manager.get_client("rust").await?
             };
 
@@ -272,27 +273,53 @@ impl Tool for LspTool {
         let result = match action {
             LspOperation::GoToDefinition => {
                 client
-                    .go_to_definition(path, line.unwrap(), column.unwrap())
+                    .go_to_definition(
+                        path,
+                        line.expect("line required"),
+                        column.expect("column required"),
+                    )
                     .await?
             }
             LspOperation::FindReferences => {
                 let include_decl = args["include_declaration"].as_bool().unwrap_or(true);
                 client
-                    .find_references(path, line.unwrap(), column.unwrap(), include_decl)
+                    .find_references(
+                        path,
+                        line.expect("line required"),
+                        column.expect("column required"),
+                        include_decl,
+                    )
                     .await?
             }
-            LspOperation::Hover => client.hover(path, line.unwrap(), column.unwrap()).await?,
+            LspOperation::Hover => {
+                client
+                    .hover(
+                        path,
+                        line.expect("line required"),
+                        column.expect("column required"),
+                    )
+                    .await?
+            }
             LspOperation::DocumentSymbol => client.document_symbols(path).await?,
             LspOperation::GoToImplementation => {
                 client
-                    .go_to_implementation(path, line.unwrap(), column.unwrap())
+                    .go_to_implementation(
+                        path,
+                        line.expect("line required"),
+                        column.expect("column required"),
+                    )
                     .await?
             }
             LspOperation::Completion => {
                 client
-                    .completion(path, line.unwrap(), column.unwrap())
+                    .completion(
+                        path,
+                        line.expect("line required"),
+                        column.expect("column required"),
+                    )
                     .await?
             }
+            LspOperation::Diagnostics => client.diagnostics(path).await?,
             LspOperation::WorkspaceSymbol => {
                 return Ok(ToolResult::error(format!(
                     "Action {} is handled separately",
@@ -424,6 +451,30 @@ fn format_result(result: LspActionResult) -> Result<ToolResult> {
                 out
             }
         }
+        LspActionResult::Diagnostics { diagnostics } => {
+            if diagnostics.is_empty() {
+                "No diagnostics found".to_string()
+            } else {
+                let mut out = format!("Diagnostics ({})\n\n", diagnostics.len());
+                for diagnostic in diagnostics {
+                    out.push_str(&format!(
+                        "  [{}] {}:{}:{}",
+                        diagnostic.severity.as_deref().unwrap_or("unknown"),
+                        diagnostic.uri.trim_start_matches("file://"),
+                        diagnostic.range.start.line + 1,
+                        diagnostic.range.start.character + 1,
+                    ));
+                    if let Some(source) = diagnostic.source {
+                        out.push_str(&format!(" [{source}]"));
+                    }
+                    if let Some(code) = diagnostic.code {
+                        out.push_str(&format!(" ({code})"));
+                    }
+                    out.push_str(&format!("\n    {}\n", diagnostic.message));
+                }
+                out
+            }
+        }
         LspActionResult::Error { message } => {
             return Ok(ToolResult::error(message));
         }
@@ -450,6 +501,10 @@ mod tests {
         assert_eq!(
             LspOperation::parse("goToImplementation"),
             Some(LspOperation::GoToImplementation)
+        );
+        assert_eq!(
+            LspOperation::parse("diagnostics"),
+            Some(LspOperation::Diagnostics)
         );
         assert_eq!(LspOperation::parse("unknown"), None);
     }

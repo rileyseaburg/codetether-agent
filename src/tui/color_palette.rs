@@ -33,9 +33,9 @@ impl ColorPalette {
             assistant_message: Color::Green,
             system_message: Color::Yellow,
             error: Color::Red,
-            timestamp: Color::DarkGray,
+            timestamp: Color::Gray,
             border: Color::Cyan,
-            code_block: Color::DarkGray,
+            code_block: Color::Gray,
             tool_message: Color::Magenta,
             text: Color::White,
             background: Color::Black,
@@ -45,14 +45,14 @@ impl ColorPalette {
     /// Create a new light theme color palette with semantic colors
     pub fn light() -> Self {
         Self {
-            user_message: Color::DarkBlue,
-            assistant_message: Color::DarkGreen,
-            system_message: Color::DarkYellow,
-            error: Color::DarkRed,
+            user_message: Color::Blue,
+            assistant_message: Color::Green,
+            system_message: Color::Yellow,
+            error: Color::Red,
             timestamp: Color::Gray,
-            border: Color::DarkGray,
+            border: Color::Gray,
             code_block: Color::Gray,
-            tool_message: Color::DarkMagenta,
+            tool_message: Color::Magenta,
             text: Color::Black,
             background: Color::White,
         }

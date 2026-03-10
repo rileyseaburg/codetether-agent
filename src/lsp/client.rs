@@ -31,7 +31,6 @@ pub struct LspClient {
 impl LspClient {
     /// Create a new LSP client with the given configuration
     pub async fn new(config: LspConfig) -> Result<Self> {
-        // Auto-install the language server if it's not on PATH
         super::types::ensure_server_installed(&config).await?;
 
         let transport =
@@ -84,13 +83,9 @@ impl LspClient {
         if let Some(result) = response.result {
             let init_result: InitializeResult = serde_json::from_value(result)?;
             *self.server_capabilities.write().await = Some(init_result.capabilities);
-            info!(
-                server_info = ?init_result.server_info,
-                "LSP server initialized"
-            );
+            info!(server_info = ?init_result.server_info, "LSP server initialized");
         }
 
-        // Send initialized notification
         self.transport.notify("initialized", None).await?;
         self.transport.set_initialized(true);
 
@@ -172,7 +167,7 @@ impl LspClient {
         };
 
         let content_changes = vec![super::types::TextDocumentContentChangeEvent {
-            range: None, // Full document sync
+            range: None,
             range_length: None,
             text: content.to_string(),
         }];
@@ -378,6 +373,24 @@ impl LspClient {
         parse_completion_response(response)
     }
 
+    /// Return the most recent LSP diagnostics for a file after ensuring the document is open.
+    pub async fn diagnostics(&self, path: &Path) -> Result<LspActionResult> {
+        self.ensure_document_open(path).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+
+        let uri = path_to_uri(path);
+        let snapshot = self.transport.diagnostics_snapshot().await;
+        let diagnostics = snapshot
+            .get(&uri)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|diagnostic| DiagnosticInfo::from((uri.clone(), diagnostic)))
+            .collect();
+
+        Ok(LspActionResult::Diagnostics { diagnostics })
+    }
+
     /// Ensure a document is open (open it if not already)
     async fn ensure_document_open(&self, path: &Path) -> Result<()> {
         let uri = path_to_uri(path);
@@ -446,21 +459,18 @@ fn parse_location_response(response: JsonRpcResponse, _operation: &str) -> Resul
         return Ok(LspActionResult::Definition { locations: vec![] });
     };
 
-    // Try to parse as a single location
     if let Ok(loc) = serde_json::from_value::<lsp_types::Location>(result.clone()) {
         return Ok(LspActionResult::Definition {
             locations: vec![LocationInfo::from(loc)],
         });
     }
 
-    // Try to parse as an array of locations
     if let Ok(locs) = serde_json::from_value::<Vec<lsp_types::Location>>(result.clone()) {
         return Ok(LspActionResult::Definition {
             locations: locs.into_iter().map(LocationInfo::from).collect(),
         });
     }
 
-    // Try to parse as LocationLink array
     if let Ok(links) = serde_json::from_value::<Vec<lsp_types::LocationLink>>(result) {
         return Ok(LspActionResult::Definition {
             locations: links
@@ -538,14 +548,12 @@ fn parse_document_symbols_response(response: JsonRpcResponse) -> Result<LspActio
         return Ok(LspActionResult::DocumentSymbols { symbols: vec![] });
     }
 
-    // Try DocumentSymbol[] first (hierarchical)
     if let Ok(symbols) = serde_json::from_value::<Vec<lsp_types::DocumentSymbol>>(result.clone()) {
         return Ok(LspActionResult::DocumentSymbols {
             symbols: symbols.into_iter().map(SymbolInfo::from).collect(),
         });
     }
 
-    // Try SymbolInformation[] (flat)
     if let Ok(symbols) = serde_json::from_value::<Vec<lsp_types::SymbolInformation>>(result) {
         return Ok(LspActionResult::DocumentSymbols {
             symbols: symbols.into_iter().map(SymbolInfo::from).collect(),
@@ -571,7 +579,6 @@ fn parse_workspace_symbols_response(response: JsonRpcResponse) -> Result<LspActi
         return Ok(LspActionResult::WorkspaceSymbols { symbols: vec![] });
     }
 
-    // Try SymbolInformation[]
     if let Ok(symbols) = serde_json::from_value::<Vec<lsp_types::SymbolInformation>>(result.clone())
     {
         return Ok(LspActionResult::WorkspaceSymbols {
@@ -579,7 +586,6 @@ fn parse_workspace_symbols_response(response: JsonRpcResponse) -> Result<LspActi
         });
     }
 
-    // Try WorkspaceSymbol[] (LSP 3.17+)
     if let Ok(symbols) = serde_json::from_value::<Vec<lsp_types::WorkspaceSymbol>>(result) {
         return Ok(LspActionResult::WorkspaceSymbols {
             symbols: symbols
@@ -623,7 +629,6 @@ fn parse_completion_response(response: JsonRpcResponse) -> Result<LspActionResul
         return Ok(LspActionResult::Completion { items: vec![] });
     }
 
-    // Try CompletionList first
     if let Ok(list) = serde_json::from_value::<lsp_types::CompletionList>(result.clone()) {
         return Ok(LspActionResult::Completion {
             items: list
@@ -634,7 +639,6 @@ fn parse_completion_response(response: JsonRpcResponse) -> Result<LspActionResul
         });
     }
 
-    // Try CompletionItem[]
     if let Ok(items) = serde_json::from_value::<Vec<lsp_types::CompletionItem>>(result) {
         return Ok(LspActionResult::Completion {
             items: items.into_iter().map(CompletionItemInfo::from).collect(),
@@ -661,7 +665,6 @@ impl LspManager {
 
     /// Get or create a client for the given language
     pub async fn get_client(&self, language: &str) -> Result<Arc<LspClient>> {
-        // Check if we already have a client
         {
             let clients = self.clients.read().await;
             if let Some(client) = clients.get(language) {
@@ -669,7 +672,6 @@ impl LspManager {
             }
         }
 
-        // Create a new client
         let client = LspClient::for_language(language, self.root_uri.clone()).await?;
         client.initialize().await?;
 

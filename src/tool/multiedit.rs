@@ -352,7 +352,7 @@ impl Tool for MultiEditTool {
             if written.contains_key(path) {
                 continue;
             }
-            let final_content = content_cache.get(path).unwrap();
+            let final_content = content_cache.get(path).ok_or_else(|| anyhow::anyhow!("path {path:?} not found in content cache"))?;
             match fs::write(path, final_content).await {
                 Ok(()) => {
                     written.insert(path.clone(), true);

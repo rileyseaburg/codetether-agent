@@ -7,16 +7,19 @@ use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
 use crate::provider::{
-    CompletionResponse, ContentPart, FinishReason, Message, Role, ToolDefinition, Usage,
+    CompletionResponse, ContentPart, FinishReason, Message, Role, StreamChunk, ToolDefinition,
+    Usage,
 };
 use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use futures::{StreamExt, stream::BoxStream};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use tokio::fs;
@@ -96,6 +99,104 @@ fn extract_text_content(parts: &[ContentPart]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+async fn collect_stream_completion_with_events(
+    mut stream: BoxStream<'static, StreamChunk>,
+    event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
+) -> Result<CompletionResponse> {
+    #[derive(Default)]
+    struct ToolAccumulator {
+        id: String,
+        name: String,
+        arguments: String,
+    }
+
+    let mut text = String::new();
+    let mut tools = Vec::<ToolAccumulator>::new();
+    let mut tool_index_by_id = HashMap::<String, usize>::new();
+    let mut usage = Usage::default();
+
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            StreamChunk::Text(delta) => {
+                if delta.is_empty() {
+                    continue;
+                }
+                text.push_str(&delta);
+                if let Some(tx) = event_tx {
+                    let _ = tx.send(SessionEvent::TextChunk(text.clone())).await;
+                }
+            }
+            StreamChunk::ToolCallStart { id, name } => {
+                let next_idx = tools.len();
+                let idx = *tool_index_by_id.entry(id.clone()).or_insert(next_idx);
+                if idx == next_idx {
+                    tools.push(ToolAccumulator {
+                        id,
+                        name,
+                        arguments: String::new(),
+                    });
+                } else if tools[idx].name == "tool" {
+                    tools[idx].name = name;
+                }
+            }
+            StreamChunk::ToolCallDelta {
+                id,
+                arguments_delta,
+            } => {
+                if let Some(idx) = tool_index_by_id.get(&id).copied() {
+                    tools[idx].arguments.push_str(&arguments_delta);
+                } else {
+                    let idx = tools.len();
+                    tool_index_by_id.insert(id.clone(), idx);
+                    tools.push(ToolAccumulator {
+                        id,
+                        name: "tool".to_string(),
+                        arguments: arguments_delta,
+                    });
+                }
+            }
+            StreamChunk::ToolCallEnd { .. } => {}
+            StreamChunk::Done { usage: done_usage } => {
+                if let Some(done_usage) = done_usage {
+                    usage = done_usage;
+                }
+            }
+            StreamChunk::Error(message) => anyhow::bail!(message),
+        }
+    }
+
+    let mut content = Vec::new();
+    if !text.is_empty() {
+        content.push(ContentPart::Text { text });
+    }
+    for tool in tools {
+        content.push(ContentPart::ToolCall {
+            id: tool.id,
+            name: tool.name,
+            arguments: tool.arguments,
+            thought_signature: None,
+        });
+    }
+
+    let finish_reason = if content
+        .iter()
+        .any(|part| matches!(part, ContentPart::ToolCall { .. }))
+    {
+        FinishReason::ToolCalls
+    } else {
+        FinishReason::Stop
+    };
+
+    Ok(CompletionResponse {
+        message: Message {
+            role: Role::Assistant,
+            content,
+        },
+        usage,
+        finish_reason,
+    })
 }
 
 fn tool_call_markup_re() -> &'static Regex {
@@ -949,15 +1050,13 @@ fn extract_candidate_file_paths(text: &str, cwd: &Path, max_files: usize) -> Vec
 }
 
 async fn build_proactive_lsp_context_message(
-    selected_provider: &str,
+    _selected_provider: &str,
     step: usize,
     tool_registry: &ToolRegistry,
     session_messages: &[Message],
     workspace_dir: &Path,
 ) -> Option<Message> {
-    // Keep this narrowly scoped to Gemini Web where the user requested
-    // proactive LSP context before tool-calling decisions.
-    if selected_provider != "gemini-web" || step != 1 {
+    if step != 1 {
         return None;
     }
 
@@ -973,13 +1072,13 @@ async fn build_proactive_lsp_context_message(
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
         .filter(|v| *v > 0)
-        .unwrap_or(1);
+        .unwrap_or(3);
 
     let max_chars = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_CHARS")
         .ok()
         .and_then(|v| v.parse::<usize>().ok())
         .filter(|v| *v > 0)
-        .unwrap_or(600);
+        .unwrap_or(1600);
 
     let paths = extract_candidate_file_paths(&user_text, workspace_dir, max_files);
     if paths.is_empty() {
@@ -988,30 +1087,58 @@ async fn build_proactive_lsp_context_message(
 
     let mut sections: Vec<String> = Vec::new();
     for path in paths {
-        let args = json!({
-            "action": "documentSymbol",
+        let diagnostics_args = json!({
+            "action": "diagnostics",
             "file_path": path,
-            "line": 1,
-            "column": 1
         });
 
-        match lsp_tool.execute(args).await {
+        match lsp_tool.execute(diagnostics_args).await {
+            Ok(result) if result.success => {
+                let output = result.output.trim();
+                if !output.is_empty() && output != "No diagnostics found" {
+                    sections.push(format!(
+                        "File: {}
+{}",
+                        path,
+                        truncate_with_ellipsis(output, max_chars)
+                    ));
+                    continue;
+                }
+            }
+            Ok(result) => {
+                tracing::debug!(
+                    file = %path,
+                    output = %truncate_with_ellipsis(&result.output, 200),
+                    "Proactive LSP diagnostics skipped file due to unsuccessful result"
+                );
+            }
+            Err(e) => {
+                tracing::debug!(file = %path, error = %e, "Proactive LSP diagnostics prefetch failed");
+            }
+        }
+
+        let symbol_args = json!({
+            "action": "documentSymbol",
+            "file_path": path,
+        });
+        match lsp_tool.execute(symbol_args).await {
             Ok(result) if result.success => {
                 sections.push(format!(
-                    "File: {}\n{}",
+                    "File: {}
+{}",
                     path,
-                    truncate_with_ellipsis(&result.output, max_chars)
+                    truncate_with_ellipsis(&result.output, max_chars / 2)
                 ));
             }
             Ok(result) => {
                 tracing::debug!(
                     file = %path,
                     output = %truncate_with_ellipsis(&result.output, 200),
-                    "Proactive LSP context skipped file due to unsuccessful result"
+                    "Proactive LSP symbol recovery skipped file due to unsuccessful result"
                 );
             }
             Err(e) => {
-                tracing::debug!(file = %path, error = %e, "Proactive LSP prefetch failed");
+                tracing::debug!(file = %path, error = %e, "Proactive LSP symbol recovery failed");
             }
         }
     }
@@ -1024,13 +1151,18 @@ async fn build_proactive_lsp_context_message(
         role: Role::System,
         content: vec![ContentPart::Text {
             text: format!(
-                "Proactive LSP context (prefetched). Use this to reason about file structure before issuing more tools.\n\n{}",
-                sections.join("\n\n---\n\n")
+                "Mandatory proactive LSP context (prefetched before first reply). Prioritize these real LSP diagnostics and errors over speculation. Do not call the lsp tool just to rediscover the same issues unless you need deeper navigation detail.
+
+{}",
+                sections.join("
+
+---
+
+")
             ),
         }],
     })
 }
-
 fn messages_to_rlm_context(messages: &[Message]) -> String {
     // Render a lossless-ish text representation of the session suitable for RLM.
     // Avoid embedding base64 image data URLs (they can be enormous and not useful
@@ -1098,6 +1230,87 @@ fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
         || msg.contains("context length")
         || msg.contains("maximum context")
         || (msg.contains("tokens") && msg.contains("maximum") && msg.contains("prompt"))
+}
+
+fn is_retryable_upstream_error(err: &anyhow::Error) -> bool {
+    let msg = err.to_string().to_ascii_lowercase();
+    [
+        " 500 ",
+        " 504 ",
+        "status code 500",
+        "status code 504",
+        "internal server error",
+        "gateway timeout",
+        "upstream request timeout",
+        "server error: 500",
+        "server error: 504",
+    ]
+    .iter()
+    .any(|needle| msg.contains(needle))
+}
+
+fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<String> {
+    let failed = failed_model.trim();
+    let mut candidates: Vec<String> = match provider {
+        "openrouter" => vec![
+            "openrouter/qwen/qwen3-coder:free".to_string(),
+            "openrouter/openai/gpt-oss-120b:free".to_string(),
+            "openrouter/google/gemma-3-27b-it:free".to_string(),
+            "openrouter/meta-llama/llama-3.3-70b-instruct:free".to_string(),
+        ],
+        "zai" => vec!["zai/glm-5".to_string()],
+        "glm5" => vec!["glm5/glm-5".to_string()],
+        "github-copilot" | "github-copilot-enterprise" => {
+            vec![format!("{provider}/gpt-5-mini")]
+        }
+        "openai-codex" => vec!["openai-codex/gpt-5-mini".to_string()],
+        "gemini-web" => vec!["gemini-web/gemini-2.5-flash".to_string()],
+        "local_cuda" => vec!["local_cuda/qwen3.5-9b".to_string()],
+        "google" => vec!["google/gemini-2.5-flash".to_string()],
+        "anthropic" => vec!["anthropic/claude-3-5-haiku-latest".to_string()],
+        _ => Vec::new(),
+    };
+
+    candidates.retain(|candidate| {
+        !candidate.eq_ignore_ascii_case(failed)
+            && candidate
+                .split('/')
+                .next_back()
+                .map(|model| !model.eq_ignore_ascii_case(failed))
+                .unwrap_or(true)
+    });
+    candidates
+}
+
+fn choose_router_target(
+    registry: &crate::provider::ProviderRegistry,
+    selected_provider: &str,
+    current_model: &str,
+) -> Option<(String, String)> {
+    let current_provider = selected_provider.to_ascii_lowercase();
+
+    for candidate in known_good_router_candidates(selected_provider, current_model) {
+        let (provider_name, model_name) = crate::provider::parse_model_string(&candidate);
+        let provider_name = provider_name.unwrap_or(selected_provider);
+        if registry.get(provider_name).is_some() {
+            return Some((provider_name.to_string(), model_name.to_string()));
+        }
+    }
+
+    if current_provider != "zai" && registry.get("zai").is_some() {
+        return Some(("zai".to_string(), "glm-5".to_string()));
+    }
+    if current_provider != "glm5" && registry.get("glm5").is_some() {
+        return Some(("glm5".to_string(), "glm-5".to_string()));
+    }
+    if current_provider != "openrouter" && registry.get("openrouter").is_some() {
+        return Some((
+            "openrouter".to_string(),
+            "openai/gpt-oss-120b:free".to_string(),
+        ));
+    }
+
+    None
 }
 
 /// A conversation session
@@ -1638,6 +1851,23 @@ impl Session {
                                 )
                                 .await?;
                             continue;
+                        }
+                        if attempt == 1 && is_retryable_upstream_error(&e) {
+                            if let Some((retry_provider, retry_model)) =
+                                choose_router_target(&registry, selected_provider, &model)
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    from_provider = selected_provider,
+                                    from_model = %model,
+                                    to_provider = %retry_provider,
+                                    to_model = %retry_model,
+                                    "Retryable upstream provider error; retrying same prompt with alternate provider/model"
+                                );
+                                self.metadata.model = Some(format!("{retry_provider}/{retry_model}"));
+                                attempt = 0;
+                                continue;
+                            }
                         }
                         return Err(e);
                     }
@@ -2456,7 +2686,14 @@ impl Session {
             #[allow(clippy::never_loop)]
             let response = loop {
                 attempt += 1;
-                match provider.complete(request.clone()).await {
+                let completion_result = if model_supports_tools {
+                    let stream = provider.complete_stream(request.clone()).await?;
+                    collect_stream_completion_with_events(stream, Some(&event_tx)).await
+                } else {
+                    provider.complete(request.clone()).await
+                };
+
+                match completion_result {
                     Ok(r) => break r,
                     Err(e) => {
                         if attempt == 1 && is_prompt_too_long_error(&e) {
@@ -2491,9 +2728,13 @@ impl Session {
                                 max_tokens: Some(session_completion_max_tokens()),
                                 stop: Vec::new(),
                             };
-                            // Shadow request for next attempt.
-                            // (We keep the loop structure simple; at most one retry.)
-                            match provider.complete(new_request).await {
+                            let retry_result = if model_supports_tools {
+                                let stream = provider.complete_stream(new_request).await?;
+                                collect_stream_completion_with_events(stream, Some(&event_tx)).await
+                            } else {
+                                provider.complete(new_request).await
+                            };
+                            match retry_result {
                                 Ok(r2) => break r2,
                                 Err(e2) => return Err(e2),
                             }
@@ -3334,10 +3575,6 @@ fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
     }
 }
 
-// Async helper for Vec - kept for potential future use
-#[allow(dead_code)]
-use futures::StreamExt;
-
 #[allow(dead_code)]
 trait AsyncCollect<T> {
     async fn collect(self) -> Vec<T>;
@@ -3361,17 +3598,80 @@ where
 mod tests {
     use super::{
         assistant_claims_imminent_tool_use, build_request_requires_tool, choose_default_provider,
-        detect_stub_in_tool_input, extract_candidate_file_paths, is_codesearch_no_match_output,
+        collect_stream_completion_with_events, detect_stub_in_tool_input,
+        extract_candidate_file_paths, extract_text_content, is_codesearch_no_match_output,
         looks_like_build_execution_request, normalize_textual_tool_calls,
-        normalize_tool_call_for_execution, resolve_provider_for_session_request,
+        normalize_tool_call_for_execution, resolve_provider_for_session_request, SessionEvent,
         should_force_build_tool_first_retry, should_retry_missing_native_tool_call,
     };
     use crate::provider::{
-        CompletionResponse, ContentPart, FinishReason, Message, Role, ToolDefinition, Usage,
+        CompletionResponse, ContentPart, FinishReason, Message, Role, StreamChunk, ToolDefinition,
+        Usage,
     };
+    use futures::stream;
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
+    use tokio::sync::mpsc;
+
+    #[tokio::test]
+    async fn collect_stream_completion_emits_incremental_text_chunks() {
+        let (tx, mut rx) = mpsc::channel(8);
+        let stream = Box::pin(stream::iter(vec![
+            StreamChunk::Text("hel".to_string()),
+            StreamChunk::Text("lo".to_string()),
+            StreamChunk::Done {
+                usage: Some(Usage {
+                    prompt_tokens: 3,
+                    completion_tokens: 5,
+                    total_tokens: 8,
+                    ..Default::default()
+                }),
+            },
+        ]));
+
+        let response = collect_stream_completion_with_events(stream, Some(&tx))
+            .await
+            .expect("stream should collect");
+
+        let first = rx.recv().await.expect("first chunk");
+        let second = rx.recv().await.expect("second chunk");
+
+        assert!(matches!(first, SessionEvent::TextChunk(text) if text == "hel"));
+        assert!(matches!(second, SessionEvent::TextChunk(text) if text == "hello"));
+        assert_eq!(extract_text_content(&response.message.content), "hello");
+        assert_eq!(response.usage.total_tokens, 8);
+        assert_eq!(response.finish_reason, FinishReason::Stop);
+    }
+
+    #[tokio::test]
+    async fn collect_stream_completion_reconstructs_tool_calls() {
+        let stream = Box::pin(stream::iter(vec![
+            StreamChunk::ToolCallStart {
+                id: "call_1".to_string(),
+                name: "read".to_string(),
+            },
+            StreamChunk::ToolCallDelta {
+                id: "call_1".to_string(),
+                arguments_delta: "{\"path\":\"src/main.rs\"}".to_string(),
+            },
+            StreamChunk::ToolCallEnd {
+                id: "call_1".to_string(),
+            },
+            StreamChunk::Done { usage: None },
+        ]));
+
+        let response = collect_stream_completion_with_events(stream, None)
+            .await
+            .expect("stream should collect");
+
+        assert_eq!(response.finish_reason, FinishReason::ToolCalls);
+        assert!(matches!(
+            response.message.content.first(),
+            Some(ContentPart::ToolCall { id, name, arguments, .. })
+                if id == "call_1" && name == "read" && arguments == "{\"path\":\"src/main.rs\"}"
+        ));
+    }
 
     #[test]
     fn normalize_textual_tool_calls_extracts_markup_into_structured_calls() {

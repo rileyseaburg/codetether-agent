@@ -309,6 +309,10 @@ pub struct A2aArgs {
     #[arg(long, default_value = "8080", env = "CODETETHER_WORKER_PORT")]
     pub port: u16,
 
+    /// Public base URL advertised for this worker's HTTP interfaces.
+    #[arg(long, env = "CODETETHER_WORKER_PUBLIC_URL")]
+    pub public_url: Option<String>,
+
     /// Disable the worker HTTP server (for environments without K8s)
     #[arg(long, env = "CODETETHER_WORKER_HTTP_DISABLED")]
     pub no_http_server: bool,
@@ -609,6 +613,14 @@ pub struct McpArgs {
     /// Output as JSON
     #[arg(long)]
     pub json: bool,
+
+    /// Resolve a worker's first-class bus connection via the control plane.
+    #[arg(long)]
+    pub worker_id: Option<String>,
+
+    /// Resolve the owning worker via a registered workspace ID.
+    #[arg(long)]
+    pub workspace_id: Option<String>,
 
     /// URL of the CodeTether HTTP server's bus SSE endpoint.
     /// When set, the MCP server connects to the agent bus and exposes

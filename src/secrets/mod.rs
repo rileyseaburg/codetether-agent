@@ -57,18 +57,116 @@ impl SecretsManager {
         })
     }
 
-    /// Try to create from environment (for initial bootstrap only)
+    /// Authenticate to Vault using the pod's Kubernetes service account JWT.
+    ///
+    /// Reads the SA JWT from the standard Kubernetes mount path (overridable via
+    /// `VAULT_K8S_SA_JWT_PATH`) then calls the Vault `auth/kubernetes/login`
+    /// endpoint.  The returned manager holds the short-lived token that Vault
+    /// issued — no `VAULT_TOKEN` environment variable is required.
+    pub async fn from_k8s_auth(
+        address: &str,
+        role: &str,
+        mount: &str,
+        kv_mount: Option<&str>,
+        kv_path: Option<&str>,
+    ) -> Result<Self> {
+        let jwt_path = std::env::var("VAULT_K8S_SA_JWT_PATH")
+            .unwrap_or_else(|_| "/var/run/secrets/kubernetes.io/serviceaccount/token".to_string());
+
+        let jwt = tokio::fs::read_to_string(&jwt_path)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to read Kubernetes service account token from {}",
+                    jwt_path
+                )
+            })?;
+        let jwt = jwt.trim().to_string();
+
+        // Bootstrap client with an empty token — only used for the one-shot
+        // auth call; the real authenticated client is built from the result.
+        let bootstrap_settings = VaultClientSettingsBuilder::default()
+            .address(address)
+            .token("")
+            .build()
+            .context("Failed to build bootstrap Vault client settings")?;
+        let bootstrap_client = VaultClient::new(bootstrap_settings)
+            .context("Failed to create bootstrap Vault client")?;
+
+        let auth_info = vaultrs::auth::kubernetes::login(&bootstrap_client, mount, role, &jwt)
+            .await
+            .context("Vault Kubernetes auth login failed")?;
+
+        let settings = VaultClientSettingsBuilder::default()
+            .address(address)
+            .token(&auth_info.client_token)
+            .build()
+            .context("Failed to build authenticated Vault client settings")?;
+        let client =
+            VaultClient::new(settings).context("Failed to create authenticated Vault client")?;
+
+        Ok(Self {
+            client: Some(Arc::new(client)),
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            mount: kv_mount.unwrap_or("secret").to_string(),
+            path: kv_path.unwrap_or("codetether/providers").to_string(),
+        })
+    }
+
+    /// Try to create from environment (for initial bootstrap only).
+    ///
+    /// When `VAULT_ROLE` is set the worker authenticates via Kubernetes service
+    /// account — no static token is needed and the resulting Vault token is
+    /// short-lived and automatically rotated by Vault itself.  Falls back to
+    /// `VAULT_TOKEN` when `VAULT_ROLE` is absent or K8s auth fails.
     pub async fn from_env() -> Result<Self> {
         let address = std::env::var("VAULT_ADDR").context("VAULT_ADDR not set")?;
-        let token = std::env::var("VAULT_TOKEN").context("VAULT_TOKEN not set")?;
-        let mount = std::env::var("VAULT_MOUNT").ok();
-        let path = std::env::var("VAULT_SECRETS_PATH").ok();
+        let kv_mount = std::env::var("VAULT_MOUNT").ok();
+        let kv_path = std::env::var("VAULT_SECRETS_PATH").ok();
 
+        // Prefer Kubernetes service-account auth when VAULT_ROLE is set.
+        // This eliminates the dependency on a static VAULT_TOKEN; the pod's own
+        // SA JWT (mounted by k8s at the standard path) is the only credential
+        // the container needs to carry.
+        if let Ok(role) = std::env::var("VAULT_ROLE") {
+            let role = role.trim().to_string();
+            if !role.is_empty() {
+                let k8s_mount =
+                    std::env::var("VAULT_AUTH_MOUNT").unwrap_or_else(|_| "kubernetes".to_string());
+
+                match Self::from_k8s_auth(
+                    &address,
+                    &role,
+                    &k8s_mount,
+                    kv_mount.as_deref(),
+                    kv_path.as_deref(),
+                )
+                .await
+                {
+                    Ok(manager) => {
+                        tracing::info!(
+                            role = %role,
+                            mount = %k8s_mount,
+                            "Authenticated to Vault via Kubernetes service account"
+                        );
+                        return Ok(manager);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "Vault Kubernetes auth failed; falling back to VAULT_TOKEN"
+                        );
+                    }
+                }
+            }
+        }
+
+        let token = std::env::var("VAULT_TOKEN").context("VAULT_TOKEN not set")?;
         let config = VaultConfig {
             address,
             token,
-            mount,
-            path,
+            mount: kv_mount,
+            path: kv_path,
         };
 
         Self::new(&config).await

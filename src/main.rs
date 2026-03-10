@@ -565,6 +565,11 @@ async fn main() -> anyhow::Result<()> {
         tracing::warn!("Set VAULT_ADDR and VAULT_TOKEN environment variables to connect");
     }
 
+    let mcp_control_plane_url = cli.server.clone();
+    let mcp_control_plane_token = cli.token.clone();
+    let mcp_project_root = cli.project.clone();
+    let mcp_project_was_explicit = cli.project.is_some();
+
     match cli.command {
         Some(Command::Tui(args)) => {
             let project = args.project.or(cli.project);
@@ -849,9 +854,88 @@ async fn main() -> anyhow::Result<()> {
                     let server = mcp::McpServer::new_stdio()
                         .with_tool_registry(registry)
                         .with_agent_bus(bus);
-                    let server = if let Some(bus_url) = &args.bus_url {
+                    let resolved_bus_url = if let Some(bus_url) = &args.bus_url {
+                        Some(bus_url.clone())
+                    } else if let Some(worker_id) = &args.worker_id {
+                        let control_plane_url = mcp_control_plane_url.as_deref().ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "--worker-id requires --server (or CODETETHER_SERVER) so MCP can resolve the worker connection"
+                            )
+                        })?;
+                        Some(
+                            mcp::bus_bridge::resolve_worker_bus_url(
+                                control_plane_url,
+                                worker_id,
+                                mcp_control_plane_token.as_deref(),
+                            )
+                            .await?,
+                        )
+                    } else if let Some(workspace_id) = &args.workspace_id {
+                        let control_plane_url = mcp_control_plane_url.as_deref().ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "--workspace-id requires --server (or CODETETHER_SERVER) so MCP can resolve the owning worker"
+                            )
+                        })?;
+                        Some(
+                            mcp::bus_bridge::resolve_worker_bus_url_for_workspace(
+                                control_plane_url,
+                                workspace_id,
+                                mcp_control_plane_token.as_deref(),
+                            )
+                            .await?,
+                        )
+                    } else if let Some(control_plane_url) = mcp_control_plane_url.as_deref() {
+                        let project_root = mcp_project_root
+                            .clone()
+                            .or_else(|| std::env::current_dir().ok());
+                        if let Some(project_root) = project_root.as_deref() {
+                            if let Some(workspace_id) =
+                                mcp::bus_bridge::resolve_workspace_id_from_path(
+                                    control_plane_url,
+                                    project_root,
+                                    mcp_control_plane_token.as_deref(),
+                                )
+                                .await?
+                            {
+                                Some(
+                                    mcp::bus_bridge::resolve_worker_bus_url_for_workspace(
+                                        control_plane_url,
+                                        &workspace_id,
+                                        mcp_control_plane_token.as_deref(),
+                                    )
+                                    .await?,
+                                )
+                            } else if mcp_project_was_explicit {
+                                anyhow::bail!(
+                                    "No registered workspace matched project '{}'; pass --workspace-id or --worker-id",
+                                    project_root.display()
+                                );
+                            } else {
+                                Some(
+                                    mcp::bus_bridge::resolve_default_worker_bus_url(
+                                        control_plane_url,
+                                        mcp_control_plane_token.as_deref(),
+                                    )
+                                    .await?,
+                                )
+                            }
+                        } else {
+                            Some(
+                                mcp::bus_bridge::resolve_default_worker_bus_url(
+                                    control_plane_url,
+                                    mcp_control_plane_token.as_deref(),
+                                )
+                                .await?,
+                            )
+                        }
+                    } else {
+                        None
+                    };
+                    let server = if let Some(bus_url) = resolved_bus_url {
                         tracing::info!(bus_url = %bus_url, "Connecting MCP server to agent bus");
-                        server.with_bus(bus_url.clone()).await
+                        server
+                            .with_bus_auth(bus_url, mcp_control_plane_token.clone())
+                            .await
                     } else {
                         server
                     };

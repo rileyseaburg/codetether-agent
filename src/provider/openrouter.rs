@@ -134,6 +134,15 @@ impl OpenRouterProvider {
             })
             .collect()
     }
+
+    fn parse_error_body(text: &str) -> Option<String> {
+        let err = serde_json::from_str::<OpenRouterError>(text).ok()?;
+        let mut message = format!("OpenRouter API error: {}", err.error.message);
+        if let Some(code) = err.error.code {
+            message.push_str(&format!(" (code: {code})"));
+        }
+        Some(message)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -213,7 +222,7 @@ struct OpenRouterError {
 struct OpenRouterErrorDetail {
     message: String,
     #[serde(default)]
-    code: Option<i32>,
+    code: Option<Value>,
 }
 
 #[async_trait]
@@ -313,15 +322,11 @@ impl Provider for OpenRouterProvider {
         let status = response.status();
         let text = response.text().await.context("Failed to read response")?;
 
+        if let Some(error_message) = Self::parse_error_body(&text) {
+            anyhow::bail!(error_message);
+        }
+
         if !status.is_success() {
-            // Try to parse as error response
-            if let Ok(err) = serde_json::from_str::<OpenRouterError>(&text) {
-                anyhow::bail!(
-                    "OpenRouter API error: {} (code: {:?})",
-                    err.error.message,
-                    err.error.code
-                );
-            }
             anyhow::bail!("OpenRouter API error: {} {}", status, text);
         }
 
@@ -474,5 +479,34 @@ impl Provider for OpenRouterProvider {
         Ok(Box::pin(futures::stream::once(async move {
             StreamChunk::Text(text)
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OpenRouterProvider;
+
+    #[test]
+    fn parses_embedded_error_body() {
+        let body = r#"{"error":{"message":"Internal Server Error","code":500}}"#;
+        let message = OpenRouterProvider::parse_error_body(body);
+
+        assert_eq!(
+            message.as_deref(),
+            Some("OpenRouter API error: Internal Server Error (code: 500)")
+        );
+    }
+
+    #[test]
+    fn ignores_success_body_without_error_envelope() {
+        let body = r#"{
+            "id":"chatcmpl-123",
+            "choices":[{
+                "message":{"role":"assistant","content":"ok"},
+                "finish_reason":"stop"
+            }]
+        }"#;
+
+        assert_eq!(OpenRouterProvider::parse_error_body(body), None);
     }
 }
