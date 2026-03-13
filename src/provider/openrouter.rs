@@ -21,8 +21,13 @@ pub struct OpenRouterProvider {
 
 impl OpenRouterProvider {
     pub fn new(api_key: String) -> Result<Self> {
+        let client = Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(15))
+            .timeout(std::time::Duration::from_secs(300))
+            .build()
+            .context("Failed to build reqwest client")?;
         Ok(Self {
-            client: Client::new(),
+            client,
             api_key,
             base_url: "https://openrouter.ai/api/v1".to_string(),
         })
@@ -456,30 +461,177 @@ impl Provider for OpenRouterProvider {
         &self,
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
+        use futures::StreamExt;
+
+        let messages = Self::convert_messages(&request.messages);
+        let tools = Self::convert_tools(&request.tools);
+
+        let mut body = json!({
+            "model": request.model,
+            "messages": messages,
+            "stream": true,
+        });
+        if !tools.is_empty() {
+            body["tools"] = json!(tools);
+        }
+        if let Some(temp) = request.temperature {
+            body["temperature"] = json!(temp);
+        }
+        if let Some(max) = request.max_tokens {
+            body["max_tokens"] = json!(max);
+        }
+
         tracing::debug!(
             provider = "openrouter",
             model = %request.model,
             message_count = request.messages.len(),
-            "Starting streaming completion request (falling back to non-streaming)"
+            "Starting streaming completion request"
         );
 
-        // For now, fall back to non-streaming
-        let response = self.complete(request).await?;
-        let text = response
-            .message
-            .content
-            .iter()
-            .filter_map(|p| match p {
-                ContentPart::Text { text } => Some(text.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("");
+        let response = self
+            .client
+            .post(format!("{}/chat/completions", self.base_url))
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://codetether.run")
+            .header("X-Title", "CodeTether Agent")
+            .json(&body)
+            .send()
+            .await
+            .context("Failed to send streaming request to OpenRouter")?;
 
-        Ok(Box::pin(futures::stream::once(async move {
-            StreamChunk::Text(text)
-        })))
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            if let Some(error_message) = Self::parse_error_body(&text) {
+                anyhow::bail!(error_message);
+            }
+            anyhow::bail!("OpenRouter streaming error: {} {}", status, text);
+        }
+
+        let stream = response.bytes_stream();
+        let mut buffer = String::new();
+
+        Ok(stream
+            .flat_map(move |chunk_result| {
+                let mut chunks: Vec<StreamChunk> = Vec::new();
+                match chunk_result {
+                    Ok(bytes) => {
+                        let text = String::from_utf8_lossy(&bytes);
+                        buffer.push_str(&text);
+
+                        while let Some(line_end) = buffer.find('\n') {
+                            let line = buffer[..line_end].trim().to_string();
+                            buffer = buffer[line_end + 1..].to_string();
+
+                            if line.is_empty() {
+                                continue;
+                            }
+
+                            if line == "data: [DONE]" {
+                                chunks.push(StreamChunk::Done { usage: None });
+                                continue;
+                            }
+
+                            if let Some(data) = line.strip_prefix("data: ") {
+                                if let Ok(parsed) =
+                                    serde_json::from_str::<OpenRouterStreamResponse>(data)
+                                {
+                                    if let Some(choice) = parsed.choices.first() {
+                                        if let Some(ref content) = choice.delta.content {
+                                            if !content.is_empty() {
+                                                chunks.push(StreamChunk::Text(content.clone()));
+                                            }
+                                        }
+                                        if let Some(ref tool_calls) = choice.delta.tool_calls {
+                                            for tc in tool_calls {
+                                                if let Some(ref func) = tc.function {
+                                                    if let Some(ref name) = func.name {
+                                                        let id = tc.id.clone().unwrap_or_default();
+                                                        chunks.push(StreamChunk::ToolCallStart {
+                                                            id: id.clone(),
+                                                            name: name.clone(),
+                                                        });
+                                                    }
+                                                    if let Some(ref args) = func.arguments {
+                                                        let id = tc.id.clone().unwrap_or_default();
+                                                        if !args.is_empty() {
+                                                            chunks.push(
+                                                                StreamChunk::ToolCallDelta {
+                                                                    id,
+                                                                    arguments_delta: args.clone(),
+                                                                },
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if choice.finish_reason.as_deref() == Some("stop")
+                                            || choice.finish_reason.as_deref() == Some("tool_calls")
+                                        {
+                                            let usage = parsed.usage.map(|u| Usage {
+                                                prompt_tokens: u.prompt_tokens,
+                                                completion_tokens: u.completion_tokens,
+                                                total_tokens: u.total_tokens,
+                                                ..Default::default()
+                                            });
+                                            chunks.push(StreamChunk::Done { usage });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        chunks.push(StreamChunk::Error(e.to_string()));
+                    }
+                }
+                futures::stream::iter(chunks)
+            })
+            .boxed())
     }
+}
+
+/// Streaming SSE delta types for OpenRouter (OpenAI-compatible)
+#[derive(Debug, Deserialize)]
+struct OpenRouterStreamResponse {
+    #[serde(default)]
+    choices: Vec<OpenRouterStreamChoice>,
+    #[serde(default)]
+    usage: Option<OpenRouterUsage>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterStreamChoice {
+    #[serde(default)]
+    delta: OpenRouterStreamDelta,
+    #[serde(default)]
+    finish_reason: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct OpenRouterStreamDelta {
+    #[serde(default)]
+    content: Option<String>,
+    #[serde(default)]
+    tool_calls: Option<Vec<OpenRouterStreamToolCall>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterStreamToolCall {
+    #[serde(default)]
+    id: Option<String>,
+    #[serde(default)]
+    function: Option<OpenRouterStreamFunction>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterStreamFunction {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    arguments: Option<String>,
 }
 
 #[cfg(test)]

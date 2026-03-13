@@ -1041,6 +1041,7 @@ impl McpServer {
                     agent_id: "mcp-server".into(),
                     tool_name: params.name.clone(),
                     arguments: params.arguments.clone(),
+                    step: 0,
                 },
             );
         }
@@ -1090,6 +1091,7 @@ impl McpServer {
                     tool_name: params.name,
                     result: output_text,
                     success,
+                    step: 0,
                 },
             );
         }

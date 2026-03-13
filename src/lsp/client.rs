@@ -651,7 +651,12 @@ fn parse_completion_response(response: JsonRpcResponse) -> Result<LspActionResul
 /// LSP Manager - manages multiple language server connections
 pub struct LspManager {
     clients: RwLock<HashMap<String, Arc<LspClient>>>,
+    /// Linter clients keyed by linter name (e.g. "eslint", "ruff").
+    /// These are only queried for diagnostics, not completions/definitions.
+    linter_clients: RwLock<HashMap<String, Arc<LspClient>>>,
     root_uri: Option<String>,
+    /// User-supplied LSP settings from config.
+    lsp_settings: Option<crate::config::LspSettings>,
 }
 
 impl LspManager {
@@ -659,7 +664,19 @@ impl LspManager {
     pub fn new(root_uri: Option<String>) -> Self {
         Self {
             clients: RwLock::new(HashMap::new()),
+            linter_clients: RwLock::new(HashMap::new()),
             root_uri,
+            lsp_settings: None,
+        }
+    }
+
+    /// Create a new LSP manager with config-driven settings.
+    pub fn with_config(root_uri: Option<String>, settings: crate::config::LspSettings) -> Self {
+        Self {
+            clients: RwLock::new(HashMap::new()),
+            linter_clients: RwLock::new(HashMap::new()),
+            root_uri,
+            lsp_settings: Some(settings),
         }
     }
 
@@ -672,7 +689,16 @@ impl LspManager {
             }
         }
 
-        let client = LspClient::for_language(language, self.root_uri.clone()).await?;
+        let client = if let Some(settings) = &self.lsp_settings {
+            if let Some(entry) = settings.servers.get(language) {
+                let config = LspConfig::from_server_entry(entry, self.root_uri.clone());
+                LspClient::new(config).await?
+            } else {
+                LspClient::for_language(language, self.root_uri.clone()).await?
+            }
+        } else {
+            LspClient::for_language(language, self.root_uri.clone()).await?
+        };
         client.initialize().await?;
 
         let client = Arc::new(client);
@@ -736,6 +762,126 @@ impl LspManager {
                 warn!("Failed to shutdown {} language server: {}", lang, e);
             }
         }
+        let linters = self.linter_clients.read().await;
+        for (name, client) in linters.iter() {
+            if let Err(e) = client.shutdown().await {
+                warn!("Failed to shutdown {} linter server: {}", name, e);
+            }
+        }
+    }
+
+    /// Get or start a linter client by name (e.g. "eslint", "ruff").
+    /// Returns `None` if the linter is not configured or its binary is missing.
+    pub async fn get_linter_client(&self, name: &str) -> Result<Option<Arc<LspClient>>> {
+        // Already running?
+        {
+            let linters = self.linter_clients.read().await;
+            if let Some(client) = linters.get(name) {
+                return Ok(Some(Arc::clone(client)));
+            }
+        }
+
+        // Resolve config
+        let lsp_config = if let Some(settings) = &self.lsp_settings {
+            if let Some(entry) = settings.linters.get(name) {
+                if !entry.enabled {
+                    return Ok(None);
+                }
+                LspConfig::from_linter_entry(name, entry, self.root_uri.clone())
+            } else if !settings.disable_builtin_linters {
+                // Not explicitly configured — try built-in
+                if let Some(mut cfg) = get_linter_server_config(name) {
+                    cfg.root_uri = self.root_uri.clone();
+                    Some(cfg)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            // No config provided — use built-in defaults
+            if let Some(mut cfg) = get_linter_server_config(name) {
+                cfg.root_uri = self.root_uri.clone();
+                Some(cfg)
+            } else {
+                None
+            }
+        };
+
+        let Some(config) = lsp_config else {
+            return Ok(None);
+        };
+
+        // Try to start; if the binary is missing, return None instead of hard error
+        let client = match LspClient::new(config).await {
+            Ok(c) => c,
+            Err(e) => {
+                debug!(linter = name, error = %e, "Linter server not available");
+                return Ok(None);
+            }
+        };
+        if let Err(e) = client.initialize().await {
+            warn!(linter = name, error = %e, "Linter server failed to initialize");
+            return Ok(None);
+        }
+
+        let client = Arc::new(client);
+        self.linter_clients
+            .write()
+            .await
+            .insert(name.to_string(), Arc::clone(&client));
+        info!(linter = name, "Linter server started");
+        Ok(Some(client))
+    }
+
+    /// Collect diagnostics from all applicable linter servers for a file.
+    /// Returns an empty vec if no linters match the file extension.
+    pub async fn linter_diagnostics(&self, path: &Path) -> Vec<DiagnosticInfo> {
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+        // Determine which linters apply based on file extension
+        let linter_names: Vec<String> = if let Some(settings) = &self.lsp_settings {
+            settings
+                .linters
+                .iter()
+                .filter(|(_, entry)| {
+                    entry.enabled
+                        && (entry.file_extensions.iter().any(|e| e == ext)
+                            || entry.file_extensions.is_empty())
+                })
+                .map(|(name, _)| name.clone())
+                .collect()
+        } else {
+            // Auto-detect: try known linters whose extensions match
+            let mut names = Vec::new();
+            for candidate in &["eslint", "biome", "ruff", "stylelint"] {
+                if linter_extensions(candidate).contains(&ext) {
+                    names.push((*candidate).to_string());
+                }
+            }
+            names
+        };
+
+        let mut all_diagnostics = Vec::new();
+        for name in &linter_names {
+            match self.get_linter_client(name).await {
+                Ok(Some(client)) => match client.diagnostics(path).await {
+                    Ok(LspActionResult::Diagnostics { diagnostics }) => {
+                        all_diagnostics.extend(diagnostics);
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        debug!(linter = %name, error = %e, "Linter diagnostics failed");
+                    }
+                },
+                Ok(None) => {}
+                Err(e) => {
+                    debug!(linter = %name, error = %e, "Failed to get linter client");
+                }
+            }
+        }
+        all_diagnostics
     }
 }
 

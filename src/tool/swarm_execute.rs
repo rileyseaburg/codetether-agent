@@ -307,7 +307,10 @@ Share any intermediate results using the swarm_share tool so other agents can be
             let timeout_secs = timeout_secs;
 
             let handle = tokio::spawn(async move {
-                let _permit = semaphore.acquire().await.expect("swarm semaphore closed unexpectedly");
+                let _permit = semaphore
+                    .acquire()
+                    .await
+                    .expect("swarm semaphore closed unexpectedly");
 
                 let user_prompt = format!(
                     "Task: {}\nSpecialty: {}\n\nInstruction: {}",

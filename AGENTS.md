@@ -56,7 +56,7 @@ src/
 ├── audit/           # System-wide audit trail (JSON Lines, queryable)
 │   └── mod.rs       # AuditEntry, AuditLog, global singleton, query filters
 ├── cli/             # CLI commands (run, tui, serve, ralph, swarm, etc.)
-├── config/          # Configuration loading
+├── config/          # Configuration loading (includes LSP/linter server settings under [lsp])
 ├── k8s/             # Kubernetes self-deployment manager
 │   └── mod.rs       # K8sManager, cluster detection, pod lifecycle, reconcile loop
 ├── mcp/             # MCP protocol implementation

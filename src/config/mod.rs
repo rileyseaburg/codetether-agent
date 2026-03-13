@@ -50,6 +50,10 @@ pub struct Config {
     /// Telemetry and crash reporting settings
     #[serde(default)]
     pub telemetry: TelemetryConfig,
+
+    /// LSP / linter server settings
+    #[serde(default)]
+    pub lsp: LspSettings,
 }
 
 impl Default for Config {
@@ -66,6 +70,7 @@ impl Default for Config {
             ui: UiConfig::default(),
             session: SessionConfig::default(),
             telemetry: TelemetryConfig::default(),
+            lsp: LspSettings::default(),
         }
     }
 }
@@ -295,6 +300,83 @@ fn default_crash_report_endpoint() -> String {
     "https://api.codetether.run/v1/crash-reports".to_string()
 }
 
+/// Configuration for LSP language servers and linter servers.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LspSettings {
+    /// Additional language servers beyond the built-in defaults.
+    /// Keyed by a user-chosen name (e.g. "my-ruby-lsp").
+    #[serde(default)]
+    pub servers: HashMap<String, LspServerEntry>,
+
+    /// Linter servers that run alongside the primary language server.
+    /// These only contribute diagnostics; they are not used for
+    /// go-to-definition, completion, etc.
+    /// Use the built-in name ("eslint", "ruff", "biome") or provide
+    /// a custom entry with `command`.
+    #[serde(default)]
+    pub linters: HashMap<String, LspLinterEntry>,
+
+    /// Disable all built-in linter integrations (default: false).
+    #[serde(default)]
+    pub disable_builtin_linters: bool,
+}
+
+/// A user-defined language server entry in config.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LspServerEntry {
+    /// Binary / command to run.
+    pub command: String,
+    /// Arguments passed to the command.
+    #[serde(default)]
+    pub args: Vec<String>,
+    /// File extensions this server handles (e.g. ["rb", "erb"]).
+    #[serde(default)]
+    pub file_extensions: Vec<String>,
+    /// Optional initialization options (JSON value).
+    #[serde(default)]
+    pub initialization_options: Option<serde_json::Value>,
+    /// Request timeout in milliseconds (default 30 000).
+    #[serde(default = "default_lsp_timeout")]
+    pub timeout_ms: u64,
+}
+
+/// A linter server entry in config.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LspLinterEntry {
+    /// Binary / command to run.  For built-in linters (eslint, ruff, biome)
+    /// this can be omitted — the default binary name will be used.
+    pub command: Option<String>,
+    /// Arguments passed to the command.
+    #[serde(default)]
+    pub args: Vec<String>,
+    /// File extensions this linter handles.  If empty, the built-in
+    /// defaults for the linter are used.
+    #[serde(default)]
+    pub file_extensions: Vec<String>,
+    /// Optional initialization options.
+    #[serde(default)]
+    pub initialization_options: Option<serde_json::Value>,
+    /// Whether this linter is enabled (default: true).
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+impl Default for LspLinterEntry {
+    fn default() -> Self {
+        Self {
+            command: None,
+            args: Vec::new(),
+            file_extensions: Vec::new(),
+            initialization_options: None,
+            enabled: true,
+        }
+    }
+}
+
+fn default_lsp_timeout() -> u64 {
+    30_000
+}
+
 impl Config {
     /// Load configuration from all sources (global, project, env)
     pub async fn load() -> Result<Self> {
@@ -417,6 +499,11 @@ impl Config {
         }
         if other.telemetry.crash_report_endpoint.is_some() {
             self.telemetry.crash_report_endpoint = other.telemetry.crash_report_endpoint;
+        }
+        self.lsp.servers.extend(other.lsp.servers);
+        self.lsp.linters.extend(other.lsp.linters);
+        if other.lsp.disable_builtin_linters {
+            self.lsp.disable_builtin_linters = true;
         }
         self
     }

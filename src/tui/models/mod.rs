@@ -7,7 +7,7 @@ pub enum ViewMode {
     Swarm,
     Ralph,
     Bus,
-    Help,
+    Model,
     Settings,
     Lsp,
     Rlm,

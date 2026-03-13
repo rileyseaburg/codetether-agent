@@ -6,6 +6,26 @@ pub enum MessageType {
     Assistant,
     System,
     Error,
+    ToolCall {
+        name: String,
+        arguments: String,
+    },
+    ToolResult {
+        name: String,
+        output: String,
+        success: bool,
+        #[serde(default)]
+        duration_ms: Option<u64>,
+    },
+    Thinking(String),
+    Image {
+        url: String,
+    },
+    File {
+        path: String,
+        #[serde(default)]
+        size: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

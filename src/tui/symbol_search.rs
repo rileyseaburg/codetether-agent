@@ -178,13 +178,10 @@ pub fn render_symbol_search(f: &mut Frame, state: &mut SymbolSearchState, area: 
         .results
         .iter()
         .enumerate()
-        .map(|(i, sym)| {
+        .map(|(_i, sym)| {
             let kind_color = symbol_kind_color(&sym.kind);
             let mut spans = vec![
-                Span::styled(
-                    format!(" {:8} ", sym.kind),
-                    Style::default().fg(kind_color),
-                ),
+                Span::styled(format!(" {:8} ", sym.kind), Style::default().fg(kind_color)),
                 Span::styled(&sym.name, Style::default().fg(Color::White).bold()),
             ];
 

@@ -635,10 +635,10 @@ impl Provider for StepFunProvider {
                             Ok(chunks.remove(0))
                         }
                     };
-                    
+
                     match process() {
                         Ok(c) => c,
-                        Err(e) => StreamChunk::Error(e.to_string())
+                        Err(e) => StreamChunk::Error(e.to_string()),
                     }
                 }
                 Err(e) => StreamChunk::Error(e.to_string()),

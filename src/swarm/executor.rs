@@ -13,7 +13,7 @@ use super::{
     },
     orchestrator::Orchestrator,
     result_store::ResultStore,
-    subtask::{SubTask, SubTaskResult, SubTaskStatus, is_transient_error},
+    subtask::{SubTask, SubTaskResult, SubTaskStatus},
 };
 use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
@@ -1258,7 +1258,6 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                         } else {
                             0
                         };
-                        let was_retried = attempt > 0;
 
                         // Emit completion events
                         if let Some(ref tx) = event_tx {
@@ -1305,7 +1304,6 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                         } else {
                             0
                         };
-                        let was_retried = attempt > 0;
 
                         // Emit error events
                         if let Some(ref tx) = event_tx {

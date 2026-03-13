@@ -562,6 +562,26 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
     // Load configuration
     let config = Config::load().await.unwrap_or_default();
+    let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let knowledge_snapshot =
+        match crate::indexer::refresh_workspace_knowledge_snapshot(&workspace_dir).await {
+            Ok(path) => {
+                tracing::info!(
+                    workspace = %workspace_dir.display(),
+                    output = %path.display(),
+                    "Refreshed workspace knowledge snapshot for run"
+                );
+                Some(path)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    workspace = %workspace_dir.display(),
+                    error = %e,
+                    "Failed to refresh workspace knowledge snapshot"
+                );
+                None
+            }
+        };
 
     // Protocol-first relay aliases in CLI:
     // - /go [count] <task>
@@ -774,7 +794,6 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         tracing::info!("Continuing session: {}", session_id);
         Session::load(&session_id).await?
     } else if args.continue_session {
-        let workspace_dir = std::env::current_dir().unwrap_or_default();
         match Session::last_for_directory(Some(&workspace_dir)).await {
             Ok(s) => {
                 tracing::info!(
@@ -810,6 +829,8 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         tracing::info!("Using model: {}", model);
         session.metadata.model = Some(model);
     }
+
+    session.metadata.knowledge_snapshot = knowledge_snapshot;
 
     // Wire bus for thinking capture + S3 training data
     let bus = AgentBus::new().into_arc();

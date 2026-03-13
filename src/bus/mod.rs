@@ -85,6 +85,7 @@ pub enum BusMessage {
         agent_id: String,
         tool_name: String,
         arguments: serde_json::Value,
+        step: usize,
     },
     /// Tool execution response
     ToolResponse {
@@ -93,6 +94,7 @@ pub enum BusMessage {
         tool_name: String,
         result: String,
         success: bool,
+        step: usize,
     },
     /// Heartbeat (keep-alive / health signal)
     Heartbeat { agent_id: String, status: String },

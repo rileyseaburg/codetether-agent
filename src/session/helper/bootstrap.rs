@@ -1,5 +1,5 @@
 use crate::provider::ToolDefinition;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub fn inject_tool_prompt(base_prompt: &str, tools: &[ToolDefinition]) -> String {
     let tool_lines: String = tools

@@ -40,9 +40,13 @@ ${DIFF_PATCH_TRUNCATED}"
 
 echo "Generating commit message..."
 
+# Use a capable model for commit message generation.
+# The default zai/glm-5 often produces empty or malformed messages.
+COMMIT_MODEL="${CODETETHER_COMMIT_MODEL:-openai/gpt-4o}"
+
 RAW_OUTPUT=""
 CODETETHER_EXIT=0
-if ! RAW_OUTPUT="$(RUST_LOG=error codetether run "Generate a conventional commit message for these git changes. Output ONLY the commit message in format 'type: description'. Types: feat|fix|refactor|docs|test|chore|perf|style|build|ci. Be specific about WHAT changed (file names, features, functions). Examples:
+if ! RAW_OUTPUT="$(RUST_LOG=error codetether run --model "$COMMIT_MODEL" "Generate a conventional commit message for these git changes. Output ONLY the commit message in format 'type: description'. Types: feat|fix|refactor|docs|test|chore|perf|style|build|ci. Be specific about WHAT changed (file names, features, functions). Examples:
 - feat: add user authentication to login.rs
 - fix: resolve null pointer in parse_config
 - refactor: extract validation logic into validator.rs

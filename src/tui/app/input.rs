@@ -1,0 +1,226 @@
+use std::path::Path;
+use std::sync::Arc;
+
+use crossterm::event::KeyModifiers;
+use tokio::sync::mpsc;
+
+use crate::provider::ProviderRegistry;
+use crate::session::{Session, SessionEvent};
+use crate::tui::app::commands::handle_slash_command;
+use crate::tui::app::message_text::sync_messages_from_session;
+use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
+use crate::tui::app::state::App;
+use crate::tui::app::symbols::{refresh_symbol_search, symbol_search_active};
+use crate::tui::app::worker_bridge::{handle_processing_started, handle_processing_stopped};
+use crate::tui::chat::message::{ChatMessage, MessageType};
+use crate::tui::models::{InputMode, ViewMode};
+use crate::tui::worker_bridge::TuiWorkerBridge;
+
+pub async fn handle_enter(
+    app: &mut App,
+    cwd: &Path,
+    session: &mut Session,
+    registry: &Option<Arc<ProviderRegistry>>,
+    worker_bridge: &Option<TuiWorkerBridge>,
+    event_tx: &mpsc::Sender<SessionEvent>,
+    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+) {
+    match app.state.view_mode {
+        ViewMode::Sessions => handle_enter_sessions(app, cwd, session).await,
+        ViewMode::Swarm => app.state.swarm.enter_detail(),
+        ViewMode::Ralph => app.state.ralph.enter_detail(),
+        ViewMode::Bus if app.state.bus_log.filter_input_mode => handle_enter_bus_filter(app),
+        ViewMode::Bus => app.state.bus_log.enter_detail(),
+        ViewMode::Chat => {
+            handle_enter_chat(
+                app,
+                cwd,
+                session,
+                registry,
+                worker_bridge,
+                event_tx,
+                result_tx,
+            )
+            .await
+        }
+        ViewMode::Model => crate::tui::app::model_picker::apply_selected_model(app, session),
+        ViewMode::Settings | ViewMode::Lsp | ViewMode::Rlm => {}
+    }
+}
+
+pub async fn handle_backspace(app: &mut App) {
+    if symbol_search_active(app) {
+        app.state.symbol_search.handle_backspace();
+        refresh_symbol_search(app).await;
+    } else if app.state.view_mode == ViewMode::Bus && app.state.bus_log.filter_input_mode {
+        app.state.bus_log.pop_filter_char();
+        app.state.status = if app.state.bus_log.filter.is_empty() {
+            "Protocol filter cleared".to_string()
+        } else {
+            format!("Protocol filter: {}", app.state.bus_log.filter)
+        };
+    } else if app.state.view_mode == ViewMode::Model {
+        app.state.model_filter_backspace();
+    } else if app.state.view_mode == ViewMode::Chat {
+        app.state.delete_backspace();
+        if app.state.input.is_empty() {
+            app.state.input_mode = InputMode::Normal;
+        } else if app.state.input.starts_with('/') {
+            app.state.input_mode = InputMode::Command;
+        }
+    }
+}
+
+pub fn handle_bus_g(app: &mut App) {
+    let len = app.state.bus_log.visible_count();
+    if len > 0 {
+        app.state.bus_log.selected_index = len - 1;
+        app.state.bus_log.auto_scroll = true;
+    }
+}
+
+pub fn handle_bus_c(app: &mut App) {
+    app.state.bus_log.clear_filter();
+    app.state.status = "Protocol filter cleared".to_string();
+}
+
+pub fn handle_bus_slash(app: &mut App) {
+    app.state.bus_log.enter_filter_mode();
+    app.state.status = "Protocol filter mode".to_string();
+}
+
+pub fn handle_sessions_char(app: &mut App, modifiers: KeyModifiers, c: char) {
+    if !modifiers.contains(KeyModifiers::CONTROL) && !modifiers.contains(KeyModifiers::ALT) {
+        app.state.session_filter_push(c);
+    }
+}
+
+pub async fn handle_char(app: &mut App, modifiers: KeyModifiers, c: char) {
+    if !modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.contains(KeyModifiers::ALT)
+        && symbol_search_active(app)
+    {
+        app.state.symbol_search.handle_char(c);
+        refresh_symbol_search(app).await;
+    } else if app.state.view_mode == ViewMode::Bus
+        && app.state.bus_log.filter_input_mode
+        && !modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.contains(KeyModifiers::ALT)
+    {
+        app.state.bus_log.push_filter_char(c);
+        app.state.status = format!("Protocol filter: {}", app.state.bus_log.filter);
+    } else if app.state.view_mode == ViewMode::Model
+        && !modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.contains(KeyModifiers::ALT)
+    {
+        app.state.model_filter_push(c);
+    } else if app.state.view_mode == ViewMode::Chat
+        && !modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.contains(KeyModifiers::ALT)
+    {
+        app.state.input_mode = if app.state.input.is_empty() && c == '/' {
+            InputMode::Command
+        } else if app.state.input.starts_with('/') || c == '/' {
+            InputMode::Command
+        } else {
+            InputMode::Editing
+        };
+        app.state.insert_char(c);
+    }
+}
+
+async fn handle_enter_sessions(app: &mut App, cwd: &Path, session: &mut Session) {
+    let session_id = app
+        .state
+        .filtered_sessions()
+        .get(app.state.selected_session)
+        .map(|(orig_idx, _)| app.state.sessions[*orig_idx].id.clone());
+    if let Some(session_id) = session_id {
+        match Session::load(&session_id).await {
+            Ok(loaded) => {
+                *session = loaded;
+                app.state.session_id = Some(session.id.clone());
+                sync_messages_from_session(app, session);
+                refresh_sessions(app, cwd).await;
+                app.state.clear_session_filter();
+                return_to_chat(app);
+                app.state.status = format!(
+                    "Loaded session {}",
+                    session.title.clone().unwrap_or_else(|| session.id.clone())
+                );
+            }
+            Err(err) => {
+                app.state.status = format!("Failed to load session: {err}");
+            }
+        }
+    }
+}
+
+fn handle_enter_bus_filter(app: &mut App) {
+    app.state.bus_log.exit_filter_mode();
+    app.state.status = if app.state.bus_log.filter.is_empty() {
+        "Protocol filter cleared".to_string()
+    } else {
+        format!("Protocol filter applied: {}", app.state.bus_log.filter)
+    };
+}
+
+async fn handle_enter_chat(
+    app: &mut App,
+    cwd: &Path,
+    session: &mut Session,
+    registry: &Option<Arc<ProviderRegistry>>,
+    worker_bridge: &Option<TuiWorkerBridge>,
+    event_tx: &mpsc::Sender<SessionEvent>,
+    result_tx: &mpsc::Sender<anyhow::Result<Session>>,
+) {
+    if app.state.processing {
+        app.state.status = "Still processing previous request…".to_string();
+        return;
+    }
+
+    let prompt = app.state.input.trim().to_string();
+    if !prompt.is_empty() {
+        app.state.push_history(prompt.clone());
+    }
+
+    if prompt.starts_with('/') {
+        handle_slash_command(app, cwd, session, registry.as_ref(), &prompt).await;
+        app.state.clear_input();
+        return;
+    }
+
+    if prompt.is_empty() {
+        return;
+    }
+
+    app.state
+        .messages
+        .push(ChatMessage::new(MessageType::User, prompt.clone()));
+    app.state.clear_input();
+    handle_processing_started(app, worker_bridge).await;
+    app.state.status = "Submitting prompt…".to_string();
+    app.state.scroll_to_bottom();
+
+    if let Some(registry) = registry {
+        let mut session_for_task = session.clone();
+        let event_tx = event_tx.clone();
+        let result_tx = result_tx.clone();
+        let registry = Arc::clone(registry);
+        tokio::spawn(async move {
+            let result = session_for_task
+                .prompt_with_events(&prompt, event_tx, registry)
+                .await
+                .map(|_| session_for_task);
+            let _ = result_tx.send(result).await;
+        });
+    } else {
+        handle_processing_stopped(app, worker_bridge).await;
+        app.state.messages.push(ChatMessage::new(
+            MessageType::Error,
+            "No providers available. Configure credentials first (for example: `codetether auth codex` or `codetether auth copilot`).",
+        ));
+        app.state.status = "No providers configured".to_string();
+        app.state.scroll_to_bottom();
+    }
+}

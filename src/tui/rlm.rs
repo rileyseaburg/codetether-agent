@@ -7,7 +7,14 @@ use ratatui::{
 
 use crate::tui::sessions::render_sessions_summary;
 
-pub fn render_rlm(f: &mut Frame, area: Rect, cwd: &str, status: &str, session_count: usize, selected_session: usize) {
+pub fn render_rlm(
+    f: &mut Frame,
+    area: Rect,
+    cwd: &str,
+    status: &str,
+    session_count: usize,
+    selected_session: usize,
+) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(8), Constraint::Length(6)])

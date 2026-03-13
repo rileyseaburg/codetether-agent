@@ -1,4 +1,4 @@
-use crate::provider::{ToolDefinition};
+use crate::provider::ToolDefinition;
 use anyhow::Result;
 
 pub fn provider_has_flaky_native_tool_calling(provider_name: &str, model: &str) -> bool {
@@ -17,21 +17,43 @@ pub fn assistant_claims_imminent_tool_use(text: &str, tool_definitions: &[ToolDe
     }
 
     let explicit_markers = [
-        "tool call", "tool calls", "use a tool", "use tools", "call the",
-        "invoke the", "let me use", "i'll use", "i will use",
-        "i'm going to use", "i am going to use",
+        "tool call",
+        "tool calls",
+        "use a tool",
+        "use tools",
+        "call the",
+        "invoke the",
+        "let me use",
+        "i'll use",
+        "i will use",
+        "i'm going to use",
+        "i am going to use",
     ];
     if explicit_markers.iter().any(|m| lower.contains(m)) {
         return true;
     }
 
     let action_markers = [
-        "let me check", "let me inspect", "let me search", "let me read",
-        "let me open", "first, i'll", "first i will", "i'll check",
-        "i'll inspect", "i'll search", "i'll read", "i'll open",
-        "i'll look through", "i'll examine", "i will check",
-        "i will inspect", "i will search", "i will read",
-        "i will open", "i will examine",
+        "let me check",
+        "let me inspect",
+        "let me search",
+        "let me read",
+        "let me open",
+        "first, i'll",
+        "first i will",
+        "i'll check",
+        "i'll inspect",
+        "i'll search",
+        "i'll read",
+        "i'll open",
+        "i'll look through",
+        "i'll examine",
+        "i will check",
+        "i will inspect",
+        "i will search",
+        "i will read",
+        "i will open",
+        "i will examine",
     ];
     if action_markers.iter().any(|m| lower.contains(m))
         && tool_definitions.iter().any(|tool| {
@@ -39,9 +61,18 @@ pub fn assistant_claims_imminent_tool_use(text: &str, tool_definitions: &[ToolDe
             lower.contains(&name)
                 || matches!(
                     name.as_str(),
-                    "bash" | "read" | "write" | "edit" | "advanced_edit"
-                        | "multiedit" | "codesearch" | "glob" | "grep"
-                        | "ls" | "cat" | "lsp"
+                    "bash"
+                        | "read"
+                        | "write"
+                        | "edit"
+                        | "advanced_edit"
+                        | "multiedit"
+                        | "codesearch"
+                        | "glob"
+                        | "grep"
+                        | "ls"
+                        | "cat"
+                        | "lsp"
                 )
         })
     {
@@ -73,8 +104,16 @@ pub fn should_retry_missing_native_tool_call(
 
 pub fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
     let preferred = [
-        "zai", "openai", "github-copilot", "anthropic", "minimax",
-        "openrouter", "novita", "moonshotai", "google",
+        "openai",
+        "anthropic",
+        "github-copilot",
+        "openai-codex",
+        "zai",
+        "minimax",
+        "openrouter",
+        "novita",
+        "moonshotai",
+        "google",
     ];
     for name in preferred {
         if let Some(found) = providers.iter().copied().find(|p| *p == name) {

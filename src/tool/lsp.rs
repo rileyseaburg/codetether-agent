@@ -112,17 +112,30 @@ fn resolve_action_raw(args: &Value) -> Result<String> {
 /// LSP Tool for performing Language Server Protocol operations
 pub struct LspTool {
     root_uri: Option<String>,
+    lsp_settings: Option<crate::config::LspSettings>,
 }
 
 impl LspTool {
     pub fn new() -> Self {
-        Self { root_uri: None }
+        Self {
+            root_uri: None,
+            lsp_settings: None,
+        }
     }
 
     /// Create with a specific workspace root
     pub fn with_root(root_uri: String) -> Self {
         Self {
             root_uri: Some(root_uri),
+            lsp_settings: None,
+        }
+    }
+
+    /// Create with workspace root and config-driven LSP settings.
+    pub fn with_config(root_uri: Option<String>, settings: crate::config::LspSettings) -> Self {
+        Self {
+            root_uri,
+            lsp_settings: Some(settings),
         }
     }
 
@@ -142,7 +155,18 @@ impl LspTool {
         let mut guard = cell.write().await;
 
         if guard.is_none() {
-            *guard = Some(Arc::new(LspManager::new(self.root_uri.clone())));
+            let manager = if let Some(settings) = &self.lsp_settings {
+                LspManager::with_config(self.root_uri.clone(), settings.clone())
+            } else {
+                // Try to load LSP settings from config file
+                match crate::config::Config::load().await {
+                    Ok(config) if has_lsp_settings(&config.lsp) => {
+                        LspManager::with_config(self.root_uri.clone(), config.lsp)
+                    }
+                    _ => LspManager::new(self.root_uri.clone()),
+                }
+            };
+            *guard = Some(Arc::new(manager));
         }
 
         Arc::clone(guard.as_ref().expect("LSP manager should initialize"))
@@ -319,7 +343,20 @@ impl Tool for LspTool {
                     )
                     .await?
             }
-            LspOperation::Diagnostics => client.diagnostics(path).await?,
+            LspOperation::Diagnostics => {
+                let mut result = client.diagnostics(path).await?;
+                // Merge diagnostics from any applicable linter servers
+                let linter_diags = manager.linter_diagnostics(path).await;
+                if !linter_diags.is_empty() {
+                    if let LspActionResult::Diagnostics {
+                        ref mut diagnostics,
+                    } = result
+                    {
+                        diagnostics.extend(linter_diags);
+                    }
+                }
+                result
+            }
             LspOperation::WorkspaceSymbol => {
                 return Ok(ToolResult::error(format!(
                     "Action {} is handled separately",
@@ -481,6 +518,11 @@ fn format_result(result: LspActionResult) -> Result<ToolResult> {
     };
 
     Ok(ToolResult::success(output))
+}
+
+/// Returns `true` if the user has configured any LSP settings.
+fn has_lsp_settings(settings: &crate::config::LspSettings) -> bool {
+    !settings.servers.is_empty() || !settings.linters.is_empty() || settings.disable_builtin_linters
 }
 
 #[cfg(test)]

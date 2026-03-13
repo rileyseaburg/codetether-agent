@@ -1,11 +1,18 @@
-use super::{
-    assistant_claims_imminent_tool_use, build_request_requires_tool, choose_default_provider,
-    collect_stream_completion_with_events, detect_stub_in_tool_input,
-    extract_candidate_file_paths, extract_text_content, is_codesearch_no_match_output,
-    looks_like_build_execution_request, normalize_textual_tool_calls,
-    normalize_tool_call_for_execution, resolve_provider_for_session_request, SessionEvent,
-    should_force_build_tool_first_retry, should_retry_missing_native_tool_call,
+use super::SessionEvent;
+use super::helper::build::{
+    build_request_requires_tool, looks_like_build_execution_request,
+    should_force_build_tool_first_retry,
 };
+use super::helper::edit::detect_stub_in_tool_input;
+use super::helper::edit::normalize_tool_call_for_execution;
+use super::helper::markup::normalize_textual_tool_calls;
+use super::helper::provider::{
+    assistant_claims_imminent_tool_use, choose_default_provider,
+    resolve_provider_for_session_request, should_retry_missing_native_tool_call,
+};
+use super::helper::runtime::is_codesearch_no_match_output;
+use super::helper::stream::collect_stream_completion_with_events;
+use super::helper::text::{extract_candidate_file_paths, extract_text_content};
 use crate::provider::{
     CompletionResponse, ContentPart, FinishReason, Message, Role, StreamChunk, ToolDefinition,
     Usage,
@@ -218,9 +225,9 @@ fn explicit_provider_is_used_when_available() {
 }
 
 #[test]
-fn default_provider_prefers_zai() {
-    let providers = vec!["openai", "zai"];
-    assert_eq!(choose_default_provider(&providers), Some("zai"));
+fn default_provider_prefers_openai() {
+    let providers = vec!["zai", "openai"];
+    assert_eq!(choose_default_provider(&providers), Some("openai"));
 }
 
 #[test]
@@ -309,7 +316,9 @@ fn looks_like_build_execution_request_detects_fix_prompt() {
     assert!(looks_like_build_execution_request(
         "yes fix it and patch src/tool/lsp.rs"
     ));
-    assert!(!looks_like_build_execution_request("what does this module do?"));
+    assert!(!looks_like_build_execution_request(
+        "what does this module do?"
+    ));
 }
 
 #[test]

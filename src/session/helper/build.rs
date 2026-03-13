@@ -1,13 +1,29 @@
+use super::text::latest_user_text;
 use crate::provider::{Message, ToolDefinition};
 use std::path::Path;
-use super::text::latest_user_text;
 
 pub fn looks_like_build_execution_request(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     let keywords = [
-        "fix", "patch", "implement", "add", "update", "edit", "change", "refactor",
-        "debug", "investigate", "run", "test", "build", "compile", "create",
-        "remove", "rename", "wire", "hook up",
+        "fix",
+        "patch",
+        "implement",
+        "add",
+        "update",
+        "edit",
+        "change",
+        "refactor",
+        "debug",
+        "investigate",
+        "run",
+        "test",
+        "build",
+        "compile",
+        "create",
+        "remove",
+        "rename",
+        "wire",
+        "hook up",
     ];
     keywords.iter().any(|k| lower.contains(k))
 }
@@ -15,17 +31,35 @@ pub fn looks_like_build_execution_request(text: &str) -> bool {
 pub fn is_affirmative_build_followup(text: &str) -> bool {
     let lower = text.trim().to_ascii_lowercase();
     let markers = [
-        "yes", "yep", "yeah", "do it", "go ahead", "proceed", "use the edit",
-        "use edit", "apply it", "ship it", "fix it",
+        "yes",
+        "yep",
+        "yeah",
+        "do it",
+        "go ahead",
+        "proceed",
+        "use the edit",
+        "use edit",
+        "apply it",
+        "ship it",
+        "fix it",
     ];
-    markers.iter().any(|m| lower == *m || lower.starts_with(&format!("{m} ")))
+    markers
+        .iter()
+        .any(|m| lower == *m || lower.starts_with(&format!("{m} ")))
 }
 
 pub fn looks_like_proposed_change(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     let markers = [
-        "use this exact block", "now uses", "apply", "replace", "patch", "edit",
-        "change", "update", "fix",
+        "use this exact block",
+        "now uses",
+        "apply",
+        "replace",
+        "patch",
+        "edit",
+        "change",
+        "update",
+        "fix",
     ];
     markers.iter().any(|m| lower.contains(m))
 }
@@ -33,12 +67,26 @@ pub fn looks_like_proposed_change(text: &str) -> bool {
 pub fn assistant_offered_next_step(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     let offer_markers = [
-        "if you want", "want me to", "should i", "next i can", "i can also",
-        "i'm ready to", "i am ready to",
+        "if you want",
+        "want me to",
+        "should i",
+        "next i can",
+        "i can also",
+        "i'm ready to",
+        "i am ready to",
     ];
     let action_markers = [
-        "patch", "add", "update", "edit", "change", "fix", "implement", "style",
-        "tighten", "apply", "refactor",
+        "patch",
+        "add",
+        "update",
+        "edit",
+        "change",
+        "fix",
+        "implement",
+        "style",
+        "tighten",
+        "apply",
+        "refactor",
     ];
     offer_markers.iter().any(|m| lower.contains(m))
         && action_markers.iter().any(|m| lower.contains(m))
@@ -95,18 +143,22 @@ pub fn build_request_requires_tool(session_messages: &[Message], workspace_dir: 
     // Logic for affirmative check omitted for brevity but should be fully implemented if needed
     // In original code it was checking previous messages.
     // Let's implement it properly.
-    
+
     let mut skipped_latest_user = false;
     for msg in session_messages.iter().rev() {
         let msg_text = super::text::extract_text_content(&msg.content);
-        if msg_text.trim().is_empty() { continue; }
+        if msg_text.trim().is_empty() {
+            continue;
+        }
 
         if matches!(msg.role, crate::provider::Role::User) && !skipped_latest_user {
             skipped_latest_user = true;
             continue;
         }
 
-        if matches!(msg.role, crate::provider::Role::Assistant) && assistant_offered_next_step(&msg_text) {
+        if matches!(msg.role, crate::provider::Role::Assistant)
+            && assistant_offered_next_step(&msg_text)
+        {
             return true;
         }
 

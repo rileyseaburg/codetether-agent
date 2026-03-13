@@ -1,32 +1,29 @@
 pub mod app;
 pub mod chat;
-pub mod ui;
-pub mod models;
-pub mod utils;
 pub mod constants;
+pub mod help;
+pub mod input;
 pub mod lsp;
+pub mod model_picker;
+pub mod models;
 pub mod rlm;
 pub mod sessions;
 pub mod settings;
-pub mod help;
-pub mod theme;
-pub mod terminal;
 pub mod status;
-pub mod input;
+pub mod terminal;
+pub mod theme;
+pub mod ui;
+pub mod utils;
 
-pub mod swarm_view;
+pub mod bus_log;
+pub mod color_palette;
+pub mod message_formatter;
 pub mod ralph_view;
+pub mod swarm_view;
+pub mod symbol_search;
 pub mod theme_utils;
 pub mod token_display;
-pub mod message_formatter;
-pub mod bus_log;
-pub mod symbol_search;
 pub mod worker_bridge;
-pub mod color_palette;
 
-// Simplify public API by re-exporting core types
+// Simplify public API by re-exporting the main entrypoint.
 pub use app::run::run;
-pub use app::state::App;
-pub use chat::message::{ChatMessage, MessageType};
-pub use models::*;
-

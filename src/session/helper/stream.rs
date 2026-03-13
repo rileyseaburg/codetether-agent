@@ -1,11 +1,9 @@
-use crate::provider::{ContentPart, FinishReason, Message, Role, StreamChunk, ToolDefinition, Usage};
+use super::super::SessionEvent;
+use crate::provider::{ContentPart, FinishReason, Message, Role, StreamChunk, Usage};
 use anyhow::Result;
 use futures::StreamExt;
 use futures::stream::BoxStream;
-use serde_json::Value;
 use std::collections::HashMap;
-use uuid::Uuid;
-use super::super::SessionEvent;
 
 #[derive(Default)]
 struct ToolAccumulator {

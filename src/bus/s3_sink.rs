@@ -41,6 +41,7 @@ use minio::s3::http::BaseUrl;
 use minio::s3::types::S3Api;
 use minio::s3::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::task;
@@ -296,9 +297,39 @@ struct TrainingMetadata {
     /// Correlation id linking request ↔ response
     #[serde(skip_serializing_if = "Option::is_none")]
     correlation_id: Option<String>,
+    /// Agent loop step number when available
+    #[serde(skip_serializing_if = "Option::is_none")]
+    step: Option<usize>,
 }
 
 /// Convert a `BusEnvelope` into a `TrainingRecord`.
+fn envelope_step(message: &BusMessage) -> Option<usize> {
+    match message {
+        BusMessage::ToolRequest { step, .. }
+        | BusMessage::ToolResponse { step, .. }
+        | BusMessage::ToolOutputFull { step, .. }
+        | BusMessage::AgentThinking { step, .. }
+        | BusMessage::RalphLearning {
+            iteration: step, ..
+        }
+        | BusMessage::RalphProgress {
+            iteration: step, ..
+        } => Some(*step),
+        BusMessage::AgentReady { .. }
+        | BusMessage::AgentShutdown { .. }
+        | BusMessage::AgentMessage { .. }
+        | BusMessage::TaskUpdate { .. }
+        | BusMessage::ArtifactUpdate { .. }
+        | BusMessage::SharedResult { .. }
+        | BusMessage::Heartbeat { .. }
+        | BusMessage::RalphHandoff { .. }
+        | BusMessage::VoiceSessionStarted { .. }
+        | BusMessage::VoiceTranscript { .. }
+        | BusMessage::VoiceAgentStateChanged { .. }
+        | BusMessage::VoiceSessionEnded { .. } => None,
+    }
+}
+
 fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
     let meta = TrainingMetadata {
         bus_kind: bus_message_kind(&env.message),
@@ -307,6 +338,7 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
         topic: env.topic.clone(),
         sender_id: env.sender_id.clone(),
         correlation_id: env.correlation_id.clone(),
+        step: envelope_step(&env.message),
     };
 
     match &env.message {
@@ -598,6 +630,76 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
     }
 }
 
+fn flush_training_group(records: &mut [TrainingRecord], lines: &mut Vec<String>) {
+    if records.is_empty() {
+        return;
+    }
+
+    let assistant_prefix_len = records
+        .iter()
+        .take_while(|record| {
+            record.role == "assistant"
+                && record
+                    .tool_calls
+                    .as_ref()
+                    .is_some_and(|calls| calls.len() == 1)
+        })
+        .count();
+    let tool_suffix_len = records[assistant_prefix_len..]
+        .iter()
+        .take_while(|record| record.role == "tool" && record.tool_call_id.is_some())
+        .count();
+    let can_merge = assistant_prefix_len > 0
+        && tool_suffix_len > 0
+        && assistant_prefix_len + tool_suffix_len == records.len();
+
+    if can_merge {
+        let mut merged = records[0].clone();
+        let mut tool_calls = Vec::with_capacity(assistant_prefix_len);
+        let mut envelope_ids = Vec::with_capacity(assistant_prefix_len);
+        let mut contents = Vec::new();
+
+        for record in records.iter().take(assistant_prefix_len) {
+            envelope_ids.push(record.metadata.envelope_id.clone());
+            if let Some(content) = record
+                .content
+                .as_ref()
+                .filter(|content| !content.is_empty())
+            {
+                contents.push(content.clone());
+            }
+            if let Some(mut calls) = record.tool_calls.clone() {
+                tool_calls.append(&mut calls);
+            }
+        }
+
+        merged.tool_calls = Some(tool_calls);
+        merged.content = if contents.is_empty() {
+            None
+        } else {
+            Some(contents.join("\n"))
+        };
+        merged.metadata.bus_kind = "tool_request_batch".into();
+        merged.metadata.envelope_id = envelope_ids.join(",");
+
+        if let Ok(line) = serde_json::to_string(&merged) {
+            lines.push(line);
+        }
+        for record in records.iter().skip(assistant_prefix_len) {
+            if let Ok(line) = serde_json::to_string(record) {
+                lines.push(line);
+            }
+        }
+        return;
+    }
+
+    for record in records.iter() {
+        if let Ok(line) = serde_json::to_string(record) {
+            lines.push(line);
+        }
+    }
+}
+
 /// Extract the serde tag name from a `BusMessage` variant.
 fn bus_message_kind(msg: &BusMessage) -> String {
     serde_json::to_value(msg)
@@ -796,16 +898,39 @@ impl BusS3Sink {
             .unwrap_or_else(|| Utc::now().to_rfc3339());
         let envelopes = std::mem::take(batch);
 
-        // Build JSONL: one training record per line, skip heartbeats
+        // Build JSONL: buffer tool requests/responses by agent step so
+        // parallel tool calls remain grouped as one assistant message with
+        // N tool_calls followed by N matching tool responses.
         let mut lines = Vec::with_capacity(envelopes.len());
+        let mut grouped_records: BTreeMap<(String, usize), Vec<TrainingRecord>> = BTreeMap::new();
+        let mut passthrough_records = Vec::new();
         for env in &envelopes {
             if matches!(env.message, BusMessage::Heartbeat { .. }) {
                 continue;
             }
             let record = envelope_to_training_record(env);
+            if let Some(step) = record.metadata.step
+                && matches!(
+                    env.message,
+                    BusMessage::ToolRequest { .. } | BusMessage::ToolResponse { .. }
+                )
+            {
+                grouped_records
+                    .entry((record.metadata.sender_id.clone(), step))
+                    .or_default()
+                    .push(record);
+                continue;
+            }
+            passthrough_records.push(record);
+        }
+
+        for record in passthrough_records {
             if let Ok(line) = serde_json::to_string(&record) {
                 lines.push(line);
             }
+        }
+        for (_key, mut records) in grouped_records {
+            flush_training_group(&mut records, &mut lines);
         }
 
         if lines.is_empty() {
@@ -967,6 +1092,7 @@ mod tests {
                 agent_id: "agent-0".into(),
                 tool_name: "read_file".into(),
                 arguments: serde_json::json!({"path": "/src/main.rs"}),
+                step: 1,
             },
         };
 
@@ -994,6 +1120,7 @@ mod tests {
                 tool_name: "read_file".into(),
                 result: "fn main() {}".into(),
                 success: true,
+                step: 1,
             },
         };
 

@@ -1,6 +1,6 @@
 use crate::provider::{ContentPart, Message, Role};
-use std::path::Path;
 use regex::Regex;
+use std::path::Path;
 use std::sync::OnceLock;
 
 pub fn role_label(role: Role) -> &'static str {
@@ -41,9 +41,8 @@ pub fn latest_user_text(messages: &[Message]) -> Option<String> {
 /// Extracts candidate file paths from text that exist in the workspace.
 pub fn extract_candidate_file_paths(text: &str, cwd: &Path, max_files: usize) -> Vec<String> {
     static FILE_PATH_RE: OnceLock<Regex> = OnceLock::new();
-    let re = FILE_PATH_RE.get_or_init(|| {
-        Regex::new(r"(?P<path>[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+)").unwrap()
-    });
+    let re = FILE_PATH_RE
+        .get_or_init(|| Regex::new(r"(?P<path>[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+)").unwrap());
 
     let mut out = Vec::new();
     for cap in re.captures_iter(text) {

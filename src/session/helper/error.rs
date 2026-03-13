@@ -1,5 +1,5 @@
-use crate::provider::{ContentPart, Message, Role};
 use super::text::role_label;
+use crate::provider::{ContentPart, Message};
 
 pub fn messages_to_rlm_context(messages: &[Message]) -> String {
     let mut out = String::new();
@@ -70,9 +70,15 @@ pub fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
 pub fn is_retryable_upstream_error(err: &anyhow::Error) -> bool {
     let msg = err.to_string().to_ascii_lowercase();
     [
-        " 500 ", " 504 ", "status code 500", "status code 504",
-        "internal server error", "gateway timeout", "upstream request timeout",
-        "server error: 500", "server error: 504",
+        " 500 ",
+        " 504 ",
+        "status code 500",
+        "status code 504",
+        "internal server error",
+        "gateway timeout",
+        "upstream request timeout",
+        "server error: 500",
+        "server error: 504",
     ]
     .iter()
     .any(|needle| msg.contains(needle))

@@ -587,7 +587,7 @@ For remote machines over SSH:
 | **File Ops** | `read`, `write`, `edit`, `multiedit`, `apply_patch`, `glob`, `list` |
 | **Search** | `grep`, `codesearch` |
 | **Execution** | `bash`, `task` |
-| **Code Intelligence** | `lsp` |
+| **Code Intelligence** | `lsp` (includes diagnostics from built-in linters: eslint, ruff, biome, stylelint) |
 | **Web** | `webfetch`, `websearch` |
 | **Agent Orchestration** | `agent`, `swarm_execute`, `relay_autochat`, `go` |
 | **Planning** | `ralph`, `prd`, `okr`, `todoread`, `todowrite` |
@@ -784,7 +784,7 @@ Using `ralph` and `swarm`, the agent autonomously implemented:
 - US-009: LSP Shutdown and Exit
 - US-010: LSP Client Configuration and Server Management
 
-**Missing Features (10 stories)**:
+**Missing Features (9 stories)**:
 - MF-001: External Directory Tool
 - MF-002: RLM Pool - Connection Pooling
 - MF-003: Truncation Utilities
@@ -794,7 +794,6 @@ Using `ralph` and `swarm`, the agent autonomously implemented:
 - MF-007: LSP Requests - textDocument/references
 - MF-008: LSP Requests - textDocument/hover
 - MF-009: LSP Requests - textDocument/completion
-- MF-010: RLM Router Enhancement
 
 ### Results
 
@@ -986,6 +985,28 @@ theme = "marketing"   # marketing (default), dark, light, solarized-dark, solari
 
 [session]
 auto_save = true
+
+# LSP / linter server configuration
+[lsp]
+# Additional language servers beyond built-in defaults
+[lsp.servers]
+# Example: custom Ruby LSP
+# my-ruby-lsp = { command = "ruby-lsp", args = ["--stdio"], file_extensions = ["rb"] }
+
+# Linter servers that run alongside primary language servers
+# These contribute diagnostics but do not provide completions/go-to-definition
+[lsp.linters]
+# Built-in linters (command optional - uses default binary)
+eslint = { enabled = true }
+ruff = { enabled = true }
+biome = { enabled = false }
+stylelint = { enabled = true }
+
+# Custom linter (command required)
+# my-linter = { command = "my-linter", args = ["--stdio"], file_extensions = ["xyz"], enabled = true }
+
+# Disable all built-in linter integrations (default: false)
+# disable_builtin_linters = true
 ```
 
 ### Vault Environment Variables

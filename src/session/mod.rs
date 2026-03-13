@@ -6,9 +6,7 @@ use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
-use crate::provider::{
-    ContentPart, Message, Role, ToolDefinition, Usage,
-};
+use crate::provider::{ContentPart, Message, Role, ToolDefinition, Usage};
 use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
@@ -24,34 +22,32 @@ use uuid::Uuid;
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
-mod listing;
 pub mod helper;
-pub use self::listing::{SessionSummary, list_sessions, list_sessions_for_directory, list_sessions_paged};
+mod listing;
+pub use self::listing::{SessionSummary, list_sessions, list_sessions_for_directory};
 
 use self::helper::bootstrap::{
     inject_tool_prompt, list_tools_bootstrap_definition, list_tools_bootstrap_output,
 };
 use self::helper::build::{
-    build_request_requires_tool, is_build_agent, looks_like_build_execution_request,
-    should_force_build_tool_first_retry,
+    build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
 };
 use self::helper::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
-use self::helper::error::{messages_to_rlm_context, is_prompt_too_long_error, is_retryable_upstream_error};
+use self::helper::error::{
+    is_prompt_too_long_error, is_retryable_upstream_error, messages_to_rlm_context,
+};
 use self::helper::markup::normalize_textual_tool_calls;
 use self::helper::provider::{
-    assistant_claims_imminent_tool_use, choose_default_provider,
-    prefers_temperature_one, provider_has_flaky_native_tool_calling,
-    resolve_provider_for_session_request, should_retry_missing_native_tool_call,
+    prefers_temperature_one, resolve_provider_for_session_request,
+    should_retry_missing_native_tool_call,
 };
 use self::helper::router::{build_proactive_lsp_context_message, choose_router_target};
 use self::helper::runtime::{
-    enrich_tool_input_with_runtime_context, is_codesearch_no_match_output,
-    is_interactive_tool, is_local_cuda_provider, local_cuda_light_system_prompt,
+    enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
+    is_local_cuda_provider, local_cuda_light_system_prompt,
 };
 use self::helper::stream::collect_stream_completion_with_events;
-use self::helper::text::{
-    extract_candidate_file_paths, extract_text_content, latest_user_text, truncate_with_ellipsis,
-};
+use self::helper::text::{extract_text_content, truncate_with_ellipsis};
 use self::helper::token::{
     context_window_for_model, estimate_request_tokens, estimate_tokens_for_messages,
     session_completion_max_tokens,
@@ -105,6 +101,7 @@ pub struct Session {
 pub struct SessionMetadata {
     pub directory: Option<PathBuf>,
     pub model: Option<String>,
+    pub knowledge_snapshot: Option<PathBuf>,
     pub shared: bool,
     pub share_url: Option<String>,
 }
@@ -125,7 +122,7 @@ impl Session {
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
-            _ => "glm-5".to_string(),
+            _ => "gpt-4o".to_string(),
         }
     }
 
@@ -638,7 +635,8 @@ impl Session {
                                     to_model = %retry_model,
                                     "Retryable upstream provider error; retrying same prompt with alternate provider/model"
                                 );
-                                self.metadata.model = Some(format!("{retry_provider}/{retry_model}"));
+                                self.metadata.model =
+                                    Some(format!("{retry_provider}/{retry_model}"));
                                 attempt = 0;
                                 continue;
                             }
@@ -911,6 +909,7 @@ impl Session {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
                             arguments: tool_input.clone(),
+                            step,
                         },
                     );
                 }
@@ -1024,10 +1023,21 @@ impl Session {
                 let codesearch_no_match =
                     is_codesearch_no_match_output(&tool_name, success, &content);
 
-                // Publish full tool output to bus for training pipeline
-                // (before RLM truncation so we capture the complete output)
+                // Publish tool response + full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.response", self.agent),
+                        crate::bus::BusMessage::ToolResponse {
+                            request_id: tool_id.clone(),
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            result: content.clone(),
+                            success,
+                            step,
+                        },
+                    );
+                    // (before RLM truncation so we capture the complete output)
                     handle.send(
                         format!("agent.{}.tool.output", self.agent),
                         crate::bus::BusMessage::ToolOutputFull {
@@ -1867,6 +1877,7 @@ impl Session {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
                             arguments: tool_input.clone(),
+                            step,
                         },
                     );
                 }
@@ -1995,9 +2006,20 @@ impl Session {
                 let codesearch_no_match =
                     is_codesearch_no_match_output(&tool_name, success, &content);
 
-                // Publish full tool output to bus for training pipeline
+                // Publish tool response + full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.response", self.agent),
+                        crate::bus::BusMessage::ToolResponse {
+                            request_id: tool_id.clone(),
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            result: content.clone(),
+                            success,
+                            step,
+                        },
+                    );
                     handle.send(
                         format!("agent.{}.tool.output", self.agent),
                         crate::bus::BusMessage::ToolOutputFull {
