@@ -135,6 +135,30 @@ async fn get_agent_card(State(server): State<A2AServer>) -> Json<AgentCard> {
     Json(server.agent_card.clone())
 }
 
+async fn configure_a2a_session(session: &mut Session) {
+    let configured_model = std::env::var("CODETETHER_DEFAULT_MODEL")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let configured_model = match configured_model {
+        Some(model) => Some(model),
+        None => match crate::config::Config::load().await {
+            Ok(config) => config
+                .default_model
+                .filter(|value| !value.trim().is_empty()),
+            Err(e) => {
+                tracing::debug!(error = %e, "Failed to load config for A2A session model");
+                None
+            }
+        },
+    };
+
+    if let Some(model) = configured_model {
+        session.metadata.model = Some(model);
+    }
+}
+
 fn record_a2a_message_telemetry(
     tool_name: &str,
     task_id: &str,
@@ -257,6 +281,7 @@ async fn handle_message_send(
         let mut session = Session::new().await.map_err(|e| {
             JsonRpcError::internal_error(format!("Failed to create session: {}", e))
         })?;
+        configure_a2a_session(&mut session).await;
         let started_at = Instant::now();
 
         match session.prompt(&prompt).await {
@@ -387,6 +412,7 @@ async fn handle_message_send(
                     return;
                 }
             };
+            configure_a2a_session(&mut session).await;
 
             match session.prompt(&prompt).await {
                 Ok(result) => {
@@ -551,6 +577,7 @@ async fn handle_message_stream(
                 return;
             }
         };
+        configure_a2a_session(&mut session).await;
 
         // Spawn a task to forward session events to the bus
         let bus_clone = bus.clone();

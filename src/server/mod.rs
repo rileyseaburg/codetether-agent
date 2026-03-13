@@ -25,7 +25,7 @@ use axum::{
     body::Body,
     extract::Path,
     extract::{Query, State},
-    http::{Request, StatusCode},
+    http::{Method, Request, StatusCode},
     middleware::{self, Next},
     response::sse::{Event, KeepAlive, Sse},
     response::{IntoResponse, Json, Response},
@@ -827,8 +827,25 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
                     "http://localhost:8000".parse::<HeaderValue>().unwrap(),
                 ])
                 .allow_credentials(true)
-                .allow_methods(AllowMethods::any())
-                .allow_headers(AllowHeaders::any()),
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::PATCH,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
+                .allow_headers([
+                    http::header::AUTHORIZATION,
+                    http::header::CONTENT_TYPE,
+                    http::header::ACCEPT,
+                    http::header::ORIGIN,
+                    http::header::CACHE_CONTROL,
+                    http::header::HeaderName::from_static("x-worker-id"),
+                    http::header::HeaderName::from_static("x-agent-name"),
+                    http::header::HeaderName::from_static("x-workspaces"),
+                    http::header::HeaderName::from_static("x-requested-with"),
+                ]),
         )
         .layer(TraceLayer::new_for_http());
 

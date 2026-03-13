@@ -17,6 +17,7 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use tokio::fs;
@@ -24,6 +25,9 @@ use uuid::Uuid;
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
+#[path = "helper/validation.rs"]
+mod validation;
+use self::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
 /// An image attachment to include with a message (from clipboard paste, etc.)
 #[derive(Debug, Clone)]
 pub struct ImageAttachment {
@@ -75,6 +79,7 @@ tool providers). Do not ask for permission and do not provide a plan-only respon
 const BUILD_MODE_TOOL_FIRST_MAX_RETRIES: u8 = 2;
 const NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES: u8 = 1;
 const MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES: u32 = 5;
+const POST_EDIT_VALIDATION_MAX_RETRIES: u8 = 3;
 const CODESEARCH_THRASH_NUDGE: &str = "Stop brute-force codesearch variant retries. \
 You already got repeated \"No matches found\" results. Do not try punctuation/casing/underscore \
 variants of the same token again. Either switch to a broader strategy (e.g., inspect likely files \
@@ -1552,6 +1557,9 @@ impl Session {
         // Run agentic loop with tool execution
         let max_steps = 50;
         let mut final_output = String::new();
+        let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
+        let mut touched_files = HashSet::new();
+        let mut validation_retry_count: u8 = 0;
 
         // Track consecutive identical tool calls to detect infinite loops.
         let mut last_tool_sig: Option<String> = None;
@@ -1751,12 +1759,14 @@ impl Session {
                 ));
             }
 
+            let mut step_text = String::new();
+
             // Collect text output and publish thinking to bus
             for part in &response.message.content {
                 match part {
                     ContentPart::Text { text } if !text.is_empty() => {
-                        final_output.push_str(text);
-                        final_output.push('\n');
+                        step_text.push_str(text);
+                        step_text.push('\n');
                     }
                     ContentPart::Thinking { text } if !text.is_empty() => {
                         if let Some(ref bus) = self.bus {
@@ -1775,9 +1785,41 @@ impl Session {
                 }
             }
 
+            if !step_text.trim().is_empty() {
+                final_output.push_str(&step_text);
+            }
+
             // If no tool calls, we're done
             if tool_calls.is_empty() {
                 self.add_message(response.message.clone());
+                if is_build_agent(&self.agent) {
+                    if let Some(report) =
+                        build_validation_report(&cwd, &touched_files, &baseline_git_dirty_files)
+                            .await?
+                    {
+                        validation_retry_count += 1;
+                        tracing::warn!(
+                            retries = validation_retry_count,
+                            issues = report.issue_count,
+                            "Post-edit validation found unresolved diagnostics"
+                        );
+                        if validation_retry_count > POST_EDIT_VALIDATION_MAX_RETRIES {
+                            return Err(anyhow::anyhow!(
+                                "Post-edit validation failed after {} attempts.\n\n{}",
+                                POST_EDIT_VALIDATION_MAX_RETRIES,
+                                report.prompt
+                            ));
+                        }
+                        self.add_message(Message {
+                            role: Role::User,
+                            content: vec![ContentPart::Text {
+                                text: report.prompt,
+                            }],
+                        });
+                        final_output.clear();
+                        continue;
+                    }
+                }
                 break;
             }
 
@@ -1910,7 +1952,9 @@ impl Session {
                     &self.id,
                     &self.agent,
                 );
-                let content = if let Some(tool) = tool_registry.get(&tool_name) {
+                let (content, success, tool_metadata) = if let Some(tool) =
+                    tool_registry.get(&tool_name)
+                {
                     match tool.execute(exec_input).await {
                         Ok(result) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
@@ -1928,7 +1972,7 @@ impl Session {
                                         Some(self.id.clone()),  // session_id
                                     ).await;
                             }
-                            result.output
+                            (result.output, result.success, Some(result.metadata))
                         }
                         Err(e) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
@@ -1946,7 +1990,7 @@ impl Session {
                                         Some(self.id.clone()),  // session_id
                                     ).await;
                             }
-                            format!("Error: {}", e)
+                            (format!("Error: {}", e), false, None)
                         }
                     }
                 } else {
@@ -1966,12 +2010,19 @@ impl Session {
                             )
                             .await;
                     }
-                    format!("Error: Unknown tool '{}'", tool_name)
+                    (format!("Error: Unknown tool '{}'", tool_name), false, None)
                 };
+
+                track_touched_files(
+                    &mut touched_files,
+                    &cwd,
+                    &tool_name,
+                    &tool_input,
+                    tool_metadata.as_ref(),
+                );
 
                 // Calculate duration for event stream
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
-                let success = !content.starts_with("Error:");
                 let codesearch_no_match =
                     is_codesearch_no_match_output(&tool_name, success, &content);
 
@@ -2385,6 +2436,9 @@ impl Session {
 
         let mut final_output = String::new();
         let max_steps = 50;
+        let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
+        let mut touched_files = HashSet::new();
+        let mut validation_retry_count: u8 = 0;
 
         // Track consecutive identical tool calls to detect infinite loops.
         let mut last_tool_sig: Option<String> = None;
@@ -2673,6 +2727,34 @@ impl Session {
 
             if tool_calls.is_empty() {
                 self.add_message(response.message.clone());
+                if is_build_agent(&self.agent) {
+                    if let Some(report) =
+                        build_validation_report(&cwd, &touched_files, &baseline_git_dirty_files)
+                            .await?
+                    {
+                        validation_retry_count += 1;
+                        tracing::warn!(
+                            retries = validation_retry_count,
+                            issues = report.issue_count,
+                            "Post-edit validation found unresolved diagnostics"
+                        );
+                        if validation_retry_count > POST_EDIT_VALIDATION_MAX_RETRIES {
+                            return Err(anyhow::anyhow!(
+                                "Post-edit validation failed after {} attempts.\n\n{}",
+                                POST_EDIT_VALIDATION_MAX_RETRIES,
+                                report.prompt
+                            ));
+                        }
+                        self.add_message(Message {
+                            role: Role::User,
+                            content: vec![ContentPart::Text {
+                                text: report.prompt,
+                            }],
+                        });
+                        final_output.clear();
+                        continue;
+                    }
+                }
                 break;
             }
 
@@ -2828,7 +2910,9 @@ impl Session {
                     &self.id,
                     &self.agent,
                 );
-                let (content, success) = if let Some(tool) = tool_registry.get(&tool_name) {
+                let (content, success, tool_metadata) = if let Some(tool) =
+                    tool_registry.get(&tool_name)
+                {
                     match tool.execute(exec_input).await {
                         Ok(result) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
@@ -2846,7 +2930,7 @@ impl Session {
                                         Some(self.id.clone()),  // session_id
                                     ).await;
                             }
-                            (result.output, result.success)
+                            (result.output, result.success, Some(result.metadata))
                         }
                         Err(e) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
@@ -2864,7 +2948,7 @@ impl Session {
                                         Some(self.id.clone()),  // session_id
                                     ).await;
                             }
-                            (format!("Error: {}", e), false)
+                            (format!("Error: {}", e), false, None)
                         }
                     }
                 } else {
@@ -2884,8 +2968,16 @@ impl Session {
                             )
                             .await;
                     }
-                    (format!("Error: Unknown tool '{}'", tool_name), false)
+                    (format!("Error: Unknown tool '{}'", tool_name), false, None)
                 };
+
+                track_touched_files(
+                    &mut touched_files,
+                    &cwd,
+                    &tool_name,
+                    &tool_input,
+                    tool_metadata.as_ref(),
+                );
 
                 // Calculate total duration from exec_start (captured from line 772)
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
