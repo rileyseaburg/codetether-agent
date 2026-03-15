@@ -812,6 +812,7 @@ dependencies = [
  "tracing-subscriber",
  "tree-sitter",
  "tree-sitter-rust",
+ "unicode-width",
  "urlencoding",
  "uuid",
  "vaultrs",

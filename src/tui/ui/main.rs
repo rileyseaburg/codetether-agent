@@ -2,14 +2,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{
-        Block, Borders, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation,
-        ScrollbarState, Wrap,
+        Block, Borders, List, ListItem, ListState, Paragraph, Wrap,
     },
 };
+
+use unicode_width::UnicodeWidthStr;
 
 use crate::tui::app::state::App;
 use crate::tui::app::text::truncate_preview;
@@ -84,24 +85,25 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
 fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
     let area = f.area();
     let suggestions_visible = app.state.slash_suggestions_visible();
+    let input_lines_count = app.state.input.lines().count().max(1);
+    let input_height = (input_lines_count as u16 + 2).clamp(3, 6); // +2 for borders
+    let constraints: &[Constraint] = if suggestions_visible {
+        &[
+            Constraint::Min(8),
+            Constraint::Length(input_height),
+            Constraint::Length(5),
+            Constraint::Length(1),
+        ]
+    } else {
+        &[
+            Constraint::Min(8),
+            Constraint::Length(input_height),
+            Constraint::Length(1),
+        ]
+    };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(if suggestions_visible {
-            [
-                Constraint::Min(8),
-                Constraint::Length(3),
-                Constraint::Length(5),
-                Constraint::Length(1),
-            ]
-            .as_ref()
-        } else {
-            [
-                Constraint::Min(8),
-                Constraint::Length(3),
-                Constraint::Length(1),
-            ]
-            .as_ref()
-        })
+        .constraints(constraints)
         .split(area);
 
     let palette = ColorPalette::marketing();
@@ -364,11 +366,22 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
         .border_style(Style::default().fg(palette.border))
         .title(message_title);
 
-    // Calculate scroll position using the same approach as the original TUI:
-    // manually slice the lines vec instead of using Paragraph::scroll().
-    let total_lines = lines.len();
-    let visible_lines = chunks[0].height.saturating_sub(2) as usize;
-    let max_scroll = total_lines.saturating_sub(visible_lines);
+    // Calculate total rendered height accounting for line wrapping so that
+    // scroll bounds are accurate even when long lines wrap to multiple rows.
+    let content_width = chunks[0].width.saturating_sub(2) as usize; // minus borders
+    let total_rendered_height: usize = lines
+        .iter()
+        .map(|line| {
+            let w = line.width();
+            if w == 0 || content_width == 0 {
+                1
+            } else {
+                w.div_ceil(content_width)
+            }
+        })
+        .sum();
+    let visible_height = chunks[0].height.saturating_sub(2) as usize;
+    let max_scroll = total_rendered_height.saturating_sub(visible_height);
     // SCROLL_BOTTOM means "follow latest" — jump to end.
     let scroll = if app.state.chat_scroll >= SCROLL_BOTTOM {
         max_scroll
@@ -376,24 +389,13 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
         app.state.chat_scroll.min(max_scroll)
     };
 
-    let end = (scroll + visible_lines).min(total_lines);
-    let visible_slice = lines[scroll..end].to_vec();
-
-    let chat = Paragraph::new(visible_slice)
+    let chat = Paragraph::new(lines)
         .block(messages_block)
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: false })
+        .scroll((0, scroll as u16));
     f.render_widget(chat, chunks[0]);
 
-    let visible_width = chunks[1].width.saturating_sub(2) as usize;
-    app.state.ensure_input_cursor_visible(visible_width);
-    let visible_input = app
-        .state
-        .input
-        .chars()
-        .skip(app.state.input_scroll)
-        .take(visible_width)
-        .collect::<String>();
-
+    // Input area: show all lines of multi-line input with wrapping.
     let input_title = if app.state.processing {
         " Message (Processing...) "
     } else if matches!(app.state.input_mode, InputMode::Command) {
@@ -408,7 +410,7 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
     } else {
         palette.border
     };
-    let input = Paragraph::new(visible_input)
+    let input = Paragraph::new(app.state.input.as_str())
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -418,19 +420,27 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
         .wrap(Wrap { trim: false });
     f.render_widget(input, chunks[1]);
 
+    // Place cursor at the correct position within the input area.
     let input_inner_x = chunks[1].x.saturating_add(1);
     let input_inner_y = chunks[1].y.saturating_add(1);
-    let cursor_col = app
-        .state
-        .input_cursor
-        .saturating_sub(app.state.input_scroll);
-    let cursor_offset = if visible_width == 0 {
-        0
-    } else {
-        cursor_col.min(visible_width.saturating_sub(1)) as u16
-    };
-    let cursor_x = input_inner_x.saturating_add(cursor_offset);
-    f.set_cursor_position((cursor_x, input_inner_y));
+    // Determine which visual line the cursor is on and its column offset.
+    let input_text = &app.state.input;
+    let cursor_byte = input_text
+        .char_indices()
+        .nth(app.state.input_cursor)
+        .map(|(i, _)| i)
+        .unwrap_or(input_text.len());
+    let text_before_cursor = &input_text[..cursor_byte];
+    let cursor_row = text_before_cursor.matches('\n').count();
+    let last_newline = text_before_cursor.rfind('\n').map(|i| i + 1).unwrap_or(0);
+    let cursor_col_display = text_before_cursor[last_newline..].width();
+    let cursor_x = input_inner_x.saturating_add(cursor_col_display as u16).min(
+        chunks[1].x.saturating_add(chunks[1].width.saturating_sub(2)),
+    );
+    let cursor_y = input_inner_y
+        .saturating_add(cursor_row as u16)
+        .min(chunks[1].y.saturating_add(chunks[1].height.saturating_sub(2)));
+    f.set_cursor_position((cursor_x, cursor_y));
 
     let help_index = if suggestions_visible { 3 } else { 2 };
 

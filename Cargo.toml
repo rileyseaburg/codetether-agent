@@ -74,6 +74,7 @@ functiongemma = []
 
 [dependencies]
 # Async runtime
+unicode-width = "0.2"
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.28.0", features = ["rustls-tls-native-roots"] }
 
