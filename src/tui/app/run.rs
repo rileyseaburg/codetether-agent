@@ -2,6 +2,7 @@ use std::io;
 use std::sync::Arc;
 
 use crossterm::{
+    event::{DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -26,7 +27,8 @@ impl Drop for TerminalGuard {
         let _ = execute!(
             stdout,
             LeaveAlternateScreen,
-            crossterm::event::DisableMouseCapture
+            DisableMouseCapture,
+            DisableBracketedPaste
         );
     }
 }
@@ -43,7 +45,8 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
     execute!(
         stdout,
         EnterAlternateScreen,
-        crossterm::event::EnableMouseCapture
+        EnableMouseCapture,
+        EnableBracketedPaste
     )?;
 
     let backend = CrosstermBackend::new(stdout);

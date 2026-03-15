@@ -129,6 +129,58 @@ pub async fn handle_char(app: &mut App, modifiers: KeyModifiers, c: char) {
     }
 }
 
+pub async fn handle_paste(app: &mut App, text: &str) {
+    let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+
+    if symbol_search_active(app) {
+        for ch in normalized.chars().filter(|ch| *ch != '\n') {
+            app.state.symbol_search.handle_char(ch);
+        }
+        refresh_symbol_search(app).await;
+        return;
+    }
+
+    if app.state.view_mode == ViewMode::Bus && app.state.bus_log.filter_input_mode {
+        for ch in normalized.chars().filter(|ch| *ch != '\n') {
+            app.state.bus_log.push_filter_char(ch);
+        }
+        app.state.status = format!("Protocol filter: {}", app.state.bus_log.filter);
+        return;
+    }
+
+    if app.state.view_mode == ViewMode::Model {
+        for ch in normalized.chars().filter(|ch| *ch != '\n') {
+            app.state.model_filter_push(ch);
+        }
+        return;
+    }
+
+    if app.state.view_mode == ViewMode::Sessions {
+        for ch in normalized.chars().filter(|ch| *ch != '\n') {
+            app.state.session_filter_push(ch);
+        }
+        return;
+    }
+
+    if app.state.view_mode == ViewMode::Chat {
+        app.state.input_mode = if app.state.input.is_empty() && normalized.starts_with('/') {
+            InputMode::Command
+        } else if app.state.input.starts_with('/') {
+            InputMode::Command
+        } else {
+            InputMode::Editing
+        };
+        app.state.insert_text(&normalized);
+
+        let line_count = normalized.lines().count();
+        app.state.status = if line_count > 1 {
+            format!("Pasted {line_count} lines into input")
+        } else {
+            "Pasted into input".to_string()
+        };
+    }
+}
+
 async fn handle_enter_sessions(app: &mut App, cwd: &Path, session: &mut Session) {
     let session_id = app
         .state
@@ -222,5 +274,22 @@ async fn handle_enter_chat(
         ));
         app.state.status = "No providers configured".to_string();
         app.state.scroll_to_bottom();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::models::ViewMode;
+
+    #[tokio::test]
+    async fn paste_keeps_multiline_text_in_single_chat_input() {
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+
+        handle_paste(&mut app, "first line\nsecond line").await;
+
+        assert_eq!(app.state.input, "first line\nsecond line");
+        assert_eq!(app.state.status, "Pasted 2 lines into input");
     }
 }

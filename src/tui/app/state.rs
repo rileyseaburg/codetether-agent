@@ -226,6 +226,19 @@ impl AppState {
         self.refresh_slash_suggestions();
     }
 
+    pub fn insert_text(&mut self, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+
+        self.clamp_input_cursor();
+        let byte_index = self.char_to_byte_index(self.input_cursor);
+        self.input.insert_str(byte_index, text);
+        self.input_cursor += text.chars().count();
+        self.history_index = None;
+        self.refresh_slash_suggestions();
+    }
+
     pub fn delete_backspace(&mut self) {
         self.clamp_input_cursor();
         if self.input_cursor == 0 {

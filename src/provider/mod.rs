@@ -861,13 +861,12 @@ impl ProviderRegistry {
                         let base_url = secrets
                             .base_url
                             .clone()
-                            .unwrap_or_else(|| "https://api.z.ai/api/paas/v4".to_string());
+                            .unwrap_or_else(|| zai::DEFAULT_BASE_URL.to_string());
                         match zai::ZaiProvider::with_base_url(api_key, base_url) {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init zai: {}", e),
                         }
                     }
-
                     // Cerebras - OpenAI-compatible fast inference
                     "cerebras" => {
                         let base_url = secrets
@@ -1002,6 +1001,7 @@ impl ProviderRegistry {
     /// - `ANTHROPIC_API_KEY` → Registers Anthropic provider
     /// - `GOOGLE_API_KEY` → Registers Google provider
     /// - `OPENROUTER_API_KEY` → Registers OpenRouter provider
+    /// - `ZAI_API_KEY` → Registers Z.AI provider (GLM + coding-capable models)
     /// - `HF_BASE_URL`/`HUGGINGFACE_BASE_URL` (+ optional `HF_TOKEN`/`HUGGINGFACE_API_KEY`) → Registers Hugging Face provider
     /// - `CODETETHER_LOCAL_CUDA=1` (or `LOCAL_CUDA_MODEL*`) → Registers Local CUDA provider
     ///
@@ -1034,6 +1034,12 @@ impl ProviderRegistry {
             }),
             ("openrouter", "OPENROUTER_API_KEY", |key| {
                 Ok(Arc::new(openrouter::OpenRouterProvider::new(key)?))
+            }),
+            ("zai", "ZAI_API_KEY", |key| {
+                Ok(Arc::new(zai::ZaiProvider::with_base_url(
+                    key,
+                    zai::DEFAULT_BASE_URL.to_string(),
+                )?))
             }),
         ];
 

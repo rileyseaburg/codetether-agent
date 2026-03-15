@@ -8,7 +8,7 @@ use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::input::{
     handle_backspace, handle_bus_c, handle_bus_g, handle_bus_slash, handle_char, handle_enter,
-    handle_sessions_char,
+    handle_paste, handle_sessions_char,
 };
 use crate::tui::app::navigation::{
     handle_delete, handle_down, handle_end, handle_escape, handle_home, handle_left,
@@ -97,4 +97,8 @@ pub async fn handle_event(
     }
 
     Ok(false)
+}
+
+pub async fn handle_paste_event(app: &mut App, text: &str) {
+    handle_paste(app, text).await;
 }
