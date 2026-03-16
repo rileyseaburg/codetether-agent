@@ -1860,6 +1860,9 @@ async fn fetch_workspace_record(
         .with_context(|| format!("Failed to decode workspace {} response", workspace_id))
 }
 
+/// Default timeout for cloned workspace registration HTTP calls
+const WORKSPACE_REGISTRATION_TIMEOUT_SECS: u64 = 30;
+
 async fn register_cloned_workspace(
     client: &Client,
     server: &str,
@@ -1876,17 +1879,23 @@ async fn register_cloned_workspace(
         req = req.bearer_auth(token);
     }
 
-    let response = req
-        .json(&serde_json::json!({
+    let response = tokio::time::timeout(
+        Duration::from_secs(WORKSPACE_REGISTRATION_TIMEOUT_SECS),
+        req.json(&serde_json::json!({
             "name": workspace.name,
             "path": repo_path.display().to_string(),
             "description": workspace.description,
             "agent_config": workspace.agent_config,
             "worker_id": worker_id,
         }))
-        .send()
-        .await
-        .context("Failed to register cloned workspace with server")?;
+        .send(),
+    )
+    .await
+    .context(format!(
+        "Cloned workspace registration timed out after {}s",
+        WORKSPACE_REGISTRATION_TIMEOUT_SECS
+    ))?
+    .context("Failed to register cloned workspace with server")?;
     let status = response.status();
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
@@ -2978,5 +2987,19 @@ mod tests {
         assert_eq!(args.swarm_max_subagents, 4);
         assert_eq!(args.swarm_max_steps, 42);
         assert_eq!(args.swarm_subagent_timeout_secs, 180);
+    }
+
+    #[test]
+    fn workspace_registration_timeout_constant_is_reasonable() {
+        // Regression test: verify the timeout constant is set to a reasonable value
+        // that will fail fast but allow for normal network latency
+        assert!(
+            WORKSPACE_REGISTRATION_TIMEOUT_SECS >= 10,
+            "Timeout should be at least 10 seconds to handle normal latency"
+        );
+        assert!(
+            WORKSPACE_REGISTRATION_TIMEOUT_SECS <= 60,
+            "Timeout should be at most 60 seconds to fail fast"
+        );
     }
 }
