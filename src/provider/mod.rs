@@ -443,7 +443,7 @@ impl ProviderRegistry {
     ///
     /// By default, this function attempts to load credentials from Vault first. If a provider
     /// is not configured in Vault, it falls back to checking environment variables for common
-    /// providers (OpenAI, Anthropic, Google, OpenRouter). This fallback behavior is intended
+    /// providers (OpenAI, Anthropic, Google, OpenRouter, Z.AI). This fallback behavior is intended
     /// for local development and testing convenience.
     ///
     /// **Security Consideration**: In production or security-conscious deployments, environment
@@ -475,6 +475,7 @@ impl ProviderRegistry {
     ///    - `ANTHROPIC_API_KEY` → Anthropic provider
     ///    - `GOOGLE_API_KEY` → Google provider
     ///    - `OPENROUTER_API_KEY` → OpenRouter provider
+    ///    - `ZAI_API_KEY` → Z.AI provider
     ///
     /// # Default Behavior
     ///
@@ -861,7 +862,7 @@ impl ProviderRegistry {
                         let base_url = secrets
                             .base_url
                             .clone()
-                            .unwrap_or_else(|| "https://api.z.ai/api/paas/v4".to_string());
+                            .unwrap_or_else(|| zai::DEFAULT_BASE_URL.to_string());
                         match zai::ZaiProvider::with_base_url(api_key, base_url) {
                             Ok(p) => registry.register(Arc::new(p)),
                             Err(e) => tracing::warn!("Failed to init zai: {}", e),
@@ -1002,6 +1003,7 @@ impl ProviderRegistry {
     /// - `ANTHROPIC_API_KEY` → Registers Anthropic provider
     /// - `GOOGLE_API_KEY` → Registers Google provider
     /// - `OPENROUTER_API_KEY` → Registers OpenRouter provider
+    /// - `ZAI_API_KEY` → Registers Z.AI provider
     /// - `HF_BASE_URL`/`HUGGINGFACE_BASE_URL` (+ optional `HF_TOKEN`/`HUGGINGFACE_API_KEY`) → Registers Hugging Face provider
     /// - `CODETETHER_LOCAL_CUDA=1` (or `LOCAL_CUDA_MODEL*`) → Registers Local CUDA provider
     ///
@@ -1034,6 +1036,12 @@ impl ProviderRegistry {
             }),
             ("openrouter", "OPENROUTER_API_KEY", |key| {
                 Ok(Arc::new(openrouter::OpenRouterProvider::new(key)?))
+            }),
+            ("zai", "ZAI_API_KEY", |key| {
+                Ok(Arc::new(zai::ZaiProvider::with_base_url(
+                    key,
+                    zai::DEFAULT_BASE_URL.to_string(),
+                )?))
             }),
         ];
 
