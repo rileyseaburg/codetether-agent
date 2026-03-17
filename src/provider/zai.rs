@@ -17,6 +17,8 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
+
 pub struct ZaiProvider {
     client: Client,
     api_key: String,
@@ -356,6 +358,18 @@ impl Provider for ZaiProvider {
                 output_cost_per_million: None,
             },
             ModelInfo {
+                id: "glm-5-turbo".to_string(),
+                name: "GLM-5 Turbo".to_string(),
+                provider: "zai".to_string(),
+                context_window: 200_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.96),
+                output_cost_per_million: Some(3.20),
+            },
+            ModelInfo {
                 id: "glm-4.7".to_string(),
                 name: "GLM-4.7".to_string(),
                 provider: "zai".to_string(),
@@ -397,6 +411,18 @@ impl Provider for ZaiProvider {
                 provider: "zai".to_string(),
                 context_window: 128_000,
                 max_output_tokens: Some(96_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            },
+            ModelInfo {
+                id: "pony-alpha-2".to_string(),
+                name: "Pony Alpha 2".to_string(),
+                provider: "zai".to_string(),
+                context_window: 128_000,
+                max_output_tokens: Some(16_384),
                 supports_vision: false,
                 supports_tools: true,
                 supports_streaming: true,
