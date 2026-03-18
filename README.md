@@ -78,6 +78,16 @@ This release adds the inter-agent communication backbone — a broadcast-based i
 npx codetether --help
 npx codetether tui
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 (This uses the npm wrapper under `npm/codetether/`, which downloads the matching prebuilt binary from GitHub Releases for your platform. Publish it to npm to make `npx codetether ...` work globally.)
 
@@ -86,12 +96,32 @@ npx codetether tui
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 **Windows (PowerShell):**
 
 ```powershell
 irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 Downloads the binary and the FunctionGemma model (~292 MB) for local tool-call routing. No Rust toolchain required.
 
@@ -99,11 +129,31 @@ Downloads the binary and the FunctionGemma model (~292 MB) for local tool-call r
 # Skip FunctionGemma model (Linux/macOS)
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --no-functiongemma
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ```powershell
 # Skip FunctionGemma model (Windows)
 .\install.ps1 -NoFunctionGemma
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### From Source
 
@@ -116,6 +166,16 @@ cargo build --release
 # Without FunctionGemma (smaller binary)
 cargo build --release --no-default-features
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### From crates.io
 
@@ -132,6 +192,16 @@ cargo install codetether-agent --features candle-mkl
 # For Nvidia GPU: 
 cargo install codetether-agent --features candle-cuda
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ## Quick Start
 
@@ -146,18 +216,48 @@ export VAULT_TOKEN="hvs.your-token"
 # Add a provider
 vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### 2. Launch the TUI
 
 ```bash
 codetether tui
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### 3. Or Run a Single Prompt
 
 ```bash
 codetether run "explain this codebase"
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ## CLI
 
@@ -180,6 +280,16 @@ codetether okr report --id <uuid>        # Show OKR or run report
 codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn real A2A agent with auto-discovery
 codetether config --show                 # Show config
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 `codetether index` always generates embeddings locally (no paid API required). Use `--embedding-model`, `--embedding-dimensions`, `--embedding-batch-size`, and `--embedding-input-chars` to tune behavior.
 
@@ -210,6 +320,16 @@ codetether forage --loop --execute --execution-engine swarm --interval-secs 120 
   --moonshot-file ./.codetether-agent/moonshots.txt \
   --moonshot-required --moonshot-min-alignment 0.25
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 Notes:
 - In `--execute` mode, if the OKR repository is empty, forage auto-seeds a default mission OKR so the loop can self-start.
@@ -266,6 +386,16 @@ export CODETETHER_TOOL_ROUTER_ENABLED=true
 export CODETETHER_TOOL_ROUTER_MODEL_PATH="$HOME/.local/share/codetether/models/functiongemma/functiongemma-270m-it-Q8_0.gguf"
 export CODETETHER_TOOL_ROUTER_TOKENIZER_PATH="$HOME/.local/share/codetether/models/functiongemma/tokenizer.json"
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -287,6 +417,16 @@ When FunctionGemma is enabled, RLM uses structured tool dispatch instead of rege
 codetether rlm "What are the main functions?" -f src/large_file.rs
 cat logs/*.log | codetether rlm "Summarize the errors" --content -
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 #### Local CUDA (Exact Command)
 
@@ -311,6 +451,16 @@ export LOCAL_CUDA_MAX_TOKENS="2000"
 codetether rlm --model local_cuda/qwen3.5-9b --file src/rlm/repl.rs --json \
   "Find all occurrences of 'async fn' in src/rlm/repl.rs"
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 Expected verification in JSON output:
 - `"provider": "local_cuda"`
@@ -342,6 +492,16 @@ $ codetether rlm "What are the 3 main functions?" -f src/chunker.rs --json
   }
 }
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### OKR-Driven Execution: From Strategy to Shipped Code
 
@@ -352,12 +512,32 @@ CodeTether uses **OKRs (Objectives and Key Results)** as the bridge between busi
 An **Objective** is what you want to achieve. **Key Results** are the measurable outcomes that prove you achieved it.
 
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 Business Strategy
   └── Objective: "Make the QR-to-booking pipeline production-ready"
         ├── KR 1: Landing page loads in <2s on mobile
         ├── KR 2: QR scan → booking flow has zero broken links
         └── KR 3: Worker audit dashboard deployed and capturing data
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 OKRs aren't tasks — they're success criteria. The agent decides *how* to achieve the Key Results. You decide *what* success looks like.
 
@@ -366,6 +546,16 @@ OKRs aren't tasks — they're success criteria. The agent decides *how* to achie
 When you type `/go` in the TUI or CLI, you're launching a **strategic execution** — not just running a prompt. Here's the full lifecycle:
 
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 ┌──────────────────────────────────────────────────────────────────┐
 │                        /go Lifecycle                             │
 │                                                                  │
@@ -392,6 +582,16 @@ When you type `/go` in the TUI or CLI, you're launching a **strategic execution*
 │     └─ Full lifecycle stored for audit and reporting             │
 └──────────────────────────────────────────────────────────────────┘
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 The approve/deny gate is the critical human-in-the-loop moment. The system structures your intent into measurable outcomes; you verify that those outcomes actually match what you meant. Two minutes of strategic review, then the swarm owns execution.
 
@@ -435,6 +635,16 @@ codetether okr report --id <uuid>       # Full report — objective, KRs, outcom
 codetether okr export --id <uuid>       # Export OKR data as JSON
 codetether okr stats                    # Aggregate stats across all OKRs
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 #### Why This Matters
 
@@ -457,6 +667,16 @@ codetether swarm "Implement user auth with tests and docs"
 codetether swarm "Refactor the API layer" --strategy domain --max-subagents 8
 codetether swarm "Ship feature X end-to-end" --execution-mode k8s --k8s-pod-budget 6 --k8s-image us-central1-docker.pkg.dev/<project>/<repo>/<image>@sha256:<digest>
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 Strategies: `auto` (default), `domain`, `data`, `stage`, `none`.
 
@@ -482,6 +702,16 @@ Give it a spec, watch it work story by story. Each iteration is a fresh agent wi
 codetether ralph create-prd --feature "User Auth" --project-name my-app
 codetether ralph run --prd prd.json --max-iterations 10
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### TUI
 
@@ -518,6 +748,16 @@ vault kv put secret/codetether/providers/vertex-glm \
   project_id="your-gcp-project" \
   service_account_json="$SA_JSON"
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 The service account needs the **Vertex AI User** role (`roles/aiplatform.user`). Tokens are cached and auto-refreshed.
 
@@ -546,6 +786,16 @@ When using VS Code Remote SSH, the extension host runs on the remote machine. Ad
   }
 }
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 Reload VS Code — the 26 tools appear in the MCP panel automatically.
 
@@ -566,6 +816,16 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/.config/Claud
   }
 }
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 For remote machines over SSH:
 
@@ -579,6 +839,16 @@ For remote machines over SSH:
   }
 }
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### Exposed Tools (26)
 
@@ -601,10 +871,30 @@ codetether mcp list-tools --json   # JSON output
 codetether mcp serve               # Start stdio MCP server
 codetether mcp serve --bus-url URL # With agent bus integration
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ## Architecture
 
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 ┌─────────────────────────────────────────────────────────────┐
 │                    CodeTether Platform                      │
 │                 (A2A Server at api.codetether.run)          │
@@ -640,6 +930,16 @@ codetether mcp serve --bus-url URL # With agent bus integration
 │   └──────────┘  └──────────┘  └──────────────────────┘      │
 └─────────────────────────────────────────────────────────────┘
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ## A2A Protocol
 
@@ -710,6 +1010,16 @@ When running as a server, the agent exposes its capabilities via `/.well-known/a
   ]
 }
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### Perpetual Persona Swarms API (Phase 0)
 
@@ -747,6 +1057,16 @@ export CODETETHER_WORKER_COGNITION_SOURCE_URL=http://127.0.0.1:4096
 # Keep status sharing but disable thought text
 export CODETETHER_WORKER_COGNITION_INCLUDE_THOUGHTS=false
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -859,6 +1179,16 @@ codetether ralph run -p prd.json -m "kimi-k2.5" --max-iterations 10
 
 # 3. Watch as your feature gets implemented autonomously
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### Why This Matters
 
@@ -894,6 +1224,16 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 ### Resource Efficiency for Swarm Workloads
 
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Memory Usage Comparison                      │
 │                                                                 │
@@ -909,6 +1249,16 @@ CodeTether Agent is written in Rust for measurable performance advantages over J
 │  At 100 sub-agents: Rust uses 7.3x less memory                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### Real-World Impact
 
@@ -928,6 +1278,16 @@ For a typical swarm task (e.g., "Implement feature X with tests"):
 Actual resource usage from implementing 20 user stories autonomously:
 
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 ┌─────────────────────────────────────────────────────────────────┐
 │           Dogfooding Task: 20 Stories, Same Model (Kimi K2.5)   │
 │                                                                 │
@@ -947,6 +1307,16 @@ Actual resource usage from implementing 20 user stories autonomously:
 │  Cost Efficiency     ~3x cheaper                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 **Computation Notes**:
 - Spawn overhead: `iterations × spawn_time` (1.5ms Rust vs 7.5ms Bun avg)
@@ -964,6 +1334,16 @@ Run benchmarks yourself:
 ```bash
 ./script/benchmark.sh
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 Benchmarks performed on:
 - Ubuntu 24.04, x86_64
@@ -1008,6 +1388,16 @@ stylelint = { enabled = true }
 # Disable all built-in linter integrations (default: false)
 # disable_builtin_linters = true
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ### Vault Environment Variables
 
@@ -1026,6 +1416,16 @@ Disabled by default. Captures panic info on next startup — no source files or 
 codetether config --set telemetry.crash_reporting=true
 codetether config --set telemetry.crash_reporting=false
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ## Performance
 
@@ -1048,6 +1448,16 @@ cargo clippy --all-features  # Lint
 cargo fmt                    # Format
 ./script/benchmark.sh        # Run benchmarks
 ```
+### Codex CLI (Local Config)
+
+For OpenAI Codex CLI, use stdio transport in `~/.codex/config.toml`. This is the correct local integration path.
+
+```toml
+[mcp_servers.codetether]
+command = "/absolute/path/to/codetether"
+args = ["mcp", "serve", "/absolute/workspace/path"]
+```
+
 
 ## License
 
