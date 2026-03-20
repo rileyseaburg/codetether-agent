@@ -16,17 +16,20 @@ mod autochat;
 mod benchmark;
 mod bus;
 mod cli;
+mod cloudevents;
 mod cognition;
 mod config;
 mod crash;
 mod event_stream;
 mod forage;
+mod github_pr;
 mod indexer;
 mod k8s;
 mod lsp;
 pub mod mcp;
 mod moltbook;
 mod okr;
+mod provenance;
 mod provider;
 pub mod ralph;
 pub mod rlm;
@@ -577,6 +580,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
+        Some(Command::Pr(args)) => github_pr::run(args).await,
         Some(Command::Models(args)) => {
             let registry = provider::ProviderRegistry::from_vault().await?;
             let mut all_models: Vec<provider::ModelInfo> = Vec::new();

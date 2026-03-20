@@ -44,7 +44,7 @@ pub async fn handle_enter(
             .await
         }
         ViewMode::Model => crate::tui::app::model_picker::apply_selected_model(app, session),
-        ViewMode::Settings | ViewMode::Lsp | ViewMode::Rlm => {}
+        ViewMode::Settings | ViewMode::Lsp | ViewMode::Rlm | ViewMode::Latency => {}
     }
 }
 
@@ -251,6 +251,7 @@ async fn handle_enter_chat(
         .push(ChatMessage::new(MessageType::User, prompt.clone()));
     app.state.clear_input();
     handle_processing_started(app, worker_bridge).await;
+    app.state.begin_request_timing();
     app.state.status = "Submitting prompt…".to_string();
     app.state.scroll_to_bottom();
 
@@ -268,6 +269,7 @@ async fn handle_enter_chat(
         });
     } else {
         handle_processing_stopped(app, worker_bridge).await;
+        app.state.clear_request_timing();
         app.state.messages.push(ChatMessage::new(
             MessageType::Error,
             "No providers available. Configure credentials first (for example: `codetether auth codex` or `codetether auth copilot`).",
@@ -280,7 +282,9 @@ async fn handle_enter_chat(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tui::chat::message::MessageType;
     use crate::tui::models::ViewMode;
+    use tokio::sync::mpsc;
 
     #[tokio::test]
     async fn paste_keeps_multiline_text_in_single_chat_input() {
@@ -291,5 +295,41 @@ mod tests {
 
         assert_eq!(app.state.input, "first line\nsecond line");
         assert_eq!(app.state.status, "Pasted 2 lines into input");
+    }
+
+    #[tokio::test]
+    async fn enter_echoes_user_message_before_provider_failure() {
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+        app.state.input = "hello tui".to_string();
+        app.state.input_cursor = app.state.input.chars().count();
+
+        let cwd = std::path::Path::new(".");
+        let mut session = Session::new().await.expect("session should create");
+        let (event_tx, _event_rx) = mpsc::channel(8);
+        let (result_tx, _result_rx) = mpsc::channel(8);
+
+        handle_enter(
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
+        )
+        .await;
+
+        assert!(matches!(
+            app.state.messages.first().map(|msg| &msg.message_type),
+            Some(MessageType::User)
+        ));
+        assert_eq!(app.state.messages[0].content, "hello tui");
+        assert!(matches!(
+            app.state.messages.get(1).map(|msg| &msg.message_type),
+            Some(MessageType::Error)
+        ));
+        assert!(app.state.input.is_empty());
+        assert!(app.state.processing_started_at.is_none());
     }
 }

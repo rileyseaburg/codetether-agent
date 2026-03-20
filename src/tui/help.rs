@@ -196,11 +196,11 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Home / End", "Jump to start / end of input"));
     lines.push(key_row("Backspace", "Delete backward"));
     lines.push(key_row("Delete", "Delete forward"));
-    lines.push(key_row("Up / Down", "Command history (in chat)"));
+    lines.push(key_row("Ctrl+Up / Down", "Command history (in chat)"));
     lines.push(blank());
 
     lines.push(heading("SCROLLING"));
-    lines.push(key_row("Up / Down", "Scroll messages (non-chat views)"));
+    lines.push(key_row("Up / Down", "Scroll messages"));
     lines.push(key_row("PgUp / PgDn", "Scroll by page"));
     lines.push(blank());
 
@@ -218,6 +218,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(cmd_row("/help", "/h /?", "Open this help"));
     lines.push(cmd_row("/sessions", "/s", "Session picker"));
     lines.push(cmd_row("/model", "/m", "Model picker"));
+    lines.push(cmd_row("/file", "", "Attach /file <path> to composer"));
     lines.push(cmd_row("/settings", "/set", "Settings panel"));
     lines.push(cmd_row("/new", "", "Start fresh chat buffer"));
     lines.push(blank());
@@ -227,6 +228,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(cmd_row("/protocol", "/p", "Protocol bus (alias)"));
     lines.push(cmd_row("/swarm", "/w", "Swarm agent view"));
     lines.push(cmd_row("/ralph", "/r", "Ralph PRD loop view"));
+    lines.push(cmd_row("/latency", "", "Provider + tool latency inspector"));
     lines.push(blank());
 
     lines.push(heading("Development Tools"));

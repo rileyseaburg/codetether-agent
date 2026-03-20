@@ -6,6 +6,8 @@ pub mod advanced_edit;
 pub mod agent;
 pub mod avatar;
 pub mod bash;
+mod bash_github;
+mod bash_identity;
 pub mod batch;
 pub mod codesearch;
 pub mod confirm_edit;

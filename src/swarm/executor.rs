@@ -23,8 +23,10 @@ use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo
 pub use super::SwarmMessage;
 use crate::{
     agent::Agent,
+    provenance::{ExecutionOrigin, ExecutionProvenance},
     provider::{CompletionRequest, ContentPart, FinishReason, Message, Provider, Role},
     rlm::RlmExecutor,
+    session::helper::runtime::enrich_tool_input_with_runtime_context,
     swarm::{SwarmArtifact, SwarmStats},
     telemetry::SwarmTelemetryCollector,
     tool::ToolRegistry,
@@ -2574,17 +2576,16 @@ pub async fn run_agent_loop(
                 if let Some(ref wd) = working_dir {
                     resolve_tool_paths(&tool_name, &mut args, wd);
                 }
-                if let Some(args_obj) = args.as_object_mut() {
-                    args_obj
-                        .entry("__ct_current_model".to_string())
-                        .or_insert_with(|| serde_json::json!(model));
-                    args_obj
-                        .entry("__ct_session_id".to_string())
-                        .or_insert_with(|| serde_json::json!(subtask_id.clone()));
-                    args_obj
-                        .entry("__ct_agent_name".to_string())
-                        .or_insert_with(|| serde_json::json!(format!("agent-{subtask_id}")));
-                }
+                let agent_name = format!("agent-{subtask_id}");
+                let provenance =
+                    ExecutionProvenance::for_operation(&agent_name, ExecutionOrigin::Swarm);
+                args = enrich_tool_input_with_runtime_context(
+                    &args,
+                    Some(model),
+                    &subtask_id,
+                    &agent_name,
+                    Some(&provenance),
+                );
 
                 match tool.execute(args).await {
                     Ok(r) => {

@@ -2,6 +2,7 @@ use super::commands::handle_slash_command;
 use super::model_picker::{apply_selected_model, close_model_picker};
 use super::state::{App, AppState};
 use crate::session::Session;
+use crate::tui::chat::message::MessageType;
 use crate::tui::models::ViewMode;
 
 #[tokio::test]
@@ -81,4 +82,48 @@ async fn slash_model_alias_opens_model_picker() {
 
     assert_eq!(app.state.view_mode, ViewMode::Model);
     assert!(app.state.model_picker_active);
+}
+
+#[tokio::test]
+async fn slash_latency_opens_latency_view() {
+    let mut app = App::default();
+    let session = Session::new().await.expect("session should create");
+
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &session,
+        None,
+        "/latency",
+    )
+    .await;
+
+    assert_eq!(app.state.view_mode, ViewMode::Latency);
+    assert_eq!(app.state.status, "Latency inspector");
+}
+
+#[tokio::test]
+async fn slash_file_path_attaches_file_to_composer() {
+    let temp = tempfile::tempdir().expect("tempdir should create");
+    let file_path = temp.path().join("notes.md");
+    std::fs::write(&file_path, "# Notes\nship it").expect("fixture should write");
+
+    let mut app = App::default();
+    let session = Session::new().await.expect("session should create");
+
+    handle_slash_command(
+        &mut app,
+        temp.path(),
+        &session,
+        None,
+        &format!("/file {}", file_path.display()),
+    )
+    .await;
+
+    assert!(app.state.input.contains("Shared file: notes.md"));
+    assert!(app.state.input.contains("# Notes"));
+    assert!(matches!(
+        app.state.messages.last().map(|msg| &msg.message_type),
+        Some(MessageType::System)
+    ));
 }

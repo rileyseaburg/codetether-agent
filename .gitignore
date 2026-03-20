@@ -33,3 +33,5 @@ jenkins-quantum-forge*.pem
 
 jenkinsfile.sh
 
+target-bullseye/
+target-jammy/

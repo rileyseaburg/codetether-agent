@@ -602,12 +602,14 @@ async fn handle_message_stream(
                         name,
                         output,
                         success,
+                        duration_ms,
                     } => {
                         serde_json::json!({
                             "type": "tool_call_complete",
                             "name": name,
                             "output": output.chars().take(500).collect::<String>(),
-                            "success": success
+                            "success": success,
+                            "duration_ms": duration_ms
                         })
                     }
                     SessionEvent::TextChunk(text) => {

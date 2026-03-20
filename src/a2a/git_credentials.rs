@@ -231,6 +231,20 @@ pub fn configure_repo_git_auth(repo_path: &Path, workspace_id: &str) -> Result<P
     Ok(helper_path)
 }
 
+pub fn configure_repo_git_github_app(
+    repo_path: &Path,
+    installation_id: Option<&str>,
+    app_id: Option<&str>,
+) -> Result<()> {
+    set_local_config(
+        repo_path,
+        "codetether.githubInstallationId",
+        installation_id,
+    )?;
+    set_local_config(repo_path, "codetether.githubAppId", app_id)?;
+    Ok(())
+}
+
 pub fn write_git_credential_helper_script(script_path: &Path, workspace_id: &str) -> Result<()> {
     if let Some(parent) = script_path.parent() {
         fs::create_dir_all(parent).with_context(|| {
@@ -298,6 +312,13 @@ where
         repo_path.display(),
         String::from_utf8_lossy(&output.stderr).trim()
     ))
+}
+
+fn set_local_config(repo_path: &Path, key: &str, value: Option<&str>) -> Result<()> {
+    let Some(value) = value.filter(|value| !value.trim().is_empty()) else {
+        return Ok(());
+    };
+    run_git_command(repo_path, ["config", "--local", key, value])
 }
 
 fn read_git_credential_query_from_stdin() -> Result<GitCredentialQuery> {

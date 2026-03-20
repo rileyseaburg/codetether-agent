@@ -11,6 +11,7 @@ pub enum ViewMode {
     Settings,
     Lsp,
     Rlm,
+    Latency,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

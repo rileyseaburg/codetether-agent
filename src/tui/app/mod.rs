@@ -2,6 +2,7 @@ pub mod background;
 pub mod commands;
 pub mod event_handlers;
 pub mod event_loop;
+pub mod file_share;
 pub mod impl_app;
 pub mod input;
 pub mod message_text;

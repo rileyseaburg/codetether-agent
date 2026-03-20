@@ -11,7 +11,7 @@ use crate::bus::BusHandle;
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::background::drain_background_updates;
-use crate::tui::app::event_handlers::{handle_event, handle_paste_event};
+use crate::tui::app::event_handlers::{handle_event, handle_mouse_event, handle_paste_event};
 use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::sync_worker_bridge_agents;
 use crate::tui::ui::main::ui;
@@ -54,6 +54,9 @@ pub async fn run_event_loop(
                     }
                     Some(Ok(Event::Paste(text))) => {
                         handle_paste_event(app, &text).await;
+                    }
+                    Some(Ok(Event::Mouse(mouse))) => {
+                        handle_mouse_event(app, mouse);
                     }
                     Some(Ok(Event::Resize(_, _))) => {}
                     Some(Err(_)) => {}

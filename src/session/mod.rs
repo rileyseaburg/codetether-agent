@@ -6,6 +6,7 @@ use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
+use crate::provenance::{ClaimProvenance, ExecutionProvenance};
 use crate::provider::{ContentPart, Message, Role, ToolDefinition, Usage};
 use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
@@ -102,6 +103,7 @@ pub struct SessionMetadata {
     pub directory: Option<PathBuf>,
     pub model: Option<String>,
     pub knowledge_snapshot: Option<PathBuf>,
+    pub provenance: Option<ExecutionProvenance>,
     pub shared: bool,
     pub share_url: Option<String>,
 }
@@ -130,6 +132,7 @@ impl Session {
     pub async fn new() -> Result<Self> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
+        let provenance = Some(ExecutionProvenance::for_session(&id, "build"));
 
         Ok(Self {
             id,
@@ -142,6 +145,7 @@ impl Session {
             agent: "build".to_string(),
             metadata: SessionMetadata {
                 directory: Some(std::env::current_dir()?),
+                provenance,
                 ..Default::default()
             },
             bus: None,
@@ -152,6 +156,26 @@ impl Session {
     pub fn with_bus(mut self, bus: Arc<crate::bus::AgentBus>) -> Self {
         self.bus = Some(bus);
         self
+    }
+
+    pub fn set_agent_name(&mut self, agent_name: impl Into<String>) {
+        let agent_name = agent_name.into();
+        self.agent = agent_name.clone();
+        if let Some(provenance) = self.metadata.provenance.as_mut() {
+            provenance.set_agent_name(&agent_name);
+        }
+    }
+
+    pub fn attach_worker_task_provenance(&mut self, worker_id: &str, task_id: &str) {
+        if let Some(provenance) = self.metadata.provenance.as_mut() {
+            provenance.apply_worker_task(worker_id, task_id);
+        }
+    }
+
+    pub fn attach_claim_provenance(&mut self, claim: &ClaimProvenance) {
+        if let Some(provenance) = self.metadata.provenance.as_mut() {
+            provenance.apply_claim(claim);
+        }
     }
 
     /// Load an existing session
@@ -948,6 +972,7 @@ impl Session {
                     self.metadata.model.as_deref(),
                     &self.id,
                     &self.agent,
+                    self.metadata.provenance.as_ref(),
                 );
                 let (content, success, tool_metadata) = if let Some(tool) =
                     tool_registry.get(&tool_name)
@@ -1855,6 +1880,7 @@ impl Session {
                             name: tool_name.clone(),
                             output: content.clone(),
                             success: true,
+                            duration_ms: 0,
                         })
                         .await;
                     self.add_message(Message {
@@ -1890,6 +1916,7 @@ impl Session {
                             name: tool_name.clone(),
                             output: content.clone(),
                             success: false,
+                            duration_ms: 0,
                         })
                         .await;
                     self.add_message(Message {
@@ -1913,6 +1940,7 @@ impl Session {
                             name: tool_name.clone(),
                             output: content.clone(),
                             success: false,
+                            duration_ms: 0,
                         })
                         .await;
                     self.add_message(Message {
@@ -1931,6 +1959,7 @@ impl Session {
                     self.metadata.model.as_deref(),
                     &self.id,
                     &self.agent,
+                    self.metadata.provenance.as_ref(),
                 );
                 let (content, success, tool_metadata) = if let Some(tool) =
                     tool_registry.get(&tool_name)
@@ -2089,6 +2118,7 @@ impl Session {
                         name: tool_name.clone(),
                         output: content.clone(),
                         success,
+                        duration_ms,
                     })
                     .await;
 
@@ -2334,6 +2364,7 @@ pub enum SessionEvent {
         name: String,
         output: String,
         success: bool,
+        duration_ms: u64,
     },
     /// Partial text output (for streaming)
     TextChunk(String),

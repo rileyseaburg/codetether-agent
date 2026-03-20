@@ -3,6 +3,7 @@ pub mod chat;
 pub mod constants;
 pub mod help;
 pub mod input;
+pub mod latency;
 pub mod lsp;
 pub mod model_picker;
 pub mod models;

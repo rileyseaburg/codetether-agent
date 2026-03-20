@@ -130,6 +130,7 @@ impl TuiWorkerBridge {
             &worker_id,
             &worker_name,
             &codebases,
+            None,
         )
         .await
         {

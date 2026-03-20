@@ -1142,7 +1142,7 @@ async fn run_protocol_first_relay(
         let assigned_model_ref = model_rotation.next_model_ref(model_ref);
         let mut session = Session::new().await?;
         session.metadata.model = Some(assigned_model_ref.clone());
-        session.agent = profile.name.clone();
+        session.set_agent_name(profile.name.clone());
         session.bus = Some(bus.clone());
         session.add_message(Message {
             role: Role::System,
@@ -1341,7 +1341,7 @@ async fn run_protocol_first_relay(
                     Ok(mut spawned_session) => {
                         let spawned_model_ref = model_rotation.next_model_ref(model_ref);
                         spawned_session.metadata.model = Some(spawned_model_ref.clone());
-                        spawned_session.agent = profile.name.clone();
+                        spawned_session.set_agent_name(profile.name.clone());
                         spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(Message {
                             role: Role::System,

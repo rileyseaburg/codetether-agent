@@ -1,8 +1,12 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
-use crate::a2a::git_credentials::{configure_repo_git_auth, write_git_credential_helper_script};
+use crate::a2a::claim::TaskClaimResponse;
+use crate::a2a::git_credentials::{
+    configure_repo_git_auth, configure_repo_git_github_app, write_git_credential_helper_script,
+};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
+use crate::provenance::install_commit_msg_hook;
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
@@ -157,14 +161,34 @@ struct RegisteredWorkspaceRecord {
     git_branch: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TaskReservation {
+    Reserved,
+    AlreadyProcessing,
+    AtCapacity,
+}
+
+#[derive(Clone)]
+struct WorkerTaskRuntime {
+    client: Client,
+    server: String,
+    token: Option<String>,
+    worker_id: String,
+    processing: Arc<Mutex<HashSet<String>>>,
+    max_concurrent_tasks: usize,
+    auto_approve: AutoApprove,
+    bus: Arc<AgentBus>,
+}
+
 // Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
     let name = args
         .name
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
-    let worker_id = generate_worker_id();
+    let worker_id = resolve_worker_id();
     export_worker_runtime_env(server, &args.token, &worker_id);
+    let max_concurrent_tasks = normalize_max_concurrent_tasks(args.max_concurrent_tasks);
 
     let codebases: Vec<String> = args
         .workspaces
@@ -174,6 +198,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     tracing::info!("Starting A2A worker: {} ({})", name, worker_id);
     tracing::info!("Server: {}", server);
     tracing::info!("Workspaces: {:?}", codebases);
+    tracing::info!(max_concurrent_tasks, "Worker task concurrency configured");
 
     // Wrap in shared mutex so background workspace-sync can add new local paths
     let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
@@ -215,10 +240,30 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         handle.announce_ready(worker_capabilities());
     }
 
+    let task_runtime = WorkerTaskRuntime {
+        client: client.clone(),
+        server: server.to_string(),
+        token: args.token.clone(),
+        worker_id: worker_id.clone(),
+        processing: processing.clone(),
+        max_concurrent_tasks,
+        auto_approve,
+        bus: bus.clone(),
+    };
+
     // Register worker
     {
         let codebases = shared_codebases.lock().await.clone();
-        register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+        register_worker(
+            &client,
+            server,
+            &args.token,
+            &worker_id,
+            &name,
+            &codebases,
+            args.public_url.as_deref(),
+        )
+        .await?;
     }
 
     if let Err(e) =
@@ -228,16 +273,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     }
 
     // Fetch pending tasks
-    fetch_pending_tasks(
-        &client,
-        server,
-        &args.token,
-        &worker_id,
-        &processing,
-        &auto_approve,
-        &bus,
-    )
-    .await?;
+    fetch_pending_tasks(&task_runtime).await?;
 
     // Start background task that polls server for new locally-present workspaces
     let _workspace_sync_handle = start_workspace_sync(
@@ -253,10 +289,21 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         let codebases = shared_codebases.lock().await.clone();
 
         // Re-register worker on each reconnection to report updated models/capabilities
-        if let Err(e) =
-            register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await
+        if let Err(e) = register_worker(
+            &client,
+            server,
+            &args.token,
+            &worker_id,
+            &name,
+            &codebases,
+            args.public_url.as_deref(),
+        )
+        .await
         {
             tracing::warn!("Failed to re-register worker on reconnection: {}", e);
+        }
+        if let Err(e) = fetch_pending_tasks(&task_runtime).await {
+            tracing::warn!("Reconnect task fetch failed: {}", e);
         }
 
         // Start heartbeat task for this connection
@@ -269,20 +316,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
             cognition_heartbeat.clone(),
         );
 
-        match connect_stream(
-            &client,
-            server,
-            &args.token,
-            &worker_id,
-            &name,
-            &codebases,
-            &processing,
-            &auto_approve,
-            &bus,
-            None, // No task notification channel in simple run mode
-        )
-        .await
-        {
+        match connect_stream(&task_runtime, &name, &codebases, None).await {
             Ok(()) => {
                 tracing::warn!("Stream ended, reconnecting...");
             }
@@ -309,8 +343,9 @@ pub async fn run_with_state(
     let name = args
         .name
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
-    let worker_id = generate_worker_id();
+    let worker_id = resolve_worker_id();
     export_worker_runtime_env(server, &args.token, &worker_id);
+    let max_concurrent_tasks = normalize_max_concurrent_tasks(args.max_concurrent_tasks);
 
     // Share worker_id with HTTP server
     server_state.set_worker_id(worker_id.clone()).await;
@@ -323,6 +358,7 @@ pub async fn run_with_state(
     tracing::info!("Starting A2A worker: {} ({})", name, worker_id);
     tracing::info!("Server: {}", server);
     tracing::info!("Workspaces: {:?}", codebases);
+    tracing::info!(max_concurrent_tasks, "Worker task concurrency configured");
 
     // Wrap in shared mutex so background workspace-sync can add new local paths
     let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
@@ -360,6 +396,7 @@ pub async fn run_with_state(
 
     // Create agent bus for in-process sub-agent communication
     let bus = AgentBus::new().into_arc();
+    server_state.set_bus(bus.clone()).await;
 
     // Auto-start S3 sink if MinIO is configured
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
@@ -369,10 +406,30 @@ pub async fn run_with_state(
         handle.announce_ready(worker_capabilities());
     }
 
+    let task_runtime = WorkerTaskRuntime {
+        client: client.clone(),
+        server: server.to_string(),
+        token: args.token.clone(),
+        worker_id: worker_id.clone(),
+        processing: processing.clone(),
+        max_concurrent_tasks,
+        auto_approve,
+        bus: bus.clone(),
+    };
+
     // Register worker
     {
         let codebases = shared_codebases.lock().await.clone();
-        register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await?;
+        register_worker(
+            &client,
+            server,
+            &args.token,
+            &worker_id,
+            &name,
+            &codebases,
+            args.public_url.as_deref(),
+        )
+        .await?;
     }
 
     if let Err(e) =
@@ -385,16 +442,7 @@ pub async fn run_with_state(
     server_state.set_connected(true).await;
 
     // Fetch pending tasks before entering reconnection loop
-    fetch_pending_tasks(
-        &client,
-        server,
-        &args.token,
-        &worker_id,
-        &processing,
-        &auto_approve,
-        &bus,
-    )
-    .await?;
+    fetch_pending_tasks(&task_runtime).await?;
 
     // Start background task that polls server for new locally-present workspaces
     let _workspace_sync_handle = start_workspace_sync(
@@ -420,10 +468,21 @@ pub async fn run_with_state(
         server_state.set_connected(true).await;
 
         // Re-register worker on each reconnection to report updated models/capabilities
-        if let Err(e) =
-            register_worker(&client, server, &args.token, &worker_id, &name, &codebases).await
+        if let Err(e) = register_worker(
+            &client,
+            server,
+            &args.token,
+            &worker_id,
+            &name,
+            &codebases,
+            args.public_url.as_deref(),
+        )
+        .await
         {
             tracing::warn!("Failed to re-register worker on reconnection: {}", e);
+        }
+        if let Err(e) = fetch_pending_tasks(&task_runtime).await {
+            tracing::warn!("Reconnect task fetch failed: {}", e);
         }
 
         // Start heartbeat task for this connection
@@ -436,20 +495,7 @@ pub async fn run_with_state(
             cognition_heartbeat.clone(),
         );
 
-        match connect_stream(
-            &client,
-            server,
-            &args.token,
-            &worker_id,
-            &name,
-            &codebases,
-            &processing,
-            &auto_approve,
-            &bus,
-            Some(task_notify_rx),
-        )
-        .await
-        {
+        match connect_stream(&task_runtime, &name, &codebases, Some(task_notify_rx)).await {
             Ok(()) => {
                 tracing::warn!("Stream ended, reconnecting...");
             }
@@ -477,6 +523,38 @@ pub fn generate_worker_id() -> String {
     )
 }
 
+fn resolve_worker_id() -> String {
+    for key in ["CODETETHER_WORKER_ID", "A2A_WORKER_ID"] {
+        if let Ok(value) = std::env::var(key) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
+        }
+    }
+    generate_worker_id()
+}
+
+fn normalize_max_concurrent_tasks(max_concurrent_tasks: usize) -> usize {
+    max_concurrent_tasks.max(1)
+}
+
+async fn reserve_task_slot(
+    processing: &Arc<Mutex<HashSet<String>>>,
+    task_id: &str,
+    max_concurrent_tasks: usize,
+) -> TaskReservation {
+    let mut proc = processing.lock().await;
+    if proc.contains(task_id) {
+        TaskReservation::AlreadyProcessing
+    } else if proc.len() >= max_concurrent_tasks {
+        TaskReservation::AtCapacity
+    } else {
+        proc.insert(task_id.to_string());
+        TaskReservation::Reserved
+    }
+}
+
 fn export_worker_runtime_env(server: &str, token: &Option<String>, worker_id: &str) {
     // SAFETY: The worker sets these process-wide variables once during startup before
     // spawning Git helper child processes. They are required so Git credential helpers
@@ -488,6 +566,26 @@ fn export_worker_runtime_env(server: &str, token: &Option<String>, worker_id: &s
             std::env::set_var("CODETETHER_TOKEN", token);
         }
     }
+}
+
+fn advertised_interfaces(public_url: Option<&str>) -> serde_json::Value {
+    let Some(base_url) = public_url
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.trim_end_matches('/').to_string())
+    else {
+        return serde_json::json!({});
+    };
+
+    serde_json::json!({
+        "http": {
+            "base_url": base_url,
+        },
+        "bus": {
+            "stream_url": format!("{base_url}/v1/bus/stream"),
+            "publish_url": format!("{base_url}/v1/bus/publish"),
+        },
+    })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1004,6 +1102,7 @@ pub async fn register_worker(
     worker_id: &str,
     name: &str,
     codebases: &[String],
+    public_url: Option<&str>,
 ) -> Result<()> {
     // Load ProviderRegistry and collect available models
     let models = match load_provider_models().await {
@@ -1090,6 +1189,7 @@ pub async fn register_worker(
             "k8s_node_name": k8s_node_name,
             "models": models_array,
             "workspaces": codebases,
+            "interfaces": advertised_interfaces(public_url),
             "agents": agent_defs,
         }))
         .send()
@@ -1151,19 +1251,13 @@ async fn fallback_registry() -> Result<ProviderRegistry> {
     ProviderRegistry::from_config(&config).await
 }
 
-async fn fetch_pending_tasks(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    worker_id: &str,
-    processing: &Arc<Mutex<HashSet<String>>>,
-    auto_approve: &AutoApprove,
-    bus: &Arc<AgentBus>,
-) -> Result<()> {
+async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
-    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
-    if let Some(t) = token {
+    let mut req = runtime
+        .client
+        .get(format!("{}/v1/agent/tasks?status=pending", runtime.server));
+    if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
 
@@ -1184,36 +1278,26 @@ async fn fetch_pending_tasks(
 
     for task in tasks {
         if let Some(id) = task["id"].as_str() {
-            let mut proc = processing.lock().await;
-            if !proc.contains(id) {
-                proc.insert(id.to_string());
-                drop(proc);
+            match reserve_task_slot(&runtime.processing, id, runtime.max_concurrent_tasks).await {
+                TaskReservation::Reserved => {
+                    let task_id = id.to_string();
+                    let runtime = runtime.clone();
 
-                let task_id = id.to_string();
-                let client = client.clone();
-                let server = server.to_string();
-                let token = token.clone();
-                let worker_id = worker_id.to_string();
-                let auto_approve = *auto_approve;
-                let processing = processing.clone();
-                let bus = bus.clone();
-
-                tokio::spawn(async move {
-                    if let Err(e) = handle_task(
-                        &client,
-                        &server,
-                        &token,
-                        &worker_id,
-                        &task,
-                        auto_approve,
-                        &bus,
-                    )
-                    .await
-                    {
-                        tracing::error!("Task {} failed: {}", task_id, e);
-                    }
-                    processing.lock().await.remove(&task_id);
-                });
+                    tokio::spawn(async move {
+                        if let Err(e) = handle_task(&runtime, &task).await {
+                            tracing::error!("Task {} failed: {}", task_id, e);
+                        }
+                        runtime.processing.lock().await.remove(&task_id);
+                    });
+                }
+                TaskReservation::AlreadyProcessing => {}
+                TaskReservation::AtCapacity => {
+                    tracing::debug!(
+                        max_concurrent_tasks = runtime.max_concurrent_tasks,
+                        "Worker is at task capacity; leaving remaining tasks pending"
+                    );
+                    break;
+                }
             }
         }
     }
@@ -1221,34 +1305,29 @@ async fn fetch_pending_tasks(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn connect_stream(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    worker_id: &str,
+    runtime: &WorkerTaskRuntime,
     name: &str,
     codebases: &[String],
-    processing: &Arc<Mutex<HashSet<String>>>,
-    auto_approve: &AutoApprove,
-    bus: &Arc<AgentBus>,
     task_notify_rx: Option<mpsc::Receiver<String>>,
 ) -> Result<()> {
     let url = format!(
         "{}/v1/worker/tasks/stream?agent_name={}&worker_id={}",
-        server,
+        runtime.server,
         urlencoding::encode(name),
-        urlencoding::encode(worker_id)
+        urlencoding::encode(&runtime.worker_id)
     );
 
-    let mut req = client
+    let mut req = runtime
+        .client
         .get(&url)
         .header("Accept", "text/event-stream")
-        .header("X-Worker-ID", worker_id)
+        .header("X-Worker-ID", &runtime.worker_id)
         .header("X-Agent-Name", name)
+        .header("X-Codebases", codebases.join(","))
         .header("X-Workspaces", codebases.join(","));
 
-    if let Some(t) = token {
+    if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
 
@@ -1282,9 +1361,7 @@ async fn connect_stream(
                 if let Some(task_id) = task_id {
                     tracing::info!("Received task notification via CloudEvent: {}", task_id);
                     // Immediately poll for and process this task
-                    if let Err(e) = poll_pending_tasks(
-                        client, server, token, worker_id, processing, auto_approve, bus,
-                    ).await {
+                    if let Err(e) = poll_pending_tasks(runtime).await {
                         tracing::warn!("Task notification poll failed: {}", e);
                     }
                 }
@@ -1306,10 +1383,7 @@ async fn connect_stream(
                                 }
 
                                 if let Ok(task) = serde_json::from_str::<serde_json::Value>(data) {
-                                    spawn_task_handler(
-                                        &task, client, server, token, worker_id,
-                                        processing, auto_approve, bus,
-                                    ).await;
+                                    spawn_task_handler(&task, runtime).await;
                                 }
                             }
                         }
@@ -1325,9 +1399,7 @@ async fn connect_stream(
             }
             _ = poll_interval.tick() => {
                 // Periodic poll for pending tasks the SSE stream may have missed
-                if let Err(e) = poll_pending_tasks(
-                    client, server, token, worker_id, processing, auto_approve, bus,
-                ).await {
+                if let Err(e) = poll_pending_tasks(runtime).await {
                     tracing::warn!("Periodic task poll failed: {}", e);
                 }
             }
@@ -1335,67 +1407,42 @@ async fn connect_stream(
     }
 }
 
-async fn spawn_task_handler(
-    task: &serde_json::Value,
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    worker_id: &str,
-    processing: &Arc<Mutex<HashSet<String>>>,
-    auto_approve: &AutoApprove,
-    bus: &Arc<AgentBus>,
-) {
+async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntime) {
     if let Some(id) = task
         .get("task")
         .and_then(|t| t["id"].as_str())
         .or_else(|| task["id"].as_str())
     {
-        let mut proc = processing.lock().await;
-        if !proc.contains(id) {
-            proc.insert(id.to_string());
-            drop(proc);
+        match reserve_task_slot(&runtime.processing, id, runtime.max_concurrent_tasks).await {
+            TaskReservation::Reserved => {
+                let task_id = id.to_string();
+                let task = task.clone();
+                let runtime = runtime.clone();
 
-            let task_id = id.to_string();
-            let task = task.clone();
-            let client = client.clone();
-            let server = server.to_string();
-            let token = token.clone();
-            let worker_id = worker_id.to_string();
-            let auto_approve = *auto_approve;
-            let processing_clone = processing.clone();
-            let bus = bus.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) = handle_task(
-                    &client,
-                    &server,
-                    &token,
-                    &worker_id,
-                    &task,
-                    auto_approve,
-                    &bus,
-                )
-                .await
-                {
-                    tracing::error!("Task {} failed: {}", task_id, e);
-                }
-                processing_clone.lock().await.remove(&task_id);
-            });
+                tokio::spawn(async move {
+                    if let Err(e) = handle_task(&runtime, &task).await {
+                        tracing::error!("Task {} failed: {}", task_id, e);
+                    }
+                    runtime.processing.lock().await.remove(&task_id);
+                });
+            }
+            TaskReservation::AlreadyProcessing => {}
+            TaskReservation::AtCapacity => {
+                tracing::debug!(
+                    task_id = id,
+                    max_concurrent_tasks = runtime.max_concurrent_tasks,
+                    "Worker is at task capacity; task will stay pending until a slot frees up"
+                );
+            }
         }
     }
 }
 
-async fn poll_pending_tasks(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    worker_id: &str,
-    processing: &Arc<Mutex<HashSet<String>>>,
-    auto_approve: &AutoApprove,
-    bus: &Arc<AgentBus>,
-) -> Result<()> {
-    let mut req = client.get(format!("{}/v1/agent/tasks?status=pending", server));
-    if let Some(t) = token {
+async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
+    let mut req = runtime
+        .client
+        .get(format!("{}/v1/agent/tasks?status=pending", runtime.server));
+    if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
 
@@ -1416,41 +1463,24 @@ async fn poll_pending_tasks(
     }
 
     for task in &tasks {
-        spawn_task_handler(
-            task,
-            client,
-            server,
-            token,
-            worker_id,
-            processing,
-            auto_approve,
-            bus,
-        )
-        .await;
+        spawn_task_handler(task, runtime).await;
     }
 
     Ok(())
 }
 
-async fn handle_task(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    worker_id: &str,
-    task: &serde_json::Value,
-    auto_approve: AutoApprove,
-    bus: &Arc<AgentBus>,
-) -> Result<()> {
+async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> Result<()> {
     let task_id = task_str(task, "id").ok_or_else(|| anyhow::anyhow!("No task ID"))?;
     let title = task_str(task, "title").unwrap_or("Untitled");
 
     tracing::info!("Handling task: {} ({})", title, task_id);
 
     // Claim the task
-    let mut req = client
-        .post(format!("{}/v1/worker/tasks/claim", server))
-        .header("X-Worker-ID", worker_id);
-    if let Some(t) = token {
+    let mut req = runtime
+        .client
+        .post(format!("{}/v1/worker/tasks/claim", runtime.server))
+        .header("X-Worker-ID", &runtime.worker_id);
+    if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
 
@@ -1470,7 +1500,14 @@ async fn handle_task(
         return Ok(());
     }
 
-    tracing::info!("Claimed task: {}", task_id);
+    let claim = res.json::<TaskClaimResponse>().await?;
+    let claim_provenance = claim.into_provenance();
+    tracing::info!(
+        task_id,
+        run_id = ?claim_provenance.run_id,
+        attempt_id = ?claim_provenance.attempt_id,
+        "Claimed task"
+    );
 
     let metadata = task_metadata(task);
     let resume_session_id = metadata
@@ -1508,17 +1545,33 @@ async fn handle_task(
         .unwrap_or(title);
 
     if raw_agent.eq_ignore_ascii_case("clone_repo") {
-        let (status, result, error) =
-            match handle_clone_repo_task(client, server, token, worker_id, task, &metadata).await {
-                Ok(message) => ("completed", Some(message), None),
-                Err(err) => {
-                    tracing::error!(task_id, error = %err, "Clone task failed");
-                    ("failed", None, Some(format!("Error: {}", err)))
-                }
-            };
+        let (status, result, error) = match handle_clone_repo_task(
+            &runtime.client,
+            &runtime.server,
+            &runtime.token,
+            &runtime.worker_id,
+            task,
+            &metadata,
+        )
+        .await
+        {
+            Ok(message) => ("completed", Some(message), None),
+            Err(err) => {
+                tracing::error!(task_id, error = %err, "Clone task failed");
+                ("failed", None, Some(format!("Error: {}", err)))
+            }
+        };
 
         release_task_result(
-            client, server, token, worker_id, task_id, status, result, error, None,
+            &runtime.client,
+            &runtime.server,
+            &runtime.token,
+            &runtime.worker_id,
+            task_id,
+            status,
+            result,
+            error,
+            None,
         )
         .await?;
         tracing::info!(task_id, status, "Clone task released");
@@ -1536,7 +1589,15 @@ async fn handle_task(
             };
 
         release_task_result(
-            client, server, token, worker_id, task_id, status, result, error, None,
+            &runtime.client,
+            &runtime.server,
+            &runtime.token,
+            &runtime.worker_id,
+            task_id,
+            status,
+            result,
+            error,
+            None,
         )
         .await?;
         tracing::info!(task_id, status, "Forage task released");
@@ -1580,7 +1641,13 @@ async fn handle_task(
             }
         }
     };
-    session.agent = agent_type.to_string();
+    session.set_agent_name(agent_type.to_string());
+    session.attach_claim_provenance(&claim_provenance);
+    if let Some(directory) = session.metadata.directory.as_deref()
+        && let Err(err) = install_commit_msg_hook(directory)
+    {
+        tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
+    }
 
     if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
@@ -1589,12 +1656,12 @@ async fn handle_task(
     tracing::info!("Executing prompt: {}", prompt);
 
     // Set up output streaming to forward progress to the server and bus
-    let stream_client = client.clone();
-    let stream_server = server.to_string();
-    let stream_token = token.clone();
-    let stream_worker_id = worker_id.to_string();
+    let stream_client = runtime.client.clone();
+    let stream_server = runtime.server.clone();
+    let stream_token = runtime.token.clone();
+    let stream_worker_id = runtime.worker_id.clone();
     let stream_task_id = task_id.to_string();
-    let stream_bus = Arc::clone(bus);
+    let stream_bus = Arc::clone(&runtime.bus);
 
     let output_callback: Arc<dyn Fn(String) + Send + Sync + 'static> =
         Arc::new(move |output: String| {
@@ -1643,7 +1710,7 @@ async fn handle_task(
             complexity_hint.as_deref(),
             worker_personality.as_deref(),
             target_agent_name.as_deref(),
-            Some(bus),
+            Some(&runtime.bus),
             Some(Arc::clone(&output_callback)),
         )
         .await
@@ -1675,7 +1742,7 @@ async fn handle_task(
         match execute_session_with_policy(
             &mut session,
             prompt,
-            auto_approve,
+            runtime.auto_approve,
             model_tier.as_deref(),
             Some(Arc::clone(&output_callback)),
         )
@@ -1698,10 +1765,10 @@ async fn handle_task(
     };
 
     release_task_result(
-        client,
-        server,
-        token,
-        worker_id,
+        &runtime.client,
+        &runtime.server,
+        &runtime.token,
+        &runtime.worker_id,
         task_id,
         status,
         result,
@@ -1763,6 +1830,10 @@ async fn handle_clone_repo_task(
         let git_dir = repo_path.join(".git");
         if git_dir.exists() {
             configure_repo_git_auth(&repo_path, &workspace_id)?;
+            configure_repo_git_github_app_from_agent_config(
+                &repo_path,
+                Some(&serde_json::Value::Object(workspace.agent_config.clone())),
+            );
             run_git_command_at(
                 Some(&repo_path),
                 vec!["fetch".to_string(), "origin".to_string(), branch.clone()],
@@ -1808,7 +1879,12 @@ async fn handle_clone_repo_task(
             )
             .await?;
             configure_repo_git_auth(&repo_path, &workspace_id)?;
+            configure_repo_git_github_app_from_agent_config(
+                &repo_path,
+                Some(&serde_json::Value::Object(workspace.agent_config.clone())),
+            );
         }
+        install_commit_msg_hook(&repo_path)?;
 
         register_cloned_workspace(client, server, token, worker_id, &workspace, &repo_path).await?;
 
@@ -2794,6 +2870,26 @@ fn maybe_configure_repo_git_auth_from_entry(entry: &serde_json::Value) {
             "Workspace sync could not install Git credential helper"
         );
     }
+    configure_repo_git_github_app_from_agent_config(repo_path, entry.get("agent_config"));
+}
+
+fn configure_repo_git_github_app_from_agent_config(
+    repo_path: &Path,
+    agent_config: Option<&serde_json::Value>,
+) {
+    let installation_id = agent_config
+        .and_then(|value| value.get("git_auth"))
+        .and_then(|value| value.get("github_app"))
+        .and_then(|value| value.get("installation_id"))
+        .and_then(|value| value.as_str());
+    let app_id = agent_config
+        .and_then(|value| value.get("git_auth"))
+        .and_then(|value| value.get("github_app"))
+        .and_then(|value| value.get("app_id"))
+        .and_then(|value| value.as_str());
+    if let Err(error) = configure_repo_git_github_app(repo_path, installation_id, app_id) {
+        tracing::debug!(path = %repo_path.display(), error = %error, "Failed to persist GitHub App repo metadata");
+    }
 }
 
 /// Start a background task that periodically fetches the server's workspace list
@@ -2978,5 +3074,71 @@ mod tests {
         assert_eq!(args.swarm_max_subagents, 4);
         assert_eq!(args.swarm_max_steps, 42);
         assert_eq!(args.swarm_subagent_timeout_secs, 180);
+    }
+
+    #[test]
+    fn resolve_worker_id_prefers_env() {
+        let original = std::env::var("CODETETHER_WORKER_ID").ok();
+        unsafe {
+            std::env::set_var("CODETETHER_WORKER_ID", "harvester-test-worker");
+        }
+        let resolved = resolve_worker_id();
+        match original {
+            Some(value) => unsafe {
+                std::env::set_var("CODETETHER_WORKER_ID", value);
+            },
+            None => unsafe {
+                std::env::remove_var("CODETETHER_WORKER_ID");
+            },
+        }
+        assert_eq!(resolved, "harvester-test-worker");
+    }
+
+    #[test]
+    fn advertised_interfaces_include_http_and_bus_urls() {
+        let interfaces = advertised_interfaces(Some("http://worker.test:8080/"));
+        assert_eq!(interfaces["http"]["base_url"], "http://worker.test:8080");
+        assert_eq!(
+            interfaces["bus"]["stream_url"],
+            "http://worker.test:8080/v1/bus/stream"
+        );
+        assert_eq!(
+            interfaces["bus"]["publish_url"],
+            "http://worker.test:8080/v1/bus/publish"
+        );
+    }
+
+    #[test]
+    fn advertised_interfaces_omit_empty_public_url() {
+        assert_eq!(advertised_interfaces(None), serde_json::json!({}));
+        assert_eq!(advertised_interfaces(Some("   ")), serde_json::json!({}));
+    }
+
+    #[tokio::test]
+    async fn reserve_task_slot_enforces_capacity() {
+        let processing = Arc::new(Mutex::new(HashSet::new()));
+
+        assert_eq!(
+            reserve_task_slot(&processing, "task-1", 2).await,
+            TaskReservation::Reserved
+        );
+        assert_eq!(
+            reserve_task_slot(&processing, "task-1", 2).await,
+            TaskReservation::AlreadyProcessing
+        );
+        assert_eq!(
+            reserve_task_slot(&processing, "task-2", 2).await,
+            TaskReservation::Reserved
+        );
+        assert_eq!(
+            reserve_task_slot(&processing, "task-3", 2).await,
+            TaskReservation::AtCapacity
+        );
+    }
+
+    #[test]
+    fn normalize_max_concurrent_tasks_never_returns_zero() {
+        assert_eq!(normalize_max_concurrent_tasks(0), 1);
+        assert_eq!(normalize_max_concurrent_tasks(3), 3);
     }
 }

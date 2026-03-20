@@ -9,6 +9,7 @@ use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::bus::{AgentBus, BusEnvelope};
 use crate::cli::ServeArgs;
+use crate::cloudevents::parse_cloud_event;
 use crate::cognition::{
     AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
     LineageGraph, MemorySnapshot, Proposal, ReapPersonaRequest, ReapPersonaResponse,
@@ -25,7 +26,7 @@ use axum::{
     body::Body,
     extract::Path,
     extract::{Query, State},
-    http::{Method, Request, StatusCode},
+    http::{HeaderMap, Method, Request, StatusCode},
     middleware::{self, Next},
     response::sse::{Event, KeepAlive, Sse},
     response::{IntoResponse, Json, Response},
@@ -36,6 +37,7 @@ use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, broadcast};
@@ -581,7 +583,14 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     }
 
     // Initialize mandatory auth.
-    let auth_state = AuthState::from_env();
+    let mut auth_state = AuthState::from_env();
+    if serves_loopback_only(&args.hostname) {
+        auth_state = auth_state.with_additional_public_paths(local_a2a_public_paths());
+        tracing::info!(
+            hostname = %args.hostname,
+            "Loopback serve detected; enabling local unauthenticated A2A discovery and RPC"
+        );
+    }
     tracing::info!(
         token_len = auth_state.token().len(),
         "Auth is mandatory. Token required for all API endpoints."
@@ -625,7 +634,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let a2a_server = a2a::server::A2AServer::with_bus(agent_card.clone(), bus.clone());
 
     // Build A2A router separately
-    let a2a_router = a2a_server.router();
+    let a2a_router = a2a_server.clone().router();
+    let a2a_nested_router = a2a_server.router();
 
     // Start gRPC transport on a separate port
     let grpc_port = std::env::var("CODETETHER_GRPC_PORT")
@@ -801,8 +811,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Agent Bus — SSE stream + publish
         .route("/v1/bus/stream", get(stream_bus_events))
         .with_state(state.clone())
-        // A2A routes (nested to work with different state type)
-        .nest("/a2a", a2a_router)
+        // A2A routes at both the root and /a2a so local runtimes can discover
+        // and invoke the same server through either shape.
+        .merge(a2a_router)
+        .nest("/a2a", a2a_nested_router)
         // Mandatory auth middleware — applies to all routes
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -863,6 +875,29 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+fn serves_loopback_only(hostname: &str) -> bool {
+    if hostname.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+
+    hostname
+        .parse::<IpAddr>()
+        .map(|ip| ip.is_loopback())
+        .unwrap_or(false)
+}
+
+fn local_a2a_public_paths() -> [&'static str; 7] {
+    [
+        "/",
+        "/.well-known/agent.json",
+        "/.well-known/agent-card.json",
+        "/a2a",
+        "/a2a/",
+        "/a2a/.well-known/agent.json",
+        "/a2a/.well-known/agent-card.json",
+    ]
 }
 
 /// Health check response
@@ -936,8 +971,11 @@ async fn complete_knative_task(
 /// Receives task events from Knative Broker and triggers execution
 async fn receive_task_event(
     State(state): State<AppState>,
-    Json(event): Json<CloudEvent>,
+    headers: HeaderMap,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<Json<CloudEventResponse>, (StatusCode, String)> {
+    let event =
+        parse_cloud_event(&headers, body).map_err(|error| (StatusCode::BAD_REQUEST, error))?;
     tracing::info!(
         event_type = %event.event_type,
         event_id = %event.id,
@@ -959,50 +997,68 @@ async fn receive_task_event(
     // Process based on event type
     match event.event_type.as_str() {
         "codetether.task.created" | "task.created" => {
-            // Extract task data and queue for execution
-            if let Some(data) = event.data {
-                let task_id = data
-                    .get("task_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                let title = data
-                    .get("title")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let description = data
-                    .get("description")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let agent_type = data
-                    .get("agent_type")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("build")
-                    .to_string();
-                let priority = data.get("priority").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            let task_id = event
+                .data
+                .get("task_id")
+                .or_else(|| event.data.get("id"))
+                .and_then(|v| v.as_str())
+                .unwrap_or(event.id.as_str())
+                .to_string();
+            let title = event
+                .data
+                .get("title")
+                .or_else(|| event.data.get("prompt"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let description = event
+                .data
+                .get("description")
+                .or_else(|| event.data.get("prompt"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let agent_type = event
+                .data
+                .get("agent_type")
+                .or_else(|| event.data.get("agent"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("build")
+                .to_string();
+            let priority = event
+                .data
+                .get("priority")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0) as i32;
 
-                let task = KnativeTask {
-                    task_id: task_id.clone(),
-                    title,
-                    description,
-                    agent_type,
-                    priority,
-                    received_at: chrono::Utc::now(),
-                    status: "queued".to_string(),
-                };
+            let task = KnativeTask {
+                task_id: task_id.clone(),
+                title,
+                description,
+                agent_type,
+                priority,
+                received_at: chrono::Utc::now(),
+                status: "queued".to_string(),
+            };
 
-                state.knative_tasks.push(task).await;
-                tracing::info!(task_id = %task_id, "Task queued for execution");
+            state.knative_tasks.push(task).await;
+            tracing::info!(task_id = %task_id, "Task queued for execution");
+        }
+        "codetether.task.updated" | "task.updated" => {
+            if let Some(task_id) = event.data.get("task_id").and_then(|v| v.as_str()) {
+                let status = event
+                    .data
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("updated");
+                let _ = state.knative_tasks.update_status(task_id, status).await;
+                tracing::info!(task_id = %task_id, status = %status, "Task status updated");
             }
         }
         "codetether.task.cancelled" => {
             tracing::info!("Task cancellation event received");
             // Update task status if we have the task_id
-            if let Some(data) = event.data
-                && let Some(task_id) = data.get("task_id").and_then(|v| v.as_str())
-            {
+            if let Some(task_id) = event.data.get("task_id").and_then(|v| v.as_str()) {
                 let _ = state
                     .knative_tasks
                     .update_status(task_id, "cancelled")
@@ -1019,26 +1075,6 @@ async fn receive_task_event(
         status: "accepted".to_string(),
         event_id: event.id,
     }))
-}
-
-/// CloudEvent structure (CloudEvents v1.0 spec)
-#[derive(Deserialize, Serialize)]
-struct CloudEvent {
-    /// Event unique identifier
-    id: String,
-    /// Event source (e.g., knative://broker/a2a-server)
-    source: String,
-    /// Event type (e.g., codetether.task.created)
-    #[serde(rename = "type")]
-    event_type: String,
-    /// Event timestamp (RFC 3339)
-    #[serde(rename = "time")]
-    timestamp: Option<String>,
-    /// CloudEvents spec version
-    #[serde(rename = "specversion")]
-    spec_version: Option<String>,
-    /// Event data payload
-    data: Option<serde_json::Value>,
 }
 
 /// Response to CloudEvent acknowledgment
@@ -1104,7 +1140,7 @@ async fn create_session(
 
     session.title = req.title;
     if let Some(agent) = req.agent {
-        session.agent = agent;
+        session.set_agent_name(agent);
     }
 
     session
@@ -3062,7 +3098,7 @@ async fn resume_codebase_session(
                 .await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
             if let Some(agent) = &req.agent {
-                s.agent = agent.clone();
+                s.set_agent_name(agent.clone());
             }
             s.save()
                 .await

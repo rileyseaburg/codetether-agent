@@ -2,6 +2,7 @@
 //!
 //! Provides worktree isolation for parallel agent tasks.
 
+use crate::provenance::{ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance};
 use anyhow::{Context, Result, anyhow};
 use std::path::{Path, PathBuf};
 use tokio::sync::Mutex;
@@ -239,9 +240,9 @@ impl WorktreeManager {
 
         tracing::info!(worktree = %name, branch = %branch, "Starting git merge");
 
-        // Run git merge
+        // Stage the merge but stamp the final merge commit ourselves for provenance.
         let output = tokio::process::Command::new("git")
-            .args(["merge", "--no-ff", &branch])
+            .args(["merge", "--no-ff", "--no-commit", &branch])
             .current_dir(&self.repo_path)
             .output()
             .await
@@ -251,6 +252,15 @@ impl WorktreeManager {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         if output.status.success() {
+            let commit_msg = format!("Merge branch '{}' into current branch", branch);
+            let provenance =
+                ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
+            let commit_output =
+                git_commit_with_provenance(&self.repo_path, &commit_msg, Some(&provenance)).await?;
+            if !commit_output.status.success() {
+                let commit_stderr = String::from_utf8_lossy(&commit_output.stderr);
+                return Err(anyhow!("Git merge commit failed: {}", commit_stderr));
+            }
             tracing::info!(worktree = %name, branch = %branch, "Git merge successful");
 
             // Get files changed count
@@ -262,7 +272,7 @@ impl WorktreeManager {
                 conflicts: vec![],
                 conflict_diffs: vec![],
                 files_changed,
-                summary: stdout.lines().next().unwrap_or("Merged").to_string(),
+                summary: commit_msg,
             })
         } else {
             // Check for conflicts
@@ -308,12 +318,9 @@ impl WorktreeManager {
         }
 
         // Commit the merge
-        let output = tokio::process::Command::new("git")
-            .args(["commit", "-m", commit_msg])
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-            .context("Failed to execute git commit")?;
+        let provenance = ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
+        let output =
+            git_commit_with_provenance(&self.repo_path, commit_msg, Some(&provenance)).await?;
 
         if output.status.success() {
             tracing::info!(worktree = %name, branch = %branch, "Merge completed");

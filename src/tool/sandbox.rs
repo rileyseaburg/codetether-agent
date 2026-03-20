@@ -269,6 +269,7 @@ pub async fn execute_sandboxed(
     env.insert("DEBIAN_FRONTEND".to_string(), "noninteractive".to_string());
     env.insert("SUDO_ASKPASS".to_string(), "/bin/false".to_string());
     env.insert("SSH_ASKPASS".to_string(), "/bin/false".to_string());
+    inject_codetether_runtime_env(&mut env);
 
     if !policy.allow_network {
         // On Linux we can use unshare to disable networking, but as a
@@ -328,6 +329,31 @@ pub async fn execute_sandboxed(
         duration_ms,
         sandbox_violations: violations,
     })
+}
+
+fn inject_codetether_runtime_env(env: &mut HashMap<String, String>) {
+    let Ok(current_exe) = std::env::current_exe() else {
+        return;
+    };
+    env.insert(
+        "CODETETHER_BIN".to_string(),
+        current_exe.to_string_lossy().into_owned(),
+    );
+
+    let mut path_entries = current_exe
+        .parent()
+        .map(|parent| vec![parent.to_path_buf()])
+        .unwrap_or_default();
+    if let Some(existing_path) = env
+        .get("PATH")
+        .map(std::ffi::OsString::from)
+        .or_else(|| std::env::var_os("PATH"))
+    {
+        path_entries.extend(std::env::split_paths(&existing_path));
+    }
+    if let Ok(path) = std::env::join_paths(path_entries) {
+        env.insert("PATH".to_string(), path.to_string_lossy().into_owned());
+    }
 }
 
 /// Constant-time byte comparison.

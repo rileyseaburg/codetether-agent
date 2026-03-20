@@ -10,12 +10,13 @@
 use crate::a2a::worker::{HeartbeatState, WorkerStatus};
 use crate::bus::{AgentBus, BusEnvelope};
 use crate::cli::WorkerServerArgs;
+use crate::cloudevents::parse_cloud_event;
 use anyhow::Result;
 use axum::{
     Json, Router,
     body::Body,
     extract::State,
-    http::{Request, StatusCode},
+    http::{HeaderMap, Request, StatusCode},
     response::sse::{Event, KeepAlive, Sse},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -200,16 +201,29 @@ async fn worker_status(State(state): State<WorkerServerState>) -> Json<WorkerSta
 /// This endpoint receives tasks pushed via Knative Eventing
 async fn receive_task(
     State(state): State<WorkerServerState>,
+    headers: HeaderMap,
     Json(payload): Json<serde_json::Value>,
 ) -> StatusCode {
-    // Extract task_id from CloudEvent payload
-    let task_id = payload
-        .get("task_id")
-        .or_else(|| payload.get("id"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let event = match parse_cloud_event(&headers, payload) {
+        Ok(event) => event,
+        Err(error) => {
+            tracing::warn!("Rejected task event: {}", error);
+            return StatusCode::BAD_REQUEST;
+        }
+    };
 
-    tracing::info!("Received task via CloudEvent: {}", task_id);
+    let task_id = event
+        .data
+        .get("task_id")
+        .or_else(|| event.data.get("id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or(event.id.as_str());
+
+    tracing::info!(
+        "Received task via CloudEvent: {} ({})",
+        task_id,
+        event.event_type
+    );
 
     // Notify the worker loop to pick up this task
     state.notify_new_task(task_id).await;

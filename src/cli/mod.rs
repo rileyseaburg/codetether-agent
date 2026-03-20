@@ -57,6 +57,9 @@ pub enum Command {
     /// Run with a message (non-interactive)
     Run(RunArgs),
 
+    /// Create or update GitHub pull requests with CodeTether provenance
+    Pr(PrArgs),
+
     /// Authenticate provider credentials and store in Vault
     Auth(AuthArgs),
 
@@ -259,6 +262,53 @@ pub struct RunArgs {
     pub file: Vec<PathBuf>,
 }
 
+#[derive(Parser, Debug)]
+pub struct PrArgs {
+    #[command(subcommand)]
+    pub command: PrCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum PrCommand {
+    /// Create or update a pull request for the current branch
+    Create(CreatePrArgs),
+}
+
+#[derive(Parser, Debug, Clone)]
+pub struct CreatePrArgs {
+    /// Pull request title
+    #[arg(long)]
+    pub title: String,
+
+    /// Optional pull request body
+    #[arg(long)]
+    pub body: Option<String>,
+
+    /// Optional path to a pull request body file
+    #[arg(long)]
+    pub body_file: Option<PathBuf>,
+
+    /// Base branch
+    #[arg(long, default_value = "main")]
+    pub base: String,
+
+    /// Head branch override (defaults to current branch)
+    #[arg(long)]
+    pub head: Option<String>,
+
+    /// Create the PR as draft
+    #[arg(long, default_value_t = false)]
+    pub draft: bool,
+
+    /// Emit JSON instead of KEY=VALUE lines
+    #[arg(long, default_value_t = false)]
+    pub json: bool,
+
+    /// Project directory override
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+}
+
 /// Arguments for standalone worker HTTP server (testing/debugging)
 #[derive(Parser, Debug, Clone)]
 pub struct WorkerServerArgs {
@@ -288,6 +338,14 @@ pub struct A2aArgs {
     /// Comma-separated list of workspace paths (alias: --codebases)
     #[arg(short, long, visible_alias = "codebases")]
     pub workspaces: Option<String>,
+
+    /// Maximum number of tasks this worker will process concurrently
+    #[arg(
+        long,
+        env = "CODETETHER_WORKER_MAX_CONCURRENT_TASKS",
+        default_value_t = 4
+    )]
+    pub max_concurrent_tasks: usize,
 
     /// Auto-approve policy: all, safe (read-only), none
     #[arg(long, default_value = "safe", value_parser = ["all", "safe", "none"])]

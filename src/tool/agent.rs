@@ -169,7 +169,7 @@ fn truncate_preview(input: &str, max_chars: usize) -> String {
 
 async fn create_agent_session(name: &str, instructions: &str, model: &str) -> Result<Session> {
     let mut session = Session::new().await.context("Failed to create session")?;
-    session.agent = name.to_string();
+    session.set_agent_name(name.to_string());
     session.metadata.model = Some(model.to_string());
     let system_msg = format!(
         "You are @{name}, a specialized sub-agent. {instructions}\n\n\
@@ -311,6 +311,7 @@ async fn run_agent_loop(
                     name,
                     output,
                     success,
+                    duration_ms: _,
                 } => {
                     tools.push(json!({ "tool": name, "success": success, "output_preview": truncate_preview(&output, 200) }));
                 }

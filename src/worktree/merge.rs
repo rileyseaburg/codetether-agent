@@ -1,4 +1,5 @@
 //! Merge operations for worktrees
+use crate::provenance::{ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance};
 use crate::worktree::{helpers::validate_worktree_name, types::MergeResult};
 use anyhow::{Result, anyhow};
 use std::path::Path;
@@ -10,7 +11,7 @@ impl MergeManager {
     pub async fn merge(repo_path: &Path, branch: &str) -> Result<MergeResult> {
         validate_worktree_name(branch)?;
         let output = Command::new("git")
-            .args(["merge", "--no-ff", branch])
+            .args(["merge", "--no-ff", "--no-commit", branch])
             .current_dir(repo_path)
             .output()
             .await
@@ -20,11 +21,23 @@ impl MergeManager {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         if output.status.success() {
+            let commit_msg = format!("Merge branch '{}' into current branch", branch);
+            let provenance =
+                ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
+            let commit_output = git_commit_with_provenance(repo_path, &commit_msg, Some(&provenance))
+                .await
+                .map_err(|e| anyhow!("commit failed: {}", e))?;
+            if !commit_output.status.success() {
+                return Err(anyhow!(
+                    "Merge commit failed: {}",
+                    String::from_utf8_lossy(&commit_output.stderr)
+                ));
+            }
             let files_changed = Self::count_changed_files(repo_path).await.unwrap_or(0);
             return Ok(MergeResult {
                 success: true, aborted: false, conflicts: vec![],
                 conflict_diffs: vec![], files_changed,
-                summary: stdout.lines().next().unwrap_or("Merged").to_string(),
+                summary: commit_msg,
             });
         }
 
@@ -45,8 +58,9 @@ impl MergeManager {
             return Err(anyhow!("Not in merge state"));
         }
 
-        let output = Command::new("git").args(["commit", "-m", commit_msg])
-            .current_dir(repo_path).output().await
+        let provenance = ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
+        let output = git_commit_with_provenance(repo_path, commit_msg, Some(&provenance))
+            .await
             .map_err(|e| anyhow!("commit failed: {}", e))?;
 
         if output.status.success() {

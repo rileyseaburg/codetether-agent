@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind};
 use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
@@ -19,6 +19,8 @@ use crate::tui::app::state::App;
 use crate::tui::app::symbols::symbol_search_active;
 use crate::tui::models::ViewMode;
 use crate::tui::worker_bridge::TuiWorkerBridge;
+
+const MOUSE_WHEEL_SCROLL_AMOUNT: usize = 3;
 
 pub async fn handle_event(
     app: &mut App,
@@ -60,8 +62,44 @@ pub async fn handle_event(
         KeyCode::Esc => handle_escape(app),
         KeyCode::Tab if app.state.slash_suggestions_visible() => handle_tab(app),
         KeyCode::Char('?') => toggle_help(app),
-        KeyCode::Up => handle_up(app),
-        KeyCode::Down => handle_down(app),
+        KeyCode::Char('j')
+            if key.modifiers.contains(KeyModifiers::ALT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.scroll_down(1);
+        }
+        KeyCode::Char('k')
+            if key.modifiers.contains(KeyModifiers::ALT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.scroll_up(1);
+        }
+        KeyCode::Char('d')
+            if key.modifiers.contains(KeyModifiers::ALT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.scroll_down(5);
+        }
+        KeyCode::Char('u')
+            if key.modifiers.contains(KeyModifiers::ALT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.scroll_up(5);
+        }
+        KeyCode::Char('g')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.scroll_to_top();
+        }
+        KeyCode::Char('G')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.scroll_to_bottom();
+        }
+        KeyCode::Up => handle_up(app, key.modifiers),
+        KeyCode::Down => handle_down(app, key.modifiers),
         KeyCode::PageUp => handle_page_up(app),
         KeyCode::PageDown => handle_page_down(app),
         KeyCode::Home => handle_home(app),
@@ -101,4 +139,184 @@ pub async fn handle_event(
 
 pub async fn handle_paste_event(app: &mut App, text: &str) {
     handle_paste(app, text).await;
+}
+
+pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
+    match mouse.kind {
+        MouseEventKind::ScrollUp => scroll_mouse_up(app),
+        MouseEventKind::ScrollDown => scroll_mouse_down(app),
+        _ => {}
+    }
+}
+
+fn scroll_mouse_up(app: &mut App) {
+    if app.state.show_help {
+        app.state.help_scroll.scroll_up(MOUSE_WHEEL_SCROLL_AMOUNT);
+        return;
+    }
+    if symbol_search_active(app) {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.symbol_search.select_prev();
+        }
+        return;
+    }
+    if app.state.view_mode == ViewMode::Sessions {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.sessions_select_prev();
+        }
+        return;
+    }
+    if app.state.view_mode == ViewMode::Model {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.model_select_prev();
+        }
+        return;
+    }
+    if app.state.slash_suggestions_visible() {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.select_prev_slash_suggestion();
+        }
+        return;
+    }
+
+    match app.state.view_mode {
+        ViewMode::Chat => app.state.scroll_up(MOUSE_WHEEL_SCROLL_AMOUNT),
+        ViewMode::Swarm => {
+            if app.state.swarm.detail_mode {
+                app.state.swarm.detail_scroll_up(MOUSE_WHEEL_SCROLL_AMOUNT);
+            } else {
+                for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+                    app.state.swarm.select_prev();
+                }
+            }
+        }
+        ViewMode::Ralph => {
+            if app.state.ralph.detail_mode {
+                app.state.ralph.detail_scroll_up(MOUSE_WHEEL_SCROLL_AMOUNT);
+            } else {
+                for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+                    app.state.ralph.select_prev();
+                }
+            }
+        }
+        ViewMode::Bus if !app.state.bus_log.filter_input_mode => {
+            if app.state.bus_log.detail_mode {
+                app.state
+                    .bus_log
+                    .detail_scroll_up(MOUSE_WHEEL_SCROLL_AMOUNT);
+            } else {
+                for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+                    app.state.bus_log.select_prev();
+                }
+            }
+        }
+        ViewMode::Settings
+        | ViewMode::Lsp
+        | ViewMode::Rlm
+        | ViewMode::Latency
+        | ViewMode::Bus
+        | ViewMode::Sessions
+        | ViewMode::Model => {}
+    }
+}
+
+fn scroll_mouse_down(app: &mut App) {
+    if app.state.show_help {
+        app.state
+            .help_scroll
+            .scroll_down(MOUSE_WHEEL_SCROLL_AMOUNT, 200);
+        return;
+    }
+    if symbol_search_active(app) {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.symbol_search.select_next();
+        }
+        return;
+    }
+    if app.state.view_mode == ViewMode::Sessions {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.sessions_select_next();
+        }
+        return;
+    }
+    if app.state.view_mode == ViewMode::Model {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.model_select_next();
+        }
+        return;
+    }
+    if app.state.slash_suggestions_visible() {
+        for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+            app.state.select_next_slash_suggestion();
+        }
+        return;
+    }
+
+    match app.state.view_mode {
+        ViewMode::Chat => app.state.scroll_down(MOUSE_WHEEL_SCROLL_AMOUNT),
+        ViewMode::Swarm => {
+            if app.state.swarm.detail_mode {
+                app.state
+                    .swarm
+                    .detail_scroll_down(MOUSE_WHEEL_SCROLL_AMOUNT);
+            } else {
+                for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+                    app.state.swarm.select_next();
+                }
+            }
+        }
+        ViewMode::Ralph => {
+            if app.state.ralph.detail_mode {
+                app.state
+                    .ralph
+                    .detail_scroll_down(MOUSE_WHEEL_SCROLL_AMOUNT);
+            } else {
+                for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+                    app.state.ralph.select_next();
+                }
+            }
+        }
+        ViewMode::Bus if !app.state.bus_log.filter_input_mode => {
+            if app.state.bus_log.detail_mode {
+                app.state
+                    .bus_log
+                    .detail_scroll_down(MOUSE_WHEEL_SCROLL_AMOUNT);
+            } else {
+                for _ in 0..MOUSE_WHEEL_SCROLL_AMOUNT {
+                    app.state.bus_log.select_next();
+                }
+            }
+        }
+        ViewMode::Settings
+        | ViewMode::Lsp
+        | ViewMode::Rlm
+        | ViewMode::Latency
+        | ViewMode::Bus
+        | ViewMode::Sessions
+        | ViewMode::Model => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mouse_wheel_scrolls_chat_from_follow_latest() {
+        let mut app = App::default();
+        app.state.set_chat_max_scroll(25);
+        app.state.scroll_to_bottom();
+
+        handle_mouse_event(
+            &mut app,
+            MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                column: 0,
+                row: 0,
+                modifiers: KeyModifiers::NONE,
+            },
+        );
+
+        assert_eq!(app.state.chat_scroll, 22);
+    }
 }

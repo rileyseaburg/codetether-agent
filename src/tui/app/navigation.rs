@@ -51,7 +51,11 @@ pub fn toggle_help(app: &mut App) {
     };
 }
 
-pub fn handle_up(app: &mut App) {
+pub fn handle_up(app: &mut App, modifiers: KeyModifiers) {
+    if app.state.show_help {
+        app.state.help_scroll.scroll_up(1);
+        return;
+    }
     if symbol_search_active(app) {
         app.state.symbol_search.select_prev();
         return;
@@ -69,11 +73,13 @@ pub fn handle_up(app: &mut App) {
         return;
     }
     if app.state.view_mode == ViewMode::Chat {
-        let _ = app.state.history_prev();
-        return;
-    }
-    if app.state.show_help {
-        app.state.help_scroll.scroll_up(1);
+        if modifiers.contains(KeyModifiers::CONTROL) {
+            let _ = app.state.history_prev();
+        } else if modifiers.contains(KeyModifiers::SHIFT) {
+            app.state.scroll_tool_preview_up(1);
+        } else {
+            app.state.scroll_up(1);
+        }
         return;
     }
 
@@ -103,7 +109,11 @@ pub fn handle_up(app: &mut App) {
     }
 }
 
-pub fn handle_down(app: &mut App) {
+pub fn handle_down(app: &mut App, modifiers: KeyModifiers) {
+    if app.state.show_help {
+        app.state.help_scroll.scroll_down(1, 200);
+        return;
+    }
     if symbol_search_active(app) {
         app.state.symbol_search.select_next();
         return;
@@ -121,11 +131,13 @@ pub fn handle_down(app: &mut App) {
         return;
     }
     if app.state.view_mode == ViewMode::Chat {
-        let _ = app.state.history_next();
-        return;
-    }
-    if app.state.show_help {
-        app.state.help_scroll.scroll_down(1, 200);
+        if modifiers.contains(KeyModifiers::CONTROL) {
+            let _ = app.state.history_next();
+        } else if modifiers.contains(KeyModifiers::SHIFT) {
+            app.state.scroll_tool_preview_down(1);
+        } else {
+            app.state.scroll_down(1);
+        }
         return;
     }
 
@@ -235,4 +247,23 @@ pub fn handle_symbol_enter(app: &mut App) {
         );
     }
     app.state.symbol_search.close();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn help_overlay_consumes_chat_arrow_navigation() {
+        let mut app = App::default();
+        app.state.show_help = true;
+        app.state.set_view_mode(ViewMode::Chat);
+        app.state.set_chat_max_scroll(25);
+        app.state.scroll_to_bottom();
+
+        handle_down(&mut app, KeyModifiers::NONE);
+
+        assert_eq!(app.state.help_scroll.offset, 1);
+        assert_eq!(app.state.chat_scroll, 1_000_000);
+    }
 }

@@ -22,10 +22,12 @@ const SLASH_COMMANDS: &[&str] = &[
     "/ralph",
     "/bus",
     "/protocol",
+    "/file",
     "/model",
     "/settings",
     "/lsp",
     "/rlm",
+    "/latency",
     "/symbols",
     "/chat",
     "/new",
@@ -45,6 +47,9 @@ pub struct AppState {
     pub input_cursor: usize,
     pub input_scroll: usize,
     pub chat_scroll: usize,
+    pub chat_last_max_scroll: usize,
+    pub tool_preview_scroll: usize,
+    pub tool_preview_last_max_scroll: usize,
     pub status: String,
     pub processing: bool,
     pub session_id: Option<String>,
@@ -75,6 +80,17 @@ pub struct AppState {
     pub model_filter: String,
     pub streaming_text: String,
     pub processing_started_at: Option<Instant>,
+    pub current_request_first_token_ms: Option<u64>,
+    pub current_request_last_token_ms: Option<u64>,
+    pub last_request_first_token_ms: Option<u64>,
+    pub last_request_last_token_ms: Option<u64>,
+    pub last_completion_model: Option<String>,
+    pub last_completion_latency_ms: Option<u64>,
+    pub last_completion_prompt_tokens: Option<usize>,
+    pub last_completion_output_tokens: Option<usize>,
+    pub last_tool_name: Option<String>,
+    pub last_tool_latency_ms: Option<u64>,
+    pub last_tool_success: Option<bool>,
     pub worker_autorun_enabled: bool,
 }
 
@@ -88,6 +104,9 @@ impl Default for AppState {
             input_cursor: 0,
             input_scroll: 0,
             chat_scroll: 0,
+            chat_last_max_scroll: 0,
+            tool_preview_scroll: 0,
+            tool_preview_last_max_scroll: 0,
             status: "Ready — type a message and press Enter. Ctrl+C/Ctrl+Q quits.".to_string(),
             processing: false,
             session_id: None,
@@ -118,6 +137,17 @@ impl Default for AppState {
             model_filter: String::new(),
             streaming_text: String::new(),
             processing_started_at: None,
+            current_request_first_token_ms: None,
+            current_request_last_token_ms: None,
+            last_request_first_token_ms: None,
+            last_request_last_token_ms: None,
+            last_completion_model: None,
+            last_completion_latency_ms: None,
+            last_completion_prompt_tokens: None,
+            last_completion_output_tokens: None,
+            last_tool_name: None,
+            last_tool_latency_ms: None,
+            last_tool_success: None,
             worker_autorun_enabled: true,
         }
     }
@@ -265,16 +295,60 @@ impl AppState {
     }
 
     pub fn scroll_up(&mut self, amount: usize) {
-        self.chat_scroll = self.chat_scroll.saturating_sub(amount);
+        if self.chat_scroll >= 1_000_000 {
+            self.chat_scroll = self.chat_last_max_scroll.saturating_sub(amount);
+        } else {
+            self.chat_scroll = self.chat_scroll.saturating_sub(amount);
+        }
     }
 
     pub fn scroll_down(&mut self, amount: usize) {
-        self.chat_scroll = self.chat_scroll.saturating_add(amount);
+        if self.chat_scroll >= 1_000_000 {
+            return;
+        }
+
+        let next = self.chat_scroll.saturating_add(amount);
+        if next >= self.chat_last_max_scroll {
+            self.scroll_to_bottom();
+        } else {
+            self.chat_scroll = next;
+        }
     }
 
     pub fn scroll_to_bottom(&mut self) {
         // Sentinel value — clamped to actual content height at render time.
         self.chat_scroll = 1_000_000;
+    }
+
+    pub fn scroll_to_top(&mut self) {
+        self.chat_scroll = 0;
+    }
+
+    pub fn set_chat_max_scroll(&mut self, max_scroll: usize) {
+        self.chat_last_max_scroll = max_scroll;
+        if max_scroll == 0 {
+            self.chat_scroll = 0;
+        } else if self.chat_scroll < 1_000_000 {
+            self.chat_scroll = self.chat_scroll.min(max_scroll);
+        }
+    }
+
+    pub fn scroll_tool_preview_up(&mut self, amount: usize) {
+        self.tool_preview_scroll = self.tool_preview_scroll.saturating_sub(amount);
+    }
+
+    pub fn scroll_tool_preview_down(&mut self, amount: usize) {
+        let next = self.tool_preview_scroll.saturating_add(amount);
+        self.tool_preview_scroll = next.min(self.tool_preview_last_max_scroll);
+    }
+
+    pub fn reset_tool_preview_scroll(&mut self) {
+        self.tool_preview_scroll = 0;
+    }
+
+    pub fn set_tool_preview_max_scroll(&mut self, max_scroll: usize) {
+        self.tool_preview_last_max_scroll = max_scroll;
+        self.tool_preview_scroll = self.tool_preview_scroll.min(max_scroll);
     }
 
     pub fn sessions_select_prev(&mut self) {
@@ -570,6 +644,39 @@ impl AppState {
         Ok(())
     }
 
+    pub fn begin_request_timing(&mut self) {
+        self.processing_started_at = Some(Instant::now());
+        self.current_request_first_token_ms = None;
+        self.current_request_last_token_ms = None;
+    }
+
+    pub fn current_request_elapsed_ms(&self) -> Option<u64> {
+        self.processing_started_at
+            .map(|started| started.elapsed().as_millis() as u64)
+    }
+
+    pub fn note_text_token(&mut self) {
+        let Some(elapsed_ms) = self.current_request_elapsed_ms() else {
+            return;
+        };
+        if self.current_request_first_token_ms.is_none() {
+            self.current_request_first_token_ms = Some(elapsed_ms);
+        }
+        self.current_request_last_token_ms = Some(elapsed_ms);
+    }
+
+    pub fn complete_request_timing(&mut self) {
+        self.last_request_first_token_ms = self.current_request_first_token_ms;
+        self.last_request_last_token_ms = self.current_request_last_token_ms;
+        self.clear_request_timing();
+    }
+
+    pub fn clear_request_timing(&mut self) {
+        self.processing_started_at = None;
+        self.current_request_first_token_ms = None;
+        self.current_request_last_token_ms = None;
+    }
+
     pub fn clear_input(&mut self) {
         self.input.clear();
         self.input_cursor = 0;
@@ -584,6 +691,7 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::AppState;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn utf8_cursor_moves_by_character_not_byte() {
@@ -663,5 +771,78 @@ mod tests {
 
         assert_eq!(state.filtered_models(), vec!["openai/gpt-4o"]);
         assert_eq!(state.selected_model(), Some("openai/gpt-4o"));
+    }
+
+    #[test]
+    fn scroll_up_from_follow_latest_enters_manual_scroll_mode() {
+        let mut state = AppState::default();
+        state.set_chat_max_scroll(25);
+        state.scroll_to_bottom();
+
+        state.scroll_up(1);
+
+        assert_eq!(state.chat_scroll, 24);
+    }
+
+    #[test]
+    fn scroll_down_returns_to_follow_latest_at_bottom() {
+        let mut state = AppState::default();
+        state.set_chat_max_scroll(25);
+        state.chat_scroll = 24;
+
+        state.scroll_down(1);
+
+        assert_eq!(state.chat_scroll, 1_000_000);
+    }
+
+    #[test]
+    fn tool_preview_scroll_clamps_to_rendered_max() {
+        let mut state = AppState::default();
+        state.set_tool_preview_max_scroll(4);
+
+        state.scroll_tool_preview_down(10);
+        assert_eq!(state.tool_preview_scroll, 4);
+
+        state.scroll_tool_preview_up(2);
+        assert_eq!(state.tool_preview_scroll, 2);
+
+        state.set_tool_preview_max_scroll(1);
+        assert_eq!(state.tool_preview_scroll, 1);
+    }
+
+    #[test]
+    fn request_timing_captures_first_and_last_token() {
+        let mut state = AppState::default();
+        state.processing_started_at = Some(
+            Instant::now()
+                .checked_sub(Duration::from_millis(12))
+                .unwrap(),
+        );
+
+        state.note_text_token();
+        let first = state
+            .current_request_first_token_ms
+            .expect("first token should be recorded");
+        assert_eq!(state.current_request_last_token_ms, Some(first));
+
+        state.processing_started_at = Some(
+            Instant::now()
+                .checked_sub(Duration::from_millis(34))
+                .unwrap(),
+        );
+        state.note_text_token();
+
+        let last = state
+            .current_request_last_token_ms
+            .expect("last token should be recorded");
+        assert!(last >= first);
+
+        state.complete_request_timing();
+
+        assert_eq!(state.last_request_first_token_ms, Some(first));
+        assert_eq!(state.last_request_last_token_ms, Some(last));
+        assert!(state.processing_started_at.is_none());
+        assert!(state.current_request_first_token_ms.is_none());
+        assert!(state.current_request_last_token_ms.is_none());
     }
 }

@@ -4,6 +4,9 @@ use super::state_store::{RalphRunState, RalphStateStore, StoryResultEntry};
 use super::types::*;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
+use crate::provenance::{
+    ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance_blocking,
+};
 use crate::provider::{ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::{Session, SessionEvent};
 use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
@@ -900,7 +903,7 @@ impl RalphLoop {
 
                                 // Commit in worktree first
                                 if let Some(ref wt) = worktree_info {
-                                    let _ = Self::commit_in_dir(&wt.path, &story);
+                                    let _ = self.commit_in_dir(&wt.path, &story);
                                 }
 
                                 // Merge worktree back to main
@@ -1428,7 +1431,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         for (name, instructions, capabilities) in &profiles {
             let mut session = Session::new().await?;
             session.metadata.model = Some(model.to_string());
-            session.agent = name.clone();
+            session.set_agent_name(name.clone());
             session.bus = Some(relay_bus.clone());
             session.add_message(Message {
                 role: Role::System,
@@ -1716,7 +1719,7 @@ Working directory: {}
     }
 
     /// Commit changes in a specific directory
-    fn commit_in_dir(dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
+    fn commit_in_dir(&self, dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
         // Stage all changes
         let _ = Command::new("git")
             .args(["add", "-A"])
@@ -1725,10 +1728,8 @@ Working directory: {}
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
-        let _ = Command::new("git")
-            .args(["commit", "-m", &msg])
-            .current_dir(dir)
-            .output();
+        let provenance = self.commit_provenance();
+        let _ = git_commit_with_provenance_blocking(dir, &msg, Some(&provenance));
 
         Ok(())
     }
@@ -2062,10 +2063,8 @@ Respond with the implementation and any shell commands needed.
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
-        match Command::new("git")
-            .args(["commit", "-m", &msg])
-            .current_dir(&self.state.working_dir)
-            .output()
+        let provenance = self.commit_provenance();
+        match git_commit_with_provenance_blocking(&self.state.working_dir, &msg, Some(&provenance))
         {
             Ok(output) if output.status.success() => {
                 info!("Committed: {}", msg);
@@ -2082,6 +2081,12 @@ Respond with the implementation and any shell commands needed.
         }
 
         Ok(())
+    }
+
+    fn commit_provenance(&self) -> ExecutionProvenance {
+        let mut provenance = ExecutionProvenance::for_operation("ralph", ExecutionOrigin::Ralph);
+        provenance.set_run_id(self.run_id.clone());
+        provenance
     }
 
     /// Git checkout

@@ -1,11 +1,13 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
+use crate::tui::app::file_share::attach_file_to_input;
 use crate::tui::app::model_picker::open_model_picker;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
 use crate::tui::app::state::App;
-use crate::tui::app::text::normalize_slash_command;
+use crate::tui::app::text::{command_with_optional_args, normalize_slash_command};
 use crate::tui::models::ViewMode;
 
 pub async fn handle_slash_command(
@@ -15,7 +17,19 @@ pub async fn handle_slash_command(
     registry: Option<&Arc<ProviderRegistry>>,
     command: &str,
 ) {
-    match normalize_slash_command(command).as_str() {
+    let normalized = normalize_slash_command(command);
+
+    if let Some(rest) = command_with_optional_args(&normalized, "/file") {
+        let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
+        if cleaned.is_empty() {
+            app.state.status = "File picker is not extracted yet. Use /file <path>.".to_string();
+        } else {
+            attach_file_to_input(app, cwd, Path::new(cleaned));
+        }
+        return;
+    }
+
+    match normalized.as_str() {
         "/help" => {
             app.state.show_help = true;
             app.state.help_scroll.offset = 0;
@@ -37,6 +51,10 @@ pub async fn handle_slash_command(
         "/settings" => app.state.set_view_mode(ViewMode::Settings),
         "/lsp" => app.state.set_view_mode(ViewMode::Lsp),
         "/rlm" => app.state.set_view_mode(ViewMode::Rlm),
+        "/latency" => {
+            app.state.set_view_mode(ViewMode::Latency);
+            app.state.status = "Latency inspector".to_string();
+        }
         "/chat" | "/home" => return_to_chat(app),
         "/symbols" | "/symbol" => {
             app.state.symbol_search.open();
@@ -50,7 +68,7 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /model /sessions /swarm /ralph /symbols /settings /lsp /rlm /chat /new"
+                "Protocol-first commands: /protocol /bus /file /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new"
                     .to_string();
         }
         other => {
