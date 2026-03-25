@@ -35,3 +35,6 @@ jenkinsfile.sh
 
 target-bullseye/
 target-jammy/
+
+# Agent runtime artifacts (sessions, chat logs)
+.codetether-agent/

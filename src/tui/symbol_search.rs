@@ -177,8 +177,7 @@ pub fn render_symbol_search(f: &mut Frame, state: &mut SymbolSearchState, area: 
     let items: Vec<ListItem> = state
         .results
         .iter()
-        .enumerate()
-        .map(|(_i, sym)| {
+        .map(|sym| {
             let kind_color = symbol_kind_color(&sym.kind);
             let mut spans = vec![
                 Span::styled(format!(" {:8} ", sym.kind), Style::default().fg(kind_color)),
