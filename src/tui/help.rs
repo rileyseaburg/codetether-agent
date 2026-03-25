@@ -9,6 +9,8 @@ use ratatui::{
 };
 
 use crate::tui::app::state::AppState;
+use crate::tui::theme::Theme;
+use crate::tui::theme_utils::{detect_color_support, validate_theme};
 use crate::tui::token_display::TokenDisplay;
 
 /// Mutable scroll state for the help view, stored externally.
@@ -105,6 +107,8 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     let token_display = TokenDisplay::new();
+    let color_support = detect_color_support();
+    let validated_theme = validate_theme(&Theme::default());
     let session_label = app_state
         .session_id
         .as_deref()
@@ -134,6 +138,10 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     ]));
     lines.push(separator());
     lines.push(blank());
+    for line in token_display.create_detailed_display().into_iter().take(8) {
+        lines.push(Line::from(line));
+    }
+    lines.push(blank());
 
     // ── Session info ──
     lines.push(heading("SESSION"));
@@ -146,6 +154,27 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         Span::styled(
             app_state.cwd_display.clone(),
             Style::default().fg(Color::White),
+        ),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("  Colors:    ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            match color_support {
+                crate::tui::theme_utils::ColorSupport::Monochrome => "Monochrome",
+                crate::tui::theme_utils::ColorSupport::Ansi8 => "ANSI-8",
+                crate::tui::theme_utils::ColorSupport::Ansi256 => "ANSI-256",
+                crate::tui::theme_utils::ColorSupport::TrueColor => "TrueColor",
+            },
+            Style::default().fg(Color::White),
+        ),
+        Span::styled("  theme validated", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            if validated_theme.background.is_some() {
+                " (bg set)"
+            } else {
+                " (bg default)"
+            },
+            Style::default().fg(Color::DarkGray),
         ),
     ]));
     lines.push(Line::from(vec![

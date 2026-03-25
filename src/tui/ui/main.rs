@@ -24,6 +24,9 @@ use crate::tui::rlm::render_rlm;
 use crate::tui::settings::render_settings;
 use crate::tui::swarm_view::render_swarm_view;
 use crate::tui::symbol_search::render_symbol_search;
+use crate::tui::theme::Theme;
+use crate::tui::theme_utils::validate_theme;
+use crate::tui::token_display::TokenDisplay;
 
 /// Max visible lines inside the compact tool panel.
 const TOOL_PANEL_VISIBLE_LINES: usize = 6;
@@ -62,7 +65,7 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
             render_bus_log_with_summary(f, &mut app.state.bus_log, f.area(), Some(summary))
         }
         ViewMode::Model => crate::tui::model_picker::render_model_picker(f, f.area(), app, session),
-        ViewMode::Settings => render_settings(f, f.area(), &app.state.status),
+        ViewMode::Settings => render_settings(f, f.area(), &app.state),
         ViewMode::Lsp => render_lsp(f, f.area(), &app.state.cwd_display, &app.state.status),
         ViewMode::Rlm => render_rlm(
             f,
@@ -227,12 +230,21 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
     f.render_widget(chat, chunks[0]);
 
     // Input area: show all lines of multi-line input with wrapping.
-    let input_title = if app.state.processing {
-        " Message (Processing...) "
-    } else if matches!(app.state.input_mode, InputMode::Command) {
-        " Command (/ for commands, Tab to autocomplete) "
+    let pending_images = app.state.pending_images.len();
+    let token_display = TokenDisplay::new();
+    let validated_theme = validate_theme(&Theme::default());
+    let token_status_line = token_display.create_status_bar(&validated_theme);
+    let attachment_suffix = if pending_images > 0 {
+        format!(" | 📷 {pending_images} attached ")
     } else {
-        " Message (Enter to send, / for commands) "
+        String::new()
+    };
+    let input_title = if app.state.processing {
+        format!(" Message (Processing...){attachment_suffix}")
+    } else if matches!(app.state.input_mode, InputMode::Command) {
+        format!(" Command (/ for commands, Tab to autocomplete){attachment_suffix}")
+    } else {
+        format!(" Message (Enter to send, Ctrl+V image){attachment_suffix}")
     };
     let input_border = if app.state.processing {
         Color::Yellow
@@ -332,12 +344,38 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
         Span::raw(": "),
         Span::styled(session_label.clone(), Style::default().fg(Color::Cyan)),
         Span::raw(" | "),
+        Span::styled("auto-apply", Style::default().fg(Color::DarkGray)),
+        Span::raw(": "),
+        Span::styled(
+            if app.state.auto_apply_edits {
+                "ON"
+            } else {
+                "OFF"
+            },
+            Style::default().fg(if app.state.auto_apply_edits {
+                Color::Green
+            } else {
+                Color::Yellow
+            }),
+        ),
+        Span::raw(" | "),
         bus_status_badge_span(app),
     ];
+    if pending_images > 0 {
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!(" 📷 {pending_images} attached "),
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
     if let Some(latency_spans) = latency_badge_spans(app) {
         status_spans.push(Span::raw(" | "));
         status_spans.extend(latency_spans);
     }
+    status_spans.push(Span::raw(" | "));
+    status_spans.extend(token_status_line.spans);
     status_spans.extend([
         Span::raw(" | "),
         Span::styled(

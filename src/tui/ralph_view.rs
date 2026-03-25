@@ -177,6 +177,15 @@ impl RalphViewState {
         Self::default()
     }
 
+    pub fn mark_active(&mut self, project: impl Into<String>, feature: impl Into<String>) {
+        self.handle_event(RalphEvent::Started {
+            project: project.into(),
+            feature: feature.into(),
+            stories: Vec::new(),
+            max_iterations: 0,
+        });
+    }
+
     /// Handle a Ralph event
     pub fn handle_event(&mut self, event: RalphEvent) {
         match event {

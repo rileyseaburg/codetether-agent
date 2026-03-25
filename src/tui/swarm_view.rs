@@ -143,6 +143,13 @@ impl SwarmViewState {
         Self::default()
     }
 
+    pub fn mark_active(&mut self, task: impl Into<String>) {
+        self.handle_event(SwarmEvent::Started {
+            task: task.into(),
+            total_subtasks: self.subtasks.len(),
+        });
+    }
+
     /// Handle a swarm event
     pub fn handle_event(&mut self, event: SwarmEvent) {
         match event {
@@ -372,8 +379,10 @@ fn render_header(f: &mut Frame, state: &SwarmViewState, area: Rect) {
         } else {
             " Swarm [COMPLETE] "
         }
-    } else {
+    } else if state.active {
         " Swarm [ACTIVE] "
+    } else {
+        " Swarm [IDLE] "
     };
 
     let status_line = Line::from(vec![

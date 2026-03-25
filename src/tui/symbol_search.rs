@@ -209,6 +209,19 @@ pub fn render_symbol_search(f: &mut Frame, state: &mut SymbolSearchState, area: 
                 ));
             }
 
+            if let Some(uri) = &sym.uri {
+                let uri_label = uri
+                    .strip_prefix("file://")
+                    .unwrap_or(uri)
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(uri.as_str());
+                spans.push(Span::styled(
+                    format!(" · {uri_label}"),
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+
             ListItem::new(Line::from(spans))
         })
         .collect();

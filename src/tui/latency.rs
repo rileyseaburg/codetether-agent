@@ -11,6 +11,7 @@ use ratatui::{
 use crate::telemetry::PROVIDER_METRICS;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::MessageType;
+use crate::tui::token_display::TokenDisplay;
 
 #[derive(Debug, Default)]
 struct ToolLatencySummary {
@@ -110,6 +111,12 @@ pub fn render_latency(f: &mut Frame, area: Rect, app: &App) {
         lines.push(Line::from("Last tool: no timed tool executions yet"));
     }
 
+    lines.push(Line::from(""));
+    lines.push(section_heading("Token Usage Snapshot"));
+    let token_display = TokenDisplay::new();
+    for line in token_display.create_detailed_display().into_iter().take(10) {
+        lines.push(Line::from(line));
+    }
     lines.push(Line::from(""));
     lines.push(section_heading("Provider Round-Trip Latency"));
 
