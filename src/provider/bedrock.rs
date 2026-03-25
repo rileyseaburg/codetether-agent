@@ -738,7 +738,7 @@ impl BedrockProvider {
     }
 
     /// Estimate context window size based on model family
-    fn estimate_context_window(model_id: &str, provider: &str) -> usize {
+    fn estimate_context_window(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
         if id.contains("anthropic") || id.contains("claude") {
             200_000

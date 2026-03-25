@@ -96,15 +96,6 @@ fn restore_env(
     }
 }
 
-fn restore_backend_env(prev_backend: Option<String>) {
-    unsafe {
-        match prev_backend {
-            Some(v) => std::env::set_var("CODETETHER_MORPH_TOOL_BACKEND", v),
-            None => std::env::remove_var("CODETETHER_MORPH_TOOL_BACKEND"),
-        }
-    }
-}
-
 /// RAII guard to restore environment variable on drop
 struct EnvGuard {
     key: &'static str,
