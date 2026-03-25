@@ -1,20 +1,47 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use arboard::Clipboard;
+use base64::Engine;
 use crossterm::event::KeyModifiers;
+use image::{ImageBuffer, Rgba};
+use std::io::Cursor;
 use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
-use crate::session::{Session, SessionEvent};
+use crate::session::{ImageAttachment, Session, SessionEvent};
 use crate::tui::app::commands::handle_slash_command;
 use crate::tui::app::message_text::sync_messages_from_session;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
+use crate::tui::app::settings::toggle_selected_setting;
 use crate::tui::app::state::App;
 use crate::tui::app::symbols::{refresh_symbol_search, symbol_search_active};
 use crate::tui::app::worker_bridge::{handle_processing_started, handle_processing_stopped};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::worker_bridge::TuiWorkerBridge;
+
+pub(crate) fn get_clipboard_image() -> Option<ImageAttachment> {
+    let mut clipboard = Clipboard::new().ok()?;
+    let image_data = clipboard.get_image().ok()?;
+    let width = image_data.width;
+    let height = image_data.height;
+    let raw_bytes = image_data.bytes.into_owned();
+    let image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_raw(width as u32, height as u32, raw_bytes)?;
+
+    let mut png_bytes = Vec::new();
+    let mut cursor = Cursor::new(&mut png_bytes);
+    image_buffer
+        .write_to(&mut cursor, image::ImageFormat::Png)
+        .ok()?;
+
+    let base64_data = base64::engine::general_purpose::STANDARD.encode(&png_bytes);
+    Some(ImageAttachment {
+        data_url: format!("data:image/png;base64,{base64_data}"),
+        mime_type: Some("image/png".to_string()),
+    })
+}
 
 pub async fn handle_enter(
     app: &mut App,
@@ -44,7 +71,8 @@ pub async fn handle_enter(
             .await
         }
         ViewMode::Model => crate::tui::app::model_picker::apply_selected_model(app, session),
-        ViewMode::Settings | ViewMode::Lsp | ViewMode::Rlm | ViewMode::Latency => {}
+        ViewMode::Settings => toggle_selected_setting(app, session).await,
+        ViewMode::Lsp | ViewMode::Rlm | ViewMode::Latency => {}
     }
 }
 
@@ -191,6 +219,7 @@ async fn handle_enter_sessions(app: &mut App, cwd: &Path, session: &mut Session)
         match Session::load(&session_id).await {
             Ok(loaded) => {
                 *session = loaded;
+                app.state.auto_apply_edits = session.metadata.auto_apply_edits;
                 app.state.session_id = Some(session.id.clone());
                 sync_messages_from_session(app, session);
                 refresh_sessions(app, cwd).await;
@@ -242,13 +271,23 @@ async fn handle_enter_chat(
         return;
     }
 
-    if prompt.is_empty() {
+    let pending_images = std::mem::take(&mut app.state.pending_images);
+
+    if prompt.is_empty() && pending_images.is_empty() {
         return;
     }
 
     app.state
         .messages
         .push(ChatMessage::new(MessageType::User, prompt.clone()));
+    for image in &pending_images {
+        app.state.messages.push(ChatMessage::new(
+            MessageType::Image {
+                url: image.data_url.clone(),
+            },
+            image.data_url.clone(),
+        ));
+    }
     app.state.clear_input();
     handle_processing_started(app, worker_bridge).await;
     app.state.begin_request_timing();
@@ -256,13 +295,14 @@ async fn handle_enter_chat(
     app.state.scroll_to_bottom();
 
     if let Some(registry) = registry {
+        session.metadata.auto_apply_edits = app.state.auto_apply_edits;
         let mut session_for_task = session.clone();
         let event_tx = event_tx.clone();
         let result_tx = result_tx.clone();
         let registry = Arc::clone(registry);
         tokio::spawn(async move {
             let result = session_for_task
-                .prompt_with_events(&prompt, event_tx, registry)
+                .prompt_with_events_and_images(&prompt, pending_images, event_tx, registry)
                 .await
                 .map(|_| session_for_task);
             let _ = result_tx.send(result).await;
@@ -331,5 +371,42 @@ mod tests {
         ));
         assert!(app.state.input.is_empty());
         assert!(app.state.processing_started_at.is_none());
+    }
+
+    #[tokio::test]
+    async fn enter_with_pending_image_sends_even_without_text() {
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+        app.state.pending_images.push(ImageAttachment {
+            data_url: "data:image/png;base64,Zm9v".to_string(),
+            mime_type: Some("image/png".to_string()),
+        });
+
+        let cwd = std::path::Path::new(".");
+        let mut session = Session::new().await.expect("session should create");
+        let (event_tx, _event_rx) = mpsc::channel(8);
+        let (result_tx, _result_rx) = mpsc::channel(8);
+
+        handle_enter(
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
+        )
+        .await;
+
+        assert!(matches!(
+            app.state.messages.first().map(|msg| &msg.message_type),
+            Some(MessageType::User)
+        ));
+        assert_eq!(app.state.messages[0].content, "");
+        assert!(matches!(
+            app.state.messages.get(1).map(|msg| &msg.message_type),
+            Some(MessageType::Image { .. })
+        ));
+        assert!(app.state.pending_images.is_empty());
     }
 }

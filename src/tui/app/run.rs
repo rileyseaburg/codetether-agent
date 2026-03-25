@@ -33,7 +33,13 @@ impl Drop for TerminalGuard {
     }
 }
 
-pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
+pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> anyhow::Result<()> {
+    if allow_network {
+        unsafe {
+            std::env::set_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK", "1");
+        }
+    }
+
     if let Some(project) = project {
         std::env::set_current_dir(&project)?;
     }
@@ -72,7 +78,11 @@ pub async fn run(project: Option<std::path::PathBuf>) -> anyhow::Result<()> {
 
     let mut app = App::default();
     app.state.cwd_display = cwd.display().to_string();
+    app.state.auto_apply_edits = session.metadata.auto_apply_edits;
+    app.state.allow_network = session.metadata.allow_network || allow_network;
+    app.state.slash_autocomplete = session.metadata.slash_autocomplete;
     app.state.session_id = Some(session.id.clone());
+    session.metadata.allow_network = app.state.allow_network;
     sync_messages_from_session(&mut app, &session);
     refresh_sessions(&mut app, &cwd).await;
     if let Some(bridge) = worker_bridge.as_ref() {

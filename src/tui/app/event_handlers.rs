@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
+use crate::tui::app::commands::toggle_auto_apply_edits;
 use crate::tui::app::input::{
     handle_backspace, handle_bus_c, handle_bus_g, handle_bus_slash, handle_char, handle_enter,
     handle_paste, handle_sessions_char,
@@ -15,6 +16,7 @@ use crate::tui::app::navigation::{
     handle_page_down, handle_page_up, handle_right, handle_symbol_enter, handle_tab, handle_up,
     toggle_help,
 };
+use crate::tui::app::settings::{toggle_network_access, toggle_slash_autocomplete};
 use crate::tui::app::state::App;
 use crate::tui::app::symbols::symbol_search_active;
 use crate::tui::models::ViewMode;
@@ -58,6 +60,23 @@ pub async fn handle_event(
         {
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
+        }
+        KeyCode::Char('v')
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            if let Some(image) = crate::tui::app::input::get_clipboard_image() {
+                app.state.pending_images.push(image);
+                let image_count = app.state.pending_images.len();
+                app.state.status = if image_count == 1 {
+                    "Attached 1 clipboard image. Type a message and press Enter to send."
+                        .to_string()
+                } else {
+                    format!("Attached {image_count} clipboard images. Press Enter to send them.")
+                };
+            }
         }
         KeyCode::Esc => handle_escape(app),
         KeyCode::Tab if app.state.slash_suggestions_visible() => handle_tab(app),
@@ -119,6 +138,15 @@ pub async fn handle_event(
                 result_tx,
             )
             .await;
+        }
+        KeyCode::Char('a') if app.state.view_mode == ViewMode::Settings => {
+            toggle_auto_apply_edits(app, session).await;
+        }
+        KeyCode::Char('n') if app.state.view_mode == ViewMode::Settings => {
+            toggle_network_access(app, session).await;
+        }
+        KeyCode::Tab if app.state.view_mode == ViewMode::Settings => {
+            toggle_slash_autocomplete(app, session).await;
         }
         KeyCode::Backspace if app.state.view_mode == ViewMode::Sessions => {
             app.state.session_filter_backspace();

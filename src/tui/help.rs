@@ -136,7 +136,6 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(blank());
 
     // ── Session info ──
-    heading("SESSION");
     lines.push(heading("SESSION"));
     lines.push(Line::from(vec![
         Span::styled("  Session:   ", Style::default().fg(Color::DarkGray)),
@@ -148,6 +147,57 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
             app_state.cwd_display.clone(),
             Style::default().fg(Color::White),
         ),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("  Auto-apply:", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            if app_state.auto_apply_edits {
+                " ON"
+            } else {
+                " OFF"
+            },
+            if app_state.auto_apply_edits {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::Yellow)
+            },
+        ),
+        Span::styled(
+            "  (/autoapply or /aa)",
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("  Network:   ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            if app_state.allow_network {
+                " ON"
+            } else {
+                " OFF"
+            },
+            if app_state.allow_network {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::Yellow)
+            },
+        ),
+        Span::styled("  (/network)", Style::default().fg(Color::DarkGray)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("  Autocomplete:", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            if app_state.slash_autocomplete {
+                " ON"
+            } else {
+                " OFF"
+            },
+            if app_state.slash_autocomplete {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::Yellow)
+            },
+        ),
+        Span::styled("  (/autocomplete)", Style::default().fg(Color::DarkGray)),
     ]));
 
     // Worker info if connected
@@ -201,7 +251,16 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
 
     lines.push(heading("SCROLLING"));
     lines.push(key_row("Up / Down", "Scroll messages"));
+    lines.push(key_row("Shift+Up / Down", "Scroll compact tool panels"));
     lines.push(key_row("PgUp / PgDn", "Scroll by page"));
+    lines.push(key_row("Mouse wheel", "Scroll the current list or view"));
+    lines.push(key_row("Shift+Wheel", "Scroll compact tool panels in chat"));
+    lines.push(key_row("Alt+J / Alt+K", "Chat scroll down / up"));
+    lines.push(key_row("Alt+D / Alt+U", "Chat page down / up"));
+    lines.push(key_row(
+        "Ctrl+G / Ctrl+Shift+G",
+        "Jump chat to top / bottom",
+    ));
     lines.push(blank());
 
     // ── Slash commands ──
@@ -218,7 +277,22 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(cmd_row("/help", "/h /?", "Open this help"));
     lines.push(cmd_row("/sessions", "/s", "Session picker"));
     lines.push(cmd_row("/model", "/m", "Model picker"));
-    lines.push(cmd_row("/file", "", "Attach /file <path> to composer"));
+    lines.push(cmd_row("/file", "", "Attach file contents to composer"));
+    lines.push(cmd_row(
+        "/autoapply",
+        "/aa",
+        "Toggle edit preview auto-apply",
+    ));
+    lines.push(cmd_row(
+        "/network",
+        "",
+        "Toggle sandbox bash network access",
+    ));
+    lines.push(cmd_row(
+        "/autocomplete",
+        "",
+        "Toggle slash-command Tab autocomplete",
+    ));
     lines.push(cmd_row("/settings", "/set", "Settings panel"));
     lines.push(cmd_row("/new", "", "Start fresh chat buffer"));
     lines.push(blank());
@@ -246,6 +320,16 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Type", "Filter sessions by name/ID"));
     lines.push(key_row("Backspace", "Clear filter character"));
     lines.push(key_row("Esc", "Close picker"));
+    lines.push(blank());
+
+    lines.push(heading("SETTINGS"));
+    lines.push(separator());
+    lines.push(key_row("Up / Down", "Select a setting"));
+    lines.push(key_row("Enter", "Toggle selected setting"));
+    lines.push(key_row("a", "Toggle edit auto-apply"));
+    lines.push(key_row("n", "Toggle network access"));
+    lines.push(key_row("Tab", "Toggle slash autocomplete"));
+    lines.push(key_row("Esc", "Return to chat"));
     lines.push(blank());
 
     lines.push(heading("PROTOCOL BUS LOG"));

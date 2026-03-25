@@ -15,13 +15,16 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
+use crate::tool::Tool;
+use crate::tool::confirm_edit::ConfirmEditTool;
+use crate::tool::confirm_multiedit::ConfirmMultiEditTool;
 
 pub mod helper;
 mod listing;
@@ -33,7 +36,10 @@ use self::helper::bootstrap::{
 use self::helper::build::{
     build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
 };
-use self::helper::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
+use self::helper::edit::{
+    build_pending_confirmation_apply_request, detect_stub_in_tool_input,
+    normalize_tool_call_for_execution,
+};
 use self::helper::error::{
     is_prompt_too_long_error, is_retryable_upstream_error, messages_to_rlm_context,
 };
@@ -81,6 +87,62 @@ const NATIVE_TOOL_PROMISE_NUDGE: &str = "You said you would use tools. Do not de
 call or promise a next step. Emit the actual tool call now. If native tool calling fails, emit a \
 <tool_call> JSON block immediately instead of prose.";
 
+fn pending_confirmation_tool_result_content(tool_name: &str, content: &str) -> String {
+    format!(
+        "{content}\n\nStatus: Pending confirmation only. `{tool_name}` has NOT been applied yet. \
+         Auto-apply is off. Enable it in TUI Settings or with `/autoapply on` if you want pending \
+         edit previews to be confirmed automatically."
+    )
+}
+
+fn auto_apply_pending_confirmation_result_content(output: &str, success: bool) -> String {
+    let status = if success {
+        "TUI edit auto-apply is enabled. The pending change was automatically confirmed and applied."
+    } else {
+        "TUI edit auto-apply is enabled, but confirming the pending change failed."
+    };
+    format!("{status}\n\n{output}")
+}
+
+fn tool_result_requires_confirmation(
+    tool_metadata: Option<&HashMap<String, serde_json::Value>>,
+) -> bool {
+    tool_metadata
+        .and_then(|metadata| metadata.get("requires_confirmation"))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false)
+}
+
+async fn auto_apply_pending_confirmation(
+    tool_name: &str,
+    tool_input: &serde_json::Value,
+    tool_metadata: Option<&HashMap<String, serde_json::Value>>,
+) -> Result<Option<(String, bool, Option<HashMap<String, serde_json::Value>>)>> {
+    let Some((confirm_tool_name, confirm_input)) =
+        build_pending_confirmation_apply_request(tool_name, tool_input, tool_metadata)
+    else {
+        return Ok(None);
+    };
+
+    let result = match confirm_tool_name.as_str() {
+        "confirm_edit" => ConfirmEditTool::new().execute(confirm_input).await?,
+        "confirm_multiedit" => ConfirmMultiEditTool::new().execute(confirm_input).await?,
+        _ => return Ok(None),
+    };
+
+    let metadata = if result.metadata.is_empty() {
+        tool_metadata.cloned()
+    } else {
+        Some(result.metadata)
+    };
+
+    Ok(Some((
+        auto_apply_pending_confirmation_result_content(&result.output, result.success),
+        result.success,
+        metadata,
+    )))
+}
+
 /// A conversation session
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
@@ -104,8 +166,18 @@ pub struct SessionMetadata {
     pub model: Option<String>,
     pub knowledge_snapshot: Option<PathBuf>,
     pub provenance: Option<ExecutionProvenance>,
+    #[serde(default)]
+    pub auto_apply_edits: bool,
+    #[serde(default)]
+    pub allow_network: bool,
+    #[serde(default = "default_slash_autocomplete")]
+    pub slash_autocomplete: bool,
     pub shared: bool,
     pub share_url: Option<String>,
+}
+
+fn default_slash_autocomplete() -> bool {
+    true
 }
 
 impl Session {
@@ -1035,18 +1107,63 @@ impl Session {
                     (format!("Error: Unknown tool '{}'", tool_name), false, None)
                 };
 
-                track_touched_files(
-                    &mut touched_files,
-                    &cwd,
-                    &tool_name,
-                    &tool_input,
-                    tool_metadata.as_ref(),
-                );
+                let requires_confirmation =
+                    tool_result_requires_confirmation(tool_metadata.as_ref());
+                let (content, success, tool_metadata, requires_confirmation) =
+                    if requires_confirmation && self.metadata.auto_apply_edits {
+                        let preview_content = content.clone();
+                        match auto_apply_pending_confirmation(
+                            &tool_name,
+                            &tool_input,
+                            tool_metadata.as_ref(),
+                        )
+                        .await
+                        {
+                            Ok(Some((content, success, tool_metadata))) => {
+                                tracing::info!(
+                                    tool = %tool_name,
+                                    "Auto-applied pending confirmation in TUI session"
+                                );
+                                (content, success, tool_metadata, false)
+                            }
+                            Ok(None) => (content, success, tool_metadata, true),
+                            Err(error) => (
+                                format!(
+                                    "{}\n\nTUI edit auto-apply failed: {}",
+                                    pending_confirmation_tool_result_content(
+                                        &tool_name,
+                                        &preview_content,
+                                    ),
+                                    error
+                                ),
+                                false,
+                                tool_metadata,
+                                true,
+                            ),
+                        }
+                    } else {
+                        (content, success, tool_metadata, requires_confirmation)
+                    };
+                let rendered_content = if requires_confirmation {
+                    pending_confirmation_tool_result_content(&tool_name, &content)
+                } else {
+                    content.clone()
+                };
+
+                if !requires_confirmation {
+                    track_touched_files(
+                        &mut touched_files,
+                        &cwd,
+                        &tool_name,
+                        &tool_input,
+                        tool_metadata.as_ref(),
+                    );
+                }
 
                 // Calculate duration for event stream
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 let codesearch_no_match =
-                    is_codesearch_no_match_output(&tool_name, success, &content);
+                    is_codesearch_no_match_output(&tool_name, success, &rendered_content);
 
                 // Publish tool response + full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
@@ -1057,7 +1174,7 @@ impl Session {
                             request_id: tool_id.clone(),
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
-                            result: content.clone(),
+                            result: rendered_content.clone(),
                             success,
                             step,
                         },
@@ -1068,7 +1185,7 @@ impl Session {
                         crate::bus::BusMessage::ToolOutputFull {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
-                            output: content.clone(),
+                            output: rendered_content.clone(),
                             success,
                             step,
                         },
@@ -1086,7 +1203,7 @@ impl Session {
                         &tool_name,
                         success,
                         duration_ms,
-                        &content,
+                        &rendered_content,
                         self.messages.len() as u64,
                     );
                     let event_json = event.to_json();
@@ -1130,7 +1247,8 @@ impl Session {
                         current_context_tokens: Some(current_tokens),
                     };
                     let rlm_config = RlmConfig::default();
-                    let routing = RlmRouter::should_route(&content, &routing_ctx, &rlm_config);
+                    let routing =
+                        RlmRouter::should_route(&rendered_content, &routing_ctx, &rlm_config);
                     if routing.should_route {
                         tracing::info!(
                             tool = %tool_name,
@@ -1147,7 +1265,9 @@ impl Session {
                             provider: Arc::clone(&provider),
                             model: model.clone(),
                         };
-                        match RlmRouter::auto_process(&content, auto_ctx, &rlm_config).await {
+                        match RlmRouter::auto_process(&rendered_content, auto_ctx, &rlm_config)
+                            .await
+                        {
                             Ok(result) => {
                                 tracing::info!(
                                     input_tokens = result.stats.input_tokens,
@@ -1160,7 +1280,7 @@ impl Session {
                             Err(e) => {
                                 tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
                                 let (truncated, _, _) = RlmRouter::smart_truncate(
-                                    &content,
+                                    &rendered_content,
                                     &tool_name,
                                     &tool_input,
                                     ctx_window / 4,
@@ -1169,7 +1289,7 @@ impl Session {
                             }
                         }
                     } else {
-                        content
+                        rendered_content
                     }
                 };
 
@@ -2022,18 +2142,63 @@ impl Session {
                     (format!("Error: Unknown tool '{}'", tool_name), false, None)
                 };
 
-                track_touched_files(
-                    &mut touched_files,
-                    &cwd,
-                    &tool_name,
-                    &tool_input,
-                    tool_metadata.as_ref(),
-                );
+                let requires_confirmation =
+                    tool_result_requires_confirmation(tool_metadata.as_ref());
+                let (content, success, tool_metadata, requires_confirmation) =
+                    if requires_confirmation && self.metadata.auto_apply_edits {
+                        let preview_content = content.clone();
+                        match auto_apply_pending_confirmation(
+                            &tool_name,
+                            &tool_input,
+                            tool_metadata.as_ref(),
+                        )
+                        .await
+                        {
+                            Ok(Some((content, success, tool_metadata))) => {
+                                tracing::info!(
+                                    tool = %tool_name,
+                                    "Auto-applied pending confirmation in TUI session"
+                                );
+                                (content, success, tool_metadata, false)
+                            }
+                            Ok(None) => (content, success, tool_metadata, true),
+                            Err(error) => (
+                                format!(
+                                    "{}\n\nTUI edit auto-apply failed: {}",
+                                    pending_confirmation_tool_result_content(
+                                        &tool_name,
+                                        &preview_content,
+                                    ),
+                                    error
+                                ),
+                                false,
+                                tool_metadata,
+                                true,
+                            ),
+                        }
+                    } else {
+                        (content, success, tool_metadata, requires_confirmation)
+                    };
+                let rendered_content = if requires_confirmation {
+                    pending_confirmation_tool_result_content(&tool_name, &content)
+                } else {
+                    content.clone()
+                };
+
+                if !requires_confirmation {
+                    track_touched_files(
+                        &mut touched_files,
+                        &cwd,
+                        &tool_name,
+                        &tool_input,
+                        tool_metadata.as_ref(),
+                    );
+                }
 
                 // Calculate total duration from exec_start (captured from line 772)
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 let codesearch_no_match =
-                    is_codesearch_no_match_output(&tool_name, success, &content);
+                    is_codesearch_no_match_output(&tool_name, success, &rendered_content);
 
                 // Publish tool response + full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
@@ -2044,7 +2209,7 @@ impl Session {
                             request_id: tool_id.clone(),
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
-                            result: content.clone(),
+                            result: rendered_content.clone(),
                             success,
                             step,
                         },
@@ -2054,7 +2219,7 @@ impl Session {
                         crate::bus::BusMessage::ToolOutputFull {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
-                            output: content.clone(),
+                            output: rendered_content.clone(),
                             success,
                             step,
                         },
@@ -2074,7 +2239,7 @@ impl Session {
                         &tool_name,
                         success,
                         duration_ms,
-                        &content,
+                        &rendered_content,
                         self.messages.len() as u64,
                     );
                     let event_json = event.to_json();
@@ -2116,7 +2281,7 @@ impl Session {
                 let _ = event_tx
                     .send(SessionEvent::ToolCallComplete {
                         name: tool_name.clone(),
-                        output: content.clone(),
+                        output: rendered_content.clone(),
                         success,
                         duration_ms,
                     })
@@ -2134,7 +2299,8 @@ impl Session {
                         current_context_tokens: Some(current_tokens),
                     };
                     let rlm_config = RlmConfig::default();
-                    let routing = RlmRouter::should_route(&content, &routing_ctx, &rlm_config);
+                    let routing =
+                        RlmRouter::should_route(&rendered_content, &routing_ctx, &rlm_config);
                     if routing.should_route {
                         tracing::info!(
                             tool = %tool_name,
@@ -2151,7 +2317,9 @@ impl Session {
                             provider: Arc::clone(&provider),
                             model: model.clone(),
                         };
-                        match RlmRouter::auto_process(&content, auto_ctx, &rlm_config).await {
+                        match RlmRouter::auto_process(&rendered_content, auto_ctx, &rlm_config)
+                            .await
+                        {
                             Ok(result) => {
                                 tracing::info!(
                                     input_tokens = result.stats.input_tokens,
@@ -2164,7 +2332,7 @@ impl Session {
                             Err(e) => {
                                 tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
                                 let (truncated, _, _) = RlmRouter::smart_truncate(
-                                    &content,
+                                    &rendered_content,
                                     &tool_name,
                                     &tool_input,
                                     ctx_window / 4,
@@ -2173,7 +2341,7 @@ impl Session {
                             }
                         }
                     } else {
-                        content
+                        rendered_content
                     }
                 };
 

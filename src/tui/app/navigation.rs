@@ -68,6 +68,10 @@ pub fn handle_up(app: &mut App, modifiers: KeyModifiers) {
         app.state.model_select_prev();
         return;
     }
+    if app.state.view_mode == ViewMode::Settings {
+        app.state.settings_select_prev();
+        return;
+    }
     if app.state.slash_suggestions_visible() {
         app.state.select_prev_slash_suggestion();
         return;
@@ -124,6 +128,10 @@ pub fn handle_down(app: &mut App, modifiers: KeyModifiers) {
     }
     if app.state.view_mode == ViewMode::Model {
         app.state.model_select_next();
+        return;
+    }
+    if app.state.view_mode == ViewMode::Settings {
+        app.state.settings_select_next();
         return;
     }
     if app.state.slash_suggestions_visible() {

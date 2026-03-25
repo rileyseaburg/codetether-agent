@@ -1,9 +1,12 @@
+#![allow(dead_code)]
+
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
 use crate::provider::ProviderRegistry;
-use crate::session::SessionSummary;
+use crate::session::{ImageAttachment, SessionSummary};
+use crate::tui::app::text::normalize_slash_command;
 use crate::tui::bus_log::BusLogState;
 use crate::tui::chat::message::ChatMessage;
 use crate::tui::help::HelpScrollState;
@@ -23,6 +26,10 @@ const SLASH_COMMANDS: &[&str] = &[
     "/bus",
     "/protocol",
     "/file",
+    "/autoapply",
+    "/network",
+    "/autocomplete",
+    "/mcp",
     "/model",
     "/settings",
     "/lsp",
@@ -91,7 +98,12 @@ pub struct AppState {
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
-    pub worker_autorun_enabled: bool,
+    pub pending_images: Vec<ImageAttachment>,
+    pub auto_apply_edits: bool,
+    pub allow_network: bool,
+    pub slash_autocomplete: bool,
+    pub selected_settings_index: usize,
+    pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>,
 }
 
 impl Default for AppState {
@@ -148,12 +160,19 @@ impl Default for AppState {
             last_tool_name: None,
             last_tool_latency_ms: None,
             last_tool_success: None,
-            worker_autorun_enabled: true,
+            pending_images: Vec::new(),
+            auto_apply_edits: false,
+            allow_network: false,
+            slash_autocomplete: true,
+            selected_settings_index: 0,
+            mcp_registry: Arc::new(crate::tui::app::mcp::TuiMcpRegistry::new()),
         }
     }
 }
 
 impl AppState {
+    const SETTINGS_COUNT: usize = 3;
+
     fn input_char_count(&self) -> usize {
         self.input.chars().count()
     }
@@ -177,6 +196,7 @@ impl AppState {
         self.input_cursor = self.input_cursor.min(self.input_char_count());
     }
 
+    #[allow(dead_code)]
     pub fn ensure_input_cursor_visible(&mut self, visible_width: usize) {
         if visible_width == 0 {
             self.input_scroll = self.input_cursor;
@@ -188,6 +208,18 @@ impl AppState {
             self.input_scroll = self
                 .input_cursor
                 .saturating_sub(visible_width.saturating_sub(1));
+        }
+    }
+
+    pub fn settings_select_prev(&mut self) {
+        if self.selected_settings_index > 0 {
+            self.selected_settings_index -= 1;
+        }
+    }
+
+    pub fn settings_select_next(&mut self) {
+        if self.selected_settings_index + 1 < Self::SETTINGS_COUNT {
+            self.selected_settings_index += 1;
         }
     }
 
@@ -442,7 +474,8 @@ impl AppState {
             return;
         }
 
-        let query = self.input.trim().to_lowercase();
+        let raw_query = self.input.split_whitespace().next().unwrap_or("");
+        let query = normalize_slash_command(raw_query).to_lowercase();
         self.slash_suggestions = SLASH_COMMANDS
             .iter()
             .filter(|cmd| cmd.starts_with(&query))
@@ -462,7 +495,11 @@ impl AppState {
     }
 
     pub fn slash_suggestions_visible(&self) -> bool {
-        self.view_mode == ViewMode::Chat && !self.processing && self.input.starts_with('/')
+        self.view_mode == ViewMode::Chat
+            && !self.processing
+            && self.input.starts_with('/')
+            && !self.input.trim().chars().any(char::is_whitespace)
+            && !self.slash_suggestions.is_empty()
     }
 
     pub fn select_prev_slash_suggestion(&mut self) {
