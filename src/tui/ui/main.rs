@@ -114,65 +114,73 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
     let palette = ColorPalette::marketing();
     let formatter = MessageFormatter::new(chunks[0].width.saturating_sub(4) as usize);
 
-    let mut lines: Vec<Line<'static>> = Vec::new();
-    let separator_width = chunks[0].width.saturating_sub(4).min(60) as usize;
-    let panel_width = chunks[0].width.saturating_sub(6) as usize;
-    let entries = build_render_entries(&app.state.messages);
-    let mut tool_preview_max_scroll = 0;
-    if entries.is_empty() {
-        lines.push(Line::from(
-            "No messages yet. Type a prompt and press Enter, or use /help.".dim(),
-        ));
+    let max_width = chunks[0].width as usize;
+    let lines = if app.state.is_message_cache_valid(max_width) {
+        app.state.take_cached_message_lines()
     } else {
-        for (idx, entry) in entries.iter().enumerate() {
-            if idx > 0 {
-                let sep = separator_pattern(entry);
-                lines.push(Line::from(Span::styled(
-                    sep.repeat(separator_width),
-                    Style::default().fg(Color::DarkGray).dim(),
-                )));
-            }
-            if !entry.tool_activity.is_empty() {
-                let panel = build_tool_activity_panel(
-                    &entry.tool_activity,
-                    app.state.tool_preview_scroll,
-                    panel_width,
-                );
-                tool_preview_max_scroll = tool_preview_max_scroll.max(panel.max_scroll);
-                lines.extend(panel.lines);
-                if entry.message.is_some() {
+        let mut lines = Vec::new();
+        let separator_width = chunks[0].width.saturating_sub(4).min(60) as usize;
+        let panel_width = chunks[0].width.saturating_sub(6) as usize;
+        let entries = build_render_entries(&app.state.messages);
+        let mut tool_preview_max_scroll = 0;
+        if entries.is_empty() {
+            lines.push(Line::from(
+                "No messages yet. Type a prompt and press Enter, or use /help.".dim(),
+            ));
+        } else {
+            for (idx, entry) in entries.iter().enumerate() {
+                if idx > 0 {
+                    let sep = separator_pattern(entry);
+                    lines.push(Line::from(Span::styled(
+                        sep.repeat(separator_width),
+                        Style::default().fg(Color::DarkGray).dim(),
+                    )));
+                }
+                if !entry.tool_activity.is_empty() {
+                    let panel = build_tool_activity_panel(
+                        &entry.tool_activity,
+                        app.state.tool_preview_scroll,
+                        panel_width,
+                    );
+                    tool_preview_max_scroll = tool_preview_max_scroll.max(panel.max_scroll);
+                    lines.extend(panel.lines);
+                    if entry.message.is_some() {
+                        lines.push(Line::from(""));
+                    }
+                }
+                if let Some(message) = entry.message {
+                    render_chat_message(&mut lines, message, &formatter, &palette);
                     lines.push(Line::from(""));
                 }
             }
-            if let Some(message) = entry.message {
-                render_chat_message(&mut lines, message, &formatter, &palette);
-                lines.push(Line::from(""));
-            }
         }
-    }
-    app.state
-        .set_tool_preview_max_scroll(tool_preview_max_scroll);
+        app.state
+            .set_tool_preview_max_scroll(tool_preview_max_scroll);
 
-    // Streaming text preview (dim, shown during processing)
-    if app.state.processing && !app.state.streaming_text.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "─".repeat(separator_width.min(40)),
-            Style::default().fg(Color::DarkGray).dim(),
-        )));
-        lines.push(Line::from(Span::styled(
-            "▸ streaming...",
-            Style::default().fg(Color::Yellow).dim(),
-        )));
-        // Show last few lines of streaming text
-        let stream_lines: Vec<&str> = app.state.streaming_text.lines().collect();
-        let start = stream_lines.len().saturating_sub(6);
-        for sl in &stream_lines[start..] {
+        // Streaming text preview (dim, shown during processing)
+        if app.state.processing && !app.state.streaming_text.is_empty() {
             lines.push(Line::from(Span::styled(
-                format!("  {sl}"),
+                "─".repeat(separator_width.min(40)),
                 Style::default().fg(Color::DarkGray).dim(),
             )));
+            lines.push(Line::from(Span::styled(
+                "▸ streaming...",
+                Style::default().fg(Color::Yellow).dim(),
+            )));
+            // Show last few lines of streaming text
+            let stream_lines: Vec<&str> = app.state.streaming_text.lines().collect();
+            let start = stream_lines.len().saturating_sub(6);
+            for sl in &stream_lines[start..] {
+                lines.push(Line::from(Span::styled(
+                    format!("  {sl}"),
+                    Style::default().fg(Color::DarkGray).dim(),
+                )));
+            }
         }
-    }
+
+        app.state.store_message_lines(lines, max_width);
+        app.state.take_cached_message_lines()
+    };
 
     let session_label = app
         .state

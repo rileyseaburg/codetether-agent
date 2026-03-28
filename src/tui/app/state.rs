@@ -4,8 +4,10 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
+use ratatui::text::Line;
+
 use crate::provider::ProviderRegistry;
-use crate::session::{ImageAttachment, SessionSummary};
+use crate::session::{ImageAttachment, Session, SessionSummary};
 use crate::tui::app::text::normalize_slash_command;
 use crate::tui::bus_log::BusLogState;
 use crate::tui::chat::message::ChatMessage;
@@ -40,6 +42,150 @@ const SLASH_COMMANDS: &[&str] = &[
     "/new",
     "/keys",
 ];
+
+/// A spawned sub-agent with its own independent LLM session.
+#[allow(dead_code)]
+pub struct SpawnedAgent {
+    /// User-facing name (e.g. "planner", "coder")
+    pub name: String,
+    /// System instructions for this agent
+    pub instructions: String,
+    /// Independent conversation session
+    pub session: Session,
+    /// Whether this agent is currently processing a message
+    pub is_processing: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AgentProfile {
+    pub codename: &'static str,
+    pub profile: &'static str,
+    pub personality: &'static str,
+    pub collaboration_style: &'static str,
+    pub signature_move: &'static str,
+}
+
+/// Map an agent name to its codename profile.
+pub fn agent_profile(agent_name: &str) -> AgentProfile {
+    let normalized = agent_name.to_ascii_lowercase();
+
+    if normalized.contains("planner") {
+        return AgentProfile {
+            codename: "Strategist",
+            profile: "Goal decomposition specialist",
+            personality: "calm, methodical, and dependency-aware",
+            collaboration_style: "opens with numbered plans and explicit priorities",
+            signature_move: "turns vague goals into concrete execution ladders",
+        };
+    }
+
+    if normalized.contains("research") {
+        return AgentProfile {
+            codename: "Archivist",
+            profile: "Evidence and assumptions analyst",
+            personality: "curious, skeptical, and detail-focused",
+            collaboration_style: "validates claims and cites edge-case evidence",
+            signature_move: "surfaces blind spots before implementation starts",
+        };
+    }
+
+    if normalized.contains("coder") || normalized.contains("implement") {
+        return AgentProfile {
+            codename: "Forge",
+            profile: "Implementation architect",
+            personality: "pragmatic, direct, and execution-heavy",
+            collaboration_style: "proposes concrete code-level actions quickly",
+            signature_move: "translates plans into shippable implementation steps",
+        };
+    }
+
+    if normalized.contains("review") {
+        return AgentProfile {
+            codename: "Sentinel",
+            profile: "Quality and regression guardian",
+            personality: "disciplined, assertive, and standards-driven",
+            collaboration_style: "challenges weak reasoning and hardens quality",
+            signature_move: "detects brittle assumptions and failure modes",
+        };
+    }
+
+    if normalized.contains("tester") || normalized.contains("test") {
+        return AgentProfile {
+            codename: "Probe",
+            profile: "Verification strategist",
+            personality: "adversarial in a good way, systematic, and precise",
+            collaboration_style: "designs checks around failure-first thinking",
+            signature_move: "builds test matrices that catch hidden breakage",
+        };
+    }
+
+    if normalized.contains("integrat") {
+        return AgentProfile {
+            codename: "Conductor",
+            profile: "Cross-stream synthesis lead",
+            personality: "balanced, diplomatic, and outcome-oriented",
+            collaboration_style: "reconciles competing inputs into one plan",
+            signature_move: "merges parallel work into coherent delivery",
+        };
+    }
+
+    if normalized.contains("skeptic") || normalized.contains("risk") {
+        return AgentProfile {
+            codename: "Radar",
+            profile: "Risk and threat analyst",
+            personality: "blunt, anticipatory, and protective",
+            collaboration_style: "flags downside scenarios and mitigation paths",
+            signature_move: "turns uncertainty into explicit risk registers",
+        };
+    }
+
+    if normalized.contains("summary") || normalized.contains("summarizer") {
+        return AgentProfile {
+            codename: "Beacon",
+            profile: "Decision synthesis specialist",
+            personality: "concise, clear, and action-first",
+            collaboration_style: "compresses complexity into executable next steps",
+            signature_move: "creates crisp briefings that unblock teams quickly",
+        };
+    }
+
+    let fallback_profiles = [
+        AgentProfile {
+            codename: "Navigator",
+            profile: "Generalist coordinator",
+            personality: "adaptable and context-aware",
+            collaboration_style: "balances speed with clarity",
+            signature_move: "keeps team momentum aligned",
+        },
+        AgentProfile {
+            codename: "Vector",
+            profile: "Execution operator",
+            personality: "focused and deadline-driven",
+            collaboration_style: "prefers direct action and feedback loops",
+            signature_move: "drives ambiguous tasks toward decisions",
+        },
+        AgentProfile {
+            codename: "Signal",
+            profile: "Communication specialist",
+            personality: "clear, friendly, and structured",
+            collaboration_style: "frames updates for quick handoffs",
+            signature_move: "turns noisy context into clean status",
+        },
+        AgentProfile {
+            codename: "Kernel",
+            profile: "Core-systems thinker",
+            personality: "analytical and stable",
+            collaboration_style: "organizes work around constraints and invariants",
+            signature_move: "locks down the critical path early",
+        },
+    ];
+
+    let mut hash: u64 = 2_166_136_261;
+    for byte in normalized.bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(16_777_619);
+    }
+    fallback_profiles[hash as usize % fallback_profiles.len()]
+}
 
 #[derive(Default)]
 pub struct App {
@@ -104,6 +250,12 @@ pub struct AppState {
     pub slash_autocomplete: bool,
     pub selected_settings_index: usize,
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>,
+    // Message line cache for render performance
+    pub cached_message_lines: Vec<ratatui::text::Line<'static>>,
+    pub cached_messages_len: usize,
+    pub cached_max_width: usize,
+    pub cached_streaming_snapshot: Option<String>,
+    pub cached_processing: bool,
 }
 
 impl Default for AppState {
@@ -166,12 +318,45 @@ impl Default for AppState {
             slash_autocomplete: true,
             selected_settings_index: 0,
             mcp_registry: Arc::new(crate::tui::app::mcp::TuiMcpRegistry::new()),
+            // Message line cache
+            cached_message_lines: Vec::new(),
+            cached_messages_len: 0,
+            cached_max_width: 0,
+            cached_streaming_snapshot: None,
+            cached_processing: false,
         }
     }
 }
 
 impl AppState {
     const SETTINGS_COUNT: usize = 3;
+
+    /// Check whether the cached message lines are still valid for the given
+    /// width. Returns `true` when the cache can be reused.
+    pub(crate) fn is_message_cache_valid(&self, max_width: usize) -> bool {
+        self.cached_messages_len == self.messages.len()
+            && self.cached_max_width == max_width
+            && self.cached_streaming_snapshot.as_deref() == Some(&self.streaming_text)
+            && self.cached_processing == self.processing
+    }
+
+    /// Take ownership of the cached lines, clearing the cache.
+    pub(crate) fn take_cached_message_lines(&mut self) -> Vec<Line<'static>> {
+        self.cached_message_lines.drain(..).collect()
+    }
+
+    /// Store rebuilt message lines in the cache.
+    pub(crate) fn store_message_lines(&mut self, lines: Vec<Line<'static>>, max_width: usize) {
+        self.cached_message_lines = lines;
+        self.cached_messages_len = self.messages.len();
+        self.cached_max_width = max_width;
+        self.cached_streaming_snapshot = if self.processing {
+            Some(self.streaming_text.clone())
+        } else {
+            None
+        };
+        self.cached_processing = self.processing;
+    }
 
     fn input_char_count(&self) -> usize {
         self.input.chars().count()
