@@ -215,6 +215,10 @@ pub struct CookieAuthArgs {
 pub struct TuiArgs {
     /// Project directory
     pub project: Option<PathBuf>,
+
+    /// Allow network access in sandboxed commands
+    #[arg(long)]
+    pub allow_network: bool,
 }
 
 #[derive(Parser, Debug)]

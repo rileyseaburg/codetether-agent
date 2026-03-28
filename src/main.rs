@@ -575,8 +575,9 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Some(Command::Tui(args)) => {
+            let allow_network = args.allow_network;
             let project = args.project.or(cli.project);
-            tui::run(project).await
+            tui::run(project, allow_network).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
@@ -1848,7 +1849,7 @@ async fn main() -> anyhow::Result<()> {
         None => {
             // Default: launch TUI
             let project = cli.project;
-            tui::run(project).await
+            tui::run(project, false).await
         }
     }
 }

@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::collections::HashMap;
 
 fn stub_marker_in_text(text: &str) -> Option<&'static str> {
     let lower = text.to_ascii_lowercase();
@@ -144,4 +145,26 @@ pub fn normalize_tool_call_for_execution(tool_name: &str, tool_input: &Value) ->
     }
 
     (normalized_name, normalized_input)
+}
+
+/// Build a confirmation-apply request from a pending edit/multiedit tool call.
+/// Returns `Some((confirm_tool_name, confirm_input))` if the tool call can be
+/// auto-confirmed, or `None` if it is not a confirmable edit tool.
+pub fn build_pending_confirmation_apply_request(
+    tool_name: &str,
+    tool_input: &Value,
+    _tool_metadata: Option<&HashMap<String, Value>>,
+) -> Option<(String, Value)> {
+    let confirm_tool_name = match tool_name {
+        "edit" | "confirm_edit" | "advanced_edit" => "confirm_edit",
+        "multiedit" | "confirm_multiedit" => "confirm_multiedit",
+        _ => return None,
+    };
+
+    let (_, mut normalized) = normalize_tool_call_for_execution(tool_name, tool_input);
+    if let Some(obj) = normalized.as_object_mut() {
+        obj.insert("confirm".to_string(), Value::Bool(true));
+    }
+
+    Some((confirm_tool_name.to_string(), normalized))
 }
