@@ -76,6 +76,7 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
             app.state.selected_session,
         ),
         ViewMode::Latency => render_latency(f, f.area(), app),
+        ViewMode::Protocol => {}
     }
 
     if app.state.symbol_search.loading
@@ -115,8 +116,8 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
     let formatter = MessageFormatter::new(chunks[0].width.saturating_sub(4) as usize);
 
     let max_width = chunks[0].width as usize;
-    let lines = if app.state.is_message_cache_valid(max_width) {
-        app.state.take_cached_message_lines()
+    let lines = if let Some(cached) = app.state.get_or_build_message_lines(max_width) {
+        cached
     } else {
         let mut lines = Vec::new();
         let separator_width = chunks[0].width.saturating_sub(4).min(60) as usize;

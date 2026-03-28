@@ -241,8 +241,7 @@ fn scroll_mouse_up(app: &mut App) {
         ViewMode::Settings
         | ViewMode::Lsp
         | ViewMode::Rlm
-        | ViewMode::Latency
-        | ViewMode::Bus
+        | ViewMode::Latency        | ViewMode::Protocol        | ViewMode::Bus
         | ViewMode::Sessions
         | ViewMode::Model => {}
     }
@@ -319,6 +318,7 @@ fn scroll_mouse_down(app: &mut App) {
         | ViewMode::Lsp
         | ViewMode::Rlm
         | ViewMode::Latency
+        | ViewMode::Protocol
         | ViewMode::Bus
         | ViewMode::Sessions
         | ViewMode::Model => {}
