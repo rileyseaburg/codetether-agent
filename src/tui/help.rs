@@ -324,6 +324,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     ));
     lines.push(cmd_row("/settings", "/set", "Settings panel"));
     lines.push(cmd_row("/new", "", "Start fresh chat buffer"));
+    lines.push(cmd_row("/undo", "", "Undo last user message and response"));
     lines.push(blank());
 
     lines.push(heading("Protocol & Observability"));

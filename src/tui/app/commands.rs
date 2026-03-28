@@ -12,7 +12,7 @@ use crate::tui::app::settings::{
     autocomplete_status_message, network_access_status_message, set_network_access,
     set_slash_autocomplete,
 };
-use crate::tui::app::state::App;
+use crate::tui::app::state::{agent_profile, App, SpawnedAgent};
 use crate::tui::app::text::{command_with_optional_args, normalize_slash_command};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::ViewMode;
@@ -330,9 +330,53 @@ pub async fn handle_slash_command(
             app.state.status = "New chat buffer".to_string();
             app.state.set_view_mode(ViewMode::Chat);
         }
+        "/undo" => {
+            // Remove from TUI messages: walk backwards removing everything
+            // until we've removed the last user message (inclusive)
+            let mut found_user = false;
+            while let Some(msg) = app.state.messages.last() {
+                if matches!(msg.message_type, MessageType::User) {
+                    if found_user {
+                        break; // hit the previous user turn, stop
+                    }
+                    found_user = true;
+                }
+                // Stop if we hit a system message before finding a user message
+                if matches!(msg.message_type, MessageType::System) && !found_user {
+                    break;
+                }
+                app.state.messages.pop();
+            }
+
+            if !found_user {
+                push_system_message(app, "Nothing to undo.");
+                return;
+            }
+
+            // Remove from session: walk backwards removing the last user message
+            // and all assistant/tool messages after it
+            let mut found_session_user = false;
+            while let Some(msg) = session.messages.last() {
+                if msg.role == crate::provider::Role::User {
+                    if found_session_user {
+                        break;
+                    }
+                    found_session_user = true;
+                }
+                if msg.role == crate::provider::Role::System && !found_session_user {
+                    break;
+                }
+                session.messages.pop();
+            }
+            if let Err(error) = session.save().await {
+                tracing::warn!(error = %error, "Failed to save session after undo");
+            }
+
+            push_system_message(app, "Undid last message and response.");
+        }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new"
+                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo"
                     .to_string();
         }
         other => {

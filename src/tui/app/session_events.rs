@@ -11,6 +11,9 @@ pub async fn handle_session_event(
     worker_bridge: &Option<TuiWorkerBridge>,
     evt: SessionEvent,
 ) {
+    // Update watchdog timestamp on every session event
+    app.state.main_last_event_at = Some(std::time::Instant::now());
+
     match evt {
         SessionEvent::Thinking => {
             handle_processing_started(app, worker_bridge).await;

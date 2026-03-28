@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -41,6 +41,9 @@ const SLASH_COMMANDS: &[&str] = &[
     "/chat",
     "/new",
     "/keys",
+    "/spawn",
+    "/kill",
+    "/agents",
 ];
 
 /// A spawned sub-agent with its own independent LLM session.
@@ -250,12 +253,21 @@ pub struct AppState {
     pub slash_autocomplete: bool,
     pub selected_settings_index: usize,
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>,
+    // Spawned sub-agent state
+    pub spawned_agents: HashMap<String, SpawnedAgent>,
+    pub active_spawned_agent: Option<String>,
+    pub streaming_agent_texts: HashMap<String, String>,
     // Message line cache for render performance
     pub cached_message_lines: Vec<ratatui::text::Line<'static>>,
     pub cached_messages_len: usize,
     pub cached_max_width: usize,
     pub cached_streaming_snapshot: Option<String>,
     pub cached_processing: bool,
+    // Watchdog state for stuck request detection
+    pub main_watchdog_root_prompt: Option<String>,
+    pub main_last_event_at: Option<Instant>,
+    pub main_watchdog_restart_count: u32,
+    pub main_inflight_prompt: Option<String>,
 }
 
 impl Default for AppState {
@@ -318,12 +330,21 @@ impl Default for AppState {
             slash_autocomplete: true,
             selected_settings_index: 0,
             mcp_registry: Arc::new(crate::tui::app::mcp::TuiMcpRegistry::new()),
+            // Spawned sub-agents
+            spawned_agents: HashMap::new(),
+            active_spawned_agent: None,
+            streaming_agent_texts: HashMap::new(),
             // Message line cache
             cached_message_lines: Vec::new(),
             cached_messages_len: 0,
             cached_max_width: 0,
             cached_streaming_snapshot: None,
             cached_processing: false,
+            // Watchdog state
+            main_watchdog_root_prompt: None,
+            main_last_event_at: None,
+            main_watchdog_restart_count: 0,
+            main_inflight_prompt: None,
         }
     }
 }
@@ -339,6 +360,17 @@ impl AppState {
             && self.cached_streaming_snapshot.as_deref() == Some(&self.streaming_text)
             && self.cached_processing == self.processing
     }
+    /// Combined cache-check method: returns cached lines (draining ownership) when
+    /// the cache is still valid for `max_width`, or `None` when a rebuild is
+    /// required.
+    pub fn get_or_build_message_lines(&mut self, max_width: usize) -> Option<Vec<Line<'static>>> {
+        if self.is_message_cache_valid(max_width) && !self.cached_message_lines.is_empty() {
+            Some(self.take_cached_message_lines())
+        } else {
+            None
+        }
+    }
+
 
     /// Take ownership of the cached lines, clearing the cache.
     pub(crate) fn take_cached_message_lines(&mut self) -> Vec<Line<'static>> {

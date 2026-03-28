@@ -1,0 +1,46 @@
+I'll start by exploring the existing code to understand the current structure.
+Now let me also read the `set_view_mode` method and the rest of the navigation file to understand patterns:
+Now let me read the `set_view_mode` method and see the `tui/mod.rs` to understand module registration:
+Now I have a thorough understanding of the codebase. Let me also check the `worker_bridge_registered_agents` to understand how agents are tracked and check the tui_old reference:
+Now I have full understanding. Let me implement all the changes. Here's the plan:
+
+1. Add `ViewMode::Protocol` to `models/mod.rs`
+2. Add `protocol_selected` and `protocol_scroll` to `AppState` in `state.rs`
+3. Create `src/tui/protocol_registry.rs` with the render function
+4. Register the module in `src/tui/mod.rs`
+5. Add the view dispatch in `ui/main.rs`
+6. Add `/protocol` command handling in `commands.rs`
+7. Add `Ctrl+P` key binding in `event_handlers.rs`
+8. Add navigation handling in `navigation.rs`
+
+Let's start implementing:
+Now create the protocol registry view:
+Now register the module in `tui/mod.rs`:
+Now add the view dispatch in `ui/main.rs`:
+Now add the `ViewMode::Protocol` arm in the ui dispatch:
+Now update the `/protocol` command to open the Protocol view instead of the Bus view:
+Now add the `Ctrl+P` key binding in `event_handlers.rs`:
+Now add navigation handling for the Protocol view in `navigation.rs`. I need to add Protocol handling in `handle_up`, `handle_down`, `handle_page_up`, `handle_page_down`, `handle_escape`, and the mouse handlers:
+Let me re-read the mouse handler section to get exact whitespace:
+I see - the mouse handlers are in `event_handlers.rs`, not `navigation.rs`. Let me apply the first 3 edits (which should work) and then handle the mouse handlers separately:
+Now add the Protocol view handling in the mouse scroll handlers in `event_handlers.rs`:
+Let me read the two occurrences to differentiate them:
+Now I also need to check if `Clear` is imported in the protocol_registry.rs (it's not used, let me check), and also check if `Theme::primary_bg()` exists:
+There's no `primary_bg()` method on Theme. Let me check how other views handle highlight styles:
+The standard highlight style is `Style::default().bg(Color::DarkGray).fg(Color::Cyan).bold()`. Let me fix the protocol_registry.rs to use this standard pattern and remove the unused `Clear` import:
+Now fix the highlight_style to use the standard pattern:
+Now remove the unused `Theme` import since we no longer need it:
+Good, the edit confirmed removing `Theme`. But I also need to fix the `highlight_style` line that still references `Theme::primary_bg()`. Let me check the current state of the file:
+I see - the earlier edits didn't actually apply yet (they were in the confirmation diff). Let me write the full corrected file:
+Now let's run `cargo check` to verify:
+There are pre-existing errors (unrelated to my changes) and my `ViewMode::Protocol` is not being found. Let me verify the models/mod.rs edit actually applied:
+The `Protocol` variant was not added! The earlier `multiedit` confirmed the change but it seems it was reverted. Let me apply it again:
+All errors are pre-existing in `state.rs` around `smart_switch` — not related to my changes. Let me verify by checking if the errors mention any of my files:
+Those are just dead_code warnings on existing structs, not errors. Let me check more carefully:
+Hmm, no errors this time? Let me check the full output:
+**`cargo check` passes!** There are only pre-existing warnings (unused variables, dead code), and zero errors. My changes compiled successfully.
+
+Let me also verify all my changes are in place:
+The file wasn't saved! The `edit` tool showed a confirmation diff but the change wasn't persisted. Let me write it properly:
+The confirmation diffs show the changes but the file is not being persisted by the edit tool. Let me use `write` to overwrite the file:
+Now let me verify all other edits persisted. Let me check the key files:

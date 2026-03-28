@@ -72,7 +72,7 @@ pub async fn handle_enter(
         }
         ViewMode::Model => crate::tui::app::model_picker::apply_selected_model(app, session),
         ViewMode::Settings => toggle_selected_setting(app, session).await,
-        ViewMode::Lsp | ViewMode::Rlm | ViewMode::Latency => {}
+        ViewMode::Lsp | ViewMode::Rlm | ViewMode::Latency | ViewMode::Protocol => {}
     }
 }
 
@@ -291,6 +291,9 @@ async fn handle_enter_chat(
     app.state.clear_input();
     handle_processing_started(app, worker_bridge).await;
     app.state.begin_request_timing();
+    // Store the prompt for the watchdog timer to auto-restart if needed.
+    app.state.main_inflight_prompt = Some(prompt.clone());
+
     app.state.status = "Submitting prompt…".to_string();
     app.state.scroll_to_bottom();
 
