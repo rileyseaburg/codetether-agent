@@ -10,6 +10,31 @@ pub struct MergeManager;
 impl MergeManager {
     pub async fn merge(repo_path: &Path, branch: &str) -> Result<MergeResult> {
         validate_worktree_name(branch)?;
+
+        // Stash any uncommitted changes before merging to avoid conflicts
+        let dirty = Command::new("git")
+            .args(["diff", "--quiet"])
+            .current_dir(repo_path)
+            .output()
+            .await;
+        let has_dirty_changes = dirty.is_err() || !dirty.unwrap().status.success();
+
+        if has_dirty_changes {
+            tracing::info!("Stashing dirty working tree before merge");
+            let stash_output = Command::new("git")
+                .args(["stash", "--include-untracked"])
+                .current_dir(repo_path)
+                .output()
+                .await
+                .map_err(|e| anyhow!("git stash failed: {}", e))?;
+            if !stash_output.status.success() {
+                tracing::warn!(
+                    "Stash failed (may be no changes): {}",
+                    String::from_utf8_lossy(&stash_output.stderr)
+                );
+            }
+        }
+
         let output = Command::new("git")
             .args(["merge", "--no-ff", "--no-commit", branch])
             .current_dir(repo_path)
@@ -28,18 +53,28 @@ impl MergeManager {
                 .await
                 .map_err(|e| anyhow!("commit failed: {}", e))?;
             if !commit_output.status.success() {
+                let _ = Self::stash_pop(repo_path).await;
                 return Err(anyhow!(
                     "Merge commit failed: {}",
                     String::from_utf8_lossy(&commit_output.stderr)
                 ));
             }
             let files_changed = Self::count_changed_files(repo_path).await.unwrap_or(0);
+            let _ = Self::stash_pop(repo_path).await;
             return Ok(MergeResult {
                 success: true, aborted: false, conflicts: vec![],
                 conflict_diffs: vec![], files_changed,
                 summary: commit_msg,
             });
         }
+
+        // Merge failed — abort and restore stash
+        let _ = Command::new("git")
+            .args(["merge", "--abort"])
+            .current_dir(repo_path)
+            .output()
+            .await;
+        let _ = Self::stash_pop(repo_path).await;
 
         if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") {
             let conflicts = Self::get_conflict_list(repo_path).await?;
@@ -49,7 +84,24 @@ impl MergeManager {
                 files_changed: 0, summary: "Merge has conflicts".to_string(),
             });
         }
-        Err(anyhow!("Merge failed: {}", stderr))
+        Err(anyhow!("Git merge failed: {}", stderr))
+    }
+
+    /// Pop the most recent stash (if any) after a merge completes or fails.
+    async fn stash_pop(repo_path: &Path) -> Result<()> {
+        let output = Command::new("git")
+            .args(["stash", "pop"])
+            .current_dir(repo_path)
+            .output()
+            .await
+            .map_err(|e| anyhow!("git stash pop failed: {}", e))?;
+        if !output.status.success() {
+            tracing::warn!(
+                "stash pop failed (may be empty): {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Ok(())
     }
 
     pub async fn complete_merge(repo_path: &Path, commit_msg: &str) -> Result<MergeResult> {
