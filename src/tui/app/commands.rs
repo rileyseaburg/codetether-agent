@@ -376,11 +376,178 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo"
+                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /spawn /kill /agents"
                     .to_string();
         }
-        other => {
-            app.state.status = format!("Unknown command: {other}");
+        _ => {}
+    }
+
+    // --- commands with rest arguments handled below the simple match ---
+
+    if let Some(rest) = command_with_optional_args(&normalized, "/spawn") {
+        handle_spawn_command(app, rest).await;
+        return;
+    }
+
+    if let Some(rest) = command_with_optional_args(&normalized, "/kill") {
+        handle_kill_command(app, rest);
+        return;
+    }
+
+    if command_with_optional_args(&normalized, "/agents").is_some() {
+        handle_agents_command(app);
+        return;
+    }
+
+    // If we get here, none of the handlers above matched
+    if !matches!(
+        normalized.as_str(),
+        "/help"
+            | "/sessions"
+            | "/session"
+            | "/swarm"
+            | "/ralph"
+            | "/bus"
+            | "/protocol"
+            | "/model"
+            | "/settings"
+            | "/lsp"
+            | "/rlm"
+            | "/latency"
+            | "/chat"
+            | "/home"
+            | "/symbols"
+            | "/symbol"
+            | "/new"
+            | "/undo"
+            | "/keys"
+            | "/file"
+            | "/autoapply"
+            | "/network"
+            | "/autocomplete"
+            | "/mcp"
+    ) {
+        app.state.status = format!("Unknown command: {normalized}");
+    }
+}
+
+async fn handle_spawn_command(app: &mut App, rest: &str) {
+    let rest = rest.trim();
+    if rest.is_empty() {
+        app.state.status = "Usage: /spawn <name> [instructions]".to_string();
+        return;
+    }
+
+    let mut parts = rest.splitn(2, char::is_whitespace);
+    let Some(name) = parts.next().filter(|s| !s.is_empty()) else {
+        app.state.status = "Usage: /spawn <name> [instructions]".to_string();
+        return;
+    };
+
+    if app.state.spawned_agents.contains_key(name) {
+        app.state.status = format!("Agent '{name}' already exists. Use /kill {name} first.");
+        push_system_message(app, format!("Agent '{name}' already exists."));
+        return;
+    }
+
+    let instructions = parts.next().unwrap_or("").trim().to_string();
+    let profile = agent_profile(name);
+
+    let system_prompt = if instructions.is_empty() {
+        format!(
+            "You are an AI assistant codenamed '{}' ({}) working as a sub-agent.
+             Personality: {}
+             Collaboration style: {}
+             Signature move: {}",
+            profile.codename, profile.profile, profile.personality,
+            profile.collaboration_style, profile.signature_move,
+        )
+    } else {
+        instructions.clone()
+    };
+
+    match Session::new().await {
+        Ok(mut agent_session) => {
+            agent_session.agent = format!("spawned:{}", name);
+            agent_session.messages.push(crate::provider::Message {
+                role: crate::provider::Role::System,
+                content: vec![crate::provider::ContentPart::Text { text: system_prompt }],
+            });
+
+            let display_name = if instructions.is_empty() {
+                format!("{} [{}]", name, profile.codename)
+            } else {
+                name.to_string()
+            };
+
+            app.state.spawned_agents.insert(
+                name.to_string(),
+                SpawnedAgent {
+                    name: display_name.clone(),
+                    instructions,
+                    session: agent_session,
+                    is_processing: false,
+                },
+            );
+
+            app.state.status = format!("Spawned agent: {display_name}");
+            push_system_message(
+                app,
+                format!("Spawned agent '{}' [{}] — ready for messages.", name, profile.codename),
+            );
         }
+        Err(error) => {
+            app.state.status = format!("Failed to create agent session: {error}");
+            push_system_message(app, format!("Failed to spawn agent '{name}': {error}"));
+        }
+    }
+}
+
+fn handle_kill_command(app: &mut App, rest: &str) {
+    let name = rest.trim();
+    if name.is_empty() {
+        app.state.status = "Usage: /kill <name>".to_string();
+        return;
+    }
+
+    if app.state.spawned_agents.remove(name).is_some() {
+        if app.state.active_spawned_agent.as_deref() == Some(name) {
+            app.state.active_spawned_agent = None;
+        }
+        app.state.streaming_agent_texts.remove(name);
+        app.state.status = format!("Agent '{name}' removed.");
+        push_system_message(app, format!("Agent '{name}' has been shut down."));
+    } else {
+        app.state.status = format!("Agent '{name}' not found.");
+    }
+}
+
+fn handle_agents_command(app: &mut App) {
+    if app.state.spawned_agents.is_empty() {
+        app.state.status = "No spawned agents.".to_string();
+        push_system_message(app, "No spawned agents. Use /spawn <name> to create one.");
+    } else {
+        let count = app.state.spawned_agents.len();
+        let lines: Vec<String> = app
+            .state
+            .spawned_agents
+            .iter()
+            .map(|(key, agent)| {
+                let msg_count = agent.session.messages.len();
+                let model = agent.session.metadata.model.as_deref().unwrap_or("default");
+                let active = if app.state.active_spawned_agent.as_deref() == Some(key) {
+                    " [active]"
+                } else {
+                    ""
+                };
+                format!("  {}{} — {} messages — model: {}", agent.name, active, msg_count, model)
+            })
+            .collect();
+
+        let body = lines.join("
+");
+        app.state.status = format!("{count} spawned agent(s)");
+        push_system_message(app, format!("Spawned agents ({count}):
+{body}"));
     }
 }
