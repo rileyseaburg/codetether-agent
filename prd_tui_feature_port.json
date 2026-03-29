@@ -79,7 +79,7 @@
         "cargo check passes"
       ],
       "verification_steps": [],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [],
       "complexity": 3

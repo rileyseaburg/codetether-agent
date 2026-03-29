@@ -54,6 +54,7 @@ pub async fn handle_enter(
 ) {
     match app.state.view_mode {
         ViewMode::Sessions => handle_enter_sessions(app, cwd, session).await,
+        ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_enter(app, cwd),
         ViewMode::Swarm => app.state.swarm.enter_detail(),
         ViewMode::Ralph => app.state.ralph.enter_detail(),
         ViewMode::Bus if app.state.bus_log.filter_input_mode => handle_enter_bus_filter(app),
@@ -89,6 +90,8 @@ pub async fn handle_backspace(app: &mut App) {
         };
     } else if app.state.view_mode == ViewMode::Model {
         app.state.model_filter_backspace();
+    } else if app.state.view_mode == ViewMode::FilePicker {
+        crate::tui::app::file_picker::file_picker_filter_backspace(app);
     } else if app.state.view_mode == ViewMode::Chat {
         app.state.delete_backspace();
         if app.state.input.is_empty() {

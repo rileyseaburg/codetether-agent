@@ -294,6 +294,12 @@ pub struct AppState {
     pub chat_sync_last_error: Option<String>,
     pub chat_sync_uploaded_bytes: u64,
     pub chat_sync_uploaded_batches: u64,
+    // File picker state
+    pub file_picker_dir: std::path::PathBuf,
+    pub file_picker_entries: Vec<crate::tui::app::file_picker::FilePickerEntry>,
+    pub file_picker_selected: usize,
+    pub file_picker_filter: String,
+    pub file_picker_active: bool,
 }
 
 impl Default for AppState {
@@ -384,6 +390,12 @@ impl Default for AppState {
             chat_sync_last_error: None,
             chat_sync_uploaded_bytes: 0,
             chat_sync_uploaded_batches: 0,
+            // File picker state
+            file_picker_dir: std::path::PathBuf::new(),
+            file_picker_entries: Vec::new(),
+            file_picker_selected: 0,
+            file_picker_filter: String::new(),
+            file_picker_active: false,
         }
     }
 }

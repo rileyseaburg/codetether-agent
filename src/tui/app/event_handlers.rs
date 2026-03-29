@@ -61,6 +61,14 @@ pub async fn handle_event(
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
         }
+        KeyCode::Char('o')
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            crate::tui::app::file_picker::open_file_picker(app, cwd);
+        }
         KeyCode::Char('v')
             if key
                 .modifiers
@@ -243,7 +251,8 @@ fn scroll_mouse_up(app: &mut App) {
         | ViewMode::Rlm
         | ViewMode::Latency        | ViewMode::Protocol        | ViewMode::Bus
         | ViewMode::Sessions
-        | ViewMode::Model => {}
+        | ViewMode::Model
+        | ViewMode::FilePicker => {}
     }
 }
 
@@ -321,7 +330,8 @@ fn scroll_mouse_down(app: &mut App) {
         | ViewMode::Protocol
         | ViewMode::Bus
         | ViewMode::Sessions
-        | ViewMode::Model => {}
+        | ViewMode::Model
+        | ViewMode::FilePicker => {}
     }
 }
 

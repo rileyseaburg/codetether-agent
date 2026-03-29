@@ -77,6 +77,7 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
         ),
         ViewMode::Latency => render_latency(f, f.area(), app),
         ViewMode::Protocol => {}
+        ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
     }
 
     if app.state.symbol_search.loading
