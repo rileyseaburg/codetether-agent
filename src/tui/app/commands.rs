@@ -551,3 +551,39 @@ fn handle_agents_command(app: &mut App) {
 {body}"));
     }
 }
+async fn handle_go_command(
+    app: &mut App,
+    session: &mut Session,
+    registry: Option<&Arc<ProviderRegistry>>,
+    rest: &str,
+) {
+    use crate::tui::app::okr_gate::{
+        ensure_okr_repository, next_go_model, PendingOkrApproval,
+    };
+    use crate::tui::constants::AUTOCHAT_MAX_AGENTS;
+
+    let task = rest.trim();
+    if task.is_empty() {
+        app.state.status = "Usage: /go <task description>".to_string();
+        return;
+    }
+
+    // Rotate model for /go
+    let current_model = session.metadata.model.as_deref();
+    let model = next_go_model(current_model);
+    session.metadata.model = Some(model.clone());
+    if let Err(error) = session.save().await {
+        tracing::warn!(error = %error, "Failed to save session after model swap");
+    }
+
+    // Initialize OKR repository if needed
+    ensure_okr_repository(&mut app.state.okr_repository).await;
+
+    // Draft OKR and present for approval
+    let pending = PendingOkrApproval::propose(task.to_string(), AUTOCHAT_MAX_AGENTS, model).await;
+
+    push_system_message(app, pending.approval_prompt());
+
+    app.state.pending_okr_approval = Some(pending);
+    app.state.status = "OKR draft awaiting approval \u{2014} [A]pprove or [D]eny".to_string();
+}

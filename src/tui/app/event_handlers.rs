@@ -348,3 +348,72 @@ mod tests {
         assert_eq!(app.state.chat_scroll, 22);
     }
 }
+
+use crate::okr::ApprovalDecision;
+use crate::tui::chat::message::{ChatMessage, MessageType};
+
+async fn handle_okr_approve(app: &mut App) {
+    let Some(pending) = app.state.pending_okr_approval.take() else {
+        return;
+    };
+
+    let okr_id = pending.okr.id;
+    let run_id = pending.run.id;
+    let task = pending.task.clone();
+    let agent_count = pending.agent_count;
+    let model = pending.model.clone();
+
+    // Update run status to approved
+    let mut approved_run = pending.run;
+    approved_run.record_decision(ApprovalDecision::approve(
+        approved_run.id,
+        "User approved via TUI",
+    ));
+
+    // Save to repository if available
+    if let Some(ref repo) = app.state.okr_repository {
+        let repo: Arc<crate::okr::OkrRepository> = std::sync::Arc::clone(repo);
+        let okr_to_save = pending.okr;
+        let run_to_save = approved_run;
+        tokio::spawn(async move {
+            if let Err(e) = repo.create_okr(okr_to_save).await {
+                tracing::error!(error = %e, "Failed to save approved OKR");
+            }
+            if let Err(e) = repo.create_run(run_to_save).await {
+                tracing::error!(error = %e, "Failed to save approved OKR run");
+            }
+        });
+    }
+
+    app.state
+        .messages
+        .push(ChatMessage::new(
+            MessageType::System,
+            format!(
+                "\u{2705} OKR approved. Starting OKR-gated relay (ID: {okr_id})...\n\
+                 Task: {task}\n\
+                 Agents: {agent_count} | Model: {model}"
+            ),
+        ));
+    app.state.scroll_to_bottom();
+    app.state.status = format!("OKR approved (ID: {okr_id}). Relay starting...");
+}
+
+async fn handle_okr_deny(app: &mut App) {
+    let Some(mut pending) = app.state.pending_okr_approval.take() else {
+        return;
+    };
+
+    pending
+        .run
+        .record_decision(ApprovalDecision::deny(pending.run.id, "User denied via TUI"));
+
+    app.state
+        .messages
+        .push(ChatMessage::new(
+            MessageType::System,
+            "\u{274c} OKR denied. Relay cancelled.".to_string(),
+        ));
+    app.state.scroll_to_bottom();
+    app.state.status = "OKR denied. Relay cancelled.".to_string();
+}
