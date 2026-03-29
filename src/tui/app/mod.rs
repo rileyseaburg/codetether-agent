@@ -9,6 +9,7 @@ pub mod mcp;
 pub mod message_text;
 pub mod model_picker;
 pub mod navigation;
+pub mod okr_gate;
 pub mod run;
 pub mod session_events;
 pub mod session_sync;

@@ -268,6 +268,9 @@ pub struct AppState {
     pub main_last_event_at: Option<Instant>,
     pub main_watchdog_restart_count: u32,
     pub main_inflight_prompt: Option<String>,
+    // OKR gate state for /go command
+    pub okr_repository: Option<Arc<crate::okr::OkrRepository>>,
+    pub pending_okr_approval: Option<super::okr_gate::PendingOkrApproval>,
 }
 
 impl Default for AppState {
@@ -345,6 +348,9 @@ impl Default for AppState {
             main_last_event_at: None,
             main_watchdog_restart_count: 0,
             main_inflight_prompt: None,
+            // OKR gate state
+            okr_repository: None,
+            pending_okr_approval: None,
         }
     }
 }
