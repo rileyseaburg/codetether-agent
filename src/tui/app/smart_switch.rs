@@ -169,6 +169,60 @@ pub fn smart_switch_candidates(
     candidates
 }
 
+/// Attempts to schedule a smart switch retry after a provider error.
+///
+/// Returns `Some(PendingSmartSwitchRetry)` if a retry was scheduled, `None` otherwise
+/// (non-retryable error, max retries exceeded, or no fallback candidates available).
+pub fn maybe_schedule_smart_switch_retry(
+    error_msg: &str,
+    current_model: Option<&str>,
+    current_provider: Option<&str>,
+    available_providers: &[String],
+    prompt: &str,
+    retry_count: u32,
+    attempted_models: &[String],
+) -> Option<PendingSmartSwitchRetry> {
+    if !is_retryable_provider_error(error_msg) {
+        return None;
+    }
+
+    let max = smart_switch_max_retries() as u32;
+    if retry_count >= max {
+        return None;
+    }
+
+    let attempted: HashSet<String> = attempted_models
+        .iter()
+        .map(|m| smart_switch_model_key(m))
+        .collect();
+
+    let candidates =
+        smart_switch_candidates(current_model, current_provider, available_providers, &attempted);
+
+    candidates.into_iter().next().map(|target_model| PendingSmartSwitchRetry {
+        prompt: prompt.to_string(),
+        target_model,
+    });
+
+/// Extracts the provider name from a model reference (e.g. "minimax/MiniMax-M2" -> "minimax").
+/// Returns `None` if the reference doesn't contain a `/`.
+pub fn extract_provider_from_model(model_ref: &str) -> Option<&str> {
+    model_ref.split('/').next().filter(|p| !p.is_empty())
+}
+
+/// Returns `true` when the model has changed compared to the current session model,
+/// indicating a smart switch should be executed.
+pub fn should_execute_smart_switch(
+    current_model: Option<&str>,
+    pending: Option<&PendingSmartSwitchRetry>,
+) -> bool {
+    match (current_model, pending) {
+        (Some(current), Some(retry)) => current != retry.target_model,
+        (_, Some(_)) => true,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

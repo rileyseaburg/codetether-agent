@@ -25,7 +25,7 @@
     {
       "id": "TP-002",
       "title": "Spawned Sub-Agent Commands: /spawn, /kill, /agents",
-      "description": "Implement the slash commands for managing spawned sub-agents. Port from tui_old.rs L4584-L4610 (/spawn), L4774-L4800 (/kill), L4723-L4770 (/agents).\n\n/spawn <name> [instructions] \u2014 Creates a new SpawnedAgent with its own Session. Uses agent_profile() to assign a codename if name matches a known profile. Creates a new Session for the agent and inserts into spawned_agents HashMap. Announces creation on the bus if available.\n\n/kill <name> \u2014 Removes the agent from spawned_agents. If active_spawned_agent was that agent, clears it. Announces shutdown on bus.\n\n/agents \u2014 Lists all spawned agents with their name, model, message count, and active status. Shows protocol status if bus is connected.\n\nAdd these to src/tui/app/commands.rs.",
+      "description": "Implement the slash commands for managing spawned sub-agents. Port from tui_old.rs L4584-L4610 (/spawn), L4774-L4800 (/kill), L4723-L4770 (/agents).\n\n/spawn <name> [instructions] — Creates a new SpawnedAgent with its own Session. Uses agent_profile() to assign a codename if name matches a known profile. Creates a new Session for the agent and inserts into spawned_agents HashMap. Announces creation on the bus if available.\n\n/kill <name> — Removes the agent from spawned_agents. If active_spawned_agent was that agent, clears it. Announces shutdown on bus.\n\n/agents — Lists all spawned agents with their name, model, message count, and active status. Shows protocol status if bus is connected.\n\nAdd these to src/tui/app/commands.rs.",
       "acceptance_criteria": [
         "/spawn command creates a SpawnedAgent with its own Session",
         "/spawn with known profile name uses agent_profile() codename",
@@ -35,7 +35,7 @@
         "cargo check passes"
       ],
       "verification_steps": [],
-      "passes": false,
+      "passes": true,
       "priority": 1,
       "depends_on": [
         "TP-001"
@@ -45,7 +45,7 @@
     {
       "id": "TP-003",
       "title": "Agent Focus and Message Routing",
-      "description": "Implement agent focus, @mention routing, and the /agent command. Port from tui_old.rs L4720-L4960.\n\n/agent <name> \u2014 Focus chat on a specific spawned agent (sets active_spawned_agent). /agent main or /agent off clears focus. /agent <name> <message> sends a single message without changing focus. /agent with no args opens agent picker (ViewMode::AgentPicker).\n\n@mention routing: When input starts with @agent_name, dispatch to that agent. When active_spawned_agent is set, all messages auto-route to that agent.\n\ndispatch_to_agent_internal() \u2014 sends message to agent's Session, handles response via agent_response_rxs channel. handle_agent_response() \u2014 processes SessionEvent from spawned agent (mirrors handle_response but prefixes with agent name).\n\nAdd ViewMode::AgentPicker variant to src/tui/models/mod.rs.",
+      "description": "Implement agent focus, @mention routing, and the /agent command. Port from tui_old.rs L4720-L4960.\n\n/agent <name> — Focus chat on a specific spawned agent (sets active_spawned_agent). /agent main or /agent off clears focus. /agent <name> <message> sends a single message without changing focus. /agent with no args opens agent picker (ViewMode::AgentPicker).\n\n@mention routing: When input starts with @agent_name, dispatch to that agent. When active_spawned_agent is set, all messages auto-route to that agent.\n\ndispatch_to_agent_internal() — sends message to agent's Session, handles response via agent_response_rxs channel. handle_agent_response() — processes SessionEvent from spawned agent (mirrors handle_response but prefixes with agent name).\n\nAdd ViewMode::AgentPicker variant to src/tui/models/mod.rs.",
       "acceptance_criteria": [
         "/agent <name> sets active_spawned_agent for focus",
         "/agent main or /agent off clears focus",
@@ -67,7 +67,7 @@
     {
       "id": "TP-004",
       "title": "Smart Model Switching on Errors",
-      "description": "Port the smart model switching system from tui_old.rs L10800-L11000. When a provider returns a retryable error, automatically switch to a fallback model and retry.\n\nKey functions:\n- is_retryable_provider_error(error_msg) \u2014 classifies errors as retryable (rate limit, timeout, 5xx, connection refused, context length exceeded) vs permanent\n- smart_switch_preferred_models(provider) \u2014 returns ordered fallback model list per provider\n- maybe_schedule_smart_switch_retry() \u2014 called from session_events Error handler, increments retry count, picks next model\n- apply_pending_smart_switch_retry() \u2014 executes the retry with the new model\n\nAdd fields to AppState: smart_switch_retry_count (u32), smart_switch_attempted_models (Vec<String>), pending_smart_switch_retry (Option<PendingSmartSwitchRetry>).\n\nConstants already exist in src/tui/constants.rs (SMART_SWITCH_MAX_RETRIES, SMART_SWITCH_PROVIDER_PRIORITY). Tests already exist in src/tui/tests.rs.",
+      "description": "Port the smart model switching system from tui_old.rs L10800-L11000. When a provider returns a retryable error, automatically switch to a fallback model and retry.\n\nKey functions:\n- is_retryable_provider_error(error_msg) — classifies errors as retryable (rate limit, timeout, 5xx, connection refused, context length exceeded) vs permanent\n- smart_switch_preferred_models(provider) — returns ordered fallback model list per provider\n- maybe_schedule_smart_switch_retry() — called from session_events Error handler, increments retry count, picks next model\n- apply_pending_smart_switch_retry() — executes the retry with the new model\n\nAdd fields to AppState: smart_switch_retry_count (u32), smart_switch_attempted_models (Vec<String>), pending_smart_switch_retry (Option<PendingSmartSwitchRetry>).\n\nConstants already exist in src/tui/constants.rs (SMART_SWITCH_MAX_RETRIES, SMART_SWITCH_PROVIDER_PRIORITY). Tests already exist in src/tui/tests.rs.",
       "acceptance_criteria": [
         "is_retryable_provider_error() classifies errors correctly",
         "smart_switch_preferred_models() returns fallback list per provider",
@@ -140,7 +140,7 @@
         "cargo check passes"
       ],
       "verification_steps": [],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [],
       "complexity": 2
@@ -148,7 +148,7 @@
     {
       "id": "TP-008",
       "title": "Chat Sync / MinIO Persistence",
-      "description": "Replace the 9-line stub in src/tui/chat/sync.rs with the full MinIO chat sync system from tui_old.rs L460-L500 (config), L1073-L1130 (batch upload), L6690-L6760 (event handler).\n\nChatSyncConfig struct: endpoint, access_key, secret_key, bucket, prefix. ChatSyncBatch struct: messages to upload, session_id, batch_number.\n\nsync_chat_archive_batch() \u2014 uploads a batch of messages to MinIO as JSON. run_chat_sync_worker() \u2014 background tokio task that periodically batches and uploads new messages.\n\nChatSyncUiEvent enum: Status(String), BatchUploaded { count, batch_num }, Error(String). handle_chat_sync_event() updates status fields on AppState.\n\nto_archive_record() converts ChatMessage to a serializable archive record.\n\nAdd state fields: chat_sync_rx, chat_sync_status, chat_sync_last_success, chat_sync_last_error, chat_sync_uploaded_count, chat_sync_uploaded_batches.\n\nAdd chat_sync_rx branch to event loop in src/tui/app/event_loop.rs.\n\nConstants already exist in src/tui/constants.rs (CHAT_SYNC_*).",
+      "description": "Replace the 9-line stub in src/tui/chat/sync.rs with the full MinIO chat sync system from tui_old.rs L460-L500 (config), L1073-L1130 (batch upload), L6690-L6760 (event handler).\n\nChatSyncConfig struct: endpoint, access_key, secret_key, bucket, prefix. ChatSyncBatch struct: messages to upload, session_id, batch_number.\n\nsync_chat_archive_batch() — uploads a batch of messages to MinIO as JSON. run_chat_sync_worker() — background tokio task that periodically batches and uploads new messages.\n\nChatSyncUiEvent enum: Status(String), BatchUploaded { count, batch_num }, Error(String). handle_chat_sync_event() updates status fields on AppState.\n\nto_archive_record() converts ChatMessage to a serializable archive record.\n\nAdd state fields: chat_sync_rx, chat_sync_status, chat_sync_last_success, chat_sync_last_error, chat_sync_uploaded_count, chat_sync_uploaded_batches.\n\nAdd chat_sync_rx branch to event loop in src/tui/app/event_loop.rs.\n\nConstants already exist in src/tui/constants.rs (CHAT_SYNC_*).",
       "acceptance_criteria": [
         "ChatSyncConfig struct with endpoint, credentials, bucket",
         "ChatSyncBatch struct for batch uploads",
@@ -170,7 +170,7 @@
     {
       "id": "TP-009",
       "title": "Protocol Registry View",
-      "description": "Port the protocol registry view from tui_old.rs L9450-L9600 (render) and L8630-L8674 (ui dispatch). This is a master/detail view showing registered AgentCards from the protocol bus.\n\nAdd ViewMode::Protocol variant to models/mod.rs. Add protocol_selected (usize) and protocol_scroll (u16) fields to AppState.\n\nrender_protocol_registry() \u2014 Left pane: list of AgentCards with name, URL, status. Right pane: detail view of selected card showing full metadata, capabilities, skills.\n\nAdd Ctrl+P key binding to open protocol registry. Update /protocol command to switch to Protocol view (currently aliased to /bus which shows bus log, not registry).\n\nNavigation: arrow keys select card, PgUp/PgDn scroll detail, Esc returns to chat.",
+      "description": "Port the protocol registry view from tui_old.rs L9450-L9600 (render) and L8630-L8674 (ui dispatch). This is a master/detail view showing registered AgentCards from the protocol bus.\n\nAdd ViewMode::Protocol variant to models/mod.rs. Add protocol_selected (usize) and protocol_scroll (u16) fields to AppState.\n\nrender_protocol_registry() — Left pane: list of AgentCards with name, URL, status. Right pane: detail view of selected card showing full metadata, capabilities, skills.\n\nAdd Ctrl+P key binding to open protocol registry. Update /protocol command to switch to Protocol view (currently aliased to /bus which shows bus log, not registry).\n\nNavigation: arrow keys select card, PgUp/PgDn scroll detail, Esc returns to chat.",
       "acceptance_criteria": [
         "ViewMode::Protocol variant exists",
         "protocol_selected and protocol_scroll state fields",
@@ -191,7 +191,7 @@
     {
       "id": "TP-010",
       "title": "Missing Key Bindings: Ctrl+L, Ctrl+S, Ctrl+B",
-      "description": "Add missing keyboard shortcuts from tui_old.rs L8122-L8270 to src/tui/app/event_handlers.rs.\n\nCtrl+L \u2014 Switch to bus protocol log (ViewMode::Bus). Same as F4 and /bus command.\nCtrl+S \u2014 Toggle swarm view (ViewMode::Swarm). Same as F2 and /swarm toggle.\nCtrl+B \u2014 Reserved for future webview layout toggle (for now, show status message 'Webview layout not yet available').\n\nThese are convenience shortcuts that mirror existing slash commands.",
+      "description": "Add missing keyboard shortcuts from tui_old.rs L8122-L8270 to src/tui/app/event_handlers.rs.\n\nCtrl+L — Switch to bus protocol log (ViewMode::Bus). Same as F4 and /bus command.\nCtrl+S — Toggle swarm view (ViewMode::Swarm). Same as F2 and /swarm toggle.\nCtrl+B — Reserved for future webview layout toggle (for now, show status message 'Webview layout not yet available').\n\nThese are convenience shortcuts that mirror existing slash commands.",
       "acceptance_criteria": [
         "Ctrl+L switches to ViewMode::Bus",
         "Ctrl+S toggles ViewMode::Swarm",
@@ -240,7 +240,7 @@
         "cargo check passes"
       ],
       "verification_steps": [],
-      "passes": false,
+      "passes": true,
       "priority": 3,
       "depends_on": [
         "TP-002",
@@ -251,7 +251,7 @@
     {
       "id": "TP-013",
       "title": "Autochat Multi-Agent Relay",
-      "description": "Port the autochat relay system from tui_old.rs L4373-L4470 (commands), L5800-L6690 (execution). This is the largest missing system (~2000 lines).\n\nAdd fields to AppState: autochat_rx (Option<mpsc::UnboundedReceiver<AutochatUiEvent>>), autochat_running (bool), autochat_started_at (Option<Instant>), autochat_status (Option<String>).\n\nAutomate multi-turn agent execution: /autochat [count] <task> launches a relay that sends the task to the agent, waits for completion, then sends follow-up prompts for the specified count.\n\nstart_autochat_execution() \u2014 spawns a background task that drives the relay. RelayCheckpoint for crash recovery \u2014 serialize current state to disk periodically so /resume can pick up.\n\n/autochat-local forces local CUDA model. /resume [session_id] resumes from checkpoint.\n\nAdd autochat_rx branch to event loop. Constants already exist (AUTOCHAT_*).",
+      "description": "Port the autochat relay system from tui_old.rs L4373-L4470 (commands), L5800-L6690 (execution). This is the largest missing system (~2000 lines).\n\nAdd fields to AppState: autochat_rx (Option<mpsc::UnboundedReceiver<AutochatUiEvent>>), autochat_running (bool), autochat_started_at (Option<Instant>), autochat_status (Option<String>).\n\nAutomate multi-turn agent execution: /autochat [count] <task> launches a relay that sends the task to the agent, waits for completion, then sends follow-up prompts for the specified count.\n\nstart_autochat_execution() — spawns a background task that drives the relay. RelayCheckpoint for crash recovery — serialize current state to disk periodically so /resume can pick up.\n\n/autochat-local forces local CUDA model. /resume [session_id] resumes from checkpoint.\n\nAdd autochat_rx branch to event loop. Constants already exist (AUTOCHAT_*).",
       "acceptance_criteria": [
         "autochat state fields on AppState",
         "AutochatUiEvent enum or import existing",
@@ -288,7 +288,7 @@
         "cargo check passes"
       ],
       "verification_steps": [],
-      "passes": false,
+      "passes": true,
       "priority": 2,
       "depends_on": [
         "TP-013"
@@ -299,11 +299,11 @@
   "technical_requirements": [
     "All changes must compile with `cargo check` and pass `cargo clippy --all-features`",
     "Preserve existing modular TUI architecture under src/tui/ (59 files across app/, ui/, chat/, models/, utils/)",
-    "Reference implementation is tui_old.rs (11,964 lines) at project root \u2014 port logic, not copy verbatim",
+    "Reference implementation is tui_old.rs (11,964 lines) at project root — port logic, not copy verbatim",
     "Use ratatui 0.30.0 APIs and Stylize helpers per code style guide",
     "Use tracing macros (info!, warn!, error!) instead of println!",
     "Use anyhow::Result for fallible functions",
-    "Never hardcode secrets \u2014 all credentials from Vault",
+    "Never hardcode secrets — all credentials from Vault",
     "New state fields go on AppState in src/tui/app/state.rs",
     "New slash commands go in src/tui/app/commands.rs",
     "New key bindings go in src/tui/app/event_handlers.rs",

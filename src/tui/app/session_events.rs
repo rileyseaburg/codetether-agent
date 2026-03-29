@@ -1,5 +1,7 @@
 use crate::session::{Session, SessionEvent};
+use crate::tui::app::smart_switch::maybe_schedule_smart_switch_retry;
 use crate::tui::app::state::App;
+use crate::tui::app::smart_switch::smart_switch_model_key;
 use crate::tui::app::text::truncate_preview;
 use crate::tui::app::worker_bridge::{handle_processing_started, handle_processing_stopped};
 use crate::tui::chat::message::{ChatMessage, MessageType};
@@ -112,6 +114,41 @@ pub async fn handle_session_event(
             handle_processing_stopped(app, worker_bridge).await;
             app.state.streaming_text.clear();
             app.state.complete_request_timing();
+
+            // Attempt smart switch retry on retryable provider errors
+            let current_model = session.metadata.model.as_deref();
+            let current_provider = current_model.and_then(|m| m.split('/').next());
+            let prompt = app.state.main_inflight_prompt.clone().unwrap_or_default();
+
+            if let Some(pending) = maybe_schedule_smart_switch_retry(
+                &err,
+                current_model,
+                current_provider,
+                &app.state.available_models,
+                &prompt,
+                app.state.smart_switch_retry_count,
+                &app.state.smart_switch_attempted_models,
+            ) {
+                app.state.smart_switch_retry_count += 1;
+                app
+                    .state
+                    .smart_switch_attempted_models
+                    .push(current_model.unwrap_or("unknown").to_string());
+                app.state.smart_switch_attempted_models.push(pending.target_model.clone());
+                app.state.status = format!(
+                    "Smart switch retry {}/{} → {}",
+                    app.state.smart_switch_retry_count,
+                    smart_switch_max_retries(),
+                    pending.target_model,
+                );
+                app.state.pending_smart_switch_retry = Some(pending);
+            } else {
+                // No retry possible — reset smart switch state
+                app.state.smart_switch_retry_count = 0;
+                app.state.smart_switch_attempted_models.clear();
+                app.state.pending_smart_switch_retry = None;
+            }
+
             app.state
                 .messages
                 .push(ChatMessage::new(MessageType::Error, err.clone()));

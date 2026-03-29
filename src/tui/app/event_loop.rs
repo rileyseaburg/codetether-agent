@@ -14,6 +14,7 @@ use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::background::drain_background_updates;
 use crate::tui::app::event_handlers::{handle_event, handle_mouse_event, handle_paste_event};
+use crate::tui::app::smart_switch::should_execute_smart_switch;
 use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::sync_worker_bridge_agents;
 use crate::tui::ui::main::ui;
@@ -81,6 +82,35 @@ pub async fn run_event_loop(
                 crate::tui::app::background::apply_single_result(
                     app, cwd, session, &mut worker_bridge, result,
                 ).await;
+
+                // Execute pending smart switch retry if one was scheduled
+                if let Some(pending) = app.state.pending_smart_switch_retry.take() {
+                    if should_execute_smart_switch(session.metadata.model.as_deref(), Some(&pending)) {
+                        session.metadata.model = Some(pending.target_model.clone());
+                        let _ = session.save().await;
+
+                        app.state.processing = true;
+                        app.state.begin_request_timing();
+                        app.state.main_inflight_prompt = Some(pending.prompt.clone());
+                        app.state.main_last_event_at = Some(Instant::now());
+                        app.state.status = format!("Retrying with {}…", pending.target_model);
+
+                        if let Some(registry) = registry.as_ref() {
+                            let mut session_for_task = session.clone();
+                            let event_tx = event_tx.clone();
+                            let result_tx = result_tx.clone();
+                            let reg = Arc::clone(registry);
+                            let prompt = pending.prompt;
+                            tokio::spawn(async move {
+                                let result = session_for_task
+                                    .prompt_with_events(&prompt, event_tx, reg)
+                                    .await
+                                    .map(|_| session_for_task);
+                                let _ = result_tx.send(result).await;
+                            });
+                        }
+                    }
+                }
             }
 
             // Watchdog timer: detect stuck requests and auto-restart.

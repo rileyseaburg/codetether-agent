@@ -13,6 +13,7 @@ pub mod okr_gate;
 pub mod run;
 pub mod session_events;
 pub mod session_sync;
+pub mod smart_switch;
 pub mod settings;
 pub mod state;
 pub mod symbols;
