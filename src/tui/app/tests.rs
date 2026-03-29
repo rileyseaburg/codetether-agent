@@ -109,12 +109,12 @@ async fn slash_file_path_attaches_file_to_composer() {
     std::fs::write(&file_path, "# Notes\nship it").expect("fixture should write");
 
     let mut app = App::default();
-    let session = Session::new().await.expect("session should create");
+    let mut session = Session::new().await.expect("session should create");
 
     handle_slash_command(
         &mut app,
         temp.path(),
-        &session,
+        &mut session,
         None,
         &format!("/file {}", file_path.display()),
     )
