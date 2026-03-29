@@ -238,6 +238,33 @@ impl WorktreeManager {
         let branch = info.branch.clone();
         drop(worktrees); // Release lock before git operations
 
+        // Pre-merge cleanup: reset any leftover unmerged index entries from
+        // previous failed merges.  Without this, `git merge` refuses to start
+        // ("Merging is not possible because you have unmerged files.").
+        let umg = std::process::Command::new("git")
+            .args(["diff", "--name-only", "--diff-filter=U"])
+            .current_dir(&self.repo_path)
+            .output()
+            .context("Failed to check for unmerged files")?;
+        if !String::from_utf8_lossy(&umg.stdout).trim().is_empty() {
+            tracing::warn!("Resetting unmerged index entries before merge");
+            // Abort any lingering merge state first
+            let _ = std::process::Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&self.repo_path)
+                .output();
+            // Hard-reset the index to HEAD to clear unmerged entries
+            let _ = std::process::Command::new("git")
+                .args(["reset", "HEAD", "--"])
+                .current_dir(&self.repo_path)
+                .output();
+            // Restore working tree files to match index
+            let _ = std::process::Command::new("git")
+                .args(["checkout", "--", "."])
+                .current_dir(&self.repo_path)
+                .output();
+        }
+
         // Stash any uncommitted changes before merging to avoid conflicts
         let dirty = std::process::Command::new("git")
             .args(["diff", "--quiet"])
