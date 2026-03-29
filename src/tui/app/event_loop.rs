@@ -171,15 +171,23 @@ pub async fn run_event_loop(
                 }
             }
 
-            // Chat sync UI events from background worker.
-            if let Some(ref mut rx) = app.state.chat_sync_rx {
-                Some(evt) = rx.recv() => {
+            // Tick: drain bus messages & worker bridge state,
+            // and non-blockingly poll any chat-sync UI events.
+            _ = tokio::time::sleep(tick) => {
+                let sync_events: Vec<_> = app.state.chat_sync_rx
+                    .as_mut()
+                    .map(|rx| {
+                        let mut evts = Vec::new();
+                        while let Ok(evt) = rx.try_recv() {
+                            evts.push(evt);
+                        }
+                        evts
+                    })
+                    .unwrap_or_default();
+                for evt in sync_events {
                     sync::handle_chat_sync_event(&mut app.state, evt);
                 }
             }
-
-            // Tick: drain bus messages & worker bridge state.
-            _ = tokio::time::sleep(tick) => {}
         }
 
         // Non-blocking drain of any remaining bus / worker bridge messages
