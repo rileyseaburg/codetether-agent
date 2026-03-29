@@ -1,41 +1,17 @@
-Now I need to find where `normalize_slash_command` is called in the input handling pipeline, and where slash command hints are defined.
-Now let me find where autocomplete hints are defined for slash commands:
-Now let me find where the autocomplete hints are defined:
-Now let me also check the navigation.rs for how autocomplete works:
-Now let me look at the `apply_selected_slash_suggestion` and `slash_suggestions_visible` methods to understand how autocomplete works:
-Now I have a full picture. Let me also check the `/agent` command since `/talk` and `/focus` map to it:
-There's no `/agent` command handler yet. Let me also check the `tui_old.rs` for the reference implementation:
-Now I have everything I need. Let me implement the changes:
+I can see the `SpawnedAgent` struct already exists but is missing the `model` and `created_at` fields required by the PRD. Let me check for usages before modifying.
+Now I have the full picture. The `SpawnedAgent` struct exists but is missing `model` and `created_at` fields from the PRD. I need to:
 
-1. Add `normalize_easy_command()` to `text.rs`
-2. Call it in `commands.rs` before `normalize_slash_command()`
-3. Add aliases to the `SLASH_COMMANDS` list in `state.rs`
-4. Add the easy-mode aliases to the `/keys` output and the known-commands match
+1. Add `model` and `created_at` fields to `SpawnedAgent`
+2. Update the construction site in `commands.rs`
+Now update the construction site in commands.rs:
+Now let me verify:
+`cargo check` passes with only pre-existing warnings (no errors). All the acceptance criteria are met:
 
-Let me also check if there's a `/home` handler already (I saw one in the match):
+1. ✅ `SpawnedAgent` struct exists with `name`, `instructions`, `model`, `session`, `created_at` fields
+2. ✅ `AppState` has `spawned_agents: HashMap<String, SpawnedAgent>`
+3. ✅ `AppState` has `active_spawned_agent: Option<String>`
+4. ✅ `AppState` has `streaming_agent_texts: HashMap<String, String>`
+5. ✅ `agent_profile()` function returns codename profiles (Strategist, Archivist, Forge, Sentinel, Probe)
+6. ✅ `cargo check` passes
 
-The match already has `"/chat" | "/home" => return_to_chat(app)`. But the PRD says `/home` should map to `/agent main` (focus on main chat). Since there's no `/agent` command yet, I need to handle this carefully. The PRD says `/home -> /agent main` but the existing code has `/home` mapped to `return_to_chat`. The easy-mode `/home` should be an alias. Since there's no `/agent` command, I'll map `/home` to `/chat` behavior (which is `return_to_chat`) since that's what the current code already does and what makes practical sense.
-
-Actually, re-reading the PRD: `/home -> /agent main` is supposed to return to main chat. Since `/agent main` doesn't exist as a handler, and `/home` already maps to `return_to_chat`, I'll keep `/home` as an easy alias that maps to `/chat` (which already works).
-
-Let me implement:
-Now update the test imports in text.rs:
-Now I also need to add the easy aliases and `/agent` to the unknown command check list in commands.rs:
-I see the diff shows the file wasn't actually saved from the earlier multiedit. Let me check the actual file state:
-Good, the import is there. Let me check line 206:
-Good. Let me check the match around /home:
-Good. Now let me check the unknown commands match:
-Need to add `/main`, `/spawn`, `/kill`, `/agents`, `/agent` to the match. Let me apply the edit:
-The confirmation shows the old file state. It seems the edits need confirmation. Let me check if my edits actually applied:
-Good, the import is there. Let me check the matches block:
-This still has the old content - my last edit didn't apply. The confirmation showed the old file. Let me use the exact text as it is now:
-The confirmation keeps showing the file hasn't changed. Let me check the current file state more carefully:
-Good - those earlier edits DID apply! The confirmation diff is misleading - it seems to show the pre-edit state. Let me check the matches block:
-The match block still hasn't been updated. Let me check the actual text at line 403-432:
-Now I need to edit this block. Let me use `sed` to add the missing entries:
-Now let me also update the comment:
-Now let me also update the text.rs tests:
-The tests weren't added. Let me add them:
-The diff shows the tests haven't been applied yet - the file still shows the old `use super::{command_with_optional_args, normalize_slash_command};` without `normalize_easy_command`. Let me check what the file actually looks like:
-The function is there but the test import wasn't updated. Let me check the test section:
-The test file wasn't updated. Let me use sed to fix the import and append tests:
+STORY_COMPLETE: TP-001
