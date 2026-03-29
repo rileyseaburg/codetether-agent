@@ -238,6 +238,28 @@ impl WorktreeManager {
         let branch = info.branch.clone();
         drop(worktrees); // Release lock before git operations
 
+        // Stash any uncommitted changes before merging to avoid conflicts
+        let dirty = std::process::Command::new("git")
+            .args(["diff", "--quiet"])
+            .current_dir(&self.repo_path)
+            .output();
+        let has_dirty = dirty.is_err() || !dirty.unwrap().status.success();
+
+        if has_dirty {
+            tracing::info!("Stashing dirty working tree before merge");
+            let stash_out = std::process::Command::new("git")
+                .args(["stash", "--include-untracked"])
+                .current_dir(&self.repo_path)
+                .output()
+                .context("Failed to execute git stash")?;
+            if !stash_out.status.success() {
+                tracing::warn!(
+                    "Stash failed (may be no changes): {}",
+                    String::from_utf8_lossy(&stash_out.stderr)
+                );
+            }
+        }
+
         tracing::info!(worktree = %name, branch = %branch, "Starting git merge");
 
         // Stage the merge but stamp the final merge commit ourselves for provenance.
@@ -259,9 +281,13 @@ impl WorktreeManager {
                 git_commit_with_provenance(&self.repo_path, &commit_msg, Some(&provenance)).await?;
             if !commit_output.status.success() {
                 let commit_stderr = String::from_utf8_lossy(&commit_output.stderr);
+                let _ = Self::stash_pop(&self.repo_path);
                 return Err(anyhow!("Git merge commit failed: {}", commit_stderr));
             }
             tracing::info!(worktree = %name, branch = %branch, "Git merge successful");
+
+            // Pop stash after successful merge
+            let _ = Self::stash_pop(&self.repo_path);
 
             // Get files changed count
             let files_changed = self.count_merge_files_changed().await.unwrap_or(0);
@@ -275,6 +301,14 @@ impl WorktreeManager {
                 summary: commit_msg,
             })
         } else {
+            // Abort merge and restore stash
+            let _ = tokio::process::Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&self.repo_path)
+                .output()
+                .await;
+            let _ = Self::stash_pop(&self.repo_path);
+
             // Check for conflicts
             if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") {
                 tracing::warn!(worktree = %name, "Merge has conflicts");
@@ -614,6 +648,22 @@ Recovery steps:\n\
             .count();
 
         Ok(count)
+    }
+
+    /// Pop the most recent stash after a merge completes or fails.
+    fn stash_pop(repo_path: &Path) -> Result<()> {
+        let output = std::process::Command::new("git")
+            .args(["stash", "pop"])
+            .current_dir(repo_path)
+            .output()
+            .context("Failed to execute git stash pop")?;
+        if !output.status.success() {
+            tracing::warn!(
+                "stash pop failed (may be empty stash): {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Ok(())
     }
 }
 
