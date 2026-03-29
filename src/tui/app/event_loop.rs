@@ -19,6 +19,7 @@ use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::sync_worker_bridge_agents;
 use crate::tui::ui::main::ui;
 use crate::tui::constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS;
+use crate::tui::chat::sync;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 pub async fn run_event_loop(
@@ -167,6 +168,13 @@ pub async fn run_event_loop(
                             }
                         }
                     }
+                }
+            }
+
+            // Chat sync UI events from background worker.
+            if let Some(ref mut rx) = app.state.chat_sync_rx {
+                Some(evt) = rx.recv() => {
+                    sync::handle_chat_sync_event(&mut app.state, evt);
                 }
             }
 

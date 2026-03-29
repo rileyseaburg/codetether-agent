@@ -287,6 +287,13 @@ pub struct AppState {
     pub pending_smart_switch_retry: Option<crate::tui::app::smart_switch::PendingSmartSwitchRetry>,
     pub smart_switch_retry_count: u32,
     pub smart_switch_attempted_models: Vec<String>,
+    // Chat sync state
+    pub chat_sync_rx: Option<tokio::sync::mpsc::UnboundedReceiver<crate::tui::chat::sync::ChatSyncUiEvent>>,
+    pub chat_sync_status: Option<String>,
+    pub chat_sync_last_success: Option<String>,
+    pub chat_sync_last_error: Option<String>,
+    pub chat_sync_uploaded_bytes: u64,
+    pub chat_sync_uploaded_batches: u64,
 }
 
 impl Default for AppState {
@@ -370,6 +377,13 @@ impl Default for AppState {
             pending_smart_switch_retry: None,
             smart_switch_retry_count: 0,
             smart_switch_attempted_models: Vec::new(),
+            // Chat sync state
+            chat_sync_rx: None,
+            chat_sync_status: None,
+            chat_sync_last_success: None,
+            chat_sync_last_error: None,
+            chat_sync_uploaded_bytes: 0,
+            chat_sync_uploaded_batches: 0,
         }
     }
 }
