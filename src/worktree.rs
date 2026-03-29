@@ -290,12 +290,42 @@ impl WorktreeManager {
         tracing::info!(worktree = %name, branch = %branch, "Starting git merge");
 
         // Stage the merge but stamp the final merge commit ourselves for provenance.
-        let output = tokio::process::Command::new("git")
+        // First attempt: normal merge.
+        let mut output = tokio::process::Command::new("git")
             .args(["merge", "--no-ff", "--no-commit", &branch])
             .current_dir(&self.repo_path)
             .output()
             .await
             .context("Failed to execute git merge")?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        // If the merge has conflicts, automatically resolve them by accepting
+        // the incoming (theirs) version.  This avoids blocking the autonomous
+        // loop on manual conflict resolution.
+        if !output.status.success()
+            && (stderr.contains("CONFLICT") || stdout.contains("CONFLICT"))
+        {
+            tracing::warn!(
+                worktree = %name,
+                "Merge has conflicts — auto-resolving with -X theirs"
+            );
+            // Abort the conflicted merge
+            let _ = tokio::process::Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&self.repo_path)
+                .output()
+                .await;
+
+            // Retry with -X theirs to auto-resolve
+            output = tokio::process::Command::new("git")
+                .args(["merge", "--no-ff", "--no-commit", "-X", "theirs", &branch])
+                .current_dir(&self.repo_path)
+                .output()
+                .await
+                .context("Failed to execute git merge -X theirs")?;
+        }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
