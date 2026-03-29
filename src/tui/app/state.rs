@@ -44,6 +44,18 @@ const SLASH_COMMANDS: &[&str] = &[
     "/spawn",
     "/kill",
     "/agents",
+    "/agent",
+    // easy-mode aliases
+    "/add",
+    "/talk",
+    "/say",
+    "/list",
+    "/ls",
+    "/remove",
+    "/rm",
+    "/focus",
+    "/home",
+    "/main",
 ];
 
 /// A spawned sub-agent with its own independent LLM session.
