@@ -1,17 +1,22 @@
-I can see the `SpawnedAgent` struct already exists but is missing the `model` and `created_at` fields required by the PRD. Let me check for usages before modifying.
-Now I have the full picture. The `SpawnedAgent` struct exists but is missing `model` and `created_at` fields from the PRD. I need to:
+I'll start by exploring the existing code structure to understand AppState, the event loop, and session events.
+Interesting - it looks like some of this is already partially implemented. Let me read the current state of the key files to understand what's missing.
+Let me see the rest of the event_loop.rs file to understand the full watchdog implementation:
+The watchdog timer implementation is already complete. Let me verify by checking if everything compiles:
+The build is still running. Let me wait for it to complete:
+`cargo check` passes successfully. The entire watchdog timer feature is already fully implemented:
 
-1. Add `model` and `created_at` fields to `SpawnedAgent`
-2. Update the construction site in `commands.rs`
-Now update the construction site in commands.rs:
-Now let me verify:
-`cargo check` passes with only pre-existing warnings (no errors). All the acceptance criteria are met:
+1. **Watchdog fields in AppState** (`src/tui/app/state.rs`): `main_watchdog_root_prompt`, `main_last_event_at`, `main_watchdog_restart_count`, `main_inflight_prompt` — all present with proper defaults.
 
-1. ✅ `SpawnedAgent` struct exists with `name`, `instructions`, `model`, `session`, `created_at` fields
-2. ✅ `AppState` has `spawned_agents: HashMap<String, SpawnedAgent>`
-3. ✅ `AppState` has `active_spawned_agent: Option<String>`
-4. ✅ `AppState` has `streaming_agent_texts: HashMap<String, String>`
-5. ✅ `agent_profile()` function returns codename profiles (Strategist, Archivist, Forge, Sentinel, Probe)
-6. ✅ `cargo check` passes
+2. **Event loop timer branch** (`src/tui/app/event_loop.rs`): The `tokio::select!` has a `watchdog_timer.tick()` branch that:
+   - Fires every `MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS` (300s)
+   - Checks if `main_last_event_at` exceeds the timeout (or is `None`)
+   - Cancels the stuck request (clears processing/streaming state)
+   - Pushes a warning message
+   - Re-sends the original prompt via `prompt_with_events`
+   - Tracks restart count
 
-STORY_COMPLETE: TP-001
+3. **Session events update timestamp** (`src/tui/app/session_events.rs`): Line 18 sets `app.state.main_last_event_at = Some(std::time::Instant::now())` on every `SessionEvent` received.
+
+4. **`cargo check` passes** with only pre-existing warnings (none related to this feature).
+
+STORY_COMPLETE: TP-005
