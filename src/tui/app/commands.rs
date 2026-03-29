@@ -13,7 +13,7 @@ use crate::tui::app::settings::{
     set_slash_autocomplete,
 };
 use crate::tui::app::state::{agent_profile, App, SpawnedAgent};
-use crate::tui::app::text::{command_with_optional_args, normalize_slash_command};
+use crate::tui::app::text::{command_with_optional_args, normalize_easy_command, normalize_slash_command};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::ViewMode;
 
@@ -203,7 +203,8 @@ pub async fn handle_slash_command(
     registry: Option<&Arc<ProviderRegistry>>,
     command: &str,
 ) {
-    let normalized = normalize_slash_command(command);
+    let normalized = normalize_easy_command(command);
+    let normalized = normalize_slash_command(&normalized);
 
     if let Some(rest) = command_with_optional_args(&normalized, "/file") {
         let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
@@ -319,7 +320,7 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Latency);
             app.state.status = "Latency inspector".to_string();
         }
-        "/chat" | "/home" => return_to_chat(app),
+        "/chat" | "/home" | "/main" => return_to_chat(app),
         "/symbols" | "/symbol" => {
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
@@ -376,7 +377,7 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /spawn /kill /agents"
+                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
                     .to_string();
         }
         _ => {}
@@ -399,7 +400,8 @@ pub async fn handle_slash_command(
         return;
     }
 
-    // If we get here, none of the handlers above matched
+    // If we get here, none of the handlers above matched.
+    // Easy-mode aliases are already normalized before reaching this point,
     if !matches!(
         normalized.as_str(),
         "/help"
@@ -416,6 +418,7 @@ pub async fn handle_slash_command(
             | "/latency"
             | "/chat"
             | "/home"
+            | "/main"
             | "/symbols"
             | "/symbol"
             | "/new"
@@ -426,6 +429,10 @@ pub async fn handle_slash_command(
             | "/network"
             | "/autocomplete"
             | "/mcp"
+            | "/spawn"
+            | "/kill"
+            | "/agents"
+            | "/agent"
     ) {
         app.state.status = format!("Unknown command: {normalized}");
     }

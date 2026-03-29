@@ -1,62 +1,41 @@
-I'll start by exploring the existing code structure to understand the TUI module and relevant files.
-Let me read more of the relevant files - the AppState struct, the commands.rs `/go` handling area, and the event_handlers.rs key handling:
-Now let me look at the relevant section of commands.rs to understand how slash commands are dispatched, and the tui_old.rs reference:
-Let me also read more of the tui_old.rs to understand the full OKR approval flow and the /go command handling:
-Now let me see the /go command handling in the old TUI and the existing models:
-Now let me read the is_easy_go_command, next_go_model, and the /go handling from the old TUI more carefully:
-Now let me see how the /go command triggers the OKR approval in tui_old.rs:
-Now let me look at the OkrRun and OkrRepository types, and how they're used:
-Now let me look at the OkrRun and how default_relay_okr_template works in the old code, and also check what App struct looks like:
-Now let me look at the `default_relay_okr_template`, `okr_from_planned_draft`, and `plan_okr_draft_with_registry` functions:
-Now let me check the GO_SWAP_MODEL constants and also the existing `handle_slash_command` to see where /go would be inserted:
-Let me find the GO_SWAP_MODEL constants in the cli/run.rs:
-Now let me look at how `extract_json_payload` and `truncate_with_ellipsis` are available in the TUI:
-Now let me check the full handle_slash_command to understand where the /go command should be added:
-Now let me check the input handler to understand where the pending OKR approval check should go:
-Now let me read `handle_enter_chat` to understand where the OKR approval gate should be inserted:
-Now I have a thorough understanding of the codebase. Let me also check the App struct and how the OKR-related fields need to be added:
-Now I have a complete picture. Let me now implement the changes. I need to:
+Now I need to find where `normalize_slash_command` is called in the input handling pipeline, and where slash command hints are defined.
+Now let me find where autocomplete hints are defined for slash commands:
+Now let me find where the autocomplete hints are defined:
+Now let me also check the navigation.rs for how autocomplete works:
+Now let me look at the `apply_selected_slash_suggestion` and `slash_suggestions_visible` methods to understand how autocomplete works:
+Now I have a full picture. Let me also check the `/agent` command since `/talk` and `/focus` map to it:
+There's no `/agent` command handler yet. Let me also check the `tui_old.rs` for the reference implementation:
+Now I have everything I need. Let me implement the changes:
 
-1. Create `src/tui/app/okr_gate.rs` with `PendingOkrApproval` struct
-2. Add `pending_okr_approval` and `okr_repository` fields to `AppState`
-3. Add `/go` to SLASH_COMMANDS
-4. Add `/go` command handler in commands.rs
-5. Add approval key interception in event_handlers.rs
-6. Add `is_easy_go_command()` and `next_go_model()` helper functions
+1. Add `normalize_easy_command()` to `text.rs`
+2. Call it in `commands.rs` before `normalize_slash_command()`
+3. Add aliases to the `SLASH_COMMANDS` list in `state.rs`
+4. Add the easy-mode aliases to the `/keys` output and the known-commands match
 
-Let me start implementing:
-Now add the module to the app mod.rs:
-Now add the fields to `AppState` in state.rs. Let me re-read the relevant part:
-Now add the default values. Let me read the default:
-Good. Now add `/go` to the SLASH_COMMANDS list:
-Now add the `/go` command handler in commands.rs. Let me read the end of `handle_slash_command` to find the right insertion point:
-Now add the `/go` handler before the unknown command check:
-Now add the `handle_go_command` function. Let me also add the `/go` to the unknown command check list:
-Now add the `handle_go_command` function at the end of commands.rs. Let me see the end:
-The newline in the multiline string is tricky. Let me use the exact text:
-I see - there's a literal newline in the join and format strings. Let me append the function after the last closing brace:
-Now add the OKR approval key handling in event_handlers.rs. Let me look at the `KeyCode::Char(c)` handler:
-I need to intercept 'a' and 'd' keys when `pending_okr_approval` is Some. The best place is right before the `KeyCode::Char(c)` catch-all. I'll add the interception early in the match, before the catch-all:
-Now I need to add the `handle_okr_approve` and `handle_okr_deny` functions to event_handlers.rs. Let me append them at the end:
-Now let's run `cargo check` to see if everything compiles:
-The command timed out because it's doing a full compilation. Let me run it with a longer timeout:
-The fields aren't being found. Let me check - the issue is the compilation is picking up an old version of the state.rs. Let me check:
-The first error is that `okr_gate` isn't resolved. Let me check the mod.rs:
-The edit didn't apply! Let me check:
----
-[repair attempt 1] Now I have a clear picture. The `AppState` struct is missing two fields: `okr_repository` and `pending_okr_approval`. The `okr_gate` module exists but isn't registered in `mod.rs`. There are also hex escape issues with Unicode characters. Let me fix all of these.
-Now I have everything I need. Let me apply all the fixes:
+Let me also check if there's a `/home` handler already (I saw one in the match):
 
-1. **`mod.rs`**: Add `pub mod okr_gate;`
-2. **`state.rs`**: Add `okr_repository` and `pending_okr_approval` fields + their defaults
-3. **`commands.rs`**: Fix Unicode hex escapes
-4. **`event_handlers.rs`**: Fix Unicode hex escapes and add type annotation for `Arc::clone`
-No errors. All compile errors are resolved. The remaining output is only warnings (unused variables, dead code, etc.) which are pre-existing and unrelated to the quality gate failures.
-All quality gate errors have been fixed. `cargo check` passes with zero errors. Here's a summary of the changes:
+The match already has `"/chat" | "/home" => return_to_chat(app)`. But the PRD says `/home` should map to `/agent main` (focus on main chat). Since there's no `/agent` command yet, I need to handle this carefully. The PRD says `/home -> /agent main` but the existing code has `/home` mapped to `return_to_chat`. The easy-mode `/home` should be an alias. Since there's no `/agent` command, I'll map `/home` to `/chat` behavior (which is `return_to_chat`) since that's what the current code already does and what makes practical sense.
 
-| File | Fix |
-|---|---|
-| `src/tui/app/mod.rs` | Added `pub mod okr_gate;` to register the existing module |
-| `src/tui/app/state.rs` | Added `okr_repository` and `pending_okr_approval` fields to `AppState` struct + defaults |
-| `src/tui/app/commands.rs` | Fixed `\xe2\x80\x94` → `\u{2014}` (em dash) |
-| `src/tui/app/event_handlers.rs` | Fixed `\xe2\x9c\x85` → `\u{2705}`, `\xe2\x9d\x8c` → `\u{274c}`, added type annotation on `Arc::clone` |
+Actually, re-reading the PRD: `/home -> /agent main` is supposed to return to main chat. Since `/agent main` doesn't exist as a handler, and `/home` already maps to `return_to_chat`, I'll keep `/home` as an easy alias that maps to `/chat` (which already works).
+
+Let me implement:
+Now update the test imports in text.rs:
+Now I also need to add the easy aliases and `/agent` to the unknown command check list in commands.rs:
+I see the diff shows the file wasn't actually saved from the earlier multiedit. Let me check the actual file state:
+Good, the import is there. Let me check line 206:
+Good. Let me check the match around /home:
+Good. Now let me check the unknown commands match:
+Need to add `/main`, `/spawn`, `/kill`, `/agents`, `/agent` to the match. Let me apply the edit:
+The confirmation shows the old file state. It seems the edits need confirmation. Let me check if my edits actually applied:
+Good, the import is there. Let me check the matches block:
+This still has the old content - my last edit didn't apply. The confirmation showed the old file. Let me use the exact text as it is now:
+The confirmation keeps showing the file hasn't changed. Let me check the current file state more carefully:
+Good - those earlier edits DID apply! The confirmation diff is misleading - it seems to show the pre-edit state. Let me check the matches block:
+The match block still hasn't been updated. Let me check the actual text at line 403-432:
+Now I need to edit this block. Let me use `sed` to add the missing entries:
+Now let me also update the comment:
+Now let me also update the text.rs tests:
+The tests weren't added. Let me add them:
+The diff shows the tests haven't been applied yet - the file still shows the old `use super::{command_with_optional_args, normalize_slash_command};` without `normalize_easy_command`. Let me check what the file actually looks like:
+The function is there but the test import wasn't updated. Let me check the test section:
+The test file wasn't updated. Let me use sed to fix the import and append tests:
