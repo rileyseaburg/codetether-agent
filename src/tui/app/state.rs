@@ -283,6 +283,10 @@ pub struct AppState {
     // OKR gate state for /go command
     pub okr_repository: Option<Arc<crate::okr::OkrRepository>>,
     pub pending_okr_approval: Option<super::okr_gate::PendingOkrApproval>,
+    // Smart switch state
+    pub pending_smart_switch_retry: Option<crate::tui::app::smart_switch::PendingSmartSwitchRetry>,
+    pub smart_switch_retry_count: u32,
+    pub smart_switch_attempted_models: Vec<String>,
 }
 
 impl Default for AppState {
@@ -363,6 +367,9 @@ impl Default for AppState {
             // OKR gate state
             okr_repository: None,
             pending_okr_approval: None,
+            pending_smart_switch_retry: None,
+            smart_switch_retry_count: 0,
+            smart_switch_attempted_models: Vec::new(),
         }
     }
 }

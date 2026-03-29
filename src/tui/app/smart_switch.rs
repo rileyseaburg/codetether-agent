@@ -202,7 +202,8 @@ pub fn maybe_schedule_smart_switch_retry(
     candidates.into_iter().next().map(|target_model| PendingSmartSwitchRetry {
         prompt: prompt.to_string(),
         target_model,
-    });
+    })
+}
 
 /// Extracts the provider name from a model reference (e.g. "minimax/MiniMax-M2" -> "minimax").
 /// Returns `None` if the reference doesn't contain a `/`.
