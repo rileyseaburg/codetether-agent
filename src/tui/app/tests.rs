@@ -8,12 +8,12 @@ use crate::tui::models::ViewMode;
 #[tokio::test]
 async fn slash_model_opens_model_picker_without_registry() {
     let mut app = App::default();
-    let session = Session::new().await.expect("session should create");
+    let mut session = Session::new().await.expect("session should create");
 
     handle_slash_command(
         &mut app,
         std::path::Path::new("."),
-        &session,
+        &mut session,
         None,
         "/model",
     )
@@ -76,9 +76,9 @@ fn closing_model_picker_returns_to_chat() {
 #[tokio::test]
 async fn slash_model_alias_opens_model_picker() {
     let mut app = App::default();
-    let session = Session::new().await.expect("session should create");
+    let mut session = Session::new().await.expect("session should create");
 
-    handle_slash_command(&mut app, std::path::Path::new("."), &session, None, "/m").await;
+    handle_slash_command(&mut app, std::path::Path::new("."), &mut session, None, "/m").await;
 
     assert_eq!(app.state.view_mode, ViewMode::Model);
     assert!(app.state.model_picker_active);
@@ -87,12 +87,12 @@ async fn slash_model_alias_opens_model_picker() {
 #[tokio::test]
 async fn slash_latency_opens_latency_view() {
     let mut app = App::default();
-    let session = Session::new().await.expect("session should create");
+    let mut session = Session::new().await.expect("session should create");
 
     handle_slash_command(
         &mut app,
         std::path::Path::new("."),
-        &session,
+        &mut session,
         None,
         "/latency",
     )
