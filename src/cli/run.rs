@@ -13,6 +13,7 @@ use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
 use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::Session;
+use crate::session::import_codex_session_by_id;
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
@@ -790,7 +791,10 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     }
 
     // Create or continue session.
-    let mut session = if let Some(session_id) = args.session.clone() {
+    let mut session = if let Some(codex_id) = args.codex_session.clone() {
+        tracing::info!("Importing Codex session: {}", codex_id);
+        import_codex_session_by_id(&codex_id).await?
+    } else if let Some(session_id) = args.session.clone() {
         tracing::info!("Continuing session: {}", session_id);
         Session::load(&session_id).await?
     } else if args.continue_session {

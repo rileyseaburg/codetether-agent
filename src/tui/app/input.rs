@@ -219,24 +219,10 @@ async fn handle_enter_sessions(app: &mut App, cwd: &Path, session: &mut Session)
         .get(app.state.selected_session)
         .map(|(orig_idx, _)| app.state.sessions[*orig_idx].id.clone());
     if let Some(session_id) = session_id {
-        match Session::load(&session_id).await {
-            Ok(loaded) => {
-                *session = loaded;
-                app.state.auto_apply_edits = session.metadata.auto_apply_edits;
-                app.state.session_id = Some(session.id.clone());
-                sync_messages_from_session(app, session);
-                refresh_sessions(app, cwd).await;
-                app.state.clear_session_filter();
-                return_to_chat(app);
-                app.state.status = format!(
-                    "Loaded session {}",
-                    session.title.clone().unwrap_or_else(|| session.id.clone())
-                );
-            }
-            Err(err) => {
-                app.state.status = format!("Failed to load session: {err}");
-            }
-        }
+        crate::tui::app::codex_sessions::load_selected_session(
+            app, cwd, session, &session_id,
+        )
+        .await;
     }
 }
 

@@ -1,4 +1,5 @@
 pub mod background;
+pub mod codex_sessions;
 pub mod commands;
 pub mod event_handlers;
 pub mod event_loop;

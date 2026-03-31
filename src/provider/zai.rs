@@ -68,6 +68,108 @@ impl ZaiProvider {
         }
     }
 
+    /// Fetch available models from the Z.AI /models endpoint.
+    /// Returns an empty vec on any failure (network, parse, auth) so callers
+    /// can fall back to the hardcoded catalog.
+    async fn discover_models_from_api(&self) -> Vec<ModelInfo> {
+        // Always hit the standard API endpoint for model discovery,
+        // even if base_url points at the coding endpoint.
+        let discovery_url = if self.base_url.contains("/coding/") {
+            self.base_url.replace("/coding/", "/")
+        } else {
+            self.base_url.clone()
+        };
+        let url = format!("{discovery_url}/models");
+        let response = match self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::debug!(
+                    url = %url,
+                    error = %e,
+                    "Z.AI /models discovery request failed"
+                );
+                return Vec::new();
+            }
+        };
+
+        if !response.status().is_success() {
+            tracing::debug!(
+                url = %url,
+                status = %response.status(),
+                "Z.AI /models endpoint returned non-success"
+            );
+            return Vec::new();
+        }
+
+        let payload: Value = match response.json().await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::debug!(
+                    url = %url,
+                    error = %e,
+                    "Failed to parse Z.AI /models response"
+                );
+                return Vec::new();
+            }
+        };
+
+        let models = payload
+            .get("data")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| {
+                let id = match entry {
+                    Value::String(s) => s.trim().to_string(),
+                    Value::Object(_) => entry
+                        .get("id")
+                        .and_then(Value::as_str)?
+                        .trim()
+                        .to_string(),
+                    _ => return None,
+                };
+                if id.is_empty() {
+                    return None;
+                }
+                let name = entry
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|n| !n.is_empty())
+                    .unwrap_or(&id)
+                    .to_string();
+                Some(ModelInfo {
+                    id,
+                    name,
+                    provider: "zai".to_string(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        if models.is_empty() {
+            tracing::debug!(url = %url, "Z.AI /models returned no model ids");
+        } else {
+            tracing::info!(
+                count = models.len(),
+                "Z.AI /models discovery succeeded"
+            );
+        }
+        models
+    }
+
     fn normalize_tool_arguments(arguments: &str) -> String {
         // Z.AI expects assistant.tool_calls[*].function.arguments to be a *string*
         // containing valid JSON.
@@ -472,7 +574,60 @@ impl Provider for ZaiProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+        // Attempt dynamic model discovery from the Z.AI /models endpoint.
+        // When the API is reachable, this returns the authoritative model
+        // catalog including newly-released models without a code change.
+        let discovered = self.discover_models_from_api().await;
+        if !discovered.is_empty() {
+            // Merge in special models that exist outside the /models API
+            // (coding endpoint models, etc.)
+            let mut models = discovered;
+            if !models.iter().any(|m| m.id == PONY_ALPHA_2_MODEL) {
+                models.push(ModelInfo {
+                    id: PONY_ALPHA_2_MODEL.to_string(),
+                    name: "Pony Alpha 2".to_string(),
+                    provider: "zai".to_string(),
+                    context_window: 128_000,
+                    max_output_tokens: Some(16_384),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                });
+            }
+            if !models.iter().any(|m| m.id == "glm-4.7-flash") {
+                models.push(ModelInfo {
+                    id: "glm-4.7-flash".to_string(),
+                    name: "GLM-4.7 Flash".to_string(),
+                    provider: "zai".to_string(),
+                    context_window: 128_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                });
+            }
+            return Ok(models);
+        }
+
+        // Static catalog used when the /models endpoint is unavailable
+        // (e.g. network partition, auth failure, or non-standard deployments).
         Ok(vec![
+            ModelInfo {
+                id: "glm-5.1".to_string(),
+                name: "GLM-5.1".to_string(),
+                provider: "zai".to_string(),
+                context_window: 200_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            },
             ModelInfo {
                 id: "glm-5".to_string(),
                 name: "GLM-5".to_string(),
@@ -887,6 +1042,31 @@ mod tests {
         assert!(turbo.supports_streaming);
         assert_eq!(turbo.input_cost_per_million, Some(0.96));
         assert_eq!(turbo.output_cost_per_million, Some(3.20));
+    }
+
+    #[tokio::test]
+    async fn list_models_includes_glm_5_1() {
+        let provider =
+            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
+                .expect("provider should construct");
+        let models = provider.list_models().await.expect("models should list");
+
+        let glm51 = models
+            .iter()
+            .find(|m| m.id == "glm-5.1")
+            .expect("glm-5.1 should be in model list");
+        assert_eq!(glm51.context_window, 200_000);
+        assert_eq!(glm51.max_output_tokens, Some(128_000));
+        assert!(glm51.supports_tools);
+        assert!(glm51.supports_streaming);
+    }
+
+    #[test]
+    fn model_supports_tool_stream_matches_glm_5_1() {
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5.1"));
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5"));
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5-turbo"));
+        assert!(!ZaiProvider::model_supports_tool_stream("glm-4.5"));
     }
 
     #[test]

@@ -264,6 +264,10 @@ pub struct RunArgs {
     /// Files to attach
     #[arg(short, long)]
     pub file: Vec<PathBuf>,
+
+    /// Import and continue a Codex CLI session by ID
+    #[arg(long)]
+    pub codex_session: Option<String>,
 }
 
 #[derive(Parser, Debug)]

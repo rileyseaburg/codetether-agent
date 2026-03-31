@@ -44,7 +44,7 @@ pub(crate) struct CodexReasoningPayload {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct CodexTokenEnvelope {
-    pub(crate) info: CodexTokenInfo,
+    pub(crate) info: Option<CodexTokenInfo>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -878,6 +878,7 @@ async fn execute_opportunity_with_run(
         agent: Some("build".to_string()),
         format: "default".to_string(),
         file: Vec::new(),
+        codex_session: None,
     };
     let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
     match tokio::time::timeout(

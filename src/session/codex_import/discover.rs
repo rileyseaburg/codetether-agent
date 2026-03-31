@@ -35,8 +35,13 @@ pub(crate) fn discover_codex_sessions_in(
         if !is_jsonl(path) {
             continue;
         }
-        let Some(meta) = read_session_meta(path)? else {
-            continue;
+        let meta = match read_session_meta(path) {
+            Ok(Some(m)) => m,
+            Ok(None) => continue,
+            Err(err) => {
+                tracing::warn!(path = %path.display(), error = %err, "Skipping unreadable Codex session meta");
+                continue;
+            }
         };
         if canonicalize_loose(Path::new(&meta.cwd)) != canonical_dir {
             continue;

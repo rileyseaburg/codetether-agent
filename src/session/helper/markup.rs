@@ -28,8 +28,25 @@ pub fn extract_markup_tool_calls(text: &str) -> (String, Vec<(String, String)>) 
         };
         let arguments = payload
             .get("arguments")
-            .map(|v| serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string()))
-            .unwrap_or_else(|| "{}".to_string());
+            .or_else(|| payload.get("args"))
+            .or_else(|| payload.get("input"))
+            .cloned()
+            .map(|v| serde_json::to_string(&v).unwrap_or_else(|_| "{}".to_string()))
+            .unwrap_or_else(|| {
+                // When no explicit arguments/args/input key exists,
+                // treat all remaining top-level keys (except "name") as the arguments object.
+                if let Some(obj) = payload.as_object() {
+                    let params: serde_json::Map<String, Value> = obj
+                        .iter()
+                        .filter(|(k, _)| *k != "name")
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect();
+                    serde_json::to_string(&Value::Object(params))
+                        .unwrap_or_else(|_| "{}".to_string())
+                } else {
+                    "{}".to_string()
+                }
+            });
         calls.push((name.to_string(), arguments));
     }
 

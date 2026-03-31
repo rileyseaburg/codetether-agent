@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
+use crate::tui::app::codex_sessions;
 use crate::tui::app::file_share::attach_file_to_input;
 use crate::tui::app::model_picker::open_model_picker;
 use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
@@ -298,6 +299,9 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Sessions);
             app.state.status = "Session picker".to_string();
         }
+        "/import-codex" => {
+            codex_sessions::import_workspace_sessions(app, cwd).await;
+        }
         "/swarm" => {
             app.state.swarm.mark_active("TUI swarm monitor");
             app.state.set_view_mode(ViewMode::Swarm);
@@ -377,7 +381,7 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
+                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
                     .to_string();
         }
         _ => {}
@@ -406,6 +410,7 @@ pub async fn handle_slash_command(
         normalized.as_str(),
         "/help"
             | "/sessions"
+            | "/import-codex"
             | "/session"
             | "/swarm"
             | "/ralph"

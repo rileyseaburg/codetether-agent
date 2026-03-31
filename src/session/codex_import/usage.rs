@@ -12,11 +12,14 @@ pub(crate) fn parse_event_msg_usage(payload: Value) -> Result<Option<Usage>> {
     }
 
     let payload: CodexTokenEnvelope = serde_json::from_value(payload)?;
+    let Some(info) = payload.info else {
+        return Ok(None);
+    };
     Ok(Some(Usage {
-        prompt_tokens: payload.info.total_token_usage.input_tokens,
-        completion_tokens: payload.info.total_token_usage.output_tokens,
-        total_tokens: payload.info.total_token_usage.total_tokens,
-        cache_read_tokens: payload.info.total_token_usage.cached_input_tokens,
+        prompt_tokens: info.total_token_usage.input_tokens,
+        completion_tokens: info.total_token_usage.output_tokens,
+        total_tokens: info.total_token_usage.total_tokens,
+        cache_read_tokens: info.total_token_usage.cached_input_tokens,
         cache_write_tokens: None,
     }))
 }
