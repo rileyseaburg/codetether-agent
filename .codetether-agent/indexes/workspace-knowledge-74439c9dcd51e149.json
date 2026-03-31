@@ -1,0 +1,35 @@
+{
+  "version": 3,
+  "root": "/home/riley/A2A-Server-MCP/codetether-agent/.codetether-agent/forage-worktrees/forage-fab983a0-bd79570b-1e3f217e",
+  "generated_at": "2026-03-21T05:43:19.299714346Z",
+  "embedding_provider": "disabled",
+  "embedding_model": "disabled",
+  "stats": {
+    "total_seen_files": 0,
+    "indexed_files": 0,
+    "skipped_hidden": 0,
+    "skipped_non_text": 0,
+    "skipped_large": 0,
+    "skipped_io_errors": 0,
+    "total_bytes": 0,
+    "total_lines": 0,
+    "embedded_files": 0,
+    "embedding_dimensions": 0,
+    "embedding_prompt_tokens": 0,
+    "embedding_total_tokens": 0,
+    "language_counts": {}
+  },
+  "files": [],
+  "knowledge_graph": {
+    "version": 1,
+    "nodes": [],
+    "edges": [],
+    "stats": {
+      "file_nodes": 0,
+      "symbol_nodes": 0,
+      "module_nodes": 0,
+      "symbol_reference_nodes": 0,
+      "edges": 0
+    }
+  }
+}

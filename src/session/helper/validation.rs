@@ -1,3 +1,5 @@
+use crate::lsp::LspActionResult;
+use crate::tool::lsp::LspTool;
 use anyhow::Result;
 use serde::Deserialize;
 use serde_json::Value;
@@ -113,11 +115,25 @@ pub async fn build_validation_report(
         return Ok(None);
     }
 
+    let root_uri = format!("file://{}", workspace_dir.display());
+    let lsp_tool = LspTool::with_root(root_uri);
+    let manager = lsp_tool.get_manager().await;
     let mut issues_by_file = BTreeMap::new();
     let mut issue_count = 0usize;
 
     for path in existing_files {
-        let mut rendered = collect_external_linter_diagnostics(workspace_dir, &path).await;
+        let mut rendered = Vec::new();
+        let client = manager.get_client_for_file(&path).await.ok();
+        if let Some(client) = client
+            && let Ok(LspActionResult::Diagnostics { diagnostics }) =
+                client.diagnostics(&path).await
+        {
+            rendered.extend(render_diagnostics(workspace_dir, &diagnostics));
+        }
+
+        let linter_diagnostics = manager.linter_diagnostics(&path).await;
+        rendered.extend(render_diagnostics(workspace_dir, &linter_diagnostics));
+        rendered.extend(collect_external_linter_diagnostics(workspace_dir, &path).await);
 
         rendered.sort();
         rendered.dedup();
@@ -135,8 +151,8 @@ pub async fn build_validation_report(
     let mut prompt = String::from(
         "Mandatory post-edit verification found unresolved diagnostics in files you changed. \
 Do not finish yet. Fix every issue below, respecting workspace config files such as eslint, biome, \
-ruff, stylelint, tsconfig, and other project-local tooling. After fixing them, re-check the same \
-files and only then provide the final answer.\n\n",
+ruff, stylelint, tsconfig, and project-local language-server settings. After fixing them, re-check \
+the same files and only then provide the final answer.\n\n",
     );
 
     for (path, diagnostics) in issues_by_file {
@@ -160,6 +176,38 @@ files and only then provide the final answer.\n\n",
         prompt: prompt.trim_end().to_string(),
     }))
 }
+
+fn render_diagnostics(
+    workspace_dir: &Path,
+    diagnostics: &[crate::lsp::DiagnosticInfo],
+) -> Vec<String> {
+    diagnostics
+        .iter()
+        .map(|diagnostic| {
+            let path = diagnostic
+                .uri
+                .strip_prefix("file://")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from(&diagnostic.uri));
+            let path = relative_display_path(workspace_dir, &path);
+            let severity = diagnostic.severity.as_deref().unwrap_or("unknown");
+            let source = diagnostic.source.as_deref().unwrap_or("lsp");
+            let code = diagnostic
+                .code
+                .as_ref()
+                .map(|code| format!(" ({code})"))
+                .unwrap_or_default();
+            format!(
+                "[{severity}] {path}:{}:{} [{source}]{} {}",
+                diagnostic.range.start.line + 1,
+                diagnostic.range.start.character + 1,
+                code,
+                diagnostic.message.replace('\n', " ")
+            )
+        })
+        .collect()
+}
+
 async fn collect_external_linter_diagnostics(workspace_dir: &Path, path: &Path) -> Vec<String> {
     let ext = path
         .extension()

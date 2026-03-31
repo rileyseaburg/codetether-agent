@@ -414,6 +414,19 @@ pub struct RalphConfig {
     /// Maximum relay rounds per story
     #[serde(default = "default_relay_max_rounds")]
     pub relay_max_rounds: usize,
+
+    /// Maximum quality-gate-retry attempts per story.
+    /// After quality gates fail, errors are fed back to the agent for self-repair.
+    #[serde(default = "default_max_quality_retries")]
+    pub max_quality_retries: usize,
+
+    /// Maximum rate-limit retries before giving up on a story.
+    #[serde(default = "default_max_rate_limit_retries")]
+    pub max_rate_limit_retries: usize,
+
+    /// Base delay in milliseconds for rate-limit exponential backoff.
+    #[serde(default = "default_rate_limit_base_delay_ms")]
+    pub rate_limit_base_delay_ms: u64,
 }
 
 fn default_prd_path() -> String {
@@ -455,6 +468,15 @@ fn default_relay_max_agents() -> usize {
 fn default_relay_max_rounds() -> usize {
     3
 }
+fn default_max_quality_retries() -> usize {
+    2
+}
+fn default_max_rate_limit_retries() -> usize {
+    3
+}
+fn default_rate_limit_base_delay_ms() -> u64 {
+    2000
+}
 
 impl Default for RalphConfig {
     fn default() -> Self {
@@ -475,6 +497,9 @@ impl Default for RalphConfig {
             relay_enabled: true,
             relay_max_agents: default_relay_max_agents(),
             relay_max_rounds: default_relay_max_rounds(),
+            max_quality_retries: default_max_quality_retries(),
+            max_rate_limit_retries: default_max_rate_limit_retries(),
+            rate_limit_base_delay_ms: default_rate_limit_base_delay_ms(),
         }
     }
 }

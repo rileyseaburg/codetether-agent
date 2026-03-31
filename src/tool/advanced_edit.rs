@@ -95,7 +95,10 @@ fn block_anchor_replacer(content: &str, find: &str) -> Vec<String> {
         search_lines.pop();
     }
     let first = search_lines[0].trim();
-    let last = search_lines.last().unwrap().trim();
+    let last = match search_lines.last() {
+        Some(l) => l.trim(),
+        None => return vec![],
+    };
     let mut candidates = vec![];
     for i in 0..orig_lines.len() {
         if orig_lines[i].trim() != first {

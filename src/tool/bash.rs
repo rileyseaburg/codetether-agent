@@ -1,11 +1,14 @@
 //! Bash tool: execute shell commands
 
+use super::bash_github::load_github_command_auth;
+use super::bash_identity::git_identity_env_from_tool_args;
 use super::sandbox::{SandboxPolicy, execute_sandboxed};
 use super::{Tool, ToolResult};
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
+use std::ffi::OsString;
 use std::process::Stdio;
 use std::time::Instant;
 use tokio::process::Command;
@@ -104,6 +107,34 @@ fn looks_like_auth_prompt(output: &str) -> bool {
     .any(|needle| lower.contains(needle))
 }
 
+fn redact_output(mut output: String, secrets: &[String]) -> String {
+    for secret in secrets {
+        if !secret.is_empty() {
+            output = output.replace(secret, "[REDACTED]");
+        }
+    }
+    output
+}
+
+fn codetether_wrapped_command(command: &str) -> String {
+    format!(
+        "codetether() {{ \"$CODETETHER_BIN\" \"$@\"; }}\nexport -f codetether >/dev/null 2>&1 || true\n{command}"
+    )
+}
+
+fn codetether_runtime_env() -> Option<(String, OsString)> {
+    let current_exe = std::env::current_exe().ok()?;
+    let mut path_entries = current_exe
+        .parent()
+        .map(|parent| vec![parent.to_path_buf()])
+        .unwrap_or_default();
+    if let Some(existing_path) = std::env::var_os("PATH") {
+        path_entries.extend(std::env::split_paths(&existing_path));
+    }
+    let path = std::env::join_paths(path_entries).ok()?;
+    Some((current_exe.to_string_lossy().into_owned(), path))
+}
+
 #[async_trait]
 impl Tool for BashTool {
     fn id(&self) -> &str {
@@ -160,6 +191,7 @@ impl Tool for BashTool {
         };
         let cwd = args["cwd"].as_str();
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
+        let wrapped_command = codetether_wrapped_command(command);
 
         if let Some(reason) = interactive_auth_risk_reason(command) {
             // Log warning but don't block anymore per user request
@@ -180,7 +212,7 @@ impl Tool for BashTool {
             let work_dir = cwd.map(std::path::Path::new);
             let sandbox_result = execute_sandboxed(
                 "bash",
-                &["-c".to_string(), command.to_string()],
+                &["-c".to_string(), wrapped_command.clone()],
                 &policy,
                 work_dir,
             )
@@ -276,7 +308,7 @@ impl Tool for BashTool {
 
         let mut cmd = Command::new("bash");
         cmd.arg("-c")
-            .arg(command)
+            .arg(&wrapped_command)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -285,6 +317,43 @@ impl Tool for BashTool {
             .env("DEBIAN_FRONTEND", "noninteractive")
             .env("SUDO_ASKPASS", "/bin/false")
             .env("SSH_ASKPASS", "/bin/false");
+        if let Some((codetether_bin, path)) = codetether_runtime_env() {
+            cmd.env("CODETETHER_BIN", codetether_bin).env("PATH", path);
+        }
+        for (key, value) in git_identity_env_from_tool_args(&args) {
+            cmd.env(key, value);
+        }
+        for (arg_key, env_key) in [
+            ("__ct_current_model", "CODETETHER_CURRENT_MODEL"),
+            ("__ct_provenance_id", "CODETETHER_PROVENANCE_ID"),
+            ("__ct_origin", "CODETETHER_ORIGIN"),
+            ("__ct_agent_name", "CODETETHER_AGENT_NAME"),
+            ("__ct_agent_identity_id", "CODETETHER_AGENT_IDENTITY_ID"),
+            ("__ct_key_id", "CODETETHER_KEY_ID"),
+            ("__ct_signature", "CODETETHER_SIGNATURE"),
+            ("__ct_tenant_id", "CODETETHER_TENANT_ID"),
+            ("__ct_worker_id", "CODETETHER_WORKER_ID"),
+            ("__ct_session_id", "CODETETHER_SESSION_ID"),
+            ("__ct_task_id", "CODETETHER_TASK_ID"),
+            ("__ct_run_id", "CODETETHER_RUN_ID"),
+            ("__ct_attempt_id", "CODETETHER_ATTEMPT_ID"),
+        ] {
+            if let Some(value) = args[arg_key].as_str() {
+                cmd.env(env_key, value);
+            }
+        }
+        let github_auth = match load_github_command_auth(command, cwd).await {
+            Ok(auth) => auth,
+            Err(err) => {
+                tracing::warn!(error = %err, "Failed to load GitHub auth for bash command");
+                None
+            }
+        };
+        if let Some(auth) = github_auth.as_ref() {
+            for (key, value) in &auth.env {
+                cmd.env(key, value);
+            }
+        }
 
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -305,6 +374,13 @@ impl Tool for BashTool {
                 } else {
                     format!("{}\n--- stderr ---\n{}", stdout, stderr)
                 };
+                let combined = redact_output(
+                    combined,
+                    github_auth
+                        .as_ref()
+                        .map(|auth| auth.redactions.as_slice())
+                        .unwrap_or(&[]),
+                );
 
                 let success = output.status.success();
 
@@ -476,5 +552,13 @@ mod tests {
             "sudo: a terminal is required to read the password"
         ));
         assert!(!looks_like_auth_prompt("command completed successfully"));
+    }
+
+    #[test]
+    fn wraps_commands_with_codetether_function() {
+        let wrapped = codetether_wrapped_command("codetether run 'hi'");
+        assert!(wrapped.contains("codetether()"));
+        assert!(wrapped.contains("CODETETHER_BIN"));
+        assert!(wrapped.ends_with("codetether run 'hi'"));
     }
 }

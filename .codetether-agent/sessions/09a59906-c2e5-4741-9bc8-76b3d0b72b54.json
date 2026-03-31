@@ -1,0 +1,45 @@
+{
+  "id": "09a59906-c2e5-4741-9bc8-76b3d0b72b54",
+  "title": "test",
+  "created_at": "2026-03-10T03:57:35.237764300Z",
+  "updated_at": "2026-03-10T03:57:43.286853160Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "test"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "text": "The user has sent \"test\" as a message. This is a very simple test message to see if I'm working. I should respond briefly to confirm I'm operational and perhaps demonstrate my capabilities by showing what I can help with.\n\nGiven that I'm in build mode, I should be concise and helpful. Let me just respond to acknowledge that I'm working and ready to help."
+        },
+        {
+          "type": "text",
+          "text": "I'm working! I can help you with software development tasks in the CodeTether Agent codebase. \n\nWhat would you like me to do? I can:\n- Read and write code\n- Run tests and commands\n- Search the codebase\n- Debug issues\n- Implement new features\n- Or just explore the project structure\n\nJust let me know what you need!"
+        }
+      ]
+    }
+  ],
+  "tool_uses": [],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "cache_read_tokens": null,
+    "cache_write_tokens": null
+  },
+  "agent": "build",
+  "metadata": {
+    "directory": "/home/riley/A2A-Server-MCP/codetether-agent",
+    "model": "zai/glm-5",
+    "shared": false,
+    "share_url": null
+  }
+}

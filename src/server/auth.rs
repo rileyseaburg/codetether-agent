@@ -1,6 +1,6 @@
 //! Mandatory authentication middleware
 //!
-//! All endpoints except `/health` require a valid Bearer token.
+//! All endpoints except explicitly public paths require a valid Bearer token.
 //! **Auth cannot be disabled.** If no `CODETETHER_AUTH_TOKEN` is set the
 //! server generates a secure random token at startup and prints it to stderr
 //! so the operator can copy it — but the gates never open without a token.
@@ -17,10 +17,10 @@ use axum::{
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
-/// Paths that are exempt from authentication.
-const PUBLIC_PATHS: &[&str] = &["/health"];
+/// Paths that are exempt from authentication by default.
+const DEFAULT_PUBLIC_PATHS: &[&str] = &["/health"];
 
 /// JWT claims extracted from the Bearer token for topic filtering.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -59,6 +59,8 @@ pub fn extract_jwt_claims(token: &str) -> Option<JwtClaims> {
 pub struct AuthState {
     /// The required Bearer token.
     token: Arc<String>,
+    /// Exact paths that may be served without auth.
+    public_paths: Arc<HashSet<String>>,
 }
 
 impl AuthState {
@@ -87,6 +89,7 @@ impl AuthState {
         };
         Self {
             token: Arc::new(token),
+            public_paths: Arc::new(default_public_paths()),
         }
     }
 
@@ -95,12 +98,32 @@ impl AuthState {
     pub fn with_token(token: impl Into<String>) -> Self {
         Self {
             token: Arc::new(token.into()),
+            public_paths: Arc::new(default_public_paths()),
         }
     }
 
     /// Return the active token (for display at startup).
     pub fn token(&self) -> &str {
         &self.token
+    }
+
+    /// Return a cloned auth state with additional exact public paths.
+    pub fn with_additional_public_paths<I, S>(&self, paths: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut public_paths = (*self.public_paths).clone();
+        public_paths.extend(paths.into_iter().map(Into::into));
+        Self {
+            token: Arc::clone(&self.token),
+            public_paths: Arc::new(public_paths),
+        }
+    }
+
+    /// Return true when the request path is explicitly public.
+    pub fn is_public_path(&self, path: &str) -> bool {
+        self.public_paths.contains(path)
     }
 }
 
@@ -109,17 +132,17 @@ impl AuthState {
 pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     let path = request.uri().path();
 
-    // Allow public paths through without auth.
-    if PUBLIC_PATHS.contains(&path) {
-        return Ok(next.run(request).await);
-    }
-
     // Extract the AuthState from extensions (set by the server setup).
     let auth_state = request
         .extensions()
         .get::<AuthState>()
         .cloned()
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Allow public paths through without auth.
+    if auth_state.is_public_path(path) {
+        return Ok(next.run(request).await);
+    }
 
     // Extract Bearer token from Authorization header.
     let auth_header = request
@@ -171,6 +194,13 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     diff == 0
 }
 
+fn default_public_paths() -> HashSet<String> {
+    DEFAULT_PUBLIC_PATHS
+        .iter()
+        .map(|path| (*path).to_string())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,5 +221,18 @@ mod tests {
         }
         let state = AuthState::from_env();
         assert_eq!(state.token().len(), 64); // 32 bytes = 64 hex chars
+    }
+
+    #[test]
+    fn auth_state_supports_additional_public_paths() {
+        let state = AuthState::with_token("test-token").with_additional_public_paths([
+            "/.well-known/agent.json",
+            "/a2a/.well-known/agent-card.json",
+        ]);
+
+        assert!(state.is_public_path("/health"));
+        assert!(state.is_public_path("/.well-known/agent.json"));
+        assert!(state.is_public_path("/a2a/.well-known/agent-card.json"));
+        assert!(!state.is_public_path("/api/session"));
     }
 }

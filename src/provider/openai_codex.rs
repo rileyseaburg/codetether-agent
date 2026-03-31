@@ -60,6 +60,11 @@ enum ResponsesWsBackend {
     ChatGptCodex,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CodexServiceTier {
+    Priority,
+}
+
 impl ThinkingLevel {
     fn parse(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
@@ -75,6 +80,14 @@ impl ThinkingLevel {
             Self::Low => "low",
             Self::Medium => "medium",
             Self::High => "high",
+        }
+    }
+}
+
+impl CodexServiceTier {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Priority => "priority",
         }
     }
 }
@@ -232,6 +245,7 @@ impl OpenAiCodexProvider {
             "gpt-5.2",
             "gpt-5.3-codex",
             "gpt-5.4",
+            "gpt-5.4-fast",
             "o3",
             "o4-mini",
         ]
@@ -245,7 +259,11 @@ impl OpenAiCodexProvider {
     }
 
     fn validate_model_for_backend(&self, model: &str) -> Result<()> {
-        if self.model_is_supported_by_backend(model) {
+        let (resolved_model, _, _) =
+            Self::resolve_model_and_reasoning_effort_and_service_tier(model);
+        if self.model_is_supported_by_backend(model)
+            || self.model_is_supported_by_backend(&resolved_model)
+        {
             return Ok(());
         }
 
@@ -839,6 +857,7 @@ impl OpenAiCodexProvider {
 
     fn convert_messages_to_responses_input(messages: &[Message]) -> Vec<Value> {
         let mut input = Vec::new();
+        let mut known_tool_call_ids = std::collections::HashSet::new();
 
         for msg in messages {
             match msg.role {
@@ -894,6 +913,7 @@ impl OpenAiCodexProvider {
                             ..
                         } = part
                         {
+                            known_tool_call_ids.insert(id.clone());
                             input.push(json!({
                                 "type": "function_call",
                                 "call_id": id,
@@ -910,11 +930,18 @@ impl OpenAiCodexProvider {
                             content,
                         } = part
                         {
-                            input.push(json!({
-                                "type": "function_call_output",
-                                "call_id": tool_call_id,
-                                "output": content,
-                            }));
+                            if known_tool_call_ids.contains(tool_call_id) {
+                                input.push(json!({
+                                    "type": "function_call_output",
+                                    "call_id": tool_call_id,
+                                    "output": content,
+                                }));
+                            } else {
+                                tracing::warn!(
+                                    tool_call_id = %tool_call_id,
+                                    "Skipping orphaned function_call_output while building Codex responses input"
+                                );
+                            }
                         }
                     }
                 }
@@ -1099,13 +1126,36 @@ impl OpenAiCodexProvider {
             || normalized.starts_with("o4")
     }
 
+    fn parse_service_tier_model_alias(model: &str) -> (String, Option<CodexServiceTier>) {
+        match model {
+            // OpenAI's Codex app implements GPT-5.4 Fast mode via `service_tier=priority`.
+            "gpt-5.4-fast" => ("gpt-5.4".to_string(), Some(CodexServiceTier::Priority)),
+            _ => (model.to_string(), None),
+        }
+    }
+
     fn resolve_model_and_reasoning_effort(model: &str) -> (String, Option<ThinkingLevel>) {
+        let (base_model, level, _) =
+            Self::resolve_model_and_reasoning_effort_and_service_tier(model);
+        (base_model, level)
+    }
+
+    fn resolve_model_and_reasoning_effort_and_service_tier(
+        model: &str,
+    ) -> (String, Option<ThinkingLevel>, Option<CodexServiceTier>) {
         let (base_model, level_from_model) = Self::parse_model_thinking_level(model);
         let level = level_from_model.or_else(Self::env_thinking_level);
+        let (base_model, service_tier) = Self::parse_service_tier_model_alias(&base_model);
         if !Self::model_supports_reasoning_effort(&base_model) {
-            return (base_model, None);
+            return (base_model, None, service_tier);
         }
-        (base_model, level)
+        (base_model, level, service_tier)
+    }
+
+    fn apply_service_tier(payload: &mut Value, service_tier: Option<CodexServiceTier>) {
+        if let Some(service_tier) = service_tier {
+            payload["service_tier"] = json!(service_tier.as_str());
+        }
     }
 
     fn format_openai_api_error(status: StatusCode, body: &str, model: &str) -> String {
@@ -1132,11 +1182,13 @@ impl OpenAiCodexProvider {
         request: &CompletionRequest,
         model: &str,
         reasoning_effort: Option<ThinkingLevel>,
+        service_tier: Option<CodexServiceTier>,
     ) -> Value {
         Self::build_responses_ws_create_event_for_backend(
             request,
             model,
             reasoning_effort,
+            service_tier,
             ResponsesWsBackend::OpenAi,
         )
     }
@@ -1145,6 +1197,7 @@ impl OpenAiCodexProvider {
         request: &CompletionRequest,
         model: &str,
         reasoning_effort: Option<ThinkingLevel>,
+        service_tier: Option<CodexServiceTier>,
         backend: ResponsesWsBackend,
     ) -> Value {
         let instructions = Self::extract_responses_instructions(&request.messages);
@@ -1165,6 +1218,7 @@ impl OpenAiCodexProvider {
         if let Some(level) = reasoning_effort {
             event["reasoning"] = json!({ "effort": level.as_str() });
         }
+        Self::apply_service_tier(&mut event, service_tier);
         if backend == ResponsesWsBackend::OpenAi {
             event["tool_choice"] = json!("auto");
             event["parallel_tool_calls"] = json!(true);
@@ -1680,7 +1734,8 @@ impl OpenAiCodexProvider {
         access_token: String,
         account_id: String,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
+        let (model, reasoning_effort, service_tier) =
+            Self::resolve_model_and_reasoning_effort_and_service_tier(&request.model);
         let instructions = Self::extract_responses_instructions(&request.messages);
         let input = Self::convert_messages_to_responses_input(&request.messages);
         let tools = Self::convert_responses_tools(&request.tools);
@@ -1701,6 +1756,7 @@ impl OpenAiCodexProvider {
         if let Some(level) = reasoning_effort {
             body["reasoning"] = json!({ "effort": level.as_str() });
         }
+        Self::apply_service_tier(&mut body, service_tier);
 
         tracing::info!(
             backend = "chatgpt-codex-responses-http",
@@ -1763,7 +1819,8 @@ impl OpenAiCodexProvider {
         request: CompletionRequest,
         api_key: String,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
+        let (model, reasoning_effort, service_tier) =
+            Self::resolve_model_and_reasoning_effort_and_service_tier(&request.model);
         let instructions = Self::extract_responses_instructions(&request.messages);
         let input = Self::convert_messages_to_responses_input(&request.messages);
         let tools = Self::convert_responses_tools(&request.tools);
@@ -1784,6 +1841,7 @@ impl OpenAiCodexProvider {
         if let Some(level) = reasoning_effort {
             body["reasoning"] = json!({ "effort": level.as_str() });
         }
+        Self::apply_service_tier(&mut body, service_tier);
 
         tracing::info!(
             backend = "openai-responses-http",
@@ -1848,11 +1906,13 @@ impl OpenAiCodexProvider {
         backend: &'static str,
         ws_backend: ResponsesWsBackend,
     ) -> Result<BoxStream<'static, StreamChunk>> {
-        let (model, reasoning_effort) = Self::resolve_model_and_reasoning_effort(&request.model);
+        let (model, reasoning_effort, service_tier) =
+            Self::resolve_model_and_reasoning_effort_and_service_tier(&request.model);
         let body = Self::build_responses_ws_create_event_for_backend(
             &request,
             &model,
             reasoning_effort,
+            service_tier,
             ws_backend,
         );
         tracing::info!(
@@ -2008,6 +2068,18 @@ impl Provider for OpenAiCodexProvider {
                 output_cost_per_million: Some(0.0),
             },
             ModelInfo {
+                id: "gpt-5.4-fast".to_string(),
+                name: "GPT-5.4 Fast".to_string(),
+                provider: "openai-codex".to_string(),
+                context_window: 272_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.0),
+                output_cost_per_million: Some(0.0),
+            },
+            ModelInfo {
                 id: "gpt-5.4-pro".to_string(),
                 name: "GPT-5.4 Pro".to_string(),
                 provider: "openai-codex".to_string(),
@@ -2128,6 +2200,17 @@ mod tests {
     }
 
     #[test]
+    fn maps_fast_model_alias_to_priority_service_tier() {
+        let (model, level, service_tier) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort_and_service_tier(
+                "gpt-5.4-fast:high",
+            );
+        assert_eq!(model, "gpt-5.4");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
+        assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
+    }
+
+    #[test]
     fn ignores_unknown_model_suffix() {
         let (model, level) =
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:turbo");
@@ -2151,6 +2234,7 @@ mod tests {
             .expect("model listing should succeed");
 
         assert!(models.iter().any(|model| model.id == "gpt-5.4"));
+        assert!(models.iter().any(|model| model.id == "gpt-5.4-fast"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));
     }
 
@@ -2172,6 +2256,14 @@ mod tests {
         provider
             .validate_model_for_backend("gpt-5.4-pro")
             .expect("api key backend should allow pro model");
+    }
+
+    #[test]
+    fn allows_fast_alias_for_chatgpt_backend() {
+        let provider = OpenAiCodexProvider::new();
+        provider
+            .validate_model_for_backend("gpt-5.4-fast:high")
+            .expect("chatgpt backend should allow fast alias");
     }
 
     #[test]
@@ -2339,6 +2431,7 @@ mod tests {
             &request,
             "gpt-5.4",
             Some(ThinkingLevel::High),
+            None,
         );
 
         assert_eq!(

@@ -4,8 +4,8 @@
 
 use anyhow::Result;
 use lsp_types::{
-    ClientCapabilities, CompletionItem, DocumentSymbol, Location, Position, Range,
-    ServerCapabilities, SymbolInformation, TextDocumentIdentifier, TextDocumentItem,
+    ClientCapabilities, CompletionItem, DiagnosticSeverity, DocumentSymbol, Location, Position,
+    Range, ServerCapabilities, SymbolInformation, TextDocumentIdentifier, TextDocumentItem,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -243,6 +243,8 @@ pub enum LspActionResult {
     Implementation { locations: Vec<LocationInfo> },
     /// Completion result
     Completion { items: Vec<CompletionItemInfo> },
+    /// Diagnostics result
+    Diagnostics { diagnostics: Vec<DiagnosticInfo> },
     /// Error result
     Error { message: String },
 }
@@ -362,6 +364,55 @@ impl From<CompletionItem> for CompletionItemInfo {
                 lsp_types::Documentation::MarkupContent(mc) => mc.value,
             }),
             insert_text: item.insert_text,
+        }
+    }
+}
+
+/// Simplified diagnostic info for tool output and proactive session context
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiagnosticInfo {
+    pub uri: String,
+    pub range: RangeInfo,
+    pub severity: Option<String>,
+    pub code: Option<String>,
+    pub source: Option<String>,
+    pub message: String,
+}
+
+impl DiagnosticInfo {
+    pub fn severity_rank(&self) -> u8 {
+        match self.severity.as_deref() {
+            Some("error") => 1,
+            Some("warning") => 2,
+            Some("information") => 3,
+            Some("hint") => 4,
+            _ => 5,
+        }
+    }
+}
+
+impl From<(String, lsp_types::Diagnostic)> for DiagnosticInfo {
+    fn from((uri, diagnostic): (String, lsp_types::Diagnostic)) -> Self {
+        let severity = diagnostic.severity.map(|severity| match severity {
+            DiagnosticSeverity::ERROR => "error".to_string(),
+            DiagnosticSeverity::WARNING => "warning".to_string(),
+            DiagnosticSeverity::INFORMATION => "information".to_string(),
+            DiagnosticSeverity::HINT => "hint".to_string(),
+            _ => "unknown".to_string(),
+        });
+
+        let code = diagnostic.code.map(|code| match code {
+            lsp_types::NumberOrString::Number(n) => n.to_string(),
+            lsp_types::NumberOrString::String(s) => s,
+        });
+
+        Self {
+            uri,
+            range: RangeInfo::from(diagnostic.range),
+            severity,
+            code,
+            source: diagnostic.source,
+            message: diagnostic.message,
         }
     }
 }
@@ -544,5 +595,114 @@ pub fn detect_language_from_path(path: &str) -> Option<&'static str> {
         "h" => Some("c"),
         "hpp" => Some("cpp"),
         _ => None,
+    }
+}
+
+/// Built-in linter server configurations.
+/// Returns an `LspConfig` for well-known linter language servers.
+pub fn get_linter_server_config(name: &str) -> Option<LspConfig> {
+    match name {
+        "eslint" => Some(LspConfig {
+            command: "vscode-eslint-language-server".to_string(),
+            args: vec!["--stdio".to_string()],
+            file_extensions: vec![
+                "js".to_string(),
+                "jsx".to_string(),
+                "ts".to_string(),
+                "tsx".to_string(),
+                "mjs".to_string(),
+                "cjs".to_string(),
+            ],
+            ..Default::default()
+        }),
+        "biome" => Some(LspConfig {
+            command: "biome".to_string(),
+            args: vec!["lsp-proxy".to_string()],
+            file_extensions: vec![
+                "js".to_string(),
+                "jsx".to_string(),
+                "ts".to_string(),
+                "tsx".to_string(),
+                "json".to_string(),
+                "css".to_string(),
+            ],
+            ..Default::default()
+        }),
+        "ruff" => Some(LspConfig {
+            command: "ruff".to_string(),
+            args: vec!["server".to_string()],
+            file_extensions: vec!["py".to_string(), "pyi".to_string()],
+            ..Default::default()
+        }),
+        "stylelint" => Some(LspConfig {
+            command: "stylelint-lsp".to_string(),
+            args: vec!["--stdio".to_string()],
+            file_extensions: vec!["css".to_string(), "scss".to_string(), "less".to_string()],
+            ..Default::default()
+        }),
+        _ => None,
+    }
+}
+
+/// Convert a config `LspServerEntry` into an `LspConfig`.
+impl LspConfig {
+    pub fn from_server_entry(
+        entry: &crate::config::LspServerEntry,
+        root_uri: Option<String>,
+    ) -> Self {
+        Self {
+            command: entry.command.clone(),
+            args: entry.args.clone(),
+            root_uri,
+            file_extensions: entry.file_extensions.clone(),
+            initialization_options: entry.initialization_options.clone(),
+            timeout_ms: entry.timeout_ms,
+        }
+    }
+
+    pub fn from_linter_entry(
+        name: &str,
+        entry: &crate::config::LspLinterEntry,
+        root_uri: Option<String>,
+    ) -> Option<Self> {
+        // Start from the built-in config if the linter name is known,
+        // then overlay any user overrides.
+        let mut base = if let Some(builtin) = get_linter_server_config(name) {
+            builtin
+        } else {
+            // Fully custom linter — command is required.
+            let command = entry.command.as_ref()?;
+            LspConfig {
+                command: command.clone(),
+                ..Default::default()
+            }
+        };
+
+        // User overrides
+        if let Some(cmd) = &entry.command {
+            base.command = cmd.clone();
+        }
+        if !entry.args.is_empty() {
+            base.args = entry.args.clone();
+        }
+        if !entry.file_extensions.is_empty() {
+            base.file_extensions = entry.file_extensions.clone();
+        }
+        if entry.initialization_options.is_some() {
+            base.initialization_options = entry.initialization_options.clone();
+        }
+        base.root_uri = root_uri;
+        Some(base)
+    }
+}
+
+/// Returns all file extensions handled by a named linter (built-in defaults).
+pub fn linter_extensions(name: &str) -> &'static [&'static str] {
+    match name {
+        "eslint" => &["js", "jsx", "ts", "tsx", "mjs", "cjs"],
+        "biome" => &["js", "jsx", "ts", "tsx", "json", "css"],
+        "ruff" => &["py", "pyi"],
+        "stylelint" => &["css", "scss", "less"],
+        _ => &[],
     }
 }

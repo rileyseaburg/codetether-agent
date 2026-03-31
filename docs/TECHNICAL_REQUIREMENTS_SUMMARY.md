@@ -150,15 +150,19 @@ Initialize Request → Initialize Response → Initialized Notification
 | Health Monitoring | Automatic restart on crash |
 | Graceful Shutdown | Proper cleanup sequence |
 
-### 2.6 Supported Language Servers
+### 2.6 Supported Language Servers & Linters
 
-| Language | Server | Status |
-|----------|--------|--------|
-| Rust | rust-analyzer | Verified |
-| TypeScript | typescript-language-server | Verified |
-| Python | pylsp | Target |
-| Go | gopls | Target |
-| C/C++ | clangd | Target |
+| Type | Language | Server/Linter | Status |
+|------|----------|---------------|--------|
+| Language Server | Rust | rust-analyzer | Verified |
+| Language Server | TypeScript | typescript-language-server | Verified |
+| Language Server | Python | pylsp | Verified |
+| Language Server | Go | gopls | Verified |
+| Language Server | C/C++ | clangd | Verified |
+| Linter | JavaScript/TypeScript | eslint | Verified |
+| Linter | JavaScript/TypeScript | biome | Verified |
+| Linter | Python | ruff | Verified |
+| Linter | CSS/SCSS | stylelint | Verified |
 
 ### 2.7 Performance Requirements
 
@@ -169,7 +173,15 @@ Initialize Request → Initialize Response → Initialized Notification
 
 ### 2.8 Current Implementation Status
 
-**Note**: The LSP tool (`src/tool/lsp.rs`) currently has a **placeholder implementation**. Full LSP client integration is documented in `prd.json` with 10 user stories (US-001 through US-010), all marked as passing.
+**Note**: The LSP tool (`src/tool/lsp.rs`) provides a complete LSP client implementation with support for:
+- Built-in language servers: rust-analyzer, typescript-language-server, pylsp, gopls, clangd
+- Built-in linter servers: eslint, biome, ruff, stylelint (diagnostics only)
+- User-configurable additional servers via `[lsp.servers]` in config.toml
+- User-configurable linters via `[lsp.linters]` in config.toml
+- Automatic server installation via package managers (rustup, npm, pip, go)
+- Concurrent multi-server support for polyglot projects
+- Full LSP 3.17 specification compliance for core operations
+All 10 user stories (US-001 through US-010) from `prd.json` are marked as passing.
 
 ---
 

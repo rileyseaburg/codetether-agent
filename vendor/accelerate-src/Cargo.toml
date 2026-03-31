@@ -1,0 +1,21 @@
+[package]
+name = "accelerate-src"
+version = "0.3.2"
+edition = "2021"
+authors = ["Andrew Straw <strawman@astraw.com>"]
+description = "The package provides a source of BLAS and LAPACK via the Accelerate framework."
+license = "Apache-2.0/MIT"
+documentation = "https://docs.rs/accelerate-src"
+homepage = "https://github.com/blas-lapack-rs/accelerate-src"
+repository = "https://github.com/blas-lapack-rs/accelerate-src"
+readme = "README.md"
+categories = ["science"]
+keywords = ["linear-algebra"]
+build = "build.rs"
+links = "Accelerate.framework"
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+libc = "0.2"

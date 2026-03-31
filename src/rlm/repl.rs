@@ -216,14 +216,24 @@ impl RlmRepl {
     }
 
     pub fn execute_dsl_line(&mut self, line: &str) -> Option<DslResult> {
+        match self.try_execute_dsl_line(line) {
+            Ok(res) => res,
+            Err(e) => Some(DslResult::Error(e.to_string())),
+        }
+    }
+
+    fn try_execute_dsl_line(&mut self, line: &str) -> anyhow::Result<Option<DslResult>> {
         // Check for FINAL
         if line.starts_with("FINAL(") || line.starts_with("FINAL!(") {
-            let start = line.find('(').unwrap() + 1;
+            let start = line
+                .find('(')
+                .ok_or_else(|| anyhow::anyhow!("missing paren"))?
+                + 1;
             let end = line.rfind(')').unwrap_or(line.len());
             let answer = line[start..end]
                 .trim()
                 .trim_matches(|c| c == '"' || c == '\'' || c == '`');
-            return Some(DslResult::Final(answer.to_string()));
+            return Ok(Some(DslResult::Final(answer.to_string())));
         }
 
         // Check for print/console.log
@@ -231,7 +241,10 @@ impl RlmRepl {
             || line.starts_with("println!(")
             || line.starts_with("console.log(")
         {
-            let start = line.find('(').unwrap() + 1;
+            let start = line
+                .find('(')
+                .ok_or_else(|| anyhow::anyhow!("missing paren"))?
+                + 1;
             let end = line.rfind(')').unwrap_or(line.len());
             let content = line[start..end]
                 .trim()
@@ -239,7 +252,7 @@ impl RlmRepl {
 
             // Expand variables
             let expanded = self.expand_expression(content);
-            return Some(DslResult::Output(expanded));
+            return Ok(Some(DslResult::Output(expanded)));
         }
 
         // Check for variable assignment
@@ -257,7 +270,7 @@ impl RlmRepl {
 
             let value = self.evaluate_expression(expr);
             self.set_var(var_name, value);
-            return None;
+            return Ok(None);
         }
 
         // Check for function calls that should output
@@ -272,10 +285,10 @@ impl RlmRepl {
             || line.starts_with("context")
         {
             let result = self.evaluate_expression(line);
-            return Some(DslResult::Output(result));
+            return Ok(Some(DslResult::Output(result)));
         }
 
-        None
+        Ok(None)
     }
 
     fn expand_expression(&self, expr: &str) -> String {

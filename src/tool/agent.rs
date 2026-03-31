@@ -101,12 +101,22 @@ const SUBSCRIPTION_PROVIDERS: &[&str] = &[
     "zai",
     "glm5",
 ];
+
+const OPENROUTER_BUDGET_ALLOWLIST: &[&str] = &["qwen/qwen3.5-35ba3b"];
+
 fn is_subscription_provider(p: &str) -> bool {
     SUBSCRIPTION_PROVIDERS.contains(&p)
 }
 fn is_free_model_id(id: &str) -> bool {
     let lower = id.to_ascii_lowercase();
     lower.contains(":free") || lower.ends_with("-free")
+}
+
+fn is_budget_allowlisted_model(provider: &str, model_id: &str) -> bool {
+    provider.eq_ignore_ascii_case("openrouter")
+        && OPENROUTER_BUDGET_ALLOWLIST
+            .iter()
+            .any(|allowed| allowed.eq_ignore_ascii_case(model_id.trim()))
 }
 
 async fn is_free_or_eligible(model: &str, registry: &ProviderRegistry) -> bool {
@@ -121,7 +131,10 @@ async fn is_free_or_eligible(model: &str, registry: &ProviderRegistry) -> bool {
     }
 
     let pn = provider_name.unwrap();
-    if is_subscription_provider(&pn.to_ascii_lowercase()) || is_free_model_id(model_id) {
+    if is_subscription_provider(&pn.to_ascii_lowercase())
+        || is_free_model_id(model_id)
+        || is_budget_allowlisted_model(pn, model_id)
+    {
         return true;
     }
 
@@ -156,7 +169,7 @@ fn truncate_preview(input: &str, max_chars: usize) -> String {
 
 async fn create_agent_session(name: &str, instructions: &str, model: &str) -> Result<Session> {
     let mut session = Session::new().await.context("Failed to create session")?;
-    session.agent = name.to_string();
+    session.set_agent_name(name.to_string());
     session.metadata.model = Some(model.to_string());
     let system_msg = format!(
         "You are @{name}, a specialized sub-agent. {instructions}\n\n\
@@ -200,8 +213,10 @@ async fn handle_spawn(params: &Params) -> Result<ToolResult> {
             "Spawn blocked: '{requested}' is not free/subscription-eligible. \
              Options: (1) OpenRouter ':free' models e.g. \
              'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-coder:free', 'openai/gpt-oss-120b:free'; \
-             (2) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
-             (3) OAuth providers: 'openai-codex/<model>', 'github-copilot/<model>', \
+             (2) Budget-allowlisted OpenRouter models for token-budget sub-agents, e.g. \
+             'openrouter/qwen/qwen3.5-35ba3b'; \
+             (3) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
+             (4) OAuth providers: 'openai-codex/<model>', 'github-copilot/<model>', \
              'gemini-web/<model>', 'local_cuda/<model>'."
         )));
     }
@@ -296,6 +311,7 @@ async fn run_agent_loop(
                     name,
                     output,
                     success,
+                    duration_ms: _,
                 } => {
                     tools.push(json!({ "tool": name, "success": success, "output_preview": truncate_preview(&output, 200) }));
                 }
@@ -407,10 +423,12 @@ impl Tool for AgentTool {
          IMPORTANT: spawned agents must use a free/subscription-eligible model. Valid options: \
          (1) Any OpenRouter ':free' model e.g. 'meta-llama/llama-3.3-70b-instruct:free', \
          'qwen/qwen3-coder:free', 'openai/gpt-oss-120b:free'; \
-         (2) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
-         (3) OAuth providers: 'openai-codex/<model>', 'github-copilot/<model>', \
+         (2) Budget-allowlisted OpenRouter models for token-budget sub-agents, e.g. \
+         'openrouter/qwen/qwen3.5-35ba3b'; \
+         (3) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
+         (4) OAuth providers: 'openai-codex/<model>', 'github-copilot/<model>', \
          'gemini-web/<model>', 'local_cuda/<model>'. \
-         Bare paid model names like 'gpt-4o-mini' or 'anthropic/claude-sonnet-4-20250514' will be blocked."
+         Bare paid model names like 'gpt-4o-mini' or 'anthropic/claude-sonnet-4-20250514' will be blocked unless explicitly allowlisted."
     }
 
     fn parameters(&self) -> Value {
@@ -428,10 +446,12 @@ impl Tool for AgentTool {
                                     (1) OpenRouter ':free' models: 'meta-llama/llama-3.3-70b-instruct:free', \
                                     'qwen/qwen3-coder:free', 'openai/gpt-oss-120b:free', \
                                     'google/gemma-3-27b-it:free', 'nousresearch/hermes-3-llama-3.1-405b:free'; \
-                                    (2) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
-                                    (3) OAuth providers: 'openai-codex/<model>', \
+                                    (2) Budget-allowlisted OpenRouter models for token-budget sub-agents: \
+                                    'openrouter/qwen/qwen3.5-35ba3b'; \
+                                    (3) Our subscription providers: 'zai/<model>', 'glm5/<model>'; \
+                                    (4) OAuth providers: 'openai-codex/<model>', \
                                     'github-copilot/<model>', 'gemini-web/<model>', 'local_cuda/<model>'. \
-                                    Bare paid names like 'gpt-4o-mini' are NOT allowed."
+                                    Bare paid names like 'gpt-4o-mini' are NOT allowed unless explicitly allowlisted."
                 }
             },
             "required": ["action"]
@@ -463,7 +483,7 @@ impl Tool for AgentTool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_free_model_id, normalize_model, truncate_preview};
+    use super::{is_budget_allowlisted_model, is_free_model_id, normalize_model, truncate_preview};
     use crate::provider::ProviderRegistry;
 
     #[test]
@@ -491,5 +511,27 @@ mod tests {
     async fn included_provider_eligible() {
         let registry = ProviderRegistry::new();
         assert!(super::is_free_or_eligible("openai-codex/gpt-5-mini", &registry).await);
+    }
+
+    #[test]
+    fn openrouter_budget_allowlist_detection() {
+        assert!(is_budget_allowlisted_model(
+            "openrouter",
+            "qwen/qwen3.5-35ba3b"
+        ));
+        assert!(!is_budget_allowlisted_model(
+            "openrouter",
+            "qwen/qwen3-coder"
+        ));
+        assert!(!is_budget_allowlisted_model(
+            "openai",
+            "qwen/qwen3.5-35ba3b"
+        ));
+    }
+
+    #[tokio::test]
+    async fn openrouter_budget_allowlisted_model_is_eligible() {
+        let registry = ProviderRegistry::new();
+        assert!(super::is_free_or_eligible("openrouter/qwen/qwen3.5-35ba3b", &registry).await);
     }
 }

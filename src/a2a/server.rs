@@ -481,7 +481,10 @@ async fn handle_message_send(
     }
 
     // Return current task state wrapped in SendMessageResponse
-    let task = server.tasks.get(&task_id).unwrap();
+    let task = server
+        .tasks
+        .get(&task_id)
+        .ok_or_else(|| JsonRpcError::internal_error(format!("Task disappeared: {}", task_id)))?;
     let response = SendMessageResponse::Task(task.value().clone());
     serde_json::to_value(response)
         .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {}", e)))
@@ -599,12 +602,14 @@ async fn handle_message_stream(
                         name,
                         output,
                         success,
+                        duration_ms,
                     } => {
                         serde_json::json!({
                             "type": "tool_call_complete",
                             "name": name,
                             "output": output.chars().take(500).collect::<String>(),
-                            "success": success
+                            "success": success,
+                            "duration_ms": duration_ms
                         })
                     }
                     SessionEvent::TextChunk(text) => {

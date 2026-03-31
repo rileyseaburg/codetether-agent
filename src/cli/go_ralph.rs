@@ -427,6 +427,7 @@ pub async fn execute_go_ralph(
         relay_max_agents: 8,
         relay_max_rounds: 3,
         max_steps_per_story: 30,
+        ..Default::default()
     };
 
     let mut ralph = RalphLoop::new(

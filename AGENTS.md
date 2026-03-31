@@ -56,7 +56,7 @@ src/
 ├── audit/           # System-wide audit trail (JSON Lines, queryable)
 │   └── mod.rs       # AuditEntry, AuditLog, global singleton, query filters
 ├── cli/             # CLI commands (run, tui, serve, ralph, swarm, etc.)
-├── config/          # Configuration loading
+├── config/          # Configuration loading (includes LSP/linter server settings under [lsp])
 ├── k8s/             # Kubernetes self-deployment manager
 │   └── mod.rs       # K8sManager, cluster detection, pod lifecycle, reconcile loop
 ├── mcp/             # MCP protocol implementation
@@ -404,3 +404,48 @@ RUST_LOG=codetether::session=trace codetether run "test"
 - Memory target: <20MB idle
 - Use `Arc` for shared provider state
 - Prefer streaming responses for large outputs
+
+## Forage System (`src/forage/mod.rs`)
+
+Forage is an autonomous OKR-driven work selection and execution system that
+selects high-value work items from active OKRs and optionally executes them
+in isolated git worktrees.
+
+### Purpose
+- Scans active/draft/on_hold OKRs for actionable opportunities
+- Ranks opportunities by KR progress, moonshot alignment, and scoring heuristics
+- Executes work in git worktrees for isolation (with `--execute`)
+- Reports progress via the agent bus and S3 event sink
+
+### Key Types
+- `ForageOpportunity`: Scored work item with OKR/KR linkage, moonshot alignment
+- `ForageRunSummary`: Execution summary with cycles, selections, and failures
+- `MoonshotRubric`: Optional goals for alignment scoring
+
+### CLI Usage
+```bash
+# Scan for opportunities (dry run)
+codetether forage --codebases /path/to/project
+
+# Execute top opportunity in a worktree
+codetether forage --codebases /path/to/project --execute --top 1
+
+# Continuous loop with moonshot alignment
+codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools" --execute
+```
+
+### CLI Flags
+- `--top N`: Show top-N opportunities each cycle (default: 3)
+- `--loop`: Keep running continuously
+- `--interval-secs N`: Seconds between loop cycles (default: 120)
+- `--max-cycles N`: Maximum cycles when looping (0 = unlimited)
+- `--execute`: Execute selected opportunities via `codetether run`
+- `--no-s3`: Disable S3/MinIO archival requirement (for local-only)
+- `--moonshot MISSION`: Moonshot mission statement(s) for prioritization
+
+### Integration Points
+- Uses `OkrRepository` for OKR/KR queries
+- Creates worktrees via `worktree::WorktreeManager`
+- Executes via `SwarmExecutor` for parallel agent work
+- Reports to `AgentBus` for inter-agent communication
+- Persists traces to S3 via `BusS3Sink`

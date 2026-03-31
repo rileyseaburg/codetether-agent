@@ -16,11 +16,24 @@ use regex::Regex;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::collections::HashMap;
+
+pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
+const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
+const PONY_ALPHA_2_MODEL: &str = "pony-alpha-2";
 
 pub struct ZaiProvider {
     client: Client,
     api_key: String,
     base_url: String,
+}
+
+#[derive(Debug, Default)]
+struct ZaiStreamToolState {
+    stream_id: String,
+    name: Option<String>,
+    started: bool,
+    finished: bool,
 }
 
 impl std::fmt::Debug for ZaiProvider {
@@ -45,6 +58,116 @@ impl ZaiProvider {
             api_key,
             base_url,
         })
+    }
+
+    fn request_base_url(&self, model: &str) -> &str {
+        if model.eq_ignore_ascii_case(PONY_ALPHA_2_MODEL) {
+            CODING_BASE_URL
+        } else {
+            &self.base_url
+        }
+    }
+
+    /// Fetch available models from the Z.AI /models endpoint.
+    /// Returns an empty vec on any failure (network, parse, auth) so callers
+    /// can fall back to the hardcoded catalog.
+    async fn discover_models_from_api(&self) -> Vec<ModelInfo> {
+        // Always hit the standard API endpoint for model discovery,
+        // even if base_url points at the coding endpoint.
+        let discovery_url = if self.base_url.contains("/coding/") {
+            self.base_url.replace("/coding/", "/")
+        } else {
+            self.base_url.clone()
+        };
+        let url = format!("{discovery_url}/models");
+        let response = match self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::debug!(
+                    url = %url,
+                    error = %e,
+                    "Z.AI /models discovery request failed"
+                );
+                return Vec::new();
+            }
+        };
+
+        if !response.status().is_success() {
+            tracing::debug!(
+                url = %url,
+                status = %response.status(),
+                "Z.AI /models endpoint returned non-success"
+            );
+            return Vec::new();
+        }
+
+        let payload: Value = match response.json().await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::debug!(
+                    url = %url,
+                    error = %e,
+                    "Failed to parse Z.AI /models response"
+                );
+                return Vec::new();
+            }
+        };
+
+        let models = payload
+            .get("data")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| {
+                let id = match entry {
+                    Value::String(s) => s.trim().to_string(),
+                    Value::Object(_) => entry
+                        .get("id")
+                        .and_then(Value::as_str)?
+                        .trim()
+                        .to_string(),
+                    _ => return None,
+                };
+                if id.is_empty() {
+                    return None;
+                }
+                let name = entry
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|n| !n.is_empty())
+                    .unwrap_or(&id)
+                    .to_string();
+                Some(ModelInfo {
+                    id,
+                    name,
+                    provider: "zai".to_string(),
+                    context_window: 200_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        if models.is_empty() {
+            tracing::debug!(url = %url, "Z.AI /models returned no model ids");
+        } else {
+            tracing::info!(
+                count = models.len(),
+                "Z.AI /models discovery succeeded"
+            );
+        }
+        models
     }
 
     fn normalize_tool_arguments(arguments: &str) -> String {
@@ -216,7 +339,10 @@ impl ZaiProvider {
     }
 
     fn model_supports_tool_stream(model: &str) -> bool {
-        model.contains("glm-5") || model.contains("glm-4.7") || model.contains("glm-4.6")
+        model.contains("glm-5")
+            || model.contains("glm-4.7")
+            || model.contains("glm-4.6")
+            || model.eq_ignore_ascii_case(PONY_ALPHA_2_MODEL)
     }
 
     fn preview_text(text: &str, max_chars: usize) -> &str {
@@ -227,6 +353,110 @@ impl ZaiProvider {
             &text[..idx]
         } else {
             text
+        }
+    }
+
+    fn stream_tool_arguments_fragment(arguments: &Value) -> String {
+        match arguments {
+            Value::Null => String::new(),
+            Value::String(s) => s.clone(),
+            other => serde_json::to_string(other).unwrap_or_default(),
+        }
+    }
+
+    fn append_stream_tool_call_chunks(
+        chunks: &mut Vec<StreamChunk>,
+        tool_calls: &[ZaiStreamToolCall],
+        tool_states: &mut HashMap<usize, ZaiStreamToolState>,
+        next_fallback_index: &mut usize,
+        last_seen_index: &mut Option<usize>,
+    ) {
+        for tc in tool_calls {
+            let index = tc
+                .index
+                .or_else(|| {
+                    tc.id.as_ref().and_then(|id| {
+                        tool_states
+                            .iter()
+                            .find_map(|(idx, state)| (state.stream_id == *id).then_some(*idx))
+                    })
+                })
+                .or(*last_seen_index)
+                .unwrap_or_else(|| {
+                    let idx = *next_fallback_index;
+                    *next_fallback_index += 1;
+                    idx
+                });
+            *last_seen_index = Some(index);
+
+            let state = tool_states
+                .entry(index)
+                .or_insert_with(|| ZaiStreamToolState {
+                    stream_id: tc.id.clone().unwrap_or_else(|| format!("zai-tool-{index}")),
+                    ..Default::default()
+                });
+
+            if let Some(id) = &tc.id
+                && !state.started
+                && state.stream_id.starts_with("zai-tool-")
+            {
+                state.stream_id = id.clone();
+            }
+
+            if let Some(func) = &tc.function {
+                if let Some(name) = &func.name
+                    && !name.is_empty()
+                {
+                    state.name = Some(name.clone());
+                }
+
+                if !state.started
+                    && let Some(name) = &state.name
+                {
+                    chunks.push(StreamChunk::ToolCallStart {
+                        id: state.stream_id.clone(),
+                        name: name.clone(),
+                    });
+                    state.started = true;
+                }
+
+                if let Some(arguments) = &func.arguments {
+                    let delta = Self::stream_tool_arguments_fragment(arguments);
+                    if !delta.is_empty() {
+                        if !state.started {
+                            chunks.push(StreamChunk::ToolCallStart {
+                                id: state.stream_id.clone(),
+                                name: state.name.clone().unwrap_or_else(|| "tool".to_string()),
+                            });
+                            state.started = true;
+                        }
+                        chunks.push(StreamChunk::ToolCallDelta {
+                            id: state.stream_id.clone(),
+                            arguments_delta: delta,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    fn finish_stream_tool_call_chunks(
+        chunks: &mut Vec<StreamChunk>,
+        tool_states: &mut HashMap<usize, ZaiStreamToolState>,
+    ) {
+        let mut ordered_indexes: Vec<_> = tool_states.keys().copied().collect();
+        ordered_indexes.sort_unstable();
+
+        for index in ordered_indexes {
+            if let Some(state) = tool_states.get_mut(&index)
+                && state.started
+                && !state.finished
+            {
+                chunks.push(StreamChunk::ToolCallEnd {
+                    id: state.stream_id.clone(),
+                });
+                state.finished = true;
+            }
         }
     }
 }
@@ -323,6 +553,8 @@ struct ZaiStreamDelta {
 #[derive(Debug, Deserialize)]
 struct ZaiStreamToolCall {
     #[serde(default)]
+    index: Option<usize>,
+    #[serde(default)]
     id: Option<String>,
     function: Option<ZaiStreamFunction>,
 }
@@ -342,7 +574,60 @@ impl Provider for ZaiProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+        // Attempt dynamic model discovery from the Z.AI /models endpoint.
+        // When the API is reachable, this returns the authoritative model
+        // catalog including newly-released models without a code change.
+        let discovered = self.discover_models_from_api().await;
+        if !discovered.is_empty() {
+            // Merge in special models that exist outside the /models API
+            // (coding endpoint models, etc.)
+            let mut models = discovered;
+            if !models.iter().any(|m| m.id == PONY_ALPHA_2_MODEL) {
+                models.push(ModelInfo {
+                    id: PONY_ALPHA_2_MODEL.to_string(),
+                    name: "Pony Alpha 2".to_string(),
+                    provider: "zai".to_string(),
+                    context_window: 128_000,
+                    max_output_tokens: Some(16_384),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                });
+            }
+            if !models.iter().any(|m| m.id == "glm-4.7-flash") {
+                models.push(ModelInfo {
+                    id: "glm-4.7-flash".to_string(),
+                    name: "GLM-4.7 Flash".to_string(),
+                    provider: "zai".to_string(),
+                    context_window: 128_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: None,
+                    output_cost_per_million: None,
+                });
+            }
+            return Ok(models);
+        }
+
+        // Static catalog used when the /models endpoint is unavailable
+        // (e.g. network partition, auth failure, or non-standard deployments).
         Ok(vec![
+            ModelInfo {
+                id: "glm-5.1".to_string(),
+                name: "GLM-5.1".to_string(),
+                provider: "zai".to_string(),
+                context_window: 200_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            },
             ModelInfo {
                 id: "glm-5".to_string(),
                 name: "GLM-5".to_string(),
@@ -403,6 +688,30 @@ impl Provider for ZaiProvider {
                 input_cost_per_million: None,
                 output_cost_per_million: None,
             },
+            ModelInfo {
+                id: "glm-5-turbo".to_string(),
+                name: "GLM-5 Turbo".to_string(),
+                provider: "zai".to_string(),
+                context_window: 200_000,
+                max_output_tokens: Some(128_000),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: Some(0.96),
+                output_cost_per_million: Some(3.20),
+            },
+            ModelInfo {
+                id: PONY_ALPHA_2_MODEL.to_string(),
+                name: "Pony Alpha 2".to_string(),
+                provider: "zai".to_string(),
+                context_window: 128_000,
+                max_output_tokens: Some(16_384),
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                input_cost_per_million: None,
+                output_cost_per_million: None,
+            },
         ])
     }
 
@@ -436,10 +745,11 @@ impl Provider for ZaiProvider {
         }
 
         tracing::debug!(model = %request.model, "Z.AI request");
+        let request_base_url = self.request_base_url(&request.model);
 
         let response = self
             .client
-            .post(format!("{}/chat/completions", self.base_url))
+            .post(format!("{}/chat/completions", request_base_url))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&body)
@@ -595,10 +905,11 @@ impl Provider for ZaiProvider {
         }
 
         tracing::debug!(model = %request.model, "Z.AI streaming request");
+        let request_base_url = self.request_base_url(&request.model);
 
         let response = self
             .client
-            .post(format!("{}/chat/completions", self.base_url))
+            .post(format!("{}/chat/completions", request_base_url))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&body)
@@ -621,6 +932,9 @@ impl Provider for ZaiProvider {
 
         let stream = response.bytes_stream();
         let mut buffer = String::new();
+        let mut tool_states = HashMap::<usize, ZaiStreamToolState>::new();
+        let mut next_fallback_tool_index = 0usize;
+        let mut last_seen_tool_index = None;
 
         Ok(stream
             .flat_map(move |chunk_result| {
@@ -661,30 +975,13 @@ impl Provider for ZaiProvider {
                                         chunks
                                             .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
                                     }
-                                    for tc in tool_calls {
-                                        if let Some(ref func) = tc.function {
-                                            if let Some(ref name) = func.name {
-                                                // New tool call starting
-                                                chunks.push(StreamChunk::ToolCallStart {
-                                                    id: tc.id.clone().unwrap_or_default(),
-                                                    name: name.clone(),
-                                                });
-                                            }
-                                            if let Some(ref args) = func.arguments {
-                                                let delta = match args {
-                                                    Value::String(s) => s.clone(),
-                                                    other => serde_json::to_string(other)
-                                                        .unwrap_or_default(),
-                                                };
-                                                if !delta.is_empty() {
-                                                    chunks.push(StreamChunk::ToolCallDelta {
-                                                        id: tc.id.clone().unwrap_or_default(),
-                                                        arguments_delta: delta,
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    }
+                                    Self::append_stream_tool_call_chunks(
+                                        &mut chunks,
+                                        tool_calls,
+                                        &mut tool_states,
+                                        &mut next_fallback_tool_index,
+                                        &mut last_seen_tool_index,
+                                    );
                                 }
                                 // finish_reason signals end of a tool call or completion
                                 if let Some(ref reason) = choice.finish_reason {
@@ -693,14 +990,10 @@ impl Provider for ZaiProvider {
                                             .push(StreamChunk::Text(std::mem::take(&mut text_buf)));
                                     }
                                     if reason == "tool_calls" {
-                                        // Emit ToolCallEnd for the last tool call
-                                        if let Some(ref tcs) = choice.delta.tool_calls
-                                            && let Some(tc) = tcs.last()
-                                        {
-                                            chunks.push(StreamChunk::ToolCallEnd {
-                                                id: tc.id.clone().unwrap_or_default(),
-                                            });
-                                        }
+                                        Self::finish_stream_tool_call_chunks(
+                                            &mut chunks,
+                                            &mut tool_states,
+                                        );
                                     }
                                 }
                             }
@@ -720,6 +1013,74 @@ impl Provider for ZaiProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::Provider;
+
+    #[tokio::test]
+    async fn list_models_includes_pony_alpha_2() {
+        let provider =
+            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
+                .expect("provider should construct");
+        let models = provider.list_models().await.expect("models should list");
+
+        assert!(models.iter().any(|model| model.id == PONY_ALPHA_2_MODEL));
+    }
+
+    #[tokio::test]
+    async fn list_models_includes_glm_5_turbo() {
+        let provider =
+            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
+                .expect("provider should construct");
+        let models = provider.list_models().await.expect("models should list");
+
+        let turbo = models
+            .iter()
+            .find(|m| m.id == "glm-5-turbo")
+            .expect("glm-5-turbo should be in model list");
+        assert_eq!(turbo.context_window, 200_000);
+        assert_eq!(turbo.max_output_tokens, Some(128_000));
+        assert!(turbo.supports_tools);
+        assert!(turbo.supports_streaming);
+        assert_eq!(turbo.input_cost_per_million, Some(0.96));
+        assert_eq!(turbo.output_cost_per_million, Some(3.20));
+    }
+
+    #[tokio::test]
+    async fn list_models_includes_glm_5_1() {
+        let provider =
+            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
+                .expect("provider should construct");
+        let models = provider.list_models().await.expect("models should list");
+
+        let glm51 = models
+            .iter()
+            .find(|m| m.id == "glm-5.1")
+            .expect("glm-5.1 should be in model list");
+        assert_eq!(glm51.context_window, 200_000);
+        assert_eq!(glm51.max_output_tokens, Some(128_000));
+        assert!(glm51.supports_tools);
+        assert!(glm51.supports_streaming);
+    }
+
+    #[test]
+    fn model_supports_tool_stream_matches_glm_5_1() {
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5.1"));
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5"));
+        assert!(ZaiProvider::model_supports_tool_stream("glm-5-turbo"));
+        assert!(!ZaiProvider::model_supports_tool_stream("glm-4.5"));
+    }
+
+    #[test]
+    fn pony_alpha_2_routes_to_coding_endpoint() {
+        let provider =
+            ZaiProvider::with_base_url("test-key".to_string(), DEFAULT_BASE_URL.to_string())
+                .expect("provider should construct");
+
+        assert_eq!(
+            provider.request_base_url(PONY_ALPHA_2_MODEL),
+            CODING_BASE_URL
+        );
+        assert_eq!(provider.request_base_url("glm-5"), DEFAULT_BASE_URL);
+    }
 
     #[test]
     fn convert_messages_serializes_tool_arguments_as_json_string() {
@@ -760,6 +1121,67 @@ mod tests {
         let parsed: Value = serde_json::from_str(args).expect("arguments must contain valid JSON");
 
         assert_eq!(parsed, json!({"input": "city=Beijing"}));
+    }
+
+    #[test]
+    fn stream_tool_chunks_keep_same_call_id_when_followup_delta_omits_id() {
+        let mut chunks = Vec::new();
+        let mut tool_states = HashMap::new();
+        let mut next_fallback_tool_index = 0usize;
+        let mut last_seen_tool_index = None;
+
+        ZaiProvider::append_stream_tool_call_chunks(
+            &mut chunks,
+            &[ZaiStreamToolCall {
+                index: Some(0),
+                id: Some("call_1".to_string()),
+                function: Some(ZaiStreamFunction {
+                    name: Some("bash".to_string()),
+                    arguments: Some(Value::String("{\"".to_string())),
+                }),
+            }],
+            &mut tool_states,
+            &mut next_fallback_tool_index,
+            &mut last_seen_tool_index,
+        );
+
+        ZaiProvider::append_stream_tool_call_chunks(
+            &mut chunks,
+            &[ZaiStreamToolCall {
+                index: Some(0),
+                id: None,
+                function: Some(ZaiStreamFunction {
+                    name: None,
+                    arguments: Some(Value::String("command\":\"pwd\"}".to_string())),
+                }),
+            }],
+            &mut tool_states,
+            &mut next_fallback_tool_index,
+            &mut last_seen_tool_index,
+        );
+
+        ZaiProvider::finish_stream_tool_call_chunks(&mut chunks, &mut tool_states);
+
+        assert_eq!(chunks.len(), 4);
+        assert!(matches!(
+            &chunks[0],
+            StreamChunk::ToolCallStart { id, name }
+                if id == "call_1" && name == "bash"
+        ));
+        assert!(matches!(
+            &chunks[1],
+            StreamChunk::ToolCallDelta { id, arguments_delta }
+                if id == "call_1" && arguments_delta == "{\""
+        ));
+        assert!(matches!(
+            &chunks[2],
+            StreamChunk::ToolCallDelta { id, arguments_delta }
+                if id == "call_1" && arguments_delta == "command\":\"pwd\"}"
+        ));
+        assert!(matches!(
+            &chunks[3],
+            StreamChunk::ToolCallEnd { id } if id == "call_1"
+        ));
     }
 
     #[test]

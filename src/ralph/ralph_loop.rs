@@ -4,6 +4,9 @@ use super::state_store::{RalphRunState, RalphStateStore, StoryResultEntry};
 use super::types::*;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
+use crate::provenance::{
+    ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance_blocking,
+};
 use crate::provider::{ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::{Session, SessionEvent};
 use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
@@ -53,15 +56,19 @@ impl RalphLoop {
         };
 
         info!(
-            "Loaded PRD: {} - {} ({} stories)",
+            "Loaded PRD: {} - {} ({} stories, {} already passed)",
             prd.project,
             prd.feature,
-            prd.user_stories.len()
+            prd.user_stories.len(),
+            prd.passed_count()
         );
+
+        // Resume iteration counter: each passed story consumed one iteration
+        let resumed_iterations = prd.passed_count();
 
         let state = RalphState {
             prd,
-            current_iteration: 0,
+            current_iteration: resumed_iterations,
             max_iterations: config.max_iterations,
             status: RalphStatus::Pending,
             progress_log: Vec::new(),
@@ -714,6 +721,11 @@ impl RalphLoop {
                 let relay_max_rounds = self.config.relay_max_rounds;
                 let registry = self.registry.clone();
                 let max_steps_per_story = self.config.max_steps_per_story;
+                let max_quality_retries = self.config.max_quality_retries;
+                let max_rate_limit_retries = self.config.max_rate_limit_retries;
+                let rate_limit_base_delay_ms = self.config.rate_limit_base_delay_ms;
+                let quality_checks_enabled = self.config.quality_checks_enabled;
+                let quality_checks = self.state.prd.quality_checks.clone();
 
                 let handle: tokio::task::JoinHandle<(
                     crate::ralph::types::UserStory,
@@ -721,6 +733,7 @@ impl RalphLoop {
                     crate::ralph::types::ProgressEntry,
                     Option<crate::worktree::WorktreeInfo>,
                     Option<std::sync::Arc<crate::worktree::WorktreeManager>>,
+                    bool, // quality_passed
                 )> = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
 
@@ -793,53 +806,224 @@ impl RalphLoop {
                         (None, None)
                     };
 
-                    // Execute story: relay team or single agent
-                    let result = if relay_enabled {
-                        if let Some(ref reg) = registry {
-                            Self::call_relay_static(
-                                reg,
-                                &model,
-                                &prompt,
-                                &story_working_dir,
-                                ralph_tx.clone(),
-                                story.id.clone(),
-                                bus.clone(),
-                                relay_max_agents,
-                                relay_max_rounds,
-                            )
-                            .await
-                        } else {
-                            warn!(
-                                story_id = %story.id,
-                                "Relay enabled but no registry available, using single agent"
-                            );
-                            Self::call_llm_static(
-                                &provider,
-                                &model,
-                                &prompt,
-                                &story_working_dir,
-                                bridge_tx,
-                                story.id.clone(),
-                                bus.clone(),
-                                max_steps_per_story,
-                            )
-                            .await
+                    // Execute story: relay team or single agent, with rate-limit retry
+                    let call_result = {
+                        let mut last_err = None;
+                        let mut attempt_result = None;
+                        for attempt in 0..=max_rate_limit_retries {
+                            let res = if relay_enabled {
+                                if let Some(ref reg) = registry {
+                                    Self::call_relay_static(
+                                        reg,
+                                        &model,
+                                        &prompt,
+                                        &story_working_dir,
+                                        ralph_tx.clone(),
+                                        story.id.clone(),
+                                        bus.clone(),
+                                        relay_max_agents,
+                                        relay_max_rounds,
+                                    )
+                                    .await
+                                } else {
+                                    warn!(
+                                        story_id = %story.id,
+                                        "Relay enabled but no registry available, using single agent"
+                                    );
+                                    Self::call_llm_static(
+                                        &provider,
+                                        &model,
+                                        &prompt,
+                                        &story_working_dir,
+                                        bridge_tx.clone(),
+                                        story.id.clone(),
+                                        bus.clone(),
+                                        max_steps_per_story,
+                                    )
+                                    .await
+                                }
+                            } else {
+                                Self::call_llm_static(
+                                    &provider,
+                                    &model,
+                                    &prompt,
+                                    &story_working_dir,
+                                    bridge_tx.clone(),
+                                    story.id.clone(),
+                                    bus.clone(),
+                                    max_steps_per_story,
+                                )
+                                .await
+                            };
+                            match res {
+                                Ok(output) => {
+                                    attempt_result = Some(Ok(output));
+                                    break;
+                                }
+                                Err(e) => {
+                                    let err_str = format!("{e}");
+                                    let is_rate_limit = err_str.contains("Rate limit")
+                                        || err_str.contains("rate_limit")
+                                        || err_str.contains("429")
+                                        || err_str.contains("too many requests");
+                                    if is_rate_limit && attempt < max_rate_limit_retries {
+                                        let delay_ms = rate_limit_base_delay_ms * 2u64.saturating_pow(attempt as u32);
+                                        warn!(
+                                            story_id = %story.id,
+                                            attempt = attempt + 1,
+                                            max_retries = max_rate_limit_retries,
+                                            delay_ms = delay_ms,
+                                            "Rate limited, backing off before retry"
+                                        );
+                                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                                    } else {
+                                        last_err = Some(e);
+                                        break;
+                                    }
+                                }
+                            }
                         }
-                    } else {
-                        Self::call_llm_static(
-                            &provider,
-                            &model,
-                            &prompt,
-                            &story_working_dir,
-                            bridge_tx,
-                            story.id.clone(),
-                            bus.clone(),
-                            max_steps_per_story,
-                        )
-                        .await
+                        attempt_result.unwrap_or_else(|| Err(last_err.unwrap_or_else(|| anyhow::anyhow!("All retries exhausted"))))
                     };
 
-                    let entry = match &result {
+                    // Quality-gate retry loop: if agent succeeded but quality gates fail,
+                    // feed errors back and let the agent try to fix them.
+                    let (final_result, quality_passed) = match call_result {
+                        Ok(initial_output) => {
+                            let mut output = initial_output;
+                            let mut qg_passed = !quality_checks_enabled; // skip if disabled
+
+                            if quality_checks_enabled {
+                                for qg_attempt in 0..=max_quality_retries {
+                                    let cargo_root = Self::find_cargo_root(&story_working_dir);
+                                    let checks = &quality_checks;
+                                    let mut all_ok = true;
+                                    let mut error_output = String::new();
+
+                                    for (name, cmd) in [
+                                        ("typecheck", &checks.typecheck),
+                                        ("lint", &checks.lint),
+                                        ("test", &checks.test),
+                                        ("build", &checks.build),
+                                    ] {
+                                        if let Some(command) = cmd {
+                                            let cmd_output = std::process::Command::new("/bin/sh")
+                                                .arg("-c")
+                                                .arg(command)
+                                                .current_dir(&cargo_root)
+                                                .output();
+                                            match cmd_output {
+                                                Ok(o) if o.status.success() => {}
+                                                Ok(o) => {
+                                                    let stderr = String::from_utf8_lossy(&o.stderr);
+                                                    let stdout = String::from_utf8_lossy(&o.stdout);
+                                                    let combined = format!("{stdout}\n{stderr}");
+                                                    // Extract error lines for agent feedback
+                                                    let errors: String = combined
+                                                        .lines()
+                                                        .filter(|l| {
+                                                            l.starts_with("error")
+                                                                || l.contains("error:")
+                                                                || l.contains("error[")
+                                                        })
+                                                        .take(20)
+                                                        .collect::<Vec<_>>()
+                                                        .join("\n");
+                                                    error_output = format!(
+                                                        "Quality check `{name}` failed:\n{errors}"
+                                                    );
+                                                    all_ok = false;
+                                                    break;
+                                                }
+                                                Err(e) => {
+                                                    error_output = format!(
+                                                        "Quality check `{name}` could not run: {e}"
+                                                    );
+                                                    all_ok = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if all_ok {
+                                        qg_passed = true;
+                                        info!(
+                                            story_id = %story.id,
+                                            attempt = qg_attempt + 1,
+                                            "Quality gates passed"
+                                        );
+                                        break;
+                                    }
+
+                                    if qg_attempt < max_quality_retries {
+                                        // Feed errors back to agent for self-repair
+                                        warn!(
+                                            story_id = %story.id,
+                                            attempt = qg_attempt + 1,
+                                            max_retries = max_quality_retries,
+                                            "Quality gates failed, spawning repair agent"
+                                        );
+
+                                        let repair_prompt = format!(
+                                            "# QUALITY GATE REPAIR (attempt {}/{})\n\n\
+                                             The previous implementation attempt for story {} had quality gate failures.\n\n\
+                                             ## Errors:\n```\n{}\n```\n\n\
+                                             ## Instructions:\n\
+                                             1. Read the files mentioned in the errors\n\
+                                             2. Fix ONLY the compile/lint errors shown above\n\
+                                             3. Run `cargo check 2>&1` to verify your fix\n\
+                                             4. Do NOT refactor or change unrelated code\n\n\
+                                             Working directory: {}",
+                                            qg_attempt + 1,
+                                            max_quality_retries,
+                                            story.id,
+                                            error_output,
+                                            story_working_dir.display()
+                                        );
+
+                                        // Repair agent gets fewer steps
+                                        let repair_result = Self::call_llm_static(
+                                            &provider,
+                                            &model,
+                                            &repair_prompt,
+                                            &story_working_dir,
+                                            bridge_tx.clone(),
+                                            story.id.clone(),
+                                            bus.clone(),
+                                            20, // fewer steps for targeted repair
+                                        )
+                                        .await;
+
+                                        match repair_result {
+                                            Ok(repair_output) => {
+                                                output = format!("{output}\n---\n[repair attempt {}] {repair_output}", qg_attempt + 1);
+                                            }
+                                            Err(e) => {
+                                                warn!(
+                                                    story_id = %story.id,
+                                                    error = %e,
+                                                    "Repair agent failed"
+                                                );
+                                                break;
+                                            }
+                                        }
+                                    } else {
+                                        warn!(
+                                            story_id = %story.id,
+                                            "Quality gates still failing after {} retries",
+                                            max_quality_retries
+                                        );
+                                    }
+                                }
+                            }
+
+                            (Ok(output), qg_passed)
+                        }
+                        Err(e) => (Err(e), false),
+                    };
+
+                    let entry = match &final_result {
                         Ok(response) => {
                             // Append progress to worktree-local progress file
                             let progress_file = story_working_dir.join(&progress_path);
@@ -867,40 +1051,28 @@ impl RalphLoop {
                         }
                     };
 
-                    (story, result.is_ok(), entry, worktree_info, worktree_mgr)
+                    (story, final_result.is_ok(), entry, worktree_info, worktree_mgr, quality_passed)
                 });
 
                 handles.push(handle);
             }
 
             // Wait for all stories in this stage
+            let mut stage_passed = 0usize;
             for handle in handles {
                 match handle.await {
-                    Ok((story, success, entry, worktree_info, worktree_mgr)) => {
-                        self.state.current_iteration += 1;
+                    Ok((story, success, entry, worktree_info, worktree_mgr, quality_passed)) => {
                         self.state.progress_log.push(entry);
 
-                        if success {
-                            // Run quality gates in the worktree (or main dir)
-                            let check_dir = worktree_info
-                                .as_ref()
-                                .map(|wt| wt.path.clone())
-                                .unwrap_or_else(|| self.state.working_dir.clone());
-
-                            let quality_passed = if self.config.quality_checks_enabled {
-                                self.run_quality_gates_in_dir_with_events(&check_dir, &story.id)
-                                    .await
-                                    .unwrap_or(false)
-                            } else {
-                                true
-                            };
-
-                            if quality_passed {
+                        if success && quality_passed {
+                            // Quality gates already ran (with retry/repair) inside the spawned task.
+                            // Proceed directly to merge.
+                            {
                                 info!("Story {} passed quality checks!", story.id);
 
                                 // Commit in worktree first
                                 if let Some(ref wt) = worktree_info {
-                                    let _ = Self::commit_in_dir(&wt.path, &story);
+                                    let _ = self.commit_in_dir(&wt.path, &story);
                                 }
 
                                 // Merge worktree back to main
@@ -1078,18 +1250,6 @@ impl RalphLoop {
                                         });
                                     }
                                 }
-                            } else {
-                                warn!("Story {} failed quality checks", story.id);
-                                self.try_send_event(RalphEvent::StoryComplete {
-                                    story_id: story.id.clone(),
-                                    passed: false,
-                                });
-                                // Cleanup worktree without merging
-                                if let (Some(wt), Some(mgr)) =
-                                    (worktree_info.as_ref(), worktree_mgr.as_ref())
-                                {
-                                    let _ = mgr.cleanup(&wt.name).await;
-                                }
                             }
                         } else {
                             // Failed - cleanup worktree without merging (keep for debugging)
@@ -1111,6 +1271,9 @@ impl RalphLoop {
                     }
                 }
             }
+
+            // Increment iteration once per stage, not per story
+            self.state.current_iteration += 1;
 
             // Publish stage-level progress to bus after all stories in this stage
             if self.bus.is_some() {
@@ -1428,7 +1591,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         for (name, instructions, capabilities) in &profiles {
             let mut session = Session::new().await?;
             session.metadata.model = Some(model.to_string());
-            session.agent = name.clone();
+            session.set_agent_name(name.clone());
             session.bus = Some(relay_bus.clone());
             session.add_message(Message {
                 role: Role::System,
@@ -1716,7 +1879,7 @@ Working directory: {}
     }
 
     /// Commit changes in a specific directory
-    fn commit_in_dir(dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
+    fn commit_in_dir(&self, dir: &PathBuf, story: &UserStory) -> anyhow::Result<()> {
         // Stage all changes
         let _ = Command::new("git")
             .args(["add", "-A"])
@@ -1725,10 +1888,8 @@ Working directory: {}
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
-        let _ = Command::new("git")
-            .args(["commit", "-m", &msg])
-            .current_dir(dir)
-            .output();
+        let provenance = self.commit_provenance();
+        let _ = git_commit_with_provenance_blocking(dir, &msg, Some(&provenance));
 
         Ok(())
     }
@@ -2062,10 +2223,8 @@ Respond with the implementation and any shell commands needed.
 
         // Commit with story reference
         let msg = format!("feat({}): {}", story.id.to_lowercase(), story.title);
-        match Command::new("git")
-            .args(["commit", "-m", &msg])
-            .current_dir(&self.state.working_dir)
-            .output()
+        let provenance = self.commit_provenance();
+        match git_commit_with_provenance_blocking(&self.state.working_dir, &msg, Some(&provenance))
         {
             Ok(output) if output.status.success() => {
                 info!("Committed: {}", msg);
@@ -2082,6 +2241,12 @@ Respond with the implementation and any shell commands needed.
         }
 
         Ok(())
+    }
+
+    fn commit_provenance(&self) -> ExecutionProvenance {
+        let mut provenance = ExecutionProvenance::for_operation("ralph", ExecutionOrigin::Ralph);
+        provenance.set_run_id(self.run_id.clone());
+        provenance
     }
 
     /// Git checkout

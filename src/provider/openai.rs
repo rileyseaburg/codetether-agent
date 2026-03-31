@@ -20,6 +20,7 @@ use async_openai::{
 use async_trait::async_trait;
 use futures::StreamExt;
 use reqwest::Client as HttpClient;
+use serde_json::Value;
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
@@ -137,6 +138,138 @@ impl OpenAIProvider {
                 output_cost_per_million: None,
             })
             .collect()
+    }
+
+    async fn discover_models_from_api(&self) -> Vec<ModelInfo> {
+        let url = format!("{}/models", self.api_base);
+        let mut request = self.http.get(&url);
+        if let Some(api_key) = &self.api_key {
+            request = request.bearer_auth(api_key);
+        }
+
+        let response = match request.send().await {
+            Ok(response) => response,
+            Err(error) => {
+                tracing::debug!(
+                    provider = %self.provider_name,
+                    url = %url,
+                    error = %error,
+                    "Failed to fetch OpenAI-compatible /models endpoint"
+                );
+                return Vec::new();
+            }
+        };
+
+        let status = response.status();
+        if !status.is_success() {
+            tracing::debug!(
+                provider = %self.provider_name,
+                url = %url,
+                status = %status,
+                "OpenAI-compatible /models endpoint returned non-success"
+            );
+            return Vec::new();
+        }
+
+        let payload: Value = match response.json().await {
+            Ok(payload) => payload,
+            Err(error) => {
+                tracing::debug!(
+                    provider = %self.provider_name,
+                    url = %url,
+                    error = %error,
+                    "Failed to parse OpenAI-compatible /models response"
+                );
+                return Vec::new();
+            }
+        };
+
+        let models = Self::parse_models_payload(&payload, &self.provider_name);
+        if models.is_empty() {
+            tracing::debug!(
+                provider = %self.provider_name,
+                url = %url,
+                "OpenAI-compatible /models payload did not contain any model ids"
+            );
+        }
+        models
+    }
+
+    fn parse_models_payload(payload: &Value, provider_name: &str) -> Vec<ModelInfo> {
+        payload
+            .get("data")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| Self::model_info_from_api_entry(entry, provider_name))
+            .collect()
+    }
+
+    fn model_info_from_api_entry(entry: &Value, provider_name: &str) -> Option<ModelInfo> {
+        let id = match entry {
+            Value::String(id) => id.trim(),
+            Value::Object(_) => entry.get("id").and_then(Value::as_str)?.trim(),
+            _ => return None,
+        };
+        if id.is_empty() {
+            return None;
+        }
+
+        let name = entry
+            .get("name")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .unwrap_or(id);
+
+        let supports_vision = entry
+            .get("supports_vision")
+            .and_then(Value::as_bool)
+            .or_else(|| {
+                entry
+                    .get("input_modalities")
+                    .and_then(Value::as_array)
+                    .map(|modalities| {
+                        modalities.iter().any(|modality| {
+                            modality
+                                .as_str()
+                                .is_some_and(|modality| modality.eq_ignore_ascii_case("image"))
+                        })
+                    })
+            })
+            .unwrap_or(false);
+
+        Some(ModelInfo {
+            id: id.to_string(),
+            name: name.to_string(),
+            provider: provider_name.to_string(),
+            context_window: value_to_usize(
+                entry
+                    .pointer("/limits/max_context_window_tokens")
+                    .or_else(|| entry.get("context_window")),
+            )
+            .unwrap_or(128_000),
+            max_output_tokens: value_to_usize(
+                entry
+                    .pointer("/limits/max_output_tokens")
+                    .or_else(|| entry.get("max_output_tokens")),
+            ),
+            supports_vision,
+            supports_tools: entry
+                .get("supports_tools")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
+            supports_streaming: entry
+                .get("supports_streaming")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
+            input_cost_per_million: entry
+                .pointer("/pricing/input_cost_per_million")
+                .and_then(Value::as_f64),
+            output_cost_per_million: entry
+                .pointer("/pricing/output_cost_per_million")
+                .and_then(Value::as_f64),
+        })
     }
 
     fn convert_messages(messages: &[Message]) -> Result<Vec<ChatCompletionRequestMessage>> {
@@ -259,6 +392,10 @@ impl Provider for OpenAIProvider {
         // Note: async-openai 0.32 does not expose a stable models list API across
         // all OpenAI-compatible endpoints.
         if self.provider_name != "openai" {
+            let discovered = self.discover_models_from_api().await;
+            if !discovered.is_empty() {
+                return Ok(discovered);
+            }
             return Ok(self.provider_default_models());
         }
 
@@ -521,6 +658,12 @@ impl Provider for OpenAIProvider {
     }
 }
 
+fn value_to_usize(value: Option<&Value>) -> Option<usize> {
+    value
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok())
+}
+
 fn safe_char_prefix(input: &str, max_chars: usize) -> String {
     input.chars().take(max_chars).collect()
 }
@@ -555,6 +698,7 @@ struct OpenAIEmbeddingUsage {
 #[cfg(test)]
 mod tests {
     use super::{OpenAIProvider, Provider};
+    use serde_json::json;
 
     #[test]
     fn detects_minimax_chat_setting_error_variants() {
@@ -579,5 +723,45 @@ mod tests {
         .expect("provider should initialize without API key");
 
         assert_eq!(provider.name(), "huggingface");
+    }
+
+    #[test]
+    fn parses_openai_compatible_models_payload() {
+        let payload = json!({
+            "object": "list",
+            "data": [
+                {
+                    "id": "GLM-5-Turbo",
+                    "name": "GLM-5-Turbo",
+                    "limits": {
+                        "max_context_window_tokens": 200000,
+                        "max_output_tokens": 16384
+                    },
+                    "input_modalities": ["text"]
+                }
+            ]
+        });
+
+        let models = OpenAIProvider::parse_models_payload(&payload, "custom-openapi");
+
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "GLM-5-Turbo");
+        assert_eq!(models[0].name, "GLM-5-Turbo");
+        assert_eq!(models[0].provider, "custom-openapi");
+        assert_eq!(models[0].context_window, 200_000);
+        assert_eq!(models[0].max_output_tokens, Some(16_384));
+    }
+
+    #[test]
+    fn parses_string_only_models_payload() {
+        let payload = json!({
+            "data": ["glm-5", "glm-5-turbo"]
+        });
+
+        let models = OpenAIProvider::parse_models_payload(&payload, "custom-openapi");
+
+        assert_eq!(models.len(), 2);
+        assert_eq!(models[0].id, "glm-5");
+        assert_eq!(models[1].id, "glm-5-turbo");
     }
 }

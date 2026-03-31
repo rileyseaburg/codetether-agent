@@ -2,6 +2,7 @@
 //!
 //! Provides worktree isolation for parallel agent tasks.
 
+use crate::provenance::{ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance};
 use anyhow::{Context, Result, anyhow};
 use std::path::{Path, PathBuf};
 use tokio::sync::Mutex;
@@ -237,11 +238,61 @@ impl WorktreeManager {
         let branch = info.branch.clone();
         drop(worktrees); // Release lock before git operations
 
+        // Pre-merge cleanup: reset any leftover unmerged index entries from
+        // previous failed merges.  Without this, `git merge` refuses to start
+        // ("Merging is not possible because you have unmerged files.").
+        let umg = std::process::Command::new("git")
+            .args(["diff", "--name-only", "--diff-filter=U"])
+            .current_dir(&self.repo_path)
+            .output()
+            .context("Failed to check for unmerged files")?;
+        if !String::from_utf8_lossy(&umg.stdout).trim().is_empty() {
+            tracing::warn!("Resetting unmerged index entries before merge");
+            // Abort any lingering merge state first
+            let _ = std::process::Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&self.repo_path)
+                .output();
+            // Hard-reset the index to HEAD to clear unmerged entries
+            let _ = std::process::Command::new("git")
+                .args(["reset", "HEAD", "--"])
+                .current_dir(&self.repo_path)
+                .output();
+            // Restore working tree files to match index
+            let _ = std::process::Command::new("git")
+                .args(["checkout", "--", "."])
+                .current_dir(&self.repo_path)
+                .output();
+        }
+
+        // Stash any uncommitted changes before merging to avoid conflicts
+        let dirty = std::process::Command::new("git")
+            .args(["diff", "--quiet"])
+            .current_dir(&self.repo_path)
+            .output();
+        let has_dirty = dirty.is_err() || !dirty.unwrap().status.success();
+
+        if has_dirty {
+            tracing::info!("Stashing dirty working tree before merge");
+            let stash_out = std::process::Command::new("git")
+                .args(["stash", "--include-untracked"])
+                .current_dir(&self.repo_path)
+                .output()
+                .context("Failed to execute git stash")?;
+            if !stash_out.status.success() {
+                tracing::warn!(
+                    "Stash failed (may be no changes): {}",
+                    String::from_utf8_lossy(&stash_out.stderr)
+                );
+            }
+        }
+
         tracing::info!(worktree = %name, branch = %branch, "Starting git merge");
 
-        // Run git merge
-        let output = tokio::process::Command::new("git")
-            .args(["merge", "--no-ff", &branch])
+        // Stage the merge but stamp the final merge commit ourselves for provenance.
+        // First attempt: normal merge.
+        let mut output = tokio::process::Command::new("git")
+            .args(["merge", "--no-ff", "--no-commit", &branch])
             .current_dir(&self.repo_path)
             .output()
             .await
@@ -250,8 +301,50 @@ impl WorktreeManager {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
+        // If the merge has conflicts, automatically resolve them by accepting
+        // the incoming (theirs) version.  This avoids blocking the autonomous
+        // loop on manual conflict resolution.
+        if !output.status.success()
+            && (stderr.contains("CONFLICT") || stdout.contains("CONFLICT"))
+        {
+            tracing::warn!(
+                worktree = %name,
+                "Merge has conflicts — auto-resolving with -X theirs"
+            );
+            // Abort the conflicted merge
+            let _ = tokio::process::Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&self.repo_path)
+                .output()
+                .await;
+
+            // Retry with -X theirs to auto-resolve
+            output = tokio::process::Command::new("git")
+                .args(["merge", "--no-ff", "--no-commit", "-X", "theirs", &branch])
+                .current_dir(&self.repo_path)
+                .output()
+                .await
+                .context("Failed to execute git merge -X theirs")?;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
         if output.status.success() {
+            let commit_msg = format!("Merge branch '{}' into current branch", branch);
+            let provenance =
+                ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
+            let commit_output =
+                git_commit_with_provenance(&self.repo_path, &commit_msg, Some(&provenance)).await?;
+            if !commit_output.status.success() {
+                let commit_stderr = String::from_utf8_lossy(&commit_output.stderr);
+                let _ = Self::stash_pop(&self.repo_path);
+                return Err(anyhow!("Git merge commit failed: {}", commit_stderr));
+            }
             tracing::info!(worktree = %name, branch = %branch, "Git merge successful");
+
+            // Pop stash after successful merge
+            let _ = Self::stash_pop(&self.repo_path);
 
             // Get files changed count
             let files_changed = self.count_merge_files_changed().await.unwrap_or(0);
@@ -262,9 +355,17 @@ impl WorktreeManager {
                 conflicts: vec![],
                 conflict_diffs: vec![],
                 files_changed,
-                summary: stdout.lines().next().unwrap_or("Merged").to_string(),
+                summary: commit_msg,
             })
         } else {
+            // Abort merge and restore stash
+            let _ = tokio::process::Command::new("git")
+                .args(["merge", "--abort"])
+                .current_dir(&self.repo_path)
+                .output()
+                .await;
+            let _ = Self::stash_pop(&self.repo_path);
+
             // Check for conflicts
             if stderr.contains("CONFLICT") || stdout.contains("CONFLICT") {
                 tracing::warn!(worktree = %name, "Merge has conflicts");
@@ -308,12 +409,9 @@ impl WorktreeManager {
         }
 
         // Commit the merge
-        let output = tokio::process::Command::new("git")
-            .args(["commit", "-m", commit_msg])
-            .current_dir(&self.repo_path)
-            .output()
-            .await
-            .context("Failed to execute git commit")?;
+        let provenance = ExecutionProvenance::for_operation("worktree", ExecutionOrigin::LocalCli);
+        let output =
+            git_commit_with_provenance(&self.repo_path, commit_msg, Some(&provenance)).await?;
 
         if output.status.success() {
             tracing::info!(worktree = %name, branch = %branch, "Merge completed");
@@ -607,6 +705,22 @@ Recovery steps:\n\
             .count();
 
         Ok(count)
+    }
+
+    /// Pop the most recent stash after a merge completes or fails.
+    fn stash_pop(repo_path: &Path) -> Result<()> {
+        let output = std::process::Command::new("git")
+            .args(["stash", "pop"])
+            .current_dir(repo_path)
+            .output()
+            .context("Failed to execute git stash pop")?;
+        if !output.status.success() {
+            tracing::warn!(
+                "stash pop failed (may be empty stash): {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        Ok(())
     }
 }
 

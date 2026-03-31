@@ -404,5 +404,33 @@
     "status": "done",
     "priority": "medium",
     "created_at": "2026-02-28T01:34:31.658625601+00:00"
+  },
+  {
+    "id": "todo_1774741115684",
+    "content": "Fix 3 compile errors: unresolved `bytes` crate, missing `content_type` method on `PutObject`, unresolved `format_system_time`",
+    "status": "pending",
+    "priority": "critical",
+    "created_at": "2026-03-28T23:38:35.684913353+00:00"
+  },
+  {
+    "id": "todo_1774749428439",
+    "content": "Create src/tui/file_picker.rs with FilePickerEntry, FilePickerEntryKind, FilePickerState structs",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-03-29T01:57:08.439361040+00:00"
+  },
+  {
+    "id": "todo_1774749484554",
+    "content": "Add ViewMode::FilePicker, register file_picker module, add state fields",
+    "status": "inprogress",
+    "priority": "high",
+    "created_at": "2026-03-29T01:58:04.554220676+00:00"
+  },
+  {
+    "id": "todo_1774751574943",
+    "content": "TP-008: Chat Sync / MinIO Persistence - Implement chat sync system",
+    "status": "inprogress",
+    "priority": "high",
+    "created_at": "2026-03-29T02:32:54.943915067+00:00"
   }
 ]

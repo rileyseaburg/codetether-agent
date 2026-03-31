@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "4.1.3"
+version = "4.3.0"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -74,6 +74,7 @@ functiongemma = []
 
 [dependencies]
 # Async runtime
+unicode-width = "0.2"
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.28.0", features = ["rustls-tls-native-roots"] }
 

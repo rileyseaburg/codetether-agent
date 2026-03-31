@@ -177,14 +177,10 @@ pub fn render_symbol_search(f: &mut Frame, state: &mut SymbolSearchState, area: 
     let items: Vec<ListItem> = state
         .results
         .iter()
-        .enumerate()
-        .map(|(i, sym)| {
+        .map(|sym| {
             let kind_color = symbol_kind_color(&sym.kind);
             let mut spans = vec![
-                Span::styled(
-                    format!(" {:8} ", sym.kind),
-                    Style::default().fg(kind_color),
-                ),
+                Span::styled(format!(" {:8} ", sym.kind), Style::default().fg(kind_color)),
                 Span::styled(&sym.name, Style::default().fg(Color::White).bold()),
             ];
 
@@ -210,6 +206,19 @@ pub fn render_symbol_search(f: &mut Frame, state: &mut SymbolSearchState, area: 
                 spans.push(Span::styled(
                     format!(":{}", line),
                     Style::default().fg(Color::Yellow),
+                ));
+            }
+
+            if let Some(uri) = &sym.uri {
+                let uri_label = uri
+                    .strip_prefix("file://")
+                    .unwrap_or(uri)
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(uri.as_str());
+                spans.push(Span::styled(
+                    format!(" · {uri_label}"),
+                    Style::default().fg(Color::DarkGray),
                 ));
             }
 

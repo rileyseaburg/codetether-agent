@@ -8,17 +8,24 @@
 //! This enables Kubernetes probes and ingress routing to work.
 
 use crate::a2a::worker::{HeartbeatState, WorkerStatus};
+use crate::bus::{AgentBus, BusEnvelope};
 use crate::cli::WorkerServerArgs;
+use crate::cloudevents::parse_cloud_event;
 use anyhow::Result;
 use axum::{
     Json, Router,
+    body::Body,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, Request, StatusCode},
+    response::sse::{Event, KeepAlive, Sse},
+    response::{IntoResponse, Response},
     routing::{get, post},
 };
-use serde::Serialize;
+use futures::stream;
+use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{Mutex, broadcast, mpsc};
 
 /// Worker server state shared across handlers
 #[derive(Clone)]
@@ -33,6 +40,8 @@ pub struct WorkerServerState {
     internal_heartbeat: Arc<Mutex<Option<Arc<HeartbeatState>>>>,
     /// Channel to notify worker of new tasks (from CloudEvents)
     task_notification_tx: Arc<Mutex<Option<mpsc::Sender<String>>>>,
+    /// Agent bus for inter-agent messaging (exposed via /v1/bus/*)
+    bus: Arc<Mutex<Option<Arc<AgentBus>>>>,
 }
 
 impl Default for WorkerServerState {
@@ -49,7 +58,13 @@ impl WorkerServerState {
             worker_id: Arc::new(Mutex::new(None)),
             internal_heartbeat: Arc::new(Mutex::new(None)),
             task_notification_tx: Arc::new(Mutex::new(None)),
+            bus: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Attach the agent bus (can be called after construction from the worker task)
+    pub async fn set_bus(&self, bus: Arc<AgentBus>) {
+        *self.bus.lock().await = Some(bus);
     }
 
     /// Set the task notification channel (called from worker)
@@ -126,6 +141,8 @@ pub async fn start_worker_server_with_state(
         .route("/ready", get(ready))
         .route("/task", post(receive_task))
         .route("/worker/status", get(worker_status))
+        .route("/v1/bus/stream", get(stream_bus_events))
+        .route("/v1/bus/publish", post(publish_bus_event))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -184,22 +201,133 @@ async fn worker_status(State(state): State<WorkerServerState>) -> Json<WorkerSta
 /// This endpoint receives tasks pushed via Knative Eventing
 async fn receive_task(
     State(state): State<WorkerServerState>,
+    headers: HeaderMap,
     Json(payload): Json<serde_json::Value>,
 ) -> StatusCode {
-    // Extract task_id from CloudEvent payload
-    let task_id = payload
-        .get("task_id")
-        .or_else(|| payload.get("id"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
+    let event = match parse_cloud_event(&headers, payload) {
+        Ok(event) => event,
+        Err(error) => {
+            tracing::warn!("Rejected task event: {}", error);
+            return StatusCode::BAD_REQUEST;
+        }
+    };
 
-    tracing::info!("Received task via CloudEvent: {}", task_id);
+    let task_id = event
+        .data
+        .get("task_id")
+        .or_else(|| event.data.get("id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or(event.id.as_str());
+
+    tracing::info!(
+        "Received task via CloudEvent: {} ({})",
+        task_id,
+        event.event_type
+    );
 
     // Notify the worker loop to pick up this task
     state.notify_new_task(task_id).await;
 
     // CloudEvent subscribers should return an empty 2xx response body.
     // Non-empty non-CloudEvent payloads trigger retries in Knative Broker Filter.
+    StatusCode::ACCEPTED
+}
+
+/// SSE stream of agent bus events — subscribe to live bus messages.
+/// Streams all topics; use the `topic` query param to filter (e.g. `?topic=task.*`).
+async fn stream_bus_events(State(state): State<WorkerServerState>, req: Request<Body>) -> Response {
+    let bus = state.bus.lock().await.clone();
+    let Some(bus) = bus else {
+        // Bus not attached — return an empty keep-alive stream
+        let empty = stream::empty::<Result<Event, Infallible>>();
+        return Sse::new(empty)
+            .keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+            .into_response();
+    };
+
+    let topic_filter: Option<String> = req.uri().query().and_then(|q| {
+        q.split('&')
+            .filter_map(|pair| pair.split_once('='))
+            .find(|(k, _)| *k == "topic")
+            .map(|(_, v)| v.to_owned())
+    });
+
+    let bus_handle = bus.handle("worker_server_bus_stream");
+    let rx: broadcast::Receiver<BusEnvelope> = bus_handle.into_receiver();
+
+    let event_stream = stream::unfold(rx, move |mut rx| {
+        let filter = topic_filter.clone();
+        async move {
+            match rx.recv().await {
+                Ok(envelope) => {
+                    let allowed = filter
+                        .as_deref()
+                        .map(|pat| bus_topic_matches(&envelope.topic, pat))
+                        .unwrap_or(true);
+
+                    if allowed {
+                        let payload =
+                            serde_json::to_string(&envelope).unwrap_or_else(|_| "{}".to_string());
+                        Some((
+                            Ok::<Event, Infallible>(Event::default().event("bus").data(payload)),
+                            rx,
+                        ))
+                    } else {
+                        Some((
+                            Ok::<Event, Infallible>(Event::default().event("keepalive").data("")),
+                            rx,
+                        ))
+                    }
+                }
+                Err(broadcast::error::RecvError::Lagged(n)) => Some((
+                    Ok(Event::default().event("lag").data(format!("skipped {}", n))),
+                    rx,
+                )),
+                Err(broadcast::error::RecvError::Closed) => None,
+            }
+        }
+    });
+
+    Sse::new(event_stream)
+        .keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+        .into_response()
+}
+
+/// Wildcard topic matching (supports `*` and `prefix.*` patterns).
+fn bus_topic_matches(topic: &str, pattern: &str) -> bool {
+    if pattern == "*" {
+        return true;
+    }
+    if let Some(prefix) = pattern.strip_suffix(".*") {
+        return topic.starts_with(prefix);
+    }
+    topic == pattern
+}
+
+/// Publish a message to the agent bus.
+#[derive(Deserialize)]
+struct BusPublishRequest {
+    topic: String,
+    payload: serde_json::Value,
+}
+
+async fn publish_bus_event(
+    State(state): State<WorkerServerState>,
+    Json(req): Json<BusPublishRequest>,
+) -> StatusCode {
+    let bus = state.bus.lock().await.clone();
+    let Some(bus) = bus else {
+        return StatusCode::SERVICE_UNAVAILABLE;
+    };
+    let handle = bus.handle("worker_server_publish");
+    handle.send(
+        &req.topic,
+        crate::bus::BusMessage::SharedResult {
+            key: req.topic.clone(),
+            value: req.payload,
+            tags: vec![],
+        },
+    );
     StatusCode::ACCEPTED
 }
 

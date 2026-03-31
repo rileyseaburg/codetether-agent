@@ -4,38 +4,40 @@
 //! travels over the `AgentBus`, giving full visibility into how
 //! sub-agents, the gRPC layer, and workers communicate.
 
-use crate::bus::{BusEnvelope, BusMessage};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
 
-// ─── State ───────────────────────────────────────────────────────────────
+use crate::bus::{BusEnvelope, BusMessage};
 
-/// A flattened, display-ready log entry derived from a `BusEnvelope`.
+#[derive(Debug, Clone)]
+pub struct ProtocolSummary {
+    pub cwd_display: String,
+    pub worker_id: Option<String>,
+    pub worker_name: Option<String>,
+    pub a2a_connected: bool,
+    pub processing: Option<bool>,
+    pub registered_agents: Vec<String>,
+    pub queued_tasks: usize,
+    pub recent_task: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct BusLogEntry {
-    /// When the envelope was created (formatted)
     pub timestamp: String,
-    /// The routing topic
     pub topic: String,
-    /// Who sent it
     pub sender_id: String,
-    /// Human-readable message kind label
     pub kind: String,
-    /// One-line summary of the payload
     pub summary: String,
-    /// Full detail text (shown in detail pane)
     pub detail: String,
-    /// Display color for the kind badge
     pub kind_color: Color,
 }
 
 impl BusLogEntry {
-    /// Build a display entry from a raw envelope.
     pub fn from_envelope(env: &BusEnvelope) -> Self {
         let timestamp = env.timestamp.format("%H:%M:%S%.3f").to_string();
         let topic = env.topic.clone();
@@ -114,13 +116,14 @@ impl BusLogEntry {
                 agent_id,
                 tool_name,
                 arguments,
+                step,
             } => {
                 let args_str = serde_json::to_string(arguments).unwrap_or_default();
                 (
                     "TOOL→".to_string(),
                     format!("{agent_id} call {tool_name}"),
                     format!(
-                        "Request: {request_id}\nAgent: {agent_id}\nTool: {tool_name}\nArgs: {}",
+                        "Request: {request_id}\nAgent: {agent_id}\nStep: {step}\nTool: {tool_name}\nArgs: {}",
                         truncate(&args_str, 200)
                     ),
                     Color::Yellow,
@@ -132,13 +135,14 @@ impl BusLogEntry {
                 tool_name,
                 result,
                 success,
+                step,
             } => {
                 let icon = if *success { "✓" } else { "✗" };
                 (
                     "←TOOL".to_string(),
                     format!("{icon} {agent_id} {tool_name}"),
                     format!(
-                        "Request: {request_id}\nAgent: {agent_id}\nTool: {tool_name}\nSuccess: {success}\nResult: {}",
+                        "Request: {request_id}\nAgent: {agent_id}\nStep: {step}\nTool: {tool_name}\nSuccess: {success}\nResult: {}",
                         truncate(result, 200)
                     ),
                     if *success { Color::Green } else { Color::Red },
@@ -275,24 +279,16 @@ impl BusLogEntry {
     }
 }
 
-/// State for the bus log view.
 #[derive(Debug)]
 pub struct BusLogState {
-    /// All captured log entries (newest last).
     pub entries: Vec<BusLogEntry>,
-    /// Current selection index in the list.
     pub selected_index: usize,
-    /// Whether showing detail for the selected entry.
     pub detail_mode: bool,
-    /// Scroll offset inside the detail pane.
     pub detail_scroll: usize,
-    /// Optional topic filter (empty = show all).
     pub filter: String,
-    /// Whether auto-scroll is on (follows newest entry).
+    pub filter_input_mode: bool,
     pub auto_scroll: bool,
-    /// ListState for StatefulWidget rendering.
     pub list_state: ListState,
-    /// Maximum entries to keep (ring buffer behaviour).
     pub max_entries: usize,
 }
 
@@ -304,6 +300,7 @@ impl Default for BusLogState {
             detail_mode: false,
             detail_scroll: 0,
             filter: String::new(),
+            filter_input_mode: false,
             auto_scroll: true,
             list_state: ListState::default(),
             max_entries: 10_000,
@@ -316,313 +313,376 @@ impl BusLogState {
         Self::default()
     }
 
-    /// Push a new entry, trimming old ones if over capacity.
     pub fn push(&mut self, entry: BusLogEntry) {
         self.entries.push(entry);
         if self.entries.len() > self.max_entries {
-            let excess = self.entries.len() - self.max_entries;
-            self.entries.drain(..excess);
-            self.selected_index = self.selected_index.saturating_sub(excess);
+            let overflow = self.entries.len() - self.max_entries;
+            self.entries.drain(0..overflow);
+            self.selected_index = self.selected_index.saturating_sub(overflow);
         }
-        if self.auto_scroll && !self.entries.is_empty() {
-            self.selected_index = self.filtered_entries().len().saturating_sub(1);
-            self.list_state.select(Some(self.selected_index));
+        if self.auto_scroll {
+            self.selected_index = self.visible_count().saturating_sub(1);
         }
     }
 
-    /// Ingest a raw bus envelope.
     pub fn ingest(&mut self, env: &BusEnvelope) {
-        let entry = BusLogEntry::from_envelope(env);
-        self.push(entry);
+        self.push(BusLogEntry::from_envelope(env));
     }
 
-    /// Get entries filtered by the current topic filter.
     pub fn filtered_entries(&self) -> Vec<&BusLogEntry> {
-        if self.filter.is_empty() {
+        if self.filter.trim().is_empty() {
             self.entries.iter().collect()
         } else {
-            let f = self.filter.to_lowercase();
+            let needle = self.filter.to_lowercase();
             self.entries
                 .iter()
-                .filter(|e| {
-                    e.topic.to_lowercase().contains(&f)
-                        || e.kind.to_lowercase().contains(&f)
-                        || e.sender_id.to_lowercase().contains(&f)
-                        || e.summary.to_lowercase().contains(&f)
+                .filter(|entry| {
+                    entry.topic.to_lowercase().contains(&needle)
+                        || entry.sender_id.to_lowercase().contains(&needle)
+                        || entry.kind.to_lowercase().contains(&needle)
+                        || entry.summary.to_lowercase().contains(&needle)
                 })
                 .collect()
         }
     }
 
-    /// Move selection up.
+    pub fn visible_count(&self) -> usize {
+        self.filtered_entries().len()
+    }
+
     pub fn select_prev(&mut self) {
-        let len = self.filtered_entries().len();
-        if len == 0 {
-            return;
-        }
         self.auto_scroll = false;
-        self.selected_index = self.selected_index.saturating_sub(1);
-        self.list_state.select(Some(self.selected_index));
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+        }
     }
 
-    /// Move selection down.
     pub fn select_next(&mut self) {
-        let len = self.filtered_entries().len();
-        if len == 0 {
-            return;
-        }
         self.auto_scroll = false;
-        self.selected_index = (self.selected_index + 1).min(len - 1);
-        self.list_state.select(Some(self.selected_index));
-        // Re-enable auto-scroll if at the bottom
-        if self.selected_index == len - 1 {
-            self.auto_scroll = true;
+        let max_index = self.visible_count().saturating_sub(1);
+        if self.selected_index < max_index {
+            self.selected_index += 1;
         }
     }
 
-    /// Enter detail mode for selected entry.
     pub fn enter_detail(&mut self) {
-        if !self.filtered_entries().is_empty() {
-            self.detail_mode = true;
-            self.detail_scroll = 0;
-        }
-    }
-
-    /// Exit detail mode.
-    pub fn exit_detail(&mut self) {
-        self.detail_mode = false;
+        self.detail_mode = true;
         self.detail_scroll = 0;
     }
 
-    pub fn detail_scroll_down(&mut self, amount: usize) {
-        self.detail_scroll = self.detail_scroll.saturating_add(amount);
+    pub fn exit_detail(&mut self) {
+        self.detail_mode = false;
+        self.detail_scroll = 0;
     }
 
     pub fn detail_scroll_up(&mut self, amount: usize) {
         self.detail_scroll = self.detail_scroll.saturating_sub(amount);
     }
 
-    /// Get the currently selected entry (from filtered list).
+    pub fn detail_scroll_down(&mut self, amount: usize) {
+        self.detail_scroll = self.detail_scroll.saturating_add(amount);
+    }
+
     pub fn selected_entry(&self) -> Option<&BusLogEntry> {
-        let filtered = self.filtered_entries();
-        filtered.get(self.selected_index).copied()
+        self.filtered_entries().get(self.selected_index).copied()
     }
 
-    /// Total entry count (unfiltered).
-    pub fn total_count(&self) -> usize {
-        self.entries.len()
+    pub fn enter_filter_mode(&mut self) {
+        self.filter_input_mode = true;
     }
 
-    /// Visible (filtered) entry count.
-    pub fn visible_count(&self) -> usize {
-        self.filtered_entries().len()
+    pub fn exit_filter_mode(&mut self) {
+        self.filter_input_mode = false;
+    }
+
+    pub fn clear_filter(&mut self) {
+        self.filter.clear();
+        self.selected_index = self.visible_count().saturating_sub(1);
+    }
+
+    pub fn push_filter_char(&mut self, c: char) {
+        self.filter.push(c);
+        self.selected_index = 0;
+    }
+
+    pub fn pop_filter_char(&mut self) {
+        self.filter.pop();
+        self.selected_index = 0;
     }
 }
 
-// ─── Rendering ───────────────────────────────────────────────────────────
-
-/// Render the bus protocol log view.
 pub fn render_bus_log(f: &mut Frame, state: &mut BusLogState, area: Rect) {
-    if state.detail_mode {
-        render_entry_detail(f, state, area);
-        return;
-    }
+    render_bus_log_with_summary(f, state, area, None);
+}
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Header
-            Constraint::Min(1),    // Log list
-            Constraint::Length(1), // Key hints
+pub fn render_bus_log_with_summary(
+    f: &mut Frame,
+    state: &mut BusLogState,
+    area: Rect,
+    summary: Option<ProtocolSummary>,
+) {
+    if let Some(summary) = summary {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(8),
+                Constraint::Min(8),
+                Constraint::Length(2),
+            ])
+            .split(area);
+
+        let worker_label = if summary.a2a_connected {
+            "connected"
+        } else {
+            "offline"
+        };
+        let worker_color = if summary.a2a_connected {
+            Color::Green
+        } else {
+            Color::Red
+        };
+        let processing_label = match summary.processing {
+            Some(true) => "processing",
+            Some(false) => "idle",
+            None => "unknown",
+        };
+        let processing_color = match summary.processing {
+            Some(true) => Color::Yellow,
+            Some(false) => Color::Green,
+            None => Color::DarkGray,
+        };
+        let worker_id = summary.worker_id.as_deref().unwrap_or("n/a");
+        let worker_name = summary.worker_name.as_deref().unwrap_or("n/a");
+        let recent_task = summary
+            .recent_task
+            .unwrap_or_else(|| "No recent A2A tasks".to_string());
+        let registered_agents = if summary.registered_agents.is_empty() {
+            "none".to_string()
+        } else {
+            truncate(&summary.registered_agents.join(", "), 120)
+        };
+        let panel = Paragraph::new(vec![
+            Line::from(vec![
+                "A2A worker: ".dim(),
+                Span::styled(worker_label, Style::default().fg(worker_color).bold()),
+                "  •  ".dim(),
+                Span::raw(worker_name).cyan(),
+                "  •  ".dim(),
+                Span::raw(worker_id).dim(),
+            ]),
+            Line::from(vec![
+                "Heartbeat: ".dim(),
+                Span::styled(
+                    processing_label,
+                    Style::default().fg(processing_color).bold(),
+                ),
+                "  •  ".dim(),
+                Span::raw(format!("{} queued task(s)", summary.queued_tasks)),
+            ]),
+            Line::from(vec!["Agents: ".dim(), Span::raw(registered_agents)]),
+            Line::from(vec!["Workspace: ".dim(), Span::raw(summary.cwd_display)]),
+            Line::from(vec![
+                "Recent task: ".dim(),
+                Span::raw(truncate(&recent_task, 120)),
+            ]),
         ])
-        .split(area);
-
-    // ── Header ──
-    let filter_display = if state.filter.is_empty() {
-        String::new()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Protocol Summary"),
+        )
+        .wrap(Wrap { trim: true });
+        f.render_widget(panel, chunks[0]);
+        render_bus_body(f, state, chunks[1], chunks[2]);
     } else {
-        format!("  filter: \"{}\"", state.filter)
-    };
-    let scroll_icon = if state.auto_scroll { "⬇" } else { "⏸" };
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(8), Constraint::Length(2)])
+            .split(area);
+        render_bus_body(f, state, chunks[0], chunks[1]);
+    }
+}
 
-    let header_line = Line::from(vec![
-        Span::styled(
-            format!(" {} ", scroll_icon),
-            Style::default().fg(Color::Cyan),
-        ),
-        Span::styled(
-            format!("{}/{} messages", state.visible_count(), state.total_count()),
-            Style::default().fg(Color::White),
-        ),
-        Span::styled(filter_display, Style::default().fg(Color::Yellow)),
-    ]);
-
-    let header = Paragraph::new(header_line).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Protocol Bus Log ")
-            .border_style(Style::default().fg(Color::Cyan)),
-    );
-    f.render_widget(header, chunks[0]);
-
-    // ── Log list ──
-    // Build items as owned data, then sync ListState separately to avoid borrow conflicts.
-    let (items, filtered_len): (Vec<ListItem>, usize) = {
+fn render_bus_body(f: &mut Frame, state: &mut BusLogState, main_area: Rect, footer_area: Rect) {
+    if state.detail_mode {
+        let detail = state
+            .selected_entry()
+            .map(|entry| entry.detail.clone())
+            .unwrap_or_else(|| "No entry selected".to_string());
+        let widget = Paragraph::new(detail)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Protocol Detail"),
+            )
+            .wrap(Wrap { trim: false })
+            .scroll((state.detail_scroll.min(u16::MAX as usize) as u16, 0));
+        f.render_widget(widget, main_area);
+    } else {
         let filtered = state.filtered_entries();
-        let len = filtered.len();
-        let items = filtered
+        let filtered_len = filtered.len();
+        let filter_title = if state.filter.is_empty() {
+            format!("Protocol Bus Log ({filtered_len})")
+        } else if state.filter_input_mode {
+            format!("Protocol Bus Log [{}_] ({filtered_len})", state.filter)
+        } else {
+            format!("Protocol Bus Log [{}] ({filtered_len})", state.filter)
+        };
+        let items: Vec<ListItem<'_>> = filtered
             .iter()
-            .map(|entry| {
-                let line = Line::from(vec![
+            .enumerate()
+            .map(|(idx, entry)| {
+                let prefix = if idx == state.selected_index {
+                    "▶ "
+                } else {
+                    "  "
+                };
+                ListItem::new(Line::from(vec![
+                    Span::raw(prefix),
                     Span::styled(
-                        format!("{} ", entry.timestamp),
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                    Span::styled(
-                        format!("{:<8} ", entry.kind),
+                        format!("[{}] ", entry.kind),
                         Style::default()
                             .fg(entry.kind_color)
                             .add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(
-                        format!("[{}] ", entry.sender_id),
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                    Span::styled(entry.summary.clone(), Style::default().fg(Color::White)),
-                ]);
-                ListItem::new(line)
+                    Span::raw(format!(
+                        "{} {} {}",
+                        entry.timestamp, entry.sender_id, entry.summary
+                    )),
+                ]))
             })
             .collect();
-        (items, len)
-    };
-
-    // Sync ListState
-    if filtered_len > 0 && state.selected_index < filtered_len {
-        state.list_state.select(Some(state.selected_index));
+        drop(filtered);
+        state.list_state.select(Some(
+            state.selected_index.min(filtered_len.saturating_sub(1)),
+        ));
+        let list =
+            List::new(items).block(Block::default().borders(Borders::ALL).title(filter_title));
+        f.render_stateful_widget(list, main_area, &mut state.list_state);
     }
 
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Messages (↑↓:select  Enter:detail  /:filter) "),
-        )
-        .highlight_style(
-            Style::default()
-                .add_modifier(Modifier::BOLD)
-                .bg(Color::DarkGray),
-        )
-        .highlight_symbol("▶ ");
-
-    f.render_stateful_widget(list, chunks[1], &mut state.list_state);
-
-    // ── Key hints ──
-    let hints = Paragraph::new(Line::from(vec![
-        Span::styled(" Esc", Style::default().fg(Color::Yellow)),
-        Span::raw(": Back  "),
+    let footer = Paragraph::new(Line::from(vec![
+        Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+        Span::raw(": nav  "),
         Span::styled("Enter", Style::default().fg(Color::Yellow)),
-        Span::raw(": Detail  "),
+        Span::raw(": detail/apply  "),
         Span::styled("/", Style::default().fg(Color::Yellow)),
-        Span::raw(": Filter  "),
+        Span::raw(": filter  "),
+        Span::styled("Backspace", Style::default().fg(Color::Yellow)),
+        Span::raw(": edit  "),
         Span::styled("c", Style::default().fg(Color::Yellow)),
-        Span::raw(": Clear  "),
-        Span::styled("g", Style::default().fg(Color::Yellow)),
-        Span::raw(": Bottom"),
+        Span::raw(": clear  "),
+        Span::styled("Esc", Style::default().fg(Color::Yellow)),
+        Span::raw(": back/close filter"),
     ]));
-    f.render_widget(hints, chunks[2]);
+    f.render_widget(footer, footer_area);
 }
 
-/// Render full-screen detail for a single bus log entry.
-fn render_entry_detail(f: &mut Frame, state: &BusLogState, area: Rect) {
-    let entry = match state.selected_entry() {
-        Some(e) => e,
-        None => {
-            let p = Paragraph::new("No entry selected").block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Entry Detail "),
-            );
-            f.render_widget(p, area);
-            return;
-        }
-    };
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(5), // Metadata header
-            Constraint::Min(1),    // Detail body
-            Constraint::Length(1), // Key hints
-        ])
-        .split(area);
-
-    // ── Metadata header ──
-    let header_lines = vec![
-        Line::from(vec![
-            Span::styled("Time:   ", Style::default().fg(Color::DarkGray)),
-            Span::styled(&entry.timestamp, Style::default().fg(Color::White)),
-        ]),
-        Line::from(vec![
-            Span::styled("Topic:  ", Style::default().fg(Color::DarkGray)),
-            Span::styled(&entry.topic, Style::default().fg(Color::Cyan)),
-        ]),
-        Line::from(vec![
-            Span::styled("Sender: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(&entry.sender_id, Style::default().fg(Color::White)),
-            Span::raw("  "),
-            Span::styled("Kind: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                &entry.kind,
-                Style::default()
-                    .fg(entry.kind_color)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
-    ];
-
-    let header = Paragraph::new(header_lines).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!(" Entry: {} ", entry.kind))
-            .border_style(Style::default().fg(entry.kind_color)),
-    );
-    f.render_widget(header, chunks[0]);
-
-    // ── Detail body ──
-    let detail_lines: Vec<Line> = entry
-        .detail
-        .lines()
-        .map(|l| Line::from(Span::styled(l, Style::default().fg(Color::White))))
-        .collect();
-
-    let body = Paragraph::new(detail_lines)
-        .block(Block::default().borders(Borders::ALL).title(" Detail "))
-        .wrap(Wrap { trim: false })
-        .scroll((state.detail_scroll as u16, 0));
-    f.render_widget(body, chunks[1]);
-
-    // ── Key hints ──
-    let hints = Paragraph::new(Line::from(vec![
-        Span::styled(" Esc", Style::default().fg(Color::Yellow)),
-        Span::raw(": Back  "),
-        Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
-        Span::raw(": Scroll  "),
-        Span::styled("↑/↓", Style::default().fg(Color::Yellow)),
-        Span::raw(": Prev/Next entry"),
-    ]));
-    f.render_widget(hints, chunks[2]);
-}
-
-/// Truncate a string for display.
-fn truncate(s: &str, max: usize) -> String {
-    let flat = s.replace('\n', " ");
-    if flat.len() <= max {
-        flat
+fn truncate(value: &str, max_chars: usize) -> String {
+    let mut chars = value.chars();
+    let truncated: String = chars.by_ref().take(max_chars).collect();
+    if chars.next().is_some() {
+        format!("{truncated}…")
     } else {
-        let mut end = max;
-        while end > 0 && !flat.is_char_boundary(end) {
-            end -= 1;
+        truncated
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BusLogEntry, BusLogState};
+    use ratatui::style::Color;
+
+    fn entry(summary: &str, topic: &str) -> BusLogEntry {
+        BusLogEntry {
+            timestamp: "00:00:00.000".to_string(),
+            topic: topic.to_string(),
+            sender_id: "tester".to_string(),
+            kind: "MSG".to_string(),
+            summary: summary.to_string(),
+            detail: summary.to_string(),
+            kind_color: Color::Cyan,
         }
-        format!("{}…", &flat[..end])
+    }
+
+    #[test]
+    fn bus_filter_mode_can_be_entered_and_exited() {
+        let mut state = BusLogState::new();
+        assert!(!state.filter_input_mode);
+        state.enter_filter_mode();
+        assert!(state.filter_input_mode);
+        state.exit_filter_mode();
+        assert!(!state.filter_input_mode);
+    }
+
+    #[test]
+    fn bus_filter_chars_update_visible_entries() {
+        let mut state = BusLogState::new();
+        state.push(entry("alpha event", "protocol.alpha"));
+        state.push(entry("beta event", "protocol.beta"));
+
+        assert_eq!(state.visible_count(), 2);
+        state.push_filter_char('b');
+        state.push_filter_char('e');
+
+        assert_eq!(state.filter, "be");
+        assert_eq!(state.visible_count(), 1);
+        assert_eq!(
+            state.selected_entry().map(|e| e.summary.as_str()),
+            Some("beta event")
+        );
+    }
+
+    #[test]
+    fn bus_filter_backspace_and_clear_restore_entries() {
+        let mut state = BusLogState::new();
+        state.push(entry("alpha event", "protocol.alpha"));
+        state.push(entry("beta event", "protocol.beta"));
+
+        state.push_filter_char('a');
+        state.push_filter_char('l');
+        assert_eq!(state.visible_count(), 1);
+
+        state.pop_filter_char();
+        assert_eq!(state.filter, "a");
+        assert_eq!(state.visible_count(), 2);
+
+        state.clear_filter();
+        assert!(state.filter.is_empty());
+        assert_eq!(state.visible_count(), 2);
+    }
+
+    #[test]
+    fn bus_detail_and_filter_modes_can_coexist_but_are_independently_cleared() {
+        let mut state = BusLogState::new();
+        state.push(entry("alpha event", "protocol.alpha"));
+
+        state.enter_filter_mode();
+        state.enter_detail();
+        assert!(state.filter_input_mode);
+        assert!(state.detail_mode);
+
+        state.exit_filter_mode();
+        assert!(!state.filter_input_mode);
+        assert!(state.detail_mode);
+
+        state.exit_detail();
+        assert!(!state.detail_mode);
+    }
+
+    #[test]
+    fn bus_filter_editing_resets_selection_to_first_filtered_match() {
+        let mut state = BusLogState::new();
+        state.push(entry("alpha event", "protocol.alpha"));
+        state.push(entry("gamma event", "protocol.gamma"));
+
+        state.selected_index = 1;
+        state.push_filter_char('m');
+
+        assert_eq!(state.selected_index, 0);
+        assert_eq!(
+            state.selected_entry().map(|e| e.summary.as_str()),
+            Some("alpha event")
+        );
     }
 }

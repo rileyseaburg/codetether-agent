@@ -13,6 +13,7 @@ use crate::okr::{ApprovalDecision, KeyResult, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
 use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::Session;
+use crate::session::import_codex_session_by_id;
 use anyhow::Result;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
@@ -562,6 +563,26 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
     // Load configuration
     let config = Config::load().await.unwrap_or_default();
+    let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let knowledge_snapshot =
+        match crate::indexer::refresh_workspace_knowledge_snapshot(&workspace_dir).await {
+            Ok(path) => {
+                tracing::info!(
+                    workspace = %workspace_dir.display(),
+                    output = %path.display(),
+                    "Refreshed workspace knowledge snapshot for run"
+                );
+                Some(path)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    workspace = %workspace_dir.display(),
+                    error = %e,
+                    "Failed to refresh workspace knowledge snapshot"
+                );
+                None
+            }
+        };
 
     // Protocol-first relay aliases in CLI:
     // - /go [count] <task>
@@ -770,11 +791,13 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     }
 
     // Create or continue session.
-    let mut session = if let Some(session_id) = args.session.clone() {
+    let mut session = if let Some(codex_id) = args.codex_session.clone() {
+        tracing::info!("Importing Codex session: {}", codex_id);
+        import_codex_session_by_id(&codex_id).await?
+    } else if let Some(session_id) = args.session.clone() {
         tracing::info!("Continuing session: {}", session_id);
         Session::load(&session_id).await?
     } else if args.continue_session {
-        let workspace_dir = std::env::current_dir().unwrap_or_default();
         match Session::last_for_directory(Some(&workspace_dir)).await {
             Ok(s) => {
                 tracing::info!(
@@ -810,6 +833,8 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         tracing::info!("Using model: {}", model);
         session.metadata.model = Some(model);
     }
+
+    session.metadata.knowledge_snapshot = knowledge_snapshot;
 
     // Wire bus for thinking capture + S3 training data
     let bus = AgentBus::new().into_arc();
@@ -1121,7 +1146,7 @@ async fn run_protocol_first_relay(
         let assigned_model_ref = model_rotation.next_model_ref(model_ref);
         let mut session = Session::new().await?;
         session.metadata.model = Some(assigned_model_ref.clone());
-        session.agent = profile.name.clone();
+        session.set_agent_name(profile.name.clone());
         session.bus = Some(bus.clone());
         session.add_message(Message {
             role: Role::System,
@@ -1320,7 +1345,7 @@ async fn run_protocol_first_relay(
                     Ok(mut spawned_session) => {
                         let spawned_model_ref = model_rotation.next_model_ref(model_ref);
                         spawned_session.metadata.model = Some(spawned_model_ref.clone());
-                        spawned_session.agent = profile.name.clone();
+                        spawned_session.set_agent_name(profile.name.clone());
                         spawned_session.bus = Some(bus.clone());
                         spawned_session.add_message(Message {
                             role: Role::System,

@@ -6,28 +6,66 @@ use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
 use crate::event_stream::s3_sink::S3Sink;
-use crate::provider::{
-    CompletionResponse, ContentPart, FinishReason, Message, Role, ToolDefinition, Usage,
-};
+use crate::provenance::{ClaimProvenance, ExecutionProvenance};
+use crate::provider::{ContentPart, Message, Role, ToolDefinition, Usage};
 use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use tokio::fs;
 use uuid::Uuid;
 
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
+use crate::tool::Tool;
+use crate::tool::confirm_edit::ConfirmEditTool;
+use crate::tool::confirm_multiedit::ConfirmMultiEditTool;
 
-#[path = "helper/validation.rs"]
-mod validation;
-use self::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
+pub mod helper;
+mod listing;
+mod listing_all;
+pub mod codex_import;
+pub use self::listing::{SessionSummary, list_sessions, list_sessions_for_directory};
+pub use self::listing_all::{list_codex_sessions_for_directory, list_all_sessions_for_directory};
+pub use self::codex_import::{import_codex_session_by_id, import_codex_session_path, import_codex_sessions_for_directory, load_or_import_session};
+
+use self::helper::bootstrap::{
+    inject_tool_prompt, list_tools_bootstrap_definition, list_tools_bootstrap_output,
+};
+use self::helper::build::{
+    build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
+};
+use self::helper::edit::{
+    build_pending_confirmation_apply_request, detect_stub_in_tool_input,
+    normalize_tool_call_for_execution,
+};
+use self::helper::error::{
+    is_prompt_too_long_error, is_retryable_upstream_error, messages_to_rlm_context,
+};
+use self::helper::markup::normalize_textual_tool_calls;
+use self::helper::provider::{
+    prefers_temperature_one, resolve_provider_for_session_request,
+    should_retry_missing_native_tool_call,
+};
+use self::helper::router::{build_proactive_lsp_context_message, choose_router_target};
+use self::helper::runtime::{
+    enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
+    is_local_cuda_provider, local_cuda_light_system_prompt,
+};
+use self::helper::stream::collect_stream_completion_with_events;
+use self::helper::text::{extract_text_content, truncate_with_ellipsis};
+use self::helper::token::{
+    context_window_for_model, estimate_request_tokens, estimate_tokens_for_messages,
+    session_completion_max_tokens,
+};
+use self::helper::validation::{
+    build_validation_report, capture_git_dirty_files, track_touched_files,
+};
 /// An image attachment to include with a message (from clipboard paste, etc.)
 #[derive(Debug, Clone)]
 pub struct ImageAttachment {
@@ -35,42 +73,6 @@ pub struct ImageAttachment {
     pub data_url: String,
     /// MIME type (e.g., "image/png")
     pub mime_type: Option<String>,
-}
-
-fn is_interactive_tool(tool_name: &str) -> bool {
-    matches!(tool_name, "question")
-}
-
-fn is_local_cuda_provider(provider: &str) -> bool {
-    matches!(provider, "local-cuda" | "local_cuda" | "localcuda")
-}
-
-fn local_cuda_light_system_prompt() -> String {
-    std::env::var("CODETETHER_LOCAL_CUDA_SYSTEM_PROMPT").unwrap_or_else(|_| {
-        "You are CodeTether local CUDA assistant. Be concise and execution-focused. \
-Use tools only when needed. For tool discovery, call list_tools first, then call specific tools with valid JSON arguments. \
-Do not invent tool outputs.".to_string()
-    })
-}
-
-fn enrich_tool_input_with_runtime_context(
-    tool_input: &Value,
-    current_model: Option<&str>,
-    session_id: &str,
-    agent_name: &str,
-) -> Value {
-    let mut enriched = tool_input.clone();
-    if let Value::Object(ref mut obj) = enriched {
-        if let Some(model) = current_model {
-            obj.entry("__ct_current_model".to_string())
-                .or_insert_with(|| json!(model));
-        }
-        obj.entry("__ct_session_id".to_string())
-            .or_insert_with(|| json!(session_id));
-        obj.entry("__ct_agent_name".to_string())
-            .or_insert_with(|| json!(agent_name));
-    }
-    enriched
 }
 
 const BUILD_MODE_TOOL_FIRST_NUDGE: &str = "Build mode policy reminder: execute directly. \
@@ -88,1021 +90,60 @@ const NATIVE_TOOL_PROMISE_NUDGE: &str = "You said you would use tools. Do not de
 call or promise a next step. Emit the actual tool call now. If native tool calling fails, emit a \
 <tool_call> JSON block immediately instead of prose.";
 
-fn is_build_agent(agent_name: &str) -> bool {
-    agent_name.eq_ignore_ascii_case("build")
-}
-
-fn extract_text_content(parts: &[ContentPart]) -> String {
-    parts
-        .iter()
-        .filter_map(|part| match part {
-            ContentPart::Text { text } => Some(text.as_str()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn tool_call_markup_re() -> &'static Regex {
-    static TOOL_CALL_RE: OnceLock<Regex> = OnceLock::new();
-    TOOL_CALL_RE.get_or_init(|| {
-        Regex::new(r"(?s)<tool_call>\s*(?:```(?:json)?\s*)?(\{.*?\})(?:\s*```)?\s*</tool_call>")
-            .expect("tool_call regex must compile")
-    })
-}
-
-fn extract_markup_tool_calls(text: &str) -> (String, Vec<(String, String)>) {
-    let mut calls = Vec::new();
-    let re = tool_call_markup_re();
-
-    for capture in re.captures_iter(text) {
-        let Some(block) = capture.get(1).map(|m| m.as_str()) else {
-            continue;
-        };
-        let Ok(payload) = serde_json::from_str::<Value>(block) else {
-            continue;
-        };
-        let Some(name) = payload.get("name").and_then(Value::as_str) else {
-            continue;
-        };
-        let arguments = payload
-            .get("arguments")
-            .map(|v| serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string()))
-            .unwrap_or_else(|| "{}".to_string());
-        calls.push((name.to_string(), arguments));
-    }
-
-    let cleaned = re.replace_all(text, "").into_owned();
-    (cleaned, calls)
-}
-
-fn normalize_textual_tool_calls(
-    mut response: CompletionResponse,
-    tools: &[ToolDefinition],
-) -> CompletionResponse {
-    if response
-        .message
-        .content
-        .iter()
-        .any(|p| matches!(p, ContentPart::ToolCall { .. }))
-    {
-        return response;
-    }
-
-    if tools.is_empty() {
-        return response;
-    }
-
-    let mut rewritten = Vec::with_capacity(response.message.content.len());
-    let mut parsed_calls: Vec<(String, String)> = Vec::new();
-    let allowed_tools: std::collections::HashSet<&str> =
-        tools.iter().map(|t| t.name.as_str()).collect();
-
-    for part in response.message.content {
-        match part {
-            ContentPart::Text { text } => {
-                let (cleaned, calls) = extract_markup_tool_calls(&text);
-                for (name, arguments) in calls {
-                    if allowed_tools.contains(name.as_str()) {
-                        parsed_calls.push((name, arguments));
-                    } else {
-                        tracing::warn!(tool = %name, "Ignoring unknown <tool_call> tool name");
-                    }
-                }
-
-                if !cleaned.trim().is_empty() {
-                    rewritten.push(ContentPart::Text {
-                        text: cleaned.trim().to_string(),
-                    });
-                }
-            }
-            other => rewritten.push(other),
-        }
-    }
-
-    if parsed_calls.is_empty() {
-        response.message.content = rewritten;
-        return response;
-    }
-
-    for (name, arguments) in parsed_calls {
-        rewritten.push(ContentPart::ToolCall {
-            id: Uuid::new_v4().to_string(),
-            name,
-            arguments,
-            thought_signature: None,
-        });
-    }
-
-    response.message.content = rewritten;
-    response.finish_reason = FinishReason::ToolCalls;
-    response
-}
-
-fn is_codesearch_no_match_output(tool_name: &str, success: bool, output: &str) -> bool {
-    tool_name == "codesearch"
-        && success
-        && output
-            .to_ascii_lowercase()
-            .contains("no matches found for pattern:")
-}
-
-fn looks_like_build_execution_request(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    let keywords = [
-        "fix",
-        "patch",
-        "implement",
-        "add",
-        "update",
-        "edit",
-        "change",
-        "refactor",
-        "debug",
-        "investigate",
-        "run",
-        "test",
-        "build",
-        "compile",
-        "create",
-        "remove",
-        "rename",
-        "wire",
-        "hook up",
-    ];
-    keywords.iter().any(|k| lower.contains(k))
-}
-
-fn is_affirmative_build_followup(text: &str) -> bool {
-    let lower = text.trim().to_ascii_lowercase();
-    let markers = [
-        "yes",
-        "yep",
-        "yeah",
-        "do it",
-        "go ahead",
-        "proceed",
-        "use the edit",
-        "use edit",
-        "apply it",
-        "ship it",
-        "fix it",
-    ];
-    markers
-        .iter()
-        .any(|m| lower == *m || lower.starts_with(&format!("{m} ")))
-}
-
-fn looks_like_proposed_change(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    let markers = [
-        "use this exact block",
-        "now uses",
-        "apply",
-        "replace",
-        "patch",
-        "edit",
-        "change",
-        "update",
-        "fix",
-    ];
-    markers.iter().any(|m| lower.contains(m))
-}
-
-fn assistant_offered_next_step(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    let offer_markers = [
-        "if you want",
-        "want me to",
-        "should i",
-        "next i can",
-        "i can also",
-        "i'm ready to",
-        "i am ready to",
-    ];
-    let action_markers = [
-        "patch",
-        "add",
-        "update",
-        "edit",
-        "change",
-        "fix",
-        "implement",
-        "style",
-        "tighten",
-        "apply",
-        "refactor",
-    ];
-    offer_markers.iter().any(|m| lower.contains(m))
-        && action_markers.iter().any(|m| lower.contains(m))
-}
-
-fn build_request_requires_tool(session_messages: &[Message], workspace_dir: &Path) -> bool {
-    let Some(text) = latest_user_text(session_messages) else {
-        return false;
-    };
-
-    if looks_like_build_execution_request(&text)
-        && !extract_candidate_file_paths(&text, workspace_dir, 1).is_empty()
-    {
-        return true;
-    }
-
-    if !is_affirmative_build_followup(&text) {
-        return false;
-    }
-
-    let mut skipped_latest_user = false;
-    for msg in session_messages.iter().rev() {
-        let msg_text = extract_text_content(&msg.content);
-        if msg_text.trim().is_empty() {
-            continue;
-        }
-
-        if matches!(msg.role, Role::User) && !skipped_latest_user {
-            skipped_latest_user = true;
-            continue;
-        }
-
-        if matches!(msg.role, Role::Assistant) && assistant_offered_next_step(&msg_text) {
-            return true;
-        }
-
-        if (looks_like_build_execution_request(&msg_text) || looks_like_proposed_change(&msg_text))
-            && !extract_candidate_file_paths(&msg_text, workspace_dir, 1).is_empty()
-        {
-            return true;
-        }
-    }
-
-    false
-}
-
-fn should_force_build_tool_first_retry(
-    agent_name: &str,
-    retry_count: u8,
-    tool_definitions: &[ToolDefinition],
-    session_messages: &[Message],
-    workspace_dir: &Path,
-    assistant_text: &str,
-    has_tool_calls: bool,
-) -> bool {
-    if retry_count >= BUILD_MODE_TOOL_FIRST_MAX_RETRIES
-        || !is_build_agent(agent_name)
-        || tool_definitions.is_empty()
-        || has_tool_calls
-    {
-        return false;
-    }
-
-    if assistant_text.trim().is_empty() {
-        return false;
-    }
-
-    if !build_request_requires_tool(session_messages, workspace_dir) {
-        return false;
-    }
-
-    true
-}
-
-fn provider_has_flaky_native_tool_calling(provider_name: &str, model: &str) -> bool {
-    let provider = provider_name.to_ascii_lowercase();
-    let model = model.to_ascii_lowercase();
-    provider == "minimax"
-        || provider == "minimax-credits"
-        || model.contains("minimax")
-        || model.contains("m2.5")
-}
-
-fn assistant_claims_imminent_tool_use(text: &str, tool_definitions: &[ToolDefinition]) -> bool {
-    let lower = text.trim().to_ascii_lowercase();
-    if lower.is_empty() {
-        return false;
-    }
-
-    let explicit_markers = [
-        "tool call",
-        "tool calls",
-        "use a tool",
-        "use tools",
-        "call the",
-        "invoke the",
-        "let me use",
-        "i'll use",
-        "i will use",
-        "i'm going to use",
-        "i am going to use",
-    ];
-    if explicit_markers.iter().any(|m| lower.contains(m)) {
-        return true;
-    }
-
-    let action_markers = [
-        "let me check",
-        "let me inspect",
-        "let me search",
-        "let me read",
-        "let me open",
-        "first, i'll",
-        "first i will",
-        "i'll check",
-        "i'll inspect",
-        "i'll search",
-        "i'll read",
-        "i'll open",
-        "i'll look through",
-        "i'll examine",
-        "i will check",
-        "i will inspect",
-        "i will search",
-        "i will read",
-        "i will open",
-        "i will examine",
-    ];
-    if action_markers.iter().any(|m| lower.contains(m))
-        && tool_definitions.iter().any(|tool| {
-            let name = tool.name.to_ascii_lowercase();
-            lower.contains(&name)
-                || matches!(
-                    name.as_str(),
-                    "bash"
-                        | "read"
-                        | "write"
-                        | "edit"
-                        | "advanced_edit"
-                        | "multiedit"
-                        | "codesearch"
-                        | "glob"
-                        | "grep"
-                        | "ls"
-                        | "cat"
-                        | "lsp"
-                )
-        })
-    {
-        return true;
-    }
-
-    false
-}
-
-fn should_retry_missing_native_tool_call(
-    provider_name: &str,
-    model: &str,
-    retry_count: u8,
-    tool_definitions: &[ToolDefinition],
-    assistant_text: &str,
-    has_tool_calls: bool,
-) -> bool {
-    if retry_count >= NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES
-        || has_tool_calls
-        || tool_definitions.is_empty()
-        || !provider_has_flaky_native_tool_calling(provider_name, model)
-    {
-        return false;
-    }
-
-    assistant_claims_imminent_tool_use(assistant_text, tool_definitions)
-}
-
-fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
-    // Keep Google as an explicit option, but don't default to it first because
-    // some environments expose API keys that are not valid for ChatCompletions.
-    let preferred = [
-        "zai",
-        "openai",
-        "github-copilot",
-        "anthropic",
-        "minimax",
-        "openrouter",
-        "novita",
-        "moonshotai",
-        "google",
-    ];
-    for name in preferred {
-        if let Some(found) = providers.iter().copied().find(|p| *p == name) {
-            return Some(found);
-        }
-    }
-    providers.first().copied()
-}
-
-fn resolve_provider_for_session_request<'a>(
-    providers: &'a [&'a str],
-    explicit_provider: Option<&str>,
-) -> Result<&'a str> {
-    if let Some(explicit) = explicit_provider {
-        if let Some(found) = providers.iter().copied().find(|p| *p == explicit) {
-            return Ok(found);
-        }
-        anyhow::bail!(
-            "Provider '{}' selected explicitly but is unavailable. Available providers: {}",
-            explicit,
-            providers.join(", ")
-        );
-    }
-
-    choose_default_provider(providers).ok_or_else(|| anyhow::anyhow!("No providers available"))
-}
-
-fn prefers_temperature_one(model: &str) -> bool {
-    let normalized = model.to_ascii_lowercase();
-    normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
-}
-
-/// Return the context window size (in tokens) for known models.
-fn context_window_for_model(model: &str) -> usize {
-    let m = model.to_ascii_lowercase();
-    if m.contains("kimi-k2") {
-        256_000
-    } else if m.contains("glm-5") || m.contains("glm5") {
-        200_000
-    } else if m.contains("gpt-4o") {
-        128_000
-    } else if m.contains("gpt-5") {
-        256_000
-    } else if m.contains("claude") {
-        200_000
-    } else if m.contains("gemini") {
-        1_000_000
-    } else if m.contains("minimax") || m.contains("m2.5") {
-        256_000
-    } else if m.contains("qwen") {
-        131_072
-    } else {
-        128_000 // conservative default
-    }
-}
-
-fn session_completion_max_tokens() -> usize {
-    std::env::var("CODETETHER_SESSION_MAX_TOKENS")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(8192)
-}
-
-fn estimate_tokens_for_part(part: &ContentPart) -> usize {
-    match part {
-        ContentPart::Text { text } => RlmChunker::estimate_tokens(text),
-        ContentPart::ToolResult { content, .. } => RlmChunker::estimate_tokens(content),
-        ContentPart::ToolCall {
-            id,
-            name,
-            arguments,
-            thought_signature,
-            ..
-        } => {
-            let mut s = String::new();
-            s.push_str(id);
-            s.push(' ');
-            s.push_str(name);
-            s.push(' ');
-            s.push_str(arguments);
-            if let Some(sig) = thought_signature {
-                s.push(' ');
-                s.push_str(sig);
-            }
-            RlmChunker::estimate_tokens(&s)
-        }
-        ContentPart::Thinking { text } => RlmChunker::estimate_tokens(text),
-        ContentPart::Image { .. } => {
-            // Image parts are encoded/handled provider-side and do not map
-            // cleanly to text tokens. Use a conservative fixed estimate.
-            2000
-        }
-        ContentPart::File { path, mime_type } => {
-            let mut s = String::new();
-            s.push_str(path);
-            if let Some(mt) = mime_type {
-                s.push(' ');
-                s.push_str(mt);
-            }
-            RlmChunker::estimate_tokens(&s)
-        }
-    }
-}
-
-fn estimate_tokens_for_messages(messages: &[Message]) -> usize {
-    messages
-        .iter()
-        .map(|m| {
-            m.content
-                .iter()
-                .map(estimate_tokens_for_part)
-                .sum::<usize>()
-        })
-        .sum()
-}
-
-fn estimate_tokens_for_tools(tools: &[ToolDefinition]) -> usize {
-    // Tool definitions are serialized and sent to providers. Count them as part
-    // of the prompt budget to avoid unexpected overflows.
-    serde_json::to_string(tools)
-        .ok()
-        .map(|s| RlmChunker::estimate_tokens(&s))
-        .unwrap_or(0)
-}
-
-fn estimate_request_tokens(
-    system_prompt: &str,
-    messages: &[Message],
-    tools: &[ToolDefinition],
-) -> usize {
-    RlmChunker::estimate_tokens(system_prompt)
-        + estimate_tokens_for_messages(messages)
-        + estimate_tokens_for_tools(tools)
-}
-
-fn role_label(role: Role) -> &'static str {
-    match role {
-        Role::System => "System",
-        Role::User => "User",
-        Role::Assistant => "Assistant",
-        Role::Tool => "Tool",
-    }
-}
-
-/// Build tool-calling instructions to inject into the system prompt for models
-/// that don't support native structured tool calls (e.g. gemini-web).
-/// Instructs the model to output `<tool_call>` XML blocks with JSON payloads.
-fn inject_tool_prompt(base_prompt: &str, tools: &[ToolDefinition]) -> String {
-    let tool_lines: String = tools
-        .iter()
-        .map(|t| format!("- {}: {}", t.name, t.description))
-        .collect::<Vec<_>>()
-        .join("\n");
+fn pending_confirmation_tool_result_content(tool_name: &str, content: &str) -> String {
     format!(
-        "{base_prompt}\n\n\
-         # Tool Use\n\
-         You have access to the following tools. To use a tool, output a \
-         <tool_call> XML block with a JSON object containing \"name\" and \
-         \"arguments\" fields. You may output multiple tool calls in one response.\n\n\
-         Example:\n\
-         <tool_call>\n\
-         {{\"name\": \"bash\", \"arguments\": {{\"command\": \"ls /tmp\"}}}}\n\
-         </tool_call>\n\n\
-         Available tools:\n{tool_lines}\n\n\
-         RULES:\n\
-         1. To use a tool, output <tool_call> blocks. Do NOT describe or \
-         simulate tool usage in plain text. Do NOT fabricate tool output.\n\
-         2. After a tool result is returned, review the result and provide \
-         your final answer in plain text WITHOUT any <tool_call> blocks. \
-         Only call another tool if the result was insufficient.\n\
-         3. Do NOT call the same tool with the same arguments more than once.\n\
-         4. Prefer the lsp tool for code intelligence (symbols/definitions/references). \
-         Prefer the bash tool for shell commands.\n\
-         5. During refactors, NEVER create placeholder/stub implementations \
-         (e.g., TODO, FIXME, \"not implemented\", \"fallback\"). Always preserve \
-         concrete behavior."
+        "{content}\n\nStatus: Pending confirmation only. `{tool_name}` has NOT been applied yet. \
+         Auto-apply is off. Enable it in TUI Settings or with `/autoapply on` if you want pending \
+         edit previews to be confirmed automatically."
     )
 }
 
-fn list_tools_bootstrap_definition() -> ToolDefinition {
-    ToolDefinition {
-        name: "list_tools".to_string(),
-        description: "List available tools (optionally filter by query) or fetch a full schema for one tool via {\"tool\":\"name\"}.".to_string(),
-        parameters: json!({
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Optional substring filter over tool names/descriptions"
-                },
-                "tool": {
-                    "type": "string",
-                    "description": "Optional exact tool name to return full schema"
-                }
-            }
-        }),
-    }
+fn auto_apply_pending_confirmation_result_content(output: &str, success: bool) -> String {
+    let status = if success {
+        "TUI edit auto-apply is enabled. The pending change was automatically confirmed and applied."
+    } else {
+        "TUI edit auto-apply is enabled, but confirming the pending change failed."
+    };
+    format!("{status}\n\n{output}")
 }
 
-fn list_tools_bootstrap_output(tools: &[ToolDefinition], tool_input: &Value) -> String {
-    let requested_tool = tool_input
-        .get("tool")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
-
-    if let Some(name) = requested_tool {
-        if let Some(found) = tools.iter().find(|t| t.name.eq_ignore_ascii_case(name)) {
-            return serde_json::to_string_pretty(&json!({
-                "mode": "tool",
-                "tool": {
-                    "name": found.name,
-                    "description": found.description,
-                    "parameters": found.parameters
-                }
-            }))
-            .unwrap_or_else(|_| format!("tool: {}", found.name));
-        }
-        return serde_json::to_string_pretty(&json!({
-            "mode": "tool",
-            "error": format!("Tool '{}' not found", name)
-        }))
-        .unwrap_or_else(|_| format!("Tool '{}' not found", name));
-    }
-
-    let query = tool_input
-        .get("query")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_ascii_lowercase());
-
-    let mut listed: Vec<Value> = tools
-        .iter()
-        .filter(|t| {
-            if let Some(q) = &query {
-                t.name.to_ascii_lowercase().contains(q)
-                    || t.description.to_ascii_lowercase().contains(q)
-            } else {
-                true
-            }
-        })
-        .map(|t| {
-            json!({
-                "name": t.name,
-                "description": t.description,
-            })
-        })
-        .collect();
-
-    listed.sort_by(|a, b| {
-        let an = a["name"].as_str().unwrap_or_default();
-        let bn = b["name"].as_str().unwrap_or_default();
-        an.cmp(bn)
-    });
-
-    serde_json::to_string_pretty(&json!({
-        "mode": "list",
-        "count": listed.len(),
-        "tools": listed,
-        "hint": "Call list_tools with {\"tool\":\"<name>\"} to fetch full parameter schema for one tool."
-    }))
-    .unwrap_or_else(|_| "{\"mode\":\"list\",\"error\":\"serialization_failed\"}".to_string())
+fn tool_result_requires_confirmation(
+    tool_metadata: Option<&HashMap<String, serde_json::Value>>,
+) -> bool {
+    tool_metadata
+        .and_then(|metadata| metadata.get("requires_confirmation"))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false)
 }
 
-fn stub_marker_in_text(text: &str) -> Option<&'static str> {
-    let lower = text.to_ascii_lowercase();
-    let markers = [
-        "todo",
-        "fixme",
-        "placeholder implementation",
-        "<placeholder>",
-        "[placeholder]",
-        "{placeholder}",
-        "not implemented",
-        "fallback",
-        "stub",
-        "coming soon",
-        "unimplemented!(",
-        "todo!(",
-        "throw new error(\"not implemented",
-    ];
-    markers.into_iter().find(|m| lower.contains(m))
-}
-
-fn detect_stub_in_tool_input(tool_name: &str, tool_input: &Value) -> Option<String> {
-    let check = |label: &str, text: &str| {
-        stub_marker_in_text(text).map(|marker| format!("{label} contains stub marker \"{marker}\""))
+async fn auto_apply_pending_confirmation(
+    tool_name: &str,
+    tool_input: &serde_json::Value,
+    tool_metadata: Option<&HashMap<String, serde_json::Value>>,
+) -> Result<Option<(String, bool, Option<HashMap<String, serde_json::Value>>)>> {
+    let Some((confirm_tool_name, confirm_input)) =
+        build_pending_confirmation_apply_request(tool_name, tool_input, tool_metadata)
+    else {
+        return Ok(None);
     };
 
-    match tool_name {
-        "write" => tool_input
-            .get("content")
-            .and_then(Value::as_str)
-            .and_then(|text| check("content", text)),
-        "edit" | "confirm_edit" => tool_input
-            .get("new_string")
-            .or_else(|| tool_input.get("newString"))
-            .and_then(Value::as_str)
-            .and_then(|text| check("new_string", text)),
-        "advanced_edit" => tool_input
-            .get("newString")
-            .and_then(Value::as_str)
-            .and_then(|text| check("newString", text)),
-        "multiedit" | "confirm_multiedit" => {
-            let edits = tool_input.get("edits").and_then(Value::as_array)?;
-            for (idx, edit) in edits.iter().enumerate() {
-                if let Some(reason) = edit
-                    .get("new_string")
-                    .or_else(|| edit.get("newString"))
-                    .and_then(Value::as_str)
-                    .and_then(|text| check(&format!("edits[{idx}].new_string"), text))
-                {
-                    return Some(reason);
-                }
-            }
-            None
-        }
-        "patch" => {
-            let patch = tool_input.get("patch").and_then(Value::as_str)?;
-            let added_lines = patch
-                .lines()
-                .filter(|line| line.starts_with('+') && !line.starts_with("+++"))
-                .map(|line| line.trim_start_matches('+'))
-                .collect::<Vec<_>>()
-                .join("\n");
-            if added_lines.is_empty() {
-                None
-            } else {
-                check("patch additions", &added_lines)
-            }
-        }
-        _ => None,
-    }
-}
-
-fn normalize_tool_call_for_execution(tool_name: &str, tool_input: &Value) -> (String, Value) {
-    let mut normalized_name = tool_name.to_string();
-    let mut normalized_input = tool_input.clone();
-
-    if tool_name == "advanced_edit" {
-        normalized_name = "edit".to_string();
-    }
-
-    if matches!(
-        normalized_name.as_str(),
-        "edit" | "confirm_edit" | "advanced_edit"
-    ) {
-        if let Some(obj) = normalized_input.as_object_mut() {
-            if obj.get("path").is_none() {
-                if let Some(v) = obj.get("filePath").cloned() {
-                    obj.insert("path".to_string(), v);
-                } else if let Some(v) = obj.get("file").cloned() {
-                    obj.insert("path".to_string(), v);
-                }
-            }
-            if obj.get("old_string").is_none()
-                && let Some(v) = obj.get("oldString").cloned()
-            {
-                obj.insert("old_string".to_string(), v);
-            }
-            if obj.get("new_string").is_none()
-                && let Some(v) = obj.get("newString").cloned()
-            {
-                obj.insert("new_string".to_string(), v);
-            }
-        }
-    }
-
-    if matches!(normalized_name.as_str(), "multiedit" | "confirm_multiedit")
-        && let Some(obj) = normalized_input.as_object_mut()
-    {
-        if obj.get("edits").is_none() {
-            if let Some(v) = obj.get("changes").cloned() {
-                obj.insert("edits".to_string(), v);
-            } else if let Some(v) = obj.get("operations").cloned() {
-                obj.insert("edits".to_string(), v);
-            } else if obj.get("file").is_some() || obj.get("path").is_some() {
-                let single = Value::Object(obj.clone());
-                obj.insert("edits".to_string(), Value::Array(vec![single]));
-            }
-        }
-
-        if let Some(edits) = obj.get_mut("edits").and_then(Value::as_array_mut) {
-            for edit in edits {
-                if let Some(edit_obj) = edit.as_object_mut() {
-                    if edit_obj.get("file").is_none() {
-                        if let Some(v) = edit_obj.get("filePath").cloned() {
-                            edit_obj.insert("file".to_string(), v);
-                        } else if let Some(v) = edit_obj.get("path").cloned() {
-                            edit_obj.insert("file".to_string(), v);
-                        }
-                    }
-                    if edit_obj.get("old_string").is_none()
-                        && let Some(v) = edit_obj.get("oldString").cloned()
-                    {
-                        edit_obj.insert("old_string".to_string(), v);
-                    }
-                    if edit_obj.get("new_string").is_none()
-                        && let Some(v) = edit_obj.get("newString").cloned()
-                    {
-                        edit_obj.insert("new_string".to_string(), v);
-                    }
-                }
-            }
-        }
-    }
-
-    (normalized_name, normalized_input)
-}
-
-fn latest_user_text(messages: &[Message]) -> Option<String> {
-    messages.iter().rev().find_map(|m| {
-        if m.role != Role::User {
-            return None;
-        }
-        let text = m
-            .content
-            .iter()
-            .filter_map(|part| match part {
-                ContentPart::Text { text } => Some(text.as_str()),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        if text.trim().is_empty() {
-            None
-        } else {
-            Some(text)
-        }
-    })
-}
-
-fn extract_candidate_file_paths(text: &str, cwd: &Path, max_files: usize) -> Vec<String> {
-    static FILE_PATH_RE: OnceLock<Regex> = OnceLock::new();
-    let re = FILE_PATH_RE.get_or_init(|| {
-        Regex::new(
-            r"(?x)
-            (?P<path>
-              (?:\.?/)?(?:[A-Za-z0-9_.\-]+/)*
-              [A-Za-z0-9_.\-]+\.
-              (?:rs|ts|tsx|js|jsx|mjs|cjs|py|go|java|kt|swift|c|cc|cpp|h|hpp|cs|php|rb|scala|sql|json|ya?ml|toml)
-            )",
-        )
-        .unwrap()
-    });
-
-    let mut out = Vec::new();
-    for cap in re.captures_iter(text) {
-        let Some(raw) = cap.name("path").map(|m| m.as_str()) else {
-            continue;
-        };
-        let path = raw
-            .trim_matches(|c: char| {
-                matches!(
-                    c,
-                    '`' | '"' | '\'' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | ':'
-                )
-            })
-            .to_string();
-        if path.is_empty() || out.iter().any(|p| p == &path) {
-            continue;
-        }
-        if cwd.join(&path).exists() {
-            out.push(path);
-        }
-        if out.len() >= max_files {
-            break;
-        }
-    }
-    out
-}
-
-async fn build_proactive_lsp_context_message(
-    selected_provider: &str,
-    step: usize,
-    tool_registry: &ToolRegistry,
-    session_messages: &[Message],
-    workspace_dir: &Path,
-) -> Option<Message> {
-    // Keep this narrowly scoped to Gemini Web where the user requested
-    // proactive LSP context before tool-calling decisions.
-    if selected_provider != "gemini-web" || step != 1 {
-        return None;
-    }
-
-    let Some(lsp_tool) = tool_registry.get("lsp") else {
-        return None;
+    let result = match confirm_tool_name.as_str() {
+        "confirm_edit" => ConfirmEditTool::new().execute(confirm_input).await?,
+        "confirm_multiedit" => ConfirmMultiEditTool::new().execute(confirm_input).await?,
+        _ => return Ok(None),
     };
 
-    let Some(user_text) = latest_user_text(session_messages) else {
-        return None;
+    let metadata = if result.metadata.is_empty() {
+        tool_metadata.cloned()
+    } else {
+        Some(result.metadata)
     };
 
-    let max_files = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_FILES")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(1);
-
-    let max_chars = std::env::var("CODETETHER_PROACTIVE_LSP_MAX_CHARS")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(600);
-
-    let paths = extract_candidate_file_paths(&user_text, workspace_dir, max_files);
-    if paths.is_empty() {
-        return None;
-    }
-
-    let mut sections: Vec<String> = Vec::new();
-    for path in paths {
-        let args = json!({
-            "action": "documentSymbol",
-            "file_path": path,
-            "line": 1,
-            "column": 1
-        });
-
-        match lsp_tool.execute(args).await {
-            Ok(result) if result.success => {
-                sections.push(format!(
-                    "File: {}\n{}",
-                    path,
-                    truncate_with_ellipsis(&result.output, max_chars)
-                ));
-            }
-            Ok(result) => {
-                tracing::debug!(
-                    file = %path,
-                    output = %truncate_with_ellipsis(&result.output, 200),
-                    "Proactive LSP context skipped file due to unsuccessful result"
-                );
-            }
-            Err(e) => {
-                tracing::debug!(file = %path, error = %e, "Proactive LSP prefetch failed");
-            }
-        }
-    }
-
-    if sections.is_empty() {
-        return None;
-    }
-
-    Some(Message {
-        role: Role::System,
-        content: vec![ContentPart::Text {
-            text: format!(
-                "Proactive LSP context (prefetched). Use this to reason about file structure before issuing more tools.\n\n{}",
-                sections.join("\n\n---\n\n")
-            ),
-        }],
-    })
-}
-
-fn messages_to_rlm_context(messages: &[Message]) -> String {
-    // Render a lossless-ish text representation of the session suitable for RLM.
-    // Avoid embedding base64 image data URLs (they can be enormous and not useful
-    // for summarizing conversational state).
-    let mut out = String::new();
-    for (idx, m) in messages.iter().enumerate() {
-        out.push_str(&format!("[{} {}]\n", idx, role_label(m.role)));
-
-        for part in &m.content {
-            match part {
-                ContentPart::Text { text } => {
-                    out.push_str(text);
-                    out.push('\n');
-                }
-                ContentPart::Thinking { text } => {
-                    if !text.trim().is_empty() {
-                        out.push_str("[Thinking]\n");
-                        out.push_str(text);
-                        out.push('\n');
-                    }
-                }
-                ContentPart::ToolCall {
-                    id,
-                    name,
-                    arguments,
-                    ..
-                } => {
-                    out.push_str(&format!(
-                        "[ToolCall id={id} name={name}]\nargs: {arguments}\n"
-                    ));
-                }
-                ContentPart::ToolResult {
-                    tool_call_id,
-                    content,
-                } => {
-                    out.push_str(&format!("[ToolResult id={tool_call_id}]\n"));
-                    out.push_str(content);
-                    out.push('\n');
-                }
-                ContentPart::Image { mime_type, url } => {
-                    out.push_str(&format!(
-                        "[Image mime_type={} url_len={}]\n",
-                        mime_type.clone().unwrap_or_else(|| "unknown".to_string()),
-                        url.len()
-                    ));
-                }
-                ContentPart::File { path, mime_type } => {
-                    out.push_str(&format!(
-                        "[File path={} mime_type={}]\n",
-                        path,
-                        mime_type.clone().unwrap_or_else(|| "unknown".to_string())
-                    ));
-                }
-            }
-        }
-
-        out.push_str("\n---\n\n");
-    }
-    out
-}
-
-fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
-    let msg = err.to_string().to_ascii_lowercase();
-    msg.contains("prompt is too long")
-        || msg.contains("context length")
-        || msg.contains("maximum context")
-        || (msg.contains("tokens") && msg.contains("maximum") && msg.contains("prompt"))
+    Ok(Some((
+        auto_apply_pending_confirmation_result_content(&result.output, result.success),
+        result.success,
+        metadata,
+    )))
 }
 
 /// A conversation session
@@ -1126,8 +167,20 @@ pub struct Session {
 pub struct SessionMetadata {
     pub directory: Option<PathBuf>,
     pub model: Option<String>,
+    pub knowledge_snapshot: Option<PathBuf>,
+    pub provenance: Option<ExecutionProvenance>,
+    #[serde(default)]
+    pub auto_apply_edits: bool,
+    #[serde(default)]
+    pub allow_network: bool,
+    #[serde(default = "default_slash_autocomplete")]
+    pub slash_autocomplete: bool,
     pub shared: bool,
     pub share_url: Option<String>,
+}
+
+fn default_slash_autocomplete() -> bool {
+    true
 }
 
 impl Session {
@@ -1146,7 +199,7 @@ impl Session {
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
             "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
-            _ => "glm-5".to_string(),
+            _ => "gpt-4o".to_string(),
         }
     }
 
@@ -1154,6 +207,7 @@ impl Session {
     pub async fn new() -> Result<Self> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
+        let provenance = Some(ExecutionProvenance::for_session(&id, "build"));
 
         Ok(Self {
             id,
@@ -1166,6 +220,7 @@ impl Session {
             agent: "build".to_string(),
             metadata: SessionMetadata {
                 directory: Some(std::env::current_dir()?),
+                provenance,
                 ..Default::default()
             },
             bus: None,
@@ -1176,6 +231,26 @@ impl Session {
     pub fn with_bus(mut self, bus: Arc<crate::bus::AgentBus>) -> Self {
         self.bus = Some(bus);
         self
+    }
+
+    pub fn set_agent_name(&mut self, agent_name: impl Into<String>) {
+        let agent_name = agent_name.into();
+        self.agent = agent_name.clone();
+        if let Some(provenance) = self.metadata.provenance.as_mut() {
+            provenance.set_agent_name(&agent_name);
+        }
+    }
+
+    pub fn attach_worker_task_provenance(&mut self, worker_id: &str, task_id: &str) {
+        if let Some(provenance) = self.metadata.provenance.as_mut() {
+            provenance.apply_worker_task(worker_id, task_id);
+        }
+    }
+
+    pub fn attach_claim_provenance(&mut self, claim: &ClaimProvenance) {
+        if let Some(provenance) = self.metadata.provenance.as_mut() {
+            provenance.apply_claim(claim);
+        }
     }
 
     /// Load an existing session
@@ -1647,6 +722,24 @@ impl Session {
                                 .await?;
                             continue;
                         }
+                        if attempt == 1 && is_retryable_upstream_error(&e) {
+                            if let Some((retry_provider, retry_model)) =
+                                choose_router_target(&registry, selected_provider, &model)
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    from_provider = selected_provider,
+                                    from_model = %model,
+                                    to_provider = %retry_provider,
+                                    to_model = %retry_model,
+                                    "Retryable upstream provider error; retrying same prompt with alternate provider/model"
+                                );
+                                self.metadata.model =
+                                    Some(format!("{retry_provider}/{retry_model}"));
+                                attempt = 0;
+                                continue;
+                            }
+                        }
                         return Err(e);
                     }
                 }
@@ -1695,7 +788,7 @@ impl Session {
                 })
                 .collect();
 
-            let assistant_text = extract_text_content(&response.message.content);
+            let assistant_text = extract_text_content(&&response.message.content);
             if should_force_build_tool_first_retry(
                 &self.agent,
                 build_mode_tool_retry_count,
@@ -1704,6 +797,7 @@ impl Session {
                 &cwd,
                 &assistant_text,
                 !tool_calls.is_empty(),
+                BUILD_MODE_TOOL_FIRST_MAX_RETRIES,
             ) {
                 build_mode_tool_retry_count += 1;
                 tracing::warn!(
@@ -1727,6 +821,7 @@ impl Session {
                 &tool_definitions,
                 &assistant_text,
                 !tool_calls.is_empty(),
+                NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES,
             ) {
                 native_tool_promise_retry_count += 1;
                 tracing::warn!(
@@ -1913,6 +1008,7 @@ impl Session {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
                             arguments: tool_input.clone(),
+                            step,
                         },
                     );
                 }
@@ -1951,6 +1047,7 @@ impl Session {
                     self.metadata.model.as_deref(),
                     &self.id,
                     &self.agent,
+                    self.metadata.provenance.as_ref(),
                 );
                 let (content, success, tool_metadata) = if let Some(tool) =
                     tool_registry.get(&tool_name)
@@ -2013,29 +1110,85 @@ impl Session {
                     (format!("Error: Unknown tool '{}'", tool_name), false, None)
                 };
 
-                track_touched_files(
-                    &mut touched_files,
-                    &cwd,
-                    &tool_name,
-                    &tool_input,
-                    tool_metadata.as_ref(),
-                );
+                let requires_confirmation =
+                    tool_result_requires_confirmation(tool_metadata.as_ref());
+                let (content, success, tool_metadata, requires_confirmation) =
+                    if requires_confirmation && self.metadata.auto_apply_edits {
+                        let preview_content = content.clone();
+                        match auto_apply_pending_confirmation(
+                            &tool_name,
+                            &tool_input,
+                            tool_metadata.as_ref(),
+                        )
+                        .await
+                        {
+                            Ok(Some((content, success, tool_metadata))) => {
+                                tracing::info!(
+                                    tool = %tool_name,
+                                    "Auto-applied pending confirmation in TUI session"
+                                );
+                                (content, success, tool_metadata, false)
+                            }
+                            Ok(None) => (content, success, tool_metadata, true),
+                            Err(error) => (
+                                format!(
+                                    "{}\n\nTUI edit auto-apply failed: {}",
+                                    pending_confirmation_tool_result_content(
+                                        &tool_name,
+                                        &preview_content,
+                                    ),
+                                    error
+                                ),
+                                false,
+                                tool_metadata,
+                                true,
+                            ),
+                        }
+                    } else {
+                        (content, success, tool_metadata, requires_confirmation)
+                    };
+                let rendered_content = if requires_confirmation {
+                    pending_confirmation_tool_result_content(&tool_name, &content)
+                } else {
+                    content.clone()
+                };
+
+                if !requires_confirmation {
+                    track_touched_files(
+                        &mut touched_files,
+                        &cwd,
+                        &tool_name,
+                        &tool_input,
+                        tool_metadata.as_ref(),
+                    );
+                }
 
                 // Calculate duration for event stream
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 let codesearch_no_match =
-                    is_codesearch_no_match_output(&tool_name, success, &content);
+                    is_codesearch_no_match_output(&tool_name, success, &rendered_content);
 
-                // Publish full tool output to bus for training pipeline
-                // (before RLM truncation so we capture the complete output)
+                // Publish tool response + full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.response", self.agent),
+                        crate::bus::BusMessage::ToolResponse {
+                            request_id: tool_id.clone(),
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            result: rendered_content.clone(),
+                            success,
+                            step,
+                        },
+                    );
+                    // (before RLM truncation so we capture the complete output)
                     handle.send(
                         format!("agent.{}.tool.output", self.agent),
                         crate::bus::BusMessage::ToolOutputFull {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
-                            output: content.clone(),
+                            output: rendered_content.clone(),
                             success,
                             step,
                         },
@@ -2053,7 +1206,7 @@ impl Session {
                         &tool_name,
                         success,
                         duration_ms,
-                        &content,
+                        &rendered_content,
                         self.messages.len() as u64,
                     );
                     let event_json = event.to_json();
@@ -2097,7 +1250,8 @@ impl Session {
                         current_context_tokens: Some(current_tokens),
                     };
                     let rlm_config = RlmConfig::default();
-                    let routing = RlmRouter::should_route(&content, &routing_ctx, &rlm_config);
+                    let routing =
+                        RlmRouter::should_route(&rendered_content, &routing_ctx, &rlm_config);
                     if routing.should_route {
                         tracing::info!(
                             tool = %tool_name,
@@ -2114,7 +1268,9 @@ impl Session {
                             provider: Arc::clone(&provider),
                             model: model.clone(),
                         };
-                        match RlmRouter::auto_process(&content, auto_ctx, &rlm_config).await {
+                        match RlmRouter::auto_process(&rendered_content, auto_ctx, &rlm_config)
+                            .await
+                        {
                             Ok(result) => {
                                 tracing::info!(
                                     input_tokens = result.stats.input_tokens,
@@ -2127,7 +1283,7 @@ impl Session {
                             Err(e) => {
                                 tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
                                 let (truncated, _, _) = RlmRouter::smart_truncate(
-                                    &content,
+                                    &rendered_content,
                                     &tool_name,
                                     &tool_input,
                                     ctx_window / 4,
@@ -2136,7 +1292,7 @@ impl Session {
                             }
                         }
                     } else {
-                        content
+                        rendered_content
                     }
                 };
 
@@ -2510,7 +1666,14 @@ impl Session {
             #[allow(clippy::never_loop)]
             let response = loop {
                 attempt += 1;
-                match provider.complete(request.clone()).await {
+                let completion_result = if model_supports_tools {
+                    let stream = provider.complete_stream(request.clone()).await?;
+                    collect_stream_completion_with_events(stream, Some(&event_tx)).await
+                } else {
+                    provider.complete(request.clone()).await
+                };
+
+                match completion_result {
                     Ok(r) => break r,
                     Err(e) => {
                         if attempt == 1 && is_prompt_too_long_error(&e) {
@@ -2545,9 +1708,13 @@ impl Session {
                                 max_tokens: Some(session_completion_max_tokens()),
                                 stop: Vec::new(),
                             };
-                            // Shadow request for next attempt.
-                            // (We keep the loop structure simple; at most one retry.)
-                            match provider.complete(new_request).await {
+                            let retry_result = if model_supports_tools {
+                                let stream = provider.complete_stream(new_request).await?;
+                                collect_stream_completion_with_events(stream, Some(&event_tx)).await
+                            } else {
+                                provider.complete(new_request).await
+                            };
+                            match retry_result {
                                 Ok(r2) => break r2,
                                 Err(e2) => return Err(e2),
                             }
@@ -2608,7 +1775,7 @@ impl Session {
                 })
                 .collect();
 
-            let assistant_text = extract_text_content(&response.message.content);
+            let assistant_text = extract_text_content(&&response.message.content);
             if should_force_build_tool_first_retry(
                 &self.agent,
                 build_mode_tool_retry_count,
@@ -2617,6 +1784,7 @@ impl Session {
                 &cwd,
                 &assistant_text,
                 !tool_calls.is_empty(),
+                BUILD_MODE_TOOL_FIRST_MAX_RETRIES,
             ) {
                 build_mode_tool_retry_count += 1;
                 tracing::warn!(
@@ -2640,6 +1808,7 @@ impl Session {
                 &tool_definitions,
                 &assistant_text,
                 !tool_calls.is_empty(),
+                NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES,
             ) {
                 native_tool_promise_retry_count += 1;
                 tracing::warn!(
@@ -2834,6 +2003,7 @@ impl Session {
                             name: tool_name.clone(),
                             output: content.clone(),
                             success: true,
+                            duration_ms: 0,
                         })
                         .await;
                     self.add_message(Message {
@@ -2856,6 +2026,7 @@ impl Session {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
                             arguments: tool_input.clone(),
+                            step,
                         },
                     );
                 }
@@ -2868,6 +2039,7 @@ impl Session {
                             name: tool_name.clone(),
                             output: content.clone(),
                             success: false,
+                            duration_ms: 0,
                         })
                         .await;
                     self.add_message(Message {
@@ -2891,6 +2063,7 @@ impl Session {
                             name: tool_name.clone(),
                             output: content.clone(),
                             success: false,
+                            duration_ms: 0,
                         })
                         .await;
                     self.add_message(Message {
@@ -2909,6 +2082,7 @@ impl Session {
                     self.metadata.model.as_deref(),
                     &self.id,
                     &self.agent,
+                    self.metadata.provenance.as_ref(),
                 );
                 let (content, success, tool_metadata) = if let Some(tool) =
                     tool_registry.get(&tool_name)
@@ -2971,28 +2145,84 @@ impl Session {
                     (format!("Error: Unknown tool '{}'", tool_name), false, None)
                 };
 
-                track_touched_files(
-                    &mut touched_files,
-                    &cwd,
-                    &tool_name,
-                    &tool_input,
-                    tool_metadata.as_ref(),
-                );
+                let requires_confirmation =
+                    tool_result_requires_confirmation(tool_metadata.as_ref());
+                let (content, success, tool_metadata, requires_confirmation) =
+                    if requires_confirmation && self.metadata.auto_apply_edits {
+                        let preview_content = content.clone();
+                        match auto_apply_pending_confirmation(
+                            &tool_name,
+                            &tool_input,
+                            tool_metadata.as_ref(),
+                        )
+                        .await
+                        {
+                            Ok(Some((content, success, tool_metadata))) => {
+                                tracing::info!(
+                                    tool = %tool_name,
+                                    "Auto-applied pending confirmation in TUI session"
+                                );
+                                (content, success, tool_metadata, false)
+                            }
+                            Ok(None) => (content, success, tool_metadata, true),
+                            Err(error) => (
+                                format!(
+                                    "{}\n\nTUI edit auto-apply failed: {}",
+                                    pending_confirmation_tool_result_content(
+                                        &tool_name,
+                                        &preview_content,
+                                    ),
+                                    error
+                                ),
+                                false,
+                                tool_metadata,
+                                true,
+                            ),
+                        }
+                    } else {
+                        (content, success, tool_metadata, requires_confirmation)
+                    };
+                let rendered_content = if requires_confirmation {
+                    pending_confirmation_tool_result_content(&tool_name, &content)
+                } else {
+                    content.clone()
+                };
+
+                if !requires_confirmation {
+                    track_touched_files(
+                        &mut touched_files,
+                        &cwd,
+                        &tool_name,
+                        &tool_input,
+                        tool_metadata.as_ref(),
+                    );
+                }
 
                 // Calculate total duration from exec_start (captured from line 772)
                 let duration_ms = exec_start.elapsed().as_millis() as u64;
                 let codesearch_no_match =
-                    is_codesearch_no_match_output(&tool_name, success, &content);
+                    is_codesearch_no_match_output(&tool_name, success, &rendered_content);
 
-                // Publish full tool output to bus for training pipeline
+                // Publish tool response + full tool output to bus for training pipeline
                 if let Some(ref bus) = self.bus {
                     let handle = bus.handle(&self.agent);
+                    handle.send(
+                        format!("agent.{}.tool.response", self.agent),
+                        crate::bus::BusMessage::ToolResponse {
+                            request_id: tool_id.clone(),
+                            agent_id: self.agent.clone(),
+                            tool_name: tool_name.clone(),
+                            result: rendered_content.clone(),
+                            success,
+                            step,
+                        },
+                    );
                     handle.send(
                         format!("agent.{}.tool.output", self.agent),
                         crate::bus::BusMessage::ToolOutputFull {
                             agent_id: self.agent.clone(),
                             tool_name: tool_name.clone(),
-                            output: content.clone(),
+                            output: rendered_content.clone(),
                             success,
                             step,
                         },
@@ -3012,7 +2242,7 @@ impl Session {
                         &tool_name,
                         success,
                         duration_ms,
-                        &content,
+                        &rendered_content,
                         self.messages.len() as u64,
                     );
                     let event_json = event.to_json();
@@ -3054,8 +2284,9 @@ impl Session {
                 let _ = event_tx
                     .send(SessionEvent::ToolCallComplete {
                         name: tool_name.clone(),
-                        output: content.clone(),
+                        output: rendered_content.clone(),
                         success,
+                        duration_ms,
                     })
                     .await;
 
@@ -3071,7 +2302,8 @@ impl Session {
                         current_context_tokens: Some(current_tokens),
                     };
                     let rlm_config = RlmConfig::default();
-                    let routing = RlmRouter::should_route(&content, &routing_ctx, &rlm_config);
+                    let routing =
+                        RlmRouter::should_route(&rendered_content, &routing_ctx, &rlm_config);
                     if routing.should_route {
                         tracing::info!(
                             tool = %tool_name,
@@ -3088,7 +2320,9 @@ impl Session {
                             provider: Arc::clone(&provider),
                             model: model.clone(),
                         };
-                        match RlmRouter::auto_process(&content, auto_ctx, &rlm_config).await {
+                        match RlmRouter::auto_process(&rendered_content, auto_ctx, &rlm_config)
+                            .await
+                        {
                             Ok(result) => {
                                 tracing::info!(
                                     input_tokens = result.stats.input_tokens,
@@ -3101,7 +2335,7 @@ impl Session {
                             Err(e) => {
                                 tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
                                 let (truncated, _, _) = RlmRouter::smart_truncate(
-                                    &content,
+                                    &rendered_content,
                                     &tool_name,
                                     &tool_input,
                                     ctx_window / 4,
@@ -3110,7 +2344,7 @@ impl Session {
                             }
                         }
                     } else {
-                        content
+                        rendered_content
                     }
                 };
 
@@ -3301,6 +2535,7 @@ pub enum SessionEvent {
         name: String,
         output: String,
         success: bool,
+        duration_ms: u64,
     },
     /// Partial text output (for streaming)
     TextChunk(String),
@@ -3323,594 +2558,5 @@ pub enum SessionEvent {
     Error(String),
 }
 
-/// List all sessions
-pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
-    let sessions_dir = crate::config::Config::data_dir()
-        .map(|d| d.join("sessions"))
-        .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?;
-
-    if !sessions_dir.exists() {
-        return Ok(Vec::new());
-    }
-
-    let mut summaries = Vec::new();
-    let mut entries = fs::read_dir(&sessions_dir).await?;
-
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false)
-            && let Ok(content) = fs::read_to_string(&path).await
-            && let Ok(session) = serde_json::from_str::<Session>(&content)
-        {
-            summaries.push(SessionSummary {
-                id: session.id,
-                title: session.title,
-                created_at: session.created_at,
-                updated_at: session.updated_at,
-                message_count: session.messages.len(),
-                agent: session.agent,
-                directory: session.metadata.directory,
-            });
-        }
-    }
-
-    summaries.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    Ok(summaries)
-}
-
-/// List sessions scoped to a specific directory (workspace)
-///
-/// Only returns sessions whose `metadata.directory` matches the given path.
-/// This prevents sessions from other workspaces "leaking" into the TUI.
-pub async fn list_sessions_for_directory(dir: &std::path::Path) -> Result<Vec<SessionSummary>> {
-    let all = list_sessions().await?;
-    let canonical = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
-    Ok(all
-        .into_iter()
-        .filter(|s| {
-            s.directory
-                .as_ref()
-                .map(|d| d.canonicalize().unwrap_or_else(|_| d.clone()) == canonical)
-                .unwrap_or(false)
-        })
-        .collect())
-}
-
-/// List sessions for a directory with pagination.
-///
-/// - `limit`: Maximum number of sessions to return (default: 100)
-/// - `offset`: Number of sessions to skip (default: 0)
-pub async fn list_sessions_paged(
-    dir: &std::path::Path,
-    limit: usize,
-    offset: usize,
-) -> Result<Vec<SessionSummary>> {
-    let mut sessions = list_sessions_for_directory(dir).await?;
-    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    Ok(sessions.into_iter().skip(offset).take(limit).collect())
-}
-
-/// Summary of a session for listing
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionSummary {
-    pub id: String,
-    pub title: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub message_count: usize,
-    pub agent: String,
-    /// The working directory this session was created in
-    #[serde(default)]
-    pub directory: Option<PathBuf>,
-}
-
-fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-
-    let mut chars = value.chars();
-    let mut output = String::new();
-    for _ in 0..max_chars {
-        if let Some(ch) = chars.next() {
-            output.push(ch);
-        } else {
-            return value.to_string();
-        }
-    }
-
-    if chars.next().is_some() {
-        format!("{output}...")
-    } else {
-        output
-    }
-}
-
-// Async helper for Vec - kept for potential future use
-#[allow(dead_code)]
-use futures::StreamExt;
-
-#[allow(dead_code)]
-trait AsyncCollect<T> {
-    async fn collect(self) -> Vec<T>;
-}
-
-#[allow(dead_code)]
-impl<S, T> AsyncCollect<T> for S
-where
-    S: futures::Stream<Item = T> + Unpin,
-{
-    async fn collect(mut self) -> Vec<T> {
-        let mut items = Vec::new();
-        while let Some(item) = self.next().await {
-            items.push(item);
-        }
-        items
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use super::{
-        assistant_claims_imminent_tool_use, build_request_requires_tool, choose_default_provider,
-        detect_stub_in_tool_input, extract_candidate_file_paths, is_codesearch_no_match_output,
-        looks_like_build_execution_request, normalize_textual_tool_calls,
-        normalize_tool_call_for_execution, resolve_provider_for_session_request,
-        should_force_build_tool_first_retry, should_retry_missing_native_tool_call,
-    };
-    use crate::provider::{
-        CompletionResponse, ContentPart, FinishReason, Message, Role, ToolDefinition, Usage,
-    };
-    use serde_json::json;
-    use std::fs;
-    use tempfile::tempdir;
-
-    #[test]
-    fn normalize_textual_tool_calls_extracts_markup_into_structured_calls() {
-        let response = CompletionResponse {
-            message: Message {
-                role: Role::Assistant,
-                content: vec![ContentPart::Text {
-                    text: "<tool_call>{\"name\":\"lsp\",\"arguments\":{\"action\":\"workspaceSymbol\",\"query\":\"Session\"}}</tool_call>".to_string(),
-                }],
-            },
-            usage: Usage::default(),
-            finish_reason: FinishReason::Stop,
-        };
-        let tools = vec![ToolDefinition {
-            name: "lsp".to_string(),
-            description: "LSP operations".to_string(),
-            parameters: json!({"type":"object"}),
-        }];
-
-        let normalized = normalize_textual_tool_calls(response, &tools);
-        assert_eq!(normalized.finish_reason, FinishReason::ToolCalls);
-        assert!(
-            normalized
-                .message
-                .content
-                .iter()
-                .any(|p| matches!(p, ContentPart::ToolCall { name, .. } if name == "lsp"))
-        );
-        assert!(
-            normalized
-                .message
-                .content
-                .iter()
-                .all(|p| !matches!(p, ContentPart::Text { text } if text.contains("<tool_call>")))
-        );
-    }
-
-    #[test]
-    fn normalize_textual_tool_calls_ignores_unknown_tools() {
-        let response = CompletionResponse {
-            message: Message {
-                role: Role::Assistant,
-                content: vec![ContentPart::Text {
-                    text: "<tool_call>{\"name\":\"not_a_tool\",\"arguments\":{}}</tool_call>"
-                        .to_string(),
-                }],
-            },
-            usage: Usage::default(),
-            finish_reason: FinishReason::Stop,
-        };
-        let tools = vec![ToolDefinition {
-            name: "bash".to_string(),
-            description: "shell".to_string(),
-            parameters: json!({"type":"object"}),
-        }];
-
-        let normalized = normalize_textual_tool_calls(response, &tools);
-        assert_eq!(normalized.finish_reason, FinishReason::Stop);
-        assert!(
-            normalized
-                .message
-                .content
-                .iter()
-                .all(|p| !matches!(p, ContentPart::ToolCall { .. }))
-        );
-    }
-
-    #[test]
-    fn assistant_claims_imminent_tool_use_detects_minimax_style_prose() {
-        let tools = vec![ToolDefinition {
-            name: "bash".to_string(),
-            description: "shell".to_string(),
-            parameters: json!({"type":"object"}),
-        }];
-
-        assert!(assistant_claims_imminent_tool_use(
-            "First, I'll use bash to inspect the repo and then patch the issue.",
-            &tools,
-        ));
-        assert!(!assistant_claims_imminent_tool_use(
-            "The fix is to update the parser and rerun tests.",
-            &tools,
-        ));
-    }
-
-    #[test]
-    fn should_retry_missing_native_tool_call_targets_minimax_only() {
-        let tools = vec![ToolDefinition {
-            name: "bash".to_string(),
-            description: "shell".to_string(),
-            parameters: json!({"type":"object"}),
-        }];
-
-        assert!(should_retry_missing_native_tool_call(
-            "minimax",
-            "MiniMax-M2.5",
-            0,
-            &tools,
-            "I'll use bash to inspect the repository first.",
-            false,
-        ));
-        assert!(!should_retry_missing_native_tool_call(
-            "anthropic",
-            "claude-sonnet-4",
-            0,
-            &tools,
-            "I'll use bash to inspect the repository first.",
-            false,
-        ));
-        assert!(!should_retry_missing_native_tool_call(
-            "minimax",
-            "MiniMax-M2.5",
-            1,
-            &tools,
-            "I'll use bash to inspect the repository first.",
-            false,
-        ));
-    }
-
-    #[test]
-    fn explicit_provider_must_not_fallback_when_unavailable() {
-        let providers = vec!["zai", "openai"];
-        let result = resolve_provider_for_session_request(&providers, Some("local_cuda"));
-        assert!(result.is_err());
-        assert!(
-            result
-                .err()
-                .map(|e| e.to_string())
-                .unwrap_or_default()
-                .contains("selected explicitly but is unavailable")
-        );
-    }
-
-    #[test]
-    fn explicit_provider_is_used_when_available() {
-        let providers = vec!["local_cuda", "zai"];
-        let result = resolve_provider_for_session_request(&providers, Some("local_cuda"));
-        assert_eq!(result.ok(), Some("local_cuda"));
-    }
-
-    #[test]
-    fn default_provider_prefers_zai() {
-        let providers = vec!["openai", "zai"];
-        assert_eq!(choose_default_provider(&providers), Some("zai"));
-    }
-
-    #[test]
-    fn extract_candidate_file_paths_filters_to_existing_files() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        fs::create_dir_all(root.join("api/src")).expect("mkdirs");
-        fs::write(root.join("api/src/index.ts"), "export {};").expect("write file");
-
-        let text = "Check api/src/index.ts and missing/path.ts";
-        let paths = extract_candidate_file_paths(text, root, 5);
-        assert_eq!(paths, vec!["api/src/index.ts".to_string()]);
-    }
-
-    #[test]
-    fn extract_candidate_file_paths_dedupes_and_respects_limit() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        fs::create_dir_all(root.join("a")).expect("mkdirs");
-        fs::create_dir_all(root.join("b")).expect("mkdirs");
-        fs::write(root.join("a/one.ts"), "export {};").expect("write file");
-        fs::write(root.join("b/two.tsx"), "export {};").expect("write file");
-
-        let text = "a/one.ts a/one.ts b/two.tsx";
-        let paths = extract_candidate_file_paths(text, root, 1);
-        assert_eq!(paths, vec!["a/one.ts".to_string()]);
-    }
-
-    #[test]
-    fn detect_stub_in_tool_input_flags_write_placeholder_content() {
-        let args = json!({
-            "path": "src/demo.ts",
-            "content": "export function run(){ return \"Fallback prompt\"; } // Placeholder"
-        });
-        let reason = detect_stub_in_tool_input("write", &args);
-        assert!(reason.is_some());
-    }
-
-    #[test]
-    fn detect_stub_in_tool_input_allows_concrete_edit_content() {
-        let args = json!({
-            "old_string": "return a + b;",
-            "new_string": "return sanitize(a) + sanitize(b);"
-        });
-        let reason = detect_stub_in_tool_input("edit", &args);
-        assert!(reason.is_none());
-    }
-
-    #[test]
-    fn detect_stub_in_tool_input_flags_multiedit_stub_line() {
-        let args = json!({
-            "edits": [
-                {
-                    "file_path": "src/a.ts",
-                    "old_string": "x",
-                    "new_string": "throw new Error(\"Not implemented\")"
-                }
-            ]
-        });
-        let reason = detect_stub_in_tool_input("multiedit", &args);
-        assert!(reason.is_some());
-    }
-
-    #[test]
-    fn detect_stub_in_tool_input_allows_html_placeholder_attribute() {
-        let args = json!({
-            "old_string": "<input type=\"text\" />",
-            "new_string": "<input type=\"text\" placeholder=\"Search users\" />"
-        });
-        let reason = detect_stub_in_tool_input("edit", &args);
-        assert!(reason.is_none());
-    }
-
-    #[test]
-    fn detect_stub_in_tool_input_flags_placeholder_stub_phrase() {
-        let args = json!({
-            "path": "src/demo.ts",
-            "content": "// Placeholder implementation\nexport const run = () => null;"
-        });
-        let reason = detect_stub_in_tool_input("write", &args);
-        assert!(reason.is_some());
-    }
-
-    #[test]
-    fn looks_like_build_execution_request_detects_fix_prompt() {
-        assert!(looks_like_build_execution_request(
-            "yes fix it and patch src/tool/lsp.rs"
-        ));
-        assert!(!looks_like_build_execution_request(
-            "what does this module do?"
-        ));
-    }
-
-    #[test]
-    fn codesearch_no_match_detection_matches_expected_format() {
-        assert!(is_codesearch_no_match_output(
-            "codesearch",
-            true,
-            "No matches found for pattern: foo_bar"
-        ));
-    }
-
-    #[test]
-    fn codesearch_no_match_detection_matches_prefixed_output() {
-        assert!(is_codesearch_no_match_output(
-            "codesearch",
-            true,
-            "build step 1 codesearch: No matches found for pattern: foo_bar"
-        ));
-    }
-
-    #[test]
-    fn codesearch_no_match_detection_ignores_non_codesearch_tools() {
-        assert!(!is_codesearch_no_match_output(
-            "grep",
-            true,
-            "No matches found for pattern: foo_bar"
-        ));
-    }
-
-    #[test]
-    fn build_mode_tool_first_retry_triggers_for_deferral_reply() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        fs::create_dir_all(root.join("src/provider")).expect("mkdirs");
-        fs::write(root.join("src/provider/gemini_web.rs"), "fn main(){}").expect("write file");
-
-        let tools = vec![ToolDefinition {
-            name: "bash".to_string(),
-            description: "Run shell commands".to_string(),
-            parameters: json!({"type":"object"}),
-        }];
-        let session_messages = vec![Message {
-            role: Role::User,
-            content: vec![ContentPart::Text {
-                text: "fix src/provider/gemini_web.rs now".to_string(),
-            }],
-        }];
-
-        let should_retry = should_force_build_tool_first_retry(
-            "build",
-            0,
-            &tools,
-            &session_messages,
-            root,
-            "If you want, I can patch this next.",
-            false,
-        );
-
-        assert!(should_retry);
-    }
-
-    #[test]
-    fn build_mode_tool_first_retry_does_not_trigger_for_non_build_agent() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        fs::create_dir_all(root.join("src/provider")).expect("mkdirs");
-        fs::write(root.join("src/provider/gemini_web.rs"), "fn main(){}").expect("write file");
-
-        let tools = vec![ToolDefinition {
-            name: "bash".to_string(),
-            description: "Run shell commands".to_string(),
-            parameters: json!({"type":"object"}),
-        }];
-        let session_messages = vec![Message {
-            role: Role::User,
-            content: vec![ContentPart::Text {
-                text: "fix src/provider/gemini_web.rs now".to_string(),
-            }],
-        }];
-
-        let should_retry = should_force_build_tool_first_retry(
-            "plan",
-            0,
-            &tools,
-            &session_messages,
-            root,
-            "If you want, I can patch this next.",
-            false,
-        );
-
-        assert!(!should_retry);
-    }
-
-    #[test]
-    fn build_request_requires_tool_detects_existing_file_edit_prompt() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        fs::create_dir_all(root.join("src/provider")).expect("mkdirs");
-        fs::write(root.join("src/provider/gemini_web.rs"), "fn main(){}").expect("write file");
-
-        let session_messages = vec![Message {
-            role: Role::User,
-            content: vec![ContentPart::Text {
-                text: "In build mode, make a concrete change now: in src/provider/gemini_web.rs replace \"A\" with \"B\".".to_string(),
-            }],
-        }];
-
-        assert!(build_request_requires_tool(&session_messages, root));
-    }
-
-    #[test]
-    fn build_request_requires_tool_for_affirmative_followup_with_context() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        fs::write(root.join("rspack.config.js"), "module.exports = {};").expect("write file");
-
-        let session_messages = vec![
-            Message {
-                role: Role::User,
-                content: vec![ContentPart::Text {
-                    text: "ws error in rspack.config.js".to_string(),
-                }],
-            },
-            Message {
-                role: Role::Assistant,
-                content: vec![ContentPart::Text {
-                    text: "Done — use this exact block in rspack.config.js".to_string(),
-                }],
-            },
-            Message {
-                role: Role::User,
-                content: vec![ContentPart::Text {
-                    text: "yes".to_string(),
-                }],
-            },
-        ];
-
-        assert!(build_request_requires_tool(&session_messages, root));
-    }
-
-    #[test]
-    fn build_request_requires_tool_for_affirmative_followup_after_assistant_offer() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        let session_messages = vec![
-            Message {
-                role: Role::User,
-                content: vec![ContentPart::Text {
-                    text: "the banner is missing".to_string(),
-                }],
-            },
-            Message {
-                role: Role::Assistant,
-                content: vec![ContentPart::Text {
-                    text: "If you want, next I can tighten the Catalyst alert variant exactly."
-                        .to_string(),
-                }],
-            },
-            Message {
-                role: Role::User,
-                content: vec![ContentPart::Text {
-                    text: "yes".to_string(),
-                }],
-            },
-        ];
-
-        assert!(build_request_requires_tool(&session_messages, root));
-    }
-
-    #[test]
-    fn build_request_requires_tool_false_for_plain_yes_without_context() {
-        let dir = tempdir().expect("tempdir");
-        let root = dir.path();
-        let session_messages = vec![Message {
-            role: Role::User,
-            content: vec![ContentPart::Text {
-                text: "yes".to_string(),
-            }],
-        }];
-
-        assert!(!build_request_requires_tool(&session_messages, root));
-    }
-
-    #[test]
-    fn normalize_tool_call_for_execution_maps_advanced_edit_to_edit_shape() {
-        let args = json!({
-            "filePath": "src/lib.rs",
-            "oldString": "old",
-            "newString": "new"
-        });
-        let (name, normalized) = normalize_tool_call_for_execution("advanced_edit", &args);
-        assert_eq!(name, "edit");
-        assert_eq!(normalized["path"], "src/lib.rs");
-        assert_eq!(normalized["old_string"], "old");
-        assert_eq!(normalized["new_string"], "new");
-    }
-
-    #[test]
-    fn normalize_tool_call_for_execution_maps_multiedit_aliases() {
-        let args = json!({
-            "changes": [
-                {
-                    "filePath": "src/main.rs",
-                    "oldString": "old",
-                    "newString": "new"
-                }
-            ]
-        });
-        let (name, normalized) = normalize_tool_call_for_execution("multiedit", &args);
-        assert_eq!(name, "multiedit");
-        assert_eq!(normalized["edits"][0]["file"], "src/main.rs");
-        assert_eq!(normalized["edits"][0]["old_string"], "old");
-        assert_eq!(normalized["edits"][0]["new_string"], "new");
-    }
-}
+mod tests;
