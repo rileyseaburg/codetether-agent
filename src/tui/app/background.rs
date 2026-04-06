@@ -95,7 +95,20 @@ pub async fn apply_single_result(
 ) {
     match result {
         Ok(updated_session) => {
+            // Always reset processing — the Done event may not have been
+            // consumed yet via event_rx (tokio::select! race condition).
+            if app.state.processing {
+                handle_processing_stopped(app, worker_bridge).await;
+                app.state.clear_request_timing();
+            }
             *session = updated_session;
+            app.state.session_id = Some(session.id.clone());
+            let _ = session.save().await;
+            // Always reset processing — Done event may not have fired yet
+            if app.state.processing {
+                handle_processing_stopped(app, worker_bridge).await;
+                app.state.clear_request_timing();
+            }
             app.state.session_id = Some(session.id.clone());
             let _ = session.save().await;
             refresh_sessions(app, cwd).await;

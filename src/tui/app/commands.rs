@@ -13,8 +13,10 @@ use crate::tui::app::settings::{
     autocomplete_status_message, network_access_status_message, set_network_access,
     set_slash_autocomplete,
 };
-use crate::tui::app::state::{agent_profile, App, SpawnedAgent};
-use crate::tui::app::text::{command_with_optional_args, normalize_easy_command, normalize_slash_command};
+use crate::tui::app::state::{App, SpawnedAgent, agent_profile};
+use crate::tui::app::text::{
+    command_with_optional_args, normalize_easy_command, normalize_slash_command,
+};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::ViewMode;
 
@@ -471,8 +473,11 @@ async fn handle_spawn_command(app: &mut App, rest: &str) {
              Personality: {}
              Collaboration style: {}
              Signature move: {}",
-            profile.codename, profile.profile, profile.personality,
-            profile.collaboration_style, profile.signature_move,
+            profile.codename,
+            profile.profile,
+            profile.personality,
+            profile.collaboration_style,
+            profile.signature_move,
         )
     } else {
         instructions.clone()
@@ -483,7 +488,9 @@ async fn handle_spawn_command(app: &mut App, rest: &str) {
             agent_session.agent = format!("spawned:{}", name);
             agent_session.messages.push(crate::provider::Message {
                 role: crate::provider::Role::System,
-                content: vec![crate::provider::ContentPart::Text { text: system_prompt }],
+                content: vec![crate::provider::ContentPart::Text {
+                    text: system_prompt,
+                }],
             });
 
             let display_name = if instructions.is_empty() {
@@ -505,7 +512,10 @@ async fn handle_spawn_command(app: &mut App, rest: &str) {
             app.state.status = format!("Spawned agent: {display_name}");
             push_system_message(
                 app,
-                format!("Spawned agent '{}' [{}] — ready for messages.", name, profile.codename),
+                format!(
+                    "Spawned agent '{}' [{}] — ready for messages.",
+                    name, profile.codename
+                ),
             );
         }
         Err(error) => {
@@ -552,15 +562,25 @@ fn handle_agents_command(app: &mut App) {
                 } else {
                     ""
                 };
-                format!("  {}{} — {} messages — model: {}", agent.name, active, msg_count, model)
+                format!(
+                    "  {}{} — {} messages — model: {}",
+                    agent.name, active, msg_count, model
+                )
             })
             .collect();
 
-        let body = lines.join("
-");
+        let body = lines.join(
+            "
+",
+        );
         app.state.status = format!("{count} spawned agent(s)");
-        push_system_message(app, format!("Spawned agents ({count}):
-{body}"));
+        push_system_message(
+            app,
+            format!(
+                "Spawned agents ({count}):
+{body}"
+            ),
+        );
     }
 }
 async fn handle_go_command(
@@ -569,9 +589,7 @@ async fn handle_go_command(
     registry: Option<&Arc<ProviderRegistry>>,
     rest: &str,
 ) {
-    use crate::tui::app::okr_gate::{
-        ensure_okr_repository, next_go_model, PendingOkrApproval,
-    };
+    use crate::tui::app::okr_gate::{PendingOkrApproval, ensure_okr_repository, next_go_model};
     use crate::tui::constants::AUTOCHAT_MAX_AGENTS;
 
     let task = rest.trim();

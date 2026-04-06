@@ -275,6 +275,11 @@ impl ToolRegistry {
         registry.register(Arc::new(image::ImageTool::new()));
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         registry.register(Arc::new(okr::OkrTool::new()));
+        // Edit tools with confirmation (diff display before applying)
+        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
+        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
+        // Swarm result sharing between sub-agents
+        registry.register(Arc::new(swarm_share::SwarmShareTool::with_defaults()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool
@@ -338,6 +343,11 @@ impl ToolRegistry {
         registry.register(Arc::new(image::ImageTool::new()));
         registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
         registry.register(Arc::new(okr::OkrTool::new()));
+        // Edit tools with confirmation (diff display before applying)
+        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
+        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
+        // Swarm result sharing between sub-agents
+        registry.register(Arc::new(swarm_share::SwarmShareTool::with_defaults()));
         // Register the invalid tool handler for graceful error handling
         registry.register(Arc::new(invalid::InvalidTool::new()));
         // Agent orchestration tool

@@ -7,8 +7,7 @@ pub const SCROLL_BOTTOM: usize = 1_000_000;
 
 /// Normalizes provider aliases (zhipuai/z-ai -> zai)
 pub fn normalize_provider_alias(provider_name: &str) -> &str {
-    if provider_name.eq_ignore_ascii_case("zhipuai") || provider_name.eq_ignore_ascii_case("z-ai")
-    {
+    if provider_name.eq_ignore_ascii_case("zhipuai") || provider_name.eq_ignore_ascii_case("z-ai") {
         "zai"
     } else {
         provider_name
@@ -196,13 +195,20 @@ pub fn maybe_schedule_smart_switch_retry(
         .map(|m| smart_switch_model_key(m))
         .collect();
 
-    let candidates =
-        smart_switch_candidates(current_model, current_provider, available_providers, &attempted);
+    let candidates = smart_switch_candidates(
+        current_model,
+        current_provider,
+        available_providers,
+        &attempted,
+    );
 
-    candidates.into_iter().next().map(|target_model| PendingSmartSwitchRetry {
-        prompt: prompt.to_string(),
-        target_model,
-    })
+    candidates
+        .into_iter()
+        .next()
+        .map(|target_model| PendingSmartSwitchRetry {
+            prompt: prompt.to_string(),
+            target_model,
+        })
 }
 
 /// Extracts the provider name from a model reference (e.g. "minimax/MiniMax-M2" -> "minimax").
@@ -326,8 +332,6 @@ mod tests {
         );
 
         // Should not include the attempted model
-        assert!(!candidates
-            .iter()
-            .any(|c| c == "minimax/MiniMax-M2.5"));
+        assert!(!candidates.iter().any(|c| c == "minimax/MiniMax-M2.5"));
     }
 }

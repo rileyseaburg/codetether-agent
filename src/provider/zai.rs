@@ -127,11 +127,7 @@ impl ZaiProvider {
             .filter_map(|entry| {
                 let id = match entry {
                     Value::String(s) => s.trim().to_string(),
-                    Value::Object(_) => entry
-                        .get("id")
-                        .and_then(Value::as_str)?
-                        .trim()
-                        .to_string(),
+                    Value::Object(_) => entry.get("id").and_then(Value::as_str)?.trim().to_string(),
                     _ => return None,
                 };
                 if id.is_empty() {
@@ -162,10 +158,7 @@ impl ZaiProvider {
         if models.is_empty() {
             tracing::debug!(url = %url, "Z.AI /models returned no model ids");
         } else {
-            tracing::info!(
-                count = models.len(),
-                "Z.AI /models discovery succeeded"
-            );
+            tracing::info!(count = models.len(), "Z.AI /models discovery succeeded");
         }
         models
     }

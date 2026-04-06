@@ -219,10 +219,8 @@ async fn handle_enter_sessions(app: &mut App, cwd: &Path, session: &mut Session)
         .get(app.state.selected_session)
         .map(|(orig_idx, _)| app.state.sessions[*orig_idx].id.clone());
     if let Some(session_id) = session_id {
-        crate::tui::app::codex_sessions::load_selected_session(
-            app, cwd, session, &session_id,
-        )
-        .await;
+        crate::tui::app::codex_sessions::load_selected_session(app, cwd, session, &session_id)
+            .await;
     }
 }
 
