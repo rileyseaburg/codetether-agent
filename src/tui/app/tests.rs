@@ -134,3 +134,102 @@ async fn slash_file_path_attaches_file_to_composer() {
         Some(MessageType::System)
     ));
 }
+
+#[tokio::test]
+async fn slash_new_creates_fresh_session_with_different_id() {
+    let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
+    let old_id = session.id.clone();
+
+    // Simulate a session with content
+    session.messages.push(crate::provider::Message {
+        role: crate::provider::Role::User,
+        content: vec![crate::provider::ContentPart::Text {
+            text: "hello".to_string(),
+        }],
+    });
+
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &mut session,
+        None,
+        "/new",
+    )
+    .await;
+
+    // Session ID should have changed
+    assert_ne!(session.id, old_id, "session ID should change after /new");
+
+    // App state should be reset
+    assert_eq!(app.state.session_id, Some(session.id.clone()));
+    assert!(app.state.messages.is_empty());
+    assert!(app.state.status.contains("New chat session"));
+    assert_eq!(app.state.view_mode, ViewMode::Chat);
+}
+
+#[tokio::test]
+async fn slash_new_preserves_session_metadata() {
+    let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
+
+    // Set preferences on the old session
+    session.metadata.auto_apply_edits = true;
+    session.metadata.allow_network = true;
+    session.metadata.model = Some("zai/glm-5".to_string());
+    app.state.auto_apply_edits = true;
+    app.state.allow_network = true;
+
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &mut session,
+        None,
+        "/new",
+    )
+    .await;
+
+    // New session should inherit settings
+    assert!(
+        session.metadata.auto_apply_edits,
+        "auto_apply_edits should carry over"
+    );
+    assert!(
+        session.metadata.allow_network,
+        "allow_network should carry over"
+    );
+    assert_eq!(
+        session.metadata.model.as_deref(),
+        Some("zai/glm-5"),
+        "model should carry over"
+    );
+}
+
+#[tokio::test]
+async fn slash_spawn_persists_agent_session() {
+    let mut app = App::default();
+
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &mut Session::new().await.expect("session should create"),
+        None,
+        "/spawn coder",
+    )
+    .await;
+
+    let agent = app
+        .state
+        .spawned_agents
+        .get("coder")
+        .expect("agent should be spawned");
+    assert_eq!(agent.session.agent, "spawned:coder");
+
+    // Verify the persisted session can be loaded back from disk.
+    let agent_session_id = agent.session.id.clone();
+    let loaded = crate::session::Session::load(&agent_session_id)
+        .await
+        .expect("spawned agent session should be loadable from disk");
+    assert_eq!(loaded.agent, "spawned:coder");
+    assert_eq!(loaded.messages.len(), 1, "should have the system prompt");
+}

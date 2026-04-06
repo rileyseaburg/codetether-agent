@@ -334,16 +334,34 @@ pub async fn handle_slash_command(
         "/new" => {
             // Create a fresh session so the old one is preserved on disk.
             match Session::new().await {
-                Ok(new_session) => {
-                    // Save the old session first so it's not lost.
-                    let _ = session.save().await;
+                Ok(mut new_session) => {
+                    // Save the old session first — abort if persistence fails to
+                    // avoid silently discarding the user's conversation.
+                    if let Err(error) = session.save().await {
+                        tracing::warn!(error = %error, "Failed to save current session before /new");
+                        app.state.status = format!(
+                            "Failed to save current session before creating new session: {error}"
+                        );
+                        return;
+                    }
+
+                    // Carry over user preferences into the new session.
+                    new_session.metadata.auto_apply_edits = app.state.auto_apply_edits;
+                    new_session.metadata.allow_network = app.state.allow_network;
+                    new_session.metadata.slash_autocomplete = app.state.slash_autocomplete;
+                    new_session.metadata.model = session.metadata.model.clone();
 
                     *session = new_session;
-                    let _ = session.save().await;
+                    if let Err(error) = session.save().await {
+                        tracing::warn!(error = %error, "Failed to save new session");
+                        app.state.status =
+                            format!("New chat session created, but failed to persist: {error}");
+                    } else {
+                        app.state.status = "New chat session".to_string();
+                    }
                     app.state.session_id = Some(session.id.clone());
                     app.state.messages.clear();
-                    app.state.chat_scroll = 0;
-                    app.state.status = "New chat session".to_string();
+                    app.state.scroll_to_bottom();
                     app.state.set_view_mode(ViewMode::Chat);
                 }
                 Err(err) => {

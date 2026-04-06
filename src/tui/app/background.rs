@@ -101,6 +101,17 @@ pub async fn apply_single_result(
                 handle_processing_stopped(app, worker_bridge).await;
                 app.state.clear_request_timing();
             }
+            // Guard against stale results overwriting a newer session
+            // (e.g. if /new created a fresh session while a background
+            // task from the old session was still in-flight).
+            if updated_session.id != session.id {
+                tracing::warn!(
+                    old_id = %session.id,
+                    new_id = %updated_session.id,
+                    "Discarding stale session result from a previous session"
+                );
+                return;
+            }
             *session = updated_session;
             app.state.session_id = Some(session.id.clone());
             let _ = session.save().await;
