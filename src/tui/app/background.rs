@@ -95,23 +95,30 @@ pub async fn apply_single_result(
 ) {
     match result {
         Ok(updated_session) => {
-            // Always reset processing — the Done event may not have been
+            // Guard against stale results overwriting a newer session
+            // BEFORE resetting processing. This prevents a late result
+            // from the old session from clearing processing/timing on
+            // a new in-flight request.
+            if updated_session.id != session.id {
+                tracing::warn!(
+                    stale_id = %updated_session.id,
+                    current_id = %session.id,
+                    "Discarding stale session result from a previous session"
+                );
+                // Persist the old result and refresh so the session picker
+                // reflects the saved content from the previous session.
+                let _ = updated_session.save().await;
+                refresh_sessions(app, cwd).await;
+                return;
+            }
+
+            // Reset processing — the Done event may not have been
             // consumed yet via event_rx (tokio::select! race condition).
             if app.state.processing {
                 handle_processing_stopped(app, worker_bridge).await;
                 app.state.clear_request_timing();
             }
-            // Guard against stale results overwriting a newer session
-            // (e.g. if /new created a fresh session while a background
-            // task from the old session was still in-flight).
-            if updated_session.id != session.id {
-                tracing::warn!(
-                    old_id = %session.id,
-                    new_id = %updated_session.id,
-                    "Discarding stale session result from a previous session"
-                );
-                return;
-            }
+
             *session = updated_session;
             app.state.session_id = Some(session.id.clone());
             let _ = session.save().await;

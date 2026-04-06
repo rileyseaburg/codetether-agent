@@ -361,8 +361,12 @@ pub async fn handle_slash_command(
                     }
                     app.state.session_id = Some(session.id.clone());
                     app.state.messages.clear();
+                    app.state.streaming_text.clear();
+                    app.state.processing = false;
+                    app.state.clear_request_timing();
                     app.state.scroll_to_bottom();
                     app.state.set_view_mode(ViewMode::Chat);
+                    refresh_sessions(app, cwd).await;
                 }
                 Err(err) => {
                     app.state.status = format!("Failed to create new session: {err}");
