@@ -332,10 +332,24 @@ pub async fn handle_slash_command(
             app.state.status = "Symbol search".to_string();
         }
         "/new" => {
-            app.state.messages.clear();
-            app.state.chat_scroll = 0;
-            app.state.status = "New chat buffer".to_string();
-            app.state.set_view_mode(ViewMode::Chat);
+            // Create a fresh session so the old one is preserved on disk.
+            match Session::new().await {
+                Ok(new_session) => {
+                    // Save the old session first so it's not lost.
+                    let _ = session.save().await;
+
+                    *session = new_session;
+                    let _ = session.save().await;
+                    app.state.session_id = Some(session.id.clone());
+                    app.state.messages.clear();
+                    app.state.chat_scroll = 0;
+                    app.state.status = "New chat session".to_string();
+                    app.state.set_view_mode(ViewMode::Chat);
+                }
+                Err(err) => {
+                    app.state.status = format!("Failed to create new session: {err}");
+                }
+            }
         }
         "/undo" => {
             // Remove from TUI messages: walk backwards removing everything
@@ -492,6 +506,12 @@ async fn handle_spawn_command(app: &mut App, rest: &str) {
                     text: system_prompt,
                 }],
             });
+
+            // Persist the agent session to disk so it can be recovered if
+            // the TUI crashes before the agent sends its first prompt.
+            if let Err(e) = agent_session.save().await {
+                tracing::warn!(error = %e, "Failed to save spawned agent session");
+            }
 
             let display_name = if instructions.is_empty() {
                 format!("{} [{}]", name, profile.codename)
