@@ -64,6 +64,7 @@ pub async fn handle_session_event(
             app.state.scroll_to_bottom();
         }
         SessionEvent::TextChunk(chunk) => {
+            app.state.scroll_to_bottom();
             app.state.note_text_token();
             app.state.streaming_text = chunk;
         }
@@ -131,11 +132,12 @@ pub async fn handle_session_event(
                 &app.state.smart_switch_attempted_models,
             ) {
                 app.state.smart_switch_retry_count += 1;
-                app
-                    .state
+                app.state
                     .smart_switch_attempted_models
                     .push(current_model.unwrap_or("unknown").to_string());
-                app.state.smart_switch_attempted_models.push(pending.target_model.clone());
+                app.state
+                    .smart_switch_attempted_models
+                    .push(pending.target_model.clone());
                 app.state.status = format!(
                     "Smart switch retry {}/{} → {}",
                     app.state.smart_switch_retry_count,

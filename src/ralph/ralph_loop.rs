@@ -867,7 +867,8 @@ impl RalphLoop {
                                         || err_str.contains("429")
                                         || err_str.contains("too many requests");
                                     if is_rate_limit && attempt < max_rate_limit_retries {
-                                        let delay_ms = rate_limit_base_delay_ms * 2u64.saturating_pow(attempt as u32);
+                                        let delay_ms = rate_limit_base_delay_ms
+                                            * 2u64.saturating_pow(attempt as u32);
                                         warn!(
                                             story_id = %story.id,
                                             attempt = attempt + 1,
@@ -875,7 +876,10 @@ impl RalphLoop {
                                             delay_ms = delay_ms,
                                             "Rate limited, backing off before retry"
                                         );
-                                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                                        tokio::time::sleep(std::time::Duration::from_millis(
+                                            delay_ms,
+                                        ))
+                                        .await;
                                     } else {
                                         last_err = Some(e);
                                         break;
@@ -883,7 +887,10 @@ impl RalphLoop {
                                 }
                             }
                         }
-                        attempt_result.unwrap_or_else(|| Err(last_err.unwrap_or_else(|| anyhow::anyhow!("All retries exhausted"))))
+                        attempt_result.unwrap_or_else(|| {
+                            Err(last_err
+                                .unwrap_or_else(|| anyhow::anyhow!("All retries exhausted")))
+                        })
                     };
 
                     // Quality-gate retry loop: if agent succeeded but quality gates fail,
@@ -997,7 +1004,10 @@ impl RalphLoop {
 
                                         match repair_result {
                                             Ok(repair_output) => {
-                                                output = format!("{output}\n---\n[repair attempt {}] {repair_output}", qg_attempt + 1);
+                                                output = format!(
+                                                    "{output}\n---\n[repair attempt {}] {repair_output}",
+                                                    qg_attempt + 1
+                                                );
                                             }
                                             Err(e) => {
                                                 warn!(
@@ -1051,7 +1061,14 @@ impl RalphLoop {
                         }
                     };
 
-                    (story, final_result.is_ok(), entry, worktree_info, worktree_mgr, quality_passed)
+                    (
+                        story,
+                        final_result.is_ok(),
+                        entry,
+                        worktree_info,
+                        worktree_mgr,
+                        quality_passed,
+                    )
                 });
 
                 handles.push(handle);

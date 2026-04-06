@@ -349,9 +349,7 @@ pub fn next_go_model(current_model: Option<&str>) -> String {
 }
 
 /// Initialize the OKR repository on AppState if not already present.
-pub async fn ensure_okr_repository(
-    repo: &mut Option<Arc<OkrRepository>>,
-) {
+pub async fn ensure_okr_repository(repo: &mut Option<Arc<OkrRepository>>) {
     if repo.is_none() {
         if let Ok(new_repo) = OkrRepository::from_config().await {
             *repo = Some(Arc::new(new_repo));

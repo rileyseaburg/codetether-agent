@@ -288,7 +288,8 @@ pub struct AppState {
     pub smart_switch_retry_count: u32,
     pub smart_switch_attempted_models: Vec<String>,
     // Chat sync state
-    pub chat_sync_rx: Option<tokio::sync::mpsc::UnboundedReceiver<crate::tui::chat::sync::ChatSyncUiEvent>>,
+    pub chat_sync_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<crate::tui::chat::sync::ChatSyncUiEvent>>,
     pub chat_sync_status: Option<String>,
     pub chat_sync_last_success: Option<String>,
     pub chat_sync_last_error: Option<String>,
@@ -421,7 +422,6 @@ impl AppState {
             None
         }
     }
-
 
     /// Take ownership of the cached lines, clearing the cache.
     pub(crate) fn take_cached_message_lines(&mut self) -> Vec<Line<'static>> {

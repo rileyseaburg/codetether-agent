@@ -9,7 +9,6 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
 
 use crate::bus::BusHandle;
-use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::background::drain_background_updates;
@@ -17,9 +16,10 @@ use crate::tui::app::event_handlers::{handle_event, handle_mouse_event, handle_p
 use crate::tui::app::smart_switch::should_execute_smart_switch;
 use crate::tui::app::state::App;
 use crate::tui::app::worker_bridge::sync_worker_bridge_agents;
-use crate::tui::ui::main::ui;
-use crate::tui::constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS;
+use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::chat::sync;
+use crate::tui::constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS;
+use crate::tui::ui::main::ui;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 pub async fn run_event_loop(

@@ -78,7 +78,14 @@ async fn slash_model_alias_opens_model_picker() {
     let mut app = App::default();
     let mut session = Session::new().await.expect("session should create");
 
-    handle_slash_command(&mut app, std::path::Path::new("."), &mut session, None, "/m").await;
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &mut session,
+        None,
+        "/m",
+    )
+    .await;
 
     assert_eq!(app.state.view_mode, ViewMode::Model);
     assert!(app.state.model_picker_active);

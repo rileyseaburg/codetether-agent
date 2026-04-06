@@ -249,7 +249,9 @@ fn scroll_mouse_up(app: &mut App) {
         ViewMode::Settings
         | ViewMode::Lsp
         | ViewMode::Rlm
-        | ViewMode::Latency        | ViewMode::Protocol        | ViewMode::Bus
+        | ViewMode::Latency
+        | ViewMode::Protocol
+        | ViewMode::Bus
         | ViewMode::Sessions
         | ViewMode::Model
         | ViewMode::FilePicker => {}
@@ -395,16 +397,14 @@ async fn handle_okr_approve(app: &mut App) {
         });
     }
 
-    app.state
-        .messages
-        .push(ChatMessage::new(
-            MessageType::System,
-            format!(
-                "\u{2705} OKR approved. Starting OKR-gated relay (ID: {okr_id})...\n\
+    app.state.messages.push(ChatMessage::new(
+        MessageType::System,
+        format!(
+            "\u{2705} OKR approved. Starting OKR-gated relay (ID: {okr_id})...\n\
                  Task: {task}\n\
                  Agents: {agent_count} | Model: {model}"
-            ),
-        ));
+        ),
+    ));
     app.state.scroll_to_bottom();
     app.state.status = format!("OKR approved (ID: {okr_id}). Relay starting...");
 }
@@ -414,16 +414,15 @@ async fn handle_okr_deny(app: &mut App) {
         return;
     };
 
-    pending
-        .run
-        .record_decision(ApprovalDecision::deny(pending.run.id, "User denied via TUI"));
+    pending.run.record_decision(ApprovalDecision::deny(
+        pending.run.id,
+        "User denied via TUI",
+    ));
 
-    app.state
-        .messages
-        .push(ChatMessage::new(
-            MessageType::System,
-            "\u{274c} OKR denied. Relay cancelled.".to_string(),
-        ));
+    app.state.messages.push(ChatMessage::new(
+        MessageType::System,
+        "\u{274c} OKR denied. Relay cancelled.".to_string(),
+    ));
     app.state.scroll_to_bottom();
     app.state.status = "OKR denied. Relay cancelled.".to_string();
 }

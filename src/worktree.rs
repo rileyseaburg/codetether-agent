@@ -304,8 +304,7 @@ impl WorktreeManager {
         // If the merge has conflicts, automatically resolve them by accepting
         // the incoming (theirs) version.  This avoids blocking the autonomous
         // loop on manual conflict resolution.
-        if !output.status.success()
-            && (stderr.contains("CONFLICT") || stdout.contains("CONFLICT"))
+        if !output.status.success() && (stderr.contains("CONFLICT") || stdout.contains("CONFLICT"))
         {
             tracing::warn!(
                 worktree = %name,
