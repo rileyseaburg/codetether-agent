@@ -21,6 +21,7 @@ pub mod state;
 pub mod symbols;
 pub mod text;
 pub mod worker_bridge;
+pub mod watchdog;
 
 #[cfg(test)]
 mod tests;

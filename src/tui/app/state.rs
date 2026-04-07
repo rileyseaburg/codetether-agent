@@ -277,6 +277,8 @@ pub struct AppState {
     pub cached_max_width: usize,
     pub cached_streaming_snapshot: Option<String>,
     pub cached_processing: bool,
+    // Watchdog notification for stalled request UI
+    pub watchdog_notification: Option<super::watchdog::WatchdogNotification>,
     // Watchdog state for stuck request detection
     pub main_watchdog_root_prompt: Option<String>,
     pub main_last_event_at: Option<Instant>,
@@ -376,6 +378,8 @@ impl Default for AppState {
             cached_max_width: 0,
             cached_streaming_snapshot: None,
             cached_processing: false,
+            // Watchdog notification
+            watchdog_notification: None,
             // Watchdog state
             main_watchdog_root_prompt: None,
             main_last_event_at: None,

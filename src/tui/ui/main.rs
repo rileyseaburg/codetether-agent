@@ -87,6 +87,10 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
     {
         render_symbol_search(f, &mut app.state.symbol_search, f.area());
     }
+
+    if app.state.watchdog_notification.is_some() {
+        crate::tui::app::watchdog::render_watchdog_notification(f, f.area(), &app.state);
+    }
 }
 
 fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
