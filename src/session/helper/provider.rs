@@ -128,7 +128,12 @@ pub fn resolve_provider_for_session_request<'a>(
     explicit_provider: Option<&str>,
 ) -> Result<&'a str> {
     if let Some(explicit) = explicit_provider {
-        if let Some(found) = providers.iter().copied().find(|p| *p == explicit) {
+        // Normalize known aliases before matching
+        let normalized = match explicit {
+            "zhipuai" | "z-ai" => "zai",
+            other => other,
+        };
+        if let Some(found) = providers.iter().copied().find(|p| *p == normalized) {
             return Ok(found);
         }
         anyhow::bail!(

@@ -69,7 +69,7 @@ pub fn smart_switch_preferred_models(provider_name: &str) -> &'static [&'static 
     match provider_name {
         "minimax" => &["MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
         "minimax-credits" => &["MiniMax-M2.5-highspeed", "MiniMax-M2.1-highspeed"],
-        "zai" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
+        "zai" | "zai-api" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
         "openai-codex" => &["gpt-5-mini", "gpt-5", "gpt-5.1-codex"],
         "openrouter" => &["z-ai/glm-5:free", "z-ai/glm-5", "moonshotai/kimi-k2:free"],
         "github-copilot" | "github-copilot-enterprise" => &["gpt-5-mini", "gpt-4.1", "gpt-4o"],

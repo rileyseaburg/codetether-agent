@@ -240,7 +240,7 @@ fn preferred_models_for_provider(provider_name: &str) -> &'static [&'static str]
     match provider_name {
         "minimax" => &["MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
         "minimax-credits" => &["MiniMax-M2.5-highspeed", "MiniMax-M2.1-highspeed"],
-        "zai" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
+        "zai" | "zai-api" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
         "openai-codex" => &["gpt-5-mini", "gpt-5", "gpt-5.1-codex"],
         "github-copilot" | "github-copilot-enterprise" => &["gpt-5-mini", "gpt-4.1", "gpt-4o"],
         "openrouter" => &["z-ai/glm-5:free", "z-ai/glm-5", "z-ai/glm-4.7:free"],

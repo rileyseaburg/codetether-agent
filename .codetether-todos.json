@@ -432,5 +432,33 @@
     "status": "inprogress",
     "priority": "high",
     "created_at": "2026-03-29T02:32:54.943915067+00:00"
+  },
+  {
+    "id": "todo_1775524103141",
+    "content": "Create git worktree for TUI image fix",
+    "status": "done",
+    "priority": "critical",
+    "created_at": "2026-04-07T01:08:23.141147312+00:00"
+  },
+  {
+    "id": "todo_1775524111195",
+    "content": "Investigate TUI image upload/attach functionality",
+    "status": "inprogress",
+    "priority": "high",
+    "created_at": "2026-04-07T01:08:31.195938571+00:00"
+  },
+  {
+    "id": "todo_1775524116640",
+    "content": "Fix SSH-related image handling issues in TUI",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-04-07T01:08:36.640946051+00:00"
+  },
+  {
+    "id": "todo_1775524121886",
+    "content": "Test and verify the fix",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-04-07T01:08:41.886013297+00:00"
   }
 ]

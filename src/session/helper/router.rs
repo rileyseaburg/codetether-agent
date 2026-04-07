@@ -121,7 +121,7 @@ pub fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<S
             "openrouter/google/gemma-3-27b-it:free".to_string(),
             "openrouter/meta-llama/llama-3.3-70b-instruct:free".to_string(),
         ],
-        "zai" => vec!["zai/glm-5".to_string()],
+        "zai" | "zai-api" => vec!["zai/glm-5".to_string()],
         "glm5" => vec!["glm5/glm-5".to_string()],
         "github-copilot" | "github-copilot-enterprise" => {
             vec![format!("{provider}/gpt-5-mini")]

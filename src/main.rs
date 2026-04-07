@@ -55,7 +55,7 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 fn normalize_provider_alias(name: &str) -> &str {
     match name {
         "local-cuda" | "localcuda" => "local_cuda",
-        "zhipuai" => "zai",
+        "zhipuai" | "z-ai" => "zai",
         other => other,
     }
 }
@@ -833,7 +833,7 @@ async fn main() -> anyhow::Result<()> {
                             match provider_and_model {
                                 Some((provider, name)) => {
                                     let model = match *name {
-                                        "zai" => "glm-5".to_string(),
+                                        "zai" | "zai-api" => "glm-5".to_string(),
                                         "anthropic" => "claude-sonnet-4-20250514".to_string(),
                                         "openai" => "gpt-4.1".to_string(),
                                         _ => "default".to_string(),

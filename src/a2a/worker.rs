@@ -704,7 +704,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "anthropic" => "claude-haiku-4-5".to_string(),
             "openai" => "gpt-4o-mini".to_string(),
             "google" => "gemini-2.5-flash".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
+            "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
             "bedrock" => "amazon.nova-lite-v1:0".to_string(),
@@ -715,7 +715,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "o3".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
+            "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
             "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
@@ -726,7 +726,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "anthropic" => "claude-sonnet-4-20250514".to_string(),
             "openai" => "gpt-4o".to_string(),
             "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
+            "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
             "bedrock" => "amazon.nova-lite-v1:0".to_string(),
@@ -2239,7 +2239,10 @@ async fn execute_session_with_policy(
     // Parse model string
     let (provider_name, model_id) = if let Some(ref model_str) = session.metadata.model {
         let (prov, model) = parse_model_string(model_str);
-        let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
+        let prov = prov.map(|p| match p {
+            "zhipuai" | "z-ai" => "zai",
+            other => other,
+        });
         if prov.is_some() {
             (prov.map(|s| s.to_string()), model.to_string())
         } else if providers.contains(&model) {
