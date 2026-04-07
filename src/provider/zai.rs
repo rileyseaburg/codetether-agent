@@ -260,13 +260,16 @@ impl ZaiProvider {
                                     arguments,
                                     ..
                                 } => {
-                                    let args_object = Self::normalize_tool_arguments(arguments);
+                                    // Z.AI expects arguments as a JSON *string*
+                                    // in assistant messages (same as OpenAI convention),
+                                    // despite the API docs showing it as `object` in
+                                    // the response schema.
                                     Some(json!({
                                         "id": id,
                                         "type": "function",
                                         "function": {
                                             "name": name,
-                                            "arguments": args_object
+                                            "arguments": arguments
                                         }
                                     }))
                                 }
@@ -276,7 +279,7 @@ impl ZaiProvider {
 
                         let mut msg_json = json!({
                             "role": "assistant",
-                            "content": if text.is_empty() { "".to_string() } else { text },
+                            "content": text,
                         });
                         if include_reasoning_content {
                             let reasoning: String = msg
@@ -724,10 +727,14 @@ impl Provider for ZaiProvider {
             "temperature": temperature,
         });
 
-        // Keep thinking enabled, but avoid provider-specific sub-fields that
-        // may be rejected by stricter API variants.
+        // Always enable thinking with clear_thinking: true.
+        // The Coding endpoint (api.z.ai/api/coding/paas/v4) defaults
+        // clear_thinking to false (Preserved Thinking), which requires
+        // reasoning_content in historical assistant messages. Since we strip
+        // reasoning_content, we must explicitly set clear_thinking: true.
         body["thinking"] = json!({
-            "type": "enabled"
+            "type": "enabled",
+            "clear_thinking": true
         });
 
         if !tools.is_empty() {
@@ -738,6 +745,7 @@ impl Provider for ZaiProvider {
         }
 
         tracing::debug!(model = %request.model, "Z.AI request");
+        tracing::trace!(body = %serde_json::to_string(&body).unwrap_or_default(), "Z.AI request body");
         let request_base_url = self.request_base_url(&request.model);
 
         let response = self
@@ -757,6 +765,7 @@ impl Provider for ZaiProvider {
             .context("Failed to read Z.AI response")?;
 
         if !status.is_success() {
+            tracing::debug!(status = %status, body = %text, "Z.AI error response");
             if let Ok(err) = serde_json::from_str::<ZaiError>(&text) {
                 anyhow::bail!(
                     "Z.AI API error: {} ({:?})",
@@ -883,7 +892,8 @@ impl Provider for ZaiProvider {
         });
 
         body["thinking"] = json!({
-            "type": "enabled"
+            "type": "enabled",
+            "clear_thinking": true
         });
 
         if !tools.is_empty() {
