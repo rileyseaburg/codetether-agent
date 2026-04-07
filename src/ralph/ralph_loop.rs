@@ -839,6 +839,7 @@ impl RalphLoop {
                                         story.id.clone(),
                                         bus.clone(),
                                         max_steps_per_story,
+                                        Some(working_dir.clone()),
                                     )
                                     .await
                                 }
@@ -852,6 +853,7 @@ impl RalphLoop {
                                     story.id.clone(),
                                     bus.clone(),
                                     max_steps_per_story,
+                                    Some(working_dir.clone()),
                                 )
                                 .await
                             };
@@ -999,6 +1001,7 @@ impl RalphLoop {
                                             story.id.clone(),
                                             bus.clone(),
                                             20, // fewer steps for targeted repair
+                                            Some(working_dir.clone()),
                                         )
                                         .await;
 
@@ -1133,6 +1136,12 @@ impl RalphLoop {
 
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(&wt.name).await;
+
+                                                // Commit any residual changes on main
+                                                // (agent may have written to main via absolute paths)
+                                                let _ = crate::ralph::post_merge::commit_residual_changes(
+                                                    &working_dir, &story.id, &story.title,
+                                                );
                                             } else if !merge_result.conflicts.is_empty() {
                                                 // Real conflicts - spawn conflict resolver
                                                 info!(
@@ -1410,6 +1419,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         story_id: String,
         bus: Option<Arc<AgentBus>>,
         max_steps_per_story: usize,
+        repo_root: Option<PathBuf>,
     ) -> anyhow::Result<String> {
         // Build system prompt with AGENTS.md
         let system_prompt = crate::agent::builtin::build_system_prompt(working_dir);
@@ -1446,6 +1456,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             story_id,
             bus.clone(),
             Some(working_dir.clone()),
+            repo_root,
         )
         .await?;
 
@@ -1857,12 +1868,12 @@ Working directory: {}
             String::new(),
             bus.clone(),
             Some(working_dir.to_path_buf()),
+            None, // conflict resolver runs on main
         )
         .await?;
 
         info!(
-            story_id = %story.id,
-            steps = steps,
+            story_id = %story.id,            steps = steps,
             tool_calls = tool_calls,
             "Conflict resolver completed"
         );
@@ -2129,6 +2140,7 @@ Respond with the implementation and any shell commands needed.
             story_id.to_string(),
             self.bus.clone(),
             Some(self.state.working_dir.clone()),
+            None, // single-story mode, no worktree
         )
         .await?;
 

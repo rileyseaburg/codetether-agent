@@ -97,6 +97,7 @@ Use tools to execute the task and summarize concrete outputs.",
         payload.subtask_id.clone(),
         None,
         Some(working_dir.clone()),
+        None,
     )
     .await;
     done.store(true, Ordering::Relaxed);

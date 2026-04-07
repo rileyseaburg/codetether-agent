@@ -6,6 +6,7 @@
 //! Ralph iterates through PRD user stories, running quality gates after each,
 //! and uses RLM to compress progress when context gets too large.
 
+pub mod post_merge;
 mod ralph_loop;
 pub mod state_store;
 pub mod store_http;

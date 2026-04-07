@@ -1158,6 +1158,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                         subtask_id.clone(),
                         None,
                         working_dir_path.clone(),
+                        None,
                     )
                     .await;
 
@@ -2284,17 +2285,22 @@ impl Default for SwarmExecutorBuilder {
 /// When sub-agents run in worktrees, the file tools (read, write, edit, etc.) resolve
 /// relative paths from the process CWD (the main repo), not the worktree. This function
 /// rewrites relative paths to absolute paths within the worktree before tool execution.
+///
+/// When `repo_root` is `Some` and differs from `working_dir`, absolute paths under
+/// `repo_root` are rewritten to point into `working_dir` instead. This prevents the
+/// agent from accidentally modifying the main repo when it should be working in a worktree.
 fn resolve_tool_paths(
     tool_name: &str,
     args: &mut serde_json::Value,
     working_dir: &std::path::Path,
+    repo_root: Option<&std::path::Path>,
 ) {
     match tool_name {
         "read" | "write" | "list" | "grep" | "codesearch" => {
-            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["path"] = serde_json::json!(working_dir.join(&path).display().to_string());
+            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from) {
+                if let Some(rewritten) = rewrite_path(&path, working_dir, repo_root) {
+                    args["path"] = serde_json::json!(rewritten);
+                }
             }
         }
         "edit" => {
@@ -2302,9 +2308,10 @@ fn resolve_tool_paths(
                 .get("filePath")
                 .and_then(|v| v.as_str())
                 .map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
             {
-                args["filePath"] = serde_json::json!(working_dir.join(&path).display().to_string());
+                if let Some(rewritten) = rewrite_path(&path, working_dir, repo_root) {
+                    args["filePath"] = serde_json::json!(rewritten);
+                }
             }
         }
         "glob" => {
@@ -2312,40 +2319,81 @@ fn resolve_tool_paths(
                 .get("pattern")
                 .and_then(|v| v.as_str())
                 .map(String::from)
-                && !std::path::Path::new(&pattern).is_absolute()
                 && !pattern.starts_with("*")
             {
-                args["pattern"] =
-                    serde_json::json!(working_dir.join(&pattern).display().to_string());
+                if let Some(rewritten) = rewrite_path(&pattern, working_dir, repo_root) {
+                    args["pattern"] = serde_json::json!(rewritten);
+                }
             }
         }
         "multiedit" => {
             if let Some(edits) = args.get_mut("edits").and_then(|v| v.as_array_mut()) {
                 for edit in edits.iter_mut() {
                     if let Some(file) = edit.get("file").and_then(|v| v.as_str()).map(String::from)
-                        && !std::path::Path::new(&file).is_absolute()
                     {
-                        edit["file"] =
-                            serde_json::json!(working_dir.join(&file).display().to_string());
+                        if let Some(rewritten) = rewrite_path(&file, working_dir, repo_root) {
+                            edit["file"] = serde_json::json!(rewritten);
+                        }
                     }
                 }
             }
         }
         "patch" => {
-            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["file"] = serde_json::json!(working_dir.join(&path).display().to_string());
+            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from) {
+                if let Some(rewritten) = rewrite_path(&path, working_dir, repo_root) {
+                    args["file"] = serde_json::json!(rewritten);
+                }
             }
         }
         "bash" => {
             // If bash has no cwd, set it to the working directory
             if args.get("cwd").and_then(|v| v.as_str()).is_none() {
                 args["cwd"] = serde_json::json!(working_dir.display().to_string());
+            } else if let Some(cwd) = args.get("cwd").and_then(|v| v.as_str()).map(String::from) {
+                if let Some(rewritten) = rewrite_path(&cwd, working_dir, repo_root) {
+                    args["cwd"] = serde_json::json!(rewritten);
+                }
             }
         }
         _ => {}
     }
+}
+
+/// Rewrite a path for worktree isolation.
+///
+/// - Relative paths: prepended with `working_dir`.
+/// - Absolute paths under `repo_root` (when it differs from `working_dir`):
+///   redirected into `working_dir` by stripping the repo_root prefix.
+/// - All other absolute paths: left unchanged.
+///
+/// Returns `Some(rewritten)` if the path was changed, `None` otherwise.
+fn rewrite_path(
+    path: &str,
+    working_dir: &std::path::Path,
+    repo_root: Option<&std::path::Path>,
+) -> Option<String> {
+    let p = std::path::Path::new(path);
+
+    if !p.is_absolute() {
+        return Some(working_dir.join(path).display().to_string());
+    }
+
+    // Redirect absolute paths under repo_root into the worktree
+    if let Some(root) = repo_root {
+        if working_dir != root {
+            if let Ok(relative) = p.strip_prefix(root) {
+                let redirected = working_dir.join(relative);
+                tracing::debug!(
+                    original = %path,
+                    redirected = %redirected.display(),
+                    "Redirected absolute path into worktree"
+                );
+                return Some(redirected.display().to_string());
+            }
+        }
+    }
+
+    None
 }
 
 pub async fn run_agent_loop(
@@ -2361,6 +2409,7 @@ pub async fn run_agent_loop(
     subtask_id: String,
     bus: Option<Arc<AgentBus>>,
     working_dir: Option<std::path::PathBuf>,
+    repo_root: Option<std::path::PathBuf>,
 ) -> Result<(String, usize, usize, AgentLoopExit)> {
     // Let the provider handle temperature - K2 models need 0.6 when thinking is disabled
     let temperature = 0.7;
@@ -2574,7 +2623,7 @@ pub async fn run_agent_loop(
 
                 // Resolve relative file paths to the working directory (critical for worktree isolation)
                 if let Some(ref wd) = working_dir {
-                    resolve_tool_paths(&tool_name, &mut args, wd);
+                    resolve_tool_paths(&tool_name, &mut args, wd, repo_root.as_deref());
                 }
                 let agent_name = format!("agent-{subtask_id}");
                 let provenance =
