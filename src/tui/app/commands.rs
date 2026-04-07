@@ -367,10 +367,46 @@ pub async fn handle_slash_command(
             app.state.status = "Symbol search".to_string();
         }
         "/new" => {
-            app.state.messages.clear();
-            app.state.chat_scroll = 0;
-            app.state.status = "New chat buffer".to_string();
-            app.state.set_view_mode(ViewMode::Chat);
+            // Create a fresh session so the old one is preserved on disk.
+            match Session::new().await {
+                Ok(mut new_session) => {
+                    // Save the old session first — abort if persistence fails to
+                    // avoid silently discarding the user's conversation.
+                    if let Err(error) = session.save().await {
+                        tracing::warn!(error = %error, "Failed to save current session before /new");
+                        app.state.status = format!(
+                            "Failed to save current session before creating new session: {error}"
+                        );
+                        return;
+                    }
+
+                    // Carry over user preferences into the new session.
+                    new_session.metadata.auto_apply_edits = app.state.auto_apply_edits;
+                    new_session.metadata.allow_network = app.state.allow_network;
+                    new_session.metadata.slash_autocomplete = app.state.slash_autocomplete;
+                    new_session.metadata.model = session.metadata.model.clone();
+
+                    *session = new_session;
+                    if let Err(error) = session.save().await {
+                        tracing::warn!(error = %error, "Failed to save new session");
+                        app.state.status =
+                            format!("New chat session created, but failed to persist: {error}");
+                    } else {
+                        app.state.status = "New chat session".to_string();
+                    }
+                    app.state.session_id = Some(session.id.clone());
+                    app.state.messages.clear();
+                    app.state.streaming_text.clear();
+                    app.state.processing = false;
+                    app.state.clear_request_timing();
+                    app.state.scroll_to_bottom();
+                    app.state.set_view_mode(ViewMode::Chat);
+                    refresh_sessions(app, cwd).await;
+                }
+                Err(err) => {
+                    app.state.status = format!("Failed to create new session: {err}");
+                }
+            }
         }
         "/undo" => {
             // Remove from TUI messages: walk backwards removing everything
@@ -528,6 +564,12 @@ async fn handle_spawn_command(app: &mut App, rest: &str) {
                     text: system_prompt,
                 }],
             });
+
+            // Persist the agent session to disk so it can be recovered if
+            // the TUI crashes before the agent sends its first prompt.
+            if let Err(e) = agent_session.save().await {
+                tracing::warn!(error = %e, "Failed to save spawned agent session");
+            }
 
             let display_name = if instructions.is_empty() {
                 format!("{} [{}]", name, profile.codename)
