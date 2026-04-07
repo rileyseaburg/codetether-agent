@@ -22,6 +22,10 @@ pub fn handle_escape(app: &mut App) {
                 app.state.clear_session_filter();
                 return_to_chat(app);
             }
+            ViewMode::FilePicker => {
+                app.state.file_picker_active = false;
+                return_to_chat(app);
+            }
             ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.exit_detail(),
             ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.exit_detail(),
             ViewMode::Bus if app.state.bus_log.filter_input_mode => {

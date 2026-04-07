@@ -1,10 +1,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use arboard::Clipboard;
 use base64::Engine;
 use crossterm::event::KeyModifiers;
-use image::{ImageBuffer, Rgba};
 use std::io::Cursor;
 use tokio::sync::mpsc;
 
@@ -21,26 +19,114 @@ use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
-pub(crate) fn get_clipboard_image() -> Option<ImageAttachment> {
-    let mut clipboard = Clipboard::new().ok()?;
-    let image_data = clipboard.get_image().ok()?;
+/// Check if we're likely running in an SSH/headless session where system
+/// clipboard is unavailable.
+fn is_ssh_or_headless() -> bool {
+    std::env::var("SSH_CONNECTION").is_ok()
+        || std::env::var("SSH_TTY").is_ok()
+        || (std::env::var("TERM").ok().map_or(false, |t| t.starts_with("xterm"))
+            && std::env::var("DISPLAY").is_err()
+            && std::env::var("WAYLAND_DISPLAY").is_err())
+}
+
+/// Try to get an image from the system clipboard. Returns `Ok(attachment)` on
+/// success, or `Err(message)` with a human-readable explanation (e.g. SSH
+/// clipboard unavailability) on failure.
+pub(crate) fn get_clipboard_image() -> Result<ImageAttachment, String> {
+    if is_ssh_or_headless() {
+        return Err(
+            "Clipboard image unavailable in SSH/headless sessions. \
+             Use /image <path> to attach an image file instead."
+                .to_string(),
+        );
+    }
+
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| {
+        tracing::debug!(error = %e, "System clipboard unavailable");
+        format!(
+            "Clipboard unavailable: {e}. Use /image <path> to attach an image file."
+        )
+    })?;
+
+    let image_data = clipboard.get_image().map_err(|e| {
+        tracing::debug!(error = %e, "No image in clipboard");
+        "No image found in clipboard. Use /image <path> to attach an image file." .to_string()
+    })?;
+
     let width = image_data.width;
     let height = image_data.height;
     let raw_bytes = image_data.bytes.into_owned();
-    let image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
-        ImageBuffer::from_raw(width as u32, height as u32, raw_bytes)?;
+
+    let image_buffer: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
+        image::ImageBuffer::from_raw(width as u32, height as u32, raw_bytes)
+            .ok_or_else(|| "Failed to create image buffer from clipboard data" .to_string())?;
 
     let mut png_bytes = Vec::new();
     let mut cursor = Cursor::new(&mut png_bytes);
     image_buffer
         .write_to(&mut cursor, image::ImageFormat::Png)
-        .ok()?;
+        .map_err(|e| format!("Failed to encode image as PNG: {e}"))?;
 
     let base64_data = base64::engine::general_purpose::STANDARD.encode(&png_bytes);
-    Some(ImageAttachment {
+    Ok(ImageAttachment {
         data_url: format!("data:image/png;base64,{base64_data}"),
         mime_type: Some("image/png".to_string()),
     })
+}
+
+/// Read an image file from disk, encode it as base64, and return it as an
+/// `ImageAttachment` ready to send with a message.
+pub(crate) fn attach_image_file(path: &Path) -> Result<ImageAttachment, String> {
+    if !path.exists() {
+        return Err(format!("File not found: {}", path.display()));
+    }
+
+    if !path.is_file() {
+        return Err(format!("Not a file: {}", path.display()));
+    }
+
+    let bytes = std::fs::read(path)
+        .map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+
+    let mime_type = guess_image_mime(path)
+        .ok_or_else(|| {
+            format!(
+                "Unsupported image format: {}. Supported: png, jpg/jpeg, gif, webp, bmp",
+                path.display()
+            )
+        })?;
+
+    let base64_data = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    let size_kb = bytes.len() as f64 / 1024.0;
+    tracing::info!(
+        path = %path.display(),
+        mime = %mime_type,
+        size_kb = %.1,
+        "Attached image file"
+    );
+
+    Ok(ImageAttachment {
+        data_url: format!("data:{mime_type};base64,{base64_data}"),
+        mime_type: Some(mime_type),
+    })
+}
+
+/// Guess the MIME type for common image file extensions.
+fn guess_image_mime(path: &Path) -> Option<String> {
+    match path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("png") => Some("image/png".to_string()),
+        Some("jpg") | Some("jpeg") => Some("image/jpeg".to_string()),
+        Some("gif") => Some("image/gif".to_string()),
+        Some("webp") => Some("image/webp".to_string()),
+        Some("bmp") => Some("image/bmp".to_string()),
+        Some("svg") => Some("image/svg+xml".to_string()),
+        _ => None,
+    }
 }
 
 pub async fn handle_enter(
@@ -145,6 +231,11 @@ pub async fn handle_char(app: &mut App, modifiers: KeyModifiers, c: char) {
         && !modifiers.contains(KeyModifiers::ALT)
     {
         app.state.model_filter_push(c);
+    } else if app.state.view_mode == ViewMode::FilePicker
+        && !modifiers.contains(KeyModifiers::CONTROL)
+        && !modifiers.contains(KeyModifiers::ALT)
+    {
+        crate::tui::app::file_picker::file_picker_filter_push(app, c);
     } else if app.state.view_mode == ViewMode::Chat
         && !modifiers.contains(KeyModifiers::CONTROL)
         && !modifiers.contains(KeyModifiers::ALT)

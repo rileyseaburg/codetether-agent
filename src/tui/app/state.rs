@@ -28,6 +28,7 @@ const SLASH_COMMANDS: &[&str] = &[
     "/bus",
     "/protocol",
     "/file",
+    "/image",
     "/autoapply",
     "/network",
     "/autocomplete",
