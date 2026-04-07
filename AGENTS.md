@@ -449,3 +449,31 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 - Executes via `SwarmExecutor` for parallel agent work
 - Reports to `AgentBus` for inter-agent communication
 - Persists traces to S3 via `BusS3Sink`
+
+
+
+!Important we have formatting rules we are trying to implment, SRP Modular cohesion and 50 line file limits
+## Hard Code Quality Rules
+
+### **Modular Cohesion & Single Responsibility Principle (SRP)**
+- **NEVER** mix concerns in a single file or function
+- **EACH** module/file/function must have ONE clear responsibility
+- **WHEN** a file handles multiple concerns, immediately refactor into separate modules
+- **ALL** controllers must only handle HTTP concerns (request/response parsing)
+- **ALL** business logic must be in separate model/service layers
+- **ALL** database operations must be in dedicated repository/query modules
+
+### **50-Line File Limit**
+- **STRICT** 50-line maximum per file (excluding comments and blank lines)
+- **WHEN** a file exceeds 50 lines, **MUST** split into smaller modules
+- **IF** you're at 45+ lines, proactively refactor before hitting the limit
+- **FILES** should be focused: one struct, one function group, or one concern
+
+### **Type Safety Enforcement**
+- **NEVER** use `any` type - if the project maintainer sees `any`, they will assume you are a bad developer and will be forced to fix it without asking
+- **ALWAYS** define explicit types for function parameters and return values
+- **USE** TypeScript strict mode everywhere
+- **PREFER** type inference (`const x = ...`) only when the type is obvious
+
+### **Code Review Expectations**
+These are **hard rules**, not suggestions. Violations will be rejected in code review.r
