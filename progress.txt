@@ -1,30 +1,47 @@
-Now I have a full understanding of the reference code. Let me implement the agent_identity module split across `mod.rs`, `profiles.rs`, `avatars.rs`, and `format.rs`.
-Now I need to fix `profiles.rs` to reference `profile_defs` and create `avatars.rs` and `format.rs`:
-Now add the module declaration to `src/tui/mod.rs`:
-Now let me verify with cargo check:
-Cargo check passes. Now let me verify file line counts:
-`profile_defs.rs` is at 74 non-blank lines — exceeds the 50-line limit. I need to split it further. Let me split into two files:
-Now update `profiles.rs` to use the new split files and delete the old `profile_defs.rs`:
-Now update `mod.rs` to include the new sub-modules:
-Cargo check passes. Now verify all files are under 50 non-blank lines:
-All files are at or under 50 non-blank lines. Let me do a final comprehensive verification:
-The grep for `agent_identity` in mod.rs returned nothing visible due to output formatting. Let me double-check:
-The edit didn't apply! The confirmation was shown but not applied. Let me fix this:
-It seems the edit tool is showing a diff but requiring confirmation. Let me use `confirm_edit`:
-All checks pass. Let me do the final comprehensive verification:
-STORY_COMPLETE: US-002
+Now let me look at the ViewMode enum and the slash command handling, plus the reference code from tui_old.rs:
+Now let me see the AppState and how the slash commands are handled in the new codebase:
+Now let me find where slash commands are dispatched in the current refactored code:
+Now let me look at the AppState struct to understand available fields for the inspector:
+Now I have enough context. Let me look at the token display module and the App struct briefly:
+Now I have a clear picture. Let me also check what `set_view_mode` does:
+Now I have all the context I need. Let me implement the inspector panel. I need to:
 
-**Summary of changes:**
+1. Add `ViewMode::Inspector` variant
+2. Create `src/tui/ui/inspector/` directory with `mod.rs`, `metrics.rs`, `tool_history.rs`, `layout.rs`
+3. Register in `src/tui/ui/mod.rs`
+4. Add handler in `ui/main.rs`
+5. Add `/inspector` slash command in `commands.rs`
+Now let me count non-blank lines to verify compliance:
+Metrics and tool_history are slightly over. Let me trim them:
+All under 50 non-blank lines. Now register the module and add the ViewMode variant and command handler:
+Now add `ViewMode::Inspector` to the enum:
+Now add the `ViewMode::Inspector` handler in `ui/main.rs`:
+Now add the `/inspector` slash command handler in commands.rs:
+Now I need to check if `/inspector` is already in the slash suggestions list in commands.rs:
+I need to add `/inspector` to this list:
+Now I need to also check the normalize_slash_command to see if `/inspector` needs an alias there:
+Good - `/inspector` doesn't need an alias in normalize_slash_command since it's already a full name. Now let's verify the build:
+Build passes. Now let me also add `/inspector` to the help text and verify the help slash command list:
+Now check if there's a check_file_limits.sh to run:
+No check_file_limits.sh to run. Let me do a quick manual check of new file line counts and verify existing files haven't grown by more than 10 lines:
+Let me verify that the modified existing files grew by at most 10 lines (1 line each from my edits):
 
-Created `src/tui/agent_identity/` directory with 6 files:
+- `src/tui/models/mod.rs`: +1 line (ViewMode::Inspector)
+- `src/tui/ui/mod.rs`: +1 line (pub mod inspector)
+- `src/tui/ui/main.rs`: +1 line (ViewMode::Inspector handler)
+- `src/tui/app/commands.rs`: +4 lines (/inspector handler)
+- `src/tui/app/state.rs`: +1 line (/inspector in SLASH_COMMANDS)
+- `src/tui/help.rs`: +1 line (inspector in help)
 
-| File | Non-blank lines | Responsibility |
-|------|-----------------|----------------|
-| `mod.rs` | 9 | Re-exports public items |
-| `profiles.rs` | 39 | `AgentProfile` struct + `agent_profile()` lookup + FNV-1a hash |
-| `named_profiles.rs` | 50 | 8 named profile constructors (Strategist through Beacon) |
-| `fallback_profiles.rs` | 26 | 4 fallback profile constructors (Navigator, Vector, Signal, Kernel) |
-| `avatars.rs` | 10 | `agent_avatar()` using `AGENT_AVATARS` from constants |
-| `format.rs` | 21 | `format_agent_identity()` and `format_agent_profile_summary()` |
+All within the 10-line growth limit. Let me do one final cargo check:
+`cargo check` passes with no errors (only pre-existing warnings). All acceptance criteria are met:
 
-Added `pub mod agent_identity;` to `src/tui/mod.rs` (1 line). All files are ≤50 non-blank lines. `cargo check` passes.
+1. ✅ `src/tui/ui/inspector/` directory with `mod.rs`, `metrics.rs`, `tool_history.rs`, `layout.rs`
+2. ✅ All new files under 50 non-blank lines (9, 33, 44, 36)
+3. ✅ Inspector displays model name, token counts, tool call history
+4. ✅ `/inspector` slash command toggles the view
+5. ✅ Existing files grew by at most 4 lines each (well under 10)
+6. ✅ `cargo check` passes
+7. ✅ All new files under 50 non-blank lines
+
+STORY_COMPLETE: US-003
