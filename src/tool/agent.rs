@@ -227,7 +227,11 @@ async fn handle_spawn(params: &Params) -> Result<ToolResult> {
         )));
     }
 
-    let session = create_agent_session(name, instructions, requested).await?;
+    let mut session = create_agent_session(name, instructions, requested).await?;
+    // Persist the agent session so it survives process restart/crash.
+    if let Err(e) = session.save().await {
+        tracing::warn!(agent = %name, error = %e, "Failed to save spawned agent session");
+    }
     store::insert(
         name.clone(),
         AgentEntry {
@@ -255,16 +259,24 @@ async fn handle_message(params: &Params) -> Result<ToolResult> {
 
     let registry = get_registry().await?;
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
-    let mut session_async = session.clone();
+    let mut session_for_task = session.clone();
 
     let handle = tokio::spawn(async move {
-        session_async
+        session_for_task
             .prompt_with_events(&message, tx, registry)
             .await
+            .map(|_| session_for_task)
     });
 
-    let (response, thinking, tools, error) = run_agent_loop(&mut rx, handle).await;
-    store::update_session(&name, session);
+    let (response, thinking, tools, updated_session) = run_agent_loop(&mut rx, handle).await;
+
+    // Update the store with the mutated session from the task and persist to disk.
+    if let Some(updated) = updated_session {
+        store::update_session(&name, updated.clone());
+        if let Err(e) = updated.save().await {
+            tracing::warn!(agent = %name, error = %e, "Failed to save agent session after message");
+        }
+    }
 
     // Build response
     let mut output = json!({ "agent": name, "response": response });
@@ -291,7 +303,7 @@ async fn handle_message(params: &Params) -> Result<ToolResult> {
 async fn run_agent_loop(
     rx: &mut mpsc::Receiver<SessionEvent>,
     handle: tokio::task::JoinHandle<Result<crate::session::SessionResult>>,
-) -> (String, String, Vec<Value>, Option<String>) {
+) -> (String, String, Vec<Value>, Option<String>, Option<Session>) {
     let mut response = String::new();
     let mut thinking = String::new();
     let mut tools = Vec::new();
@@ -330,15 +342,20 @@ async fn run_agent_loop(
         }
     }
 
-    // Task cleanup
+    // Task cleanup — extract the mutated session from the task result.
+    let mut updated_session: Option<Session> = None;
     if !handle.is_finished() {
         handle.abort();
         error = Some("Agent timed out after 5 minutes".into());
-    } else if let Ok(Err(e)) = handle.await {
-        error = Some(e.to_string());
+    } else {
+        match handle.await {
+            Ok(Ok(session)) => updated_session = Some(session),
+            Ok(Err(e)) => error = Some(e.to_string()),
+            Err(e) => error = Some(e.to_string()),
+        }
     }
 
-    (response, thinking, tools, error)
+    (response, thinking, tools, error, updated_session)
 }
 
 fn handle_list() -> ToolResult {
