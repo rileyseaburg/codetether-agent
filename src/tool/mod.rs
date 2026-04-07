@@ -18,6 +18,7 @@ pub mod file_extras;
 pub mod go;
 pub mod image;
 pub mod invalid;
+pub mod k8s_tool;
 pub mod lsp;
 pub mod mcp_bridge;
 pub mod mcp_tools;
@@ -290,6 +291,8 @@ impl ToolRegistry {
         registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
         // Go tool for autonomous OKR→PRD→Ralph pipeline
         registry.register(Arc::new(go::GoTool::new()));
+        // Kubernetes management tool
+        registry.register(Arc::new(k8s_tool::K8sTool::new()));
 
         registry
     }
@@ -358,6 +361,8 @@ impl ToolRegistry {
         registry.register(Arc::new(relay_autochat::RelayAutoChatTool::new()));
         // Go tool for autonomous OKR→PRD→Ralph pipeline
         registry.register(Arc::new(go::GoTool::new()));
+        // Kubernetes management tool
+        registry.register(Arc::new(k8s_tool::K8sTool::new()));
 
         registry
     }

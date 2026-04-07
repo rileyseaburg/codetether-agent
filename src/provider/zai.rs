@@ -163,22 +163,22 @@ impl ZaiProvider {
         models
     }
 
-    fn normalize_tool_arguments(arguments: &str) -> String {
-        // Z.AI expects assistant.tool_calls[*].function.arguments to be a *string*
-        // containing valid JSON.
+    fn normalize_tool_arguments(arguments: &str) -> Value {
+        // Z.AI expects assistant.tool_calls[*].function.arguments to be a JSON
+        // *object* (not a string).  The API schema declares it as `object required`.
         //
         // Models sometimes emit slightly-invalid JSON during tool-call streaming
         // (trailing junk, missing closing braces, etc.). We try to salvage a
         // sensible JSON object before falling back to wrapping the raw input.
         if let Ok(parsed) = serde_json::from_str::<Value>(arguments) {
-            return serde_json::to_string(&parsed).unwrap_or_else(|_| "{}".to_string());
+            return parsed;
         }
 
         if let Some(salvaged) = Self::salvage_json_object(arguments) {
-            return serde_json::to_string(&salvaged).unwrap_or_else(|_| "{}".to_string());
+            return salvaged;
         }
 
-        json!({"input": arguments}).to_string()
+        json!({"input": arguments})
     }
 
     fn salvage_json_object(arguments: &str) -> Option<Value> {
@@ -260,13 +260,13 @@ impl ZaiProvider {
                                     arguments,
                                     ..
                                 } => {
-                                    let args_string = Self::normalize_tool_arguments(arguments);
+                                    let args_object = Self::normalize_tool_arguments(arguments);
                                     Some(json!({
                                         "id": id,
                                         "type": "function",
                                         "function": {
                                             "name": name,
-                                            "arguments": args_string
+                                            "arguments": args_object
                                         }
                                     }))
                                 }
@@ -1076,7 +1076,7 @@ mod tests {
     }
 
     #[test]
-    fn convert_messages_serializes_tool_arguments_as_json_string() {
+    fn convert_messages_serializes_tool_arguments_as_json_object() {
         let messages = vec![Message {
             role: Role::Assistant,
             content: vec![ContentPart::ToolCall {
@@ -1088,15 +1088,15 @@ mod tests {
         }];
 
         let converted = ZaiProvider::convert_messages(&messages, true);
-        let args = converted[0]["tool_calls"][0]["function"]["arguments"]
-            .as_str()
-            .expect("arguments must be a string");
+        let args = &converted[0]["tool_calls"][0]["function"]["arguments"];
 
-        assert_eq!(args, "{\"city\":\"Beijing\"}");
+        // Z.AI expects arguments as a JSON object, not a string
+        assert!(args.is_object(), "arguments must be an object, got: {args}");
+        assert_eq!(args["city"], json!("Beijing"));
     }
 
     #[test]
-    fn convert_messages_wraps_invalid_tool_arguments_as_json_string() {
+    fn convert_messages_wraps_invalid_tool_arguments_as_json_object() {
         let messages = vec![Message {
             role: Role::Assistant,
             content: vec![ContentPart::ToolCall {
@@ -1108,12 +1108,11 @@ mod tests {
         }];
 
         let converted = ZaiProvider::convert_messages(&messages, true);
-        let args = converted[0]["tool_calls"][0]["function"]["arguments"]
-            .as_str()
-            .expect("arguments must be a string");
-        let parsed: Value = serde_json::from_str(args).expect("arguments must contain valid JSON");
+        let args = &converted[0]["tool_calls"][0]["function"]["arguments"];
 
-        assert_eq!(parsed, json!({"input": "city=Beijing"}));
+        // Z.AI expects arguments as a JSON object, not a string
+        assert!(args.is_object(), "arguments must be an object, got: {args}");
+        assert_eq!(args["input"], json!("city=Beijing"));
     }
 
     #[test]
