@@ -38,6 +38,7 @@ const SLASH_COMMANDS: &[&str] = &[
     "/lsp",
     "/rlm",
     "/latency",
+    "/inspector",
     "/symbols",
     "/chat",
     "/new",
@@ -57,6 +58,9 @@ const SLASH_COMMANDS: &[&str] = &[
     "/focus",
     "/home",
     "/main",
+    "/webview",
+    "/classic",
+    "/autochat",
 ];
 
 /// A spawned sub-agent with its own independent LLM session.
@@ -299,12 +303,15 @@ pub struct AppState {
     pub chat_sync_last_error: Option<String>,
     pub chat_sync_uploaded_bytes: u64,
     pub chat_sync_uploaded_batches: u64,
+    // Autochat relay state
+    pub autochat: super::autochat::state::AutochatState,
     // File picker state
     pub file_picker_dir: std::path::PathBuf,
     pub file_picker_entries: Vec<crate::tui::app::file_picker::FilePickerEntry>,
     pub file_picker_selected: usize,
     pub file_picker_filter: String,
     pub file_picker_active: bool,
+    pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
 }
 
 impl Default for AppState {
@@ -398,12 +405,15 @@ impl Default for AppState {
             chat_sync_last_error: None,
             chat_sync_uploaded_bytes: 0,
             chat_sync_uploaded_batches: 0,
+            // Autochat relay state
+            autochat: super::autochat::state::AutochatState::default(),
             // File picker state
             file_picker_dir: std::path::PathBuf::new(),
             file_picker_entries: Vec::new(),
             file_picker_selected: 0,
             file_picker_filter: String::new(),
             file_picker_active: false,
+            chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
         }
     }
 }

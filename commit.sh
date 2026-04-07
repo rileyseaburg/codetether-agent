@@ -41,8 +41,7 @@ ${DIFF_PATCH_TRUNCATED}"
 echo "Generating commit message..."
 
 # Use a capable model for commit message generation.
-# The default zai/glm-5 often produces empty or malformed messages.
-COMMIT_MODEL="${CODETETHER_COMMIT_MODEL:-openai/gpt-4o}"
+COMMIT_MODEL="${CODETETHER_COMMIT_MODEL:-zai/glm-5.1}"
 
 RAW_OUTPUT=""
 CODETETHER_EXIT=0
@@ -57,14 +56,17 @@ ${DIFF}" 2>/dev/null)"; then
     CODETETHER_EXIT=$?
 fi
 
-# Strip ANSI codes and filter log noise
+# Strip ANSI codes, markdown, session footer, and log noise
 COMMIT_MSG="$(echo "$RAW_OUTPUT" \
   | sed 's/\x1b\[[0-9;]*m//g' \
+  | sed 's/^```[a-z]*//;s/^```$//' \
   | grep -v '^\[Session:' \
   | grep -v '^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T' \
   | grep -v '^\(INFO\|WARN\|DEBUG\|ERROR\) ' \
   | grep -v '^codetether::' \
   | grep -v '^Crash reporting' \
+  | grep -v '^Continue with:' \
+  | sed 's/^[[:space:]]*//' \
   | grep -E '^(feat|fix|refactor|docs|test|chore|perf|style|build|ci):' \
   | head -1 \
   | sed 's/^["'\''`]*//;s/["'\''`]*$//' \

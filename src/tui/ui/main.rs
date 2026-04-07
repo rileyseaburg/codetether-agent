@@ -40,7 +40,11 @@ const SCROLL_BOTTOM: usize = 1_000_000;
 
 pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
     match app.state.view_mode {
-        ViewMode::Chat => render_chat_view(f, app, session),
+        ViewMode::Chat => {
+            if super::webview::layout::is_webview(app.state.chat_layout_mode) {
+                super::webview::render(f, app);
+            } else { render_chat_view(f, app, session); }
+        }
         ViewMode::Sessions => render_sessions_view(f, app),
         ViewMode::Swarm => render_swarm_view(f, &mut app.state.swarm, f.area()),
         ViewMode::Ralph => render_ralph_view(f, &mut app.state.ralph, f.area()),
@@ -78,6 +82,7 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
         ViewMode::Latency => render_latency(f, f.area(), app),
         ViewMode::Protocol => {}
         ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
+        ViewMode::Inspector => crate::tui::ui::inspector::render_inspector_view(f, app),
     }
 
     if app.state.symbol_search.loading

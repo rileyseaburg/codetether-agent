@@ -361,7 +361,19 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Latency);
             app.state.status = "Latency inspector".to_string();
         }
+        "/inspector" => {
+            app.state.set_view_mode(ViewMode::Inspector);
+            app.state.status = "Inspector".to_string();
+        }
         "/chat" | "/home" | "/main" => return_to_chat(app),
+        "/webview" => {
+            app.state.chat_layout_mode = crate::tui::ui::webview::layout_mode::ChatLayoutMode::Webview;
+            app.state.status = "Layout: Webview".to_string();
+        }
+        "/classic" => {
+            app.state.chat_layout_mode = crate::tui::ui::webview::layout_mode::ChatLayoutMode::Classic;
+            app.state.status = "Layout: Classic".to_string();
+        }
         "/symbols" | "/symbol" => {
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
@@ -478,6 +490,11 @@ pub async fn handle_slash_command(
         return;
     }
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/autochat") {
+        handle_autochat_command(app, rest);
+        return;
+    }
+
     // If we get here, none of the handlers above matched.
     // Easy-mode aliases are already normalized before reaching this point,
     if !matches!(
@@ -513,6 +530,7 @@ pub async fn handle_slash_command(
             | "/kill"
             | "/agents"
             | "/agent"
+            | "/autochat"
     ) {
         app.state.status = format!("Unknown command: {normalized}");
     }
@@ -695,4 +713,25 @@ async fn handle_go_command(
 
     app.state.pending_okr_approval = Some(pending);
     app.state.status = "OKR draft awaiting approval \u{2014} [A]pprove or [D]eny".to_string();
+}
+
+fn handle_autochat_command(app: &mut App, rest: &str) {
+    let task = rest.trim().to_string();
+    if task.is_empty() {
+        app.state.status = "Usage: /autochat <task description>".to_string();
+        return;
+    }
+    if app.state.autochat.running {
+        app.state.status = "Autochat relay already running.".to_string();
+        return;
+    }
+    let model = app
+        .state
+        .last_completion_model
+        .clone()
+        .unwrap_or_default();
+    let rx = super::autochat::worker::start_autochat_relay(task, model);
+    app.state.autochat.running = true;
+    app.state.autochat.rx = Some(rx);
+    app.state.status = "Autochat relay started.".to_string();
 }

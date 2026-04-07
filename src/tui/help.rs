@@ -333,6 +333,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(cmd_row("/swarm", "/w", "Swarm agent view"));
     lines.push(cmd_row("/ralph", "/r", "Ralph PRD loop view"));
     lines.push(cmd_row("/latency", "", "Provider + tool latency inspector"));
+    lines.push(cmd_row("/inspector", "", "Token metrics & tool call inspector"));
     lines.push(blank());
 
     lines.push(heading("Development Tools"));

@@ -163,6 +163,13 @@ pub async fn run_event_loop(
             // Chat sync UI events from background worker.
             // TODO: implement chat_sync_rx handling once ChatSyncUiEvent is defined
 
+            // Autochat relay UI events from background worker.
+            if let Some(ref mut rx) = app.state.autochat.rx {
+                while let Ok(event) = rx.try_recv() {
+                    super::autochat::handle_autochat_event(&mut app.state, event);
+                }
+            }
+
             // Tick: drain bus messages & worker bridge state.
             _ = tokio::time::sleep(tick) => {}
         }

@@ -61,6 +61,16 @@ pub async fn handle_event(
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
         }
+        KeyCode::Char('b')
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            app.state.chat_layout_mode = app.state.chat_layout_mode.toggle();
+            let label = if app.state.chat_layout_mode == crate::tui::ui::webview::layout_mode::ChatLayoutMode::Webview { "Webview" } else { "Classic" };
+            app.state.status = format!("Layout: {label}");
+        }
         KeyCode::Char('o')
             if key
                 .modifiers

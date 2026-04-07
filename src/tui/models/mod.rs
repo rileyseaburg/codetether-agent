@@ -14,6 +14,7 @@ pub enum ViewMode {
     Latency,
     Protocol,
     FilePicker,
+    Inspector,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
