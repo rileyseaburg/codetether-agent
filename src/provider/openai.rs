@@ -562,6 +562,7 @@ impl Provider for OpenAIProvider {
         );
 
         let messages = Self::convert_messages(&request.messages)?;
+        let tools = Self::convert_tools(&request.tools)?;
 
         let mut req_builder = CreateChatCompletionRequestArgs::default();
         req_builder
@@ -569,8 +570,18 @@ impl Provider for OpenAIProvider {
             .messages(messages)
             .stream(true);
 
+        if !tools.is_empty() {
+            req_builder.tools(tools);
+        }
         if let Some(temp) = request.temperature {
             req_builder.temperature(temp);
+        }
+        if let Some(max) = request.max_tokens {
+            if self.provider_name == "openai" {
+                req_builder.max_completion_tokens(max as u32);
+            } else {
+                req_builder.max_tokens(max as u32);
+            }
         }
 
         let stream = self
@@ -580,16 +591,55 @@ impl Provider for OpenAIProvider {
             .await?;
 
         Ok(stream
-            .map(|result| match result {
-                Ok(response) => {
-                    if let Some(choice) = response.choices.first()
-                        && let Some(content) = &choice.delta.content
-                    {
-                        return StreamChunk::Text(content.clone());
+            .flat_map(|result| {
+                let chunks: Vec<StreamChunk> = match result {
+                    Ok(response) => {
+                        let mut out = Vec::new();
+                        if let Some(choice) = response.choices.first() {
+                            // Text content delta
+                            if let Some(content) = &choice.delta.content {
+                                if !content.is_empty() {
+                                    out.push(StreamChunk::Text(content.clone()));
+                                }
+                            }
+                            // Tool call deltas
+                            if let Some(tool_calls) = &choice.delta.tool_calls {
+                                for tc in tool_calls {
+                                    if let Some(func) = &tc.function {
+                                        // Derive a stable id: use tc.id if present,
+                                        // otherwise fall back to tool_{index}
+                                        let id = tc.id.clone().unwrap_or_else(|| {
+                                            format!("tool_{}", tc.index)
+                                        });
+
+                                        // Emit ToolCallStart when we have a non-empty name
+                                        if let Some(name) = func.name.clone() {
+                                            if !name.is_empty() {
+                                                out.push(StreamChunk::ToolCallStart {
+                                                    id: id.clone(),
+                                                    name,
+                                                });
+                                            }
+                                        }
+
+                                        // Argument deltas
+                                        if let Some(args) = &func.arguments {
+                                            if !args.is_empty() {
+                                                out.push(StreamChunk::ToolCallDelta {
+                                                    id: id.clone(),
+                                                    arguments_delta: args.clone(),
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        out
                     }
-                    StreamChunk::Text(String::new())
-                }
-                Err(e) => StreamChunk::Error(e.to_string()),
+                    Err(e) => vec![StreamChunk::Error(e.to_string())],
+                };
+                futures::stream::iter(chunks)
             })
             .boxed())
     }

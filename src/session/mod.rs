@@ -197,7 +197,7 @@ impl Session {
             "local_cuda" => std::env::var("LOCAL_CUDA_MODEL")
                 .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
                 .unwrap_or_else(|_| "qwen3.5-9b".to_string()),
-            "zhipuai" | "zai" => "glm-5".to_string(),
+            "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
             // OpenRouter uses model IDs like "z-ai/glm-5".
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
@@ -482,7 +482,10 @@ impl Session {
         // Parse model string (format: "provider/model", "provider", or just "model")
         let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
             let (prov, model) = parse_model_string(model_str);
-            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
+            let prov = prov.map(|p| match p {
+                "zhipuai" | "z-ai" => "zai",
+                other => other,
+            });
             if prov.is_some() {
                 // Format: provider/model
                 (prov.map(|s| s.to_string()), model.to_string())
@@ -769,6 +772,7 @@ impl Session {
             );
 
             // Extract tool calls from response
+            let mut truncated_tool_ids: Vec<(String, String)> = Vec::new();
             let tool_calls: Vec<(String, String, serde_json::Value)> = response
                 .message
                 .content
@@ -781,10 +785,20 @@ impl Session {
                         ..
                     } = part
                     {
-                        // Parse arguments JSON string into Value
-                        let args: serde_json::Value =
-                            serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
-                        Some((id.clone(), name.clone(), args))
+                        match serde_json::from_str::<serde_json::Value>(arguments) {
+                            Ok(args) => Some((id.clone(), name.clone(), args)),
+                            Err(e) => {
+                                tracing::warn!(
+                                    tool = %name,
+                                    tool_call_id = %id,
+                                    args_len = arguments.len(),
+                                    error = %e,
+                                    "Tool call arguments failed to parse (likely truncated by max_tokens)"
+                                );
+                                truncated_tool_ids.push((id.clone(), name.clone()));
+                                None
+                            }
+                        }
                     } else {
                         None
                     }
@@ -888,7 +902,7 @@ impl Session {
             }
 
             // If no tool calls, we're done
-            if tool_calls.is_empty() {
+            if tool_calls.is_empty() && truncated_tool_ids.is_empty() {
                 self.add_message(response.message.clone());
                 if is_build_agent(&self.agent) {
                     if let Some(report) =
@@ -919,6 +933,31 @@ impl Session {
                     }
                 }
                 break;
+            }
+
+            // Handle truncated tool calls: send error results back so the LLM can retry
+            if !truncated_tool_ids.is_empty() {
+                if tool_calls.is_empty() {
+                    self.add_message(response.message.clone());
+                }
+                for (tool_id, tool_name) in &truncated_tool_ids {
+                    let error_content = format!(
+                        "Error: Your tool call to `{tool_name}` was truncated — the arguments \
+                         JSON was cut off mid-string (likely hit the max_tokens limit). \
+                         Please retry with a shorter approach: use the `write` tool to write \
+                         content in smaller pieces, or reduce the size of your arguments."
+                    );
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id.clone(),
+                            content: error_content,
+                        }],
+                    });
+                }
+                if tool_calls.is_empty() {
+                    continue;
+                }
             }
 
             // ── Loop detection: break if the same tool+args repeats too many times,
@@ -1435,7 +1474,10 @@ impl Session {
         // Parse model string (format: "provider/model", "provider", or just "model")
         let (provider_name, model_id) = if let Some(ref model_str) = self.metadata.model {
             let (prov, model) = parse_model_string(model_str);
-            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
+            let prov = prov.map(|p| match p {
+                "zhipuai" | "z-ai" => "zai",
+                other => other,
+            });
             if prov.is_some() {
                 (prov.map(|s| s.to_string()), model.to_string())
             } else if providers.contains(&model) {
@@ -1757,6 +1799,7 @@ impl Session {
                 .await;
 
             // Extract tool calls
+            let mut truncated_tool_ids: Vec<(String, String)> = Vec::new();
             let tool_calls: Vec<(String, String, serde_json::Value)> = response
                 .message
                 .content
@@ -1769,9 +1812,20 @@ impl Session {
                         ..
                     } = part
                     {
-                        let args: serde_json::Value =
-                            serde_json::from_str(arguments).unwrap_or(serde_json::json!({}));
-                        Some((id.clone(), name.clone(), args))
+                        match serde_json::from_str::<serde_json::Value>(arguments) {
+                            Ok(args) => Some((id.clone(), name.clone(), args)),
+                            Err(e) => {
+                                tracing::warn!(
+                                    tool = %name,
+                                    tool_call_id = %id,
+                                    args_len = arguments.len(),
+                                    error = %e,
+                                    "Tool call arguments failed to parse (likely truncated by max_tokens)"
+                                );
+                                truncated_tool_ids.push((id.clone(), name.clone()));
+                                None
+                            }
+                        }
                     } else {
                         None
                     }
@@ -1897,7 +1951,7 @@ impl Session {
                 final_output.push_str(&step_text);
             }
 
-            if tool_calls.is_empty() {
+            if tool_calls.is_empty() && truncated_tool_ids.is_empty() {
                 self.add_message(response.message.clone());
                 if is_build_agent(&self.agent) {
                     if let Some(report) =
@@ -1928,6 +1982,39 @@ impl Session {
                     }
                 }
                 break;
+            }
+
+            // Handle truncated tool calls: send error results back so the LLM can retry
+            if !truncated_tool_ids.is_empty() {
+                if tool_calls.is_empty() {
+                    self.add_message(response.message.clone());
+                }
+                for (tool_id, tool_name) in &truncated_tool_ids {
+                    let error_content = format!(
+                        "Error: Your tool call to `{tool_name}` was truncated — the arguments \
+                         JSON was cut off mid-string (likely hit the max_tokens limit). \
+                         Please retry with a shorter approach: use the `write` tool to write \
+                         content in smaller pieces, or reduce the size of your arguments."
+                    );
+                    let _ = event_tx
+                        .send(SessionEvent::ToolCallComplete {
+                            name: tool_name.clone(),
+                            output: error_content.clone(),
+                            success: false,
+                            duration_ms: 0,
+                        })
+                        .await;
+                    self.add_message(Message {
+                        role: Role::Tool,
+                        content: vec![ContentPart::ToolResult {
+                            tool_call_id: tool_id.clone(),
+                            content: error_content,
+                        }],
+                    });
+                }
+                if tool_calls.is_empty() {
+                    continue;
+                }
             }
 
             // ── Loop detection: break if the same tool+args repeats too many times,
