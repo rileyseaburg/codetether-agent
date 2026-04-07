@@ -264,6 +264,7 @@ pub struct AppState {
     pub auto_apply_edits: bool,
     pub allow_network: bool,
     pub slash_autocomplete: bool,
+    pub use_worktree: bool,
     pub selected_settings_index: usize,
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>,
     // Spawned sub-agent state
@@ -362,6 +363,7 @@ impl Default for AppState {
             auto_apply_edits: false,
             allow_network: false,
             slash_autocomplete: true,
+            use_worktree: true,
             selected_settings_index: 0,
             mcp_registry: Arc::new(crate::tui::app::mcp::TuiMcpRegistry::new()),
             // Spawned sub-agents
@@ -403,7 +405,7 @@ impl Default for AppState {
 }
 
 impl AppState {
-    const SETTINGS_COUNT: usize = 3;
+    const SETTINGS_COUNT: usize = 4;
 
     /// Check whether the cached message lines are still valid for the given
     /// width. Returns `true` when the cache can be reused.

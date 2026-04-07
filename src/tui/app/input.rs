@@ -18,6 +18,69 @@ use crate::tui::app::worker_bridge::{handle_processing_started, handle_processin
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::worker_bridge::TuiWorkerBridge;
+use crate::worktree::{WorktreeInfo, WorktreeManager};
+
+/// Push a worktree branch to the remote and open a GitHub PR via `gh`.
+///
+/// Returns the PR URL on success.
+async fn push_and_create_pr(wt: &WorktreeInfo) -> anyhow::Result<String> {
+    // Ensure there are commits on the branch beyond the base.
+    let diff_check = tokio::process::Command::new("git")
+        .args(["diff", "--quiet", "HEAD"])
+        .current_dir(&wt.path)
+        .status()
+        .await;
+    // If there are unstaged changes in the worktree, stage + commit them.
+    if diff_check.map(|s| !s.success()).unwrap_or(true) {
+        let _ = tokio::process::Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(&wt.path)
+            .output()
+            .await;
+        let _ = tokio::process::Command::new("git")
+            .args(["commit", "-m", &format!("codetether: TUI agent work ({})", wt.name)])
+            .current_dir(&wt.path)
+            .output()
+            .await;
+    }
+
+    // Push the branch to the remote
+    let push_output = tokio::process::Command::new("git")
+        .args(["push", "-u", "origin", &wt.branch])
+        .current_dir(&wt.path)
+        .output()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to run git push: {e}"))?;
+
+    if !push_output.status.success() {
+        let stderr = String::from_utf8_lossy(&push_output.stderr);
+        return Err(anyhow::anyhow!("git push failed: {stderr}"));
+    }
+
+    tracing::info!(branch = %wt.branch, "Pushed branch to origin");
+
+    // Create a PR using the GitHub CLI
+    let pr_output = tokio::process::Command::new("gh")
+        .args([
+            "pr", "create",
+            "--head", &wt.branch,
+            "--title", &format!("codetether: {}", wt.name),
+            "--body", &format!("Automated PR from CodeTether TUI agent.\n\nBranch: `{}`", wt.branch),
+            "--fill-verbose",
+        ])
+        .current_dir(&wt.path)
+        .output()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to run gh pr create: {e}"))?;
+
+    if !pr_output.status.success() {
+        let stderr = String::from_utf8_lossy(&pr_output.stderr);
+        return Err(anyhow::anyhow!("gh pr create failed: {stderr}"));
+    }
+
+    let pr_url = String::from_utf8_lossy(&pr_output.stdout).trim().to_string();
+    Ok(pr_url)
+}
 
 /// Check if we're likely running in an SSH/headless session where system
 /// clipboard is unavailable.
@@ -381,11 +444,92 @@ async fn handle_enter_chat(
         let event_tx = event_tx.clone();
         let result_tx = result_tx.clone();
         let registry = Arc::clone(registry);
+        let use_worktree = app.state.use_worktree;
+
+        // Create a worktree for isolation if enabled
+        let worktree_state = if use_worktree {
+            let repo_dir = cwd.to_path_buf();
+            let worktree_name = format!("tui_{}", uuid::Uuid::new_v4().simple());
+            let mgr = WorktreeManager::new(
+                repo_dir.join(".codetether-worktrees"),
+            );
+            match mgr.create(&worktree_name).await {
+                Ok(wt) => {
+                    let _ = mgr.inject_workspace_stub(&wt.path);
+                    tracing::info!(
+                        worktree = %worktree_name,
+                        path = %wt.path.display(),
+                        "Created TUI worktree for prompt isolation"
+                    );
+                    session_for_task.metadata.directory = Some(wt.path.clone());
+                    app.state.status = format!("Working in worktree: {worktree_name}");
+                    Some((mgr, wt))
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to create worktree, running in main directory");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let original_dir = session.metadata.directory.clone();
+
         tokio::spawn(async move {
             let result = session_for_task
                 .prompt_with_events_and_images(&prompt, pending_images, event_tx, registry)
                 .await
-                .map(|_| session_for_task);
+                .map(|_| {
+                    // Restore original directory so the session doesn't persist
+                    // the worktree path.
+                    session_for_task.metadata.directory = original_dir;
+                    session_for_task
+                });
+
+            // Merge worktree on success, then clean up regardless
+            if let Some((mgr, wt)) = worktree_state {
+                if result.is_ok() {
+                    // Push the branch and open a GitHub PR instead of merging locally.
+                    match push_and_create_pr(&wt).await {
+                        Ok(pr_url) => {
+                            tracing::info!(
+                                worktree = %wt.name,
+                                branch = %wt.branch,
+                                pr_url = %pr_url,
+                                "Pushed branch and created GitHub PR"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!(error = %e, "Failed to push branch / create PR, falling back to local merge");
+                            match mgr.merge(&wt.name).await {
+                                Ok(merge_result) => {
+                                    if merge_result.success {
+                                        tracing::info!(
+                                            worktree = %wt.name,
+                                            files_changed = merge_result.files_changed,
+                                            "Fallback: auto-merged TUI worktree locally"
+                                        );
+                                    } else {
+                                        tracing::warn!(
+                                            worktree = %wt.name,
+                                            conflicts = ?merge_result.conflicts,
+                                            "TUI worktree merge had conflicts"
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!(error = %e, "Failed to merge TUI worktree");
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Err(e) = mgr.cleanup(&wt.name).await {
+                    tracing::warn!(error = %e, "Failed to cleanup TUI worktree");
+                }
+            }
+
             let _ = result_tx.send(result).await;
         });
     } else {

@@ -384,6 +384,7 @@ pub async fn handle_slash_command(
                     new_session.metadata.auto_apply_edits = app.state.auto_apply_edits;
                     new_session.metadata.allow_network = app.state.allow_network;
                     new_session.metadata.slash_autocomplete = app.state.slash_autocomplete;
+                    new_session.metadata.use_worktree = app.state.use_worktree;
                     new_session.metadata.model = session.metadata.model.clone();
 
                     *session = new_session;

@@ -57,6 +57,13 @@ fn settings_lines(app_state: &AppState) -> Vec<Line<'static>> {
         ),
         Line::from("  Enables Tab completion for slash commands in the composer."),
         Line::from(""),
+        setting_line(
+            "Worktree isolation",
+            app_state.use_worktree,
+            app_state.selected_settings_index == 3,
+        ),
+        Line::from("  Runs agent work in a git worktree branch, auto-merged on success."),
+        Line::from(""),
         Line::from("Controls:"),
         Line::from("  - Up / Down selects a setting"),
         Line::from("  - Enter toggles the selected setting"),

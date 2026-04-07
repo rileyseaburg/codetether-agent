@@ -81,6 +81,7 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
     app.state.auto_apply_edits = session.metadata.auto_apply_edits;
     app.state.allow_network = session.metadata.allow_network || allow_network;
     app.state.slash_autocomplete = session.metadata.slash_autocomplete;
+    app.state.use_worktree = session.metadata.use_worktree;
     app.state.session_id = Some(session.id.clone());
     session.metadata.allow_network = app.state.allow_network;
     sync_messages_from_session(&mut app, &session);

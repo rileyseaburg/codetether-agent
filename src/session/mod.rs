@@ -178,11 +178,17 @@ pub struct SessionMetadata {
     pub allow_network: bool,
     #[serde(default = "default_slash_autocomplete")]
     pub slash_autocomplete: bool,
+    #[serde(default = "default_use_worktree")]
+    pub use_worktree: bool,
     pub shared: bool,
     pub share_url: Option<String>,
 }
 
 fn default_slash_autocomplete() -> bool {
+    true
+}
+
+fn default_use_worktree() -> bool {
     true
 }
 

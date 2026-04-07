@@ -14,6 +14,7 @@ pub async fn load_selected_session(
         Ok(loaded) => {
             *session = loaded;
             app.state.auto_apply_edits = session.metadata.auto_apply_edits;
+            app.state.use_worktree = session.metadata.use_worktree;
             app.state.session_id = Some(session.id.clone());
             sync_messages_from_session(app, session);
             refresh_sessions(app, cwd).await;
