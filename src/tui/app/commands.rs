@@ -209,6 +209,41 @@ pub async fn handle_slash_command(
     let normalized = normalize_easy_command(command);
     let normalized = normalize_slash_command(&normalized);
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/image") {
+        let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
+        if cleaned.is_empty() {
+            app.state.status =
+                "Usage: /image <path> (png, jpg, jpeg, gif, webp, bmp, svg).".to_string();
+        } else {
+            let path = Path::new(cleaned);
+            let resolved = if path.is_absolute() {
+                path.to_path_buf()
+            } else {
+                cwd.join(path)
+            };
+            match crate::tui::app::input::attach_image_file(&resolved) {
+                Ok(attachment) => {
+                    let display = resolved.display();
+                    app.state.pending_images.push(attachment);
+                    let count = app.state.pending_images.len();
+                    app.state.status = format!(
+                        "📷 Attached {display}. {count} image(s) pending. Press Enter to send."
+                    );
+                    push_system_message(
+                        app,
+                        format!(
+                            "📷 Image attached: {display}. Type a message and press Enter to send."
+                        ),
+                    );
+                }
+                Err(msg) => {
+                    push_system_message(app, format!("Failed to attach image: {msg}"));
+                }
+            }
+        }
+        return;
+    }
+
     if let Some(rest) = command_with_optional_args(&normalized, "/file") {
         let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
         if cleaned.is_empty() {
@@ -468,6 +503,7 @@ pub async fn handle_slash_command(
             | "/undo"
             | "/keys"
             | "/file"
+            | "/image"
             | "/autoapply"
             | "/network"
             | "/autocomplete"

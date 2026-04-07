@@ -136,6 +136,107 @@ async fn slash_file_path_attaches_file_to_composer() {
 }
 
 #[tokio::test]
+async fn slash_image_supported_extension_attaches() {
+    let temp = tempfile::tempdir().expect("tempdir should create");
+    let img_path = temp.path().join("photo.png");
+    // Write a minimal valid 1x1 PNG
+    let png_bytes: &[u8] = &[
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
+        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, // 8-bit RGB
+        0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, // IDAT chunk
+        0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE2, 0x21,
+        0xBC, 0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60,
+        0x82, // IEND
+    ];
+    std::fs::write(&img_path, png_bytes).expect("fixture should write");
+
+    let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
+
+    handle_slash_command(
+        &mut app,
+        temp.path(),
+        &mut session,
+        None,
+        &format!("/image {}", img_path.display()),
+    )
+    .await;
+
+    assert_eq!(app.state.pending_images.len(), 1);
+    assert!(app.state.status.contains("Attached"));
+    assert!(matches!(
+        app.state.messages.last().map(|msg| &msg.message_type),
+        Some(MessageType::System)
+    ));
+}
+
+#[tokio::test]
+async fn slash_image_empty_arg_shows_usage() {
+    let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
+
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &mut session,
+        None,
+        "/image",
+    )
+    .await;
+
+    assert!(app.state.status.contains("Usage: /image"));
+    assert!(app.state.pending_images.is_empty());
+}
+
+#[tokio::test]
+async fn slash_image_missing_file_shows_error() {
+    let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
+
+    handle_slash_command(
+        &mut app,
+        std::path::Path::new("."),
+        &mut session,
+        None,
+        "/image /nonexistent/photo.png",
+    )
+    .await;
+
+    assert!(app.state.pending_images.is_empty());
+    assert!(matches!(
+        app.state.messages.last().map(|msg| &msg.message_type),
+        Some(MessageType::System)
+    ));
+    let last_msg = app.state.messages.last().unwrap();
+    assert!(last_msg.content.contains("Failed to attach image"));
+}
+
+#[tokio::test]
+async fn slash_image_unsupported_extension_shows_error() {
+    let temp = tempfile::tempdir().expect("tempdir should create");
+    let txt_path = temp.path().join("readme.txt");
+    std::fs::write(&txt_path, "not an image").expect("fixture should write");
+
+    let mut app = App::default();
+    let mut session = Session::new().await.expect("session should create");
+
+    handle_slash_command(
+        &mut app,
+        temp.path(),
+        &mut session,
+        None,
+        &format!("/image {}", txt_path.display()),
+    )
+    .await;
+
+    assert!(app.state.pending_images.is_empty());
+    let last_msg = app.state.messages.last().unwrap();
+    assert!(last_msg.content.contains("Unsupported image format"));
+}
+
+#[tokio::test]
 async fn slash_new_creates_fresh_session_with_different_id() {
     let mut app = App::default();
     let mut session = Session::new().await.expect("session should create");
