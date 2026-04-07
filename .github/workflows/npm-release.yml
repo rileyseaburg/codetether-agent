@@ -3,7 +3,11 @@ name: Publish npm (codetether npx wrapper)
 on:
   release:
     types: [published]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 4.4.0). Defaults to Cargo.toml version.'
+        required: false
 
 jobs:
   publish:
@@ -35,8 +39,15 @@ jobs:
         working-directory: npm/codetether
         run: |
           set -euo pipefail
-          tag="${{ github.event.release.tag_name || github.ref_name }}"
-          ver="${tag#v}"
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            ver="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            ver="${{ github.event.inputs.version }}"
+          else
+            ver=$(grep '^version' ../../Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          fi
+          ver="${ver#v}"
+          echo "Publishing version: $ver"
           npm version "$ver" --no-git-tag-version
 
       - name: Install dependencies
