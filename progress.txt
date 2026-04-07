@@ -1,39 +1,46 @@
-Let me explore the reference files and existing code:
-Let me read the rest of the event loop and the existing constants/state:
-Now let me see the rest of the AppState (the watchdog fields) and understand the current structure:
-Now let me look at the remaining parts of state.rs (the methods) and the UI rendering:
-Let me see the remaining state.rs methods and understand what's there for watchdog:
-Now let me check the UI rendering to see if there's already any watchdog notification rendering:
-Now I have a clear picture. Let me create the watchdog module. The event loop already has inline watchdog logic (lines 117-172) that I'll extract into dedicated modules, plus add a `WatchdogNotification` struct for UI rendering.
-Now register the module in `mod.rs` and add the `watchdog_notification` field to `AppState`:
-Now update the event loop to use the watchdog module. The event loop already has inline stall detection (lines 117-172). I'll refactor it to call `check_watchdog_stall` and set the notification:
-Now I'll refactor the event loop watchdog branch to use the new module and set the notification:
-Good, the edit was applied. Now let me add the watchdog cancel/dismiss key handlers to the event handlers, and render the notification in the UI. Let me check what the event handlers look like for Escape key handling:
-I need to add watchdog notification handling before the Esc handler so it takes priority when notification is showing:
-Now let me add the watchdog notification rendering to the UI. Let me check the UI rendering:
-I can see the `ui` function renders views and then overlays symbol search at the end. I'll add the watchdog notification overlay similarly after the symbol search:
-Now let me run `cargo check` to verify:
-It's compiling. Let me wait for it to finish:
-`cargo check` passes with only pre-existing warnings. Now let me verify the file line counts for the new watchdog files:
-All files are well under 50 non-blank lines. Let me verify the AppState growth is minimal:
-AppState grew by exactly 2 lines (one field declaration, one default). Let me also verify the event loop's watchdog check is concise (the tick handler calls into the module):
-Hmm, it seems the edit didn't apply. Let me check:
-The edit didn't take effect. The diff confirmation showed it but it seems it was rejected or didn't apply. Let me use `multiedit` instead:
-Now let me also fix the event_handlers.rs edit (which also may not have applied):
-Also didn't apply. Let me use multiedit:
-Now verify the UI edit applied:
-UI edit also didn't apply. Let me check:
-Now run cargo check again:
-`cargo check` passes. Let me create the `check_file_limits.sh` and run it:
-All checks pass. Let me do a final summary verification:
-All acceptance criteria met:
+I'll start by exploring the existing codebase to understand the structure and then implement the autochat relay integration.
+Let me explore the existing structure further - particularly the state, app mod, feature_extracted autochat_relay, and commands files:
+Now let me look at the feature_extracted autochat_relay.rs more carefully (the reference implementation), and the existing autochat module:
+No autochat references in state.rs yet. Let me check the event_handlers and the watchdog pattern for how to add a new submodule:
+Now let me look at the event_handlers to understand how autochat events would be consumed, and check the `clear_request_timing` method:
+Now I have a clear picture. Let me also check the Default impl to see where to add the new fields:
+Now let me see the feature_extracted AutochatUiEvent enum and the event_loop file to understand how events are consumed:
+Now I have all the context I need. Let me also check the check_file_limits.sh script:
+No check_file_limits.sh yet. Now let me implement. I need to create:
 
-- ✅ `src/tui/app/watchdog/` directory with `mod.rs` + 4 sub-files (`state.rs`, `detector.rs`, `handler.rs`, `notification.rs`)
-- ✅ Every new file under 50 non-blank lines (max is 31 in `notification.rs`)
-- ✅ Watchdog detects stalled requests via `check_watchdog_stall()` with configurable timeout (`MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS` constant, env var `CODETETHER_MAIN_WATCHDOG_TIMEOUT_SECS`)
-- ✅ Notification UI renders with cancel (`Ctrl+X`) and dismiss (`Esc`) options
-- ✅ AppState grew by exactly 2 lines (one field declaration + one default)
-- ✅ `cargo check` passes
-- ✅ File limit check passes
+1. `src/tui/app/autochat/mod.rs` - module re-exports
+2. `src/tui/app/autochat/events.rs` - AutochatUiEvent enum
+3. `src/tui/app/autochat/state.rs` - autochat state fields helper
+4. `src/tui/app/autochat/handler.rs` - event loop handler
+5. `src/tui/app/autochat/worker.rs` - thin wrapper to start relay worker
 
-STORY_COMPLETE: US-007
+Then wire into `state.rs`, `mod.rs`, `commands.rs`, and `event_loop.rs`.
+Wait, I have a bug in handler.rs - `app.state_mut().autochat` — `App` wraps `AppState` at `app.state`, but `handle_autochat_event` takes `AppState`. Let me fix that. Also need to check what methods AppState has:
+No `state_mut()` — it's `AppState` directly. Let me fix the handler:
+Now let me look at the existing worker startup in feature_extracted to understand what start_autochat_relay needs to do — it should be a thin wrapper:
+The feature_extracted file has no public functions — it's all private. Let me look at the autochat module to see if there's a public start function there:
+The feature_extracted autochat_relay.rs has no public functions — it's a monolithic file with private functions. For our thin worker wrapper, we need to provide a `start_autochat_relay` that creates a channel pair and spawns a task. Let me look at what the actual worker function looks like to understand the signature:
+Now I understand the architecture. The worker in the feature_extracted file is a full 1200-line implementation. For US-004, we need a thin wrapper that:
+
+1. Creates the mpsc channel
+2. Spawns the relay worker as a tokio task (delegating to existing infrastructure)
+3. Returns the receiver
+
+Let me write the thin worker wrapper:
+Now I need to wire it into the existing codebase:
+
+1. Add `pub mod autochat;` to `src/tui/app/mod.rs`
+2. Add autochat state fields to `AppState` in `state.rs`
+3. Add `/autochat` slash command support in `commands.rs`
+4. Add event draining in `event_loop.rs`
+Now add autochat state to AppState. I need to add the import and field:
+Now I need to add the autochat field to the Default impl. Let me find the right location:
+Now I need to add `/autochat` to the SLASH_COMMANDS list and wire the command in commands.rs. Let me add it to the slash commands:
+Now add the `/autochat` command handler to commands.rs. Let me find where other commands are dispatched:
+Now I need to add the `/autochat` handler. I'll add it after the `/agents` handler but before the final unknown-command check. Let me find a good spot:
+Now add the `handle_autochat_command` function and update the matches list. Let me find the end of commands.rs to add the function:
+Now I need to add `/autochat` to the matches list and add the handler function. Let me update the matches:
+Now add the `handle_autochat_command` function. Let me see the end of the file:
+Now wire autochat event draining into the event loop. Let me look at the event_loop to find where to add autochat event draining:
+I'll add autochat event draining right after the chat sync TODO:
+Now let's run `cargo check` to verify:
