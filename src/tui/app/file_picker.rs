@@ -7,7 +7,6 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::session::ImageAttachment;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
@@ -98,7 +97,7 @@ fn scan_directory(dir: &Path) -> Vec<FilePickerEntry> {
         entries.push(FilePickerEntry {
             path: dir.parent().unwrap().to_path_buf(),
             is_dir: true,
-            name: "..".to_string(),
+            name: "../".to_string(),
         });
     }
 

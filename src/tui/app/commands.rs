@@ -213,7 +213,7 @@ pub async fn handle_slash_command(
         let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
         if cleaned.is_empty() {
             app.state.status =
-                "Usage: /image <path> (png, jpg, gif, webp, bmp).".to_string();
+                "Usage: /image <path> (png, jpg, jpeg, gif, webp, bmp, svg).".to_string();
         } else {
             let path = Path::new(cleaned);
             let resolved = if path.is_absolute() {

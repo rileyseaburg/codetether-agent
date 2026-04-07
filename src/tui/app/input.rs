@@ -91,7 +91,7 @@ pub(crate) fn attach_image_file(path: &Path) -> Result<ImageAttachment, String> 
     let mime_type = guess_image_mime(path)
         .ok_or_else(|| {
             format!(
-                "Unsupported image format: {}. Supported: png, jpg/jpeg, gif, webp, bmp",
+                "Unsupported image format: {}. Supported: png, jpg/jpeg, gif, webp, bmp, svg",
                 path.display()
             )
         })?;
@@ -101,7 +101,7 @@ pub(crate) fn attach_image_file(path: &Path) -> Result<ImageAttachment, String> 
     tracing::info!(
         path = %path.display(),
         mime = %mime_type,
-        size_kb = %.1,
+        size_kb = %format_args!("{size_kb:.1}"),
         "Attached image file"
     );
 
