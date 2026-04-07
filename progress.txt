@@ -1,45 +1,47 @@
-Let me read the rest of the key files.
-Let me read the remaining smart switch fields in AppState and check the tests file.
-Let me check the Default impl for the remaining smart switch fields:
-Now I have a complete understanding. Let me also check if there's an `apply_pending_smart_switch_retry` function:
-Now let me verify the existing tests in the smart_switch module and the session_events tests pass:
-Now let me run `cargo check` to verify the current state compiles:
-There are compilation errors. Let me see the full error output:
-These are pre-existing compilation errors unrelated to the smart switch feature. Let me check the chat/sync module and event_loop to understand the issues, then fix them along with any smart switch gaps.
-The issues are:
-1. `ChatSyncUiEvent` type doesn't exist in `chat/sync.rs` (it's a placeholder)
-2. The `if let` in event_loop.rs needs to be a `tokio::select!` branch pattern, not a standalone `if`
+Now let me look at the ViewMode enum and the slash command handling, plus the reference code from tui_old.rs:
+Now let me see the AppState and how the slash commands are handled in the new codebase:
+Now let me find where slash commands are dispatched in the current refactored code:
+Now let me look at the AppState struct to understand available fields for the inspector:
+Now I have enough context. Let me look at the token display module and the App struct briefly:
+Now I have a clear picture. Let me also check what `set_view_mode` does:
+Now I have all the context I need. Let me implement the inspector panel. I need to:
 
-Let me check how the event_loop.rs uses this to understand the select! structure:
-The `if let Some(ref mut rx)` at line 175 is inside a `tokio::select!` block, which is wrong syntax. It needs to be a proper select! pattern. Let me look at the full select structure:
-I see - at lines 85-112 there's already a `select!` branch for `apply_pending_smart_switch_retry`. Let me see lines 60-85 to understand the full select:
-Now I have a clear picture. The smart switch feature is almost entirely implemented. The only compilation errors are:
+1. Add `ViewMode::Inspector` variant
+2. Create `src/tui/ui/inspector/` directory with `mod.rs`, `metrics.rs`, `tool_history.rs`, `layout.rs`
+3. Register in `src/tui/ui/mod.rs`
+4. Add handler in `ui/main.rs`
+5. Add `/inspector` slash command in `commands.rs`
+Now let me count non-blank lines to verify compliance:
+Metrics and tool_history are slightly over. Let me trim them:
+All under 50 non-blank lines. Now register the module and add the ViewMode variant and command handler:
+Now add `ViewMode::Inspector` to the enum:
+Now add the `ViewMode::Inspector` handler in `ui/main.rs`:
+Now add the `/inspector` slash command handler in commands.rs:
+Now I need to check if `/inspector` is already in the slash suggestions list in commands.rs:
+I need to add `/inspector` to this list:
+Now I need to also check the normalize_slash_command to see if `/inspector` needs an alias there:
+Good - `/inspector` doesn't need an alias in normalize_slash_command since it's already a full name. Now let's verify the build:
+Build passes. Now let me also add `/inspector` to the help text and verify the help slash command list:
+Now check if there's a check_file_limits.sh to run:
+No check_file_limits.sh to run. Let me do a quick manual check of new file line counts and verify existing files haven't grown by more than 10 lines:
+Let me verify that the modified existing files grew by at most 10 lines (1 line each from my edits):
 
-1. `ChatSyncUiEvent` type missing from `chat/sync.rs` (pre-existing placeholder)
-2. `if let Some(ref mut rx)` inside `tokio::select!` at line 175 (invalid select syntax)
+- `src/tui/models/mod.rs`: +1 line (ViewMode::Inspector)
+- `src/tui/ui/mod.rs`: +1 line (pub mod inspector)
+- `src/tui/ui/main.rs`: +1 line (ViewMode::Inspector handler)
+- `src/tui/app/commands.rs`: +4 lines (/inspector handler)
+- `src/tui/app/state.rs`: +1 line (/inspector in SLASH_COMMANDS)
+- `src/tui/help.rs`: +1 line (inspector in help)
 
-The smart switch code itself (smart_switch.rs, session_events.rs integration, state.rs fields) is complete. Let me fix the two blocking compilation errors, then verify.
-Now fix the `if let` inside `tokio::select!` — this pattern is invalid. I need to handle it differently. In `tokio::select!`, you can't use `if let Some` on a receiver. The proper pattern is to use a `futures::stream::StreamExt` or use `Option::as_pin_mut`. Let me look at the exact context:
-The proper `tokio::select!` pattern for an optional receiver is to use `Option::as_pin_mut()`:
-The issue is that this `if let` block is inside a `tokio::select!` macro, where `pattern = future => handler` is the syntax. The `if let Some(ref mut rx)` is not valid select syntax. I need to use `tokio::select!`'s built-in pattern matching or handle it with a biased branch. Let me look at the actual select structure more carefully.
+All within the 10-line growth limit. Let me do one final cargo check:
+`cargo check` passes with no errors (only pre-existing warnings). All acceptance criteria are met:
 
-The cleanest approach is to use a `futures::future::OptionFuture` or `std::pin::pin` pattern. But since `tokio::select!` doesn't support `if let` on receivers, the proper pattern in newer tokio is to use a separate approach. Let me just comment out this branch for now with a placeholder, since the chat sync is a placeholder anyway:
-Now I understand the full select block. The `if let Some(ref mut rx)` at line 175 is invalid `tokio::select!` syntax. I need to handle the optional receiver properly. The standard approach in tokio is to poll it outside the select or use a helper. Since `chat_sync_rx` is a `None` by default (no sync worker running), the simplest fix is to replace this with a proper select! branch using a `std::future::pending()` when `None`:
-Let me try with `read` to get the exact bytes:
-The file uses spaces (12 spaces indentation). Let me use `sed` to make the replacement:
-Now let's run cargo check:
-One more error. Let me see it:
-The issue is that `rx` borrows `app.state.chat_sync_rx` mutably, and then we also try to borrow `&mut app.state` inside the loop. I need to restructure to avoid the double borrow. The fix is to collect the events first:
-Compilation succeeds. Now let's run the tests to verify everything passes:
-All tests pass. Let me verify the complete acceptance criteria:
+1. ✅ `src/tui/ui/inspector/` directory with `mod.rs`, `metrics.rs`, `tool_history.rs`, `layout.rs`
+2. ✅ All new files under 50 non-blank lines (9, 33, 44, 36)
+3. ✅ Inspector displays model name, token counts, tool call history
+4. ✅ `/inspector` slash command toggles the view
+5. ✅ Existing files grew by at most 4 lines each (well under 10)
+6. ✅ `cargo check` passes
+7. ✅ All new files under 50 non-blank lines
 
-1. **`is_retryable_provider_error()` classifies errors correctly** — ✅ Implemented in `src/tui/app/smart_switch.rs` L24-66, tests pass
-2. **`smart_switch_preferred_models()` returns fallback list per provider** — ✅ Implemented L69-83, tests pass
-3. **On retryable error, automatic retry with next model** — ✅ `maybe_schedule_smart_switch_retry()` called from `session_events.rs` Error handler (L124-145), retry executed in `event_loop.rs` L87-114
-4. **Retry count tracked and capped at `SMART_SWITCH_MAX_RETRIES`** — ✅ `smart_switch_retry_count` field in AppState, capped via `smart_switch_max_retries()` (L189)
-5. **`PendingSmartSwitchRetry` struct exists** — ✅ Defined in `smart_switch.rs` L86-90
-6. **Integrates with session_events.rs Error handler** — ✅ Lines 119-151
-7. **Existing tests pass** — ✅ All 20 tests (8 smart_switch + 5 session_events + 7 app tests) pass
-8. **`cargo check` passes** — ✅
-
-STORY_COMPLETE: TP-004
+STORY_COMPLETE: US-003
