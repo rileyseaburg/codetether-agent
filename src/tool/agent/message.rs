@@ -34,6 +34,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         }
     }
 
+    let response_for_fallback = response.clone();
     let mut output = json!({ "agent": name, "response": response });
     if !thinking.is_empty() {
         output["thinking"] = json!(thinking);
@@ -42,11 +43,11 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         output["tool_calls"] = json!(tools);
     }
     if let Some(err) = error {
-        if response.is_empty() {
+        if response_for_fallback.is_empty() {
             return Ok(ToolResult::error(format!("Agent @{name} failed: {err}")));
         }
         output["warning"] = json!(err);
     }
 
-    Ok(ToolResult::success(serde_json::to_string_pretty(&output).unwrap_or(response)))
+    Ok(ToolResult::success(serde_json::to_string_pretty(&output).unwrap_or(response_for_fallback)))
 }

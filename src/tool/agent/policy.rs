@@ -13,7 +13,7 @@ const SUBSCRIPTION_PROVIDERS: &[&str] = &[
     "gemini-web",
     "local_cuda",
     "zai",
-    "glm5",
+    "glm-5",
 ];
 
 const OPENROUTER_BUDGET_ALLOWLIST: &[&str] = &["qwen/qwen3.5-35ba3b"];

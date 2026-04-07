@@ -937,7 +937,9 @@ impl Session {
 
             // Handle truncated tool calls: send error results back so the LLM can retry
             if !truncated_tool_ids.is_empty() {
-                self.add_message(response.message.clone());
+                if tool_calls.is_empty() {
+                    self.add_message(response.message.clone());
+                }
                 for (tool_id, tool_name) in &truncated_tool_ids {
                     let error_content = format!(
                         "Error: Your tool call to `{tool_name}` was truncated — the arguments \
@@ -1984,7 +1986,9 @@ impl Session {
 
             // Handle truncated tool calls: send error results back so the LLM can retry
             if !truncated_tool_ids.is_empty() {
-                self.add_message(response.message.clone());
+                if tool_calls.is_empty() {
+                    self.add_message(response.message.clone());
+                }
                 for (tool_id, tool_name) in &truncated_tool_ids {
                     let error_content = format!(
                         "Error: Your tool call to `{tool_name}` was truncated — the arguments \

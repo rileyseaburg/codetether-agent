@@ -15,33 +15,38 @@ pub(super) async fn run(
     let mut tools = Vec::new();
     let mut error = None;
     let mut done = false;
-    let start = std::time::Instant::now();
     let max_wait = std::time::Duration::from_secs(300);
 
-    while !done && start.elapsed() < max_wait {
-        tokio::task::yield_now().await;
-        match tokio::time::timeout(std::time::Duration::from_millis(20), rx.recv()).await {
-            Ok(Some(event)) => match event {
-                SessionEvent::TextComplete(t) => response.push_str(&t),
-                SessionEvent::ThinkingComplete(t) => thinking.push_str(&t),
-                SessionEvent::ToolCallComplete { name, output, success, duration_ms: _ } => {
-                    tools.push(json!({
-                        "tool": name,
-                        "success": success,
-                        "output_preview": truncate_preview(&output, 200),
-                    }));
+    let timeout_fut = tokio::time::sleep(max_wait);
+    tokio::pin!(timeout_fut);
+
+    while !done {
+        tokio::select! {
+            res = rx.recv() => {
+                match res {
+                    Some(event) => match event {
+                        SessionEvent::TextComplete(t) => response.push_str(&t),
+                        SessionEvent::ThinkingComplete(t) => thinking.push_str(&t),
+                        SessionEvent::ToolCallComplete { name, output, success, duration_ms: _ } => {
+                            tools.push(json!({
+                                "tool": name,
+                                "success": success,
+                                "output_preview": truncate_preview(&output, 200),
+                            }));
+                        }
+                        SessionEvent::Error(e) => {
+                            response.push_str(&format!("\n[Error: {e}]"));
+                            error = Some(e);
+                        }
+                        SessionEvent::Done => done = true,
+                        _ => {}
+                    },
+                    None => done = true,
                 }
-                SessionEvent::Error(e) => {
-                    response.push_str(&format!("\n[Error: {e}]"));
-                    error = Some(e);
-                }
-                SessionEvent::Done => done = true,
-                _ => {}
-            },
-            Ok(None) | Err(_) => {
-                if handle.is_finished() {
-                    done = true;
-                }
+            }
+            _ = &mut timeout_fut => {
+                error = Some("Agent timed out after 5 minutes".into());
+                done = true;
             }
         }
     }
@@ -49,7 +54,6 @@ pub(super) async fn run(
     let mut updated_session: Option<Session> = None;
     if !handle.is_finished() {
         handle.abort();
-        error = Some("Agent timed out after 5 minutes".into());
     } else {
         match handle.await {
             Ok(Ok(session)) => updated_session = Some(session),
