@@ -1,47 +1,43 @@
-Now let me look at the ViewMode enum and the slash command handling, plus the reference code from tui_old.rs:
-Now let me see the AppState and how the slash commands are handled in the new codebase:
-Now let me find where slash commands are dispatched in the current refactored code:
-Now let me look at the AppState struct to understand available fields for the inspector:
-Now I have enough context. Let me look at the token display module and the App struct briefly:
-Now I have a clear picture. Let me also check what `set_view_mode` does:
-Now I have all the context I need. Let me implement the inspector panel. I need to:
+Let me understand the existing types and the current state of `input.rs`:
+The `get_clipboard_image()` function already exists in `src/tui/app/input.rs` and is already being called from `event_handlers.rs`. Let me check the current state more carefully:
+Let me check what references `get_clipboard_image` and also look at the `ImageAttachment` type:
+Now I understand the situation. The `get_clipboard_image()` already exists in `src/tui/app/input.rs` and the Ctrl+V handler already exists in `event_handlers.rs`. The PRD asks me to create a new `src/tui/clipboard.rs` module as a standalone module, extracting the clipboard functionality from `input.rs`. Let me check the current module structure and see if `clipboard.rs` already exists at `src/tui/clipboard.rs`:
+Now let me also check the `ChatMessage` and `MessageType` imports in `event_handlers.rs`:
+Now let me look at the existing Ctrl+V handler more carefully and see if there are `ChatMessage` imports:
+Interesting — `ChatMessage` and `MessageType` are used in the Ctrl+V handler but not imported! Let me look at the full Ctrl+V handler again and check for any imports I might have missed:
+Now I have a clear picture. The PRD asks me to:
 
-1. Add `ViewMode::Inspector` variant
-2. Create `src/tui/ui/inspector/` directory with `mod.rs`, `metrics.rs`, `tool_history.rs`, `layout.rs`
-3. Register in `src/tui/ui/mod.rs`
-4. Add handler in `ui/main.rs`
-5. Add `/inspector` slash command in `commands.rs`
-Now let me count non-blank lines to verify compliance:
-Metrics and tool_history are slightly over. Let me trim them:
-All under 50 non-blank lines. Now register the module and add the ViewMode variant and command handler:
-Now add `ViewMode::Inspector` to the enum:
-Now add the `ViewMode::Inspector` handler in `ui/main.rs`:
-Now add the `/inspector` slash command handler in commands.rs:
-Now I need to check if `/inspector` is already in the slash suggestions list in commands.rs:
-I need to add `/inspector` to this list:
-Now I need to also check the normalize_slash_command to see if `/inspector` needs an alias there:
-Good - `/inspector` doesn't need an alias in normalize_slash_command since it's already a full name. Now let's verify the build:
-Build passes. Now let me also add `/inspector` to the help text and verify the help slash command list:
-Now check if there's a check_file_limits.sh to run:
-No check_file_limits.sh to run. Let me do a quick manual check of new file line counts and verify existing files haven't grown by more than 10 lines:
-Let me verify that the modified existing files grew by at most 10 lines (1 line each from my edits):
+1. Create `src/tui/clipboard.rs` — a standalone file under 50 lines with `get_clipboard_image() -> Option<ImageAttachment>` 
+2. Wire a Ctrl+V handler in `event_handlers.rs` (already exists but needs to use the new module)
 
-- `src/tui/models/mod.rs`: +1 line (ViewMode::Inspector)
-- `src/tui/ui/mod.rs`: +1 line (pub mod inspector)
-- `src/tui/ui/main.rs`: +1 line (ViewMode::Inspector handler)
-- `src/tui/app/commands.rs`: +4 lines (/inspector handler)
-- `src/tui/app/state.rs`: +1 line (/inspector in SLASH_COMMANDS)
-- `src/tui/help.rs`: +1 line (inspector in help)
+The existing code has `get_clipboard_image` in `input.rs` returning `Result<ImageAttachment, String>`. The PRD says to create `clipboard.rs` with `get_clipboard_image() -> Option<ImageAttachment>`. The event handler already exists but references `input.rs`.
 
-All within the 10-line growth limit. Let me do one final cargo check:
-`cargo check` passes with no errors (only pre-existing warnings). All acceptance criteria are met:
+Let me create the new `clipboard.rs` module and update the references:
+Now add the module to `src/tui/mod.rs`:
+Now update `event_handlers.rs` to use the new `clipboard` module instead of `input::get_clipboard_image()`. The existing Ctrl+V handler uses `Result<ImageAttachment, String>` from `input.rs`, and I need to convert it to use `Option<ImageAttachment>` from the new `clipboard.rs`:
+Good. Now I need to check if the old `get_clipboard_image` in `input.rs` is still used elsewhere. If it's still used by tests or other code, I'll keep it. Let me check:
+Good — no other references to `input::get_clipboard_image`. But the old function still exists in `input.rs`. Let me check if it's still called directly within `input.rs` itself or if it's dead code:
+It's defined but no longer referenced from `event_handlers.rs`. It's still `pub(crate)` so other code could use it. Let me check the `is_ssh_or_headless` function also in input.rs to see if it's still needed there:
+The old `get_clipboard_image` and `is_ssh_or_headless` in `input.rs` are now dead code. Since the PRD says to extract clipboard support to `clipboard.rs`, I should remove the dead code from `input.rs`. Let me check if there are other callers within the crate that might still use these:
+Interesting, the grep is coming up empty. Let me double check with a more careful search:
+The old functions in `input.rs` are now dead code. Let me remove them:
+Good. Now let me also clean up the now-unused imports in `input.rs`. The `Cursor` import was used by the old clipboard code. Let me check if `Cursor` is still used elsewhere in input.rs:
+`Cursor` is no longer used in input.rs. Let me also check which other imports may now be unused:
+Let me remove the unused `Cursor` import:
+Now let's run `cargo check`:
+The compilation is running. Let me wait for it to complete:
+`cargo check` passes (only warnings, no errors). Now let me verify the file limits:
+No `check_file_limits.sh` script. Let me manually verify the line count of `clipboard.rs`:
+The file is 46 total lines, 37 non-blank lines, 30 non-blank non-comment lines — well under the 50-line limit.
 
-1. ✅ `src/tui/ui/inspector/` directory with `mod.rs`, `metrics.rs`, `tool_history.rs`, `layout.rs`
-2. ✅ All new files under 50 non-blank lines (9, 33, 44, 36)
-3. ✅ Inspector displays model name, token counts, tool call history
-4. ✅ `/inspector` slash command toggles the view
-5. ✅ Existing files grew by at most 4 lines each (well under 10)
-6. ✅ `cargo check` passes
-7. ✅ All new files under 50 non-blank lines
+Let me also verify the changes to `event_handlers.rs` didn't grow it excessively:
+Let me do a final sanity check on the key files:
+All acceptance criteria are met:
 
-STORY_COMPLETE: US-003
+- ✅ `src/tui/clipboard.rs` exists and is 37 non-blank lines (under 50)
+- ✅ `get_clipboard_image()` returns `Option<ImageAttachment>`
+- ✅ Ctrl+V handler wired in `event_handlers.rs` using `crate::tui::clipboard::get_clipboard_image()`
+- ✅ `cargo check` passes
+- ✅ Old clipboard code removed from `input.rs`, dead imports cleaned up
+
+STORY_COMPLETE: US-005
