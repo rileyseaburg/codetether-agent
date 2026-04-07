@@ -1,43 +1,51 @@
-Let me understand the existing types and the current state of `input.rs`:
-The `get_clipboard_image()` function already exists in `src/tui/app/input.rs` and is already being called from `event_handlers.rs`. Let me check the current state more carefully:
-Let me check what references `get_clipboard_image` and also look at the `ImageAttachment` type:
-Now I understand the situation. The `get_clipboard_image()` already exists in `src/tui/app/input.rs` and the Ctrl+V handler already exists in `event_handlers.rs`. The PRD asks me to create a new `src/tui/clipboard.rs` module as a standalone module, extracting the clipboard functionality from `input.rs`. Let me check the current module structure and see if `clipboard.rs` already exists at `src/tui/clipboard.rs`:
-Now let me also check the `ChatMessage` and `MessageType` imports in `event_handlers.rs`:
-Now let me look at the existing Ctrl+V handler more carefully and see if there are `ChatMessage` imports:
-Interesting — `ChatMessage` and `MessageType` are used in the Ctrl+V handler but not imported! Let me look at the full Ctrl+V handler again and check for any imports I might have missed:
-Now I have a clear picture. The PRD asks me to:
+I'll start by exploring the existing smart switch code and the TUI structure.
+Let me read the existing smart_switch.rs and the feature_extracted smart_switch_ext.rs, plus the tui_old.rs reference lines:
+The smart_switch.rs was truncated. Let me read the rest and check the constants:
+Now let me check the rest of the tests and the line count of smart_switch.rs:
+The file is 337 lines total but only 46 non-blank lines — wait, that can't be right. Let me recount:
+278 non-blank/non-comment lines. That's way over the 50-line limit. I need to split this file into sub-modules under `src/tui/app/smart_switch/`. Let me also check the reference code in tui_old.rs:
+Now let me read the full smart_switch.rs to understand what needs splitting:
+Now let me check how smart_switch is used from the app module to understand the integration:
+Now I have a clear picture. The smart_switch.rs file has all the logic already implemented and integrated. The issue is it's 278 non-blank lines — way over the 50-line limit. I need to split it into sub-modules under `src/tui/app/smart_switch/` directory.
 
-1. Create `src/tui/clipboard.rs` — a standalone file under 50 lines with `get_clipboard_image() -> Option<ImageAttachment>` 
-2. Wire a Ctrl+V handler in `event_handlers.rs` (already exists but needs to use the new module)
+Let me check if there's a `check_file_limits.sh`:
+No check script. The key task: split `smart_switch.rs` (278 non-blank lines) into sub-modules under `src/tui/app/smart_switch/` — each under 50 non-blank lines. The logic is all there and working; this is a refactoring task.
 
-The existing code has `get_clipboard_image` in `input.rs` returning `Result<ImageAttachment, String>`. The PRD says to create `clipboard.rs` with `get_clipboard_image() -> Option<ImageAttachment>`. The event handler already exists but references `input.rs`.
+Let me plan the split:
+1. `mod.rs` — re-exports
+2. `error_detection.rs` — `is_retryable_provider_error`, `normalize_provider_alias`, `smart_switch_model_key`
+3. `models.rs` — `smart_switch_preferred_models`, `smart_switch_candidates`
+4. `retry.rs` — `PendingSmartSwitchRetry`, `maybe_schedule_smart_switch_retry`, `should_execute_smart_switch`, `extract_provider_from_model`, `smart_switch_max_retries`
+5. `tests.rs` — all tests
+The feature_extracted version is also over 50 lines, but the PRD says to focus on the main smart_switch module. Let me now create the split modules:
+Now let me check non-blank line counts for each file:
+`models.rs` (70), `retry.rs` (55), and `tests.rs` (82) are over 50 lines. Let me split them further. I'll split models.rs into `models.rs` (preferred_models only) and `candidates.rs`, retry.rs into `retry.rs` and `helpers.rs`, and tests into multiple files.
+Now split retry.rs into `retry.rs` and `helpers.rs`:
+Now update mod.rs to include the new submodules:
+Now split tests into separate files:
+Now update mod.rs to include the test_candidates module:
+Now let me check all the non-blank line counts:
+`candidates.rs` is at 84 — way over. Need to split it further. Let me split it into `candidates.rs` (just the public function) and `candidate_helpers.rs` (the three helper functions):
+Now update mod.rs to include the new submodules:
+Need to add the new modules. Let me rewrite mod.rs:
+Now check non-blank line counts again:
+All files are at or under 50 non-blank lines! Let me verify compilation:
+The output was truncated. Let me check the end result:
+There's an error. Let me see the full error:
+Two issues to fix: the type comparison error and the unused `current_model` parameter. Let me fix them:
+Fix both issues:
+`cargo check` passes! Only warnings (pre-existing). Let me now verify the line counts one final time:
+`cross_provider.rs` is at 51 — just 1 over. Let me trim it slightly:
+I need to split cross_provider.rs into two files — `priority.rs` and `extra.rs`:
+Now update mod.rs and candidates.rs to use the new module names:
+Compiles clean. Final line count check:
+All files are at or under 50 non-blank lines. Let me verify all acceptance criteria are met:
 
-Let me create the new `clipboard.rs` module and update the references:
-Now add the module to `src/tui/mod.rs`:
-Now update `event_handlers.rs` to use the new `clipboard` module instead of `input::get_clipboard_image()`. The existing Ctrl+V handler uses `Result<ImageAttachment, String>` from `input.rs`, and I need to convert it to use `Option<ImageAttachment>` from the new `clipboard.rs`:
-Good. Now I need to check if the old `get_clipboard_image` in `input.rs` is still used elsewhere. If it's still used by tests or other code, I'll keep it. Let me check:
-Good — no other references to `input::get_clipboard_image`. But the old function still exists in `input.rs`. Let me check if it's still called directly within `input.rs` itself or if it's dead code:
-It's defined but no longer referenced from `event_handlers.rs`. It's still `pub(crate)` so other code could use it. Let me check the `is_ssh_or_headless` function also in input.rs to see if it's still needed there:
-The old `get_clipboard_image` and `is_ssh_or_headless` in `input.rs` are now dead code. Since the PRD says to extract clipboard support to `clipboard.rs`, I should remove the dead code from `input.rs`. Let me check if there are other callers within the crate that might still use these:
-Interesting, the grep is coming up empty. Let me double check with a more careful search:
-The old functions in `input.rs` are now dead code. Let me remove them:
-Good. Now let me also clean up the now-unused imports in `input.rs`. The `Cursor` import was used by the old clipboard code. Let me check if `Cursor` is still used elsewhere in input.rs:
-`Cursor` is no longer used in input.rs. Let me also check which other imports may now be unused:
-Let me remove the unused `Cursor` import:
-Now let's run `cargo check`:
-The compilation is running. Let me wait for it to complete:
-`cargo check` passes (only warnings, no errors). Now let me verify the file limits:
-No `check_file_limits.sh` script. Let me manually verify the line count of `clipboard.rs`:
-The file is 46 total lines, 37 non-blank lines, 30 non-blank non-comment lines — well under the 50-line limit.
+1. ✅ `is_retryable_provider_error()` — in `error_detection.rs`, identifies rate limits, timeouts, 503s
+2. ✅ `smart_switch_preferred_models()` — in `models.rs`, returns fallback models per provider
+3. ✅ On retryable error, TUI switches model and retries — `retry.rs` + integration in `session_events.rs` and `event_loop.rs` (pre-existing)
+4. ✅ All new files under 50 non-blank lines
+5. ✅ `cargo check` passes
+6. ✅ No `check_file_limits.sh` exists but all files pass 50-line limit
 
-Let me also verify the changes to `event_handlers.rs` didn't grow it excessively:
-Let me do a final sanity check on the key files:
-All acceptance criteria are met:
-
-- ✅ `src/tui/clipboard.rs` exists and is 37 non-blank lines (under 50)
-- ✅ `get_clipboard_image()` returns `Option<ImageAttachment>`
-- ✅ Ctrl+V handler wired in `event_handlers.rs` using `crate::tui::clipboard::get_clipboard_image()`
-- ✅ `cargo check` passes
-- ✅ Old clipboard code removed from `input.rs`, dead imports cleaned up
-
-STORY_COMPLETE: US-005
+STORY_COMPLETE: US-006
