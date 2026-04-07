@@ -61,6 +61,18 @@ fn vault_extra_string(secrets: &crate::secrets::ProviderSecrets, keys: &[&str]) 
 }
 
 fn vault_extra_bool(secrets: &crate::secrets::ProviderSecrets, keys: &[&str]) -> Option<bool> {
+    keys.iter().find_map(|key| {
+        secrets
+            .extra
+            .get(*key)
+            .and_then(|value| value.as_str())
+            .and_then(|s| match s {
+                "true" | "1" | "yes" => Some(true),
+                "false" | "0" | "no" => Some(false),
+                _ => None,
+            })
+    })
+}
 
 fn normalize_minio_endpoint(endpoint: &str) -> String {
     let mut normalized = endpoint.trim().trim_end_matches('/').to_string();
@@ -519,5 +531,5 @@ async fn run_chat_sync_worker(
     }
 }
 
-#[derive(Debug, Serialize)]
-}
+// TODO: Incomplete struct definition was truncated during extraction.
+// Restore from source branch when integrating this module.

@@ -3,6 +3,18 @@
 //! These are `impl App` methods extracted from the branch monolith.
 //! Integration target: src/tui/app/impl_app.rs or new dedicated modules.
 
+use ratatui::style::Color;
+
+// NOTE: These methods belong on `impl App`. The `App` type lives in
+// `crate::tui::app::App`. This module is not yet wired into the
+// compilation graph. When integrating, move these into an `impl App`
+// block with the proper import:
+//   use crate::tui::app::App;
+//   impl App {
+//       ...
+//   }
+
+// --- Standalone helper stubs for reference ---
 
     fn is_agent_protocol_registered(&self, agent_name: &str) -> bool {
         self.bus
