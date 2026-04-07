@@ -606,28 +606,27 @@ impl Provider for OpenAIProvider {
                             if let Some(tool_calls) = &choice.delta.tool_calls {
                                 for tc in tool_calls {
                                     if let Some(func) = &tc.function {
-                                        // First chunk for a tool call has id and name
-                                        if let Some(id) = &tc.id {
-                                            out.push(StreamChunk::ToolCallStart {
-                                                id: id.clone(),
-                                                name: func
-                                                    .name
-                                                    .clone()
-                                                    .unwrap_or_default(),
-                                            });
+                                        // Derive a stable id: use tc.id if present,
+                                        // otherwise fall back to tool_{index}
+                                        let id = tc.id.clone().unwrap_or_else(|| {
+                                            format!("tool_{}", tc.index)
+                                        });
+
+                                        // Emit ToolCallStart when we have a non-empty name
+                                        if let Some(name) = func.name.clone() {
+                                            if !name.is_empty() {
+                                                out.push(StreamChunk::ToolCallStart {
+                                                    id: id.clone(),
+                                                    name,
+                                                });
+                                            }
                                         }
+
                                         // Argument deltas
                                         if let Some(args) = &func.arguments {
                                             if !args.is_empty() {
-                                                // Derive the id from tc.id or use index as fallback
-                                                let id = tc
-                                                    .id
-                                                    .clone()
-                                                    .unwrap_or_else(|| {
-                                                        format!("tool_{}", tc.index)
-                                                    });
                                                 out.push(StreamChunk::ToolCallDelta {
-                                                    id,
+                                                    id: id.clone(),
                                                     arguments_delta: args.clone(),
                                                 });
                                             }
