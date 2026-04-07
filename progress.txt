@@ -1,45 +1,43 @@
-Let me read the rest of the key files.
-Let me read the remaining smart switch fields in AppState and check the tests file.
-Let me check the Default impl for the remaining smart switch fields:
-Now I have a complete understanding. Let me also check if there's an `apply_pending_smart_switch_retry` function:
-Now let me verify the existing tests in the smart_switch module and the session_events tests pass:
-Now let me run `cargo check` to verify the current state compiles:
-There are compilation errors. Let me see the full error output:
-These are pre-existing compilation errors unrelated to the smart switch feature. Let me check the chat/sync module and event_loop to understand the issues, then fix them along with any smart switch gaps.
-The issues are:
-1. `ChatSyncUiEvent` type doesn't exist in `chat/sync.rs` (it's a placeholder)
-2. The `if let` in event_loop.rs needs to be a `tokio::select!` branch pattern, not a standalone `if`
+Let me understand the existing types and the current state of `input.rs`:
+The `get_clipboard_image()` function already exists in `src/tui/app/input.rs` and is already being called from `event_handlers.rs`. Let me check the current state more carefully:
+Let me check what references `get_clipboard_image` and also look at the `ImageAttachment` type:
+Now I understand the situation. The `get_clipboard_image()` already exists in `src/tui/app/input.rs` and the Ctrl+V handler already exists in `event_handlers.rs`. The PRD asks me to create a new `src/tui/clipboard.rs` module as a standalone module, extracting the clipboard functionality from `input.rs`. Let me check the current module structure and see if `clipboard.rs` already exists at `src/tui/clipboard.rs`:
+Now let me also check the `ChatMessage` and `MessageType` imports in `event_handlers.rs`:
+Now let me look at the existing Ctrl+V handler more carefully and see if there are `ChatMessage` imports:
+Interesting — `ChatMessage` and `MessageType` are used in the Ctrl+V handler but not imported! Let me look at the full Ctrl+V handler again and check for any imports I might have missed:
+Now I have a clear picture. The PRD asks me to:
 
-Let me check how the event_loop.rs uses this to understand the select! structure:
-The `if let Some(ref mut rx)` at line 175 is inside a `tokio::select!` block, which is wrong syntax. It needs to be a proper select! pattern. Let me look at the full select structure:
-I see - at lines 85-112 there's already a `select!` branch for `apply_pending_smart_switch_retry`. Let me see lines 60-85 to understand the full select:
-Now I have a clear picture. The smart switch feature is almost entirely implemented. The only compilation errors are:
+1. Create `src/tui/clipboard.rs` — a standalone file under 50 lines with `get_clipboard_image() -> Option<ImageAttachment>` 
+2. Wire a Ctrl+V handler in `event_handlers.rs` (already exists but needs to use the new module)
 
-1. `ChatSyncUiEvent` type missing from `chat/sync.rs` (pre-existing placeholder)
-2. `if let Some(ref mut rx)` inside `tokio::select!` at line 175 (invalid select syntax)
+The existing code has `get_clipboard_image` in `input.rs` returning `Result<ImageAttachment, String>`. The PRD says to create `clipboard.rs` with `get_clipboard_image() -> Option<ImageAttachment>`. The event handler already exists but references `input.rs`.
 
-The smart switch code itself (smart_switch.rs, session_events.rs integration, state.rs fields) is complete. Let me fix the two blocking compilation errors, then verify.
-Now fix the `if let` inside `tokio::select!` — this pattern is invalid. I need to handle it differently. In `tokio::select!`, you can't use `if let Some` on a receiver. The proper pattern is to use a `futures::stream::StreamExt` or use `Option::as_pin_mut`. Let me look at the exact context:
-The proper `tokio::select!` pattern for an optional receiver is to use `Option::as_pin_mut()`:
-The issue is that this `if let` block is inside a `tokio::select!` macro, where `pattern = future => handler` is the syntax. The `if let Some(ref mut rx)` is not valid select syntax. I need to use `tokio::select!`'s built-in pattern matching or handle it with a biased branch. Let me look at the actual select structure more carefully.
+Let me create the new `clipboard.rs` module and update the references:
+Now add the module to `src/tui/mod.rs`:
+Now update `event_handlers.rs` to use the new `clipboard` module instead of `input::get_clipboard_image()`. The existing Ctrl+V handler uses `Result<ImageAttachment, String>` from `input.rs`, and I need to convert it to use `Option<ImageAttachment>` from the new `clipboard.rs`:
+Good. Now I need to check if the old `get_clipboard_image` in `input.rs` is still used elsewhere. If it's still used by tests or other code, I'll keep it. Let me check:
+Good — no other references to `input::get_clipboard_image`. But the old function still exists in `input.rs`. Let me check if it's still called directly within `input.rs` itself or if it's dead code:
+It's defined but no longer referenced from `event_handlers.rs`. It's still `pub(crate)` so other code could use it. Let me check the `is_ssh_or_headless` function also in input.rs to see if it's still needed there:
+The old `get_clipboard_image` and `is_ssh_or_headless` in `input.rs` are now dead code. Since the PRD says to extract clipboard support to `clipboard.rs`, I should remove the dead code from `input.rs`. Let me check if there are other callers within the crate that might still use these:
+Interesting, the grep is coming up empty. Let me double check with a more careful search:
+The old functions in `input.rs` are now dead code. Let me remove them:
+Good. Now let me also clean up the now-unused imports in `input.rs`. The `Cursor` import was used by the old clipboard code. Let me check if `Cursor` is still used elsewhere in input.rs:
+`Cursor` is no longer used in input.rs. Let me also check which other imports may now be unused:
+Let me remove the unused `Cursor` import:
+Now let's run `cargo check`:
+The compilation is running. Let me wait for it to complete:
+`cargo check` passes (only warnings, no errors). Now let me verify the file limits:
+No `check_file_limits.sh` script. Let me manually verify the line count of `clipboard.rs`:
+The file is 46 total lines, 37 non-blank lines, 30 non-blank non-comment lines — well under the 50-line limit.
 
-The cleanest approach is to use a `futures::future::OptionFuture` or `std::pin::pin` pattern. But since `tokio::select!` doesn't support `if let` on receivers, the proper pattern in newer tokio is to use a separate approach. Let me just comment out this branch for now with a placeholder, since the chat sync is a placeholder anyway:
-Now I understand the full select block. The `if let Some(ref mut rx)` at line 175 is invalid `tokio::select!` syntax. I need to handle the optional receiver properly. The standard approach in tokio is to poll it outside the select or use a helper. Since `chat_sync_rx` is a `None` by default (no sync worker running), the simplest fix is to replace this with a proper select! branch using a `std::future::pending()` when `None`:
-Let me try with `read` to get the exact bytes:
-The file uses spaces (12 spaces indentation). Let me use `sed` to make the replacement:
-Now let's run cargo check:
-One more error. Let me see it:
-The issue is that `rx` borrows `app.state.chat_sync_rx` mutably, and then we also try to borrow `&mut app.state` inside the loop. I need to restructure to avoid the double borrow. The fix is to collect the events first:
-Compilation succeeds. Now let's run the tests to verify everything passes:
-All tests pass. Let me verify the complete acceptance criteria:
+Let me also verify the changes to `event_handlers.rs` didn't grow it excessively:
+Let me do a final sanity check on the key files:
+All acceptance criteria are met:
 
-1. **`is_retryable_provider_error()` classifies errors correctly** — ✅ Implemented in `src/tui/app/smart_switch.rs` L24-66, tests pass
-2. **`smart_switch_preferred_models()` returns fallback list per provider** — ✅ Implemented L69-83, tests pass
-3. **On retryable error, automatic retry with next model** — ✅ `maybe_schedule_smart_switch_retry()` called from `session_events.rs` Error handler (L124-145), retry executed in `event_loop.rs` L87-114
-4. **Retry count tracked and capped at `SMART_SWITCH_MAX_RETRIES`** — ✅ `smart_switch_retry_count` field in AppState, capped via `smart_switch_max_retries()` (L189)
-5. **`PendingSmartSwitchRetry` struct exists** — ✅ Defined in `smart_switch.rs` L86-90
-6. **Integrates with session_events.rs Error handler** — ✅ Lines 119-151
-7. **Existing tests pass** — ✅ All 20 tests (8 smart_switch + 5 session_events + 7 app tests) pass
-8. **`cargo check` passes** — ✅
+- ✅ `src/tui/clipboard.rs` exists and is 37 non-blank lines (under 50)
+- ✅ `get_clipboard_image()` returns `Option<ImageAttachment>`
+- ✅ Ctrl+V handler wired in `event_handlers.rs` using `crate::tui::clipboard::get_clipboard_image()`
+- ✅ `cargo check` passes
+- ✅ Old clipboard code removed from `input.rs`, dead imports cleaned up
 
-STORY_COMPLETE: TP-004
+STORY_COMPLETE: US-005

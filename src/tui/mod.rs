@@ -1,5 +1,6 @@
 pub mod app;
 pub mod chat;
+pub mod clipboard;
 pub mod constants;
 pub mod help;
 pub mod input;

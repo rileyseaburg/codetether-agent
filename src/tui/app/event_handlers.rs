@@ -75,8 +75,8 @@ pub async fn handle_event(
                 .contains(crossterm::event::KeyModifiers::CONTROL)
                 && app.state.view_mode == ViewMode::Chat =>
         {
-            match crate::tui::app::input::get_clipboard_image() {
-                Ok(image) => {
+            match crate::tui::clipboard::get_clipboard_image() {
+                Some(image) => {
                     app.state.pending_images.push(image);
                     let image_count = app.state.pending_images.len();
                     app.state.status = if image_count == 1 {
@@ -86,13 +86,9 @@ pub async fn handle_event(
                         format!("Attached {image_count} clipboard images. Press Enter to send them.")
                     };
                 }
-                Err(msg) => {
-                    app.state.messages.push(ChatMessage::new(
-                        MessageType::Error,
-                        format!("📷 {msg}"),
-                    ));
-                    app.state.status = "Image paste failed — use /image <path> instead".to_string();
-                    app.state.scroll_to_bottom();
+                None => {
+                    app.state.status =
+                        "No image in clipboard — use /image <path> instead".to_string();
                 }
             }
         }
