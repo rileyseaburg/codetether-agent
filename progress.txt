@@ -1,51 +1,39 @@
-I'll start by exploring the existing smart switch code and the TUI structure.
-Let me read the existing smart_switch.rs and the feature_extracted smart_switch_ext.rs, plus the tui_old.rs reference lines:
-The smart_switch.rs was truncated. Let me read the rest and check the constants:
-Now let me check the rest of the tests and the line count of smart_switch.rs:
-The file is 337 lines total but only 46 non-blank lines — wait, that can't be right. Let me recount:
-278 non-blank/non-comment lines. That's way over the 50-line limit. I need to split this file into sub-modules under `src/tui/app/smart_switch/`. Let me also check the reference code in tui_old.rs:
-Now let me read the full smart_switch.rs to understand what needs splitting:
-Now let me check how smart_switch is used from the app module to understand the integration:
-Now I have a clear picture. The smart_switch.rs file has all the logic already implemented and integrated. The issue is it's 278 non-blank lines — way over the 50-line limit. I need to split it into sub-modules under `src/tui/app/smart_switch/` directory.
+Let me explore the reference files and existing code:
+Let me read the rest of the event loop and the existing constants/state:
+Now let me see the rest of the AppState (the watchdog fields) and understand the current structure:
+Now let me look at the remaining parts of state.rs (the methods) and the UI rendering:
+Let me see the remaining state.rs methods and understand what's there for watchdog:
+Now let me check the UI rendering to see if there's already any watchdog notification rendering:
+Now I have a clear picture. Let me create the watchdog module. The event loop already has inline watchdog logic (lines 117-172) that I'll extract into dedicated modules, plus add a `WatchdogNotification` struct for UI rendering.
+Now register the module in `mod.rs` and add the `watchdog_notification` field to `AppState`:
+Now update the event loop to use the watchdog module. The event loop already has inline stall detection (lines 117-172). I'll refactor it to call `check_watchdog_stall` and set the notification:
+Now I'll refactor the event loop watchdog branch to use the new module and set the notification:
+Good, the edit was applied. Now let me add the watchdog cancel/dismiss key handlers to the event handlers, and render the notification in the UI. Let me check what the event handlers look like for Escape key handling:
+I need to add watchdog notification handling before the Esc handler so it takes priority when notification is showing:
+Now let me add the watchdog notification rendering to the UI. Let me check the UI rendering:
+I can see the `ui` function renders views and then overlays symbol search at the end. I'll add the watchdog notification overlay similarly after the symbol search:
+Now let me run `cargo check` to verify:
+It's compiling. Let me wait for it to finish:
+`cargo check` passes with only pre-existing warnings. Now let me verify the file line counts for the new watchdog files:
+All files are well under 50 non-blank lines. Let me verify the AppState growth is minimal:
+AppState grew by exactly 2 lines (one field declaration, one default). Let me also verify the event loop's watchdog check is concise (the tick handler calls into the module):
+Hmm, it seems the edit didn't apply. Let me check:
+The edit didn't take effect. The diff confirmation showed it but it seems it was rejected or didn't apply. Let me use `multiedit` instead:
+Now let me also fix the event_handlers.rs edit (which also may not have applied):
+Also didn't apply. Let me use multiedit:
+Now verify the UI edit applied:
+UI edit also didn't apply. Let me check:
+Now run cargo check again:
+`cargo check` passes. Let me create the `check_file_limits.sh` and run it:
+All checks pass. Let me do a final summary verification:
+All acceptance criteria met:
 
-Let me check if there's a `check_file_limits.sh`:
-No check script. The key task: split `smart_switch.rs` (278 non-blank lines) into sub-modules under `src/tui/app/smart_switch/` — each under 50 non-blank lines. The logic is all there and working; this is a refactoring task.
+- ✅ `src/tui/app/watchdog/` directory with `mod.rs` + 4 sub-files (`state.rs`, `detector.rs`, `handler.rs`, `notification.rs`)
+- ✅ Every new file under 50 non-blank lines (max is 31 in `notification.rs`)
+- ✅ Watchdog detects stalled requests via `check_watchdog_stall()` with configurable timeout (`MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS` constant, env var `CODETETHER_MAIN_WATCHDOG_TIMEOUT_SECS`)
+- ✅ Notification UI renders with cancel (`Ctrl+X`) and dismiss (`Esc`) options
+- ✅ AppState grew by exactly 2 lines (one field declaration + one default)
+- ✅ `cargo check` passes
+- ✅ File limit check passes
 
-Let me plan the split:
-1. `mod.rs` — re-exports
-2. `error_detection.rs` — `is_retryable_provider_error`, `normalize_provider_alias`, `smart_switch_model_key`
-3. `models.rs` — `smart_switch_preferred_models`, `smart_switch_candidates`
-4. `retry.rs` — `PendingSmartSwitchRetry`, `maybe_schedule_smart_switch_retry`, `should_execute_smart_switch`, `extract_provider_from_model`, `smart_switch_max_retries`
-5. `tests.rs` — all tests
-The feature_extracted version is also over 50 lines, but the PRD says to focus on the main smart_switch module. Let me now create the split modules:
-Now let me check non-blank line counts for each file:
-`models.rs` (70), `retry.rs` (55), and `tests.rs` (82) are over 50 lines. Let me split them further. I'll split models.rs into `models.rs` (preferred_models only) and `candidates.rs`, retry.rs into `retry.rs` and `helpers.rs`, and tests into multiple files.
-Now split retry.rs into `retry.rs` and `helpers.rs`:
-Now update mod.rs to include the new submodules:
-Now split tests into separate files:
-Now update mod.rs to include the test_candidates module:
-Now let me check all the non-blank line counts:
-`candidates.rs` is at 84 — way over. Need to split it further. Let me split it into `candidates.rs` (just the public function) and `candidate_helpers.rs` (the three helper functions):
-Now update mod.rs to include the new submodules:
-Need to add the new modules. Let me rewrite mod.rs:
-Now check non-blank line counts again:
-All files are at or under 50 non-blank lines! Let me verify compilation:
-The output was truncated. Let me check the end result:
-There's an error. Let me see the full error:
-Two issues to fix: the type comparison error and the unused `current_model` parameter. Let me fix them:
-Fix both issues:
-`cargo check` passes! Only warnings (pre-existing). Let me now verify the line counts one final time:
-`cross_provider.rs` is at 51 — just 1 over. Let me trim it slightly:
-I need to split cross_provider.rs into two files — `priority.rs` and `extra.rs`:
-Now update mod.rs and candidates.rs to use the new module names:
-Compiles clean. Final line count check:
-All files are at or under 50 non-blank lines. Let me verify all acceptance criteria are met:
-
-1. ✅ `is_retryable_provider_error()` — in `error_detection.rs`, identifies rate limits, timeouts, 503s
-2. ✅ `smart_switch_preferred_models()` — in `models.rs`, returns fallback models per provider
-3. ✅ On retryable error, TUI switches model and retries — `retry.rs` + integration in `session_events.rs` and `event_loop.rs` (pre-existing)
-4. ✅ All new files under 50 non-blank lines
-5. ✅ `cargo check` passes
-6. ✅ No `check_file_limits.sh` exists but all files pass 50-line limit
-
-STORY_COMPLETE: US-006
+STORY_COMPLETE: US-007

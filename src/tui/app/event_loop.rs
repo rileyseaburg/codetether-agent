@@ -116,56 +116,45 @@ pub async fn run_event_loop(
 
             // Watchdog timer: detect stuck requests and auto-restart.
             _ = watchdog_timer.tick() => {
-                if app.state.processing {
-                    let timed_out = app.state.main_last_event_at
-                        .map(|t| t.elapsed() >= watchdog_interval)
-                        .unwrap_or(true);
-
-                    if timed_out {
-                        let prompt = app.state.main_watchdog_root_prompt.clone()
-                            .or_else(|| app.state.main_inflight_prompt.clone());
-
-                        if let Some(prompt) = prompt {
-                            app.state.main_watchdog_restart_count += 1;
-                            let count = app.state.main_watchdog_restart_count;
-
-                            // Cancel the stuck request: mark processing as stopped,
-                            // clear streaming state, and record the error.
-                            app.state.processing = false;
-                            app.state.streaming_text.clear();
-                            app.state.clear_request_timing();
-                            app.state.status = format!(
-                                "Watchdog timeout — restarting request (attempt {count})"
-                            );
-
-                            app.state.messages.push(ChatMessage::new(
-                                MessageType::Error,
-                                format!(
-                                    "⚠ Watchdog: no events for {MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS}s. \
-                                     Auto-restarting (attempt {count})."
-                                ),
-                            ));
-                            app.state.scroll_to_bottom();
-
-                            // Re-send the original prompt.
-                            if let Some(registry) = registry.as_ref() {
-                                app.state.main_inflight_prompt = Some(prompt.clone());
-                                app.state.processing = true;
-                                app.state.begin_request_timing();
-                                app.state.main_last_event_at = Some(Instant::now());
-
-                                let mut session_for_task = session.clone();
-                                let event_tx = event_tx.clone();
-                                let result_tx = result_tx.clone();
-                                let reg = Arc::clone(registry);
-                                tokio::spawn(async move {
-                                    let result = session_for_task
-                                        .prompt_with_events(&prompt, event_tx, reg)
-                                        .await
-                                        .map(|_| session_for_task);
-                                    let _ = result_tx.send(result).await;
-                                });
-                            }
+                if let Some(notif) = crate::tui::app::watchdog::check_watchdog_stall(
+                    &app.state, watchdog_interval,
+                ) {
+                    let prompt = app.state.main_watchdog_root_prompt.clone()
+                        .or_else(|| app.state.main_inflight_prompt.clone());
+                    if let Some(prompt) = prompt {
+                        app.state.main_watchdog_restart_count += 1;
+                        let count = app.state.main_watchdog_restart_count;
+                        app.state.watchdog_notification = Some(notif);
+                        app.state.processing = false;
+                        app.state.streaming_text.clear();
+                        app.state.clear_request_timing();
+                        app.state.status = format!(
+                            "Watchdog timeout — restarting request (attempt {count})"
+                        );
+                        app.state.messages.push(ChatMessage::new(
+                            MessageType::Error,
+                            format!(
+                                "⚠ Watchdog: no events for {MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS}s. \
+                                 Auto-restarting (attempt {count})."
+                            ),
+                        ));
+                        app.state.scroll_to_bottom();
+                        if let Some(registry) = registry.as_ref() {
+                            app.state.main_inflight_prompt = Some(prompt.clone());
+                            app.state.processing = true;
+                            app.state.begin_request_timing();
+                            app.state.main_last_event_at = Some(Instant::now());
+                            let mut session_for_task = session.clone();
+                            let event_tx = event_tx.clone();
+                            let result_tx = result_tx.clone();
+                            let reg = Arc::clone(registry);
+                            tokio::spawn(async move {
+                                let result = session_for_task
+                                    .prompt_with_events(&prompt, event_tx, reg)
+                                    .await
+                                    .map(|_| session_for_task);
+                                let _ = result_tx.send(result).await;
+                            });
                         }
                     }
                 }

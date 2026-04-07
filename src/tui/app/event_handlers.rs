@@ -92,7 +92,19 @@ pub async fn handle_event(
                 }
             }
         }
-        KeyCode::Esc => handle_escape(app),
+        KeyCode::Esc => {
+            if app.state.watchdog_notification.is_some() {
+                crate::tui::app::watchdog::handle_watchdog_dismiss(&mut app.state);
+            } else {
+                handle_escape(app);
+            }
+        }
+        KeyCode::Char('x')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && app.state.watchdog_notification.is_some() =>
+        {
+            crate::tui::app::watchdog::handle_watchdog_cancel(&mut app.state);
+        }
         KeyCode::Tab if app.state.slash_suggestions_visible() => handle_tab(app),
         KeyCode::Char('?') => toggle_help(app),
         KeyCode::Char('j')
