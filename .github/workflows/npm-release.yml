@@ -9,20 +9,29 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
-    # Only run if an npm token is configured.
-    if: ${{ secrets.NPM_TOKEN != '' }}
 
     steps:
+      - name: Check NPM_TOKEN
+        id: check_token
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "⚠️  NPM_TOKEN not configured — skipping publish"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.check_token.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node
+        if: steps.check_token.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Set npm package version from git tag
+        if: steps.check_token.outputs.skip != 'true'
         working-directory: npm/codetether
         run: |
           set -euo pipefail
@@ -31,10 +40,12 @@ jobs:
           npm version "$ver" --no-git-tag-version
 
       - name: Install dependencies
+        if: steps.check_token.outputs.skip != 'true'
         working-directory: npm/codetether
         run: npm install --omit=dev
 
       - name: Publish
+        if: steps.check_token.outputs.skip != 'true'
         working-directory: npm/codetether
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
