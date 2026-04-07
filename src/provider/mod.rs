@@ -332,7 +332,7 @@ impl ProviderRegistry {
             // Normalize provider aliases
             let normalized = match provider_name {
                 "local-cuda" | "localcuda" => "local_cuda",
-                "zhipuai" => "zai",
+                "zhipuai" | "z-ai" => "zai",
                 other => other,
             };
 
@@ -856,15 +856,26 @@ impl ProviderRegistry {
                         }
                     }
 
-                    // Z.AI (formerly ZhipuAI) — first-class provider for GLM models
-                    "zhipuai" | "zai" => {
+                    // Z.AI Coding Plan (subscription, flat-rate GLM coding endpoint)
+                    "zhipuai" | "zai" | "z-ai" => {
+                        let base_url = secrets
+                            .base_url
+                            .clone()
+                            .unwrap_or_else(|| zai::CODING_BASE_URL.to_string());
+                        match zai::ZaiProvider::with_base_url_and_name(api_key, base_url, "zai") {
+                            Ok(p) => registry.register(Arc::new(p)),
+                            Err(e) => tracing::warn!("Failed to init zai: {}", e),
+                        }
+                    }
+                    // Z.AI API (pay-per-token, standard balance-consumption endpoint)
+                    "zai-api" => {
                         let base_url = secrets
                             .base_url
                             .clone()
                             .unwrap_or_else(|| zai::DEFAULT_BASE_URL.to_string());
-                        match zai::ZaiProvider::with_base_url(api_key, base_url) {
+                        match zai::ZaiProvider::with_base_url_and_name(api_key, base_url, "zai-api") {
                             Ok(p) => registry.register(Arc::new(p)),
-                            Err(e) => tracing::warn!("Failed to init zai: {}", e),
+                            Err(e) => tracing::warn!("Failed to init zai-api: {}", e),
                         }
                     }
                     // Cerebras - OpenAI-compatible fast inference
@@ -1036,9 +1047,17 @@ impl ProviderRegistry {
                 Ok(Arc::new(openrouter::OpenRouterProvider::new(key)?))
             }),
             ("zai", "ZAI_API_KEY", |key| {
-                Ok(Arc::new(zai::ZaiProvider::with_base_url(
+                Ok(Arc::new(zai::ZaiProvider::with_base_url_and_name(
+                    key,
+                    zai::CODING_BASE_URL.to_string(),
+                    "zai",
+                )?))
+            }),
+            ("zai-api", "ZAI_API_KEY", |key| {
+                Ok(Arc::new(zai::ZaiProvider::with_base_url_and_name(
                     key,
                     zai::DEFAULT_BASE_URL.to_string(),
+                    "zai-api",
                 )?))
             }),
         ];

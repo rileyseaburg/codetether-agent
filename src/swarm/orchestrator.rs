@@ -58,7 +58,10 @@ impl Orchestrator {
 
         let (provider, model) = if let Some(ref model_str) = model_str {
             let (prov, mod_id) = parse_model_string(model_str);
-            let prov = prov.map(|p| if p == "zhipuai" { "zai" } else { p });
+            let prov = prov.map(|p| match p {
+                "zhipuai" | "z-ai" => "zai",
+                other => other,
+            });
             let provider = if let Some(explicit_provider) = prov {
                 if provider_list.contains(&explicit_provider) {
                     explicit_provider.to_string()
@@ -492,7 +495,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
         "openai" => "gpt-4o".to_string(),
         "google" => "gemini-2.5-pro".to_string(),
-        "zhipuai" | "zai" => "glm-5".to_string(),
+        "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
         "openrouter" => "z-ai/glm-5".to_string(),
         "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
         "github-copilot" | "github-copilot-enterprise" | "openai-codex" => "gpt-5-mini".to_string(),

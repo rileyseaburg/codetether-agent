@@ -68,7 +68,7 @@ impl Agent {
             .model
             .clone()
             .unwrap_or_else(|| match self.provider.name() {
-                "zhipuai" | "zai" => "glm-5".to_string(),
+                "zhipuai" | "zai" | "zai-api" => "glm-5".to_string(),
                 "openrouter" => "z-ai/glm-5".to_string(),
                 _ => "glm-5".to_string(),
             })

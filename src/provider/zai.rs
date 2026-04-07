@@ -18,14 +18,18 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
+/// Standard pay-per-token API endpoint.
 pub const DEFAULT_BASE_URL: &str = "https://api.z.ai/api/paas/v4";
-const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
+/// GLM Coding Plan subscription endpoint.
+pub const CODING_BASE_URL: &str = "https://api.z.ai/api/coding/paas/v4";
 const PONY_ALPHA_2_MODEL: &str = "pony-alpha-2";
 
 pub struct ZaiProvider {
     client: Client,
     api_key: String,
     base_url: String,
+    /// "zai" for coding-plan (subscription), "zai-api" for pay-per-token.
+    provider_name: String,
 }
 
 #[derive(Debug, Default)]
@@ -39,6 +43,7 @@ struct ZaiStreamToolState {
 impl std::fmt::Debug for ZaiProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ZaiProvider")
+            .field("provider_name", &self.provider_name)
             .field("base_url", &self.base_url)
             .field("api_key", &"<REDACTED>")
             .finish()
@@ -46,18 +51,29 @@ impl std::fmt::Debug for ZaiProvider {
 }
 
 impl ZaiProvider {
-    pub fn with_base_url(api_key: String, base_url: String) -> Result<Self> {
+    /// Create with explicit base URL and provider name.
+    pub fn with_base_url_and_name(
+        api_key: String,
+        base_url: String,
+        provider_name: &str,
+    ) -> Result<Self> {
         tracing::debug!(
-            provider = "zai",
+            provider = %provider_name,
             base_url = %base_url,
             api_key_len = api_key.len(),
-            "Creating Z.AI provider with custom base URL"
+            "Creating Z.AI provider"
         );
         Ok(Self {
             client: Client::new(),
             api_key,
             base_url,
+            provider_name: provider_name.to_string(),
         })
+    }
+
+    /// Create with explicit base URL (defaults to "zai" coding-plan name).
+    pub fn with_base_url(api_key: String, base_url: String) -> Result<Self> {
+        Self::with_base_url_and_name(api_key, base_url, "zai")
     }
 
     fn request_base_url(&self, model: &str) -> &str {
@@ -143,7 +159,7 @@ impl ZaiProvider {
                 Some(ModelInfo {
                     id,
                     name,
-                    provider: "zai".to_string(),
+                    provider: self.provider_name.clone(),
                     context_window: 200_000,
                     max_output_tokens: Some(128_000),
                     supports_vision: false,
@@ -563,7 +579,7 @@ struct ZaiStreamFunction {
 #[async_trait]
 impl Provider for ZaiProvider {
     fn name(&self) -> &str {
-        "zai"
+        &self.provider_name
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
@@ -579,7 +595,7 @@ impl Provider for ZaiProvider {
                 models.push(ModelInfo {
                     id: PONY_ALPHA_2_MODEL.to_string(),
                     name: "Pony Alpha 2".to_string(),
-                    provider: "zai".to_string(),
+                    provider: self.provider_name.clone(),
                     context_window: 128_000,
                     max_output_tokens: Some(16_384),
                     supports_vision: false,
@@ -593,7 +609,7 @@ impl Provider for ZaiProvider {
                 models.push(ModelInfo {
                     id: "glm-4.7-flash".to_string(),
                     name: "GLM-4.7 Flash".to_string(),
-                    provider: "zai".to_string(),
+                    provider: self.provider_name.clone(),
                     context_window: 128_000,
                     max_output_tokens: Some(128_000),
                     supports_vision: false,
@@ -612,7 +628,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-5.1".to_string(),
                 name: "GLM-5.1".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 200_000,
                 max_output_tokens: Some(128_000),
                 supports_vision: false,
@@ -624,7 +640,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-5".to_string(),
                 name: "GLM-5".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 200_000,
                 max_output_tokens: Some(128_000),
                 supports_vision: false,
@@ -636,7 +652,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-4.7".to_string(),
                 name: "GLM-4.7".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 128_000,
                 max_output_tokens: Some(128_000),
                 supports_vision: false,
@@ -648,7 +664,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-4.7-flash".to_string(),
                 name: "GLM-4.7 Flash".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 128_000,
                 max_output_tokens: Some(128_000),
                 supports_vision: false,
@@ -660,7 +676,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-4.6".to_string(),
                 name: "GLM-4.6".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 128_000,
                 max_output_tokens: Some(128_000),
                 supports_vision: false,
@@ -672,7 +688,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-4.5".to_string(),
                 name: "GLM-4.5".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 128_000,
                 max_output_tokens: Some(96_000),
                 supports_vision: false,
@@ -684,7 +700,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: "glm-5-turbo".to_string(),
                 name: "GLM-5 Turbo".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 200_000,
                 max_output_tokens: Some(128_000),
                 supports_vision: false,
@@ -696,7 +712,7 @@ impl Provider for ZaiProvider {
             ModelInfo {
                 id: PONY_ALPHA_2_MODEL.to_string(),
                 name: "Pony Alpha 2".to_string(),
-                provider: "zai".to_string(),
+                provider: self.provider_name.clone(),
                 context_window: 128_000,
                 max_output_tokens: Some(16_384),
                 supports_vision: false,
