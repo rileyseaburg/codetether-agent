@@ -100,12 +100,18 @@ codetether ralph run --prd prd.json      # Autonomous PRD-driven development
 codetether ralph create-prd --feature X  # Generate a PRD template
 codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
 codetether worker --server URL           # A2A worker mode
+codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn A2A agent
+codetether forage --loop --execute       # Autonomous OKR-governed work loop
 codetether auth codex                    # OAuth login for OpenAI Codex
 codetether auth copilot --client-id ID   # OAuth login for GitHub Copilot
 codetether index --path src --json       # Build codebase index (local embeddings)
 codetether okr list                      # List OKRs
 codetether okr report --id <uuid>        # Show OKR or run report
-codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn A2A agent
+codetether pr                            # Create/update pull requests
+codetether models                        # List available models from all providers
+codetether stats                         # Telemetry & execution statistics
+codetether benchmark                     # Run model benchmark suite
+codetether cleanup                       # Clean orphaned worktrees
 codetether config --show                 # Show config
 ```
 
@@ -294,7 +300,7 @@ Terminal outcomes: `Completed` (all stories passed), `MaxIterations` (partial), 
 
 Rich terminal UI with model selector, session picker, swarm view, Ralph view, and theme hot-reload.
 
-**Slash Commands**: `/go`, `/autochat`, `/swarm`, `/ralph`, `/model`, `/sessions`, `/resume`, `/new`, `/webview`, `/classic`, `/inspector`, `/refresh`, `/view`
+**Slash Commands**: `/go`, `/autochat`, `/new`, `/model`, `/sessions`, `/swarm`, `/ralph`, `/rlm`, `/bus`, `/lsp`, `/latency`, `/symbols`, `/settings`, `/file`, `/image`, `/spawn`, `/kill`, `/agents`, `/undo`, `/autoapply`, `/network`, `/mcp connect|servers|tools|call`, `/import-codex`, `/keys`, `/help`
 
 **Keyboard**: `Ctrl+M` model selector, `Ctrl+B` toggle layout, `Ctrl+S`/`F2` swarm view, `Tab` switch agents, `Alt+j/k` scroll, `?` help
 
@@ -305,23 +311,27 @@ Rich terminal UI with model selector, session picker, swarm view, Ralph view, an
 | `zai` | `glm-5` | Z.AI flagship — GLM-5 agentic coding (200K ctx) |
 | `moonshotai` | `kimi-k2.5` | Excellent for coding |
 | `github-copilot` | `claude-opus-4` | GitHub Copilot models |
-| `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
+| `openai` | `gpt-4o` | OpenAI GPT models |
 | `openai-codex` | `gpt-5-codex` | ChatGPT subscription OAuth |
+| `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
 | `google` | `gemini-2.5-pro` | Google AI |
-| `anthropic` | `claude-sonnet-4-20250514` | Direct or via Azure |
+| `anthropic` | `claude-sonnet-4-20250514` | Direct API |
 | `stepfun` | `step-3.5-flash` | Chinese reasoning model |
 | `vertex-glm` | `zai-org/glm-5-maas` | GLM-5 via Vertex AI (service account JWT) |
+| `vertex-anthropic` | `claude-sonnet-4-20250514` | Claude via GCP Vertex AI |
 | `bedrock` | `amazon.nova-lite-v1:0` / `us.anthropic.claude-opus-4-6-v1:0` | Amazon Bedrock Converse API |
+| `local-cuda` | (configurable) | Local CUDA inference via Candle (Qwen, etc.) |
+| `gemini-web` | `gemini-2.5-pro` | Google Gemini web-based (cookie auth) |
 
 All keys stored in Vault at `secret/codetether/providers/<name>`.
 
 ## Tools
 
-27+ built-in tools across file ops (`read_file`, `write_file`, `edit`, `multiedit`, `apply_patch`, `glob`, `list_dir`), code intelligence (`lsp`, `grep`, `codesearch`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), and agent orchestration (`ralph`, `rlm`, `prd`, `swarm`, `todo_read`, `todo_write`, `question`, `skill`, `plan_enter`, `plan_exit`).
+47 built-in tools across file ops (`read`, `write`, `edit`, `multiedit`, `patch`, `glob`, `list`, `tree`, `file_info`, `head_tail`, `diff`), code intelligence (`lsp`, `grep`, `codesearch`, `advanced_edit`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), media (`image`, `voice`, `podcast`, `youtube`, `avatar`), planning (`ralph`, `prd`, `okr`, `todo_read`, `todo_write`, `plan_enter`, `plan_exit`), agent orchestration (`agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm`), knowledge (`memory`, `skill`, `mcp_bridge`), and utilities (`undo`, `question`, `k8s_tool`, `confirm_edit`, `confirm_multiedit`).
 
 ## MCP Server
 
-CodeTether exposes 26 tools via the [Model Context Protocol](https://modelcontextprotocol.io/) over stdio. This lets AI clients (GitHub Copilot in VS Code, Claude Desktop, etc.) call CodeTether tools directly.
+CodeTether exposes 30+ tools via the [Model Context Protocol](https://modelcontextprotocol.io/) over stdio. This lets AI clients (GitHub Copilot in VS Code, Claude Desktop, etc.) call CodeTether tools directly.
 
 ### VS Code (Workspace-Level)
 
@@ -380,18 +390,19 @@ command = "/absolute/path/to/codetether"
 args = ["mcp", "serve", "/absolute/workspace/path"]
 ```
 
-### Exposed Tools (26)
+### Exposed Tools (30+)
 
 | Category | Tools |
 |----------|-------|
-| **File Ops** | `read`, `write`, `edit`, `multiedit`, `apply_patch`, `glob`, `list` |
-| **Search** | `grep`, `codesearch` |
-| **Execution** | `bash`, `task` |
+| **File Ops** | `read`, `write`, `edit`, `multiedit`, `patch`, `glob`, `list`, `tree`, `file_info`, `head_tail`, `diff` |
+| **Search** | `grep`, `codesearch`, `advanced_edit` |
+| **Execution** | `bash`, `batch`, `task` |
 | **Code Intelligence** | `lsp` (includes diagnostics from eslint, ruff, biome, stylelint) |
 | **Web** | `webfetch`, `websearch` |
-| **Agent Orchestration** | `agent`, `swarm_execute`, `relay_autochat`, `go` |
+| **Agent Orchestration** | `agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm` |
 | **Planning** | `ralph`, `prd`, `okr`, `todoread`, `todowrite` |
 | **Knowledge** | `memory`, `skill`, `mcp` (bridge to other MCP servers) |
+| **Infrastructure** | `k8s_tool` |
 
 ```bash
 codetether mcp list-tools          # List available MCP tools
