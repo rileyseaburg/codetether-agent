@@ -21,10 +21,13 @@ inputs:
   vault_token:
     description: "Vault auth token (local mode)"
     required: false
-  model:
-    description: "LLM model to use (e.g. glm-5.1, gpt-4o, claude-sonnet-4-20250514)"
+  copilot_token:
+    description: "GitHub Copilot API token (from `codetether auth copilot`). Alternative to Vault."
     required: false
-    default: "glm-5.1"
+  model:
+    description: "LLM model to use (e.g. copilot/gpt-4o, glm-5.1, gpt-4o)"
+    required: false
+    default: "copilot/gpt-4o"
   max_steps:
     description: "Maximum agentic loop iterations"
     required: false
@@ -88,8 +91,19 @@ runs:
           echo "Downloading ${URL}"
           curl -fsSL "$URL" -o "/tmp/${ARCHIVE}"
           tar -xzf "/tmp/${ARCHIVE}" -C /tmp
-          sudo install -m 755 /tmp/codetether /usr/local/bin/codetether
-          rm -f "/tmp/${ARCHIVE}" /tmp/codetether
+          # Binary inside tarball may be named with version/platform suffix
+          BINARY=$(tar -tzf "/tmp/${ARCHIVE}" 2>/dev/null | head -1 || true)
+          if [ -f "/tmp/${BINARY}" ]; then
+            sudo install -m 755 "/tmp/${BINARY}" /usr/local/bin/codetether
+          elif [ -f "/tmp/codetether" ]; then
+            sudo install -m 755 /tmp/codetether /usr/local/bin/codetether
+          else
+            echo "::error::Could not find codetether binary in archive"
+            tar -tzf "/tmp/${ARCHIVE}" || true
+            ls -la /tmp/codetether* || true
+            exit 1
+          fi
+          rm -f "/tmp/${ARCHIVE}" "/tmp/${BINARY}" /tmp/codetether
           echo "Installed: $(codetether --version 2>/dev/null || echo 'v'${VERSION})"
         fi
 
@@ -100,6 +114,7 @@ runs:
         GITHUB_TOKEN: ${{ github.token }}
         VAULT_ADDR: ${{ inputs.vault_addr }}
         VAULT_TOKEN: ${{ inputs.vault_token }}
+        GITHUB_COPILOT_TOKEN: ${{ inputs.copilot_token }}
         CODETETHER_DEFAULT_MODEL: ${{ inputs.model }}
         CODETETHER_SERVER: ${{ inputs.server_url }}
         CODETETHER_TOKEN: ${{ inputs.server_token }}
