@@ -835,6 +835,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     }
 
     session.metadata.knowledge_snapshot = knowledge_snapshot;
+    session.max_steps = args.max_steps;
 
     // Wire bus for thinking capture + S3 training data
     let bus = AgentBus::new().into_arc();

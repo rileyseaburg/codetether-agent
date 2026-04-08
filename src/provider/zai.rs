@@ -748,33 +748,21 @@ impl Provider for ZaiProvider {
         tracing::trace!(body = %serde_json::to_string(&body).unwrap_or_default(), "Z.AI request body");
         let request_base_url = self.request_base_url(&request.model);
 
-        let response = self
-            .client
-            .post(format!("{}/chat/completions", request_base_url))
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .context("Failed to send request to Z.AI")?;
-
-        let status = response.status();
-        let text = response
-            .text()
-            .await
-            .context("Failed to read Z.AI response")?;
-
-        if !status.is_success() {
-            tracing::debug!(status = %status, body = %text, "Z.AI error response");
-            if let Ok(err) = serde_json::from_str::<ZaiError>(&text) {
-                anyhow::bail!(
-                    "Z.AI API error: {} ({:?})",
-                    err.error.message,
-                    err.error.error_type
-                );
-            }
-            anyhow::bail!("Z.AI API error: {} {}", status, text);
-        }
+        let (text, _status) = super::retry::send_with_retry(|| async {
+            let resp = self
+                .client
+                .post(format!("{}/chat/completions", request_base_url))
+                .header("Authorization", format!("Bearer {}", self.api_key))
+                .header("Content-Type", "application/json")
+                .json(&body)
+                .send()
+                .await
+                .context("Failed to send request to Z.AI")?;
+            let status = resp.status();
+            let text = resp.text().await.context("Failed to read Z.AI response")?;
+            Ok((text, status))
+        })
+        .await?;
 
         let response: ZaiResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Z.AI response: {}",
@@ -910,28 +898,17 @@ impl Provider for ZaiProvider {
         tracing::debug!(model = %request.model, "Z.AI streaming request");
         let request_base_url = self.request_base_url(&request.model);
 
-        let response = self
-            .client
-            .post(format!("{}/chat/completions", request_base_url))
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .context("Failed to send streaming request to Z.AI")?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let text = response.text().await.unwrap_or_default();
-            if let Ok(err) = serde_json::from_str::<ZaiError>(&text) {
-                anyhow::bail!(
-                    "Z.AI API error: {} ({:?})",
-                    err.error.message,
-                    err.error.error_type
-                );
-            }
-            anyhow::bail!("Z.AI streaming error: {} {}", status, text);
-        }
+        let response = super::retry::send_response_with_retry(|| async {
+            self.client
+                .post(format!("{}/chat/completions", request_base_url))
+                .header("Authorization", format!("Bearer {}", self.api_key))
+                .header("Content-Type", "application/json")
+                .json(&body)
+                .send()
+                .await
+                .context("Failed to send streaming request to Z.AI")
+        })
+        .await?;
 
         let stream = response.bytes_stream();
         let mut buffer = String::new();

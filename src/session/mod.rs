@@ -161,6 +161,9 @@ pub struct Session {
     pub usage: Usage,
     pub agent: String,
     pub metadata: SessionMetadata,
+    /// Maximum agentic loop steps (None = default 250)
+    #[serde(skip)]
+    pub max_steps: Option<usize>,
     /// Optional bus for publishing agent thinking/reasoning to training pipeline
     #[serde(skip)]
     pub bus: Option<Arc<crate::bus::AgentBus>>,
@@ -232,6 +235,7 @@ impl Session {
                 provenance,
                 ..Default::default()
             },
+            max_steps: None,
             bus: None,
         })
     }
@@ -642,7 +646,7 @@ impl Session {
         };
 
         // Run agentic loop with tool execution
-        let max_steps = 50;
+        let max_steps = self.max_steps.unwrap_or(250);
         let mut final_output = String::new();
         let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
         let mut touched_files = HashSet::new();
@@ -1642,7 +1646,7 @@ impl Session {
         };
 
         let mut final_output = String::new();
-        let max_steps = 50;
+        let max_steps = self.max_steps.unwrap_or(250);
         let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
         let mut touched_files = HashSet::new();
         let mut validation_retry_count: u8 = 0;
