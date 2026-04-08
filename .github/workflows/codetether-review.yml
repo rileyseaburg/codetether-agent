@@ -26,7 +26,6 @@ jobs:
         with:
           vault_addr: ${{ secrets.VAULT_ADDR }}
           vault_token: ${{ secrets.VAULT_TOKEN }}
-          copilot_token: ${{ secrets.GITHUB_COPILOT_TOKEN }}
-          model: "copilot/gpt-4o"
+          model: "glm-5.1"
           max_steps: "15"
           auto_comment: "true"
