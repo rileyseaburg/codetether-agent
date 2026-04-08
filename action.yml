@@ -73,7 +73,19 @@ runs:
           echo "CodeTether already installed: $(codetether --version 2>/dev/null || echo 'unknown')"
         else
           echo "Installing CodeTether..."
-          curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+          VERSION="${{ inputs.version }}"
+          REPO="rileyseaburg/codetether-agent"
+          if [ "$VERSION" = "latest" ]; then
+            VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | head -1 | sed 's/.*"v\(.*\)".*/\1/')
+          fi
+          ARCHIVE="codetether-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ARCHIVE}"
+          echo "Downloading ${URL}"
+          curl -fsSL "$URL" -o "/tmp/${ARCHIVE}"
+          tar -xzf "/tmp/${ARCHIVE}" -C /tmp
+          sudo install -m 755 /tmp/codetether /usr/local/bin/codetether
+          rm -f "/tmp/${ARCHIVE}" /tmp/codetether
+          echo "Installed: $(codetether --version 2>/dev/null || echo 'v'${VERSION})"
         fi
 
     - name: Run review
