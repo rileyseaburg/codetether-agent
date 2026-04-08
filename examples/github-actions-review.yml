@@ -1,0 +1,61 @@
+# CodeTether Code Review — Example Workflow
+#
+# Add this file to .github/workflows/ in any repo to get
+# AI-powered code review on every pull request.
+#
+# Required secrets:
+#   VAULT_ADDR  — HashiCorp Vault URL (where your LLM API keys live)
+#   VAULT_TOKEN — Vault auth token
+#
+# Optional secrets:
+#   CODETETHER_SERVER — A2A server URL (for server mode / K8s workers)
+#   CODETETHER_TOKEN  — A2A server bearer token
+
+name: CodeTether Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel in-flight reviews when a new commit is pushed
+concurrency:
+  group: codetether-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write  # needed to post review comments
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for accurate diff
+
+      - name: CodeTether Review
+        uses: rileyseaburg/codetether-agent@main
+        with:
+          vault_addr: ${{ secrets.VAULT_ADDR }}
+          vault_token: ${{ secrets.VAULT_TOKEN }}
+          model: "glm-5.1"        # or gpt-4o, claude-sonnet-4-20250514, etc.
+          max_steps: "30"
+          auto_comment: "true"
+          # extra_prompt: "Focus on security issues"
+
+  # ── Alternative: dispatch to your K8s-hosted A2A worker ──
+  # review-server:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: CodeTether Review (Server)
+  #       uses: rileyseaburg/codetether-agent@main
+  #       with:
+  #         mode: "server"
+  #         server_url: ${{ secrets.CODETETHER_SERVER }}
+  #         server_token: ${{ secrets.CODETETHER_TOKEN }}

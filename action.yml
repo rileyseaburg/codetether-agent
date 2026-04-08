@@ -1,0 +1,100 @@
+name: "CodeTether Code Review"
+description: "AI-powered code review for pull requests — like Copilot and Gemini, self-hosted."
+author: "rileyseaburg"
+
+branding:
+  icon: "code"
+  color: "blue"
+
+inputs:
+  mode:
+    description: >
+      "local" runs the agent directly in the runner.
+      "server" dispatches to your A2A server (K8s worker picks it up).
+    required: false
+    default: "local"
+
+  # --- Local mode inputs ---
+  vault_addr:
+    description: "HashiCorp Vault address for LLM API keys (local mode)"
+    required: false
+  vault_token:
+    description: "Vault auth token (local mode)"
+    required: false
+  model:
+    description: "LLM model to use (e.g. glm-5.1, gpt-4o, claude-sonnet-4-20250514)"
+    required: false
+    default: "glm-5.1"
+  max_steps:
+    description: "Maximum agentic loop iterations"
+    required: false
+    default: "30"
+  extra_prompt:
+    description: "Additional instructions appended to the review prompt"
+    required: false
+    default: ""
+  auto_comment:
+    description: "Post review as a PR comment (true/false)"
+    required: false
+    default: "true"
+  version:
+    description: "CodeTether version to install (default: latest)"
+    required: false
+    default: "latest"
+
+  # --- Server mode inputs ---
+  server_url:
+    description: "A2A server URL (server mode)"
+    required: false
+  server_token:
+    description: "A2A server bearer token (server mode)"
+    required: false
+  agent_type:
+    description: "Agent type for task dispatch (server mode)"
+    required: false
+    default: "build"
+
+outputs:
+  review:
+    description: "The full review text output"
+    value: ${{ steps.review.outputs.review }}
+  exit_code:
+    description: "Agent exit code (0 = success)"
+    value: ${{ steps.review.outputs.exit_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install CodeTether
+      if: inputs.mode == 'local'
+      shell: bash
+      run: |
+        if command -v codetether &>/dev/null; then
+          echo "CodeTether already installed: $(codetether --version 2>/dev/null || echo 'unknown')"
+        else
+          echo "Installing CodeTether..."
+          curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+        fi
+
+    - name: Run review
+      id: review
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        VAULT_ADDR: ${{ inputs.vault_addr }}
+        VAULT_TOKEN: ${{ inputs.vault_token }}
+        CODETETHER_DEFAULT_MODEL: ${{ inputs.model }}
+        CODETETHER_SERVER: ${{ inputs.server_url }}
+        CODETETHER_TOKEN: ${{ inputs.server_token }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_MAX_STEPS: ${{ inputs.max_steps }}
+        INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
+        INPUT_AUTO_COMMENT: ${{ inputs.auto_comment }}
+        INPUT_AGENT_TYPE: ${{ inputs.agent_type }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_BODY: ${{ github.event.pull_request.body }}
+        PR_BASE: ${{ github.event.pull_request.base.ref }}
+        PR_HEAD: ${{ github.event.pull_request.head.ref }}
+        REPO_FULL_NAME: ${{ github.repository }}
+      run: ${{ github.action_path }}/action/entrypoint.sh
