@@ -93,8 +93,14 @@ echo "::group::Running CodeTether review"
 
 REVIEW_FILE="$(mktemp)"
 
+# Build args — --max-steps only available in >= 4.5.0
+RUN_ARGS=()
+if codetether run --help 2>&1 | grep -q -- '--max-steps'; then
+  RUN_ARGS+=(--max-steps "${INPUT_MAX_STEPS}")
+fi
+
 codetether run \
-  --max-steps "${INPUT_MAX_STEPS}" \
+  "${RUN_ARGS[@]}" \
   "$PROMPT" \
   2>&1 | tee "$REVIEW_FILE"
 
