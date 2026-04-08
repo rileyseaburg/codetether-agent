@@ -268,6 +268,10 @@ pub struct RunArgs {
     /// Import and continue a Codex CLI session by ID
     #[arg(long)]
     pub codex_session: Option<String>,
+
+    /// Maximum agentic loop steps (default: 250, minimum: 1)
+    #[arg(long)]
+    pub max_steps: Option<usize>,
 }
 
 #[derive(Parser, Debug)]

@@ -835,6 +835,10 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     }
 
     session.metadata.knowledge_snapshot = knowledge_snapshot;
+    if let Some(0) = args.max_steps {
+        anyhow::bail!("--max-steps must be at least 1");
+    }
+    session.max_steps = args.max_steps;
 
     // Wire bus for thinking capture + S3 training data
     let bus = AgentBus::new().into_arc();

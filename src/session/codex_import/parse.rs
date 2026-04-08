@@ -76,6 +76,7 @@ pub(crate) fn parse_codex_session_from_path(
             provenance: Some(ExecutionProvenance::for_session(&id, "build")),
             ..Default::default()
         },
+        max_steps: None,
         bus: None,
     })
 }

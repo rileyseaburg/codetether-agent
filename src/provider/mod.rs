@@ -110,6 +110,7 @@ pub mod moonshot;
 pub mod openai;
 pub mod openai_codex;
 pub mod openrouter;
+pub mod retry;
 pub mod stepfun;
 pub mod vertex_anthropic;
 pub mod vertex_glm;
