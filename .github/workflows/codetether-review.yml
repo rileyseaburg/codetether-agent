@@ -26,6 +26,6 @@ jobs:
         with:
           vault_addr: ${{ secrets.VAULT_ADDR }}
           vault_token: ${{ secrets.VAULT_TOKEN }}
-          model: "glm-5.1"
+          model: "zai/glm-5.1"
           max_steps: "15"
           auto_comment: "true"
