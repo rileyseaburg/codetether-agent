@@ -5,6 +5,12 @@
 #   server — dispatches a review task to an A2A server
 set -euo pipefail
 
+# ── Clear empty credential env vars to avoid panic ───────────────
+# vaultrs panics on empty VAULT_ADDR; codetether should fall back to env providers
+[ -z "${VAULT_ADDR:-}" ] && unset VAULT_ADDR
+[ -z "${VAULT_TOKEN:-}" ] && unset VAULT_TOKEN
+[ -z "${GITHUB_COPILOT_TOKEN:-}" ] && unset GITHUB_COPILOT_TOKEN
+
 # ── Gather PR diff ───────────────────────────────────────────────
 echo "::group::Fetching PR diff"
 DIFF_FILE="$(mktemp)"
