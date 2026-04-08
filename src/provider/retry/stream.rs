@@ -48,6 +48,8 @@ where
             }
             Ok(resp) if is_retryable_status(resp.status()) => {
                 let status = resp.status();
+                // Drain body so the connection can be reused
+                let _ = resp.bytes().await;
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, %status,
@@ -59,6 +61,16 @@ where
             Ok(resp) => {
                 let status = resp.status();
                 let text = resp.text().await.unwrap_or_default();
+                if is_retryable_message(&text) {
+                    let delay = backoff_delay(attempt);
+                    tracing::warn!(
+                        attempt, %status,
+                        delay_secs = delay.as_secs(),
+                        "Transient streaming error (body), retrying"
+                    );
+                    tokio::time::sleep(delay).await;
+                    continue;
+                }
                 anyhow::bail!("Streaming error: {status} {text}");
             }
             Err(e) if is_retryable_message(&e.to_string()) => {

@@ -28,11 +28,12 @@ pub(super) fn is_retryable_status(status: reqwest::StatusCode) -> bool {
 ///
 /// * `msg` — The error message text (from response body or `anyhow::Error`).
 pub(super) fn is_retryable_message(msg: &str) -> bool {
-    msg.contains("temporarily overloaded")
-        || msg.contains("rate limit")
-        || msg.contains("timed out")
-        || msg.contains("connection reset")
-        || msg.contains("connection closed")
+    let lower = msg.to_lowercase();
+    lower.contains("temporarily overloaded")
+        || lower.contains("rate limit")
+        || lower.contains("timed out")
+        || lower.contains("connection reset")
+        || lower.contains("connection closed")
 }
 
 /// Compute exponential backoff delay for a given retry attempt.

@@ -269,7 +269,7 @@ pub struct RunArgs {
     #[arg(long)]
     pub codex_session: Option<String>,
 
-    /// Maximum agentic loop steps (default: 250)
+    /// Maximum agentic loop steps (default: 250, minimum: 1)
     #[arg(long)]
     pub max_steps: Option<usize>,
 }

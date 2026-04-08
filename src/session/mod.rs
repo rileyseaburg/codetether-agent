@@ -2,6 +2,9 @@
 //!
 //! Sessions track the conversation history and state for agent interactions.
 
+/// Default maximum agentic loop iterations when `max_steps` is `None`.
+pub const DEFAULT_MAX_STEPS: usize = 250;
+
 use crate::agent::ToolUse;
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::event_stream::ChatEvent;
@@ -161,7 +164,7 @@ pub struct Session {
     pub usage: Usage,
     pub agent: String,
     pub metadata: SessionMetadata,
-    /// Maximum agentic loop steps (None = default 250)
+    /// Maximum agentic loop steps (None = default [`DEFAULT_MAX_STEPS`])
     #[serde(skip)]
     pub max_steps: Option<usize>,
     /// Optional bus for publishing agent thinking/reasoning to training pipeline
@@ -646,7 +649,7 @@ impl Session {
         };
 
         // Run agentic loop with tool execution
-        let max_steps = self.max_steps.unwrap_or(250);
+        let max_steps = self.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
         let mut final_output = String::new();
         let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
         let mut touched_files = HashSet::new();
@@ -1646,7 +1649,7 @@ impl Session {
         };
 
         let mut final_output = String::new();
-        let max_steps = self.max_steps.unwrap_or(250);
+        let max_steps = self.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
         let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
         let mut touched_files = HashSet::new();
         let mut validation_retry_count: u8 = 0;

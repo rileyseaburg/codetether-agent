@@ -47,7 +47,10 @@ where
     loop {
         attempt += 1;
         match f().await {
-            Ok((text, status)) if status.is_success() => {
+            Ok((text, status))
+                if status.is_success()
+                    && !is_retryable_message(&text) =>
+            {
                 return Ok((text, status));
             }
             Ok((text, status))

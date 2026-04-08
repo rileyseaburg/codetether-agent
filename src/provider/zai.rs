@@ -748,7 +748,7 @@ impl Provider for ZaiProvider {
         tracing::trace!(body = %serde_json::to_string(&body).unwrap_or_default(), "Z.AI request body");
         let request_base_url = self.request_base_url(&request.model);
 
-        let (text, _status) = super::retry::send_with_retry(|| async {
+        let (text, status) = super::retry::send_with_retry(|| async {
             let resp = self
                 .client
                 .post(format!("{}/chat/completions", request_base_url))
@@ -763,6 +763,18 @@ impl Provider for ZaiProvider {
             Ok((text, status))
         })
         .await?;
+
+        if !status.is_success() {
+            tracing::debug!(status = %status, body = %text, "Z.AI error response");
+            if let Ok(err) = serde_json::from_str::<ZaiError>(&text) {
+                anyhow::bail!(
+                    "Z.AI API error: {} ({:?})",
+                    err.error.message,
+                    err.error.error_type
+                );
+            }
+            anyhow::bail!("Z.AI API error: {status} {text}");
+        }
 
         let response: ZaiResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Z.AI response: {}",
