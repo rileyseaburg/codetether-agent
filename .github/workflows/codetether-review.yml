@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened]
   issues:
     types: [assigned, labeled]
+  issue_comment:
+    types: [created]
 
 concurrency:
   group: codetether-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}
@@ -19,12 +21,17 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Run on PRs always, or on issues when the bot is assigned/labeled
+    # PRs: always run
+    # Issues: when assigned or labeled 'codetether'
+    # Issue comments: when @mentioning the bot
     if: >
       github.event_name == 'pull_request' ||
       (github.event_name == 'issues' && (
         github.event.action == 'assigned' ||
         contains(github.event.issue.labels.*.name, 'codetether')
+      )) ||
+      (github.event_name == 'issue_comment' && (
+        contains(github.event.comment.body, '@jenkins-quantum-forge')
       ))
     steps:
       - uses: actions/checkout@v4
