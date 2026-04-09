@@ -133,12 +133,11 @@ if [ "$INPUT_MODE" = "server" ]; then
   done
 
   if [ "$TASK_STATUS" = "completed" ]; then
-    # Extract result from the A2A task
-    RESULT_TEXT=$(curl -fsSL \
-      -X POST "${CODETETHER_SERVER}/" \
-      -H "Content-Type: application/json" \
-      -d "$(jq -n --arg id "$TASK_ID" '{"jsonrpc":"2.0","id":"poll","method":"tasks/get","params":{"id":$id}}')" \
-      2>/dev/null | jq -r '.result.task.messages[-1].parts[0].text // "No review text returned."')
+    # Fetch completed task with result from dispatch API
+    RESULT_RESPONSE=$(curl -fsSL \
+      -H "Authorization: Bearer ${CODETETHER_TOKEN}" \
+      "${CODETETHER_SERVER}/v1/tasks/dispatch/${TASK_ID}")
+    RESULT_TEXT=$(echo "$RESULT_RESPONSE" | jq -r '.result // "No review text returned."')
 
     REVIEW_TEXT=$(echo "$RESULT_TEXT" | head -c 65000)
   elif [ "$TASK_STATUS" = "failed" ]; then
