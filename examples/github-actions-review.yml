@@ -3,18 +3,12 @@
 # Add this file to .github/workflows/ in any repo to get
 # AI-powered code review on every pull request.
 #
-# Required secrets (pick ONE auth method):
-#
-#   Option A — GitHub Copilot (easiest):
-#     GITHUB_COPILOT_TOKEN — from `codetether auth copilot`
-#
-#   Option B — Vault (for any provider):
-#     VAULT_ADDR  — HashiCorp Vault URL
-#     VAULT_TOKEN — Vault auth token
-#
-# Optional secrets:
-#   CODETETHER_SERVER — A2A server URL (for server mode / K8s workers)
-#   CODETETHER_TOKEN  — A2A server bearer token
+# Setup (2 minutes):
+#   1. Sign up at https://codetether.run
+#   2. Go to Settings → API Tokens → Create Token
+#   3. Add CODETETHER_TOKEN as a repo secret in GitHub
+#   4. Copy this file to .github/workflows/codetether-review.yml
+#   5. Done — every PR gets an AI review.
 
 name: CodeTether Review
 
@@ -22,14 +16,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# Cancel in-flight reviews when a new commit is pushed
 concurrency:
   group: codetether-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  pull-requests: write  # needed to post review comments
+  pull-requests: write
 
 jobs:
   review:
@@ -38,31 +31,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history for accurate diff
+          fetch-depth: 0
 
       - name: CodeTether Review
         uses: rileyseaburg/codetether-agent@main
         with:
-          copilot_token: ${{ secrets.GITHUB_COPILOT_TOKEN }}
-          model: "copilot/gpt-4o"  # or glm-5.1, claude-sonnet-4-20250514, etc.
-          max_steps: "30"
-          auto_comment: "true"
+          token: ${{ secrets.CODETETHER_TOKEN }}
           # extra_prompt: "Focus on security issues"
-          # --- OR use Vault for any provider ---
-          # vault_addr: ${{ secrets.VAULT_ADDR }}
-          # vault_token: ${{ secrets.VAULT_TOKEN }}
 
-  # ── Alternative: dispatch to your K8s-hosted A2A worker ──
-  # review-server:
+  # ── Advanced: self-hosted with your own LLM keys ──
+  # review-byok:
   #   runs-on: ubuntu-latest
   #   steps:
   #     - uses: actions/checkout@v4
   #       with:
   #         fetch-depth: 0
-  #
-  #     - name: CodeTether Review (Server)
+  #     - name: CodeTether Review (BYOK)
   #       uses: rileyseaburg/codetether-agent@main
   #       with:
-  #         mode: "server"
-  #         server_url: ${{ secrets.CODETETHER_SERVER }}
-  #         server_token: ${{ secrets.CODETETHER_TOKEN }}
+  #         token: ${{ secrets.CODETETHER_TOKEN }}
+  #         mode: "local"
+  #         api_key: ${{ secrets.OPENAI_API_KEY }}
+  #         model: "gpt-4o"

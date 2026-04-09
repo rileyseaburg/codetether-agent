@@ -11,6 +11,19 @@ set -euo pipefail
 [ -z "${VAULT_TOKEN:-}" ] && unset VAULT_TOKEN
 [ -z "${GITHUB_COPILOT_TOKEN:-}" ] && unset GITHUB_COPILOT_TOKEN
 
+# ── Map generic API key to provider-specific env var ─────────────
+if [ -n "${CODETETHER_API_KEY:-}" ]; then
+  MODEL="${CODETETHER_DEFAULT_MODEL:-glm-5.1}"
+  case "$MODEL" in
+    glm*|zhipu*)   export ZAI_API_KEY="$CODETETHER_API_KEY" ;;
+    gpt*|o1*|o3*)  export OPENAI_API_KEY="$CODETETHER_API_KEY" ;;
+    claude*)       export ANTHROPIC_API_KEY="$CODETETHER_API_KEY" ;;
+    copilot/*)     export GITHUB_COPILOT_TOKEN="$CODETETHER_API_KEY" ;;
+    *)             export OPENAI_API_KEY="$CODETETHER_API_KEY" ;;
+  esac
+  unset CODETETHER_API_KEY
+fi
+
 # ── Gather PR diff ───────────────────────────────────────────────
 echo "::group::Fetching PR diff"
 DIFF_FILE="$(mktemp)"
@@ -61,17 +74,21 @@ if [ "$INPUT_MODE" = "server" ]; then
     echo "::error::server_url is required in server mode"
     exit 1
   fi
+  if [ -z "${CODETETHER_TOKEN:-}" ]; then
+    echo "::error::token is required in server mode"
+    exit 1
+  fi
 
   TASK_PAYLOAD=$(jq -n \
-    --arg prompt "$PROMPT" \
+    --arg description "$PROMPT" \
     --arg agent_type "$INPUT_AGENT_TYPE" \
     --arg title "PR Review: #${PR_NUMBER} ${PR_TITLE}" \
     --arg repo "$REPO_FULL_NAME" \
     --arg pr_number "$PR_NUMBER" \
     '{
-      prompt: $prompt,
-      agent_type: $agent_type,
       title: $title,
+      description: $description,
+      agent_type: $agent_type,
       metadata: {
         source: "github-actions",
         repo: $repo,
@@ -80,16 +97,93 @@ if [ "$INPUT_MODE" = "server" ]; then
     }')
 
   RESPONSE=$(curl -fsSL \
-    -X POST "${CODETETHER_SERVER}/v1/automation/tasks" \
+    -X POST "${CODETETHER_SERVER}/v1/tasks/dispatch" \
     -H "Authorization: Bearer ${CODETETHER_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "Idempotency-Key: pr-review-${REPO_FULL_NAME//\//-}-${PR_NUMBER}-${GITHUB_SHA:0:8}" \
     -d "$TASK_PAYLOAD")
 
-  TASK_ID=$(echo "$RESPONSE" | jq -r '.task_id // .id // "unknown"')
+  TASK_ID=$(echo "$RESPONSE" | jq -r '.task_id // "unknown"')
   echo "Task dispatched: ${TASK_ID}"
-  echo "review=Review task dispatched to server: ${TASK_ID}" >> "$GITHUB_OUTPUT"
+
+  if [ "$TASK_ID" = "unknown" ]; then
+    echo "::error::Failed to dispatch task: ${RESPONSE}"
+    echo "review=Failed to dispatch review task." >> "$GITHUB_OUTPUT"
+    echo "exit_code=1" >> "$GITHUB_OUTPUT"
+    exit 1
+  fi
+
+  # ── Poll for task completion ─────────────────────────────────
+  echo "Waiting for task to complete..."
+  MAX_POLL=60
+  POLL_INTERVAL=5
+  POLL_COUNT=0
+  TASK_STATUS="pending"
+
+  while [ "$POLL_COUNT" -lt "$MAX_POLL" ] && [ "$TASK_STATUS" != "completed" ] && [ "$TASK_STATUS" != "failed" ] && [ "$TASK_STATUS" != "canceled" ]; do
+    sleep "$POLL_INTERVAL"
+    POLL_COUNT=$((POLL_COUNT + 1))
+
+    TASK_RESPONSE=$(curl -fsSL \
+      -H "Authorization: Bearer ${CODETETHER_TOKEN}" \
+      "${CODETETHER_SERVER}/v1/tasks/dispatch/${TASK_ID}" 2>/dev/null || echo '{}')
+
+    TASK_STATUS=$(echo "$TASK_RESPONSE" | jq -r '.status // "unknown"')
+    echo "  Poll ${POLL_COUNT}/${MAX_POLL}: status=${TASK_STATUS}"
+  done
+
+  if [ "$TASK_STATUS" = "completed" ]; then
+    # Extract result from the A2A task
+    RESULT_TEXT=$(curl -fsSL \
+      -X POST "${CODETETHER_SERVER}/" \
+      -H "Content-Type: application/json" \
+      -d "$(jq -n --arg id "$TASK_ID" '{"jsonrpc":"2.0","id":"poll","method":"tasks/get","params":{"id":$id}}')" \
+      2>/dev/null | jq -r '.result.task.messages[-1].parts[0].text // "No review text returned."')
+
+    REVIEW_TEXT=$(echo "$RESULT_TEXT" | head -c 65000)
+  elif [ "$TASK_STATUS" = "failed" ]; then
+    REVIEW_TEXT="Review task failed. Check server logs for task ${TASK_ID}."
+  else
+    REVIEW_TEXT="Review task timed out after $((MAX_POLL * POLL_INTERVAL))s (status: ${TASK_STATUS}). Task ID: ${TASK_ID}"
+  fi
+
   echo "exit_code=0" >> "$GITHUB_OUTPUT"
+  {
+    echo "review<<CODETETHER_EOF"
+    echo "$REVIEW_TEXT"
+    echo "CODETETHER_EOF"
+  } >> "$GITHUB_OUTPUT"
+
+  # ── Post PR comment (server mode) ─────────────────────────────
+  if [ "${INPUT_AUTO_COMMENT}" = "true" ] && [ -n "${PR_NUMBER:-}" ] && [ "$TASK_STATUS" = "completed" ]; then
+    COMMENT_BODY="## 🔍 CodeTether Review
+
+<details>
+<summary>PR #${PR_NUMBER}: ${PR_TITLE}</summary>
+
+Mode: server · Task: \`${TASK_ID}\`
+
+</details>
+
+${REVIEW_TEXT}"
+
+    if [ ${#COMMENT_BODY} -gt 65000 ]; then
+      COMMENT_BODY="${COMMENT_BODY:0:64900}
+
+..._truncated (review exceeded comment size limit)_"
+    fi
+
+    curl -fsSL \
+      -X POST \
+      -H "Authorization: token ${GITHUB_TOKEN}" \
+      -H "Accept: application/vnd.github.v3+json" \
+      "https://api.github.com/repos/${REPO_FULL_NAME}/issues/${PR_NUMBER}/comments" \
+      -d "$(jq -n --arg body "$COMMENT_BODY" '{body: $body}')" \
+      > /dev/null
+
+    echo "Review posted to PR #${PR_NUMBER}"
+  fi
+
   echo "::endgroup::"
   exit 0
 fi

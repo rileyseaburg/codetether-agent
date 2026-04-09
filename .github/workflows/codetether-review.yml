@@ -24,8 +24,4 @@ jobs:
       - name: CodeTether Review
         uses: ./
         with:
-          vault_addr: ${{ secrets.VAULT_ADDR }}
-          vault_token: ${{ secrets.VAULT_TOKEN }}
-          model: "zai/glm-5.1"
-          max_steps: "15"
-          auto_comment: "true"
+          token: ${{ secrets.CODETETHER_TOKEN }}
