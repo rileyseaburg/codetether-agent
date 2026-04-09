@@ -3,25 +3,44 @@ name: CodeTether Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  issues:
+    types: [assigned, labeled]
 
 concurrency:
-  group: codetether-review-${{ github.event.pull_request.number }}
+  group: codetether-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Run on PRs always, or on issues when the bot is assigned/labeled
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issues' && (
+        github.event.action == 'assigned' ||
+        contains(github.event.issue.labels.*.name, 'codetether')
+      ))
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Get a GitHub App installation token so comments come from the bot identity
+      - name: Get App Token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: CodeTether Review
         uses: ./
         with:
           token: ${{ secrets.CODETETHER_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}

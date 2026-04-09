@@ -10,6 +10,10 @@ branding:
   color: "blue"
 
 inputs:
+  github_token:
+    description: "GitHub App installation token for posting comments as the bot identity (auto-set by workflow)"
+    required: false
+    default: ""
   token:
     description: "CodeTether API token (from https://codetether.run → Settings → API Tokens)"
     required: true
@@ -113,7 +117,7 @@ runs:
       id: review
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ inputs.github_token || github.token }}
         CODETETHER_SERVER: ${{ inputs.server_url }}
         CODETETHER_TOKEN: ${{ inputs.token }}
         VAULT_ADDR: ${{ inputs.vault_addr }}
@@ -125,10 +129,11 @@ runs:
         INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
         INPUT_AUTO_COMMENT: ${{ inputs.auto_comment }}
         INPUT_AGENT_TYPE: ${{ inputs.agent_type }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_TITLE: ${{ github.event.pull_request.title }}
-        PR_BODY: ${{ github.event.pull_request.body }}
-        PR_BASE: ${{ github.event.pull_request.base.ref }}
-        PR_HEAD: ${{ github.event.pull_request.head.ref }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        PR_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}
+        PR_BODY: ${{ github.event.pull_request.body || github.event.issue.body }}
+        PR_BASE: ${{ github.event.pull_request.base.ref || '' }}
+        PR_HEAD: ${{ github.event.pull_request.head.ref || '' }}
         REPO_FULL_NAME: ${{ github.repository }}
       run: ${{ github.action_path }}/action/entrypoint.sh
