@@ -1,6 +1,6 @@
 name: "CodeTether Code Review"
 description: >-
-  AI-powered code review for pull requests.
+  AI-powered code review and PR fix automation.
   Add this action to any repo — no API keys needed.
   Sign up at https://codetether.run, grab your token, and go.
 author: "rileyseaburg"
@@ -118,6 +118,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token || github.token }}
+        GH_ACTIONS_TOKEN: ${{ github.token }}
         CODETETHER_SERVER: ${{ inputs.server_url }}
         CODETETHER_TOKEN: ${{ inputs.token }}
         VAULT_ADDR: ${{ inputs.vault_addr }}

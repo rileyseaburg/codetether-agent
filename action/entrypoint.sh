@@ -24,15 +24,96 @@ if [ -n "${CODETETHER_API_KEY:-}" ]; then
   unset CODETETHER_API_KEY
 fi
 
+post_github_comment() {
+  local target_number="$1"
+  local body="$2"
+  curl -fsSL \
+    -X POST \
+    -H "Authorization: token ${GITHUB_TOKEN}" \
+    -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/${REPO_FULL_NAME}/issues/${target_number}/comments" \
+    -d "$(jq -n --arg body "$body" '{body: $body}')" \
+    > /dev/null
+}
+
+write_review_output() {
+  local text="$1"
+  local code="${2:-0}"
+  echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+  {
+    echo "review<<CODETETHER_EOF"
+    echo "$text"
+    echo "CODETETHER_EOF"
+  } >> "$GITHUB_OUTPUT"
+}
+
+github_api_get() {
+  local path="$1"
+  curl -fsSL \
+    -H "Authorization: token ${GH_ACTIONS_TOKEN:-${GITHUB_TOKEN}}" \
+    -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com${path}"
+}
+
+fetch_pr_metadata() {
+  local response
+  response="$(github_api_get "/repos/${REPO_FULL_NAME}/pulls/${PR_NUMBER}")"
+  PR_BASE="$(echo "$response" | jq -r '.base.ref')"
+  PR_HEAD="$(echo "$response" | jq -r '.head.ref')"
+  PR_HEAD_REPO="$(echo "$response" | jq -r '.head.repo.full_name')"
+}
+
+run_local_codetether() {
+  local prompt="$1"
+  local output_file="$2"
+  local run_args=()
+  if codetether run --help 2>&1 | grep -q -- '--max-steps'; then
+    run_args+=(--max-steps "${INPUT_MAX_STEPS}")
+  fi
+  codetether run "${run_args[@]}" "$prompt" 2>&1 | tee "$output_file"
+  return "${PIPESTATUS[0]:-0}"
+}
+
+COMMENT_BODY=""
+COMMENT_PATH=""
+COMMENT_DIFF_HUNK=""
+IS_PR_COMMENT="false"
+FIX_REQUEST="false"
+if [ -n "${GITHUB_EVENT_PATH:-}" ] && [ -f "${GITHUB_EVENT_PATH}" ]; then
+  COMMENT_BODY="$(jq -r '.comment.body // ""' "${GITHUB_EVENT_PATH}")"
+  COMMENT_PATH="$(jq -r '.comment.path // ""' "${GITHUB_EVENT_PATH}")"
+  COMMENT_DIFF_HUNK="$(jq -r '.comment.diff_hunk // ""' "${GITHUB_EVENT_PATH}")"
+  if [ "${GITHUB_EVENT_NAME:-}" = "pull_request_review_comment" ]; then
+    IS_PR_COMMENT="true"
+  elif [ "${GITHUB_EVENT_NAME:-}" = "issue_comment" ] && jq -e '.issue.pull_request' "${GITHUB_EVENT_PATH}" >/dev/null 2>&1; then
+    IS_PR_COMMENT="true"
+  fi
+fi
+
+COMMENT_BODY_LOWER="$(printf '%s' "${COMMENT_BODY}" | tr '\r\n' '  ' | tr '[:upper:]' '[:lower:]')"
+if printf '%s' "${COMMENT_BODY_LOWER}" | grep -Eq '(@codetether([^[:alnum:]_-]|$).*(fix|apply|address|implement|patch))|((fix|apply|address|implement|patch).+@codetether([^[:alnum:]_-]|$))'; then
+  FIX_REQUEST="true"
+fi
+
 # ── Issue mode: use issue body directly as prompt ────────────────
-if [ "${GITHUB_EVENT_NAME:-}" = "issues" ]; then
+if [ "${GITHUB_EVENT_NAME:-}" = "issues" ] || { [ "${GITHUB_EVENT_NAME:-}" = "issue_comment" ] && [ "${IS_PR_COMMENT}" != "true" ]; }; then
   echo "::group::Processing issue #${PR_NUMBER}"
+
+  COMMENT_INSTRUCTIONS=""
+  if [ "${GITHUB_EVENT_NAME:-}" = "issue_comment" ] && [ -n "${COMMENT_BODY}" ]; then
+    COMMENT_INSTRUCTIONS="A new issue comment mentioned @codetether:
+${COMMENT_BODY}
+
+Respond directly to that comment while considering the full issue context.
+"
+  fi
 
   PROMPT="You are responding to GitHub Issue #${PR_NUMBER}: \"${PR_TITLE}\" in ${REPO_FULL_NAME}.
 
 Analyze the issue and provide a thorough response. If it's a bug report, suggest a fix. If it's a feature request, discuss implementation approach.
 
 ${INPUT_EXTRA_PROMPT:+Additional instructions: ${INPUT_EXTRA_PROMPT}}
+${COMMENT_INSTRUCTIONS}
 
 Issue body:
 ${PR_BODY:-No description provided.}"
@@ -124,26 +205,111 @@ ${REVIEW_TEXT}"
 ..._truncated (response exceeded comment size limit)_"
     fi
 
-    curl -fsSL \
-      -X POST \
-      -H "Authorization: token ${GITHUB_TOKEN}" \
-      -H "Accept: application/vnd.github.v3+json" \
-      "https://api.github.com/repos/${REPO_FULL_NAME}/issues/${PR_NUMBER}/comments" \
-      -d "$(jq -n --arg body "$COMMENT_BODY" '{body: $body}')" \
-      > /dev/null
+    post_github_comment "${PR_NUMBER}" "${COMMENT_BODY}"
 
     echo "Response posted to Issue #${PR_NUMBER}"
   fi
 
-  echo "exit_code=0" >> "$GITHUB_OUTPUT"
-  {
-    echo "review<<CODETETHER_EOF"
-    echo "$REVIEW_TEXT"
-    echo "CODETETHER_EOF"
-  } >> "$GITHUB_OUTPUT"
+  write_review_output "$REVIEW_TEXT"
 
   echo "::endgroup::"
   exit 0
+fi
+
+if [ "${IS_PR_COMMENT}" = "true" ]; then
+  fetch_pr_metadata
+
+  if [ -n "${COMMENT_BODY}" ] && [ "${FIX_REQUEST}" != "true" ]; then
+    INPUT_EXTRA_PROMPT="$(printf '%s\n\nRespond to this PR comment while reviewing the current diff:\n%s' "${INPUT_EXTRA_PROMPT:-}" "${COMMENT_BODY}")"
+    if [ -n "${COMMENT_PATH}" ]; then
+      INPUT_EXTRA_PROMPT="$(printf '%s\n\nThe comment targets file: %s' "${INPUT_EXTRA_PROMPT}" "${COMMENT_PATH}")"
+    fi
+    if [ -n "${COMMENT_DIFF_HUNK}" ]; then
+      INPUT_EXTRA_PROMPT="$(printf '%s\n\nRelevant diff hunk:\n%s' "${INPUT_EXTRA_PROMPT}" "${COMMENT_DIFF_HUNK}")"
+    fi
+  fi
+
+  if [ "${FIX_REQUEST}" = "true" ]; then
+    echo "::group::Applying requested PR fix"
+
+    if [ "${INPUT_MODE}" != "local" ]; then
+      REVIEW_TEXT="Auto-fix requests on pull request comments require local mode with repository write access."
+      [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🛠️ CodeTether Fix\n\n${REVIEW_TEXT}"
+      write_review_output "${REVIEW_TEXT}"
+      echo "::endgroup::"
+      exit 0
+    fi
+
+    if [ "${PR_HEAD_REPO}" != "${REPO_FULL_NAME}" ]; then
+      REVIEW_TEXT="Auto-fix is not available for forked pull requests because this workflow cannot safely push to \`${PR_HEAD_REPO}:${PR_HEAD}\`."
+      [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🛠️ CodeTether Fix\n\n${REVIEW_TEXT}"
+      write_review_output "${REVIEW_TEXT}"
+      echo "::endgroup::"
+      exit 0
+    fi
+
+    git fetch origin "${PR_HEAD}" --depth=1 || true
+    git checkout -B "${PR_HEAD}" "origin/${PR_HEAD}" 2>/dev/null || git checkout -B "${PR_HEAD}"
+
+    DIFF_FILE="$(mktemp)"
+    git diff "origin/${PR_BASE}...HEAD" -- '*.rs' '*.py' '*.ts' '*.js' '*.go' '*.java' '*.tsx' '*.jsx' '*.yml' '*.yaml' '*.toml' > "$DIFF_FILE" 2>/dev/null || true
+    FIX_DIFF="$(head -n 3000 "$DIFF_FILE")"
+    FIX_FILE="$(mktemp)"
+
+    FIX_PROMPT="You are editing the checked-out PR branch for PR #${PR_NUMBER}: \"${PR_TITLE}\" (${PR_HEAD} → ${PR_BASE}).
+
+Apply the requested changes directly in the working tree. Do not just describe the fix.
+
+Triggering comment:
+${COMMENT_BODY}
+
+${COMMENT_PATH:+Commented file: ${COMMENT_PATH}}
+${COMMENT_DIFF_HUNK:+
+Relevant diff hunk:
+${COMMENT_DIFF_HUNK}}
+
+${INPUT_EXTRA_PROMPT:+Additional instructions: ${INPUT_EXTRA_PROMPT}}
+
+Current diff:
+\`\`\`diff
+${FIX_DIFF}
+\`\`\`
+
+After editing files, run the smallest relevant validation needed to support the change. Do not commit or push; the workflow will handle git."
+
+    if ! run_local_codetether "${FIX_PROMPT}" "${FIX_FILE}"; then
+      REVIEW_TEXT="I couldn't apply the requested changes automatically. Review the workflow logs for details."
+      [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🛠️ CodeTether Fix\n\n${REVIEW_TEXT}"
+      write_review_output "${REVIEW_TEXT}" "1"
+      echo "::error::codetether failed to apply the requested PR changes"
+      echo "::endgroup::"
+      exit 1
+    fi
+
+    if [ -z "$(git status --short)" ]; then
+      REVIEW_TEXT="I reviewed the request but did not find any file changes to apply."
+      [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🛠️ CodeTether Fix\n\n${REVIEW_TEXT}"
+      write_review_output "${REVIEW_TEXT}"
+      rm -f "${DIFF_FILE}" "${FIX_FILE}"
+      echo "::endgroup::"
+      exit 0
+    fi
+
+    git config user.name "codetether[bot]"
+    git config user.email "codetether[bot]@users.noreply.github.com"
+    git remote set-url origin "https://x-access-token:${GH_ACTIONS_TOKEN}@github.com/${REPO_FULL_NAME}.git"
+    git add -A
+    git commit -m "fix: address @codetether request on PR #${PR_NUMBER}"
+    git push origin "HEAD:${PR_HEAD}"
+
+    COMMIT_SHA="$(git rev-parse --short HEAD)"
+    REVIEW_TEXT="Applied the requested changes in commit \`${COMMIT_SHA}\` and pushed them to \`${PR_HEAD}\`."
+    [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🛠️ CodeTether Fix\n\n${REVIEW_TEXT}"
+    write_review_output "${REVIEW_TEXT}"
+    rm -f "${DIFF_FILE}" "${FIX_FILE}"
+    echo "::endgroup::"
+    exit 0
+  fi
 fi
 
 # ── Gather PR diff ───────────────────────────────────────────────
