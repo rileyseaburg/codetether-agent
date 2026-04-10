@@ -60,11 +60,19 @@ jobs:
           fi
           echo "mode=${mode}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-          ref: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_review_comment') && github.event.pull_request.head.sha || (github.event_name == 'issue_comment' && github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number)) || github.sha }}
+      - name: Checkout repository
+        shell: bash
+        env:
+          CHECKOUT_REF: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_review_comment') && github.event.pull_request.head.sha || (github.event_name == 'issue_comment' && github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number)) || github.sha }}
+          RAW_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${RAW_GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --prune --no-recurse-submodules origin \
+            +refs/heads/*:refs/remotes/origin/* \
+            +refs/tags/*:refs/tags/*
+          git fetch --no-recurse-submodules origin "${CHECKOUT_REF}"
+          git checkout --force FETCH_HEAD
 
       # Get a GitHub App installation token so comments come from the bot identity
       - name: Get App Token
