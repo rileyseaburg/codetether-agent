@@ -12,6 +12,10 @@ pub struct WatchdogNotification {
 
 impl WatchdogNotification {
     pub fn new(message: String, restart_count: u32) -> Self {
-        Self { message, detected_at: Instant::now(), restart_count }
+        Self {
+            message,
+            detected_at: Instant::now(),
+            restart_count,
+        }
     }
 }

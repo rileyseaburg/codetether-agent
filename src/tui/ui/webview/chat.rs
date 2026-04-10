@@ -12,14 +12,12 @@ use crate::tui::app::state::App;
 const MIN_WIDTH: u16 = 90;
 const MIN_HEIGHT: u16 = 18;
 
-pub fn render_webview_chat_center(
-    f: &mut Frame,
-    app: &App,
-    area: Rect,
-    lines: &[Line<'static>],
-) {
+pub fn render_webview_chat_center(f: &mut Frame, app: &App, area: Rect, lines: &[Line<'static>]) {
     let visible = area.height.saturating_sub(2) as usize;
-    let scroll = app.state.chat_scroll.min(lines.len().saturating_sub(visible));
+    let scroll = app
+        .state
+        .chat_scroll
+        .min(lines.len().saturating_sub(visible));
     let block = Block::default()
         .borders(Borders::NONE)
         .style(Style::default().fg(Color::default()));

@@ -6,10 +6,7 @@ use crate::tui::app::state::AppState;
 use crate::tui::app::watchdog::state::WatchdogNotification;
 
 /// Check if the current request is stalled and return a notification if so.
-pub fn check_watchdog_stall(
-    state: &AppState,
-    timeout: Duration,
-) -> Option<WatchdogNotification> {
+pub fn check_watchdog_stall(state: &AppState, timeout: Duration) -> Option<WatchdogNotification> {
     if !state.processing {
         return None;
     }
@@ -22,7 +19,10 @@ pub fn check_watchdog_stall(
     }
     let count = state.main_watchdog_restart_count;
     Some(WatchdogNotification::new(
-        format!("⚠ No events for {}s. Stalled request detected.", timeout.as_secs()),
+        format!(
+            "⚠ No events for {}s. Stalled request detected.",
+            timeout.as_secs()
+        ),
         count,
     ))
 }

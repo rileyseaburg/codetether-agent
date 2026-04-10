@@ -32,9 +32,7 @@ use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
 /// .await?;
 /// let stream = resp.bytes_stream();
 /// ```
-pub async fn send_response_with_retry<F, Fut>(
-    mut f: F,
-) -> anyhow::Result<reqwest::Response>
+pub async fn send_response_with_retry<F, Fut>(mut f: F) -> anyhow::Result<reqwest::Response>
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = anyhow::Result<reqwest::Response>>,

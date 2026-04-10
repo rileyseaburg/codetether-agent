@@ -23,7 +23,15 @@ pub fn smart_switch_candidates(
     if let Some(p) = current_normalized {
         candidates.extend(same_provider_candidates(p, &available, attempted_models));
     }
-    candidates.extend(priority_candidates(current_normalized, &available, attempted_models));
-    candidates.extend(extra_candidates(current_normalized, &available, attempted_models));
+    candidates.extend(priority_candidates(
+        current_normalized,
+        &available,
+        attempted_models,
+    ));
+    candidates.extend(extra_candidates(
+        current_normalized,
+        &available,
+        attempted_models,
+    ));
     candidates
 }

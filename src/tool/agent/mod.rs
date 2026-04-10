@@ -23,17 +23,33 @@ pub struct AgentSnapshot {
     pub session: Session,
 }
 
-pub fn list_agent_snapshots() -> Vec<AgentSnapshot> { store::snapshots() }
-pub fn remove_agent(name: &str) -> bool { store::remove(name).is_some() }
+pub fn list_agent_snapshots() -> Vec<AgentSnapshot> {
+    store::snapshots()
+}
+pub fn remove_agent(name: &str) -> bool {
+    store::remove(name).is_some()
+}
 
 pub struct AgentTool;
-impl AgentTool { pub fn new() -> Self { Self } }
-impl Default for AgentTool { fn default() -> Self { Self::new() } }
+impl AgentTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for AgentTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[async_trait]
 impl Tool for AgentTool {
-    fn id(&self) -> &str { "agent" }
-    fn name(&self) -> &str { "Sub-Agent" }
+    fn id(&self) -> &str {
+        "agent"
+    }
+    fn name(&self) -> &str {
+        "Sub-Agent"
+    }
 
     fn description(&self) -> &str {
         "Spawn and communicate with specialized sub-agents. Actions: spawn, message, list, kill. \
@@ -65,7 +81,8 @@ impl Tool for AgentTool {
                 Ok(handlers::handle_kill(name))
             }
             _ => Ok(ToolResult::error(format!(
-                "Unknown action: {}. Valid: spawn, message, list, kill", p.action
+                "Unknown action: {}. Valid: spawn, message, list, kill",
+                p.action
             ))),
         }
     }

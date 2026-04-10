@@ -1,8 +1,8 @@
 //! Handle the "message" action.
 
-use super::store;
-use super::helpers;
 use super::event_loop;
+use super::helpers;
+use super::store;
 use crate::session::SessionEvent;
 use crate::tool::ToolResult;
 use anyhow::{Context, Result};
@@ -10,10 +10,16 @@ use serde_json::json;
 use tokio::sync::mpsc;
 
 pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResult> {
-    let name = params.name.as_ref().context("name required for message")?.clone();
+    let name = params
+        .name
+        .as_ref()
+        .context("name required for message")?
+        .clone();
     let message = params.message.as_ref().context("message required")?.clone();
 
-    let session = store::get(&name).map(|e| e.session).context(format!("Agent @{name} not found"))?;
+    let session = store::get(&name)
+        .map(|e| e.session)
+        .context(format!("Agent @{name} not found"))?;
     let registry = helpers::get_registry().await?;
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
     let mut session_for_task = session.clone();
@@ -25,7 +31,8 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
             .map(|_| session_for_task)
     });
 
-    let (response, thinking, tools, error, updated_session) = event_loop::run(&mut rx, handle).await;
+    let (response, thinking, tools, error, updated_session) =
+        event_loop::run(&mut rx, handle).await;
 
     if let Some(updated) = updated_session {
         store::update_session(&name, updated.clone());
@@ -49,5 +56,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         output["warning"] = json!(err);
     }
 
-    Ok(ToolResult::success(serde_json::to_string_pretty(&output).unwrap_or(response_for_fallback)))
+    Ok(ToolResult::success(
+        serde_json::to_string_pretty(&output).unwrap_or(response_for_fallback),
+    ))
 }

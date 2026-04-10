@@ -34,29 +34,19 @@ use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
 /// })
 /// .await?;
 /// ```
-pub async fn send_with_retry<F, Fut>(
-    mut f: F,
-) -> anyhow::Result<(String, reqwest::StatusCode)>
+pub async fn send_with_retry<F, Fut>(mut f: F) -> anyhow::Result<(String, reqwest::StatusCode)>
 where
     F: FnMut() -> Fut,
-    Fut: std::future::Future<
-        Output = anyhow::Result<(String, reqwest::StatusCode)>,
-    >,
+    Fut: std::future::Future<Output = anyhow::Result<(String, reqwest::StatusCode)>>,
 {
     let mut attempt = 0u32;
     loop {
         attempt += 1;
         match f().await {
-            Ok((text, status))
-                if status.is_success()
-                    && !is_retryable_message(&text) =>
-            {
+            Ok((text, status)) if status.is_success() && !is_retryable_message(&text) => {
                 return Ok((text, status));
             }
-            Ok((text, status))
-                if is_retryable_status(status)
-                    || is_retryable_message(&text) =>
-            {
+            Ok((text, status)) if is_retryable_status(status) || is_retryable_message(&text) => {
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, %status,

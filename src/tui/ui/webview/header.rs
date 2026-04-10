@@ -19,9 +19,17 @@ pub fn render_webview_header(f: &mut Frame, app: &App, area: Rect) {
     let right = format!("Chat{mode_label} ");
     let title_len = title.len() as u16;
     let right_len = right.len() as u16;
-    let spacing = area.width.saturating_sub(title_len).saturating_sub(right_len);
+    let spacing = area
+        .width
+        .saturating_sub(title_len)
+        .saturating_sub(right_len);
     let line = Line::from(vec![
-        Span::styled(title, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            title,
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" ".repeat(spacing as usize)),
         Span::styled(right, Style::default().fg(Color::DarkGray)),
     ]);

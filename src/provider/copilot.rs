@@ -1,5 +1,6 @@
 //! GitHub Copilot provider implementation using raw HTTP.
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -612,7 +613,7 @@ impl Provider for CopilotProvider {
 
         let response: CopilotResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Copilot response: {}",
-            &text[..text.len().min(200)]
+            util::truncate_bytes_safe(&text, 200)
         ))?;
 
         let choice = response

@@ -14,6 +14,7 @@
 //!
 //! The model is selected via the `x-goog-ext-525001261-jspb` request header.
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, Usage,
@@ -583,7 +584,7 @@ impl GeminiWebProvider {
                 if attempt == 0 {
                     tracing::warn!(
                         status = %status,
-                        body_prefix = %body[..body.len().min(200)],
+                        body_prefix = %util::truncate_bytes_safe(&body, 200),
                         "Gemini request failed; invalidating cached tokens and retrying once"
                     );
                     self.invalidate_tokens().await;
@@ -592,7 +593,7 @@ impl GeminiWebProvider {
                 anyhow::bail!(
                     "Gemini StreamGenerate returned HTTP {}: {}",
                     status,
-                    &body[..body.len().min(500)]
+                    util::truncate_bytes_safe(&body, 500)
                 );
             }
 
@@ -605,7 +606,7 @@ impl GeminiWebProvider {
                 let protocol_code = Self::extract_protocol_error_code(&body);
                 if attempt == 0 {
                     tracing::warn!(
-                        body_prefix = %body[..body.len().min(200)],
+                        body_prefix = %util::truncate_bytes_safe(&body, 200),
                         "Gemini response had no parseable text; invalidating cached tokens and retrying once"
                     );
                     self.invalidate_tokens().await;
@@ -784,7 +785,7 @@ impl Provider for GeminiWebProvider {
             anyhow::bail!(
                 "Gemini StreamGenerate returned HTTP {}: {}",
                 status,
-                &body[..body.len().min(500)]
+                util::truncate_bytes_safe(&body, 500)
             );
         }
 

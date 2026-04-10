@@ -68,7 +68,13 @@ pub async fn handle_event(
                 && app.state.view_mode == ViewMode::Chat =>
         {
             app.state.chat_layout_mode = app.state.chat_layout_mode.toggle();
-            let label = if app.state.chat_layout_mode == crate::tui::ui::webview::layout_mode::ChatLayoutMode::Webview { "Webview" } else { "Classic" };
+            let label = if app.state.chat_layout_mode
+                == crate::tui::ui::webview::layout_mode::ChatLayoutMode::Webview
+            {
+                "Webview"
+            } else {
+                "Classic"
+            };
             app.state.status = format!("Layout: {label}");
         }
         KeyCode::Char('o')
@@ -93,7 +99,9 @@ pub async fn handle_event(
                         "Attached 1 clipboard image. Type a message and press Enter to send."
                             .to_string()
                     } else {
-                        format!("Attached {image_count} clipboard images. Press Enter to send them.")
+                        format!(
+                            "Attached {image_count} clipboard images. Press Enter to send them."
+                        )
                     };
                 }
                 None => {

@@ -242,7 +242,7 @@ impl Tool for BashTool {
                 audit
                     .log(
                         AuditCategory::Sandbox,
-                        format!("bash:{}", &command[..command.len().min(80)]),
+                        format!("bash:{}", crate::util::truncate_bytes_safe(&command, 80)),
                         outcome,
                         None,
                         Some(detail),

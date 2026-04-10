@@ -21,8 +21,8 @@ pub mod smart_switch;
 pub mod state;
 pub mod symbols;
 pub mod text;
-pub mod worker_bridge;
 pub mod watchdog;
+pub mod worker_bridge;
 
 #[cfg(test)]
 mod tests;

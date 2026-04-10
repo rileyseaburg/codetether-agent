@@ -7,6 +7,7 @@
 //!
 //! Reference: https://console.cloud.google.com/vertex-ai/publishers/zai/model-garden/glm-5
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -533,7 +534,7 @@ impl Provider for VertexGlmProvider {
 
             let completion: ChatCompletion = serde_json::from_str(&text).context(format!(
                 "Failed to parse Vertex AI GLM response: {}",
-                &text[..text.len().min(200)]
+                util::truncate_bytes_safe(&text, 200)
             ))?;
 
             let choice = completion

@@ -2,6 +2,7 @@
 //!
 //! For Kimi K2.5 and other Moonshot models via api.moonshot.ai
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -307,7 +308,7 @@ impl Provider for MoonshotProvider {
 
         let response: MoonshotResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Moonshot response: {}",
-            &text[..text.len().min(200)]
+            util::truncate_bytes_safe(&text, 200)
         ))?;
 
         // Log response metadata for debugging

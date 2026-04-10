@@ -3,6 +3,7 @@
 //! This provider uses reqwest directly instead of async_openai to handle
 //! OpenRouter's extended response formats (like Kimi's reasoning fields).
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -335,11 +336,14 @@ impl Provider for OpenRouterProvider {
             anyhow::bail!("OpenRouter API error: {} {}", status, text);
         }
 
-        tracing::debug!("OpenRouter response: {}", &text[..text.len().min(500)]);
+        tracing::debug!(
+            "OpenRouter response: {}",
+            util::truncate_bytes_safe(&text, 500)
+        );
 
         let response: OpenRouterResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse response: {}",
-            &text[..text.len().min(200)]
+            util::truncate_bytes_safe(&text, 200)
         ))?;
 
         // Log response metadata for debugging

@@ -37,7 +37,10 @@ fn render_footer(f: &mut Frame, state: &AppState, area: Rect) {
         .split(area);
 
     let help = Paragraph::new(Line::styled(
-        format!(" Esc: back to chat │ Model: {} ", state.last_completion_model.as_deref().unwrap_or("auto")),
+        format!(
+            " Esc: back to chat │ Model: {} ",
+            state.last_completion_model.as_deref().unwrap_or("auto")
+        ),
         Style::default().fg(Color::DarkGray),
     ));
     f.render_widget(help, footer[1]);

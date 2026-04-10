@@ -9,6 +9,7 @@
 //! and ListInferenceProfiles APIs.
 //! Reference: https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -1146,13 +1147,13 @@ impl Provider for BedrockProvider {
             anyhow::bail!(
                 "Bedrock API error: {} {}",
                 status,
-                &text[..text.len().min(500)]
+                util::truncate_bytes_safe(&text, 500)
             );
         }
 
         let response: ConverseResponse = serde_json::from_str(&text).context(format!(
             "Failed to parse Bedrock response: {}",
-            &text[..text.len().min(300)]
+            util::truncate_bytes_safe(&text, 300)
         ))?;
 
         tracing::debug!(

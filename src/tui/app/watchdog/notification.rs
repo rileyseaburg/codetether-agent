@@ -20,10 +20,16 @@ pub fn render_watchdog_notification(f: &mut Frame, area: Rect, state: &AppState)
     let popup = Rect::new(x, y, width, height);
 
     let text = vec![
-        Line::from(Span::styled(&notif.message, Style::default().fg(Color::Yellow))),
+        Line::from(Span::styled(
+            &notif.message,
+            Style::default().fg(Color::Yellow),
+        )),
         Line::from(""),
         Line::from(vec![
-            Span::styled("[Esc] Dismiss ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[Esc] Dismiss ",
+                Style::default().add_modifier(Modifier::BOLD),
+            ),
             Span::styled("[Ctrl+X] Cancel", Style::default().fg(Color::Red)),
         ]),
     ];

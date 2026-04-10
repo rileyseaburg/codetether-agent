@@ -1,8 +1,8 @@
 //! Handle the "spawn" action.
 
-use super::store::{self, AgentEntry};
 use super::helpers;
 use super::policy;
+use super::store::{self, AgentEntry};
 use crate::tool::ToolResult;
 use anyhow::{Context, Result};
 
@@ -34,14 +34,24 @@ pub(super) async fn handle_spawn(params: &helpers::Params) -> Result<ToolResult>
     }
 
     if store::contains(name) {
-        return Ok(ToolResult::error(format!("Agent @{name} exists. Use kill first.")));
+        return Ok(ToolResult::error(format!(
+            "Agent @{name} exists. Use kill first."
+        )));
     }
 
     let mut session = helpers::create_agent_session(name, instructions, requested).await?;
     if let Err(e) = session.save().await {
         tracing::warn!(agent = %name, error = %e, "Failed to save spawned agent session");
     }
-    store::insert(name.clone(), AgentEntry { instructions: instructions.clone(), session });
+    store::insert(
+        name.clone(),
+        AgentEntry {
+            instructions: instructions.clone(),
+            session,
+        },
+    );
     tracing::info!(agent = %name, "Sub-agent spawned");
-    Ok(ToolResult::success(format!("Spawned @{name} on '{requested}': {instructions}")))
+    Ok(ToolResult::success(format!(
+        "Spawned @{name} on '{requested}': {instructions}"
+    )))
 }
