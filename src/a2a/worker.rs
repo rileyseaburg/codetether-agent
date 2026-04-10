@@ -1887,6 +1887,7 @@ async fn handle_clone_repo_task(
         install_commit_msg_hook(&repo_path)?;
 
         register_cloned_workspace(client, server, token, worker_id, &workspace, &repo_path).await?;
+        enqueue_post_clone_task(client, server, token, &workspace_id, metadata).await?;
 
         Ok::<String, anyhow::Error>(format!(
             "Repository ready at {} (branch: {})",
@@ -1974,6 +1975,65 @@ async fn register_cloned_workspace(
         );
     }
 
+    Ok(())
+}
+
+async fn enqueue_post_clone_task(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    workspace_id: &str,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> Result<()> {
+    let Some(post_clone_task) = metadata.get("post_clone_task") else {
+        return Ok(());
+    };
+    let Some(task) = post_clone_task.as_object() else {
+        return Ok(());
+    };
+    let title = task
+        .get("title")
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing title"))?;
+    let prompt = task
+        .get("prompt")
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing prompt"))?;
+    let agent_type = task
+        .get("agent_type")
+        .and_then(|value| value.as_str())
+        .unwrap_or("build");
+    let task_metadata = task
+        .get("metadata")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({}));
+
+    let mut req = client.post(format!(
+        "{}/v1/agent/workspaces/{}/tasks",
+        server.trim_end_matches('/'),
+        workspace_id
+    ));
+    if let Some(token) = token {
+        req = req.bearer_auth(token);
+    }
+
+    let response = req
+        .json(&serde_json::json!({
+            "title": title,
+            "prompt": prompt,
+            "agent_type": agent_type,
+            "metadata": task_metadata,
+        }))
+        .send()
+        .await
+        .context("Failed to enqueue post-clone task")?;
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!("Failed to enqueue post-clone task ({}): {}", status, body);
+    }
     Ok(())
 }
 

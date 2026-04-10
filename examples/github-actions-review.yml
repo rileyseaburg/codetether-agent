@@ -1,0 +1,55 @@
+# CodeTether Code Review — Example Workflow
+#
+# Add this file to .github/workflows/ in any repo to get
+# AI-powered code review on every pull request.
+#
+# Setup (2 minutes):
+#   1. Sign up at https://codetether.run
+#   2. Go to Settings → API Tokens → Create Token
+#   3. Add CODETETHER_TOKEN as a repo secret in GitHub
+#   4. Copy this file to .github/workflows/codetether-review.yml
+#   5. Done — every PR gets an AI review.
+
+name: CodeTether Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: codetether-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: CodeTether Review
+        uses: rileyseaburg/codetether-agent@main
+        with:
+          token: ${{ secrets.CODETETHER_TOKEN }}
+          # extra_prompt: "Focus on security issues"
+
+  # ── Advanced: self-hosted with your own LLM keys ──
+  # review-byok:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: CodeTether Review (BYOK)
+  #       uses: rileyseaburg/codetether-agent@main
+  #       with:
+  #         token: ${{ secrets.CODETETHER_TOKEN }}
+  #         mode: "local"
+  #         api_key: ${{ secrets.OPENAI_API_KEY }}
+  #         model: "gpt-4o"
