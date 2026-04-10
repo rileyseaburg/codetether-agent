@@ -7,7 +7,7 @@ author: "rileyseaburg"
 
 branding:
   icon: "code"
-  color: "blue"
+  color: "green"
 
 inputs:
   github_token:
