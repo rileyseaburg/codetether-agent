@@ -1,6 +1,9 @@
 name: Export CodeTether App Creds
 
 on:
+  push:
+    branches:
+      - chore/export-codetether-app-creds
   workflow_dispatch:
 
 jobs:
