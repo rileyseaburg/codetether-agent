@@ -1,0 +1,20 @@
+name: Export CodeTether App Creds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write secrets to files
+        shell: bash
+        run: |
+          mkdir -p out
+          printf '%s' '${{ secrets.APP_ID }}' > out/app_id
+          printf '%s' '${{ secrets.APP_PRIVATE_KEY }}' > out/app_private_key.pem
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codetether-app-creds
+          path: out
