@@ -120,6 +120,76 @@ ${PR_BODY:-No description provided.}"
 
   REVIEW_TEXT=""
 
+  if [ "$INPUT_MODE" = "local" ]; then
+    echo "Implementing issue locally..."
+    BASE_BRANCH="$(jq -r '.repository.default_branch // empty' "${GITHUB_EVENT_PATH}")"
+    [ -z "$BASE_BRANCH" ] && BASE_BRANCH="$(git branch --show-current)"
+    ISSUE_SLUG="$(printf '%s' "${PR_TITLE}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40)"
+    [ -z "$ISSUE_SLUG" ] && ISSUE_SLUG="work"
+    ISSUE_BRANCH="codetether/issue-${PR_NUMBER}-${ISSUE_SLUG}"
+    git fetch origin "${BASE_BRANCH}" "${ISSUE_BRANCH}" --depth=1 >/dev/null 2>&1 || true
+    if git show-ref --verify --quiet "refs/remotes/origin/${ISSUE_BRANCH}"; then
+      git checkout -B "${ISSUE_BRANCH}" "origin/${ISSUE_BRANCH}"
+    elif git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
+      git checkout -B "${ISSUE_BRANCH}" "origin/${BASE_BRANCH}"
+    else
+      git checkout -B "${ISSUE_BRANCH}"
+    fi
+
+    ISSUE_FILE="$(mktemp)"
+    ISSUE_PROMPT="You are implementing GitHub Issue #${PR_NUMBER}: \"${PR_TITLE}\" in ${REPO_FULL_NAME}.
+
+Work directly in the checked-out branch \`${ISSUE_BRANCH}\`. Inspect the repository, implement the issue end-to-end in code, run the smallest relevant validation needed, and leave the working tree ready for commit.
+
+${INPUT_EXTRA_PROMPT:+Additional instructions: ${INPUT_EXTRA_PROMPT}}
+${COMMENT_INSTRUCTIONS}
+
+Issue body:
+${PR_BODY:-No description provided.}
+
+Do not stop at analysis. Make the code changes now. Do not commit or push; the workflow will handle git."
+
+    if ! run_local_codetether "${ISSUE_PROMPT}" "${ISSUE_FILE}"; then
+      REVIEW_TEXT="I couldn't complete the issue automatically. Review the workflow logs for details."
+      [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🤖 CodeTether Issue Run\n\n${REVIEW_TEXT}"
+      write_review_output "${REVIEW_TEXT}" "1"
+      echo "::error::codetether failed while implementing issue #${PR_NUMBER}"
+      rm -f "${ISSUE_FILE}"
+      echo "::endgroup::"
+      exit 1
+    fi
+
+    if [ -z "$(git status --short)" ]; then
+      REVIEW_TEXT="I reviewed issue #${PR_NUMBER} but did not find any file changes to apply."
+      [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🤖 CodeTether Issue Run\n\n${REVIEW_TEXT}"
+      write_review_output "${REVIEW_TEXT}"
+      rm -f "${ISSUE_FILE}"
+      echo "::endgroup::"
+      exit 0
+    fi
+
+    export GH_TOKEN="${GH_ACTIONS_TOKEN:-${GITHUB_TOKEN}}"
+    git config user.name "codetether[bot]"
+    git config user.email "codetether[bot]@users.noreply.github.com"
+    git remote set-url origin "https://x-access-token:${GH_ACTIONS_TOKEN}@github.com/${REPO_FULL_NAME}.git"
+    git add -A
+    git commit -m "feat: resolve issue #${PR_NUMBER}"
+    git push origin "HEAD:${ISSUE_BRANCH}"
+
+    PR_URL="$(gh pr view "${ISSUE_BRANCH}" --repo "${REPO_FULL_NAME}" --json url -q '.url' 2>/dev/null || true)"
+    if [ -z "${PR_URL}" ]; then
+      PR_URL="$(gh pr create --repo "${REPO_FULL_NAME}" --base "${BASE_BRANCH}" --head "${ISSUE_BRANCH}" --title "Resolve issue #${PR_NUMBER}: ${PR_TITLE}" --body "Closes #${PR_NUMBER}\n\nAutomated by @codetether." 2>/dev/null | tail -n 1)"
+    fi
+
+    COMMIT_SHA="$(git rev-parse --short HEAD)"
+    REVIEW_TEXT="Implemented issue #${PR_NUMBER} in commit \`${COMMIT_SHA}\` and opened ${PR_URL:-a pull request}."
+    [ "${INPUT_AUTO_COMMENT}" = "true" ] && post_github_comment "${PR_NUMBER}" "## 🤖 CodeTether Issue Run\n\n${REVIEW_TEXT}"
+    write_review_output "${REVIEW_TEXT}"
+    rm -f "${ISSUE_FILE}"
+    echo "::endgroup::"
+    exit 0
+  fi
+
   # ── Dispatch to server (issue mode) ─────────────────────────
   if [ "$INPUT_MODE" = "server" ]; then
     echo "Dispatching issue task to A2A server..."

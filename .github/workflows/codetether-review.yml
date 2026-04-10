@@ -50,12 +50,17 @@ jobs:
           mode="server"
           body="$(printf '%s' "${COMMENT_BODY}" | tr '\n' ' ' | tr '[:upper:]' '[:lower:]')"
           is_pr_comment="false"
+          is_issue_comment="false"
           if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
             is_pr_comment="true"
           elif [ "$EVENT_NAME" = "issue_comment" ] && [ -n "$ISSUE_PR_URL" ]; then
             is_pr_comment="true"
+          elif [ "$EVENT_NAME" = "issue_comment" ]; then
+            is_issue_comment="true"
           fi
           if [ "$is_pr_comment" = "true" ] && printf '%s' "$body" | grep -Eq '(@codetether([^[:alnum:]_-]|$).*(fix|apply|address|implement|patch))|((fix|apply|address|implement|patch).+@codetether([^[:alnum:]_-]|$))'; then
+            mode="local"
+          elif [ "$EVENT_NAME" = "issues" ] || [ "$is_issue_comment" = "true" ]; then
             mode="local"
           fi
           echo "mode=${mode}" >> "$GITHUB_OUTPUT"
