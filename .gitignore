@@ -41,3 +41,4 @@ target-jammy/
 .codetether-worktrees/
 tp_*/
 us_*/
+__pycache__/
