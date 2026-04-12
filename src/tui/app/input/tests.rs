@@ -121,7 +121,9 @@ mod tests {
 
         assert_eq!(app.state.messages[0].content, "hello tui");
         assert_eq!(app.state.steering_count(), 0);
-        assert!(app.state.status.contains("No providers") || app.state.status.contains("Submitting"));
+        assert!(
+            app.state.status.contains("No providers") || app.state.status.contains("Submitting")
+        );
     }
 
     #[test]

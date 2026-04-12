@@ -39,5 +39,4 @@ pub(super) fn drain_autochat(app: &mut App) {
     for event in events {
         super::super::autochat::handle_autochat_event(&mut app.state, event);
     }
-
 }

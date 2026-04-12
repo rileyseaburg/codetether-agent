@@ -1,8 +1,8 @@
 //! Oracle command handlers.
 
 use super::{OracleArgs, OracleCommand, OracleSyncArgs, OracleValidateArgs};
-use crate::rlm::{RlmAnalysisResult, RlmChunker, RlmStats, SubQuery};
 use crate::rlm::oracle::{OracleResult, OracleTraceStorage, TraceValidator};
+use crate::rlm::{RlmAnalysisResult, RlmChunker, RlmStats, SubQuery};
 use anyhow::{Context, Result};
 use serde_json::json;
 use std::io::Read;

@@ -6,9 +6,7 @@ pub fn copy_text(text: &str) -> Result<&'static str, String> {
     if text.trim().is_empty() {
         return Err("empty text".to_string());
     }
-    match arboard::Clipboard::new()
-        .and_then(|mut cb| cb.set_text(text.to_string()))
-    {
+    match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(text.to_string())) {
         Ok(()) => return Ok("system clipboard"),
         Err(e) => {
             tracing::debug!(error = %e, "arboard unavailable, trying OSC52");

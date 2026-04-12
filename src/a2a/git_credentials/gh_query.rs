@@ -23,10 +23,20 @@ use super::{GitCredentialMaterial, GitCredentialQuery};
 /// let request = render_gh_credential_query(&query, &creds);
 /// assert!(request.ends_with("\\n\\n"));
 /// ```
-pub(super) fn render_gh_credential_query(query: &GitCredentialQuery, credentials: &GitCredentialMaterial) -> String {
-    let mut request = format!("protocol={}\n", query.protocol.as_deref().unwrap_or("https"));
-    if let Some(host) = query.host.as_deref().or(credentials.host.as_deref()) { request.push_str(&format!("host={}\n", host.trim())); }
-    if let Some(path) = query.path.as_deref().or(credentials.path.as_deref()) { request.push_str(&format!("path={}\n", path.trim())); }
+pub(super) fn render_gh_credential_query(
+    query: &GitCredentialQuery,
+    credentials: &GitCredentialMaterial,
+) -> String {
+    let mut request = format!(
+        "protocol={}\n",
+        query.protocol.as_deref().unwrap_or("https")
+    );
+    if let Some(host) = query.host.as_deref().or(credentials.host.as_deref()) {
+        request.push_str(&format!("host={}\n", host.trim()));
+    }
+    if let Some(path) = query.path.as_deref().or(credentials.path.as_deref()) {
+        request.push_str(&format!("path={}\n", path.trim()));
+    }
     request.push('\n');
     request
 }

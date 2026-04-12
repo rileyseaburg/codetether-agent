@@ -45,14 +45,14 @@ mod types;
 mod validator;
 
 pub use grep_oracle::{GrepOracle, GrepVerification};
+pub use record::OracleTraceRecord;
 pub use schema::{AstPayload, AstResult, FinalPayload, GrepMatch, GrepPayload, SemanticPayload};
 pub use storage::{
     OracleTracePersistResult, OracleTraceStorage, OracleTraceSyncStats, default_spool_dir,
 };
 pub use templates::{GeneratedQuery, QueryTemplate, TemplateKind};
-pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
-pub use record::OracleTraceRecord;
 pub use trace_types::{OracleResult, ValidatedTrace};
+pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
 pub use types::{TraceStep, VerificationMethod};
 pub use validator::{BatchValidationStats, SplitWriteStats, TraceValidator};
 

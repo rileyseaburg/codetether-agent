@@ -15,7 +15,6 @@ use tokio::process::Command;
 use tokio::time::{Duration, timeout};
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
-use crate::util;
 
 /// Execute shell commands
 pub struct BashTool {
@@ -147,7 +146,7 @@ impl Tool for BashTool {
     }
 
     fn description(&self) -> &str {
-        "bash(command: string, cwd?: string, timeout?: int) - Execute a shell command. Commands run in a bash shell with the current working directory."
+        "bash(command: string, cwd?: string, timeout?: int) - Execute a shell command. Prefer dedicated tools when they fit the task: use browserctl for browser automation, read/write/edit tools for files, and search/list tools for repository inspection."
     }
 
     fn parameters(&self) -> Value {

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>browserctl</title>
+  <style>
+    body { font: 14px sans-serif; margin: 12px; background: #111; color: #eee; }
+    input, button { font: inherit; padding: 8px; }
+    .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    #screen { max-width: 100%; border: 1px solid #444; cursor: crosshair; }
+    #meta, #console { white-space: pre-wrap; background: #1b1b1b; padding: 8px; border: 1px solid #333; }
+    #console { max-height: 180px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <input id="url" style="flex:1" placeholder="https://github.com">
+    <button id="go">Go</button>
+    <button id="back">Back</button>
+    <button id="reload">Reload</button>
+    <button id="refresh">Refresh</button>
+  </div>
+  <div class="row">
+    <input id="typebox" style="flex:1" placeholder="Type into the focused field">
+    <button id="typebtn">Type</button>
+    <button data-key="Tab">Tab</button>
+    <button data-key="Enter">Enter</button>
+    <button data-key="Backspace">Backspace</button>
+  </div>
+  <div id="meta"></div>
+  <p>Click anywhere on the screenshot to focus or press buttons on the page.</p>
+  <img id="screen" alt="browser viewport">
+  <h3>Console</h3>
+  <div id="console"></div>
+  <script>
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    let viewport = { width: 1280, height: 720 };
+    const img = document.getElementById('screen');
+    const meta = document.getElementById('meta');
+    const consoleBox = document.getElementById('console');
+    const urlBox = document.getElementById('url');
+    function authHeaders() {
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    }
+    async function requestJson(path, options = {}) {
+      const resp = await fetch(path, { headers: authHeaders(), ...options });
+      const payload = await resp.json();
+      if (!resp.ok) {
+        throw new Error(payload.detail || JSON.stringify(payload));
+      }
+      return payload;
+    }
+    async function post(path, body) {
+      return requestJson(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(body || {}),
+      });
+    }
+    async function refreshState() {
+      const suffix = token ? `?token=${encodeURIComponent(token)}` : '';
+      const [snap, consoleData, nextViewport] = await Promise.all([
+        requestJson('/snapshot' + suffix),
+        requestJson('/console' + suffix),
+        requestJson('/viewport' + suffix),
+      ]);
+      viewport = nextViewport;
+      meta.textContent = `Title: ${snap.title}\nURL: ${snap.url}\nViewport: ${viewport.width}x${viewport.height}`;
+      consoleBox.textContent = (consoleData.messages || []).join('\n');
+      urlBox.value = snap.url || '';
+      img.src = `/image${token ? `?token=${encodeURIComponent(token)}&` : '?'}t=${Date.now()}`;
+    }
+    async function loadState() {
+      try {
+        await refreshState();
+      } catch (error) {
+        meta.textContent = `Error: ${error.message}`;
+      }
+    }
+    document.getElementById('go').onclick = async () => { await post('/goto', { url: urlBox.value, wait_until: 'domcontentloaded' }); await loadState(); };
+    document.getElementById('back').onclick = async () => { await post('/back', {}); await loadState(); };
+    document.getElementById('reload').onclick = async () => { await post('/reload', {}); await loadState(); };
+    document.getElementById('refresh').onclick = loadState;
+    document.getElementById('typebtn').onclick = async () => { await post('/keyboard/type', { text: document.getElementById('typebox').value }); await loadState(); };
+    for (const btn of document.querySelectorAll('button[data-key]')) {
+      btn.onclick = async () => { await post('/keyboard/press', { key: btn.dataset.key }); await loadState(); };
+    }
+    img.onclick = async (event) => {
+      const rect = img.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * viewport.width / rect.width;
+      const y = (event.clientY - rect.top) * viewport.height / rect.height;
+      await post('/mouse/click', { x, y });
+      await loadState();
+    };
+    loadState();
+    setInterval(loadState, 2000);
+  </script>
+</body>
+</html>

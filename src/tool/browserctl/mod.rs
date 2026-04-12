@@ -543,3 +543,87 @@ impl Default for BrowserCtlTool {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_input(action: BrowserCtlAction) -> BrowserCtlInput {
+        BrowserCtlInput {
+            action,
+            base_url: None,
+            token: None,
+            headless: None,
+            executable_path: None,
+            url: None,
+            wait_until: None,
+            selector: None,
+            frame_selector: None,
+            value: None,
+            text: None,
+            text_gone: None,
+            delay_ms: None,
+            key: None,
+            expression: None,
+            script: None,
+            url_contains: None,
+            state: None,
+            timeout_ms: None,
+            path: None,
+            full_page: None,
+            x: None,
+            y: None,
+            index: None,
+            exact: None,
+        }
+    }
+
+    #[test]
+    fn base_url_uses_default_without_trailing_slash() {
+        let input = sample_input(BrowserCtlAction::Health);
+        assert_eq!(BrowserCtlTool::base_url(&input), DEFAULT_BASE_URL);
+    }
+
+    #[test]
+    fn token_filters_empty_values() {
+        let mut input = sample_input(BrowserCtlAction::Health);
+        input.token = Some("   ".to_string());
+        assert_eq!(BrowserCtlTool::token(&input), None);
+    }
+
+    #[test]
+    fn require_string_rejects_blank_values() {
+        let value = Some("   ".to_string());
+        let error = BrowserCtlTool::require_string(&value, "selector")
+            .expect_err("blank selector should error");
+        assert!(error.to_string().contains("selector is required"));
+    }
+
+    #[test]
+    fn screenshot_metadata_reports_path_details() {
+        let tool = BrowserCtlTool::new();
+        let body = json!({"path": "/tmp/browserctl-test.png"});
+        let metadata = tool
+            .screenshot_metadata(&body)
+            .expect("screenshot metadata should exist");
+        assert_eq!(metadata["path"], json!("/tmp/browserctl-test.png"));
+        assert_eq!(metadata["absolute"], json!(true));
+    }
+
+    #[test]
+    fn response_result_captures_common_metadata() {
+        let tool = BrowserCtlTool::new();
+        let body = json!({
+            "url": "https://example.com",
+            "title": "Example",
+            "active_index": 1
+        });
+        let result = tool
+            .response_result("goto", DEFAULT_BASE_URL, "/goto", 200, body)
+            .expect("response result should build");
+        assert!(result.success);
+        assert_eq!(result.metadata.get("action"), Some(&json!("goto")));
+        assert_eq!(result.metadata.get("http_status"), Some(&json!(200)));
+        assert_eq!(result.metadata.get("title"), Some(&json!("Example")));
+    }
+}

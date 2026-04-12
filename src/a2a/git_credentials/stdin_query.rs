@@ -26,7 +26,9 @@ use super::GitCredentialQuery;
 /// ```
 pub(super) fn read_git_credential_query_from_stdin() -> Result<GitCredentialQuery> {
     let mut input = String::new();
-    io::stdin().read_to_string(&mut input).context("Failed to read Git credential request from stdin")?;
+    io::stdin()
+        .read_to_string(&mut input)
+        .context("Failed to read Git credential request from stdin")?;
     let mut query = GitCredentialQuery::default();
     for line in input.lines() {
         if let Some((key, value)) = line.split_once('=')

@@ -1,0 +1,125 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  namespace: a2a-server
+  labels:
+    app.kubernetes.io/name: opa
+    app.kubernetes.io/component: policy-engine
+    app.kubernetes.io/part-of: codetether
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opa
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opa
+        app.kubernetes.io/component: policy-engine
+        app.kubernetes.io/part-of: codetether
+    spec:
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:1.3.0
+          args:
+            - run
+            - --server
+            - --addr=0.0.0.0:8181
+            - --log-level=info
+            - --set=decision_logs.console=true
+            - /policies
+          ports:
+            - name: http
+              containerPort: 8181
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8181
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8181
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: opa-policies
+              mountPath: /policies/data.json
+              subPath: data.json
+              readOnly: true
+            - name: opa-policies
+              mountPath: /policies/authz.rego
+              subPath: authz.rego
+              readOnly: true
+            - name: opa-policies
+              mountPath: /policies/api_keys.rego
+              subPath: api_keys.rego
+              readOnly: true
+            - name: opa-policies
+              mountPath: /policies/tenants.rego
+              subPath: tenants.rego
+              readOnly: true
+      volumes:
+        - name: opa-policies
+          configMap:
+            name: codetether-a2a-server-opa-policies
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa
+  namespace: a2a-server
+  labels:
+    app.kubernetes.io/name: opa
+    app.kubernetes.io/component: policy-engine
+    app.kubernetes.io/part-of: codetether
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: opa
+  ports:
+    - name: http
+      port: 8181
+      targetPort: 8181
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opa
+  namespace: a2a-server
+  labels:
+    app.kubernetes.io/name: opa
+    app.kubernetes.io/component: policy-engine
+    app.kubernetes.io/part-of: codetether
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: opa.codetether.run
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opa
+                port:
+                  number: 8181
+  tls:
+    - hosts:
+        - opa.codetether.run
+      secretName: codetether-opa-tls
