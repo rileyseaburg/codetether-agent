@@ -187,6 +187,7 @@ impl WorktreeManager {
         let mut worktrees = self.worktrees.lock().await;
         if let Some(pos) = worktrees.iter().position(|w| w.name == name) {
             let info = &worktrees[pos];
+            let branch = info.branch.clone();
 
             // Run git worktree remove
             let output = tokio::process::Command::new("git")
@@ -221,6 +222,10 @@ impl WorktreeManager {
             }
 
             worktrees.remove(pos);
+            drop(worktrees);
+
+            // Delete the branch so it doesn't leak
+            Self::delete_branch(&self.repo_path, &branch).await;
         }
         Ok(())
     }
@@ -623,6 +628,7 @@ Recovery steps:\n\
     pub async fn cleanup_all(&self) -> Result<usize> {
         let mut worktrees = self.worktrees.lock().await;
         let count = worktrees.len();
+        let branches: Vec<String> = worktrees.iter().map(|w| w.branch.clone()).collect();
 
         for info in worktrees.iter() {
             // Try git worktree remove first
@@ -640,6 +646,13 @@ Recovery steps:\n\
         }
 
         worktrees.clear();
+        drop(worktrees);
+
+        // Delete all branches so they don't leak
+        for branch in &branches {
+            Self::delete_branch(&self.repo_path, branch).await;
+        }
+
         tracing::info!(count, "Cleaned up all worktrees");
         Ok(count)
     }
@@ -648,6 +661,27 @@ Recovery steps:\n\
     pub fn inject_workspace_stub(&self, _worktree_path: &Path) -> Result<()> {
         // Placeholder: In a real implementation, this would prepend [workspace] to Cargo.toml
         Ok(())
+    }
+
+    /// Delete a local branch (best-effort, logs but doesn't fail).
+    async fn delete_branch(repo_path: &Path, branch: &str) {
+        let out = tokio::process::Command::new("git")
+            .args(["branch", "-D", branch])
+            .current_dir(repo_path)
+            .output()
+            .await;
+        match out {
+            Ok(o) if o.status.success() => {
+                tracing::info!(branch, "Deleted worktree branch");
+            }
+            Ok(o) => {
+                let err = String::from_utf8_lossy(&o.stderr);
+                tracing::debug!(branch, error = %err, "Branch delete skipped");
+            }
+            Err(e) => {
+                tracing::debug!(branch, error = %e, "Branch delete failed");
+            }
+        }
     }
 
     /// Get list of conflicting files during a merge
