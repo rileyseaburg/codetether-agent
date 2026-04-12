@@ -1875,28 +1875,48 @@ async fn handle_clone_repo_task(
                     repo_path.display()
                 );
             }
-
-            run_git_command_at(
+            let remote_branch = run_git_command_at(
                 None,
                 vec![
                     "-c".to_string(),
                     format!("credential.helper={}", temp_helper_path.display()),
                     "-c".to_string(),
                     "credential.useHttpPath=true".to_string(),
-                    "clone".to_string(),
-                    "--single-branch".to_string(),
-                    "--branch".to_string(),
-                    branch.clone(),
+                    "ls-remote".to_string(),
+                    "--heads".to_string(),
                     git_url.clone(),
-                    repo_path.display().to_string(),
+                    branch.clone(),
                 ],
             )
             .await?;
+            let mut clone_args = vec![
+                "-c".to_string(),
+                format!("credential.helper={}", temp_helper_path.display()),
+                "-c".to_string(),
+                "credential.useHttpPath=true".to_string(),
+                "clone".to_string(),
+            ];
+            if !remote_branch.trim().is_empty() {
+                clone_args.extend([
+                    "--single-branch".to_string(),
+                    "--branch".to_string(),
+                    branch.clone(),
+                ]);
+            }
+            clone_args.extend([git_url.clone(), repo_path.display().to_string()]);
+            run_git_command_at(None, clone_args).await?;
             configure_repo_git_auth(&repo_path, &workspace_id)?;
             configure_repo_git_github_app_from_agent_config(
                 &repo_path,
                 Some(&serde_json::Value::Object(workspace.agent_config.clone())),
             );
+            if remote_branch.trim().is_empty() {
+                run_git_command_at(
+                    Some(&repo_path),
+                    vec!["checkout".to_string(), "-B".to_string(), branch.clone()],
+                )
+                .await?;
+            }
         }
         install_commit_msg_hook(&repo_path)?;
 
