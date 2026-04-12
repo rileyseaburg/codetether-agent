@@ -1,5 +1,6 @@
 //! Agent Tool — spawn and communicate with sub-agents.
 
+#[path = "event_loop/mod.rs"]
 mod event_loop;
 mod handlers;
 mod helpers;
@@ -7,6 +8,7 @@ mod message;
 mod policy;
 mod spawn;
 mod store;
+mod text;
 
 use helpers::Params;
 

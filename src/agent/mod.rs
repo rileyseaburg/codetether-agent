@@ -2,6 +2,8 @@
 //!
 //! Agents are the core execution units that orchestrate tools and LLM interactions.
 
+pub mod build_guidance;
+#[path = "builtin/mod.rs"]
 pub mod builtin;
 
 use crate::config::PermissionAction;

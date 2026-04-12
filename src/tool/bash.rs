@@ -15,6 +15,7 @@ use tokio::process::Command;
 use tokio::time::{Duration, timeout};
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
+use crate::util;
 
 /// Execute shell commands
 pub struct BashTool {

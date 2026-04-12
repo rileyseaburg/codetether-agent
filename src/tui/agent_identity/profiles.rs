@@ -1,10 +1,7 @@
 //! Agent profile struct and per-agent profile lookup.
 
-mod fallback_profiles;
-mod named_profiles;
-
-use fallback_profiles::*;
-use named_profiles::*;
+use super::fallback_profiles::*;
+use super::named_profiles::*;
 
 /// Identity metadata for a named agent.
 #[derive(Debug, Clone)]

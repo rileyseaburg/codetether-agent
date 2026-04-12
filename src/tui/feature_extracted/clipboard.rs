@@ -45,7 +45,7 @@ fn get_clipboard_image() -> Option<PendingImage> {
 }
 
 
-fn osc52_copy(text: &str) -> std::io::Result<()> {
+pub fn osc52_copy(text: &str) -> std::io::Result<()> {
     // OSC52 format: ESC ] 52 ; c ; <base64> BEL
     // Some terminals may disable OSC52 for security; we treat this as best-effort.
     let payload = base64::engine::general_purpose::STANDARD.encode(text.as_bytes());
@@ -58,7 +58,7 @@ fn osc52_copy(text: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn copy_text_to_clipboard_best_effort(text: &str) -> Result<&'static str, String> {
+pub fn copy_text_to_clipboard_best_effort(text: &str) -> Result<&'static str, String> {
     if text.trim().is_empty() {
         return Err("empty text".to_string());
     }

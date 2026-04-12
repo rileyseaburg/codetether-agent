@@ -15,10 +15,11 @@ pub fn render_webview_sidebar(f: &mut Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(Color::DarkGray));
     let mut items: Vec<ListItem> = Vec::new();
     for (i, summary) in app.state.sessions.iter().enumerate() {
+        let title = summary.title.as_deref().unwrap_or("Untitled");
         let label = if i == app.state.selected_session {
-            format!("▶ {}", truncate_str(&summary.title, 20))
+            format!("▶ {}", truncate_str(title, 20))
         } else {
-            format!("  {}", truncate_str(&summary.title, 20))
+            format!("  {}", truncate_str(title, 20))
         };
         let style = if i == app.state.selected_session {
             Style::default()

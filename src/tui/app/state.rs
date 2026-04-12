@@ -32,6 +32,7 @@ const SLASH_COMMANDS: &[&str] = &[
     "/autoapply",
     "/network",
     "/autocomplete",
+    "/steer",
     "/mcp",
     "/model",
     "/settings",
@@ -265,6 +266,7 @@ pub struct AppState {
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
     pub pending_images: Vec<ImageAttachment>,
+    pub queued_steering: Vec<String>,
     pub auto_apply_edits: bool,
     pub allow_network: bool,
     pub slash_autocomplete: bool,
@@ -369,6 +371,7 @@ impl Default for AppState {
             last_tool_latency_ms: None,
             last_tool_success: None,
             pending_images: Vec::new(),
+            queued_steering: Vec::new(),
             auto_apply_edits: false,
             allow_network: false,
             slash_autocomplete: true,
@@ -822,6 +825,37 @@ impl AppState {
             self.command_history.push(entry);
             self.history_index = None;
         }
+    }
+
+    pub fn queue_steering(&mut self, value: impl Into<String>) {
+        let trimmed = value.into().trim().to_string();
+        if !trimmed.is_empty() {
+            self.queued_steering.push(trimmed);
+        }
+    }
+
+    pub fn clear_steering(&mut self) {
+        self.queued_steering.clear();
+    }
+
+    pub fn steering_count(&self) -> usize {
+        self.queued_steering.len()
+    }
+
+    pub fn steering_prompt_prefix(&self) -> Option<String> {
+        if self.queued_steering.is_empty() {
+            return None;
+        }
+        let items = self
+            .queued_steering
+            .iter()
+            .enumerate()
+            .map(|(idx, item)| format!("{}. {item}", idx + 1))
+            .collect::<Vec<_>>()
+            .join("\n");
+        Some(format!(
+            "[Queued steering for this turn]\nApply the following guidance while answering:\n{items}\n"
+        ))
     }
 
     pub fn history_prev(&mut self) -> bool {

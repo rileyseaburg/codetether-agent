@@ -255,8 +255,24 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
     let token_display = TokenDisplay::new();
     let validated_theme = validate_theme(&Theme::default());
     let token_status_line = token_display.create_status_bar(&validated_theme);
-    let attachment_suffix = if pending_images > 0 {
-        format!(" | 📷 {pending_images} attached ")
+    let steering = app.state.steering_count();
+    let attachment_suffix = if pending_images > 0 || steering > 0 {
+        let image_part = if pending_images > 0 {
+            format!("📷 {pending_images} attached")
+        } else {
+            String::new()
+        };
+        let steering_part = if steering > 0 {
+            format!("🧭 {steering} queued")
+        } else {
+            String::new()
+        };
+        let parts = [image_part, steering_part]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" | ");
+        format!(" | {parts} ")
     } else {
         String::new()
     };
