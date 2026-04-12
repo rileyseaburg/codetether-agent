@@ -27,10 +27,20 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
-    let args_vec = args.into_iter().map(|arg| arg.as_ref().to_string()).collect::<Vec<_>>();
-    let output = Command::new("git").current_dir(repo_path).args(args_vec.iter().map(String::as_str)).output()?;
-    if output.status.success() { return Ok(()); }
-    Err(anyhow!("Git command failed in {}: {}", repo_path.display(), String::from_utf8_lossy(&output.stderr).trim()))
+    let mut cmd = Command::new("git");
+    cmd.current_dir(repo_path);
+    for arg in args {
+        cmd.arg(arg.as_ref());
+    }
+    let output = cmd.output()?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "Git command failed in {}: {}",
+        repo_path.display(),
+        String::from_utf8_lossy(&output.stderr).trim()
+    ))
 }
 
 /// Sets a local Git configuration value when the value is present.
@@ -43,5 +53,9 @@ where
 /// set_local_config(repo_path, "codetether.githubAppId", Some("123"))?;
 /// ```
 pub(super) fn set_local_config(repo_path: &Path, key: &str, value: Option<&str>) -> Result<()> {
-    value.filter(|value| !value.trim().is_empty()).map_or(Ok(()), |value| run_git_command(repo_path, ["config", "--local", key, value]))
+    value
+        .filter(|value| !value.trim().is_empty())
+        .map_or(Ok(()), |value| {
+            run_git_command(repo_path, ["config", "--local", key, value])
+        })
 }

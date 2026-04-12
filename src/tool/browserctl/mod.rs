@@ -102,6 +102,7 @@ struct BrowserCtlInput {
 
 impl BrowserCtlTool {
     pub fn new() -> Self {
+        crate::tls::ensure_rustls_crypto_provider();
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
             .user_agent("CodeTether-Agent/browserctl")
@@ -148,7 +149,6 @@ impl BrowserCtlTool {
     }
 
     async fn get(&self, base_url: &str, path: &str, token: Option<&str>) -> Result<(u16, Value)> {
-        crate::tls::ensure_rustls_crypto_provider();
         let mut request = self.client.get(format!("{base_url}{path}"));
         if let Some(token) = token {
             request = request.bearer_auth(token);
@@ -167,7 +167,6 @@ impl BrowserCtlTool {
         token: Option<&str>,
         payload: Value,
     ) -> Result<(u16, Value)> {
-        crate::tls::ensure_rustls_crypto_provider();
         let mut request = self.client.post(format!("{base_url}{path}")).json(&payload);
         if let Some(token) = token {
             request = request.bearer_auth(token);
@@ -235,7 +234,7 @@ impl Tool for BrowserCtlTool {
     }
 
     fn description(&self) -> &str {
-        "Control the local browserctl shim for navigation, waiting, DOM inspection, screenshots, tabs, console evaluation, and robust interaction with modern web apps. Supports health/start/stop/snapshot/console/goto/back/click/fill/type/press/text/html/eval/console_eval/click_text/fill_native/toggle/screenshot/mouse_click/keyboard_type/keyboard_press/reload/wait/tabs/tabs_select/tabs_new/tabs_close."
+        "Control the local browserctl shim for browser automation. Prefer this tool over bash+curl for Feather, iframe, and live-preview review tasks. Use frame_selector (for example \"iframe\") to inspect or drive embedded previews, use text/html/screenshot/wait for page state, and use click/fill/type/press/click_text/toggle for interaction. Supports health/start/stop/snapshot/console/goto/back/click/fill/type/press/text/html/eval/console_eval/click_text/fill_native/toggle/screenshot/mouse_click/keyboard_type/keyboard_press/reload/wait/tabs/tabs_select/tabs_new/tabs_close."
     }
 
     fn parameters(&self) -> Value {
@@ -282,6 +281,9 @@ impl Tool for BrowserCtlTool {
                 {"action": "back"},
                 {"action": "wait", "text": "Environment is ready", "timeout_ms": 15000},
                 {"action": "console_eval", "script": "return { title: document.title, url: location.href };"},
+                {"action": "text", "frame_selector": "iframe"},
+                {"action": "click_text", "frame_selector": "iframe", "text": "Game", "exact": true},
+                {"action": "fill", "frame_selector": "iframe", "selector": "input", "value": "Catan"},
                 {"action": "fill_native", "selector": "#email", "value": "user@example.com"},
                 {"action": "toggle", "selector": "#rating", "text": "1"},
                 {"action": "screenshot", "path": "/tmp/page.png", "full_page": true}

@@ -55,10 +55,13 @@ impl FinalAnswerFormat {
 /// assert_eq!(extract_count_from_text("no numbers here"), None);
 /// ```
 pub fn extract_count_from_text(text: &str) -> Option<usize> {
-    let re = regex::Regex::new(
-        r"(?i)(?:found|count:?\s*)\s*(\d+)|(\d+)\s+(?:functions?|matches?|occurrences?|items?|results?)"
-    ).ok()?;
-    for cap in re.captures_iter(text) {
+    use std::sync::LazyLock;
+    static RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(
+            r"(?i)(?:found|count:?\s*)\s*(\d+)|(\d+)\s+(?:functions?|matches?|occurrences?|items?|results?)"
+        ).expect("invalid regex")
+    });
+    for cap in RE.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             if let Ok(n) = m.as_str().parse() {
                 return Some(n);
