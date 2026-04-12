@@ -2062,9 +2062,17 @@ fn resolve_workspace_clone_path(workspace_id: &str, preferred_path: &str) -> Pat
 }
 
 fn git_clone_base_dir() -> PathBuf {
-    std::env::var("GIT_CLONE_BASE")
+    if let Ok(path) = std::env::var("GIT_CLONE_BASE") {
+        return PathBuf::from(path);
+    }
+    let system_root = PathBuf::from("/var/lib/codetether/repos");
+    if system_root.exists() {
+        return system_root;
+    }
+    std::env::var_os("HOME")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/var/lib/codetether/repos"))
+        .map(|home| home.join(".local/share/codetether/repos"))
+        .unwrap_or(system_root)
 }
 
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
