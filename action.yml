@@ -58,10 +58,18 @@ inputs:
     description: "Maximum agentic loop iterations (local mode only)"
     required: false
     default: "30"
+  task_wait_seconds:
+    description: "How long to wait for server-dispatched tasks before timing out"
+    required: false
+    default: "1200"
   version:
     description: "CodeTether version to install (local mode only)"
     required: false
     default: "latest"
+  workspace_path:
+    description: "Checked-out repository path to review or edit"
+    required: false
+    default: ""
 
 outputs:
   review:
@@ -127,9 +135,11 @@ runs:
         CODETETHER_DEFAULT_MODEL: ${{ inputs.model }}
         INPUT_MODE: ${{ inputs.mode }}
         INPUT_MAX_STEPS: ${{ inputs.max_steps }}
+        INPUT_TASK_WAIT_SECONDS: ${{ inputs.task_wait_seconds }}
         INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
         INPUT_AUTO_COMMENT: ${{ inputs.auto_comment }}
         INPUT_AGENT_TYPE: ${{ inputs.agent_type }}
+        INPUT_WORKSPACE_PATH: ${{ inputs.workspace_path }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         PR_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}

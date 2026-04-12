@@ -24,6 +24,10 @@ if [ -n "${CODETETHER_API_KEY:-}" ]; then
   unset CODETETHER_API_KEY
 fi
 
+WORKSPACE_PATH="${INPUT_WORKSPACE_PATH:-${GITHUB_WORKSPACE:-$PWD}}"
+TASK_WAIT_SECONDS="${INPUT_TASK_WAIT_SECONDS:-1200}"
+mkdir -p "${WORKSPACE_PATH}"
+
 post_github_comment() {
   local target_number="$1"
   local body="$2"
@@ -50,7 +54,7 @@ write_review_output() {
 github_api_get() {
   local path="$1"
   curl -fsSL \
-    -H "Authorization: token ${GH_ACTIONS_TOKEN:-${GITHUB_TOKEN}}" \
+    -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Accept: application/vnd.github.v3+json" \
     "https://api.github.com${path}"
 }
@@ -94,6 +98,8 @@ COMMENT_BODY_LOWER="$(printf '%s' "${COMMENT_BODY}" | tr '\r\n' '  ' | tr '[:upp
 if printf '%s' "${COMMENT_BODY_LOWER}" | grep -Eq '(@codetether([^[:alnum:]_-]|$).*(fix|apply|address|implement|patch))|((fix|apply|address|implement|patch).+@codetether([^[:alnum:]_-]|$))'; then
   FIX_REQUEST="true"
 fi
+
+cd "${WORKSPACE_PATH}"
 
 # ── Issue mode: use issue body directly as prompt ────────────────
 if [ "${GITHUB_EVENT_NAME:-}" = "issues" ] || { [ "${GITHUB_EVENT_NAME:-}" = "issue_comment" ] && [ "${IS_PR_COMMENT}" != "true" ]; }; then
@@ -158,8 +164,8 @@ ${PR_BODY:-No description provided.}"
     fi
 
     # Poll for completion
-    MAX_POLL=60
     POLL_INTERVAL=5
+    MAX_POLL=$(( (TASK_WAIT_SECONDS + POLL_INTERVAL - 1) / POLL_INTERVAL ))
     POLL_COUNT=0
     TASK_STATUS="pending"
 
@@ -182,7 +188,7 @@ ${PR_BODY:-No description provided.}"
     elif [ "$TASK_STATUS" = "failed" ]; then
       REVIEW_TEXT="Issue task failed. Check server logs for task ${TASK_ID}."
     else
-      REVIEW_TEXT="Issue task timed out after $((MAX_POLL * POLL_INTERVAL))s (status: ${TASK_STATUS}). Task ID: ${TASK_ID}"
+      REVIEW_TEXT="Issue task timed out after ${TASK_WAIT_SECONDS}s (status: ${TASK_STATUS}). Task ID: ${TASK_ID}"
     fi
   fi
 
@@ -297,7 +303,7 @@ After editing files, run the smallest relevant validation needed to support the 
 
     git config user.name "codetether[bot]"
     git config user.email "codetether[bot]@users.noreply.github.com"
-    git remote set-url origin "https://x-access-token:${GH_ACTIONS_TOKEN}@github.com/${REPO_FULL_NAME}.git"
+    git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git"
     git add -A
     git commit -m "fix: address @codetether request on PR #${PR_NUMBER}"
     git push origin "HEAD:${PR_HEAD}"
@@ -403,8 +409,8 @@ if [ "$INPUT_MODE" = "server" ]; then
 
   # ── Poll for task completion ─────────────────────────────────
   echo "Waiting for task to complete..."
-  MAX_POLL=60
   POLL_INTERVAL=5
+  MAX_POLL=$(( (TASK_WAIT_SECONDS + POLL_INTERVAL - 1) / POLL_INTERVAL ))
   POLL_COUNT=0
   TASK_STATUS="pending"
 
@@ -431,7 +437,7 @@ if [ "$INPUT_MODE" = "server" ]; then
   elif [ "$TASK_STATUS" = "failed" ]; then
     REVIEW_TEXT="Review task failed. Check server logs for task ${TASK_ID}."
   else
-    REVIEW_TEXT="Review task timed out after $((MAX_POLL * POLL_INTERVAL))s (status: ${TASK_STATUS}). Task ID: ${TASK_ID}"
+    REVIEW_TEXT="Review task timed out after ${TASK_WAIT_SECONDS}s (status: ${TASK_STATUS}). Task ID: ${TASK_ID}"
   fi
 
   echo "exit_code=0" >> "$GITHUB_OUTPUT"

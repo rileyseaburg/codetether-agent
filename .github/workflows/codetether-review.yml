@@ -22,7 +22,7 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     # PRs: always run
     # Issues: when assigned or labeled 'codetether'
     # Issue comments: when @mentioning the bot
@@ -63,16 +63,19 @@ jobs:
       - name: Checkout repository
         shell: bash
         env:
+          REPO_DIR: ${{ github.workspace }}/repo
           CHECKOUT_REF: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_review_comment') && github.event.pull_request.head.sha || (github.event_name == 'issue_comment' && github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number)) || github.sha }}
           RAW_GITHUB_TOKEN: ${{ github.token }}
         run: |
-          git init .
-          git remote add origin "https://x-access-token:${RAW_GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --prune --no-recurse-submodules origin \
+          rm -rf "${REPO_DIR}"
+          mkdir -p "${REPO_DIR}"
+          git -C "${REPO_DIR}" init .
+          git -C "${REPO_DIR}" remote add origin "https://x-access-token:${RAW_GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C "${REPO_DIR}" fetch --prune --no-recurse-submodules origin \
             +refs/heads/*:refs/remotes/origin/* \
             +refs/tags/*:refs/tags/*
-          git fetch --no-recurse-submodules origin "${CHECKOUT_REF}"
-          git checkout --force FETCH_HEAD
+          git -C "${REPO_DIR}" fetch --no-recurse-submodules origin "${CHECKOUT_REF}"
+          git -C "${REPO_DIR}" checkout --force FETCH_HEAD
 
       # Get a GitHub App installation token so comments come from the bot identity
       - name: Get App Token
@@ -91,3 +94,5 @@ jobs:
           vault_addr: ${{ secrets.VAULT_ADDR }}
           vault_token: ${{ secrets.VAULT_TOKEN }}
           max_steps: "60"
+          task_wait_seconds: "1200"
+          workspace_path: ${{ github.workspace }}/repo
