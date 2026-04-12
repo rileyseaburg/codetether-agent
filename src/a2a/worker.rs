@@ -1830,26 +1830,44 @@ async fn handle_clone_repo_task(
                 &repo_path,
                 Some(&serde_json::Value::Object(workspace.agent_config.clone())),
             );
-            run_git_command_at(
-                Some(&repo_path),
-                vec!["fetch".to_string(), "origin".to_string(), branch.clone()],
-            )
-            .await?;
-            run_git_command_at(
-                Some(&repo_path),
-                vec!["checkout".to_string(), branch.clone()],
-            )
-            .await?;
-            run_git_command_at(
+            let remote_branch = run_git_command_at(
                 Some(&repo_path),
                 vec![
-                    "pull".to_string(),
-                    "--ff-only".to_string(),
+                    "ls-remote".to_string(),
+                    "--heads".to_string(),
                     "origin".to_string(),
                     branch.clone(),
                 ],
             )
             .await?;
+            if remote_branch.trim().is_empty() {
+                run_git_command_at(
+                    Some(&repo_path),
+                    vec!["checkout".to_string(), "-B".to_string(), branch.clone()],
+                )
+                .await?;
+            } else {
+                run_git_command_at(
+                    Some(&repo_path),
+                    vec!["fetch".to_string(), "origin".to_string(), branch.clone()],
+                )
+                .await?;
+                run_git_command_at(
+                    Some(&repo_path),
+                    vec!["checkout".to_string(), branch.clone()],
+                )
+                .await?;
+                run_git_command_at(
+                    Some(&repo_path),
+                    vec![
+                        "pull".to_string(),
+                        "--ff-only".to_string(),
+                        "origin".to_string(),
+                        branch.clone(),
+                    ],
+                )
+                .await?;
+            }
         } else {
             if repo_path.exists() {
                 anyhow::bail!(
