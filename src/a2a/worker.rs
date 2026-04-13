@@ -1,12 +1,15 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
+mod clone_location;
+mod clone_target;
+
 use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
     configure_repo_git_auth, configure_repo_git_github_app, write_git_credential_helper_script,
 };
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
-use crate::provenance::install_commit_msg_hook;
+use crate::provenance::{ClaimProvenance, install_commit_msg_hook};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
@@ -24,6 +27,9 @@ use tokio::process::Command;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
+
+use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
+use clone_target::prepare_clone_target;
 
 /// Worker status for heartbeat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1509,6 +1515,54 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         "Claimed task"
     );
 
+    // --- All post-claim work is wrapped so we always release the task ---
+    let inner_result: Result<(&str, Option<String>, Option<String>, Option<String>)> =
+        execute_claimed_task(runtime, task, task_id, title, &claim_provenance).await;
+
+    let (status, result, error, session_id) = match inner_result {
+        Ok(tuple) => tuple,
+        Err(e) => {
+            tracing::error!(
+                task_id,
+                error = %e,
+                "Task failed after claim (releasing as failed)"
+            );
+            (
+                "failed",
+                None,
+                Some(format!("Worker error after claim: {}", e)),
+                None,
+            )
+        }
+    };
+
+    release_task_result(
+        &runtime.client,
+        &runtime.server,
+        &runtime.token,
+        &runtime.worker_id,
+        task_id,
+        status,
+        result,
+        error,
+        session_id,
+    )
+    .await?;
+
+    tracing::info!("Task released: {} with status: {}", task_id, status);
+    Ok(())
+}
+
+/// Inner logic for a claimed task. Returns (status, result, error, session_id).
+/// Extracted so that `handle_task` can catch any error and always release.
+#[allow(clippy::too_many_lines)]
+async fn execute_claimed_task<'a>(
+    runtime: &WorkerTaskRuntime,
+    task: &'a serde_json::Value,
+    task_id: &'a str,
+    title: &'a str,
+    claim_provenance: &ClaimProvenance,
+) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
     let metadata = task_metadata(task);
     let resume_session_id = metadata
         .get("resume_session_id")
@@ -1544,8 +1598,13 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         .or_else(|| task_str(task, "description"))
         .unwrap_or(title);
 
+    // Detect virtual/global workspace tasks dispatched via the API.
+    let workspace_id = task_str(task, "workspace_id")
+        .or_else(|| metadata_lookup(&metadata, "workspace_id").and_then(|v| v.as_str()));
+    let is_virtual_task = workspace_id.map_or(false, |ws| ws == "global" || ws.is_empty());
+
     if raw_agent.eq_ignore_ascii_case("clone_repo") {
-        let (status, result, error) = match handle_clone_repo_task(
+        return match handle_clone_repo_task(
             &runtime.client,
             &runtime.server,
             &runtime.token,
@@ -1555,53 +1614,22 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         )
         .await
         {
-            Ok(message) => ("completed", Some(message), None),
+            Ok(message) => Ok(("completed", Some(message), None, None)),
             Err(err) => {
                 tracing::error!(task_id, error = %err, "Clone task failed");
-                ("failed", None, Some(format!("Error: {}", err)))
+                Ok(("failed", None, Some(format!("Error: {}", err)), None))
             }
         };
-
-        release_task_result(
-            &runtime.client,
-            &runtime.server,
-            &runtime.token,
-            &runtime.worker_id,
-            task_id,
-            status,
-            result,
-            error,
-            None,
-        )
-        .await?;
-        tracing::info!(task_id, status, "Clone task released");
-        return Ok(());
     }
 
     if is_forage_agent(raw_agent) {
-        let (status, result, error) =
-            match handle_forage_task(title, prompt, &metadata, selected_model.clone()).await {
-                Ok(message) => ("completed", Some(message), None),
-                Err(err) => {
-                    tracing::error!(task_id, error = %err, "Forage task failed");
-                    ("failed", None, Some(format!("Error: {}", err)))
-                }
-            };
-
-        release_task_result(
-            &runtime.client,
-            &runtime.server,
-            &runtime.token,
-            &runtime.worker_id,
-            task_id,
-            status,
-            result,
-            error,
-            None,
-        )
-        .await?;
-        tracing::info!(task_id, status, "Forage task released");
-        return Ok(());
+        return match handle_forage_task(title, prompt, &metadata, selected_model.clone()).await {
+            Ok(message) => Ok(("completed", Some(message), None, None)),
+            Err(err) => {
+                tracing::error!(task_id, error = %err, "Forage task failed");
+                Ok(("failed", None, Some(format!("Error: {}", err)), None))
+            }
+        };
     }
 
     // Resume existing session when requested; fall back to a fresh session if missing.
@@ -1625,6 +1653,17 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         Session::new().await?
     };
 
+    // For virtual/global tasks, clear the workspace directory so tools don't
+    // try to operate on a workspace that doesn't exist on this worker.
+    if is_virtual_task {
+        tracing::info!(
+            task_id,
+            workspace_id = workspace_id.unwrap_or("(none)"),
+            "Virtual task detected — skipping workspace setup"
+        );
+        session.metadata.directory = None;
+    }
+
     // Normalize agent: only "build", "plan", and swarm types are valid.
     // Map deprecated/unknown agent types (e.g. "general", "explore") to "build".
     let agent_type = if is_swarm_agent(raw_agent) {
@@ -1642,18 +1681,22 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         }
     };
     session.set_agent_name(agent_type.to_string());
-    session.attach_claim_provenance(&claim_provenance);
-    if let Some(directory) = session.metadata.directory.as_deref()
-        && let Err(err) = install_commit_msg_hook(directory)
-    {
-        tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
+    session.attach_claim_provenance(claim_provenance);
+
+    // Skip git hook installation for virtual tasks (no workspace directory).
+    if !is_virtual_task {
+        if let Some(directory) = session.metadata.directory.as_deref()
+            && let Err(err) = install_commit_msg_hook(directory)
+        {
+            tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
+        }
     }
 
     if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
     }
 
-    tracing::info!("Executing prompt: {}", prompt);
+    tracing::info!(task_id, agent_type, "Executing prompt: {}", prompt);
 
     // Set up output streaming to forward progress to the server and bus
     let stream_client = runtime.client.clone();
@@ -1671,7 +1714,6 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
             let w = stream_worker_id.clone();
             let tid = stream_task_id.clone();
 
-            // Publish to the local bus so the SSE endpoint can pick it up in real time
             let bus_handle = stream_bus.handle("task-output");
             bus_handle.send(
                 format!("task.{}", tid),
@@ -1758,27 +1800,18 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
                 )
             }
             Err(e) => {
-                tracing::error!("Task failed: {} - {}", task_id, e);
+                tracing::error!(task_id, error = %e, "Task execution failed");
                 ("failed", None, Some(format!("Error: {}", e)), None)
             }
         }
     };
 
-    release_task_result(
-        &runtime.client,
-        &runtime.server,
-        &runtime.token,
-        &runtime.worker_id,
-        task_id,
+    Ok((
         status,
         result,
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
-    )
-    .await?;
-
-    tracing::info!("Task released: {} with status: {}", task_id, status);
-    Ok(())
+    ))
 }
 
 async fn handle_forage_task(
@@ -1804,15 +1837,11 @@ async fn handle_clone_repo_task(
         .or_else(|| task_str(task, "workspace_id").map(|value| value.to_string()))
         .ok_or_else(|| anyhow::anyhow!("Clone task is missing workspace_id metadata"))?;
     let workspace = fetch_workspace_record(client, server, token, &workspace_id).await?;
-    let git_url = workspace
-        .git_url
-        .clone()
-        .or_else(|| metadata_str(metadata, &["git_url"]))
+    let git_url = metadata_str(metadata, &["git_url"])
+        .or_else(|| workspace.git_url.clone())
         .ok_or_else(|| anyhow::anyhow!("Workspace {} is missing git_url", workspace_id))?;
-    let branch = workspace
-        .git_branch
-        .clone()
-        .or_else(|| metadata_str(metadata, &["git_branch"]))
+    let branch = metadata_str(metadata, &["git_branch"])
+        .or_else(|| workspace.git_branch.clone())
         .unwrap_or_else(|| "main".to_string());
     let repo_path = resolve_workspace_clone_path(&workspace_id, &workspace.path);
 
@@ -1855,12 +1884,7 @@ async fn handle_clone_repo_task(
             )
             .await?;
         } else {
-            if repo_path.exists() {
-                anyhow::bail!(
-                    "Clone target {} already exists but is not a Git repository",
-                    repo_path.display()
-                );
-            }
+            prepare_clone_target(&repo_path).await?;
 
             run_git_command_at(
                 None,
@@ -1887,7 +1911,6 @@ async fn handle_clone_repo_task(
         install_commit_msg_hook(&repo_path)?;
 
         register_cloned_workspace(client, server, token, worker_id, &workspace, &repo_path).await?;
-        enqueue_post_clone_task(client, server, token, &workspace_id, metadata).await?;
 
         Ok::<String, anyhow::Error>(format!(
             "Repository ready at {} (branch: {})",
@@ -1955,10 +1978,13 @@ async fn register_cloned_workspace(
 
     let response = req
         .json(&serde_json::json!({
+            "workspace_id": workspace.id,
             "name": workspace.name,
             "path": repo_path.display().to_string(),
             "description": workspace.description,
             "agent_config": workspace.agent_config,
+            "git_url": workspace.git_url,
+            "git_branch": workspace.git_branch,
             "worker_id": worker_id,
         }))
         .send()
@@ -1976,90 +2002,6 @@ async fn register_cloned_workspace(
     }
 
     Ok(())
-}
-
-async fn enqueue_post_clone_task(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    workspace_id: &str,
-    metadata: &serde_json::Map<String, serde_json::Value>,
-) -> Result<()> {
-    let Some(post_clone_task) = metadata.get("post_clone_task") else {
-        return Ok(());
-    };
-    let Some(task) = post_clone_task.as_object() else {
-        return Ok(());
-    };
-    let title = task
-        .get("title")
-        .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing title"))?;
-    let prompt = task
-        .get("prompt")
-        .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing prompt"))?;
-    let agent_type = task
-        .get("agent_type")
-        .and_then(|value| value.as_str())
-        .unwrap_or("build");
-    let task_metadata = task
-        .get("metadata")
-        .cloned()
-        .unwrap_or_else(|| serde_json::json!({}));
-
-    let mut req = client.post(format!(
-        "{}/v1/agent/workspaces/{}/tasks",
-        server.trim_end_matches('/'),
-        workspace_id
-    ));
-    if let Some(token) = token {
-        req = req.bearer_auth(token);
-    }
-
-    let response = req
-        .json(&serde_json::json!({
-            "title": title,
-            "prompt": prompt,
-            "agent_type": agent_type,
-            "metadata": task_metadata,
-        }))
-        .send()
-        .await
-        .context("Failed to enqueue post-clone task")?;
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        anyhow::bail!("Failed to enqueue post-clone task ({}): {}", status, body);
-    }
-    Ok(())
-}
-
-fn resolve_workspace_clone_path(workspace_id: &str, preferred_path: &str) -> PathBuf {
-    let preferred = preferred_path.trim();
-    if preferred.is_empty() {
-        return git_clone_base_dir().join(workspace_id);
-    }
-
-    let preferred_path = PathBuf::from(preferred);
-    let legacy_root = Path::new("/var/lib/codetether/repos");
-    let configured_root = git_clone_base_dir();
-    if preferred_path.starts_with(legacy_root)
-        && preferred_path.file_name().and_then(|name| name.to_str()) == Some(workspace_id)
-        && configured_root != legacy_root
-    {
-        return configured_root.join(workspace_id);
-    }
-
-    preferred_path
-}
-
-fn git_clone_base_dir() -> PathBuf {
-    std::env::var("GIT_CLONE_BASE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/var/lib/codetether/repos"))
 }
 
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
@@ -2288,12 +2230,19 @@ async fn execute_session_with_policy(
     use std::sync::Arc;
 
     // Load provider registry from Vault
-    let registry = ProviderRegistry::from_vault().await?;
+    let registry = ProviderRegistry::from_vault()
+        .await
+        .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?;
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
 
     if providers.is_empty() {
-        anyhow::bail!("No providers available. Configure API keys in HashiCorp Vault.");
+        anyhow::bail!(
+            "No LLM providers available (0 providers loaded). \
+             Configure API keys in HashiCorp Vault or set environment variables. \
+             Vault address: {}",
+            std::env::var("VAULT_ADDR").unwrap_or_else(|_| "(not set)".into())
+        );
     }
 
     // Parse model string

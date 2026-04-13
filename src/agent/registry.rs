@@ -1,30 +1,87 @@
-use super::{AgentInfo, AgentMode, AgentRegistry, builtin};
+//! Agent registry implementation.
+//!
+//! This module stores the catalog of available agents and offers filtered views
+//! for UI and server consumers.
+//!
+//! # Examples
+//!
+//! ```ignore
+//! let registry = AgentRegistry::with_builtins();
+//! assert!(!registry.list().is_empty());
+//! ```
+
+use super::{AgentInfo, AgentMode, builtin};
+use std::collections::HashMap;
+
+/// Registry of known agent profiles.
+///
+/// The registry is a simple in-memory catalog used by the server, tests, and
+/// UI layers to enumerate and select agents.
+///
+/// # Examples
+///
+/// ```ignore
+/// let registry = AgentRegistry::new();
+/// ```
+pub struct AgentRegistry {
+    agents: HashMap<String, AgentInfo>,
+}
 
 impl AgentRegistry {
-    #[allow(dead_code)]
+    /// Creates an empty registry with no built-in agents.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let registry = AgentRegistry::new();
+    /// ```
     pub fn new() -> Self {
         Self {
-            agents: std::collections::HashMap::new(),
+            agents: HashMap::new(),
         }
     }
 
-    /// Register a new agent
+    /// Registers an agent profile in the catalog.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// registry.register(info);
+    /// ```
     pub fn register(&mut self, info: AgentInfo) {
         self.agents.insert(info.name.clone(), info);
     }
 
-    /// Get agent info by name
+    /// Returns an agent profile by name when present.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let build = registry.get("build");
+    /// ```
     #[allow(dead_code)]
     pub fn get(&self, name: &str) -> Option<&AgentInfo> {
         self.agents.get(name)
     }
 
-    /// List all agents
+    /// Lists every registered agent profile.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let all = registry.list();
+    /// ```
     pub fn list(&self) -> Vec<&AgentInfo> {
         self.agents.values().collect()
     }
 
-    /// List primary agents (visible in UI)
+    /// Lists visible primary agents for UI presentation.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let primary = registry.list_primary();
+    /// ```
     #[allow(dead_code)]
     pub fn list_primary(&self) -> Vec<&AgentInfo> {
         self.agents
@@ -33,7 +90,13 @@ impl AgentRegistry {
             .collect()
     }
 
-    /// Initialize with builtin agents
+    /// Creates a registry pre-populated with built-in agents.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let registry = AgentRegistry::with_builtins();
+    /// ```
     pub fn with_builtins() -> Self {
         let mut registry = Self::new();
         registry.register(builtin::build_agent());

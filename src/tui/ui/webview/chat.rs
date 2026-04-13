@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Style},
     text::Line,
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -31,11 +31,7 @@ pub fn render_webview_chat_center(
 }
 
 pub fn render_webview_input(f: &mut Frame, app: &App, area: Rect) {
-    let mode_label = if app.state.input_mode == crate::tui::models::InputMode::MultiLine {
-        " [MULTI]"
-    } else {
-        ""
-    };
+    let mode_label = "";
     let title = format!(" Input{mode_label} ");
     let block = Block::default()
         .borders(Borders::ALL)

@@ -282,7 +282,8 @@ fn scroll_mouse_up(app: &mut App) {
         | ViewMode::Bus
         | ViewMode::Sessions
         | ViewMode::Model
-        | ViewMode::FilePicker => {}
+        | ViewMode::FilePicker
+        | ViewMode::Inspector => {}
     }
 }
 
@@ -361,7 +362,8 @@ fn scroll_mouse_down(app: &mut App) {
         | ViewMode::Bus
         | ViewMode::Sessions
         | ViewMode::Model
-        | ViewMode::FilePicker => {}
+        | ViewMode::FilePicker
+        | ViewMode::Inspector => {}
     }
 }
 
