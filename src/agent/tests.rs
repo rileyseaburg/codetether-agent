@@ -1,3 +1,5 @@
+//! Tests for the agent registry.
+
 use super::{AgentInfo, AgentMode, AgentRegistry};
 
 #[test]

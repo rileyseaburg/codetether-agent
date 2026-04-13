@@ -168,7 +168,11 @@ pub async fn handle_enter(
         }
         ViewMode::Model => crate::tui::app::model_picker::apply_selected_model(app, session),
         ViewMode::Settings => toggle_selected_setting(app, session).await,
-        ViewMode::Lsp | ViewMode::Rlm | ViewMode::Latency | ViewMode::Protocol => {}
+        ViewMode::Lsp
+        | ViewMode::Rlm
+        | ViewMode::Latency
+        | ViewMode::Protocol
+        | ViewMode::Inspector => {}
     }
 }
 

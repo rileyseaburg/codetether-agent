@@ -1,3 +1,5 @@
+//! Tests for agent spawn policy helpers.
+
 use super::*;
 use crate::provider::ProviderRegistry;
 
@@ -21,9 +23,18 @@ async fn included_provider_eligible() {
 
 #[test]
 fn openrouter_budget_allowlist_detection() {
-    assert!(is_budget_allowlisted_model("openrouter", "qwen/qwen3.5-35ba3b"));
-    assert!(!is_budget_allowlisted_model("openrouter", "qwen/qwen3-coder"));
-    assert!(!is_budget_allowlisted_model("openai", "qwen/qwen3.5-35ba3b"));
+    assert!(is_budget_allowlisted_model(
+        "openrouter",
+        "qwen/qwen3.5-35ba3b"
+    ));
+    assert!(!is_budget_allowlisted_model(
+        "openrouter",
+        "qwen/qwen3-coder"
+    ));
+    assert!(!is_budget_allowlisted_model(
+        "openai",
+        "qwen/qwen3.5-35ba3b"
+    ));
 }
 
 #[tokio::test]
