@@ -79,7 +79,7 @@ jobs:
 
       # Get a GitHub App installation token so comments come from the bot identity
       - name: Get App Token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3.1.1
         id: app-token
         with:
           app-id: ${{ secrets.APP_ID }}
