@@ -301,11 +301,15 @@ After editing files, run the smallest relevant validation needed to support the 
       exit 0
     fi
 
-    git config user.name "codetether[bot]"
-    git config user.email "codetether[bot]@users.noreply.github.com"
     git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git"
     git add -A
-    git commit -m "fix: address @codetether request on PR #${PR_NUMBER}"
+    # Scope the bot identity to this workflow commit so local checkouts do not
+    # retain a repo-level bot author configuration.
+    GIT_AUTHOR_NAME="codetether[bot]" \
+    GIT_AUTHOR_EMAIL="codetether[bot]@users.noreply.github.com" \
+    GIT_COMMITTER_NAME="codetether[bot]" \
+    GIT_COMMITTER_EMAIL="codetether[bot]@users.noreply.github.com" \
+      git commit -m "fix: address @codetether request on PR #${PR_NUMBER}"
     git push origin "HEAD:${PR_HEAD}"
 
     COMMIT_SHA="$(git rev-parse --short HEAD)"
