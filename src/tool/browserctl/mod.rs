@@ -102,6 +102,7 @@ struct BrowserCtlInput {
 
 impl BrowserCtlTool {
     pub fn new() -> Self {
+        crate::tls::ensure_rustls_crypto_provider();
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS))
             .user_agent("CodeTether-Agent/browserctl")

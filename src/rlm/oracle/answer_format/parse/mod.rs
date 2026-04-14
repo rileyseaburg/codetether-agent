@@ -55,9 +55,12 @@ impl FinalAnswerFormat {
 /// assert_eq!(extract_count_from_text("no numbers here"), None);
 /// ```
 pub fn extract_count_from_text(text: &str) -> Option<usize> {
-    let re = regex::Regex::new(
-        r"(?i)(?:found|count:?\s*)\s*(\d+)|(\d+)\s+(?:functions?|matches?|occurrences?|items?|results?)"
-    ).ok()?;
+    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let re = RE.get_or_init(|| {
+        regex::Regex::new(
+            r"(?i)(?:found|count:?\s*)\s*(\d+)|(\d+)\s+(?:functions?|matches?|occurrences?|items?|results?)"
+        ).expect("Invalid regex")
+    });
     for cap in re.captures_iter(text) {
         if let Some(m) = cap.get(1) {
             if let Ok(n) = m.as_str().parse() {
