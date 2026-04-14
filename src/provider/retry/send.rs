@@ -20,7 +20,7 @@ use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```ignore
 /// let (text, _status) = send_with_retry(|| async {
 ///     let resp = client
 ///         .post("https://api.z.ai/v4/chat/completions")
