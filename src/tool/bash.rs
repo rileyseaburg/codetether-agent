@@ -407,7 +407,17 @@ impl Tool for BashTool {
                 // Truncate if too long
                 let max_len = 50_000;
                 let (output_str, truncated) = if combined.len() > max_len {
-                    let truncate_at = combined.floor_char_boundary(max_len);
+                    // Find a valid char boundary at or before max_len
+                    let truncate_at = match combined.is_char_boundary(max_len) {
+                        true => max_len,
+                        false => {
+                            let mut boundary = max_len;
+                            while !combined.is_char_boundary(boundary) && boundary > 0 {
+                                boundary -= 1;
+                            }
+                            boundary
+                        }
+                    };
                     let truncated_output = format!(
                         "{}...\n[Output truncated, {} bytes total]",
                         &combined[..truncate_at],
