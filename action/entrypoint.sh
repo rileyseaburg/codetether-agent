@@ -130,8 +130,10 @@ ${PR_BODY:-No description provided.}"
   if [ "$INPUT_MODE" = "server" ]; then
     echo "Dispatching issue task to A2A server..."
 
+    # Truncate description to fit server's max_length validation
+    MAX_DESC_CHARS=99000
     TASK_PAYLOAD=$(jq -n \
-      --arg description "$PROMPT" \
+      --arg description "${PROMPT:0:$MAX_DESC_CHARS}" \
       --arg agent_type "$INPUT_AGENT_TYPE" \
       --arg title "Issue #${PR_NUMBER}: ${PR_TITLE}" \
       --arg repo "$REPO_FULL_NAME" \
@@ -146,6 +148,11 @@ ${PR_BODY:-No description provided.}"
           issue_number: ($pr_number | tonumber)
         }
       }')
+
+    DESC_LEN=${#PROMPT}
+    if [ "$DESC_LEN" -gt "$MAX_DESC_CHARS" ]; then
+      echo "⚠ Description truncated from ${DESC_LEN} to ${MAX_DESC_CHARS} chars for server limit"
+    fi
 
     RESPONSE=$(curl -fsSL \
       -X POST "${CODETETHER_SERVER}/v1/tasks/dispatch" \
@@ -377,8 +384,10 @@ if [ "$INPUT_MODE" = "server" ]; then
     exit 1
   fi
 
+  # Truncate description to fit server's max_length validation
+  MAX_DESC_CHARS=99000
   TASK_PAYLOAD=$(jq -n \
-    --arg description "$PROMPT" \
+    --arg description "${PROMPT:0:$MAX_DESC_CHARS}" \
     --arg agent_type "$INPUT_AGENT_TYPE" \
     --arg title "PR Review: #${PR_NUMBER} ${PR_TITLE}" \
     --arg repo "$REPO_FULL_NAME" \
@@ -393,6 +402,11 @@ if [ "$INPUT_MODE" = "server" ]; then
         pr_number: ($pr_number | tonumber)
       }
     }')
+
+  DESC_LEN=${#PROMPT}
+  if [ "$DESC_LEN" -gt "$MAX_DESC_CHARS" ]; then
+    echo "⚠ Description truncated from ${DESC_LEN} to ${MAX_DESC_CHARS} chars for server limit"
+  fi
 
   RESPONSE=$(curl -fsSL \
     -X POST "${CODETETHER_SERVER}/v1/tasks/dispatch" \
