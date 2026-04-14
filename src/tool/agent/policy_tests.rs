@@ -1,3 +1,5 @@
+//! Tests for agent spawn policy helpers.
+
 use super::*;
 use crate::provider::ProviderRegistry;
 

@@ -1,70 +1,59 @@
 //! Model eligibility policy for sub-agent spawning.
+//!
+//! This module decides whether a model is safe to use for autonomous
+//! spawned agents. It only checks eligibility and cost constraints,
+//! and does not restrict parent/child model equality.
+//!
+//! # Examples
+//!
+//! ```ignore
+//! let allowed = is_free_or_eligible("openai-codex/gpt-5-mini", &registry).await;
+//! assert!(allowed);
+//! ```
 
-use crate::provider::{ProviderRegistry, parse_model_string};
+use super::policy_free;
+use super::policy_parse;
+use super::policy_registry;
+use crate::provider::ProviderRegistry;
 
-pub(super) fn normalize_model(model: &str) -> String {
-    model.trim().to_ascii_lowercase()
-}
-
-const SUBSCRIPTION_PROVIDERS: &[&str] = &[
-    "openai-codex",
-    "github-copilot",
-    "github-copilot-enterprise",
-    "gemini-web",
-    "local_cuda",
-    "zai",
-    "glm-5",
-];
-
-const OPENROUTER_BUDGET_ALLOWLIST: &[&str] = &["qwen/qwen3.5-35ba3b"];
-
-fn is_subscription_provider(p: &str) -> bool {
-    SUBSCRIPTION_PROVIDERS.contains(&p)
-}
-
-pub(super) fn is_free_model_id(id: &str) -> bool {
-    let lower = id.to_ascii_lowercase();
-    lower.contains(":free") || lower.ends_with("-free")
-}
-
-pub(super) fn is_budget_allowlisted_model(provider: &str, model_id: &str) -> bool {
-    provider.eq_ignore_ascii_case("openrouter")
-        && OPENROUTER_BUDGET_ALLOWLIST
-            .iter()
-            .any(|allowed| allowed.eq_ignore_ascii_case(model_id.trim()))
-}
-
+/// Returns whether a model is eligible for autonomous sub-agent use.
+///
+/// The policy allows free models, subscription-backed providers, and a small
+/// explicit allowlist before consulting provider registry cost metadata.
+///
+/// # Examples
+///
+/// ```ignore
+/// let allowed = is_free_or_eligible("openrouter/qwen/qwen3", &registry).await;
+/// ```
 pub(super) async fn is_free_or_eligible(model: &str, registry: &ProviderRegistry) -> bool {
-    let trimmed = model.trim();
-    if trimmed.is_empty() {
-        return false;
+    match policy_parse::parse_model_parts(model) {
+        None => false,
+        Some((None, raw_model)) => policy_free::is_free_model_id(raw_model),
+        Some((Some(provider), model_id)) => {
+            provider_model_is_eligible(provider, model_id, registry).await
+        }
     }
+}
 
-    let (provider_name, model_id) = parse_model_string(trimmed);
-    if provider_name.is_none() {
-        return is_free_model_id(trimmed);
-    }
-
-    let pn = provider_name.unwrap();
-    if is_subscription_provider(&pn.to_ascii_lowercase())
-        || is_free_model_id(model_id)
-        || is_budget_allowlisted_model(pn, model_id)
+async fn provider_model_is_eligible(
+    provider: String,
+    model_id: &str,
+    registry: &ProviderRegistry,
+) -> bool {
+    if policy_free::is_subscription_provider(&provider.to_ascii_lowercase())
+        || policy_free::is_free_model_id(model_id)
+        || policy_free::is_budget_allowlisted_model(&provider, model_id)
     {
         return true;
     }
-
-    let Some(p) = registry.get(pn) else {
-        return false;
-    };
-    match p.list_models().await {
-        Ok(ms) => ms.into_iter().any(|m| {
-            m.id.eq_ignore_ascii_case(model_id)
-                && m.input_cost_per_million.unwrap_or(1.0) <= 0.0
-                && m.output_cost_per_million.unwrap_or(1.0) <= 0.0
-        }),
-        Err(_) => false,
-    }
+    policy_registry::registry_model_is_free(&provider, model_id, registry).await
 }
+
+#[cfg(test)]
+pub(super) use policy_free::{is_budget_allowlisted_model, is_free_model_id};
+#[cfg(test)]
+pub(super) use policy_parse::normalize_model;
 
 #[cfg(test)]
 #[path = "policy_tests.rs"]

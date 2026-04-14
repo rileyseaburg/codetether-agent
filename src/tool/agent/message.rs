@@ -2,13 +2,23 @@
 
 use super::event_loop;
 use super::helpers;
+use super::message_result;
 use super::store;
 use crate::session::SessionEvent;
 use crate::tool::ToolResult;
 use anyhow::{Context, Result};
-use serde_json::json;
 use tokio::sync::mpsc;
 
+/// Sends a message to an existing spawned sub-agent and returns its response.
+///
+/// The handler streams intermediate events, persists the updated session, and
+/// formats the final reply as structured JSON.
+///
+/// # Examples
+///
+/// ```ignore
+/// let result = handle_message(&params).await?;
+/// ```
 pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResult> {
     let name = params
         .name
@@ -41,22 +51,7 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         }
     }
 
-    let response_for_fallback = response.clone();
-    let mut output = json!({ "agent": name, "response": response });
-    if !thinking.is_empty() {
-        output["thinking"] = json!(thinking);
-    }
-    if !tools.is_empty() {
-        output["tool_calls"] = json!(tools);
-    }
-    if let Some(err) = error {
-        if response_for_fallback.is_empty() {
-            return Ok(ToolResult::error(format!("Agent @{name} failed: {err}")));
-        }
-        output["warning"] = json!(err);
-    }
-
-    Ok(ToolResult::success(
-        serde_json::to_string_pretty(&output).unwrap_or(response_for_fallback),
+    Ok(message_result::build_message_result(
+        name, response, thinking, tools, error,
     ))
 }

@@ -11,7 +11,8 @@ use std::time::Duration;
 ///
 /// # Returns
 ///
-/// `true` for 429 (rate-limit) and common 5xx codes, `false` otherwise.
+/// `true` for 429 (rate-limit) and common upstream gateway / availability
+/// failures, `false` otherwise.
 pub(super) fn is_retryable_status(status: reqwest::StatusCode) -> bool {
     matches!(status.as_u16(), 429 | 502 | 503 | 504 | 520 | 522 | 524)
 }
@@ -27,6 +28,7 @@ pub(super) fn is_retryable_status(status: reqwest::StatusCode) -> bool {
 pub(super) fn is_retryable_message(msg: &str) -> bool {
     let lower = msg.to_lowercase();
     lower.contains("temporarily overloaded")
+        || lower.contains("network error")
         || lower.contains("rate limit")
         || lower.contains("timed out")
         || lower.contains("connection reset")

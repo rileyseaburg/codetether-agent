@@ -1,12 +1,16 @@
 //! A2A Worker - connects to an A2A server to process tasks
 
+mod clone_location;
+mod clone_target;
+
 use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
     configure_repo_git_auth, configure_repo_git_github_app, write_git_credential_helper_script,
 };
+use crate::a2a::worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
-use crate::provenance::install_commit_msg_hook;
+use crate::provenance::{ClaimProvenance, install_commit_msg_hook};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
@@ -25,6 +29,11 @@ use tokio::process::Command;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
+
+use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed};
+use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
+use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
+use clone_target::prepare_clone_target;
 
 /// Worker status for heartbeat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,19 +156,6 @@ struct CognitionLatestSnapshot {
     summary: String,
     #[serde(default)]
     metadata: HashMap<String, serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RegisteredWorkspaceRecord {
-    id: String,
-    name: String,
-    path: String,
-    #[serde(default)]
-    description: String,
-    #[serde(default)]
-    agent_config: serde_json::Map<String, serde_json::Value>,
-    git_url: Option<String>,
-    git_branch: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -589,8 +585,18 @@ fn advertised_interfaces(public_url: Option<&str>) -> serde_json::Value {
     })
 }
 
+/// Approval policy used by the worker when deciding whether to execute tools automatically.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::a2a::worker::AutoApprove;
+///
+/// let mode = AutoApprove::Safe;
+/// assert!(matches!(mode, AutoApprove::Safe));
+/// ```
 #[derive(Debug, Clone, Copy)]
-enum AutoApprove {
+pub enum AutoApprove {
     All,
     Safe,
     None,
@@ -1510,6 +1516,54 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         "Claimed task"
     );
 
+    // --- All post-claim work is wrapped so we always release the task ---
+    let inner_result: Result<(&str, Option<String>, Option<String>, Option<String>)> =
+        execute_claimed_task(runtime, task, task_id, title, &claim_provenance).await;
+
+    let (status, result, error, session_id) = match inner_result {
+        Ok(tuple) => tuple,
+        Err(e) => {
+            tracing::error!(
+                task_id,
+                error = %e,
+                "Task failed after claim (releasing as failed)"
+            );
+            (
+                "failed",
+                None,
+                Some(format!("Worker error after claim: {}", e)),
+                None,
+            )
+        }
+    };
+
+    release_task_result(
+        &runtime.client,
+        &runtime.server,
+        &runtime.token,
+        &runtime.worker_id,
+        task_id,
+        status,
+        result,
+        error,
+        session_id,
+    )
+    .await?;
+
+    tracing::info!("Task released: {} with status: {}", task_id, status);
+    Ok(())
+}
+
+/// Inner logic for a claimed task. Returns (status, result, error, session_id).
+/// Extracted so that `handle_task` can catch any error and always release.
+#[allow(clippy::too_many_lines)]
+async fn execute_claimed_task<'a>(
+    runtime: &WorkerTaskRuntime,
+    task: &'a serde_json::Value,
+    task_id: &'a str,
+    title: &'a str,
+    claim_provenance: &ClaimProvenance,
+) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
     let metadata = task_metadata(task);
     let resume_session_id = metadata
         .get("resume_session_id")
@@ -1545,8 +1599,13 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         .or_else(|| task_str(task, "description"))
         .unwrap_or(title);
 
+    // Detect virtual/global workspace tasks dispatched via the API.
+    let workspace_id = task_str(task, "workspace_id")
+        .or_else(|| metadata_lookup(&metadata, "workspace_id").and_then(|v| v.as_str()));
+    let is_virtual_task = workspace_id.map_or(false, |ws| ws == "global" || ws.is_empty());
+
     if raw_agent.eq_ignore_ascii_case("clone_repo") {
-        let (status, result, error) = match handle_clone_repo_task(
+        return match handle_clone_repo_task(
             &runtime.client,
             &runtime.server,
             &runtime.token,
@@ -1556,53 +1615,22 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         )
         .await
         {
-            Ok(message) => ("completed", Some(message), None),
+            Ok(message) => Ok(("completed", Some(message), None, None)),
             Err(err) => {
                 tracing::error!(task_id, error = %err, "Clone task failed");
-                ("failed", None, Some(format!("Error: {}", err)))
+                Ok(("failed", None, Some(format!("Error: {}", err)), None))
             }
         };
-
-        release_task_result(
-            &runtime.client,
-            &runtime.server,
-            &runtime.token,
-            &runtime.worker_id,
-            task_id,
-            status,
-            result,
-            error,
-            None,
-        )
-        .await?;
-        tracing::info!(task_id, status, "Clone task released");
-        return Ok(());
     }
 
     if is_forage_agent(raw_agent) {
-        let (status, result, error) =
-            match handle_forage_task(title, prompt, &metadata, selected_model.clone()).await {
-                Ok(message) => ("completed", Some(message), None),
-                Err(err) => {
-                    tracing::error!(task_id, error = %err, "Forage task failed");
-                    ("failed", None, Some(format!("Error: {}", err)))
-                }
-            };
-
-        release_task_result(
-            &runtime.client,
-            &runtime.server,
-            &runtime.token,
-            &runtime.worker_id,
-            task_id,
-            status,
-            result,
-            error,
-            None,
-        )
-        .await?;
-        tracing::info!(task_id, status, "Forage task released");
-        return Ok(());
+        return match handle_forage_task(title, prompt, &metadata, selected_model.clone()).await {
+            Ok(message) => Ok(("completed", Some(message), None, None)),
+            Err(err) => {
+                tracing::error!(task_id, error = %err, "Forage task failed");
+                Ok(("failed", None, Some(format!("Error: {}", err)), None))
+            }
+        };
     }
 
     // Resume existing session when requested; fall back to a fresh session if missing.
@@ -1626,6 +1654,30 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         Session::new().await?
     };
 
+    if !is_virtual_task {
+        if let Some(workspace_path) = resolve_task_workspace_dir(
+            &runtime.client,
+            &runtime.server,
+            &runtime.token,
+            workspace_id,
+        )
+        .await?
+        {
+            session.metadata.directory = Some(workspace_path);
+        }
+    }
+
+    // For virtual/global tasks, clear the workspace directory so tools don't
+    // try to operate on a workspace that doesn't exist on this worker.
+    if is_virtual_task {
+        tracing::info!(
+            task_id,
+            workspace_id = workspace_id.unwrap_or("(none)"),
+            "Virtual task detected — skipping workspace setup"
+        );
+        session.metadata.directory = None;
+    }
+
     // Normalize agent: only "build", "plan", and swarm types are valid.
     // Map deprecated/unknown agent types (e.g. "general", "explore") to "build".
     let agent_type = if is_swarm_agent(raw_agent) {
@@ -1643,18 +1695,22 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         }
     };
     session.set_agent_name(agent_type.to_string());
-    session.attach_claim_provenance(&claim_provenance);
-    if let Some(directory) = session.metadata.directory.as_deref()
-        && let Err(err) = install_commit_msg_hook(directory)
-    {
-        tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
+    session.attach_claim_provenance(claim_provenance);
+
+    // Skip git hook installation for virtual tasks (no workspace directory).
+    if !is_virtual_task {
+        if let Some(directory) = session.metadata.directory.as_deref()
+            && let Err(err) = install_commit_msg_hook(directory)
+        {
+            tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
+        }
     }
 
     if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
     }
 
-    tracing::info!("Executing prompt: {}", prompt);
+    tracing::info!(task_id, agent_type, "Executing prompt: {}", prompt);
 
     // Set up output streaming to forward progress to the server and bus
     let stream_client = runtime.client.clone();
@@ -1672,7 +1728,6 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
             let w = stream_worker_id.clone();
             let tid = stream_task_id.clone();
 
-            // Publish to the local bus so the SSE endpoint can pick it up in real time
             let bus_handle = stream_bus.handle("task-output");
             bus_handle.send(
                 format!("task.{}", tid),
@@ -1759,27 +1814,18 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
                 )
             }
             Err(e) => {
-                tracing::error!("Task failed: {} - {}", task_id, e);
+                tracing::error!(task_id, error = %e, "Task execution failed");
                 ("failed", None, Some(format!("Error: {}", e)), None)
             }
         }
     };
 
-    release_task_result(
-        &runtime.client,
-        &runtime.server,
-        &runtime.token,
-        &runtime.worker_id,
-        task_id,
+    Ok((
         status,
         result,
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
-    )
-    .await?;
-
-    tracing::info!("Task released: {} with status: {}", task_id, status);
-    Ok(())
+    ))
 }
 
 async fn handle_forage_task(
@@ -1852,12 +1898,7 @@ async fn handle_clone_repo_task(
             )
             .await?;
         } else {
-            if repo_path.exists() {
-                anyhow::bail!(
-                    "Clone target {} already exists but is not a Git repository",
-                    repo_path.display()
-                );
-            }
+            prepare_clone_target(&repo_path).await?;
 
             run_git_command_at(
                 None,
@@ -1904,42 +1945,6 @@ async fn handle_clone_repo_task(
 
     let _ = tokio::fs::remove_file(&temp_helper_path).await;
     clone_result
-}
-
-async fn fetch_workspace_record(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    workspace_id: &str,
-) -> Result<RegisteredWorkspaceRecord> {
-    let mut req = client.get(format!(
-        "{}/v1/agent/workspaces/{}",
-        server.trim_end_matches('/'),
-        workspace_id
-    ));
-    if let Some(token) = token {
-        req = req.bearer_auth(token);
-    }
-
-    let response = req
-        .send()
-        .await
-        .with_context(|| format!("Failed to load workspace {}", workspace_id))?;
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        anyhow::bail!(
-            "Failed to fetch workspace {} ({}): {}",
-            workspace_id,
-            status,
-            body
-        );
-    }
-
-    response
-        .json::<RegisteredWorkspaceRecord>()
-        .await
-        .with_context(|| format!("Failed to decode workspace {} response", workspace_id))
 }
 
 async fn register_cloned_workspace(
@@ -2049,31 +2054,6 @@ async fn enqueue_post_clone_task(
         anyhow::bail!("Failed to enqueue post-clone task ({}): {}", status, body);
     }
     Ok(())
-}
-
-fn resolve_workspace_clone_path(workspace_id: &str, preferred_path: &str) -> PathBuf {
-    let preferred = preferred_path.trim();
-    if preferred.is_empty() {
-        return git_clone_base_dir().join(workspace_id);
-    }
-
-    let preferred_path = PathBuf::from(preferred);
-    let legacy_root = Path::new("/var/lib/codetether/repos");
-    let configured_root = git_clone_base_dir();
-    if preferred_path.starts_with(legacy_root)
-        && preferred_path.file_name().and_then(|name| name.to_str()) == Some(workspace_id)
-        && configured_root != legacy_root
-    {
-        return configured_root.join(workspace_id);
-    }
-
-    preferred_path
-}
-
-fn git_clone_base_dir() -> PathBuf {
-    std::env::var("GIT_CLONE_BASE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/var/lib/codetether/repos"))
 }
 
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
@@ -2302,12 +2282,19 @@ async fn execute_session_with_policy(
     use std::sync::Arc;
 
     // Load provider registry from Vault
-    let registry = ProviderRegistry::from_vault().await?;
+    let registry = ProviderRegistry::from_vault()
+        .await
+        .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?;
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
 
     if providers.is_empty() {
-        anyhow::bail!("No providers available. Configure API keys in HashiCorp Vault.");
+        anyhow::bail!(
+            "No LLM providers available (0 providers loaded). \
+             Configure API keys in HashiCorp Vault or set environment variables. \
+             Vault address: {}",
+            std::env::var("VAULT_ADDR").unwrap_or_else(|_| "(not set)".into())
+        );
     }
 
     // Parse model string
@@ -2366,10 +2353,16 @@ async fn execute_session_with_policy(
     };
 
     // Create tool registry with filtering based on auto-approve policy
+    let workspace_dir = session
+        .metadata
+        .directory
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let tool_registry = create_filtered_registry(
         Arc::clone(&provider),
         model.clone(),
         auto_approve,
+        &workspace_dir,
         output_callback.clone(),
     );
     let tool_definitions = tool_registry.definitions();
@@ -2393,10 +2386,7 @@ async fn execute_session_with_policy(
     );
 
     // Build system prompt
-    let cwd = std::env::var("PWD")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
-    let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+    let system_prompt = crate::agent::builtin::build_system_prompt(&workspace_dir);
 
     let mut final_output = String::new();
     let max_steps = 50;
@@ -2552,89 +2542,6 @@ async fn execute_session_with_policy(
         text: final_output.trim().to_string(),
         session_id: session.id.clone(),
     })
-}
-
-/// Check if a tool is allowed based on the auto-approve policy
-fn is_tool_allowed(tool_name: &str, auto_approve: AutoApprove) -> bool {
-    match auto_approve {
-        AutoApprove::All => true,
-        AutoApprove::Safe | AutoApprove::None => is_safe_tool(tool_name),
-    }
-}
-
-/// Check if a tool is considered "safe" (read-only)
-fn is_safe_tool(tool_name: &str) -> bool {
-    let safe_tools = [
-        "read",
-        "list",
-        "glob",
-        "grep",
-        "codesearch",
-        "lsp",
-        "webfetch",
-        "websearch",
-        "todo_read",
-        "skill",
-    ];
-    safe_tools.contains(&tool_name)
-}
-
-/// Create a filtered tool registry based on the auto-approve policy
-fn create_filtered_registry(
-    provider: Arc<dyn crate::provider::Provider>,
-    model: String,
-    auto_approve: AutoApprove,
-    completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) -> crate::tool::ToolRegistry {
-    use crate::tool::*;
-
-    let mut registry = ToolRegistry::new();
-
-    // Always add safe tools
-    registry.register(Arc::new(file::ReadTool::new()));
-    registry.register(Arc::new(file::ListTool::new()));
-    registry.register(Arc::new(file::GlobTool::new()));
-    registry.register(Arc::new(search::GrepTool::new()));
-    registry.register(Arc::new(lsp::LspTool::new()));
-    registry.register(Arc::new(webfetch::WebFetchTool::new()));
-    registry.register(Arc::new(websearch::WebSearchTool::new()));
-    registry.register(Arc::new(codesearch::CodeSearchTool::new()));
-    registry.register(Arc::new(todo::TodoReadTool::new()));
-    registry.register(Arc::new(skill::SkillTool::new()));
-
-    // Add potentially dangerous tools only if auto_approve is All
-    if matches!(auto_approve, AutoApprove::All) {
-        registry.register(Arc::new(file::WriteTool::new()));
-        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
-        registry.register(Arc::new(bash::BashTool::new()));
-        registry.register(Arc::new(multiedit::MultiEditTool::new()));
-        registry.register(Arc::new(patch::ApplyPatchTool::new()));
-        registry.register(Arc::new(todo::TodoWriteTool::new()));
-        registry.register(Arc::new(task::TaskTool::new()));
-        registry.register(Arc::new(plan::PlanEnterTool::new()));
-        registry.register(Arc::new(plan::PlanExitTool::new()));
-        registry.register(Arc::new(rlm::RlmTool::new(
-            Arc::clone(&provider),
-            model.clone(),
-        )));
-        registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
-        registry.register(Arc::new(prd::PrdTool::new()));
-        // Register GoTool with the completion callback so the LLM gets notified when
-        // the background pipeline finishes.
-        if let Some(cb) = completion_callback {
-            registry.register(Arc::new(go::GoTool::with_callback(cb)));
-        } else {
-            registry.register(Arc::new(go::GoTool::new()));
-        }
-        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
-        registry.register(Arc::new(undo::UndoTool));
-        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
-    }
-
-    registry.register(Arc::new(invalid::InvalidTool::new()));
-
-    registry
 }
 
 /// Start the heartbeat background task

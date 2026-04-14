@@ -1,57 +1,47 @@
-//! Handle the "spawn" action.
+//! Spawn orchestration for the agent tool.
+//!
+//! This module coordinates spawn request parsing, validation, session
+//! creation, and persistence. It intentionally permits sub-agents to
+//! use the same model as their parent.
+//!
+//! # Examples
+//!
+//! ```ignore
+//! let result = handle_spawn(&params).await?;
+//! assert!(result.success);
+//! ```
 
-use super::helpers;
-use super::policy;
-use super::store::{self, AgentEntry};
+use super::params::Params;
+use super::session_factory;
+use super::spawn_request::SpawnRequest;
+use super::spawn_store;
+use super::spawn_validation;
 use crate::tool::ToolResult;
-use anyhow::{Context, Result};
+use anyhow::Result;
 
-pub(super) async fn handle_spawn(params: &helpers::Params) -> Result<ToolResult> {
-    let name = params.name.as_ref().context("name required for spawn")?;
-    let instructions = params
-        .instructions
-        .as_ref()
-        .context("instructions required for spawn")?;
-    let requested = params.model.as_ref().context("model required for spawn")?;
-    let current = params
-        .current_model
-        .clone()
-        .or_else(|| std::env::var("CODETETHER_DEFAULT_MODEL").ok())
-        .context("cannot determine caller model")?;
-
-    if policy::normalize_model(requested) == policy::normalize_model(&current) {
-        return Ok(ToolResult::error(format!(
-            "Spawn blocked: '{requested}' must differ from '{current}'."
-        )));
+/// Spawns a new sub-agent after validating the request.
+///
+/// # Examples
+///
+/// ```ignore
+/// let result = handle_spawn(&params).await?;
+/// ```
+pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
+    let request = SpawnRequest::from_params(params)?;
+    if let Err(result) = spawn_validation::validate_spawn_request(&request).await {
+        return Ok(result);
     }
+    let session =
+        session_factory::create_agent_session(request.name, request.instructions, request.model)
+            .await?;
+    spawn_store::persist_spawned_agent(request.name, request.instructions, session).await;
+    tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned");
+    Ok(ToolResult::success(success_message(&request)))
+}
 
-    let registry = helpers::get_registry().await?;
-    if !policy::is_free_or_eligible(requested, &registry).await {
-        return Ok(ToolResult::error(format!(
-            "Spawn blocked: '{requested}' is not free/subscription-eligible. \
-             Use ':free' models, subscription providers, or OAuth providers."
-        )));
-    }
-
-    if store::contains(name) {
-        return Ok(ToolResult::error(format!(
-            "Agent @{name} exists. Use kill first."
-        )));
-    }
-
-    let mut session = helpers::create_agent_session(name, instructions, requested).await?;
-    if let Err(e) = session.save().await {
-        tracing::warn!(agent = %name, error = %e, "Failed to save spawned agent session");
-    }
-    store::insert(
-        name.clone(),
-        AgentEntry {
-            instructions: instructions.clone(),
-            session,
-        },
-    );
-    tracing::info!(agent = %name, "Sub-agent spawned");
-    Ok(ToolResult::success(format!(
-        "Spawned @{name} on '{requested}': {instructions}"
-    )))
+fn success_message(request: &SpawnRequest<'_>) -> String {
+    format!(
+        "Spawned @{} on '{}': {}",
+        request.name, request.model, request.instructions
+    )
 }

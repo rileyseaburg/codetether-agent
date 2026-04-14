@@ -9,6 +9,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::ffi::OsString;
+use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Instant;
 use tokio::process::Command;
@@ -22,6 +23,7 @@ pub struct BashTool {
     timeout_secs: u64,
     /// When true, execute commands through the sandbox with restricted env.
     sandboxed: bool,
+    default_cwd: Option<PathBuf>,
 }
 
 impl BashTool {
@@ -32,6 +34,14 @@ impl BashTool {
         Self {
             timeout_secs: 120,
             sandboxed,
+            default_cwd: None,
+        }
+    }
+
+    pub fn with_cwd(default_cwd: PathBuf) -> Self {
+        Self {
+            default_cwd: Some(default_cwd),
+            ..Self::new()
         }
     }
 
@@ -41,6 +51,7 @@ impl BashTool {
         Self {
             timeout_secs,
             sandboxed: false,
+            default_cwd: None,
         }
     }
 
@@ -50,6 +61,7 @@ impl BashTool {
         Self {
             timeout_secs: 120,
             sandboxed: true,
+            default_cwd: None,
         }
     }
 }
@@ -190,7 +202,8 @@ impl Tool for BashTool {
                 ));
             }
         };
-        let cwd = args["cwd"].as_str();
+        let cwd = args["cwd"].as_str().map(PathBuf::from);
+        let effective_cwd = cwd.clone().or_else(|| self.default_cwd.clone());
         let timeout_secs = args["timeout"].as_u64().unwrap_or(self.timeout_secs);
         let wrapped_command = codetether_wrapped_command(command);
 
@@ -202,15 +215,13 @@ impl Tool for BashTool {
         // Sandboxed execution path: restricted env, resource limits, audit logged
         if self.sandboxed {
             let policy = SandboxPolicy {
-                allowed_paths: cwd
-                    .map(|d| vec![std::path::PathBuf::from(d)])
-                    .unwrap_or_default(),
+                allowed_paths: effective_cwd.clone().map(|d| vec![d]).unwrap_or_default(),
                 allow_network: false,
                 allow_exec: true,
                 timeout_secs,
                 ..SandboxPolicy::default()
             };
-            let work_dir = cwd.map(std::path::Path::new);
+            let work_dir = effective_cwd.as_deref();
             let sandbox_result = execute_sandboxed(
                 "bash",
                 &["-c".to_string(), wrapped_command.clone()],
@@ -343,7 +354,12 @@ impl Tool for BashTool {
                 cmd.env(env_key, value);
             }
         }
-        let github_auth = match load_github_command_auth(command, cwd).await {
+        let github_auth = match load_github_command_auth(
+            command,
+            effective_cwd.as_deref().and_then(|dir| dir.to_str()),
+        )
+        .await
+        {
             Ok(auth) => auth,
             Err(err) => {
                 tracing::warn!(error = %err, "Failed to load GitHub auth for bash command");
@@ -356,7 +372,7 @@ impl Tool for BashTool {
             }
         }
 
-        if let Some(dir) = cwd {
+        if let Some(dir) = effective_cwd.as_deref() {
             cmd.current_dir(dir);
         }
 
@@ -392,9 +408,20 @@ impl Tool for BashTool {
                 // Truncate if too long
                 let max_len = 50_000;
                 let (output_str, truncated) = if combined.len() > max_len {
+                    // Find a valid char boundary at or before max_len
+                    let truncate_at = match combined.is_char_boundary(max_len) {
+                        true => max_len,
+                        false => {
+                            let mut boundary = max_len;
+                            while !combined.is_char_boundary(boundary) && boundary > 0 {
+                                boundary -= 1;
+                            }
+                            boundary
+                        }
+                    };
                     let truncated_output = format!(
                         "{}...\n[Output truncated, {} bytes total]",
-                        &combined[..max_len],
+                        &combined[..truncate_at],
                         combined.len()
                     );
                     (truncated_output, true)
@@ -409,7 +436,9 @@ impl Tool for BashTool {
                     "bash",
                     json!({
                         "command": command,
-                        "cwd": cwd,
+                        "cwd": effective_cwd
+                            .as_ref()
+                            .map(|dir| dir.display().to_string()),
                         "timeout": timeout_secs,
                     }),
                 );
@@ -515,6 +544,7 @@ mod tests {
         let tool = BashTool {
             timeout_secs: 10,
             sandboxed: true,
+            default_cwd: None,
         };
         let result = tool
             .execute(json!({ "command": "echo hello sandbox" }))
@@ -530,6 +560,7 @@ mod tests {
         let tool = BashTool {
             timeout_secs: 1,
             sandboxed: true,
+            default_cwd: None,
         };
         let result = tool
             .execute(json!({ "command": "sleep 30" }))

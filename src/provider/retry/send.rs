@@ -21,18 +21,34 @@ use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
 /// # Example
 ///
 /// ```rust,no_run
-/// let (text, _status) = send_with_retry(|| async {
-///     let resp = client
-///         .post("https://api.z.ai/v4/chat/completions")
-///         .bearer_auth(&token)
-///         .json(&body)
-///         .send()
-///         .await?;
-///     let status = resp.status();
-///     let text = resp.text().await?;
-///     Ok((text, status))
+/// # async fn demo() -> anyhow::Result<()> {
+/// use codetether_agent::provider::retry::send_with_retry;
+///
+/// let client = reqwest::Client::new();
+/// let token = String::from("example-token");
+/// let body = serde_json::json!({ "model": "glm-5-turbo" });
+///
+/// let (text, _status) = send_with_retry(|| {
+///     let client = client.clone();
+///     let token = token.clone();
+///     let body = body.clone();
+///     async move {
+///         let resp = client
+///             .post("https://api.z.ai/v4/chat/completions")
+///             .bearer_auth(&token)
+///             .json(&body)
+///             .send()
+///             .await?;
+///         let status = resp.status();
+///         let text = resp.text().await?;
+///         Ok((text, status))
+///     }
 /// })
 /// .await?;
+///
+/// let _ = text;
+/// # Ok(())
+/// # }
 /// ```
 pub async fn send_with_retry<F, Fut>(mut f: F) -> anyhow::Result<(String, reqwest::StatusCode)>
 where

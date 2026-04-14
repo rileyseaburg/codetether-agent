@@ -1043,6 +1043,9 @@ impl ProviderRegistry {
                     zai::DEFAULT_BASE_URL.to_string(),
                 )?))
             }),
+            ("github-copilot", "GITHUB_COPILOT_TOKEN", |token| {
+                Ok(Arc::new(copilot::CopilotProvider::new(token)?))
+            }),
         ];
 
         for (provider_id, env_var, constructor) in fallbacks {

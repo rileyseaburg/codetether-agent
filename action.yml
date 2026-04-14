@@ -1,0 +1,150 @@
+name: "CodeTether Code Review"
+description: >-
+  AI-powered code review and PR fix automation.
+  Add this action to any repo — no API keys needed.
+  Sign up at https://codetether.run, grab your token, and go.
+author: "rileyseaburg"
+
+branding:
+  icon: "code"
+  color: "blue"
+
+inputs:
+  github_token:
+    description: "GitHub App installation token for posting comments as the bot identity (auto-set by workflow)"
+    required: false
+    default: ""
+  token:
+    description: "CodeTether API token (from https://codetether.run → Settings → API Tokens)"
+    required: true
+  server_url:
+    description: "CodeTether server URL (default: https://api.codetether.run)"
+    required: false
+    default: "https://api.codetether.run"
+  extra_prompt:
+    description: "Additional instructions appended to the review prompt"
+    required: false
+    default: ""
+  auto_comment:
+    description: "Post review as a PR comment (true/false)"
+    required: false
+    default: "true"
+  agent_type:
+    description: "Agent type for task dispatch"
+    required: false
+    default: "code-review"
+
+  # --- Advanced: self-hosted / BYOK mode ---
+  mode:
+    description: >-
+      "server" (default) dispatches to CodeTether cloud.
+      "local" runs the agent in the runner (requires your own LLM keys).
+    required: false
+    default: "server"
+  vault_addr:
+    description: "HashiCorp Vault address (local mode only)"
+    required: false
+  vault_token:
+    description: "Vault auth token (local mode only)"
+    required: false
+  api_key:
+    description: "LLM API key for BYOK (local mode only)"
+    required: false
+  model:
+    description: "LLM model (local mode only, e.g. gpt-4o, claude-sonnet-4-20250514)"
+    required: false
+    default: "glm-5.1"
+  max_steps:
+    description: "Maximum agentic loop iterations (local mode only)"
+    required: false
+    default: "30"
+  task_wait_seconds:
+    description: "How long to wait for server-dispatched tasks before timing out"
+    required: false
+    default: "1200"
+  version:
+    description: "CodeTether version to install (local mode only)"
+    required: false
+    default: "latest"
+  workspace_path:
+    description: "Checked-out repository path to review or edit"
+    required: false
+    default: ""
+
+outputs:
+  review:
+    description: "The full review text output"
+    value: ${{ steps.review.outputs.review }}
+  exit_code:
+    description: "Agent exit code (0 = success)"
+    value: ${{ steps.review.outputs.exit_code }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install CodeTether
+      if: inputs.mode == 'local'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if command -v codetether &>/dev/null; then
+          echo "CodeTether already installed: $(codetether --version 2>/dev/null || echo 'unknown')"
+        else
+          echo "Installing CodeTether..."
+          VERSION="${{ inputs.version }}"
+          REPO="rileyseaburg/codetether-agent"
+          if [ "$VERSION" = "latest" ]; then
+            VERSION=$(curl -fsSL \
+              -H "Authorization: token ${GH_TOKEN}" \
+              "https://api.github.com/repos/${REPO}/releases/latest" \
+              | grep '"tag_name"' | head -1 | sed 's/.*"v\(.*\)".*/\1/')
+          fi
+          ARCHIVE="codetether-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ARCHIVE}"
+          echo "Downloading ${URL}"
+          curl -fsSL "$URL" -o "/tmp/${ARCHIVE}"
+          tar -xzf "/tmp/${ARCHIVE}" -C /tmp
+          # Binary inside tarball may be named with version/platform suffix
+          BINARY=$(tar -tzf "/tmp/${ARCHIVE}" 2>/dev/null | head -1 || true)
+          if [ -f "/tmp/${BINARY}" ]; then
+            sudo install -m 755 "/tmp/${BINARY}" /usr/local/bin/codetether
+          elif [ -f "/tmp/codetether" ]; then
+            sudo install -m 755 /tmp/codetether /usr/local/bin/codetether
+          else
+            echo "::error::Could not find codetether binary in archive"
+            tar -tzf "/tmp/${ARCHIVE}" || true
+            ls -la /tmp/codetether* || true
+            exit 1
+          fi
+          rm -f "/tmp/${ARCHIVE}" "/tmp/${BINARY}" /tmp/codetether
+          echo "Installed: $(codetether --version 2>/dev/null || echo 'v'${VERSION})"
+        fi
+
+    - name: Run review
+      id: review
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token || github.token }}
+        GH_ACTIONS_TOKEN: ${{ github.token }}
+        CODETETHER_SERVER: ${{ inputs.server_url }}
+        CODETETHER_TOKEN: ${{ inputs.token }}
+        VAULT_ADDR: ${{ inputs.vault_addr }}
+        VAULT_TOKEN: ${{ inputs.vault_token }}
+        CODETETHER_API_KEY: ${{ inputs.api_key }}
+        CODETETHER_DEFAULT_MODEL: ${{ inputs.model }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_MAX_STEPS: ${{ inputs.max_steps }}
+        INPUT_TASK_WAIT_SECONDS: ${{ inputs.task_wait_seconds }}
+        INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
+        INPUT_AUTO_COMMENT: ${{ inputs.auto_comment }}
+        INPUT_AGENT_TYPE: ${{ inputs.agent_type }}
+        INPUT_WORKSPACE_PATH: ${{ inputs.workspace_path }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        PR_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}
+        PR_BODY: ${{ github.event.pull_request.body || github.event.issue.body }}
+        PR_BASE: ${{ github.event.pull_request.base.ref || '' }}
+        PR_HEAD: ${{ github.event.pull_request.head.ref || '' }}
+        REPO_FULL_NAME: ${{ github.repository }}
+      run: ${{ github.action_path }}/action/entrypoint.sh

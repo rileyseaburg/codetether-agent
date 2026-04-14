@@ -211,13 +211,19 @@ fn peer_candidates(seed: &str) -> Vec<String> {
 }
 
 async fn try_fetch_agent_card(endpoint: &str) -> Result<crate::a2a::types::AgentCard> {
-    let client = A2AClient::new(endpoint);
+    let mut client = A2AClient::new(endpoint);
+    if let Ok(token) = std::env::var("CODETETHER_AUTH_TOKEN") {
+        client = client.with_token(token);
+    }
     let card = client.get_agent_card().await?;
     Ok(card)
 }
 
 async fn send_intro(endpoint: &str, agent_name: &str, self_url: &str) -> Result<()> {
-    let client = A2AClient::new(endpoint);
+    let mut client = A2AClient::new(endpoint);
+    if let Ok(token) = std::env::var("CODETETHER_AUTH_TOKEN") {
+        client = client.with_token(token);
+    }
     let payload = MessageSendParams {
         message: Message {
             message_id: uuid::Uuid::new_v4().to_string(),
