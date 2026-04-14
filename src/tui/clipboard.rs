@@ -12,7 +12,9 @@ use crate::session::ImageAttachment;
 fn is_ssh_or_headless() -> bool {
     std::env::var("SSH_CONNECTION").is_ok()
         || std::env::var("SSH_TTY").is_ok()
-        || (std::env::var("TERM").ok().map_or(false, |t| t.starts_with("xterm"))
+        || (std::env::var("TERM")
+            .ok()
+            .map_or(false, |t| t.starts_with("xterm"))
             && std::env::var("DISPLAY").is_err()
             && std::env::var("WAYLAND_DISPLAY").is_err())
 }

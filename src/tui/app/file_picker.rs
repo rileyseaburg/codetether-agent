@@ -128,11 +128,7 @@ fn scan_directory(dir: &Path) -> Vec<FilePickerEntry> {
                 name: format!("{name}/"),
             });
         } else {
-            let indicator = if is_image_file(&path) {
-                " 📷"
-            } else {
-                ""
-            };
+            let indicator = if is_image_file(&path) { " 📷" } else { "" };
             file_entries.push(FilePickerEntry {
                 path,
                 is_dir: false,
@@ -161,8 +157,7 @@ fn rescan_with_filter(app: &mut App) {
         app.state.file_picker_entries = all_entries
             .into_iter()
             .filter(|e| {
-                e.name.to_ascii_lowercase().contains(&filter)
-                    || e.is_dir && e.name == "../"
+                e.name.to_ascii_lowercase().contains(&filter) || e.is_dir && e.name == "../"
             })
             .collect();
     }
@@ -176,9 +171,8 @@ fn attach_image_from_picker(app: &mut App, _cwd: &Path, path: &Path) {
             let display = path.display();
             app.state.pending_images.push(attachment);
             let count = app.state.pending_images.len();
-            app.state.status = format!(
-                "📷 Attached {display}. {count} image(s) pending. Press Enter to send."
-            );
+            app.state.status =
+                format!("📷 Attached {display}. {count} image(s) pending. Press Enter to send.");
             app.state.messages.push(ChatMessage::new(
                 MessageType::System,
                 format!("📷 Image attached: {display}. Type a message and press Enter to send."),

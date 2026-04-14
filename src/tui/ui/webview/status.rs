@@ -19,7 +19,10 @@ pub fn render_webview_status(f: &mut Frame, app: &App, area: Rect) {
         .as_deref()
         .map(|m| format!(" {m} "))
         .unwrap_or_else(|| " auto ".to_string());
-    status_line.spans.insert(0, Span::styled(model_status, Style::default().fg(Color::Cyan)));
+    status_line.spans.insert(
+        0,
+        Span::styled(model_status, Style::default().fg(Color::Cyan)),
+    );
     status_line
         .spans
         .insert(0, Span::styled("│ ", Style::default().fg(Color::DarkGray)));

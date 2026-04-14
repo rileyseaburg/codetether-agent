@@ -37,7 +37,11 @@ async fn push_and_create_pr(wt: &WorktreeInfo) -> anyhow::Result<String> {
             .output()
             .await;
         let _ = tokio::process::Command::new("git")
-            .args(["commit", "-m", &format!("codetether: TUI agent work ({})", wt.name)])
+            .args([
+                "commit",
+                "-m",
+                &format!("codetether: TUI agent work ({})", wt.name),
+            ])
             .current_dir(&wt.path)
             .output()
             .await;
@@ -61,10 +65,17 @@ async fn push_and_create_pr(wt: &WorktreeInfo) -> anyhow::Result<String> {
     // Create a PR using the GitHub CLI
     let pr_output = tokio::process::Command::new("gh")
         .args([
-            "pr", "create",
-            "--head", &wt.branch,
-            "--title", &format!("codetether: {}", wt.name),
-            "--body", &format!("Automated PR from CodeTether TUI agent.\n\nBranch: `{}`", wt.branch),
+            "pr",
+            "create",
+            "--head",
+            &wt.branch,
+            "--title",
+            &format!("codetether: {}", wt.name),
+            "--body",
+            &format!(
+                "Automated PR from CodeTether TUI agent.\n\nBranch: `{}`",
+                wt.branch
+            ),
             "--fill-verbose",
         ])
         .current_dir(&wt.path)
@@ -77,11 +88,11 @@ async fn push_and_create_pr(wt: &WorktreeInfo) -> anyhow::Result<String> {
         return Err(anyhow::anyhow!("gh pr create failed: {stderr}"));
     }
 
-    let pr_url = String::from_utf8_lossy(&pr_output.stdout).trim().to_string();
+    let pr_url = String::from_utf8_lossy(&pr_output.stdout)
+        .trim()
+        .to_string();
     Ok(pr_url)
 }
-
-
 
 /// Read an image file from disk, encode it as base64, and return it as an
 /// `ImageAttachment` ready to send with a message.
@@ -94,16 +105,15 @@ pub(crate) fn attach_image_file(path: &Path) -> Result<ImageAttachment, String> 
         return Err(format!("Not a file: {}", path.display()));
     }
 
-    let bytes = std::fs::read(path)
-        .map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+    let bytes =
+        std::fs::read(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
 
-    let mime_type = guess_image_mime(path)
-        .ok_or_else(|| {
-            format!(
-                "Unsupported image format: {}. Supported: png, jpg/jpeg, gif, webp, bmp, svg",
-                path.display()
-            )
-        })?;
+    let mime_type = guess_image_mime(path).ok_or_else(|| {
+        format!(
+            "Unsupported image format: {}. Supported: png, jpg/jpeg, gif, webp, bmp, svg",
+            path.display()
+        )
+    })?;
 
     let base64_data = base64::engine::general_purpose::STANDARD.encode(&bytes);
     let size_kb = bytes.len() as f64 / 1024.0;
@@ -400,9 +410,7 @@ async fn handle_enter_chat(
         let worktree_state = if use_worktree {
             let repo_dir = cwd.to_path_buf();
             let worktree_name = format!("tui_{}", uuid::Uuid::new_v4().simple());
-            let mgr = WorktreeManager::new(
-                repo_dir.join(".codetether-worktrees"),
-            );
+            let mgr = WorktreeManager::new(repo_dir.join(".codetether-worktrees"));
             match mgr.create(&worktree_name).await {
                 Ok(wt) => {
                     let _ = mgr.inject_workspace_stub(&wt.path);

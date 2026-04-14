@@ -22,21 +22,28 @@ pub fn render_webview_sidebar(f: &mut Frame, app: &App, area: Rect) {
             format!("  {}", truncate_str(title, 20))
         };
         let style = if i == app.state.selected_session {
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::Gray)
         };
         items.push(ListItem::new(Line::from(Span::styled(label, style))));
     }
     if items.is_empty() {
-        items.push(ListItem::new(Line::from(
-            Span::styled("  No sessions", Style::default().fg(Color::DarkGray)),
-        )));
+        items.push(ListItem::new(Line::from(Span::styled(
+            "  No sessions",
+            Style::default().fg(Color::DarkGray),
+        ))));
     }
     let list = List::new(items).block(block);
     f.render_widget(list, area);
 }
 
 fn truncate_str(s: &str, max: usize) -> String {
-    if s.len() <= max { s.to_string() } else { format!("{}…", &s[..max.saturating_sub(1)]) }
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        format!("{}…", &s[..max.saturating_sub(1)])
+    }
 }

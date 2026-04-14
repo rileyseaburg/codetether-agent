@@ -775,19 +775,20 @@ async fn main() -> anyhow::Result<()> {
 
                     // Parse provider/model from --model flag (e.g. "zai/glm-5" → provider=zai, model=glm-5)
                     let model_ref = args.model.unwrap_or_else(|| "glm-5".to_string());
-                    let (provider, model) = if let Some((prov_name, model_name)) = model_ref.split_once('/') {
-                        let prov = registry
-                            .get(prov_name)
-                            .ok_or_else(|| anyhow::anyhow!("Provider '{prov_name}' not found in Vault"))?;
-                        (prov, model_name.to_string())
-                    } else {
-                        let prov = registry
-                            .get("zai")
-                            .or_else(|| registry.get("moonshotai"))
-                            .or_else(|| registry.get("openai"))
-                            .ok_or_else(|| anyhow::anyhow!("No provider available in Vault"))?;
-                        (prov, model_ref)
-                    };
+                    let (provider, model) =
+                        if let Some((prov_name, model_name)) = model_ref.split_once('/') {
+                            let prov = registry.get(prov_name).ok_or_else(|| {
+                                anyhow::anyhow!("Provider '{prov_name}' not found in Vault")
+                            })?;
+                            (prov, model_name.to_string())
+                        } else {
+                            let prov = registry
+                                .get("zai")
+                                .or_else(|| registry.get("moonshotai"))
+                                .or_else(|| registry.get("openai"))
+                                .ok_or_else(|| anyhow::anyhow!("No provider available in Vault"))?;
+                            (prov, model_ref)
+                        };
 
                     let config = ralph::RalphConfig {
                         prd_path: args.prd.to_string_lossy().to_string(),
