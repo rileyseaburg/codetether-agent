@@ -347,7 +347,9 @@ impl Tool for ListTool {
 }
 
 /// Find files using glob patterns
-pub struct GlobTool;
+pub struct GlobTool {
+    root: PathBuf,
+}
 
 impl Default for GlobTool {
     fn default() -> Self {
@@ -357,7 +359,13 @@ impl Default for GlobTool {
 
 impl GlobTool {
     pub fn new() -> Self {
-        Self
+        Self {
+            root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        }
+    }
+
+    pub fn with_root(root: PathBuf) -> Self {
+        Self { root }
     }
 }
 
@@ -415,8 +423,17 @@ impl Tool for GlobTool {
 
         // Determine the base directory from the pattern for WalkBuilder.
         // E.g. "src/**/*.rs" → walk "src/", "**/*.ts" → walk ".".
+        let pattern_path = {
+            let candidate = PathBuf::from(pattern);
+            if candidate.is_absolute() {
+                candidate
+            } else {
+                self.root.join(candidate)
+            }
+        };
+
         let (base_dir, match_pattern) = {
-            let p = std::path::Path::new(pattern);
+            let p = pattern_path.as_path();
             let mut prefix = std::path::PathBuf::new();
             let mut found_meta = false;
             for component in p.components() {
@@ -432,7 +449,7 @@ impl Tool for GlobTool {
             } else {
                 prefix.display().to_string()
             };
-            (base, pattern.to_string())
+            (base, pattern_path.display().to_string())
         };
 
         let compiled = glob::Pattern::new(&match_pattern)?;
@@ -454,7 +471,12 @@ impl Tool for GlobTool {
             };
             let path = entry.path();
             if compiled.matches_path(path) || compiled.matches(path.to_string_lossy().as_ref()) {
-                matches.push(path.display().to_string());
+                let display = path
+                    .strip_prefix(&self.root)
+                    .unwrap_or(path)
+                    .display()
+                    .to_string();
+                matches.push(display);
             }
         }
 

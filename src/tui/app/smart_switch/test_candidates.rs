@@ -22,7 +22,10 @@ fn candidates_prioritizes_same_provider() {
     let available = vec!["minimax".to_string(), "openai".to_string()];
     let attempted = HashSet::new();
     let candidates = smart_switch_candidates(
-        Some("minimax/MiniMax-M2"), Some("minimax"), &available, &attempted,
+        Some("minimax/MiniMax-M2"),
+        Some("minimax"),
+        &available,
+        &attempted,
     );
     assert!(candidates.first().unwrap().starts_with("minimax/"));
 }
@@ -33,7 +36,10 @@ fn candidates_excludes_attempted_models() {
     let mut attempted = HashSet::new();
     attempted.insert(smart_switch_model_key("minimax/MiniMax-M2.5"));
     let candidates = smart_switch_candidates(
-        Some("minimax/MiniMax-M2.5"), Some("minimax"), &available, &attempted,
+        Some("minimax/MiniMax-M2.5"),
+        Some("minimax"),
+        &available,
+        &attempted,
     );
     assert!(!candidates.iter().any(|c| c == "minimax/MiniMax-M2.5"));
 }

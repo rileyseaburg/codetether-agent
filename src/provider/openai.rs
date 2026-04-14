@@ -610,22 +610,16 @@ impl Provider for OpenAIProvider {
                                         if let Some(id) = &tc.id {
                                             out.push(StreamChunk::ToolCallStart {
                                                 id: id.clone(),
-                                                name: func
-                                                    .name
-                                                    .clone()
-                                                    .unwrap_or_default(),
+                                                name: func.name.clone().unwrap_or_default(),
                                             });
                                         }
                                         // Argument deltas
                                         if let Some(args) = &func.arguments {
                                             if !args.is_empty() {
                                                 // Derive the id from tc.id or use index as fallback
-                                                let id = tc
-                                                    .id
-                                                    .clone()
-                                                    .unwrap_or_else(|| {
-                                                        format!("tool_{}", tc.index)
-                                                    });
+                                                let id = tc.id.clone().unwrap_or_else(|| {
+                                                    format!("tool_{}", tc.index)
+                                                });
                                                 out.push(StreamChunk::ToolCallDelta {
                                                     id,
                                                     arguments_delta: args.clone(),

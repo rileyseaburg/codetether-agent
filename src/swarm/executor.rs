@@ -2581,6 +2581,9 @@ pub async fn run_agent_loop(
                     ExecutionProvenance::for_operation(&agent_name, ExecutionOrigin::Swarm);
                 args = enrich_tool_input_with_runtime_context(
                     &args,
+                    working_dir
+                        .as_deref()
+                        .unwrap_or_else(|| std::path::Path::new(".")),
                     Some(model),
                     &subtask_id,
                     &agent_name,

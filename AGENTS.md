@@ -216,6 +216,314 @@ cargo test -- --nocapture
 - Mock providers for unit tests, use real providers in integration tests
 - Integration tests go in `tests/` directory
 
+## Rustdoc & Documentation Standards
+
+> **This is an open-source project.** Every public type, function, and module
+> must be documented well enough that a junior developer can use it without
+> reading the implementation. When in doubt, over-document.
+
+### Running Doc Tests
+
+```bash
+# Run ONLY doc tests (fast, catches broken examples)
+cargo test --doc
+
+# Run doc tests for a single module
+cargo test --doc session
+
+# Generate HTML docs and open in browser
+cargo doc --open --no-deps
+```
+
+### Doc Comment Cheat Sheet
+
+Rust doc comments use `///` for items and `//!` for module-level docs.
+
+```rust
+//! This is a module-level doc comment.
+//!
+//! It appears at the top of a file (usually `mod.rs` or `lib.rs`)
+//! and describes what the entire module is for.
+
+/// A single-line doc comment for an item below it.
+///
+/// A longer description goes here. You can use **bold**, *italic*,
+/// and [`links to other types`](crate::session::Session).
+///
+/// # Arguments
+///
+/// * `name` — Description of the parameter.
+///
+/// # Returns
+///
+/// What the function returns and when it errors.
+///
+/// # Examples
+///
+/// ```rust
+/// let result = 2 + 2;
+/// assert_eq!(result, 4);
+/// ```
+pub fn my_function(name: &str) -> String {
+    format!("Hello, {name}")
+}
+```
+
+### Runnable vs Non-Runnable Examples
+
+Rust has **four** doc example modes. Use the right one:
+
+| Annotation | Compiles? | Runs? | Use When |
+|---|---|---|---|
+| ` ```rust ` or ` ``` ` | Yes | Yes | **Default. Pure logic, no I/O.** |
+| ` ```rust,no_run ` | Yes | No | Compiles but needs network/files at runtime. |
+| ` ```rust,ignore ` | No | No | Pseudocode or needs external context. |
+| ` ```text ` | No | No | Output examples, diagrams, CLI output. |
+
+**Rule: Prefer runnable (` ``` `) whenever possible.** If the example can't compile
+without the rest of the crate, use `no_run`. Only use `ignore` as a last resort.
+
+### Writing Runnable Doc Examples
+
+Runnable examples are real Rust code that `cargo test --doc` compiles and executes.
+They act as both documentation AND tests — if the example breaks, CI catches it.
+
+#### Pattern 1: Simple function (fully runnable)
+
+```rust
+/// Truncate a string to `max_len` bytes, appending "..." if truncated.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::tui::truncate_str;
+///
+/// assert_eq!(truncate_str("hello", 10), "hello");
+/// assert_eq!(truncate_str("hello world", 8), "hello...");
+/// ```
+pub fn truncate_str(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        let boundary = s.floor_char_boundary(max_len.saturating_sub(3));
+        format!("{}...", &s[..boundary])
+    }
+}
+```
+
+#### Pattern 2: Struct with builder (fully runnable)
+
+```rust
+/// Result from executing a tool.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::tool::ToolResult;
+///
+/// // Success case
+/// let ok = ToolResult::success("file written");
+/// assert!(ok.success);
+/// assert_eq!(ok.output, "file written");
+///
+/// // Error case
+/// let err = ToolResult::error("permission denied");
+/// assert!(!err.success);
+/// ```
+pub struct ToolResult {
+    pub output: String,
+    pub success: bool,
+}
+```
+
+#### Pattern 3: Async function (no_run — needs tokio runtime)
+
+```rust
+/// Load a session from disk by its UUID.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// use codetether_agent::session::Session;
+/// use std::path::Path;
+///
+/// let session = Session::load(Path::new("/tmp/sessions"), "abc-123")
+///     .await
+///     .expect("session should exist");
+/// println!("Loaded {} messages", session.messages.len());
+/// # });
+/// ```
+```
+
+#### Pattern 4: Error handling (fully runnable)
+
+```rust
+/// Parse a tool call ID from a string.
+///
+/// # Errors
+///
+/// Returns `Err` if the string is empty or not valid UTF-8.
+///
+/// # Examples
+///
+/// ```rust
+/// fn parse_id(s: &str) -> Result<String, String> {
+///     if s.is_empty() {
+///         return Err("ID cannot be empty".into());
+///     }
+///     Ok(s.to_uppercase())
+/// }
+///
+/// assert_eq!(parse_id("abc").unwrap(), "ABC");
+/// assert!(parse_id("").is_err());
+/// ```
+```
+
+#### Pattern 5: Enum with match (fully runnable)
+
+```rust
+/// Outcome of an audited action.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::audit::AuditOutcome;
+///
+/// let outcome = AuditOutcome::Success;
+/// match outcome {
+///     AuditOutcome::Success => println!("action succeeded"),
+///     AuditOutcome::Failure => println!("action failed"),
+///     AuditOutcome::Denied  => println!("action denied by policy"),
+/// }
+/// ```
+```
+
+### Hidden Lines in Doc Examples
+
+Use `# ` (hash + space) to hide boilerplate lines. They still compile but
+don't show in the rendered docs:
+
+```rust
+/// # Examples
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # fn main() {
+/// let mut map = HashMap::new();
+/// map.insert("key", 42);
+/// assert_eq!(map["key"], 42);
+/// # }
+/// ```
+```
+
+The user sees:
+```rust
+let mut map = HashMap::new();
+map.insert("key", 42);
+assert_eq!(map["key"], 42);
+```
+
+But `cargo test --doc` compiles the full version with imports and `fn main()`.
+
+### Required Doc Sections
+
+Every public item **must** have at minimum:
+
+| Item Type | Required Sections |
+|---|---|
+| Module (`//!`) | Purpose, key types, usage overview |
+| Struct | Purpose, `# Examples` with construction |
+| Enum | Purpose, variants list, `# Examples` with match |
+| Function | Purpose, `# Arguments`, `# Returns`, `# Examples` |
+| Trait | Purpose, `# Implementors` or `# Examples` |
+| Method | One-line summary + `# Examples` if non-obvious |
+
+### When to Use `# Errors` and `# Panics`
+
+```rust
+/// # Errors
+///
+/// Returns [`anyhow::Error`] if:
+/// - The session file does not exist
+/// - The JSON is malformed
+///
+/// # Panics
+///
+/// Panics if `max_retries` is zero (this is a programming error).
+```
+
+**Rule:** Document `# Errors` for every function returning `Result`.
+Document `# Panics` for every function that can panic.
+
+### Linking to Other Types
+
+Use intra-doc links so docs stay valid even if modules move:
+
+```rust
+/// Sends a message through the [`Session`] and records it
+/// in the [`AuditLog`](crate::audit::AuditLog).
+///
+/// See also: [`ToolResult::success`]
+```
+
+### Module-Level Docs
+
+Every `mod.rs` must start with `//!` docs:
+
+```rust
+//! # Session Management
+//!
+//! This module handles conversation persistence, message history,
+//! and session lifecycle (create, load, save, list, delete).
+//!
+//! ## Quick Start
+//!
+//! ```rust,no_run
+//! # tokio::runtime::Runtime::new().unwrap().block_on(async {
+//! use codetether_agent::session::Session;
+//! use std::path::Path;
+//!
+//! // Create a new session
+//! let mut session = Session::new(Path::new("./sessions"));
+//! session.add_user_message("Hello!");
+//! session.save().await.unwrap();
+//! # });
+//! ```
+//!
+//! ## Architecture
+//!
+//! Sessions are stored as JSON files in the sessions directory.
+//! Each session has a UUID, a list of messages, and metadata.
+```
+
+### CI Enforcement
+
+Doc tests run in CI alongside unit tests. A broken doc example **blocks the PR**.
+
+```bash
+# This is what CI runs:
+cargo test --doc          # All doc examples must pass
+cargo doc --no-deps 2>&1  # No rustdoc warnings allowed
+```
+
+### Common Mistakes
+
+1. **Using `ignore` when `no_run` works** — If the code compiles, use `no_run`
+   so the compiler still checks it. `ignore` lets examples silently rot.
+
+2. **Forgetting `use` imports** — Doc examples run in isolation. You must
+   `use codetether_agent::module::Type` even for crate-internal types.
+
+3. **Missing `# tokio::runtime::...` wrapper** — Async examples need a runtime.
+   Use the hidden-line trick to wrap in `block_on` without cluttering the docs.
+
+4. **No `assert!` in examples** — Examples without assertions are just pretty
+   printing. Add `assert_eq!` or `assert!` to make them actual tests.
+
+5. **Stale examples after refactoring** — `cargo test --doc` catches this.
+   Run it locally before pushing.
+
 ## TUI Development
 
 The TUI uses ratatui 0.30.0 + crossterm 0.29.0.
@@ -452,7 +760,8 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 
 
 
-!Important we have formatting rules we are trying to implment, SRP Modular cohesion and 50 line file limits
+
+!Important we have formatting rules we are trying to implement, SRP Modular cohesion and 50 line file limits
 ## Hard Code Quality Rules
 
 ### **Modular Cohesion & Single Responsibility Principle (SRP)**
@@ -476,4 +785,4 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 - **PREFER** type inference (`const x = ...`) only when the type is obvious
 
 ### **Code Review Expectations**
-These are **hard rules**, not suggestions. Violations will be rejected in code review.r
+These are **hard rules**, not suggestions. Violations will be rejected in code review.

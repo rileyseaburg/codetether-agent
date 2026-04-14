@@ -29,13 +29,21 @@ pub fn maybe_schedule_smart_switch_retry(
     if retry_count >= max {
         return None;
     }
-    let attempted: HashSet<String> =
-        attempted_models.iter().map(|m| smart_switch_model_key(m)).collect();
+    let attempted: HashSet<String> = attempted_models
+        .iter()
+        .map(|m| smart_switch_model_key(m))
+        .collect();
     let candidates = smart_switch_candidates(
-        current_model, current_provider, available_providers, &attempted,
+        current_model,
+        current_provider,
+        available_providers,
+        &attempted,
     );
-    candidates.into_iter().next().map(|target_model| PendingSmartSwitchRetry {
-        prompt: prompt.to_string(),
-        target_model,
-    })
+    candidates
+        .into_iter()
+        .next()
+        .map(|target_model| PendingSmartSwitchRetry {
+            prompt: prompt.to_string(),
+            target_model,
+        })
 }

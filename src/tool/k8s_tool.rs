@@ -92,11 +92,14 @@ impl Default for K8sTool {
     }
 }
 
-
 #[async_trait]
 impl Tool for K8sTool {
-    fn id(&self) -> &str { "kubernetes" }
-    fn name(&self) -> &str { "kubernetes" }
+    fn id(&self) -> &str {
+        "kubernetes"
+    }
+    fn name(&self) -> &str {
+        "kubernetes"
+    }
 
     fn description(&self) -> &str {
         "Manage Kubernetes resources: check cluster status, list pods, scale deployments, trigger rolling restarts, spawn/delete sub-agent pods, fetch pod logs, and view recent management actions. Works both in-cluster and with local kubeconfig."
@@ -180,7 +183,6 @@ impl Tool for K8sTool {
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // Action handlers
 // ---------------------------------------------------------------------------
@@ -201,14 +203,17 @@ impl K8sTool {
 
     async fn exec_list_pods(manager: &K8sManager) -> Result<ToolResult> {
         let pods = manager.list_pods().await?;
-        let pods_json: Vec<Value> = pods.iter().map(|p| {
-            json!({
-                "name": p.name,
-                "phase": p.phase,
-                "ready": p.ready,
-                "start_time": p.start_time,
+        let pods_json: Vec<Value> = pods
+            .iter()
+            .map(|p| {
+                json!({
+                    "name": p.name,
+                    "phase": p.phase,
+                    "ready": p.ready,
+                    "start_time": p.start_time,
+                })
             })
-        }).collect();
+            .collect();
 
         let output = json!({
             "namespace": manager.status().await.namespace,
@@ -219,7 +224,8 @@ impl K8sTool {
     }
 
     async fn exec_scale(manager: &K8sManager, params: K8sInput) -> Result<ToolResult> {
-        let replicas = params.replicas
+        let replicas = params
+            .replicas
             .ok_or_else(|| anyhow!("'replicas' is required for the scale action"))?;
         let action = manager.scale(replicas).await?;
         Ok(ToolResult::success(serde_json::to_string_pretty(&json!({
@@ -241,7 +247,9 @@ impl K8sTool {
     }
 
     async fn exec_spawn_pod(manager: &K8sManager, params: K8sInput) -> Result<ToolResult> {
-        let subagent_id = params.subagent_id.as_deref()
+        let subagent_id = params
+            .subagent_id
+            .as_deref()
             .ok_or_else(|| anyhow!("'subagent_id' is required for the spawn_pod action"))?;
 
         let spec = crate::k8s::SubagentPodSpec {
@@ -252,7 +260,9 @@ impl K8sTool {
             args: params.args,
         };
 
-        let action = manager.spawn_subagent_pod_with_spec(subagent_id, spec).await?;
+        let action = manager
+            .spawn_subagent_pod_with_spec(subagent_id, spec)
+            .await?;
         Ok(ToolResult::success(serde_json::to_string_pretty(&json!({
             "action": action.action,
             "success": action.success,
@@ -262,7 +272,9 @@ impl K8sTool {
     }
 
     async fn exec_delete_pod(manager: &K8sManager, params: K8sInput) -> Result<ToolResult> {
-        let subagent_id = params.subagent_id.as_deref()
+        let subagent_id = params
+            .subagent_id
+            .as_deref()
             .ok_or_else(|| anyhow!("'subagent_id' is required for the delete_pod action"))?;
         let action = manager.delete_subagent_pod(subagent_id).await?;
         Ok(ToolResult::success(serde_json::to_string_pretty(&json!({
@@ -274,10 +286,14 @@ impl K8sTool {
     }
 
     async fn exec_pod_state(manager: &K8sManager, params: K8sInput) -> Result<ToolResult> {
-        let subagent_id = params.subagent_id.as_deref()
+        let subagent_id = params
+            .subagent_id
+            .as_deref()
             .ok_or_else(|| anyhow!("'subagent_id' is required for the pod_state action"))?;
 
-        let state = manager.get_subagent_pod_state(subagent_id).await?
+        let state = manager
+            .get_subagent_pod_state(subagent_id)
+            .await?
             .ok_or_else(|| anyhow!("Pod for sub-agent '{}' not found", subagent_id))?;
 
         Ok(ToolResult::success(serde_json::to_string_pretty(&json!({
@@ -292,22 +308,29 @@ impl K8sTool {
     }
 
     async fn exec_logs(manager: &K8sManager, params: K8sInput) -> Result<ToolResult> {
-        let subagent_id = params.subagent_id.as_deref()
+        let subagent_id = params
+            .subagent_id
+            .as_deref()
             .ok_or_else(|| anyhow!("'subagent_id' is required for the logs action"))?;
-        let logs = manager.subagent_logs(subagent_id, params.tail_lines).await?;
+        let logs = manager
+            .subagent_logs(subagent_id, params.tail_lines)
+            .await?;
         Ok(ToolResult::success(logs))
     }
 
     async fn exec_recent_actions(manager: &K8sManager) -> Result<ToolResult> {
         let actions = manager.recent_actions(20).await;
-        let actions_json: Vec<Value> = actions.iter().map(|a| {
-            json!({
-                "action": a.action,
-                "success": a.success,
-                "message": a.message,
-                "timestamp": a.timestamp,
+        let actions_json: Vec<Value> = actions
+            .iter()
+            .map(|a| {
+                json!({
+                    "action": a.action,
+                    "success": a.success,
+                    "message": a.message,
+                    "timestamp": a.timestamp,
+                })
             })
-        }).collect();
+            .collect();
 
         Ok(ToolResult::success(serde_json::to_string_pretty(&json!({
             "actions": actions_json,

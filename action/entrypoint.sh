@@ -130,8 +130,10 @@ ${PR_BODY:-No description provided.}"
   if [ "$INPUT_MODE" = "server" ]; then
     echo "Dispatching issue task to A2A server..."
 
+    # Truncate description to fit server's max_length validation
+    MAX_DESC_CHARS=99000
     TASK_PAYLOAD=$(jq -n \
-      --arg description "$PROMPT" \
+      --arg description "${PROMPT:0:$MAX_DESC_CHARS}" \
       --arg agent_type "$INPUT_AGENT_TYPE" \
       --arg title "Issue #${PR_NUMBER}: ${PR_TITLE}" \
       --arg repo "$REPO_FULL_NAME" \
@@ -146,6 +148,11 @@ ${PR_BODY:-No description provided.}"
           issue_number: ($pr_number | tonumber)
         }
       }')
+
+    DESC_LEN=${#PROMPT}
+    if [ "$DESC_LEN" -gt "$MAX_DESC_CHARS" ]; then
+      echo "⚠ Description truncated from ${DESC_LEN} to ${MAX_DESC_CHARS} chars for server limit"
+    fi
 
     RESPONSE=$(curl -fsSL \
       -X POST "${CODETETHER_SERVER}/v1/tasks/dispatch" \
@@ -301,11 +308,15 @@ After editing files, run the smallest relevant validation needed to support the 
       exit 0
     fi
 
-    git config user.name "codetether[bot]"
-    git config user.email "codetether[bot]@users.noreply.github.com"
     git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git"
     git add -A
-    git commit -m "fix: address @codetether request on PR #${PR_NUMBER}"
+    # Scope the bot identity to this workflow commit so local checkouts do not
+    # retain a repo-level bot author configuration.
+    GIT_AUTHOR_NAME="codetether[bot]" \
+    GIT_AUTHOR_EMAIL="codetether[bot]@users.noreply.github.com" \
+    GIT_COMMITTER_NAME="codetether[bot]" \
+    GIT_COMMITTER_EMAIL="codetether[bot]@users.noreply.github.com" \
+      git commit -m "fix: address @codetether request on PR #${PR_NUMBER}"
     git push origin "HEAD:${PR_HEAD}"
 
     COMMIT_SHA="$(git rev-parse --short HEAD)"
@@ -373,8 +384,10 @@ if [ "$INPUT_MODE" = "server" ]; then
     exit 1
   fi
 
+  # Truncate description to fit server's max_length validation
+  MAX_DESC_CHARS=80000
   TASK_PAYLOAD=$(jq -n \
-    --arg description "$PROMPT" \
+    --arg description "${PROMPT:0:$MAX_DESC_CHARS}" \
     --arg agent_type "$INPUT_AGENT_TYPE" \
     --arg title "PR Review: #${PR_NUMBER} ${PR_TITLE}" \
     --arg repo "$REPO_FULL_NAME" \
@@ -390,12 +403,25 @@ if [ "$INPUT_MODE" = "server" ]; then
       }
     }')
 
-  RESPONSE=$(curl -fsSL \
+  DESC_LEN=${#PROMPT}
+  if [ "$DESC_LEN" -gt "$MAX_DESC_CHARS" ]; then
+    echo "⚠ Description truncated from ${DESC_LEN} to ${MAX_DESC_CHARS} chars for server limit"
+  fi
+
+  HTTP_CODE=$(curl -sS -o /tmp/codetether-response.json -w "%{http_code}" \
     -X POST "${CODETETHER_SERVER}/v1/tasks/dispatch" \
     -H "Authorization: Bearer ${CODETETHER_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "Idempotency-Key: pr-review-${REPO_FULL_NAME//\//-}-${PR_NUMBER}-${GITHUB_SHA:0:8}" \
     -d "$TASK_PAYLOAD")
+
+  RESPONSE="$(cat /tmp/codetether-response.json)"
+  if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+    echo "::error::Server returned HTTP ${HTTP_CODE}: ${RESPONSE}"
+    echo "review=Server dispatch failed (HTTP ${HTTP_CODE})." >> "$GITHUB_OUTPUT"
+    echo "exit_code=1" >> "$GITHUB_OUTPUT"
+    exit 1
+  fi
 
   TASK_ID=$(echo "$RESPONSE" | jq -r '.task_id // "unknown"')
   echo "Task dispatched: ${TASK_ID}"

@@ -79,10 +79,8 @@ pub async fn set_use_worktree(app: &mut App, session: &mut Session, next: bool) 
             app.state.status = worktree_status_message(next);
         }
         Err(error) => {
-            app.state.status = format!(
-                "{} (not persisted: {error})",
-                worktree_status_message(next)
-            );
+            app.state.status =
+                format!("{} (not persisted: {error})", worktree_status_message(next));
         }
     }
 }

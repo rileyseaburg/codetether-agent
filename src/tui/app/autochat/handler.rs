@@ -16,7 +16,10 @@ pub fn handle_autochat_event(app: &mut AppState, event: AutochatUiEvent) {
                 .push(ChatMessage::new(MessageType::System, msg));
             app.scroll_to_bottom();
         }
-        AutochatUiEvent::AgentEvent { agent_name, event: _ } => {
+        AutochatUiEvent::AgentEvent {
+            agent_name,
+            event: _,
+        } => {
             app.status = format!("🔄 {agent_name} processing…");
         }
         AutochatUiEvent::Completed {

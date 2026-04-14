@@ -367,11 +367,13 @@ pub async fn handle_slash_command(
         }
         "/chat" | "/home" | "/main" => return_to_chat(app),
         "/webview" => {
-            app.state.chat_layout_mode = crate::tui::ui::webview::layout_mode::ChatLayoutMode::Webview;
+            app.state.chat_layout_mode =
+                crate::tui::ui::webview::layout_mode::ChatLayoutMode::Webview;
             app.state.status = "Layout: Webview".to_string();
         }
         "/classic" => {
-            app.state.chat_layout_mode = crate::tui::ui::webview::layout_mode::ChatLayoutMode::Classic;
+            app.state.chat_layout_mode =
+                crate::tui::ui::webview::layout_mode::ChatLayoutMode::Classic;
             app.state.status = "Layout: Classic".to_string();
         }
         "/symbols" | "/symbol" => {
@@ -725,11 +727,7 @@ fn handle_autochat_command(app: &mut App, rest: &str) {
         app.state.status = "Autochat relay already running.".to_string();
         return;
     }
-    let model = app
-        .state
-        .last_completion_model
-        .clone()
-        .unwrap_or_default();
+    let model = app.state.last_completion_model.clone().unwrap_or_default();
     let rx = super::autochat::worker::start_autochat_relay(task, model);
     app.state.autochat.running = true;
     app.state.autochat.rx = Some(rx);

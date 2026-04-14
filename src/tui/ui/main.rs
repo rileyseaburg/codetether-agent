@@ -43,7 +43,9 @@ pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
         ViewMode::Chat => {
             if super::webview::layout::is_webview(app.state.chat_layout_mode) {
                 super::webview::render(f, app);
-            } else { render_chat_view(f, app, session); }
+            } else {
+                render_chat_view(f, app, session);
+            }
         }
         ViewMode::Sessions => render_sessions_view(f, app),
         ViewMode::Swarm => render_swarm_view(f, &mut app.state.swarm, f.area()),
