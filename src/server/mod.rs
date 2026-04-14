@@ -37,7 +37,6 @@ use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, broadcast};
@@ -583,17 +582,10 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     }
 
     // Initialize mandatory auth.
-    let mut auth_state = AuthState::from_env();
-    if serves_loopback_only(&args.hostname) {
-        auth_state = auth_state.with_additional_public_paths(local_a2a_public_paths());
-        tracing::info!(
-            hostname = %args.hostname,
-            "Loopback serve detected; enabling local unauthenticated A2A discovery and RPC"
-        );
-    }
+    let auth_state = AuthState::from_env();
     tracing::info!(
         token_len = auth_state.token().len(),
-        "Auth is mandatory. Token required for all API endpoints."
+        "Auth is mandatory. Only /health is served without a Bearer token."
     );
     tracing::info!(
         audit_entries = audit_log.count().await,
@@ -647,7 +639,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     let grpc_service = grpc_store.into_service();
     let voice_service = crate::a2a::voice_grpc::VoiceServiceImpl::new(bus.clone()).into_service();
     tokio::spawn(async move {
-        tracing::info!("gRPC A2A server listening on {}", grpc_addr);
+        tracing::info!(addr = %grpc_addr, "Starting gRPC A2A server");
 
         // Configure CORS for marketing site (production + local dev)
         let allowed_origins = [
@@ -667,7 +659,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
                 http::header::HeaderName::from_static("grpc-message"),
             ]));
 
-        if let Err(e) = tonic::transport::Server::builder()
+        if let Err(error) = tonic::transport::Server::builder()
             .accept_http1(true)
             .layer(cors)
             .layer(GrpcWebLayer::new())
@@ -676,7 +668,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             .serve(grpc_addr)
             .await
         {
-            tracing::error!("gRPC server error: {}", e);
+            tracing::warn!(addr = %grpc_addr, error = ?error, "gRPC A2A server exited");
         }
     });
 
@@ -875,29 +867,6 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-fn serves_loopback_only(hostname: &str) -> bool {
-    if hostname.eq_ignore_ascii_case("localhost") {
-        return true;
-    }
-
-    hostname
-        .parse::<IpAddr>()
-        .map(|ip| ip.is_loopback())
-        .unwrap_or(false)
-}
-
-fn local_a2a_public_paths() -> [&'static str; 7] {
-    [
-        "/",
-        "/.well-known/agent.json",
-        "/.well-known/agent-card.json",
-        "/a2a",
-        "/a2a/",
-        "/a2a/.well-known/agent.json",
-        "/a2a/.well-known/agent-card.json",
-    ]
 }
 
 /// Health check response

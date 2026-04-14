@@ -7,6 +7,7 @@ use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
     configure_repo_git_auth, configure_repo_git_github_app, write_git_credential_helper_script,
 };
+use crate::a2a::worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
 use crate::provenance::{ClaimProvenance, install_commit_msg_hook};
@@ -28,6 +29,8 @@ use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
+use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed};
+use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
 use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
 use clone_target::prepare_clone_target;
 
@@ -152,19 +155,6 @@ struct CognitionLatestSnapshot {
     summary: String,
     #[serde(default)]
     metadata: HashMap<String, serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize)]
-struct RegisteredWorkspaceRecord {
-    id: String,
-    name: String,
-    path: String,
-    #[serde(default)]
-    description: String,
-    #[serde(default)]
-    agent_config: serde_json::Map<String, serde_json::Value>,
-    git_url: Option<String>,
-    git_branch: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -594,8 +584,18 @@ fn advertised_interfaces(public_url: Option<&str>) -> serde_json::Value {
     })
 }
 
+/// Approval policy used by the worker when deciding whether to execute tools automatically.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::a2a::worker::AutoApprove;
+///
+/// let mode = AutoApprove::Safe;
+/// assert!(matches!(mode, AutoApprove::Safe));
+/// ```
 #[derive(Debug, Clone, Copy)]
-enum AutoApprove {
+pub enum AutoApprove {
     All,
     Safe,
     None,
@@ -1653,6 +1653,19 @@ async fn execute_claimed_task<'a>(
         Session::new().await?
     };
 
+    if !is_virtual_task {
+        if let Some(workspace_path) = resolve_task_workspace_dir(
+            &runtime.client,
+            &runtime.server,
+            &runtime.token,
+            workspace_id,
+        )
+        .await?
+        {
+            session.metadata.directory = Some(workspace_path);
+        }
+    }
+
     // For virtual/global tasks, clear the workspace directory so tools don't
     // try to operate on a workspace that doesn't exist on this worker.
     if is_virtual_task {
@@ -1922,42 +1935,6 @@ async fn handle_clone_repo_task(
 
     let _ = tokio::fs::remove_file(&temp_helper_path).await;
     clone_result
-}
-
-async fn fetch_workspace_record(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    workspace_id: &str,
-) -> Result<RegisteredWorkspaceRecord> {
-    let mut req = client.get(format!(
-        "{}/v1/agent/workspaces/{}",
-        server.trim_end_matches('/'),
-        workspace_id
-    ));
-    if let Some(token) = token {
-        req = req.bearer_auth(token);
-    }
-
-    let response = req
-        .send()
-        .await
-        .with_context(|| format!("Failed to load workspace {}", workspace_id))?;
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        anyhow::bail!(
-            "Failed to fetch workspace {} ({}): {}",
-            workspace_id,
-            status,
-            body
-        );
-    }
-
-    response
-        .json::<RegisteredWorkspaceRecord>()
-        .await
-        .with_context(|| format!("Failed to decode workspace {} response", workspace_id))
 }
 
 async fn register_cloned_workspace(
@@ -2301,10 +2278,16 @@ async fn execute_session_with_policy(
     };
 
     // Create tool registry with filtering based on auto-approve policy
+    let workspace_dir = session
+        .metadata
+        .directory
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     let tool_registry = create_filtered_registry(
         Arc::clone(&provider),
         model.clone(),
         auto_approve,
+        &workspace_dir,
         output_callback.clone(),
     );
     let tool_definitions = tool_registry.definitions();
@@ -2328,10 +2311,7 @@ async fn execute_session_with_policy(
     );
 
     // Build system prompt
-    let cwd = std::env::var("PWD")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
-    let system_prompt = crate::agent::builtin::build_system_prompt(&cwd);
+    let system_prompt = crate::agent::builtin::build_system_prompt(&workspace_dir);
 
     let mut final_output = String::new();
     let max_steps = 50;
@@ -2487,89 +2467,6 @@ async fn execute_session_with_policy(
         text: final_output.trim().to_string(),
         session_id: session.id.clone(),
     })
-}
-
-/// Check if a tool is allowed based on the auto-approve policy
-fn is_tool_allowed(tool_name: &str, auto_approve: AutoApprove) -> bool {
-    match auto_approve {
-        AutoApprove::All => true,
-        AutoApprove::Safe | AutoApprove::None => is_safe_tool(tool_name),
-    }
-}
-
-/// Check if a tool is considered "safe" (read-only)
-fn is_safe_tool(tool_name: &str) -> bool {
-    let safe_tools = [
-        "read",
-        "list",
-        "glob",
-        "grep",
-        "codesearch",
-        "lsp",
-        "webfetch",
-        "websearch",
-        "todo_read",
-        "skill",
-    ];
-    safe_tools.contains(&tool_name)
-}
-
-/// Create a filtered tool registry based on the auto-approve policy
-fn create_filtered_registry(
-    provider: Arc<dyn crate::provider::Provider>,
-    model: String,
-    auto_approve: AutoApprove,
-    completion_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
-) -> crate::tool::ToolRegistry {
-    use crate::tool::*;
-
-    let mut registry = ToolRegistry::new();
-
-    // Always add safe tools
-    registry.register(Arc::new(file::ReadTool::new()));
-    registry.register(Arc::new(file::ListTool::new()));
-    registry.register(Arc::new(file::GlobTool::new()));
-    registry.register(Arc::new(search::GrepTool::new()));
-    registry.register(Arc::new(lsp::LspTool::new()));
-    registry.register(Arc::new(webfetch::WebFetchTool::new()));
-    registry.register(Arc::new(websearch::WebSearchTool::new()));
-    registry.register(Arc::new(codesearch::CodeSearchTool::new()));
-    registry.register(Arc::new(todo::TodoReadTool::new()));
-    registry.register(Arc::new(skill::SkillTool::new()));
-
-    // Add potentially dangerous tools only if auto_approve is All
-    if matches!(auto_approve, AutoApprove::All) {
-        registry.register(Arc::new(file::WriteTool::new()));
-        registry.register(Arc::new(advanced_edit::AdvancedEditTool::new()));
-        registry.register(Arc::new(bash::BashTool::new()));
-        registry.register(Arc::new(multiedit::MultiEditTool::new()));
-        registry.register(Arc::new(patch::ApplyPatchTool::new()));
-        registry.register(Arc::new(todo::TodoWriteTool::new()));
-        registry.register(Arc::new(task::TaskTool::new()));
-        registry.register(Arc::new(plan::PlanEnterTool::new()));
-        registry.register(Arc::new(plan::PlanExitTool::new()));
-        registry.register(Arc::new(rlm::RlmTool::new(
-            Arc::clone(&provider),
-            model.clone(),
-        )));
-        registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
-        registry.register(Arc::new(prd::PrdTool::new()));
-        // Register GoTool with the completion callback so the LLM gets notified when
-        // the background pipeline finishes.
-        if let Some(cb) = completion_callback {
-            registry.register(Arc::new(go::GoTool::with_callback(cb)));
-        } else {
-            registry.register(Arc::new(go::GoTool::new()));
-        }
-        registry.register(Arc::new(confirm_edit::ConfirmEditTool::new()));
-        registry.register(Arc::new(confirm_multiedit::ConfirmMultiEditTool::new()));
-        registry.register(Arc::new(undo::UndoTool));
-        registry.register(Arc::new(mcp_bridge::McpBridgeTool::new()));
-    }
-
-    registry.register(Arc::new(invalid::InvalidTool::new()));
-
-    registry
 }
 
 /// Start the heartbeat background task

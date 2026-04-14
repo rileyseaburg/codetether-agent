@@ -923,18 +923,18 @@ impl Session {
                             .await?
                     {
                         validation_retry_count += 1;
-                        tracing::warn!(
-                            retries = validation_retry_count,
-                            issues = report.issue_count,
-                            "Post-edit validation found unresolved diagnostics"
-                        );
-                        if validation_retry_count > POST_EDIT_VALIDATION_MAX_RETRIES {
+                        if validation_retry_count >= POST_EDIT_VALIDATION_MAX_RETRIES {
                             return Err(anyhow::anyhow!(
                                 "Post-edit validation failed after {} attempts.\n\n{}",
                                 POST_EDIT_VALIDATION_MAX_RETRIES,
                                 report.prompt
                             ));
                         }
+                        tracing::warn!(
+                            retries = validation_retry_count,
+                            issues = report.issue_count,
+                            "Post-edit validation found unresolved diagnostics"
+                        );
                         self.add_message(Message {
                             role: Role::User,
                             content: vec![ContentPart::Text {
@@ -1099,6 +1099,7 @@ impl Session {
                 let exec_start = std::time::Instant::now();
                 let exec_input = enrich_tool_input_with_runtime_context(
                     &tool_input,
+                    &cwd,
                     self.metadata.model.as_deref(),
                     &self.id,
                     &self.agent,
@@ -1107,7 +1108,7 @@ impl Session {
                 let (content, success, tool_metadata) = if let Some(tool) =
                     tool_registry.get(&tool_name)
                 {
-                    match tool.execute(exec_input).await {
+                    match tool.execute(exec_input.clone()).await {
                         Ok(result) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -1172,7 +1173,7 @@ impl Session {
                         let preview_content = content.clone();
                         match auto_apply_pending_confirmation(
                             &tool_name,
-                            &tool_input,
+                            &exec_input,
                             tool_metadata.as_ref(),
                         )
                         .await
@@ -1972,18 +1973,18 @@ impl Session {
                             .await?
                     {
                         validation_retry_count += 1;
-                        tracing::warn!(
-                            retries = validation_retry_count,
-                            issues = report.issue_count,
-                            "Post-edit validation found unresolved diagnostics"
-                        );
-                        if validation_retry_count > POST_EDIT_VALIDATION_MAX_RETRIES {
+                        if validation_retry_count >= POST_EDIT_VALIDATION_MAX_RETRIES {
                             return Err(anyhow::anyhow!(
                                 "Post-edit validation failed after {} attempts.\n\n{}",
                                 POST_EDIT_VALIDATION_MAX_RETRIES,
                                 report.prompt
                             ));
                         }
+                        tracing::warn!(
+                            retries = validation_retry_count,
+                            issues = report.issue_count,
+                            "Post-edit validation found unresolved diagnostics"
+                        );
                         self.add_message(Message {
                             role: Role::User,
                             content: vec![ContentPart::Text {
@@ -2182,6 +2183,7 @@ impl Session {
                 let exec_start = std::time::Instant::now();
                 let exec_input = enrich_tool_input_with_runtime_context(
                     &tool_input,
+                    &cwd,
                     self.metadata.model.as_deref(),
                     &self.id,
                     &self.agent,
@@ -2190,7 +2192,7 @@ impl Session {
                 let (content, success, tool_metadata) = if let Some(tool) =
                     tool_registry.get(&tool_name)
                 {
-                    match tool.execute(exec_input).await {
+                    match tool.execute(exec_input.clone()).await {
                         Ok(result) => {
                             let duration_ms = exec_start.elapsed().as_millis() as u64;
                             tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -2255,7 +2257,7 @@ impl Session {
                         let preview_content = content.clone();
                         match auto_apply_pending_confirmation(
                             &tool_name,
-                            &tool_input,
+                            &exec_input,
                             tool_metadata.as_ref(),
                         )
                         .await

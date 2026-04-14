@@ -17,6 +17,9 @@ pub mod spawn;
 pub mod types;
 pub mod voice_grpc;
 pub mod worker;
+pub mod worker_tool_registry;
+pub mod worker_workspace_context;
+pub mod worker_workspace_record;
 
 /// Generated protobuf/tonic types from `proto/a2a/v1/a2a.proto`.
 pub mod proto {

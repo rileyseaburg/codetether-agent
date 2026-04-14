@@ -6,12 +6,13 @@ use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-/// Global LSP manager - lazily initialized
-static LSP_MANAGER: std::sync::OnceLock<Arc<RwLock<Option<Arc<LspManager>>>>> =
+/// Global LSP managers keyed by workspace root.
+static LSP_MANAGERS: std::sync::OnceLock<Arc<RwLock<HashMap<String, Arc<LspManager>>>>> =
     std::sync::OnceLock::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -139,37 +140,55 @@ impl LspTool {
         }
     }
 
+    fn manager_key(&self) -> String {
+        self.root_uri
+            .clone()
+            .unwrap_or_else(|| "__default__".to_string())
+    }
+
     /// Shutdown all LSP clients, releasing resources.
     #[allow(dead_code)]
     pub async fn shutdown_all(&self) {
-        let cell = LSP_MANAGER.get_or_init(|| Arc::new(RwLock::new(None)));
-        let guard = cell.read().await;
-        if let Some(manager) = guard.as_ref() {
+        let cell = LSP_MANAGERS.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
+        let managers = {
+            let mut guard = cell.write().await;
+            let managers = guard.values().cloned().collect::<Vec<_>>();
+            guard.clear();
+            managers
+        };
+        for manager in managers {
             manager.shutdown_all().await;
         }
     }
 
     /// Get or initialize the LSP manager
     pub async fn get_manager(&self) -> Arc<LspManager> {
-        let cell = LSP_MANAGER.get_or_init(|| Arc::new(RwLock::new(None)));
-        let mut guard = cell.write().await;
+        let key = self.manager_key();
+        let cell = LSP_MANAGERS.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
 
-        if guard.is_none() {
-            let manager = if let Some(settings) = &self.lsp_settings {
-                LspManager::with_config(self.root_uri.clone(), settings.clone())
-            } else {
-                // Try to load LSP settings from config file
-                match crate::config::Config::load().await {
-                    Ok(config) if has_lsp_settings(&config.lsp) => {
-                        LspManager::with_config(self.root_uri.clone(), config.lsp)
-                    }
-                    _ => LspManager::new(self.root_uri.clone()),
-                }
-            };
-            *guard = Some(Arc::new(manager));
+        {
+            let guard = cell.read().await;
+            if let Some(manager) = guard.get(&key) {
+                return Arc::clone(manager);
+            }
         }
 
-        Arc::clone(guard.as_ref().expect("LSP manager should initialize"))
+        let manager = if let Some(settings) = &self.lsp_settings {
+            Arc::new(LspManager::with_config(
+                self.root_uri.clone(),
+                settings.clone(),
+            ))
+        } else {
+            match crate::config::Config::load().await {
+                Ok(config) if has_lsp_settings(&config.lsp) => {
+                    Arc::new(LspManager::with_config(self.root_uri.clone(), config.lsp))
+                }
+                _ => Arc::new(LspManager::new(self.root_uri.clone())),
+            }
+        };
+
+        let mut guard = cell.write().await;
+        Arc::clone(guard.entry(key).or_insert_with(|| Arc::clone(&manager)))
     }
 }
 

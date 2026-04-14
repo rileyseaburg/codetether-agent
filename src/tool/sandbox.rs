@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;
 
 /// Manifest describing a plugin tool.
@@ -92,6 +92,8 @@ pub struct SigningKey {
     key: Arc<Vec<u8>>,
 }
 
+static GLOBAL_SIGNING_KEY: OnceLock<SigningKey> = OnceLock::new();
+
 impl std::fmt::Debug for SigningKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SigningKey")
@@ -121,6 +123,11 @@ impl SigningKey {
             }
         };
         Self { key: Arc::new(key) }
+    }
+
+    /// Load the process-wide signing key exactly once.
+    pub fn shared() -> Self {
+        GLOBAL_SIGNING_KEY.get_or_init(Self::from_env).clone()
     }
 
     /// Create with an explicit key (for tests).
@@ -181,7 +188,7 @@ impl PluginRegistry {
     }
 
     pub fn from_env() -> Self {
-        Self::new(SigningKey::from_env())
+        Self::new(SigningKey::shared())
     }
 
     /// Register a plugin after verifying its signature.

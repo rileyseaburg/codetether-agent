@@ -151,8 +151,10 @@ pub async fn build_validation_report(
     let mut prompt = String::from(
         "Mandatory post-edit verification found unresolved diagnostics in files you changed. \
 Do not finish yet. Fix every issue below, respecting workspace config files such as eslint, biome, \
-ruff, stylelint, tsconfig, and project-local language-server settings. After fixing them, re-check \
-the same files and only then provide the final answer.\n\n",
+ruff, stylelint, tsconfig, and project-local language-server settings. Prefer direct file-edit \
+tools on the listed files. Do not wander into unrelated files or exploratory bash loops unless a \
+minimal validation command is strictly necessary. After fixing them, re-check the same files and \
+only then provide the final answer.\n\n",
     );
 
     for (path, diagnostics) in issues_by_file {
