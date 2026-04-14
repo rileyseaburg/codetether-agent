@@ -25,14 +25,7 @@ pub fn extract_unverified_jwt_claims(token: &str) -> Option<JwtClaims> {
         return None;
     }
     let payload = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+    // SECURITY: This only decodes the payload. Signature verification must
+    // happen before calling this helper.
     serde_json::from_slice(&payload).ok()
-}
-
-/// Parse a JWT token and extract claims from the payload.
-///
-/// Prefer [`extract_unverified_jwt_claims`] so the lack of signature
-/// verification stays explicit at the call site.
-#[deprecated(note = "use extract_unverified_jwt_claims to make the security tradeoff explicit")]
-pub fn extract_jwt_claims(token: &str) -> Option<JwtClaims> {
-    extract_unverified_jwt_claims(token)
 }
