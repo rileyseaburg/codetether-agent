@@ -167,10 +167,11 @@ impl ZaiProvider {
         // Z.AI expects assistant.tool_calls[*].function.arguments to be a JSON
         // object, not an OpenAI-style JSON string. Keep the replay payload
         // strictly object-shaped even if the model emitted malformed JSON.
-        if let Ok(parsed) = serde_json::from_str::<Value>(arguments)
-            && parsed.is_object()
-        {
-            return parsed;
+        if let Ok(parsed) = serde_json::from_str::<Value>(arguments) {
+            if parsed.is_object() {
+                return parsed;
+            }
+            return json!({"input": parsed});
         }
 
         if let Some(salvaged) = Self::salvage_json_object(arguments) {
@@ -1126,7 +1127,7 @@ mod tests {
         let args = &converted[0]["tool_calls"][0]["function"]["arguments"];
 
         assert!(args.is_object(), "arguments must be an object, got: {args}");
-        assert_eq!(args["input"], json!("\"Beijing\""));
+        assert_eq!(args["input"], json!("Beijing"));
     }
 
     #[test]
