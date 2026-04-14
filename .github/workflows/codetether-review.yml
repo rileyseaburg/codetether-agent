@@ -86,7 +86,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: CodeTether Review
-        uses: ./
+        uses: ./repo
         with:
           mode: ${{ steps.classify.outputs.mode }}
           token: ${{ secrets.CODETETHER_TOKEN }}
