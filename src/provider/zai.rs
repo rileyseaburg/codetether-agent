@@ -165,13 +165,13 @@ impl ZaiProvider {
 
     fn normalize_tool_arguments(arguments: &str) -> Value {
         // Z.AI expects assistant.tool_calls[*].function.arguments to be a JSON
-        // *object* (not a string).  The API schema declares it as `object required`.
-        //
-        // Models sometimes emit slightly-invalid JSON during tool-call streaming
-        // (trailing junk, missing closing braces, etc.). We try to salvage a
-        // sensible JSON object before falling back to wrapping the raw input.
+        // object, not an OpenAI-style JSON string. Keep the replay payload
+        // strictly object-shaped even if the model emitted malformed JSON.
         if let Ok(parsed) = serde_json::from_str::<Value>(arguments) {
-            return parsed;
+            if parsed.is_object() {
+                return parsed;
+            }
+            return json!({"input": parsed});
         }
 
         if let Some(salvaged) = Self::salvage_json_object(arguments) {
@@ -260,16 +260,13 @@ impl ZaiProvider {
                                     arguments,
                                     ..
                                 } => {
-                                    // Z.AI expects arguments as a JSON *string*
-                                    // in assistant messages (same as OpenAI convention),
-                                    // despite the API docs showing it as `object` in
-                                    // the response schema.
+                                    let args_object = Self::normalize_tool_arguments(arguments);
                                     Some(json!({
                                         "id": id,
                                         "type": "function",
                                         "function": {
                                             "name": name,
-                                            "arguments": arguments
+                                            "arguments": args_object
                                         }
                                     }))
                                 }
@@ -1112,6 +1109,25 @@ mod tests {
         // Z.AI expects arguments as a JSON object, not a string
         assert!(args.is_object(), "arguments must be an object, got: {args}");
         assert_eq!(args["input"], json!("city=Beijing"));
+    }
+
+    #[test]
+    fn convert_messages_wraps_scalar_tool_arguments_as_json_object() {
+        let messages = vec![Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolCall {
+                id: "call_1".to_string(),
+                name: "get_weather".to_string(),
+                arguments: "\"Beijing\"".to_string(),
+                thought_signature: None,
+            }],
+        }];
+
+        let converted = ZaiProvider::convert_messages(&messages, true);
+        let args = &converted[0]["tool_calls"][0]["function"]["arguments"];
+
+        assert!(args.is_object(), "arguments must be an object, got: {args}");
+        assert_eq!(args["input"], json!("Beijing"));
     }
 
     #[test]
