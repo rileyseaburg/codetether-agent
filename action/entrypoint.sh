@@ -385,7 +385,7 @@ if [ "$INPUT_MODE" = "server" ]; then
   fi
 
   # Truncate description to fit server's max_length validation
-  MAX_DESC_CHARS=99000
+  MAX_DESC_CHARS=80000
   TASK_PAYLOAD=$(jq -n \
     --arg description "${PROMPT:0:$MAX_DESC_CHARS}" \
     --arg agent_type "$INPUT_AGENT_TYPE" \
@@ -408,12 +408,20 @@ if [ "$INPUT_MODE" = "server" ]; then
     echo "⚠ Description truncated from ${DESC_LEN} to ${MAX_DESC_CHARS} chars for server limit"
   fi
 
-  RESPONSE=$(curl -fsSL \
+  HTTP_CODE=$(curl -sS -o /tmp/codetether-response.json -w "%{http_code}" \
     -X POST "${CODETETHER_SERVER}/v1/tasks/dispatch" \
     -H "Authorization: Bearer ${CODETETHER_TOKEN}" \
     -H "Content-Type: application/json" \
     -H "Idempotency-Key: pr-review-${REPO_FULL_NAME//\//-}-${PR_NUMBER}-${GITHUB_SHA:0:8}" \
     -d "$TASK_PAYLOAD")
+
+  RESPONSE="$(cat /tmp/codetether-response.json)"
+  if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+    echo "::error::Server returned HTTP ${HTTP_CODE}: ${RESPONSE}"
+    echo "review=Server dispatch failed (HTTP ${HTTP_CODE})." >> "$GITHUB_OUTPUT"
+    echo "exit_code=1" >> "$GITHUB_OUTPUT"
+    exit 1
+  fi
 
   TASK_ID=$(echo "$RESPONSE" | jq -r '.task_id // "unknown"')
   echo "Task dispatched: ${TASK_ID}"
