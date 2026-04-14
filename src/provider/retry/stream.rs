@@ -19,22 +19,36 @@ use super::classify::{backoff_delay, is_retryable_message, is_retryable_status};
 ///
 /// # Example
 ///
-/// ```ignore
-/// let resp = send_response_with_retry(|| async {
-///     client
-///         .post("https://api.z.ai/v4/chat/completions")
-///         .bearer_auth(&token)
-///         .json(&body)
-///         .send()
-///         .await
-///         .context("Failed to send streaming request")
+/// ```rust,no_run
+/// # async fn demo() -> anyhow::Result<()> {
+/// use anyhow::Context;
+/// use codetether_agent::provider::retry::send_response_with_retry;
+///
+/// let client = reqwest::Client::new();
+/// let token = String::from("example-token");
+/// let body = serde_json::json!({ "model": "glm-5-turbo", "stream": true });
+///
+/// let resp = send_response_with_retry(|| {
+///     let client = client.clone();
+///     let token = token.clone();
+///     let body = body.clone();
+///     async move {
+///         client
+///             .post("https://api.z.ai/v4/chat/completions")
+///             .bearer_auth(&token)
+///             .json(&body)
+///             .send()
+///             .await
+///             .context("Failed to send streaming request")
+///     }
 /// })
 /// .await?;
-/// let stream = resp.bytes_stream();
+///
+/// let _stream = resp.bytes_stream();
+/// # Ok(())
+/// # }
 /// ```
-pub async fn send_response_with_retry<F, Fut>(
-    mut f: F,
-) -> anyhow::Result<reqwest::Response>
+pub async fn send_response_with_retry<F, Fut>(mut f: F) -> anyhow::Result<reqwest::Response>
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = anyhow::Result<reqwest::Response>>,

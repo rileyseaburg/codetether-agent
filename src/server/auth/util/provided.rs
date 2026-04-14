@@ -1,5 +1,6 @@
 use super::{bearer_token, query_token};
 use axum::{body::Body, http::Request};
+use std::borrow::Cow;
 
 /// Extract a token from either the `Authorization` header or `token` query parameter.
 ///
@@ -14,8 +15,10 @@ use axum::{body::Body, http::Request};
 ///     .body(Body::empty())
 ///     .expect("request");
 ///
-/// assert_eq!(provided_token(&request), Some("query-token"));
+/// assert_eq!(provided_token(&request).as_deref(), Some("query-token"));
 /// ```
-pub fn provided_token(request: &Request<Body>) -> Option<&str> {
-    bearer_token(request).or_else(|| query_token(request))
+pub fn provided_token(request: &Request<Body>) -> Option<Cow<'_, str>> {
+    bearer_token(request)
+        .map(Cow::Borrowed)
+        .or_else(|| query_token(request))
 }

@@ -1,5 +1,5 @@
 use super::util::{constant_time_eq, provided_token};
-use super::{AuthState, extract_jwt_claims};
+use super::{AuthState, extract_unverified_jwt_claims};
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -57,7 +57,7 @@ pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Resp
     if !constant_time_eq(provided_token.as_bytes(), auth_state.token().as_bytes()) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    if let Some(claims) = extract_jwt_claims(provided_token) {
+    if let Some(claims) = extract_unverified_jwt_claims(provided_token.as_ref()) {
         request.extensions_mut().insert(claims);
     }
     Ok(next.run(request).await)

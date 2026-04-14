@@ -761,7 +761,7 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 
 
 
-!Important we have formatting rules we are trying to implment, SRP Modular cohesion and 50 line file limits  
+!Important we have formatting rules we are trying to implement, SRP Modular cohesion and 50 line file limits
 ## Hard Code Quality Rules
 
 ### **Modular Cohesion & Single Responsibility Principle (SRP)**
@@ -786,4 +786,3 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 
 ### **Code Review Expectations**
 These are **hard rules**, not suggestions. Violations will be rejected in code review.
-

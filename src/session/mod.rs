@@ -923,6 +923,11 @@ impl Session {
                             .await?
                     {
                         validation_retry_count += 1;
+                        tracing::warn!(
+                            retries = validation_retry_count,
+                            issues = report.issue_count,
+                            "Post-edit validation found unresolved diagnostics"
+                        );
                         if validation_retry_count >= POST_EDIT_VALIDATION_MAX_RETRIES {
                             return Err(anyhow::anyhow!(
                                 "Post-edit validation failed after {} attempts.\n\n{}",
@@ -930,11 +935,6 @@ impl Session {
                                 report.prompt
                             ));
                         }
-                        tracing::warn!(
-                            retries = validation_retry_count,
-                            issues = report.issue_count,
-                            "Post-edit validation found unresolved diagnostics"
-                        );
                         self.add_message(Message {
                             role: Role::User,
                             content: vec![ContentPart::Text {
@@ -1973,6 +1973,11 @@ impl Session {
                             .await?
                     {
                         validation_retry_count += 1;
+                        tracing::warn!(
+                            retries = validation_retry_count,
+                            issues = report.issue_count,
+                            "Post-edit validation found unresolved diagnostics"
+                        );
                         if validation_retry_count >= POST_EDIT_VALIDATION_MAX_RETRIES {
                             return Err(anyhow::anyhow!(
                                 "Post-edit validation failed after {} attempts.\n\n{}",
@@ -1980,11 +1985,6 @@ impl Session {
                                 report.prompt
                             ));
                         }
-                        tracing::warn!(
-                            retries = validation_retry_count,
-                            issues = report.issue_count,
-                            "Post-edit validation found unresolved diagnostics"
-                        );
                         self.add_message(Message {
                             role: Role::User,
                             content: vec![ContentPart::Text {

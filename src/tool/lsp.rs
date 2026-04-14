@@ -9,11 +9,14 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
 /// Global LSP managers keyed by workspace root.
-static LSP_MANAGERS: std::sync::OnceLock<Arc<RwLock<HashMap<String, Arc<LspManager>>>>> =
+static LSP_MANAGERS: std::sync::OnceLock<Arc<RwLock<HashMap<String, (u64, Arc<LspManager>)>>>> =
     std::sync::OnceLock::new();
+static LSP_MANAGER_ACCESS: AtomicU64 = AtomicU64::new(0);
+const MAX_LSP_MANAGERS: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LspOperation {
@@ -152,7 +155,10 @@ impl LspTool {
         let cell = LSP_MANAGERS.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
         let managers = {
             let mut guard = cell.write().await;
-            let managers = guard.values().cloned().collect::<Vec<_>>();
+            let managers = guard
+                .values()
+                .map(|(_, manager)| Arc::clone(manager))
+                .collect::<Vec<_>>();
             guard.clear();
             managers
         };
@@ -163,12 +169,14 @@ impl LspTool {
 
     /// Get or initialize the LSP manager
     pub async fn get_manager(&self) -> Arc<LspManager> {
+        let access = LSP_MANAGER_ACCESS.fetch_add(1, Ordering::Relaxed);
         let key = self.manager_key();
         let cell = LSP_MANAGERS.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
 
         {
-            let guard = cell.read().await;
-            if let Some(manager) = guard.get(&key) {
+            let mut guard = cell.write().await;
+            if let Some((last_access, manager)) = guard.get_mut(&key) {
+                *last_access = access;
                 return Arc::clone(manager);
             }
         }
@@ -187,8 +195,36 @@ impl LspTool {
             }
         };
 
-        let mut guard = cell.write().await;
-        Arc::clone(guard.entry(key).or_insert_with(|| Arc::clone(&manager)))
+        let evicted_manager = {
+            let mut guard = cell.write().await;
+            if let Some((last_access, existing_manager)) = guard.get_mut(&key) {
+                *last_access = access;
+                return Arc::clone(existing_manager);
+            }
+
+            let evicted_manager = if guard.len() >= MAX_LSP_MANAGERS {
+                let evicted_key = guard
+                    .iter()
+                    .min_by_key(|(_, (last_access, _))| *last_access)
+                    .map(|(evicted_key, _)| evicted_key.clone());
+                evicted_key
+                    .and_then(|evicted_key| guard.remove(&evicted_key))
+                    .map(|(_, evicted_manager)| evicted_manager)
+            } else {
+                None
+            };
+
+            guard.insert(key, (access, Arc::clone(&manager)));
+            evicted_manager
+        };
+
+        if let Some(evicted_manager) = evicted_manager
+            && Arc::strong_count(&evicted_manager) == 1
+        {
+            evicted_manager.shutdown_all().await;
+        }
+
+        manager
     }
 }
 
