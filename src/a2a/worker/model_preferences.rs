@@ -39,7 +39,10 @@ pub(super) fn choose_provider_for_tier<'a>(
                 .copied()
                 .find(|provider| *provider == "zai")
         })
-        .unwrap_or(providers[0])
+        .unwrap_or_else(|| {
+            assert!(!providers.is_empty(), "provider list must not be empty");
+            providers[0]
+        })
 }
 
 fn provider_preferences_for_tier(model_tier: Option<&str>) -> &'static [&'static str] {

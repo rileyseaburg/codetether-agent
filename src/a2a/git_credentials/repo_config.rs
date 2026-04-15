@@ -27,9 +27,9 @@ use super::write_git_credential_helper_script;
 pub fn configure_repo_git_auth(repo_path: &Path, workspace_id: &str) -> Result<PathBuf> {
     let helper_path = repo_path.join(".codetether-git-credential-helper");
     write_git_credential_helper_script(&helper_path, workspace_id)?;
-    run_git_command(repo_path, ["config", "--local", "credential.helper", helper_path.to_str().ok_or_else(|| anyhow!("Helper path is not valid UTF-8"))?])?;
-    run_git_command(repo_path, ["config", "--local", "credential.useHttpPath", "true"])?;
-    run_git_command(repo_path, ["config", "--local", "codetether.workspaceId", workspace_id])?;
+    run_git_command(repo_path, &["config", "--local", "credential.helper", helper_path.to_str().ok_or_else(|| anyhow!("Helper path is not valid UTF-8"))?])?;
+    run_git_command(repo_path, &["config", "--local", "credential.useHttpPath", "true"])?;
+    run_git_command(repo_path, &["config", "--local", "codetether.workspaceId", workspace_id])?;
     Ok(helper_path)
 }
 

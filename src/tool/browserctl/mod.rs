@@ -149,7 +149,6 @@ impl BrowserCtlTool {
     }
 
     async fn get(&self, base_url: &str, path: &str, token: Option<&str>) -> Result<(u16, Value)> {
-        crate::tls::ensure_rustls_crypto_provider();
         let mut request = self.client.get(format!("{base_url}{path}"));
         if let Some(token) = token {
             request = request.bearer_auth(token);
@@ -168,7 +167,6 @@ impl BrowserCtlTool {
         token: Option<&str>,
         payload: Value,
     ) -> Result<(u16, Value)> {
-        crate::tls::ensure_rustls_crypto_provider();
         let mut request = self.client.post(format!("{base_url}{path}")).json(&payload);
         if let Some(token) = token {
             request = request.bearer_auth(token);
