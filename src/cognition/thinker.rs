@@ -258,7 +258,7 @@ impl ThinkerClient {
             return Err(anyhow!(
                 "Bedrock thinker error ({}): {}",
                 status,
-                crate::util::truncate_bytes_safe(&text, 500)
+                util::truncate_bytes_safe(&text, 500)
             ));
         }
 

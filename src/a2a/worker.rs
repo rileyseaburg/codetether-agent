@@ -2508,7 +2508,7 @@ async fn execute_session_with_policy(
                                 "[tool:{}:{}] {}",
                                 tool_name,
                                 status,
-                                crate::util::truncate_bytes_safe(&result.output, 500)
+                                util::truncate_bytes_safe(&result.output, 500)
                             ));
                         }
                         result.output

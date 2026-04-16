@@ -453,7 +453,7 @@ impl GoTool {
                             format!("Completed ({passed}/{total} passed)")
                         }
                         GoRunPhase::Failed { error } => {
-                            format!("Failed: {}", crate::util::truncate_bytes_safe(&error, 80))
+                            format!("Failed: {}", util::truncate_bytes_safe(&error, 80))
                         }
                     };
                     output.push_str(&format!(

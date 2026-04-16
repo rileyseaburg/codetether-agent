@@ -184,48 +184,52 @@ impl WorktreeManager {
 
     /// Clean up a specific worktree
     pub async fn cleanup(&self, name: &str) -> Result<()> {
-        // Clone the info and drop the lock before any IO
+        // Clone the info but do NOT remove from tracking yet
         let info = {
-            let mut worktrees = self.worktrees.lock().await;
-            match worktrees.iter().position(|w| w.name == name) {
-                Some(pos) => worktrees.remove(pos),
+            let worktrees = self.worktrees.lock().await;
+            match worktrees.iter().find(|w| w.name == name) {
+                Some(w) => w.clone(),
                 None => return Ok(()),
             }
         };
         let branch = info.branch.clone();
 
         // Run git worktree remove (no lock held)
-        let output = tokio::process::Command::new("git")
-            .args(["worktree", "remove", "--force"])
-            .arg(&info.path)
-            .current_dir(&self.repo_path)
-            .output()
-            .await;
+        let removed = {
+            let output = tokio::process::Command::new("git")
+                .args(["worktree", "remove", "--force"])
+                .arg(&info.path)
+                .current_dir(&self.repo_path)
+                .output()
+                .await;
 
-        match output {
-            Ok(o) if o.status.success() => {
-                tracing::info!(worktree = %name, "Removed git worktree");
-            }
-            Ok(o) => {
-                tracing::warn!(
-                    worktree = %name,
-                    error = %String::from_utf8_lossy(&o.stderr),
-                    "Git worktree remove failed, falling back to directory removal"
-                );
-                if let Err(e) = tokio::fs::remove_dir_all(&info.path).await {
-                    tracing::warn!(worktree = %name, error = %e, "Failed to remove worktree directory");
+            let ok = match output {
+                Ok(o) if o.status.success() => {
+                    tracing::info!(worktree = %name, "Removed git worktree");
+                    true
                 }
-            }
-            Err(e) => {
-                tracing::warn!(worktree = %name, error = %e, "Failed to execute git worktree remove");
-                if let Err(e) = tokio::fs::remove_dir_all(&info.path).await {
-                    tracing::warn!(worktree = %name, error = %e, "Failed to remove worktree directory");
+                Ok(o) => {
+                    tracing::warn!(
+                        worktree = %name,
+                        error = %String::from_utf8_lossy(&o.stderr),
+                        "Git worktree remove failed, falling back to directory removal"
+                    );
+                    tokio::fs::remove_dir_all(&info.path).await.is_ok()
                 }
-            }
+                Err(e) => {
+                    tracing::warn!(worktree = %name, error = %e, "Failed to execute git worktree remove");
+                    tokio::fs::remove_dir_all(&info.path).await.is_ok()
+                }
+            };
+            ok
+        };
+
+        // Only remove from tracking after successful IO
+        if removed {
+            let mut worktrees = self.worktrees.lock().await;
+            worktrees.retain(|w| w.name != name);
+            Self::delete_branch(&self.repo_path, &branch).await;
         }
-
-        // Delete the branch so it doesn't leak
-        Self::delete_branch(&self.repo_path, &branch).await;
         Ok(())
     }
 
@@ -625,31 +629,43 @@ Recovery steps:\n\
 
     /// Clean up all worktrees
     pub async fn cleanup_all(&self) -> Result<usize> {
-        // Drain the list and drop the lock before any IO
+        // Clone the list so we keep tracking until IO succeeds
         let infos: Vec<WorktreeInfo> = {
-            let mut worktrees = self.worktrees.lock().await;
-            std::mem::take(&mut *worktrees)
+            let worktrees = self.worktrees.lock().await;
+            worktrees.clone()
         };
         let count = infos.len();
+        let mut succeeded = Vec::new();
 
         for info in &infos {
             // Try git worktree remove first
-            let _ = tokio::process::Command::new("git")
+            let output = tokio::process::Command::new("git")
                 .args(["worktree", "remove", "--force"])
                 .arg(&info.path)
                 .current_dir(&self.repo_path)
                 .output()
                 .await;
 
-            // Fallback to directory removal
-            if let Err(e) = tokio::fs::remove_dir_all(&info.path).await {
-                tracing::warn!(worktree = %info.name, error = %e, "Failed to remove worktree directory");
+            let ok = output.map(|o| o.status.success()).unwrap_or(false);
+            if !ok {
+                if let Err(e) = tokio::fs::remove_dir_all(&info.path).await {
+                    tracing::warn!(worktree = %info.name, error = %e, "Failed to remove worktree directory");
+                    continue;
+                }
             }
+            succeeded.push(info.name.clone());
         }
 
-        // Delete all branches so they don't leak
+        // Only remove succeeded entries from tracking
+        {
+            let mut worktrees = self.worktrees.lock().await;
+            worktrees.retain(|w| !succeeded.contains(&w.name));
+        }
+
         for info in &infos {
-            Self::delete_branch(&self.repo_path, &info.branch).await;
+            if succeeded.contains(&info.name) {
+                Self::delete_branch(&self.repo_path, &info.branch).await;
+            }
         }
 
         tracing::info!(count, "Cleaned up all worktrees");
