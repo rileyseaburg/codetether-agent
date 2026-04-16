@@ -151,5 +151,35 @@ pub fn prefers_temperature_one(model: &str) -> bool {
 /// Claude Opus 4.7 removed temperature support in favor of adaptive reasoning.
 pub fn temperature_is_deprecated(model: &str) -> bool {
     let normalized = model.to_ascii_lowercase();
-    normalized.contains("opus-4-7") || normalized.contains("opus-4.7") || normalized.contains("opus_4_7") || normalized.contains("opus_47")
+    normalized.contains("opus-4-7")
+        || normalized.contains("opus-4.7")
+        || normalized.contains("4.7-opus")
+        || normalized.contains("4-7-opus")
+        || normalized.contains("opus_4_7")
+        || normalized.contains("opus_47")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::temperature_is_deprecated;
+
+    #[test]
+    fn detects_opus_47_aliases() {
+        assert!(temperature_is_deprecated("claude-opus-4-7"));
+        assert!(temperature_is_deprecated("claude-opus-4.7"));
+        assert!(temperature_is_deprecated("claude-4.7-opus"));
+        assert!(temperature_is_deprecated("claude-4-7-opus"));
+        assert!(temperature_is_deprecated("claude-opus_4_7"));
+        assert!(temperature_is_deprecated("claude-opus_47"));
+        assert!(temperature_is_deprecated(
+            "us.anthropic.claude-opus-4-7-v1:0"
+        ));
+    }
+
+    #[test]
+    fn non_deprecated_models_return_false() {
+        assert!(!temperature_is_deprecated("claude-sonnet-4"));
+        assert!(!temperature_is_deprecated("claude-opus-4-6"));
+        assert!(!temperature_is_deprecated("gpt-4o"));
+    }
 }

@@ -277,7 +277,7 @@ fn render_chat_view(f: &mut Frame, app: &mut App, session: &crate::session::Sess
         String::new()
     };
     let input_title = if app.state.processing {
-        format!(" Message (Processing...){attachment_suffix}")
+        format!(" Message (Processing — Enter to queue steering){attachment_suffix}")
     } else if matches!(app.state.input_mode, InputMode::Command) {
         format!(" Command (/ for commands, Tab to autocomplete){attachment_suffix}")
     } else {
