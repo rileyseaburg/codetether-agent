@@ -29,8 +29,10 @@ pub(super) fn read_git_credential_query_from_stdin() -> Result<GitCredentialQuer
     io::stdin().read_to_string(&mut input).context("Failed to read Git credential request from stdin")?;
     let mut query = GitCredentialQuery::default();
     for line in input.lines() {
-        if let Some((key, value)) = line.split_once('=')
-            && !value.trim().is_empty()
+        let Some((key, value)) = line.split_once('=') else { continue; };
+        if value.trim().is_empty() {
+            continue;
+        }
         {
             match key.trim() {
                 "protocol" => query.protocol = Some(value.trim().to_string()),

@@ -145,3 +145,11 @@ pub fn prefers_temperature_one(model: &str) -> bool {
     let normalized = model.to_ascii_lowercase();
     normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
 }
+
+/// Returns true for models where the `temperature` parameter is deprecated
+/// and must not be sent (causes a 400 Bad Request error).
+/// Claude Opus 4.7 removed temperature support in favor of adaptive reasoning.
+pub fn temperature_is_deprecated(model: &str) -> bool {
+    let normalized = model.to_ascii_lowercase();
+    normalized.contains("opus-4-7") || normalized.contains("opus-4.7") || normalized.contains("opus_4_7") || normalized.contains("opus_47")
+}

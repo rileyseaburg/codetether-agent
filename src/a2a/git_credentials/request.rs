@@ -32,7 +32,11 @@ struct GitCredentialRequestBody<'a> {
 /// ```ignore
 /// let creds = request_git_credentials(client, server, &token, None, "ws-1", "get", &query).await?;
 /// ```
-pub async fn request_git_credentials(client: &Client, server: &str, token: &Option<String>, worker_id: Option<&str>, workspace_id: &str, operation: &str, query: &GitCredentialQuery) -> Result<Option<GitCredentialMaterial>> {
+pub async fn request_git_credentials(server: &str, token: &Option<String>, worker_id: Option<&str>, workspace_id: &str, operation: &str, query: &GitCredentialQuery) -> Result<Option<GitCredentialMaterial>> {
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .unwrap_or_default();
     let mut request = client.post(format!("{}/v1/agent/workspaces/{workspace_id}/git/credentials", server.trim_end_matches('/')));
     if let Some(token) = token { request = request.bearer_auth(token); }
     if let Some(worker_id) = worker_id.filter(|value| !value.trim().is_empty()) { request = request.header("X-Worker-ID", worker_id); }

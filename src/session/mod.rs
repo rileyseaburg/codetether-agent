@@ -56,6 +56,7 @@ use self::helper::error::{
 use self::helper::markup::normalize_textual_tool_calls;
 use self::helper::provider::{
     prefers_temperature_one, resolve_provider_for_session_request,
+    temperature_is_deprecated,
     should_retry_missing_native_tool_call,
 };
 use self::helper::router::{build_proactive_lsp_context_message, choose_router_target};
@@ -604,8 +605,12 @@ impl Session {
         // Some models behave best with temperature=1.0.
         // - Kimi K2.x requires temperature=1.0
         // - GLM (Z.AI) defaults to temperature 1.0 for coding workflows
+        // Some models have deprecated temperature entirely:
+        // - Claude Opus 4.7 returns 400 if temperature is sent
         // Use contains() to match both short aliases and provider-qualified IDs.
-        let temperature = if prefers_temperature_one(&model) {
+        let temperature = if temperature_is_deprecated(&model) {
+            None
+        } else if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)
@@ -1618,7 +1623,10 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        let temperature = if prefers_temperature_one(&model) {
+        // Some models have deprecated temperature entirely (e.g. Claude Opus 4.7).
+        let temperature = if temperature_is_deprecated(&model) {
+            None
+        } else if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)

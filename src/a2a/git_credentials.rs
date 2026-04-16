@@ -109,9 +109,7 @@ pub async fn run_git_credential_helper(args: &crate::cli::GitCredentialHelperArg
         .clone()
         .or_else(|| std::env::var("CODETETHER_WORKER_ID").ok());
 
-    let client = Client::new();
     let credentials = request_git_credentials(
-        &client,
         &server,
         &token,
         worker_id.as_deref(),

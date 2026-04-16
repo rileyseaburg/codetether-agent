@@ -415,6 +415,9 @@ impl BedrockProvider {
     fn resolve_model_id(model: &str) -> &str {
         match model {
             // --- Anthropic Claude (verified via AWS CLI) ---
+            "claude-opus-4.7" | "claude-opus-4-7" | "claude-4.7-opus" => {
+                "us.anthropic.claude-opus-4-7-v1:0"
+            }
             "claude-opus-4.6" | "claude-opus-4-6" | "claude-4.6-opus" => {
                 "us.anthropic.claude-opus-4-6-v1:0"
             }
@@ -436,6 +439,7 @@ impl BedrockProvider {
             "us.anthropic.claude-sonnet-4-6" => "us.anthropic.claude-sonnet-4-6-v1:0",
             "us.anthropic.claude-sonnet-4-5" => "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             "us.anthropic.claude-sonnet-4" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "us.anthropic.claude-opus-4-7" => "us.anthropic.claude-opus-4-7-v1:0",
             "us.anthropic.claude-opus-4-6" => "us.anthropic.claude-opus-4-6-v1:0",
             "us.anthropic.claude-opus-4-5" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
             "us.anthropic.claude-opus-4-1" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
@@ -741,7 +745,10 @@ impl BedrockProvider {
     /// Estimate context window size based on model family
     fn estimate_context_window(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
-        if id.contains("anthropic") || id.contains("claude") {
+        // Opus 4.7 has 1M token context
+        if id.contains("claude-opus-4-7") {
+            1_000_000
+        } else if id.contains("anthropic") || id.contains("claude") {
             200_000
         } else if id.contains("nova-pro") || id.contains("nova-lite") || id.contains("nova-premier")
         {
@@ -773,7 +780,9 @@ impl BedrockProvider {
     /// Estimate max output tokens based on model family
     fn estimate_max_output(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
-        if id.contains("claude-opus-4-6")
+        if id.contains("claude-opus-4-7") {
+            128_000
+        } else if id.contains("claude-opus-4-6")
             || id.contains("claude-opus-4-5")
             || id.contains("claude-opus-4-1")
             || id.contains("claude-opus-4")
@@ -1101,8 +1110,18 @@ impl Provider for BedrockProvider {
         } else {
             inference_config["maxTokens"] = json!(8192);
         }
+        // Opus 4.7 deprecates the temperature parameter — sending it causes a 400 error.
+        let skip_temperature = model_id.contains("claude-opus-4-7");
         if let Some(temp) = request.temperature {
-            inference_config["temperature"] = json!(temp);
+            if !skip_temperature {
+                inference_config["temperature"] = json!(temp);
+            } else {
+                tracing::debug!(
+                    provider = "bedrock",
+                    model = %model_id,
+                    "Skipping temperature parameter (deprecated for this model)"
+                );
+            }
         }
         if let Some(top_p) = request.top_p {
             inference_config["topP"] = json!(top_p);
@@ -1263,5 +1282,28 @@ mod tests {
     fn resolve_model_id_passes_through_full_id() {
         let model_id = "us.anthropic.claude-opus-4-6-v1:0";
         assert_eq!(BedrockProvider::resolve_model_id(model_id), model_id);
+    }
+
+    #[test]
+    fn resolve_opus_47_aliases() {
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4.7"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4-7"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-4.7-opus"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("us.anthropic.claude-opus-4-7"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        // Full ID passes through unchanged
+        let full_id = "us.anthropic.claude-opus-4-7-v1:0";
+        assert_eq!(BedrockProvider::resolve_model_id(full_id), full_id);
     }
 }

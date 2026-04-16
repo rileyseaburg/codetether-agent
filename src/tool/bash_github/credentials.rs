@@ -33,7 +33,6 @@ pub(super) async fn load_github_password(
         return Ok(None);
     };
     let credentials = request_git_credentials(
-        &Client::new(),
         &server,
         &std::env::var("CODETETHER_TOKEN").ok(),
         std::env::var("CODETETHER_WORKER_ID").ok().as_deref(),

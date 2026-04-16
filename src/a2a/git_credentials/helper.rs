@@ -10,7 +10,6 @@
 //! ```
 
 use anyhow::{anyhow, Result};
-use reqwest::Client;
 
 use super::gh_cli::{emit_credentials_via_gh_cli, should_delegate_to_gh_cli};
 use super::request_git_credentials;
@@ -50,7 +49,6 @@ pub async fn run_git_credential_helper(
         .clone()
         .or_else(|| std::env::var("CODETETHER_WORKER_ID").ok());
     let creds = request_git_credentials(
-        &Client::new(),
         &server,
         &token,
         worker_id.as_deref(),
