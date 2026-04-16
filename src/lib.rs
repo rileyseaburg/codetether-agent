@@ -34,5 +34,6 @@ pub mod telemetry;
 pub mod tls;
 pub mod tool;
 pub mod tui;
+pub mod util;
 pub mod worker_server;
 pub mod worktree;

@@ -34,7 +34,7 @@ fn view_mode_display_name(mode: ViewMode) -> &'static str {
 fn view_mode_shortcut_hint(mode: ViewMode) -> &'static str {
     match mode {
         ViewMode::Chat => "Default (Esc from any overlay)",
-        ViewMode::Swarm => "Ctrl+S / /view / F2",
+        ViewMode::Swarm => "Ctrl+W / /view / F2",
         ViewMode::Ralph => "/ralph",
         ViewMode::BusLog => "Ctrl+L / F4 / /buslog",
         ViewMode::Protocol => "Ctrl+P / /protocol",

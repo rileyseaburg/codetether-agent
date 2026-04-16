@@ -2,11 +2,14 @@ pub mod autochat;
 pub mod background;
 pub mod codex_sessions;
 pub mod commands;
+#[path = "event_handlers/mod.rs"]
 pub mod event_handlers;
+#[path = "event_loop/mod.rs"]
 pub mod event_loop;
 pub mod file_picker;
 pub mod file_share;
 pub mod impl_app;
+#[path = "input/mod.rs"]
 pub mod input;
 pub mod mcp;
 pub mod message_text;

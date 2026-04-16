@@ -38,6 +38,7 @@ mod server;
 mod session;
 pub mod swarm;
 pub mod telemetry;
+pub mod util;
 mod tls;
 mod tool;
 mod tui;

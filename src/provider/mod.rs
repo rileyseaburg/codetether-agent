@@ -10,6 +10,7 @@ pub mod glm5;
 pub mod google;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;
+pub mod util;
 #[cfg(not(feature = "candle-cuda"))]
 #[allow(dead_code)]
 pub mod local_cuda {

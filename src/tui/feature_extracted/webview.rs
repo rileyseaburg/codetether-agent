@@ -797,7 +797,7 @@ fn render_webview_inspector(f: &mut Frame, app: &App, theme: &Theme, area: Rect)
         Span::styled("File Picker", Style::default().fg(Color::DarkGray)),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("Ctrl+S  ", Style::default().fg(Color::Yellow)),
+        Span::styled("Ctrl+W  ", Style::default().fg(Color::Yellow)),
         Span::styled("Swarm", Style::default().fg(Color::DarkGray)),
     ]));
     lines.push(Line::from(vec![

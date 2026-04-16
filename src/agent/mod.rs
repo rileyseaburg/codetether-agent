@@ -10,7 +10,8 @@
 //! assert!(!registry.list().is_empty());
 //! ```
 
-mod build_guidance;
+pub mod build_guidance;
+#[path = "builtin/mod.rs"]
 pub mod builtin;
 mod core;
 mod execution;

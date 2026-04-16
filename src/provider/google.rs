@@ -3,6 +3,7 @@
 //! Uses the Google AI Gemini OpenAI-compatible endpoint for simplicity.
 //! Reference: https://ai.google.dev/gemini-api/docs/openai
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -423,7 +424,7 @@ impl Provider for GoogleProvider {
 
         let completion: ChatCompletion = serde_json::from_str(&text).context(format!(
             "Failed to parse Google Gemini response: {}",
-            &text[..text.len().min(200)]
+            util::truncate_bytes_safe(&text, 200)
         ))?;
 
         let choice = completion

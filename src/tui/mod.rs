@@ -1,6 +1,7 @@
 pub mod app;
 pub mod chat;
 pub mod clipboard;
+pub mod clipboard_text;
 pub mod constants;
 pub mod help;
 pub mod input;

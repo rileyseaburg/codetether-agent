@@ -29,7 +29,11 @@ pub fn render_webview_chat_center(f: &mut Frame, app: &App, area: Rect, lines: &
 }
 
 pub fn render_webview_input(f: &mut Frame, app: &App, area: Rect) {
-    let mode_label = "";
+    let mode_label = if app.state.input_mode == crate::tui::models::InputMode::Command {
+        " [CMD]"
+    } else {
+        ""
+    };
     let title = format!(" Input{mode_label} ");
     let block = Block::default()
         .borders(Borders::ALL)

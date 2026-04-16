@@ -10,6 +10,7 @@
 pub mod bridge;
 pub mod claim;
 pub mod client;
+#[path = "git_credentials/mod.rs"]
 pub mod git_credentials;
 pub mod grpc;
 pub mod server;

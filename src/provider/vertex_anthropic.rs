@@ -10,6 +10,7 @@
 //!
 //! Reference: https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 
+use super::util;
 use super::{
     CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo, Provider,
     Role, StreamChunk, ToolDefinition, Usage,
@@ -618,7 +619,7 @@ impl Provider for VertexAnthropicProvider {
 
             let response: AnthropicResponse = serde_json::from_str(&text).context(format!(
                 "Failed to parse Vertex AI Anthropic response: {}",
-                &text[..text.len().min(200)]
+                util::truncate_bytes_safe(&text, 200)
             ))?;
 
             let mut content = Vec::new();

@@ -56,6 +56,7 @@ use self::helper::error::{
 use self::helper::markup::normalize_textual_tool_calls;
 use self::helper::provider::{
     prefers_temperature_one, resolve_provider_for_session_request,
+    temperature_is_deprecated,
     should_retry_missing_native_tool_call,
 };
 use self::helper::router::{build_proactive_lsp_context_message, choose_router_target};
@@ -604,8 +605,12 @@ impl Session {
         // Some models behave best with temperature=1.0.
         // - Kimi K2.x requires temperature=1.0
         // - GLM (Z.AI) defaults to temperature 1.0 for coding workflows
+        // Some models have deprecated temperature entirely:
+        // - Claude Opus 4.7 returns 400 if temperature is sent
         // Use contains() to match both short aliases and provider-qualified IDs.
-        let temperature = if prefers_temperature_one(&model) {
+        let temperature = if temperature_is_deprecated(&model) {
+            None
+        } else if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)
@@ -697,9 +702,10 @@ impl Session {
             )
             .await;
 
-            // Call the provider (retry once if the provider rejects due to an
-            // unexpected context-length mismatch).
+            // Call the provider (retry up to 3 times for transient upstream errors).
             let mut attempt = 0;
+            let mut upstream_retry_count: u8 = 0;
+            const MAX_UPSTREAM_RETRIES: u8 = 3;
             let response = loop {
                 attempt += 1;
 
@@ -741,23 +747,31 @@ impl Session {
                                 .await?;
                             continue;
                         }
-                        if attempt == 1 && is_retryable_upstream_error(&e) {
+                        if upstream_retry_count < MAX_UPSTREAM_RETRIES && is_retryable_upstream_error(&e) {
+                            upstream_retry_count += 1;
+                            // Brief backoff: 1s, 2s, 4s
+                            let backoff_secs = 1u64 << (upstream_retry_count - 1).min(2);
+                            tracing::warn!(
+                                error = %e,
+                                retry = upstream_retry_count,
+                                max = MAX_UPSTREAM_RETRIES,
+                                backoff_secs,
+                                "Retryable upstream provider error; sleeping and retrying"
+                            );
+                            tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
                             if let Some((retry_provider, retry_model)) =
                                 choose_router_target(&registry, selected_provider, &model)
                             {
-                                tracing::warn!(
-                                    error = %e,
-                                    from_provider = selected_provider,
-                                    from_model = %model,
+                                tracing::info!(
                                     to_provider = %retry_provider,
                                     to_model = %retry_model,
-                                    "Retryable upstream provider error; retrying same prompt with alternate provider/model"
+                                    "Failing over to alternate provider/model"
                                 );
                                 self.metadata.model =
                                     Some(format!("{retry_provider}/{retry_model}"));
                                 attempt = 0;
-                                continue;
                             }
+                            continue;
                         }
                         return Err(e);
                     }
@@ -1609,7 +1623,10 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        let temperature = if prefers_temperature_one(&model) {
+        // Some models have deprecated temperature entirely (e.g. Claude Opus 4.7).
+        let temperature = if temperature_is_deprecated(&model) {
+            None
+        } else if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)

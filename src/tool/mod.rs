@@ -6,9 +6,11 @@ pub mod advanced_edit;
 pub mod agent;
 pub mod avatar;
 pub mod bash;
+#[path = "bash_github/mod.rs"]
 mod bash_github;
 mod bash_identity;
 pub mod batch;
+pub mod browserctl;
 pub mod codesearch;
 pub mod confirm_edit;
 pub mod confirm_multiedit;
@@ -256,6 +258,7 @@ impl ToolRegistry {
         registry.register(Arc::new(webfetch::WebFetchTool::new()));
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(websearch::WebSearchTool::new()));
+        registry.register(Arc::new(browserctl::BrowserCtlTool::new()));
         registry.register(Arc::new(codesearch::CodeSearchTool::new()));
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
@@ -321,6 +324,7 @@ impl ToolRegistry {
         registry.register(Arc::new(webfetch::WebFetchTool::new()));
         registry.register(Arc::new(multiedit::MultiEditTool::new()));
         registry.register(Arc::new(websearch::WebSearchTool::new()));
+        registry.register(Arc::new(browserctl::BrowserCtlTool::new()));
         registry.register(Arc::new(codesearch::CodeSearchTool::new()));
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));

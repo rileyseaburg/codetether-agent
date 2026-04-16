@@ -56,7 +56,7 @@ fn handle_event(event: SessionEvent, state: &mut EventLoopState) {
         } => state.tools.push(json!({
             "tool": name,
             "success": success,
-            "output_preview": super::super::text::truncate_preview(&output, 200),
+            "output_preview": crate::tool::agent::text::truncate_preview(&output, 200),
         })),
         SessionEvent::Error(e) => {
             state.response.push_str(&format!("\n[Error: {e}]"));

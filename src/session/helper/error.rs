@@ -72,13 +72,24 @@ pub fn is_retryable_upstream_error(err: &anyhow::Error) -> bool {
     [
         " 500 ",
         " 504 ",
+        " 502 ",
+        " 429 ",
         "status code 500",
         "status code 504",
+        "status code 502",
+        "status code 429",
         "internal server error",
         "gateway timeout",
         "upstream request timeout",
         "server error: 500",
         "server error: 504",
+        "network error",
+        "connection reset",
+        "connection refused",
+        "timed out",
+        "timeout",
+        "broken pipe",
+        "unexpected eof",
     ]
     .iter()
     .any(|needle| msg.contains(needle))

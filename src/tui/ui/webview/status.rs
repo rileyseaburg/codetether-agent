@@ -8,11 +8,13 @@ use ratatui::{
 
 use crate::tui::app::state::App;
 use crate::tui::theme::Theme;
+use crate::tui::theme_utils::validate_theme;
 use crate::tui::token_display::TokenDisplay;
 
 pub fn render_webview_status(f: &mut Frame, app: &App, area: Rect) {
     let token_display = TokenDisplay::new();
-    let mut status_line = token_display.create_status_bar(&Theme::default());
+    let validated_theme = validate_theme(&Theme::default());
+    let mut status_line = token_display.create_status_bar(&validated_theme);
     let model_status = app
         .state
         .last_completion_model

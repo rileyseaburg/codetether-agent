@@ -25,11 +25,23 @@
 //! }
 //! ```
 
+mod ast_validation;
+mod batch;
+mod batch_write;
+mod consensus;
+mod consensus_helpers;
 mod grep_oracle;
+mod grep_validation;
+mod query_type;
+mod record;
 mod schema;
+#[path = "storage/mod.rs"]
 mod storage;
 mod templates;
+mod trace_types;
 mod tree_sitter_oracle;
+mod types;
+#[path = "validator/mod.rs"]
 mod validator;
 
 pub use grep_oracle::{GrepOracle, GrepVerification};
@@ -39,10 +51,10 @@ pub use storage::{
 };
 pub use templates::{GeneratedQuery, QueryTemplate, TemplateKind};
 pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
-pub use validator::{
-    BatchValidationStats, OracleResult, OracleTraceRecord, SplitWriteStats, TraceStep,
-    TraceValidator, ValidatedTrace, VerificationMethod,
-};
+pub use record::OracleTraceRecord;
+pub use trace_types::{OracleResult, ValidatedTrace};
+pub use types::{TraceStep, VerificationMethod};
+pub use validator::{BatchValidationStats, SplitWriteStats, TraceValidator};
 
 /// Query type classification for routing to the appropriate oracle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

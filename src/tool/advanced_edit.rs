@@ -21,7 +21,9 @@ impl AdvancedEditTool {
     }
 }
 
-/// Levenshtein distance for fuzzy matching
+/// Levenshtein distance for fuzzy matching.
+///
+/// Uses O(min(N,M)) space by keeping only the current and previous rows.
 fn levenshtein(a: &str, b: &str) -> usize {
     if a.is_empty() {
         return b.len();
@@ -31,22 +33,20 @@ fn levenshtein(a: &str, b: &str) -> usize {
     }
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
-    let mut matrix = vec![vec![0usize; b.len() + 1]; a.len() + 1];
-    for i in 0..=a.len() {
-        matrix[i][0] = i;
-    }
-    for j in 0..=b.len() {
-        matrix[0][j] = j;
-    }
-    for i in 1..=a.len() {
-        for j in 1..=b.len() {
-            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
-            matrix[i][j] = (matrix[i - 1][j] + 1)
-                .min(matrix[i][j - 1] + 1)
-                .min(matrix[i - 1][j - 1] + cost);
+    let (short, long) = if a.len() < b.len() { (&a, &b) } else { (&b, &a) };
+    let mut prev_row: Vec<usize> = (0..=short.len()).collect();
+    let mut curr_row = vec![0; short.len() + 1];
+    for (i, &c_long) in long.iter().enumerate() {
+        curr_row[0] = i + 1;
+        for (j, &c_short) in short.iter().enumerate() {
+            let cost = if c_long == c_short { 0 } else { 1 };
+            curr_row[j + 1] = (curr_row[j] + 1)
+                .min(prev_row[j + 1] + 1)
+                .min(prev_row[j] + cost);
         }
+        prev_row.copy_from_slice(&curr_row);
     }
-    matrix[a.len()][b.len()]
+    prev_row[short.len()]
 }
 
 type Replacer = fn(&str, &str) -> Vec<String>;

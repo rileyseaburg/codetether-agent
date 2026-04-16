@@ -16,6 +16,7 @@ use tokio::process::Command;
 use tokio::time::{Duration, timeout};
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
+use crate::util;
 
 /// Execute shell commands
 pub struct BashTool {
@@ -253,7 +254,7 @@ impl Tool for BashTool {
                 audit
                     .log(
                         AuditCategory::Sandbox,
-                        format!("bash:{}", &command[..command.len().min(80)]),
+                        format!("bash:{}", crate::util::truncate_bytes_safe(&command, 80)),
                         outcome,
                         None,
                         Some(detail),

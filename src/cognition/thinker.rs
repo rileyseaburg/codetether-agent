@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 use tokenizers::Tokenizer;
 
 use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
+use crate::util;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThinkerBackend {
@@ -257,7 +258,7 @@ impl ThinkerClient {
             return Err(anyhow!(
                 "Bedrock thinker error ({}): {}",
                 status,
-                &text[..text.len().min(500)]
+                crate::util::truncate_bytes_safe(&text, 500)
             ));
         }
 
