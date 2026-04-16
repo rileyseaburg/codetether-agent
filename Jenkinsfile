@@ -3,7 +3,8 @@
 // - Or configure GitHub webhook to trigger builds on tag push events
 // - The "Package & Release" and "Publish to crates.io" stages only run when building tags
 // - Windows cross-compilation requires: mingw-w64 (gcc + g++), rustup target x86_64-pc-windows-gnu
-// - macOS builds run on the local Mac Mini via SSH (requires mac-mini-ssh Jenkins credential)
+// - macOS builds run on the local Mac Mini via SSH (requires mac-mini-ssh Jenkins credential: usernamePassword type)
+// - sshpass must be installed on the Jenkins agent for macOS builds
 
 pipeline {
     agent any
@@ -23,8 +24,7 @@ pipeline {
         SCCACHE_S3_KEY_PREFIX = 'codetether'
         SCCACHE_S3_USE_SSL    = 'false'
 
-        // macOS build host (Mac Mini on local network)
-        MAC_HOST              = "${env.MAC_MINI_HOST ?: 'rileyseaburg@192.168.50.251'}"
+        // macOS SSH options (Mac Mini uses password auth via sshpass)
         MAC_SSH_OPTS          = '-o StrictHostKeyChecking=no -o ConnectTimeout=30'
     }
 
@@ -75,50 +75,55 @@ pipeline {
                         }
                     }
                 }
-                stage('macOS (native)') {
-                    steps {
-                        withCredentials([
-                            sshUserPrivateKey(credentialsId: 'mac-mini-ssh', keyFileVariable: 'MAC_SSH_KEY', usernameVariable: 'MAC_USER')
-                        ]) {
-                            script {
-                                def macHost = env.MAC_HOST.replaceFirst(/^.*@/, "${MAC_USER}@")
-                                sh """#!/bin/bash
-                                set -euo pipefail
-                                echo '==> Building macOS binaries on Mac Mini...'
+            }
+        }
 
-                                # Copy source to Mac Mini
-                                rsync -az --delete --exclude target --exclude .git \
-                                    -e "ssh -i \$MAC_SSH_KEY \${MAC_SSH_OPTS}" \
-                                    ./ \"${macHost}\":/tmp/codetether-build/
+        stage('macOS (native)') {
+            when {
+                buildingTag()
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(credentialsId: 'mac-mini-ssh',
+                                     usernameVariable: 'MAC_USER',
+                                     passwordVariable: 'MAC_PASS')
+                ]) {
+                    sh '''#!/bin/bash
+                    set -euo pipefail
+                    export SSHPASS="${MAC_PASS}"
+                    MAC_HOST_ADDR="${MAC_USER}@192.168.50.251"
+                    echo "==> Building macOS binaries on Mac Mini (${MAC_HOST_ADDR})..."
 
-                                # Build both architectures (native arm64 + cross-compiled x86_64)
-                                ssh -i \$MAC_SSH_KEY \${MAC_SSH_OPTS} \"${macHost}\" bash -s <<'REMOTE'
-                                    set -euo pipefail
-                                    cd /tmp/codetether-build
-                                    source \$HOME/.cargo/env 2>/dev/null || true
+                    # Copy source to Mac Mini
+                    sshpass -e rsync -az --delete --exclude target --exclude .git \
+                        -e "ssh ${MAC_SSH_OPTS}" \
+                        ./ "${MAC_HOST_ADDR}":/tmp/codetether-build/
 
-                                    echo '===> Building arm64 (native)...'
-                                    cargo build --release --target aarch64-apple-darwin --features functiongemma
+                    # Build both architectures (native arm64 + cross-compiled x86_64)
+                    sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" bash -s <<'REMOTE'
+                        set -euo pipefail
+                        cd /tmp/codetether-build
+                        source $HOME/.cargo/env 2>/dev/null || true
 
-                                    echo '===> Building x86_64 (cross)...'
-                                    cargo build --release --target x86_64-apple-darwin --features functiongemma
-                                REMOTE
+                        echo "===> Building arm64 (native)..."
+                        cargo build --release --target aarch64-apple-darwin --features functiongemma
 
-                                # Fetch artifacts back
-                                mkdir -p dist
-                                scp -i \$MAC_SSH_KEY \${MAC_SSH_OPTS} \
-                                    \"${macHost}\":/tmp/codetether-build/target/aarch64-apple-darwin/release/\${BINARY_NAME} \
-                                    dist/\${BINARY_NAME}-\${TAG_NAME:-dev}-aarch64-apple-darwin
-                                scp -i \$MAC_SSH_KEY \${MAC_SSH_OPTS} \
-                                    \"${macHost}\":/tmp/codetether-build/target/x86_64-apple-darwin/release/\${BINARY_NAME} \
-                                    dist/\${BINARY_NAME}-\${TAG_NAME:-dev}-x86_64-apple-darwin
+                        echo "===> Building x86_64 (cross)..."
+                        cargo build --release --target x86_64-apple-darwin --features functiongemma
+                    REMOTE
 
-                                chmod 755 dist/\${BINARY_NAME}-*-apple-darwin
-                                echo '==> macOS binaries fetched successfully'
-                                """
-                            }
-                        }
-                    }
+                    # Fetch artifacts back
+                    mkdir -p dist
+                    sshpass -e scp ${MAC_SSH_OPTS} \
+                        "${MAC_HOST_ADDR}":/tmp/codetether-build/target/aarch64-apple-darwin/release/${BINARY_NAME} \
+                        dist/${BINARY_NAME}-${TAG_NAME}-aarch64-apple-darwin
+                    sshpass -e scp ${MAC_SSH_OPTS} \
+                        "${MAC_HOST_ADDR}":/tmp/codetether-build/target/x86_64-apple-darwin/release/${BINARY_NAME} \
+                        dist/${BINARY_NAME}-${TAG_NAME}-x86_64-apple-darwin
+
+                    chmod 755 dist/${BINARY_NAME}-*-apple-darwin
+                    echo "==> macOS binaries fetched successfully"
+                    '''
                 }
             }
         }
@@ -146,16 +151,14 @@ pipeline {
 
                     # macOS arm64
                     MAC_ARM64="${BINARY_NAME}-${VERSION}-aarch64-apple-darwin"
-                    cp "dist/\${BINARY_NAME}-${VERSION}-aarch64-apple-darwin" "dist/\${MAC_ARM64}" 2>/dev/null || true
-                    if [ -f "dist/\${MAC_ARM64}" ]; then
-                        cd dist && tar czf "\${MAC_ARM64}.tar.gz" "\${MAC_ARM64}" && cd ..
+                    if [ -f "dist/${BINARY_NAME}-\${VERSION}-aarch64-apple-darwin" ]; then
+                        cd dist && tar czf "\${MAC_ARM64}.tar.gz" "${BINARY_NAME}-\${VERSION}-aarch64-apple-darwin" && cd ..
                     fi
 
                     # macOS x86_64
                     MAC_X86="${BINARY_NAME}-${VERSION}-x86_64-apple-darwin"
-                    cp "dist/\${BINARY_NAME}-${VERSION}-x86_64-apple-darwin" "dist/\${MAC_X86}" 2>/dev/null || true
-                    if [ -f "dist/\${MAC_X86}" ]; then
-                        cd dist && tar czf "\${MAC_X86}.tar.gz" "\${MAC_X86}" && cd ..
+                    if [ -f "dist/${BINARY_NAME}-\${VERSION}-x86_64-apple-darwin" ]; then
+                        cd dist && tar czf "\${MAC_X86}.tar.gz" "${BINARY_NAME}-\${VERSION}-x86_64-apple-darwin" && cd ..
                     fi
 
                     # Checksums for all artifacts
