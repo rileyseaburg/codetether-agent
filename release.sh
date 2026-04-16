@@ -196,6 +196,26 @@ git push origin "v$new_version"
 echo ""
 echo "==> Release v$new_version created and pushed."
 echo "==> Release notes written to RELEASE_NOTES.md"
+
+# Step 8: Publish to crates.io
+echo ""
+echo "===> Publishing to crates.io..."
+
+# Dry-run first to catch issues before attempting the real publish
+if ! cargo publish --dry-run -p codetether-agent 2>&1; then
+    echo "Error: cargo publish --dry-run failed. Aborting publish."
+    echo "Fix the errors above and re-run, or set CARGO_REGISTRY_TOKEN."
+    echo "Continuing with Jenkins release..."
+else
+    if ! cargo publish -p codetether-agent 2>&1; then
+        echo "Warning: cargo publish failed for codetether-agent."
+        echo "The crate may already exist at this version, or the API token is missing."
+        echo "Set CARGO_REGISTRY_TOKEN or run: cargo login <token>"
+    else
+        echo "==> Published codetether-agent v${new_version} to crates.io"
+    fi
+fi
+
 echo "==> Jenkins will build and create the GitHub release automatically."
 
 echo ""

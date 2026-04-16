@@ -162,10 +162,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
             binary: codetether
             archive: tar.gz
-          - os: macos-14
-            target: aarch64-apple-darwin
-            binary: codetether
-            archive: tar.gz
+          # macOS builds run on the local Mac Mini via Jenkins (see Jenkinsfile)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             binary: codetether.exe
