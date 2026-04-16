@@ -14,7 +14,7 @@ pub(in crate::tool::browserctl) async fn health(ctx: &Ctx<'_>) -> Result<Outcome
 pub(in crate::tool::browserctl) async fn start(ctx: &Ctx<'_>) -> Result<Outcome> {
     let payload = json!({
         "headless": ctx.input.headless.unwrap_or(true),
-        "executable_path": ctx.input.executable_path,
+        "executable_path": ctx.input.executable_path.as_deref(),
     });
     let (status, body) = post(ctx.client, ctx.base_url, "/start", ctx.token, payload).await?;
     Ok(("start", "/start", status, body))

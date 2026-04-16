@@ -45,7 +45,7 @@ pub(super) async fn select_once(
     result_rx: &mut mpsc::Receiver<anyhow::Result<Session>>,
     watchdog_timer: &mut tokio::time::Interval,
     watchdog_interval: Duration,
-    tick: Duration,
+    tick_timer: &mut tokio::time::Interval,
     bus_handle: &mut crate::bus::BusHandle,
 ) -> anyhow::Result<bool> {
     tokio::select! {
@@ -64,7 +64,7 @@ pub(super) async fn select_once(
         _ = watchdog_timer.tick() => {
             super::watchdog::maybe_watchdog_restart(app, session, registry, event_tx, result_tx, watchdog_interval).await;
         }
-        _ = tokio::time::sleep(tick) => {
+        _ = tick_timer.tick() => {
             super::autochat::drain_autochat(app);
         }
     }
