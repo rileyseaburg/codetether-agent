@@ -184,11 +184,11 @@ impl WorktreeManager {
 
     /// Clean up a specific worktree
     pub async fn cleanup(&self, name: &str) -> Result<()> {
-        // Clone the info and drop the lock before any IO
+        // Clone info but keep tracking until IO succeeds
         let info = {
-            let mut worktrees = self.worktrees.lock().await;
-            match worktrees.iter().position(|w| w.name == name) {
-                Some(pos) => worktrees.remove(pos),
+            let worktrees = self.worktrees.lock().await;
+            match worktrees.iter().find(|w| w.name == name) {
+                Some(w) => w.clone(),
                 None => return Ok(()),
             }
         };

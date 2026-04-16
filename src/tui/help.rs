@@ -290,7 +290,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Alt+J / Alt+K", "Chat scroll down / up"));
     lines.push(key_row("Alt+D / Alt+U", "Chat page down / up"));
     lines.push(key_row(
-        "Ctrl+G / Ctrl+Whift+G",
+        "Ctrl+G / Ctrl+Shift+G",
         "Jump chat to top / bottom",
     ));
     lines.push(blank());
