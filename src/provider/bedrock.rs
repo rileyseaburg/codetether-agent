@@ -1302,7 +1302,6 @@ mod tests {
             BedrockProvider::resolve_model_id("us.anthropic.claude-opus-4-7"),
             "us.anthropic.claude-opus-4-7-v1:0"
         );
-        // Full ID passes through unchanged
         let full_id = "us.anthropic.claude-opus-4-7-v1:0";
         assert_eq!(BedrockProvider::resolve_model_id(full_id), full_id);
     }
