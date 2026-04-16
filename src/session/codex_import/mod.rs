@@ -13,7 +13,7 @@ mod title;
 mod usage;
 
 pub use api::{
-    import_codex_session_by_id, import_codex_session_path, import_codex_sessions_for_directory,
+    import_codex_session_by_id, import_codex_sessions_for_directory,
     load_or_import_session,
 };
 pub(crate) use discover::discover_codex_sessions_for_directory;

@@ -45,7 +45,8 @@ fn truncate_str(s: &str, max: usize) -> String {
         return s.to_string();
     }
     let target = max.saturating_sub(1);
-    let boundary = (0..=target).rev()
+    let boundary = (0..=target)
+        .rev()
         .find(|&i| s.is_char_boundary(i))
         .unwrap_or(0);
     format!("{}…", &s[..boundary])

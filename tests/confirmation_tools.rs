@@ -2,7 +2,7 @@ use codetether_agent::tool::{
     Tool, confirm_edit::ConfirmEditTool, confirm_multiedit::ConfirmMultiEditTool,
 };
 use serde_json::json;
-use tempfile::{NamedTempFile, tempdir};
+use tempfile::tempdir;
 use tokio::fs;
 
 #[tokio::test]

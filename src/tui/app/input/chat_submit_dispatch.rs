@@ -40,7 +40,7 @@ pub(super) async fn dispatch_prompt(
     app.state.clear_steering();
     crate::tui::app::worker_bridge::handle_processing_started(app, worker_bridge).await;
     app.state.begin_request_timing();
-    app.state.main_inflight_prompt = Some(prompt.to_string());
+    app.state.main_inflight_prompt = Some(effective_prompt.clone());
     app.state.status = if steering_count > 0 {
         format!("Submitting prompt with {steering_count} steering item(s)…")
     } else {

@@ -1,7 +1,7 @@
 //! High-level formatting helpers that combine profiles and avatars.
 
 use super::avatars::agent_avatar;
-use super::profiles::{AgentProfile, agent_profile};
+use super::profiles::agent_profile;
 
 /// One-line identity: `avatar @name ‹codename›`.
 pub fn format_agent_identity(agent_name: &str) -> String {

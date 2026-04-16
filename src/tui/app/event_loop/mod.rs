@@ -65,6 +65,7 @@ pub async fn run_event_loop(
 ) -> anyhow::Result<()> {
     let mut reader = EventStream::new();
     let tick = Duration::from_millis(50);
+    let mut tick_timer = tokio::time::interval(tick);
     let wd_interval = Duration::from_secs(MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS);
     let mut wd_timer = tokio::time::interval(wd_interval);
 
@@ -84,7 +85,7 @@ pub async fn run_event_loop(
             &mut result_rx,
             &mut wd_timer,
             wd_interval,
-            tick,
+            &mut tick_timer,
             bus_handle,
         )
         .await?

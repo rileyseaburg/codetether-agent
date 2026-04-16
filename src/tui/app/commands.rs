@@ -715,7 +715,7 @@ fn handle_agents_command(app: &mut App) {
 async fn handle_go_command(
     app: &mut App,
     session: &mut Session,
-    registry: Option<&Arc<ProviderRegistry>>,
+    _registry: Option<&Arc<ProviderRegistry>>,
     rest: &str,
 ) {
     use crate::tui::app::okr_gate::{PendingOkrApproval, ensure_okr_repository, next_go_model};

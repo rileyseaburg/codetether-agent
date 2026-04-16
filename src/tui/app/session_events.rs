@@ -1,7 +1,6 @@
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::smart_switch::maybe_schedule_smart_switch_retry;
 use crate::tui::app::smart_switch::smart_switch_max_retries;
-use crate::tui::app::smart_switch::smart_switch_model_key;
 use crate::tui::app::state::App;
 use crate::tui::app::text::truncate_preview;
 use crate::tui::app::worker_bridge::{handle_processing_started, handle_processing_stopped};
