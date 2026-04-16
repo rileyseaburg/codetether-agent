@@ -8,7 +8,6 @@ pub mod status;
 use ratatui::Frame;
 
 use crate::tui::app::state::App;
-use layout_mode::ChatLayoutMode;
 
 /// Render the full webview chat layout. Returns `false` if terminal too small.
 pub fn render(f: &mut Frame, app: &mut App) -> bool {

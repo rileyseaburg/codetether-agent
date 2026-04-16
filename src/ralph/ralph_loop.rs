@@ -1075,7 +1075,7 @@ impl RalphLoop {
             }
 
             // Wait for all stories in this stage
-            let mut stage_passed = 0usize;
+            let _stage_passed = 0usize;
             for handle in handles {
                 match handle.await {
                     Ok((story, success, entry, worktree_info, worktree_mgr, quality_passed)) => {

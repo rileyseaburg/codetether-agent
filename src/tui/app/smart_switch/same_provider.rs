@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use super::error_detection::{normalize_provider_alias, smart_switch_model_key};
+use super::error_detection::smart_switch_model_key;
 use super::models::smart_switch_preferred_models;
 
 /// Returns candidates from the same provider.

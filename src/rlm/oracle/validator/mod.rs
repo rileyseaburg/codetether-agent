@@ -17,7 +17,6 @@ pub use super::consensus::{build_base_trace, validate_with_consensus};
 #[allow(unused_imports)]
 pub use super::consensus_helpers::build_placeholder_trace;
 pub use super::grep_validation::validate_grep_payload;
-pub use super::record::OracleTraceRecord;
 pub use super::trace_types::{OracleResult, ValidatedTrace};
 pub use super::types::{TraceStep, VerificationMethod};
 

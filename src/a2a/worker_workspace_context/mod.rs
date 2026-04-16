@@ -6,5 +6,5 @@
 mod clone_path;
 mod resolve;
 
-pub use clone_path::{git_clone_base_dir, resolve_workspace_clone_path};
+pub use clone_path::resolve_workspace_clone_path;
 pub use resolve::resolve_task_workspace_dir;

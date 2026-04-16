@@ -209,7 +209,7 @@ async fn test_a2a_client_send_message() {
         configuration: None,
     };
 
-    let task = client
+    let _task = client
         .send_message(params)
         .await
         .expect("Failed to send message");
