@@ -25,16 +25,13 @@ pub fn validate_with_consensus(
     let answers: Vec<&str> = results.iter().map(|r| r.answer.as_str()).collect();
     let total = answers.len() as f32;
 
-    // Count most common answer
-    let mut best_count = 0usize;
-    let mut best_answer = answers[0];
-    for a in &answers {
-        let count = answers.iter().filter(|x| x == &a).count();
-        if count > best_count {
-            best_count = count;
-            best_answer = a;
-        }
+    // Count most common answer using HashMap for O(N)
+    let mut freq: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for &a in &answers {
+        *freq.entry(a).or_insert(0) += 1;
     }
+    let best_entry = freq.iter().max_by_key(|(_, c)| *c).unwrap();
+    let (best_answer, best_count) = (*best_entry.0, *best_entry.1);
 
     let ratio = best_count as f32 / total;
     let mut trace = build_placeholder_trace();

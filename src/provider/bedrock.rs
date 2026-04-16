@@ -415,6 +415,9 @@ impl BedrockProvider {
     fn resolve_model_id(model: &str) -> &str {
         match model {
             // --- Anthropic Claude (verified via AWS CLI) ---
+            "claude-opus-4.7" | "claude-opus-4-7" | "claude-4.7-opus" => {
+                "us.anthropic.claude-opus-4-7-v1:0"
+            }
             "claude-opus-4.6" | "claude-opus-4-6" | "claude-4.6-opus" => {
                 "us.anthropic.claude-opus-4-6-v1:0"
             }
@@ -436,6 +439,7 @@ impl BedrockProvider {
             "us.anthropic.claude-sonnet-4-6" => "us.anthropic.claude-sonnet-4-6-v1:0",
             "us.anthropic.claude-sonnet-4-5" => "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             "us.anthropic.claude-sonnet-4" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "us.anthropic.claude-opus-4-7" => "us.anthropic.claude-opus-4-7-v1:0",
             "us.anthropic.claude-opus-4-6" => "us.anthropic.claude-opus-4-6-v1:0",
             "us.anthropic.claude-opus-4-5" => "us.anthropic.claude-opus-4-5-20251101-v1:0",
             "us.anthropic.claude-opus-4-1" => "us.anthropic.claude-opus-4-1-20250805-v1:0",
@@ -741,7 +745,10 @@ impl BedrockProvider {
     /// Estimate context window size based on model family
     fn estimate_context_window(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
-        if id.contains("anthropic") || id.contains("claude") {
+        // Opus 4.7 has 1M token context
+        if id.contains("claude-opus-4-7") {
+            1_000_000
+        } else if id.contains("anthropic") || id.contains("claude") {
             200_000
         } else if id.contains("nova-pro") || id.contains("nova-lite") || id.contains("nova-premier")
         {
@@ -773,7 +780,9 @@ impl BedrockProvider {
     /// Estimate max output tokens based on model family
     fn estimate_max_output(model_id: &str, _provider: &str) -> usize {
         let id = model_id.to_lowercase();
-        if id.contains("claude-opus-4-6")
+        if id.contains("claude-opus-4-7") {
+            128_000
+        } else if id.contains("claude-opus-4-6")
             || id.contains("claude-opus-4-5")
             || id.contains("claude-opus-4-1")
             || id.contains("claude-opus-4")
@@ -981,6 +990,62 @@ impl BedrockProvider {
             })
             .collect()
     }
+
+    /// Build the JSON body for a Bedrock Converse API request.
+    fn build_converse_body(&self, request: &CompletionRequest, model_id: &str) -> serde_json::Value {
+        let (system_parts, messages) = Self::convert_messages(&request.messages);
+        let tools = Self::convert_tools(&request.tools);
+
+        let mut body = json!({
+            "messages": messages,
+        });
+
+        if !system_parts.is_empty() {
+            body["system"] = json!(system_parts);
+        }
+
+        // inferenceConfig
+        let mut inference_config = json!({});
+        if let Some(max_tokens) = request.max_tokens {
+            inference_config["maxTokens"] = json!(max_tokens);
+        } else {
+            inference_config["maxTokens"] = json!(8192);
+        }
+        // Opus 4.7 deprecates the temperature parameter — sending it causes a 400 error.
+        let skip_temperature = model_id.to_ascii_lowercase().contains("claude-opus-4-7");
+        if let Some(temp) = request.temperature {
+            if !skip_temperature {
+                inference_config["temperature"] = json!(temp);
+            } else {
+                tracing::debug!(
+                    provider = "bedrock",
+                    model = %model_id,
+                    "Skipping temperature parameter (deprecated for this model)"
+                );
+            }
+        }
+        if let Some(top_p) = request.top_p {
+            inference_config["topP"] = json!(top_p);
+        }
+        body["inferenceConfig"] = inference_config;
+
+        if let Some(service_tier) = Self::configured_service_tier() {
+            tracing::debug!(
+                provider = "bedrock",
+                service_tier = %service_tier,
+                "Applying Bedrock service tier override"
+            );
+            body["additionalModelRequestFields"] = json!({
+                "service_tier": service_tier
+            });
+        }
+
+        if !tools.is_empty() {
+            body["toolConfig"] = json!({"tools": tools});
+        }
+
+        body
+    }
 }
 
 /// Bedrock Converse API response types
@@ -1083,46 +1148,7 @@ impl Provider for BedrockProvider {
 
         self.validate_auth()?;
 
-        let (system_parts, messages) = Self::convert_messages(&request.messages);
-        let tools = Self::convert_tools(&request.tools);
-
-        let mut body = json!({
-            "messages": messages,
-        });
-
-        if !system_parts.is_empty() {
-            body["system"] = json!(system_parts);
-        }
-
-        // inferenceConfig
-        let mut inference_config = json!({});
-        if let Some(max_tokens) = request.max_tokens {
-            inference_config["maxTokens"] = json!(max_tokens);
-        } else {
-            inference_config["maxTokens"] = json!(8192);
-        }
-        if let Some(temp) = request.temperature {
-            inference_config["temperature"] = json!(temp);
-        }
-        if let Some(top_p) = request.top_p {
-            inference_config["topP"] = json!(top_p);
-        }
-        body["inferenceConfig"] = inference_config;
-
-        if let Some(service_tier) = Self::configured_service_tier() {
-            tracing::debug!(
-                provider = "bedrock",
-                service_tier = %service_tier,
-                "Applying Bedrock service tier override"
-            );
-            body["additionalModelRequestFields"] = json!({
-                "service_tier": service_tier
-            });
-        }
-
-        if !tools.is_empty() {
-            body["toolConfig"] = json!({"tools": tools});
-        }
+        let body = self.build_converse_body(&request, &model_id);
 
         // URL-encode the colon in model IDs (e.g. v1:0 -> v1%3A0)
         let encoded_model_id = model_id.replace(':', "%3A");
@@ -1245,7 +1271,7 @@ impl Provider for BedrockProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::BedrockProvider;
+    use super::{BedrockProvider, CompletionRequest};
 
     #[test]
     fn resolve_opus_46_alias_includes_profile_suffix() {
@@ -1263,5 +1289,66 @@ mod tests {
     fn resolve_model_id_passes_through_full_id() {
         let model_id = "us.anthropic.claude-opus-4-6-v1:0";
         assert_eq!(BedrockProvider::resolve_model_id(model_id), model_id);
+    }
+
+    #[test]
+    fn resolve_opus_47_aliases() {
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4.7"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-opus-4-7"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("claude-4.7-opus"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        assert_eq!(
+            BedrockProvider::resolve_model_id("us.anthropic.claude-opus-4-7"),
+            "us.anthropic.claude-opus-4-7-v1:0"
+        );
+        let full_id = "us.anthropic.claude-opus-4-7-v1:0";
+        assert_eq!(BedrockProvider::resolve_model_id(full_id), full_id);
+    }
+
+    #[test]
+    fn opus_47_request_omits_temperature() {
+        let provider = BedrockProvider::new("test-key".into()).unwrap();
+        let model_id = BedrockProvider::resolve_model_id("claude-opus-4-7");
+        let request = CompletionRequest {
+            model: "claude-opus-4-7".to_string(),
+            messages: vec![],
+            tools: vec![],
+            temperature: Some(0.7),
+            top_p: None,
+            max_tokens: None,
+            stop: vec![],
+        };
+        let body = provider.build_converse_body(&request, model_id);
+        let config = &body["inferenceConfig"];
+        assert!(config.get("temperature").is_none(),
+            "temperature should be absent for Opus 4.7 but was {:?}",
+            config.get("temperature"));
+    }
+
+    #[test]
+    fn non_opus_47_request_includes_temperature() {
+        let provider = BedrockProvider::new("test-key".into()).unwrap();
+        let model_id = BedrockProvider::resolve_model_id("claude-sonnet-4");
+        let request = CompletionRequest {
+            model: "claude-sonnet-4".to_string(),
+            messages: vec![],
+            tools: vec![],
+            temperature: Some(0.7),
+            top_p: None,
+            max_tokens: None,
+            stop: vec![],
+        };
+        let body = provider.build_converse_body(&request, model_id);
+        let config = &body["inferenceConfig"];
+        assert!(config.get("temperature").is_some(),
+            "temperature should be present for non-Opus-4.7 models");
     }
 }

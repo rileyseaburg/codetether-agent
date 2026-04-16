@@ -38,9 +38,26 @@ pub(super) fn should_delegate_to_gh_cli(query: &GitCredentialQuery, credentials:
 /// emit_credentials_via_gh_cli(&query, &creds)?;
 /// ```
 pub(super) fn emit_credentials_via_gh_cli(query: &GitCredentialQuery, credentials: &GitCredentialMaterial) -> Result<()> {
-    let mut child = Command::new("gh").args(["auth", "git-credential", "get"]).env("GH_TOKEN", &credentials.password).stdin(Stdio::piped()).stdout(Stdio::inherit()).stderr(Stdio::piped()).spawn().context("Failed to spawn gh auth git-credential")?;
-    if let Some(mut stdin) = child.stdin.take() { use std::io::Write; stdin.write_all(render_gh_credential_query(query, credentials).as_bytes()).context("Failed to write Git credential request to gh")?; }
-    let output = child.wait_with_output().context("Failed to read gh auth git-credential output")?;
+    let mut child = Command::new("gh")
+        .args(["auth", "git-credential", "get"])
+        .env("GH_TOKEN", &credentials.password)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn gh auth git-credential")?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        use std::io::Write;
+        let payload = render_gh_credential_query(query, credentials);
+        stdin
+            .write_all(payload.as_bytes())
+            .context("Failed to write Git credential request to gh")?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .context("Failed to read gh auth git-credential output")?;
     if output.status.success() { return Ok(()); }
     Err(anyhow!("gh auth git-credential failed: {}", String::from_utf8_lossy(&output.stderr).trim()))
 }

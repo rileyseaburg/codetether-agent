@@ -184,11 +184,11 @@ impl WorktreeManager {
 
     /// Clean up a specific worktree
     pub async fn cleanup(&self, name: &str) -> Result<()> {
-        // Clone the info and drop the lock before any IO
+        // Clone info but keep tracking until IO succeeds
         let info = {
-            let mut worktrees = self.worktrees.lock().await;
-            match worktrees.iter().position(|w| w.name == name) {
-                Some(pos) => worktrees.remove(pos),
+            let worktrees = self.worktrees.lock().await;
+            match worktrees.iter().find(|w| w.name == name) {
+                Some(w) => w.clone(),
                 None => return Ok(()),
             }
         };
@@ -225,7 +225,7 @@ impl WorktreeManager {
         }
 
         // Delete the branch so it doesn't leak
-        Self::delete_branch(&self.repo_path, &branch).await;
+        Self::delete_branch(&self.repo_path, &branch, None).await;
         Ok(())
     }
 
@@ -625,10 +625,10 @@ Recovery steps:\n\
 
     /// Clean up all worktrees
     pub async fn cleanup_all(&self) -> Result<usize> {
-        // Drain the list and drop the lock before any IO
+        // Clone list so tracking persists until IO succeeds
         let infos: Vec<WorktreeInfo> = {
-            let mut worktrees = self.worktrees.lock().await;
-            std::mem::take(&mut *worktrees)
+            let worktrees = self.worktrees.lock().await;
+            worktrees.clone()
         };
         let count = infos.len();
 
@@ -649,7 +649,7 @@ Recovery steps:\n\
 
         // Delete all branches so they don't leak
         for info in &infos {
-            Self::delete_branch(&self.repo_path, &info.branch).await;
+            Self::delete_branch(&self.repo_path, &info.branch, None).await;
         }
 
         tracing::info!(count, "Cleaned up all worktrees");
@@ -662,8 +662,12 @@ Recovery steps:\n\
         Ok(())
     }
 
-    /// Delete a local branch (best-effort, logs but doesn't fail).
-    async fn delete_branch(repo_path: &Path, branch: &str) {
+    /// Delete a local branch and optionally its remote tracking ref (best-effort).
+    ///
+    /// Logs but does not propagate failures. Remote deletion is skipped when
+    /// `remote` is `None` or when the push fails.
+    async fn delete_branch(repo_path: &Path, branch: &str, remote: Option<&str>) {
+        // Local branch deletion
         let out = tokio::process::Command::new("git")
             .args(["branch", "-D", branch])
             .current_dir(repo_path)
@@ -679,6 +683,36 @@ Recovery steps:\n\
             }
             Err(e) => {
                 tracing::debug!(branch, error = %e, "Branch delete failed");
+            }
+        }
+        // Remote branch deletion (best-effort)
+        if let Some(remote_name) = remote {
+            let out = tokio::process::Command::new("git")
+                .args(["push", remote_name, "--delete", branch])
+                .current_dir(repo_path)
+                .output()
+                .await;
+            match out {
+                Ok(o) if o.status.success() => {
+                    tracing::info!(branch, remote = remote_name, "Deleted remote worktree branch");
+                }
+                Ok(o) => {
+                    let err = String::from_utf8_lossy(&o.stderr);
+                    tracing::debug!(
+                        branch,
+                        remote = remote_name,
+                        error = %err,
+                        "Remote branch delete skipped"
+                    );
+                }
+                Err(e) => {
+                    tracing::debug!(
+                        branch,
+                        remote = remote_name,
+                        error = %e,
+                        "Remote branch delete failed"
+                    );
+                }
             }
         }
     }

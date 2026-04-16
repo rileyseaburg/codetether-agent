@@ -10,10 +10,9 @@
 //! ```
 
 use anyhow::{anyhow, Result};
-use reqwest::Client;
 
 use super::gh_cli::{emit_credentials_via_gh_cli, should_delegate_to_gh_cli};
-use super::request::request_git_credentials;
+use super::request_git_credentials;
 use super::stdin_query::read_git_credential_query_from_stdin;
 
 /// Runs the Git credential helper command for this worker binary.
@@ -49,9 +48,7 @@ pub async fn run_git_credential_helper(
         .worker_id
         .clone()
         .or_else(|| std::env::var("CODETETHER_WORKER_ID").ok());
-    let client = Client::new();
     let creds = request_git_credentials(
-        &client,
         &server,
         &token,
         worker_id.as_deref(),

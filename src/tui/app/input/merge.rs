@@ -1,31 +1,23 @@
-//! Worktree merge fallback helpers.
+//! Worktree merge recovery helpers.
 //!
-//! Attempts to push a PR, and falls back to a local merge
+//! Attempts to push a PR, and recovers with a local merge
 //! when the push fails.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! push_or_merge(&mgr, &wt).await;
-//! ```
 
 use crate::worktree::{WorktreeInfo, WorktreeManager};
 
 use super::pr::push_and_create_pr;
 
-/// Try pushing a PR; fall back to local merge on failure.
+/// Try pushing a PR; recover with local merge on failure.
 ///
-/// # Examples
-///
-/// ```ignore
-/// push_or_merge(&mgr, &wt).await;
-/// ```
+/// Passes the original `prompt` through so the PR title
+/// and body reflect the user's intent.
 pub(super) async fn push_or_merge(
     mgr: &WorktreeManager,
     wt: &WorktreeInfo,
     base_branch: Option<&str>,
+    prompt: Option<&str>,
 ) {
-    match push_and_create_pr(wt, base_branch).await {
+    match push_and_create_pr(wt, base_branch, prompt).await {
         Ok(pr_url) => {
             tracing::info!(
                 worktree = %wt.name, branch = %wt.branch,
@@ -33,20 +25,20 @@ pub(super) async fn push_or_merge(
             );
         }
         Err(e) => {
-            tracing::warn!(error = %e, "Failed to push/create PR, falling back to local merge");
-            fallback_merge(mgr, wt).await;
+            tracing::warn!(error = %e, "PR creation failed, attempting local merge");
+            recover_with_local_merge(mgr, wt).await;
         }
     }
 }
 
-/// Attempt a local git merge as a fallback.
-async fn fallback_merge(mgr: &WorktreeManager, wt: &WorktreeInfo) {
+/// Attempt a local git merge as a recovery path.
+async fn recover_with_local_merge(mgr: &WorktreeManager, wt: &WorktreeInfo) {
     match mgr.merge(&wt.name).await {
         Ok(mr) if mr.success => {
             tracing::info!(
                 worktree = %wt.name,
                 files_changed = mr.files_changed,
-                "Fallback: auto-merged TUI worktree locally"
+                "Recovered: auto-merged TUI worktree locally"
             );
         }
         Ok(mr) => {

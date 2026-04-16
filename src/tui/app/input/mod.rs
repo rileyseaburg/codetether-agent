@@ -1,15 +1,7 @@
 //! Text input, Enter, backspace and paste handlers for TUI views.
 //!
 //! Each handler inspects the active [`ViewMode`] and delegates
-//! to the appropriate subsystem — chat submission, session
-//! switching, bus filtering, model picker, file picker, etc.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! handle_enter(&mut app, cwd, &mut session, &reg,
-//!     &bridge, &tx, &rtx).await;
-//! ```
+//! to the appropriate subsystem.
 
 mod backspace;
 mod base_branch;
@@ -17,17 +9,26 @@ mod bus;
 mod char_input;
 mod chat_helpers;
 mod chat_spawn;
+mod chat_spawn_task;
+mod chat_steer_queue;
 mod chat_submit;
+mod chat_submit_dispatch;
 mod enter;
 pub(crate) mod image;
 mod merge;
 mod paste;
 mod pr;
+mod pr_body;
 mod pr_command;
+mod pr_description;
 mod pr_helpers;
+mod pr_title;
 mod sessions;
-#[cfg(test)]
-mod tests;
+mod tests_enter;
+mod tests_paste;
+mod tests_pr;
+mod tests_steering;
+mod tests_submit;
 mod worktree;
 mod worktree_result;
 

@@ -56,6 +56,7 @@ use self::helper::error::{
 use self::helper::markup::normalize_textual_tool_calls;
 use self::helper::provider::{
     prefers_temperature_one, resolve_provider_for_session_request,
+    temperature_is_deprecated,
     should_retry_missing_native_tool_call,
 };
 use self::helper::router::{build_proactive_lsp_context_message, choose_router_target};
@@ -604,8 +605,12 @@ impl Session {
         // Some models behave best with temperature=1.0.
         // - Kimi K2.x requires temperature=1.0
         // - GLM (Z.AI) defaults to temperature 1.0 for coding workflows
+        // Some models have deprecated temperature entirely:
+        // - Claude Opus 4.7 returns 400 if temperature is sent
         // Use contains() to match both short aliases and provider-qualified IDs.
-        let temperature = if prefers_temperature_one(&model) {
+        let temperature = if temperature_is_deprecated(&model) {
+            None
+        } else if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)
@@ -701,8 +706,6 @@ impl Session {
             let mut attempt = 0;
             let mut upstream_retry_count: u8 = 0;
             const MAX_UPSTREAM_RETRIES: u8 = 3;
-            let mut active_provider = Arc::clone(&provider);
-            let mut active_model = model.clone();
             let response = loop {
                 attempt += 1;
 
@@ -722,14 +725,14 @@ impl Session {
                 let request = CompletionRequest {
                     messages,
                     tools: advertised_tool_definitions.clone(),
-                    model: active_model.clone(),
+                    model: model.clone(),
                     temperature,
                     top_p: None,
                     max_tokens: Some(session_completion_max_tokens()),
                     stop: Vec::new(),
                 };
 
-                match active_provider.complete(request).await {
+                match provider.complete(request).await {
                     Ok(r) => break r,
                     Err(e) => {
                         if attempt == 1 && is_prompt_too_long_error(&e) {
@@ -764,12 +767,8 @@ impl Session {
                                     to_model = %retry_model,
                                     "Failing over to alternate provider/model"
                                 );
-                                if let Some(new_provider) = registry.get(&retry_provider) {
-                                    active_provider = new_provider;
-                                    active_model = retry_model.clone();
-                                    self.metadata.model =
-                                        Some(format!("{retry_provider}/{retry_model}"));
-                                }
+                                self.metadata.model =
+                                    Some(format!("{retry_provider}/{retry_model}"));
                                 attempt = 0;
                             }
                             continue;
@@ -1624,7 +1623,10 @@ impl Session {
             .filter(|tool| !is_interactive_tool(&tool.name))
             .collect();
 
-        let temperature = if prefers_temperature_one(&model) {
+        // Some models have deprecated temperature entirely (e.g. Claude Opus 4.7).
+        let temperature = if temperature_is_deprecated(&model) {
+            None
+        } else if prefers_temperature_one(&model) {
             Some(1.0)
         } else {
             Some(0.7)

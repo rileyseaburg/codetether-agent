@@ -265,7 +265,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Ctrl+C / Ctrl+Q", "Quit"));
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));
-    lines.push(key_row("Ctrl+S", "Start a /steer command in chat"));
+    lines.push(key_row("Ctrl+W", "Start a /steer command in chat"));
     lines.push(key_row("Ctrl+Y", "Copy latest assistant reply"));
     lines.push(key_row("Ctrl+V", "Paste image from clipboard"));
     lines.push(key_row("Enter", "Send message or run slash command"));

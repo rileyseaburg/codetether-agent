@@ -55,7 +55,7 @@ pub(super) fn handle_ctrl_key(
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
         }
-        KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {
+        KeyCode::Char('w') if ctrl && app.state.view_mode == ViewMode::Chat => {
             if app.state.input.trim().is_empty() {
                 app.state.input = "/steer ".to_string();
             } else if !app.state.input.starts_with("/steer") {

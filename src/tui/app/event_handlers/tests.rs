@@ -139,7 +139,7 @@ mod tests {
         let (result_tx, _) = tokio::sync::mpsc::channel(8);
 
         let key = KeyEvent {
-            code: KeyCode::Char('s'),
+            code: KeyCode::Char('w'),
             modifiers: KeyModifiers::CONTROL,
             kind: KeyEventKind::Press,
             state: crossterm::event::KeyEventState::NONE,

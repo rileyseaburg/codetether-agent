@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use super::{Tool, ToolResult};
 use crate::cli::go_ralph::{execute_go_ralph, format_go_ralph_result};
+use crate::util;
 use crate::okr::{KeyResult, Okr, OkrRepository, OkrRun};
 
 // ─── Active execution tracking ──────────────────────────────────────────

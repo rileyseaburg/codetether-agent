@@ -79,7 +79,6 @@ async fn github_client(context: &RepoContext) -> Result<Client> {
     let worker_id = std::env::var("CODETETHER_WORKER_ID").ok();
     let path = format!("{}/{}.git", context.owner, context.repo);
     let credentials = request_git_credentials(
-        &Client::new(),
         &server,
         &token,
         worker_id.as_deref(),

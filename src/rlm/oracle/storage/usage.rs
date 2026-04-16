@@ -35,10 +35,10 @@ pub async fn spool_usage_bytes(dir: &Path) -> Result<u64> {
     let mut entries = tokio::fs::read_dir(dir).await?;
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) == Some("jsonl")
-            && let Ok(meta) = entry.metadata().await
-        {
-            total = total.saturating_add(meta.len());
+        if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+            if let Ok(meta) = entry.metadata().await {
+                total = total.saturating_add(meta.len());
+            }
         }
     }
     Ok(total)
