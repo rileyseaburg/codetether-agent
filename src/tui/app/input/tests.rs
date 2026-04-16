@@ -133,7 +133,7 @@ mod tests {
             active: true,
         };
 
-        let args = create_pr_args(&wt, Some("feature/current"));
+        let args = create_pr_args(&wt, Some("feature/current"), None, "");
 
         assert_eq!(args[0], "pr");
         assert_eq!(args[1], "create");

@@ -3,16 +3,7 @@
 //! Creates an isolated git worktree (when enabled), clones
 //! the session, and spawns a Tokio task that runs the prompt
 //! against the provider.  On completion it pushes a PR or
-//! falls back to a local merge, then cleans up.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! spawn_provider_task(
-//!     &mut app, cwd, &mut session, &registry,
-//!     "prompt", images, &tx, &rtx,
-//! ).await;
-//! ```
+//! recovers with a local merge, then cleans up.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -31,15 +22,6 @@ use crate::tui::app::state::App;
 /// Sets up the worktree (if `use_worktree` is enabled),
 /// clones the session, and spawns a background task that
 /// calls the provider and handles the result.
-///
-/// # Examples
-///
-/// ```ignore
-/// spawn_provider_task(
-///     &mut app, cwd, &mut session, &registry,
-///     "hello", vec![], &event_tx, &result_tx,
-/// ).await;
-/// ```
 pub(super) async fn spawn_provider_task(
     app: &mut App,
     cwd: &Path,
@@ -65,6 +47,7 @@ pub(super) async fn spawn_provider_task(
     };
 
     let original_dir = session.metadata.directory.clone();
+    let prompt_for_pr = prompt.clone();
 
     tokio::spawn(async move {
         let result = std::panic::AssertUnwindSafe(run_prompt(
@@ -79,7 +62,7 @@ pub(super) async fn spawn_provider_task(
         .await;
         match result {
             Ok(ref r) => {
-                handle_worktree_result(r, worktree_state).await;
+                handle_worktree_result(r, worktree_state, Some(&prompt_for_pr)).await;
                 let _ = result_tx.send(result.unwrap()).await;
             }
             Err(panic_err) => {

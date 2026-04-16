@@ -24,6 +24,7 @@ mod merge;
 mod paste;
 mod pr;
 mod pr_command;
+mod pr_description;
 mod pr_helpers;
 mod sessions;
 #[cfg(test)]
