@@ -15,7 +15,7 @@ use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::swarm_view::SwarmEvent;
-use crate::util;
+
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use reqwest::Client;
@@ -2008,13 +2008,19 @@ async fn enqueue_post_clone_task(
     let title = task
         .get("title")
         .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing title"))?;
+        .filter(|value| !value.trim().is_empty());
+    let Some(title) = title else {
+        tracing::warn!("post_clone_task is missing title, skipping task creation");
+        return Ok(());
+    };
     let prompt = task
         .get("prompt")
         .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing prompt"))?;
+        .filter(|value| !value.trim().is_empty());
+    let Some(prompt) = prompt else {
+        tracing::warn!("post_clone_task is missing prompt, skipping task creation");
+        return Ok(());
+    };
     let agent_type = task
         .get("agent_type")
         .and_then(|value| value.as_str())

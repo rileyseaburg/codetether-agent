@@ -17,10 +17,10 @@ use crate::tool::ToolRegistry;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
@@ -34,11 +34,11 @@ pub mod helper;
 mod listing;
 mod listing_all;
 pub use self::codex_import::{
-    import_codex_session_by_id, import_codex_session_path, import_codex_sessions_for_directory,
+    import_codex_session_by_id, import_codex_sessions_for_directory,
     load_or_import_session,
 };
-pub use self::listing::{SessionSummary, list_sessions, list_sessions_for_directory};
-pub use self::listing_all::{list_all_sessions_for_directory, list_codex_sessions_for_directory};
+pub use self::listing::{SessionSummary, list_sessions};
+pub use self::listing_all::list_all_sessions_for_directory;
 
 use self::helper::bootstrap::{
     inject_tool_prompt, list_tools_bootstrap_definition, list_tools_bootstrap_output,
@@ -701,6 +701,8 @@ impl Session {
             let mut attempt = 0;
             let mut upstream_retry_count: u8 = 0;
             const MAX_UPSTREAM_RETRIES: u8 = 3;
+            let mut active_provider = Arc::clone(&provider);
+            let mut active_model = model.clone();
             let response = loop {
                 attempt += 1;
 
@@ -720,14 +722,14 @@ impl Session {
                 let request = CompletionRequest {
                     messages,
                     tools: advertised_tool_definitions.clone(),
-                    model: model.clone(),
+                    model: active_model.clone(),
                     temperature,
                     top_p: None,
                     max_tokens: Some(session_completion_max_tokens()),
                     stop: Vec::new(),
                 };
 
-                match provider.complete(request).await {
+                match active_provider.complete(request).await {
                     Ok(r) => break r,
                     Err(e) => {
                         if attempt == 1 && is_prompt_too_long_error(&e) {
@@ -762,8 +764,12 @@ impl Session {
                                     to_model = %retry_model,
                                     "Failing over to alternate provider/model"
                                 );
-                                self.metadata.model =
-                                    Some(format!("{retry_provider}/{retry_model}"));
+                                if let Some(new_provider) = registry.get(&retry_provider) {
+                                    active_provider = new_provider;
+                                    active_model = retry_model.clone();
+                                    self.metadata.model =
+                                        Some(format!("{retry_provider}/{retry_model}"));
+                                }
                                 attempt = 0;
                             }
                             continue;

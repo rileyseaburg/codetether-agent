@@ -19,7 +19,6 @@ use std::time::{Duration, Instant};
 use tokenizers::Tokenizer;
 
 use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
-use crate::util;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThinkerBackend {
