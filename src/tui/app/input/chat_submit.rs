@@ -14,12 +14,16 @@ use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 use super::chat_helpers::push_user_messages;
+use super::chat_steer_queue::queue_steering_while_processing;
 use super::chat_submit_dispatch::dispatch_prompt;
 
 /// Submit the chat input to the provider.
 ///
 /// Handles slash commands, pushes user/image messages,
-/// then delegates prompt preparation and dispatch.
+/// then delegates prompt preparation and dispatch. While a
+/// previous request is still in flight, plain-text input is
+/// queued as steering instead of being rejected, so users
+/// can steer mid-stream.
 pub(super) async fn handle_enter_chat(
     app: &mut App,
     cwd: &Path,
@@ -29,11 +33,6 @@ pub(super) async fn handle_enter_chat(
     event_tx: &mpsc::Sender<SessionEvent>,
     result_tx: &mpsc::Sender<anyhow::Result<Session>>,
 ) {
-    if app.state.processing {
-        app.state.status = "Still processing previous request…".to_string();
-        return;
-    }
-
     let prompt = app.state.input.trim().to_string();
     if !prompt.is_empty() {
         app.state.push_history(prompt.clone());
@@ -41,6 +40,10 @@ pub(super) async fn handle_enter_chat(
     if prompt.starts_with('/') {
         handle_slash_command(app, cwd, session, registry.as_ref(), &prompt).await;
         app.state.clear_input();
+        return;
+    }
+    if app.state.processing {
+        queue_steering_while_processing(app, &prompt);
         return;
     }
 
