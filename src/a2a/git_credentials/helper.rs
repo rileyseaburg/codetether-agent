@@ -49,7 +49,9 @@ pub async fn run_git_credential_helper(
         .worker_id
         .clone()
         .or_else(|| std::env::var("CODETETHER_WORKER_ID").ok());
+    let client = Client::new();
     let creds = request_git_credentials(
+        &client,
         &server,
         &token,
         worker_id.as_deref(),
