@@ -42,6 +42,16 @@ pub mod local_cuda {
     }
 
     /// Stub provider type when CUDA support is not compiled in.
+    ///
+    /// All methods return errors; use `cfg(feature = "candle-cuda")` for the
+    /// real implementation.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use codetether_agent::provider::local_cuda::LocalCudaProvider;
+    /// assert!(!LocalCudaProvider::is_cuda_available());
+    /// ```
     pub struct LocalCudaProvider;
 
     impl LocalCudaProvider {

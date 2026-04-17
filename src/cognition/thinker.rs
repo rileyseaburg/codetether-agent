@@ -1,3 +1,10 @@
+//! Local "thinking" models for edge inference.
+//!
+//! Supports Candle (Qwen/Llama), OpenAI-compatible HTTP, and Bedrock as
+//! backends for generating fast local reasoning completions.
+//!
+//! Start with [`ThinkerClient::new`] to create a client.
+
 use anyhow::{Context, Result, anyhow};
 use candle_core::quantized::gguf_file;
 use candle_core::{DType, Device, Tensor};
@@ -20,6 +27,14 @@ use tokenizers::Tokenizer;
 
 use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
 
+/// Available backends for the local thinker.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::cognition::thinker::ThinkerBackend;
+/// assert_eq!(ThinkerBackend::from_env("candle"), ThinkerBackend::Candle);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThinkerBackend {
     OpenAICompat,
@@ -28,6 +43,14 @@ pub enum ThinkerBackend {
 }
 
 impl ThinkerBackend {
+    /// Parse a backend from an env-var string.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use codetether_agent::cognition::thinker::ThinkerBackend;
+    /// assert_eq!(ThinkerBackend::from_env("bedrock"), ThinkerBackend::Bedrock);
+    /// ```
     pub fn from_env(value: &str) -> Self {
         match value.trim().to_ascii_lowercase().as_str() {
             "candle" => Self::Candle,
@@ -38,6 +61,14 @@ impl ThinkerBackend {
     }
 }
 
+/// Device preference for Candle inference.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::cognition::thinker::CandleDevicePreference;
+/// assert_eq!(CandleDevicePreference::from_env("cpu"), CandleDevicePreference::Cpu);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandleDevicePreference {
     Auto,
@@ -46,6 +77,14 @@ pub enum CandleDevicePreference {
 }
 
 impl CandleDevicePreference {
+    /// Parse a device preference from an env-var string.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use codetether_agent::cognition::thinker::CandleDevicePreference;
+    /// assert_eq!(CandleDevicePreference::from_env("cuda"), CandleDevicePreference::Cuda);
+    /// ```
     pub fn from_env(value: &str) -> Self {
         match value.trim().to_ascii_lowercase().as_str() {
             "cpu" => Self::Cpu,
@@ -55,6 +94,15 @@ impl CandleDevicePreference {
     }
 }
 
+/// Configuration for [`ThinkerClient`].
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::cognition::thinker::ThinkerConfig;
+/// let cfg = ThinkerConfig::default();
+/// assert!(!cfg.enabled);
+/// ```
 #[derive(Debug, Clone)]
 pub struct ThinkerConfig {
     pub enabled: bool,
@@ -104,6 +152,24 @@ impl Default for ThinkerConfig {
     }
 }
 
+/// Output from a thinker completion.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::cognition::thinker::ThinkerOutput;
+/// let out = ThinkerOutput {
+///     model: "qwen3.5-9b".into(),
+///     finish_reason: Some("stop".into()),
+///     text: "hello".into(),
+///     prompt_tokens: Some(5),
+///     completion_tokens: Some(1),
+///     total_tokens: Some(6),
+///     cache_read_tokens: None,
+///     cache_write_tokens: None,
+/// };
+/// assert_eq!(out.model, "qwen3.5-9b");
+/// ```
 #[derive(Debug, Clone)]
 pub struct ThinkerOutput {
     pub model: String,
@@ -118,6 +184,15 @@ pub struct ThinkerOutput {
     pub cache_write_tokens: Option<u32>,
 }
 
+/// Client for local thinker inference across multiple backends.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use codetether_agent::cognition::thinker::{ThinkerClient, ThinkerConfig};
+/// let cfg = ThinkerConfig::default();
+/// let client = ThinkerClient::new(cfg).unwrap();
+/// ```
 #[derive(Clone)]
 pub struct ThinkerClient {
     config: ThinkerConfig,
@@ -141,6 +216,14 @@ enum ThinkerClientBackend {
 }
 
 impl ThinkerClient {
+    /// Create a new thinker client from the given config.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use codetether_agent::cognition::thinker::{ThinkerClient, ThinkerConfig};
+    /// let client = ThinkerClient::new(ThinkerConfig::default()).unwrap();
+    /// ```
     pub fn new(config: ThinkerConfig) -> Result<Self> {
         let backend = match config.backend {
             ThinkerBackend::OpenAICompat => {
@@ -171,10 +254,32 @@ impl ThinkerClient {
         Ok(Self { config, backend })
     }
 
+    /// Return a reference to the active config.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # use codetether_agent::cognition::thinker::{ThinkerClient, ThinkerConfig};
+    /// let client = ThinkerClient::new(ThinkerConfig::default()).unwrap();
+    /// let cfg = client.config();
+    /// assert!(!cfg.enabled);
+    /// ```
     pub fn config(&self) -> &ThinkerConfig {
         &self.config
     }
 
+    /// Generate a thinking completion using the configured backend.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # use codetether_agent::cognition::thinker::{ThinkerClient, ThinkerConfig};
+    /// # async fn demo() {
+    /// let client = ThinkerClient::new(ThinkerConfig::default()).unwrap();
+    /// let output = client.think("You are helpful.", "Explain Rust").await.unwrap();
+    /// assert!(!output.text.is_empty());
+    /// # }
+    /// ```
     pub async fn think(&self, system_prompt: &str, user_prompt: &str) -> Result<ThinkerOutput> {
         match &self.backend {
             ThinkerClientBackend::OpenAICompat { http } => {

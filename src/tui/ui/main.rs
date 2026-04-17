@@ -21,6 +21,18 @@ use crate::tui::symbol_search::render_symbol_search;
 use super::chat_view::render_chat_view;
 use super::sessions::render_sessions_view;
 
+/// Top-level entry point called by the TUI event loop on every frame.
+///
+/// Dispatches to the active [`ViewMode`] renderer and renders overlays.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # use codetether_agent::tui::ui::main::ui;
+/// # fn demo(f: &mut ratatui::Frame, app: &mut codetether_agent::tui::app::state::App, sess: &codetether_agent::session::Session) {
+/// ui(f, app, sess);
+/// # }
+/// ```
 pub fn ui(f: &mut Frame, app: &mut App, session: &crate::session::Session) {
     dispatch_view(f, app, session);
     render_overlays(f, app);
