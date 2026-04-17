@@ -15,6 +15,10 @@ pub async fn handle_session_event(
 ) {
     // Update watchdog timestamp on every session event
     app.state.main_last_event_at = Some(std::time::Instant::now());
+    // Auto-follow latest output on every event (matches legacy TUI behavior).
+    // Without this, scroll stays pinned to wherever the user last left it and
+    // new streaming text / tool activity is rendered off-screen.
+    app.state.scroll_to_bottom();
 
     match evt {
         SessionEvent::Thinking => {
@@ -28,6 +32,15 @@ pub async fn handle_session_event(
             handle_processing_started(app, worker_bridge).await;
             if app.state.processing_started_at.is_none() {
                 app.state.begin_request_timing();
+            }
+            // Flush any in-flight streaming text into a real assistant message
+            // before showing the tool call. Otherwise the streamed reply is
+            // discarded when `streaming_text` is cleared on Done/TextComplete.
+            if !app.state.streaming_text.is_empty() {
+                let text = std::mem::take(&mut app.state.streaming_text);
+                app.state
+                    .messages
+                    .push(ChatMessage::new(MessageType::Assistant, text));
             }
             app.state.reset_tool_preview_scroll();
             app.state.status = format!("Running tool: {name}");

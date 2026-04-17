@@ -19,7 +19,6 @@ use std::time::{Duration, Instant};
 use tokenizers::Tokenizer;
 
 use crate::provider::bedrock::{AwsCredentials, BedrockProvider};
-use crate::util;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThinkerBackend {
@@ -237,10 +236,12 @@ impl ThinkerClient {
         }
 
         let body_bytes = serde_json::to_vec(&body)?;
-        let encoded_model_id = model_id.replace(':', "%3A");
+        // Do NOT percent-encode `:` here — reqwest encodes URL paths natively,
+        // and pre-encoding to `%3A` triggers double-encoding to `%253A`,
+        // breaking SigV4.
         let url = format!(
             "https://bedrock-runtime.{}.amazonaws.com/model/{}/converse",
-            self.config.bedrock_region, encoded_model_id
+            self.config.bedrock_region, model_id
         );
 
         let response = provider

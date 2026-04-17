@@ -1,0 +1,91 @@
+//! Build a [`ProviderRegistry`](super::ProviderRegistry) from the app [`Config`].
+
+use super::anthropic;
+use super::bedrock;
+use super::google;
+use super::openai;
+use super::registry::ProviderRegistry;
+use crate::provider::traits::Provider;
+use anyhow::Result;
+use std::sync::Arc;
+
+impl ProviderRegistry {
+    /// Initialize with default providers from the TOML config file.
+    ///
+    /// Reads `[providers.<name>]` sections and common `*_API_KEY` env vars.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use codetether_agent::provider::ProviderRegistry;
+    /// # async fn demo(cfg: &codetether_agent::config::Config) {
+    /// let registry = ProviderRegistry::from_config(cfg).await.unwrap();
+    /// # }
+    /// ```
+    pub async fn from_config(config: &crate::config::Config) -> Result<Self> {
+        let mut registry = Self::new();
+
+        // ---- OpenAI ----
+        if let Some(pc) = config.providers.get("openai") {
+            if let Some(key) = &pc.api_key {
+                registry.register(Arc::new(openai::OpenAIProvider::new(key.clone())?));
+            }
+        } else if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+            registry.register(Arc::new(openai::OpenAIProvider::new(key)?));
+        }
+
+        // ---- Anthropic ----
+        if let Some(pc) = config.providers.get("anthropic") {
+            if let Some(key) = &pc.api_key {
+                let p = if let Some(url) = pc.base_url.clone() {
+                    anthropic::AnthropicProvider::with_base_url(key.clone(), url, "anthropic")?
+                } else {
+                    anthropic::AnthropicProvider::new(key.clone())?
+                };
+                registry.register(Arc::new(p));
+            }
+        } else if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+            registry.register(Arc::new(anthropic::AnthropicProvider::new(key)?));
+        }
+
+        // ---- Google ----
+        if let Some(pc) = config.providers.get("google") {
+            if let Some(key) = &pc.api_key {
+                registry.register(Arc::new(google::GoogleProvider::new(key.clone())?));
+            }
+        } else if let Ok(key) = std::env::var("GOOGLE_API_KEY") {
+            registry.register(Arc::new(google::GoogleProvider::new(key)?));
+        }
+
+        // ---- Novita (OpenAI-compatible) ----
+        if let Some(pc) = config.providers.get("novita") && let Some(key) = &pc.api_key {
+            let url = pc.base_url.clone()
+                .unwrap_or_else(|| "https://api.novita.ai/openai/v1".into());
+            registry.register(Arc::new(
+                openai::OpenAIProvider::with_base_url(key.clone(), url, "novita")?,
+            ));
+        }
+
+        // ---- Bedrock (auto-detect from env / ~/.aws) ----
+        if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+            let region = bedrock::AwsCredentials::detect_region()
+                .unwrap_or_else(|| bedrock::DEFAULT_REGION.to_string());
+            match bedrock::BedrockProvider::with_credentials(creds, region) {
+                Ok(p) => registry.register(Arc::new(p)),
+                Err(e) => tracing::warn!("Failed to init bedrock from AWS credentials: {}", e),
+            }
+        }
+
+        // ---- Env-var fallback ----
+        let disable = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if !disable {
+            super::init_env::register_env_fallbacks(&mut registry);
+        } else {
+            tracing::info!("Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)");
+        }
+
+        Ok(registry)
+    }
+}
