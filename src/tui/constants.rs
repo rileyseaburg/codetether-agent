@@ -48,6 +48,7 @@ pub const CHAT_SYNC_MAX_INTERVAL_SECS: u64 = 300;
 pub const CHAT_SYNC_MAX_BATCH_BYTES: usize = 512 * 1024;
 pub const CHAT_SYNC_DEFAULT_BUCKET: &str = "codetether-chat-archive";
 pub const CHAT_SYNC_DEFAULT_PREFIX: &str = "sessions";
+pub const MAX_STREAMING_TEXT_BYTES: usize = 256 * 1024; // 256 KiB
 pub const AGENT_AVATARS: [&str; 12] = [
     "[o_o]", "[^_^]", "[>_<]", "[._.]", "[+_+]", "[~_~]", "[x_x]", "[0_0]", "[*_*]", "[=_=]",
     "[T_T]", "[u_u]",

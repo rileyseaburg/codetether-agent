@@ -2,14 +2,6 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
 };
-use std::sync::LazyLock;
-use syntect::{
-    easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet, util::LinesWithEndings,
-};
-
-/// Global syntax set and theme set for syntax highlighting
-static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
-static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
 
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
@@ -134,7 +126,7 @@ impl MessageFormatter {
                 .add_modifier(Modifier::BOLD),
         )));
 
-        // Use syntect for syntax highlighting
+        // Pass through code lines as-is
         let highlighted_lines = self.highlight_code_block_syntect(lines, language);
 
         for line in highlighted_lines {
@@ -158,63 +150,8 @@ impl MessageFormatter {
         result
     }
 
-    /// Advanced syntax highlighting using syntect
-    fn highlight_code_block_syntect(&self, lines: &[String], language: &str) -> Vec<String> {
-        let syntax_set = &*SYNTAX_SET;
-        let theme_set = &*THEME_SET;
-
-        // Use a dark theme suitable for terminal
-        let theme = &theme_set.themes["base16-ocean.dark"];
-
-        // Find the appropriate syntax
-        let syntax = if language.is_empty() {
-            syntax_set.find_syntax_plain_text()
-        } else {
-            syntax_set
-                .find_syntax_by_token(language)
-                .unwrap_or_else(|| syntax_set.find_syntax_plain_text())
-        };
-
-        let mut highlighter = HighlightLines::new(syntax, theme);
-
-        let mut highlighted_lines = Vec::new();
-        let code = lines.join("\n");
-
-        for line in LinesWithEndings::from(&code) {
-            let ranges = match highlighter.highlight_line(line, syntax_set) {
-                Ok(r) => r,
-                Err(_) => {
-                    // On error, just return plain text
-                    highlighted_lines.push(line.trim_end().to_string());
-                    continue;
-                }
-            };
-            let mut line_result = String::new();
-
-            for (style, text) in ranges {
-                let fg_color = style.foreground;
-                let _color = Color::Rgb(fg_color.r, fg_color.g, fg_color.b);
-
-                // Convert the styled text to a ratatui-compatible string
-                // Since we can't use actual terminal colors in ratatui spans easily,
-                // we'll use the closest ratatui colors
-                let _ratatui_color = self.map_syntect_color_to_ratatui(&fg_color);
-
-                // For now, we'll just return the text without ANSI codes
-                // since ratatui handles styling through its own Span system
-                line_result.push_str(text);
-            }
-
-            highlighted_lines.push(line_result.trim_end().to_string());
-        }
-
-        highlighted_lines
-    }
-
-    /// Map syntect colors to ratatui colors (simplified for now)
-    fn map_syntect_color_to_ratatui(&self, color: &syntect::highlighting::Color) -> Color {
-        // Simple mapping - we'll use the closest ratatui color
-        Color::Rgb(color.r, color.g, color.b)
+    fn highlight_code_block_syntect(&self, lines: &[String], _language: &str) -> Vec<String> {
+        lines.iter().map(|l| l.trim_end().to_string()).collect()
     }
 
     /// Format inline text with basic markdown-like formatting

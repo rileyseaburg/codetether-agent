@@ -47,5 +47,5 @@ pub fn clamp_scroll(app: &mut App, messages_rect: Rect, lines: &[Line<'_>]) -> u
     } else {
         app.state.chat_scroll.min(max_scroll)
     };
-    scroll as u16
+    scroll.min(u16::MAX as usize) as u16
 }

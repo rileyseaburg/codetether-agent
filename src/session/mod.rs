@@ -312,7 +312,17 @@ impl Session {
             workspace.map(|w| w.canonicalize().unwrap_or_else(|_| w.to_path_buf()));
 
         for entry in &entries {
-            let content: String = fs::read_to_string(entry.path()).await?;
+            let content: String = match fs::read_to_string(entry.path()).await {
+                Ok(c) => c,
+                Err(err) => {
+                    tracing::warn!(
+                        path = %entry.path().display(),
+                        error = %err,
+                        "skipping unreadable session file",
+                    );
+                    continue;
+                }
+            };
             if let Ok(session) = serde_json::from_str::<Session>(&content) {
                 // If workspace scoping requested, filter by directory
                 if let Some(ref ws) = canonical_workspace {

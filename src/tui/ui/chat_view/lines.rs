@@ -56,5 +56,5 @@ pub fn build_chat_lines(
     }
     push_streaming_preview(&mut lines, &app.state, separator_width, formatter);
     app.state.store_message_lines(lines, max_width);
-    app.state.take_cached_message_lines()
+    app.state.cached_message_lines.clone()
 }

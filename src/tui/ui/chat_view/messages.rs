@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
     style::Style,
     text::Line,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
 };
 
 use crate::session::Session;
@@ -45,7 +45,6 @@ pub fn render_messages(
     let scroll = clamp_scroll(app, chunks.messages, &lines);
     let chat = Paragraph::new(lines)
         .block(block)
-        .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     f.render_widget(chat, chunks.messages);
 }

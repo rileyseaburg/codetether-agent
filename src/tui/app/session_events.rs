@@ -78,7 +78,18 @@ pub async fn handle_session_event(
         SessionEvent::TextChunk(chunk) => {
             app.state.scroll_to_bottom();
             app.state.note_text_token();
-            app.state.streaming_text = chunk;
+            app.state.streaming_text =
+                if chunk.len() > crate::tui::constants::MAX_STREAMING_TEXT_BYTES {
+                    let mut t = crate::util::truncate_bytes_safe(
+                        &chunk,
+                        crate::tui::constants::MAX_STREAMING_TEXT_BYTES,
+                    )
+                    .to_string();
+                    t.push_str(" …[truncated]");
+                    t
+                } else {
+                    chunk
+                };
         }
         SessionEvent::TextComplete(text) => {
             app.state.note_text_token();

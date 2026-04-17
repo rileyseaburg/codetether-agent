@@ -432,12 +432,12 @@ impl AppState {
             && self.cached_streaming_snapshot.as_deref() == Some(&self.streaming_text)
             && self.cached_processing == self.processing
     }
-    /// Combined cache-check method: returns cached lines (draining ownership) when
-    /// the cache is still valid for `max_width`, or `None` when a rebuild is
-    /// required.
+    /// Combined cache-check method: returns cached lines (cloned, preserving the cache)
+    /// when the cache is still valid for `max_width`, or `None` when a rebuild
+    /// is required.
     pub fn get_or_build_message_lines(&mut self, max_width: usize) -> Option<Vec<Line<'static>>> {
         if self.is_message_cache_valid(max_width) && !self.cached_message_lines.is_empty() {
-            Some(self.take_cached_message_lines())
+            Some(self.cached_message_lines.clone())
         } else {
             None
         }
