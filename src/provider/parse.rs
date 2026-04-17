@@ -56,7 +56,10 @@ mod tests {
 
     #[test]
     fn parses_provider_model() {
-        assert_eq!(parse_model_string("openai/gpt-4o"), (Some("openai"), "gpt-4o"));
+        assert_eq!(
+            parse_model_string("openai/gpt-4o"),
+            (Some("openai"), "gpt-4o")
+        );
     }
 
     #[test]

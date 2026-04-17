@@ -22,14 +22,20 @@ mod tests {
         let (result_tx, _) = mpsc::channel(8);
 
         handle_enter(
-            &mut app, cwd, &mut session,
-            &None, &None, &event_tx, &result_tx,
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
         )
         .await;
 
         assert_eq!(app.state.messages[0].content, "hello tui");
         assert_eq!(app.state.steering_count(), 0);
-        assert!(app.state.status.contains("No providers")
-            || app.state.status.contains("Submitting"));
+        assert!(
+            app.state.status.contains("No providers") || app.state.status.contains("Submitting")
+        );
     }
 }

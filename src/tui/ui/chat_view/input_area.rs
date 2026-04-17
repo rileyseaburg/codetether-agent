@@ -4,10 +4,10 @@
 //! Delegates cursor placement to [`place_cursor`].
 
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
-    Frame,
 };
 
 use super::cursor::place_cursor;

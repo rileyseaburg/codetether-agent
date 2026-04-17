@@ -56,7 +56,7 @@ use serde_json::{Value, json};
 ///     max_tokens: None,
 ///     stop: vec![],
 /// };
-/// let body = build_converse_body(&req, "us.anthropic.claude-opus-4-7-v1:0");
+/// let body = build_converse_body(&req, "us.anthropic.claude-opus-4-7");
 /// // Opus 4.7 omits temperature
 /// assert!(body["inferenceConfig"].get("temperature").is_none());
 /// ```

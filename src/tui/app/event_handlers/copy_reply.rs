@@ -8,7 +8,9 @@ use crate::tui::constants::SCROLL_BOTTOM;
 fn clipboard_text(msg: &ChatMessage) -> String {
     match &msg.message_type {
         MessageType::Thinking(text) => text.clone(),
-        MessageType::ToolCall { name, arguments, .. } => {
+        MessageType::ToolCall {
+            name, arguments, ..
+        } => {
             format!("Tool call: {name}\n{arguments}")
         }
         MessageType::ToolResult { name, output, .. } => {
@@ -21,10 +23,10 @@ fn clipboard_text(msg: &ChatMessage) -> String {
 }
 
 pub(super) fn handle_copy_reply(app: &mut App) {
-    let msg = app.state.messages.iter().rev().find(|m| {
-        matches!(m.message_type, MessageType::Assistant)
-            && !m.content.trim().is_empty()
-    });
+    let msg =
+        app.state.messages.iter().rev().find(|m| {
+            matches!(m.message_type, MessageType::Assistant) && !m.content.trim().is_empty()
+        });
     let Some(msg) = msg else {
         app.state.status = "Nothing to copy yet.".into();
         return;

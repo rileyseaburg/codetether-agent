@@ -20,6 +20,13 @@ pub(in crate::tool::browserctl) async fn console_eval(ctx: &Ctx<'_>) -> Result<O
         "script": require_string(&ctx.input.script, "script")?,
         "frame_selector": optional_string(&ctx.input.frame_selector),
     });
-    let (status, body) = post(ctx.client, ctx.base_url, "/console/eval", ctx.token, payload).await?;
+    let (status, body) = post(
+        ctx.client,
+        ctx.base_url,
+        "/console/eval",
+        ctx.token,
+        payload,
+    )
+    .await?;
     Ok(("console_eval", "/console/eval", status, body))
 }

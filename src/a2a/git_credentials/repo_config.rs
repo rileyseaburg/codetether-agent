@@ -30,9 +30,18 @@ pub fn configure_repo_git_auth(repo_path: &Path, workspace_id: &str) -> Result<P
     let helper_path_str = helper_path
         .to_str()
         .ok_or_else(|| anyhow!("Helper path is not valid UTF-8"))?;
-    run_git_command(repo_path, &["config", "--local", "credential.helper", helper_path_str])?;
-    run_git_command(repo_path, &["config", "--local", "credential.useHttpPath", "true"])?;
-    run_git_command(repo_path, &["config", "--local", "codetether.workspaceId", workspace_id])?;
+    run_git_command(
+        repo_path,
+        &["config", "--local", "credential.helper", helper_path_str],
+    )?;
+    run_git_command(
+        repo_path,
+        &["config", "--local", "credential.useHttpPath", "true"],
+    )?;
+    run_git_command(
+        repo_path,
+        &["config", "--local", "codetether.workspaceId", workspace_id],
+    )?;
     Ok(helper_path)
 }
 
@@ -45,8 +54,16 @@ pub fn configure_repo_git_auth(repo_path: &Path, workspace_id: &str) -> Result<P
 /// ```ignore
 /// configure_repo_git_github_app(repo_path, Some("1"), Some("2"))?;
 /// ```
-pub fn configure_repo_git_github_app(repo_path: &Path, installation_id: Option<&str>, app_id: Option<&str>) -> Result<()> {
-    set_local_config(repo_path, "codetether.githubInstallationId", installation_id)?;
+pub fn configure_repo_git_github_app(
+    repo_path: &Path,
+    installation_id: Option<&str>,
+    app_id: Option<&str>,
+) -> Result<()> {
+    set_local_config(
+        repo_path,
+        "codetether.githubInstallationId",
+        installation_id,
+    )?;
     set_local_config(repo_path, "codetether.githubAppId", app_id)?;
     Ok(())
 }

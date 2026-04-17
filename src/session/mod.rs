@@ -34,8 +34,7 @@ pub mod helper;
 mod listing;
 mod listing_all;
 pub use self::codex_import::{
-    import_codex_session_by_id, import_codex_sessions_for_directory,
-    load_or_import_session,
+    import_codex_session_by_id, import_codex_sessions_for_directory, load_or_import_session,
 };
 pub use self::listing::{SessionSummary, list_sessions};
 pub use self::listing_all::list_all_sessions_for_directory;
@@ -56,8 +55,7 @@ use self::helper::error::{
 use self::helper::markup::normalize_textual_tool_calls;
 use self::helper::provider::{
     prefers_temperature_one, resolve_provider_for_session_request,
-    temperature_is_deprecated,
-    should_retry_missing_native_tool_call,
+    should_retry_missing_native_tool_call, temperature_is_deprecated,
 };
 use self::helper::router::{build_proactive_lsp_context_message, choose_router_target};
 use self::helper::runtime::{
@@ -747,7 +745,9 @@ impl Session {
                                 .await?;
                             continue;
                         }
-                        if upstream_retry_count < MAX_UPSTREAM_RETRIES && is_retryable_upstream_error(&e) {
+                        if upstream_retry_count < MAX_UPSTREAM_RETRIES
+                            && is_retryable_upstream_error(&e)
+                        {
                             upstream_retry_count += 1;
                             // Brief backoff: 1s, 2s, 4s
                             let backoff_secs = 1u64 << (upstream_retry_count - 1).min(2);

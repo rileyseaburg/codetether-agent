@@ -5,9 +5,9 @@
 
 use super::worktree::WorktreeState;
 use super::worktree_result::{handle_worktree_result, run_prompt};
-use futures::FutureExt;
 use crate::provider::ProviderRegistry;
 use crate::session::{ImageAttachment, Session, SessionEvent};
+use futures::FutureExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -28,7 +28,15 @@ pub(super) async fn run_spawned_task(
     prompt_for_pr: String,
 ) {
     let result = std::panic::AssertUnwindSafe(async {
-        run_prompt(&mut session, &prompt, images, event_tx, registry, original_dir).await
+        run_prompt(
+            &mut session,
+            &prompt,
+            images,
+            event_tx,
+            registry,
+            original_dir,
+        )
+        .await
     })
     .catch_unwind()
     .await;

@@ -180,8 +180,8 @@ fn append_assistant(msg: &Message, api_messages: &mut Vec<Value>) {
                 arguments,
                 ..
             } => {
-                let input: Value = serde_json::from_str(arguments)
-                    .unwrap_or_else(|_| json!({"raw": arguments}));
+                let input: Value =
+                    serde_json::from_str(arguments).unwrap_or_else(|_| json!({"raw": arguments}));
                 content_parts.push(json!({
                     "toolUse": {
                         "toolUseId": id,

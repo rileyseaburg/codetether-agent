@@ -43,10 +43,16 @@ pub fn build_chat_lines(
         app.state.set_tool_preview_max_scroll(0);
     } else {
         let result = append_entries(
-            &mut lines, &entries, separator_width, panel_width,
-            app.state.tool_preview_scroll, formatter, palette,
+            &mut lines,
+            &entries,
+            separator_width,
+            panel_width,
+            app.state.tool_preview_scroll,
+            formatter,
+            palette,
         );
-        app.state.set_tool_preview_max_scroll(result.tool_preview_max_scroll);
+        app.state
+            .set_tool_preview_max_scroll(result.tool_preview_max_scroll);
     }
     push_streaming_preview(&mut lines, &app.state, separator_width, formatter);
     app.state.store_message_lines(lines, max_width);

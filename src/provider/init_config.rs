@@ -58,12 +58,18 @@ impl ProviderRegistry {
         }
 
         // ---- Novita (OpenAI-compatible) ----
-        if let Some(pc) = config.providers.get("novita") && let Some(key) = &pc.api_key {
-            let url = pc.base_url.clone()
+        if let Some(pc) = config.providers.get("novita")
+            && let Some(key) = &pc.api_key
+        {
+            let url = pc
+                .base_url
+                .clone()
                 .unwrap_or_else(|| "https://api.novita.ai/openai/v1".into());
-            registry.register(Arc::new(
-                openai::OpenAIProvider::with_base_url(key.clone(), url, "novita")?,
-            ));
+            registry.register(Arc::new(openai::OpenAIProvider::with_base_url(
+                key.clone(),
+                url,
+                "novita",
+            )?));
         }
 
         // ---- Bedrock (auto-detect from env / ~/.aws) ----
@@ -83,7 +89,9 @@ impl ProviderRegistry {
         if !disable {
             super::init_env::register_env_fallbacks(&mut registry);
         } else {
-            tracing::info!("Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)");
+            tracing::info!(
+                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+            );
         }
 
         Ok(registry)

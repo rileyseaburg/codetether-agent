@@ -45,9 +45,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &crate::session::Session
         ViewMode::Swarm => render_swarm_view(f, &mut app.state.swarm, f.area()),
         ViewMode::Ralph => render_ralph_view(f, &mut app.state.ralph, f.area()),
         ViewMode::Bus => render_bus_view(f, app),
-        ViewMode::Model => {
-            crate::tui::model_picker::render_model_picker(f, f.area(), app, session)
-        }
+        ViewMode::Model => crate::tui::model_picker::render_model_picker(f, f.area(), app, session),
         ViewMode::Settings => render_settings(f, f.area(), &app.state),
         ViewMode::Lsp => render_lsp(f, f.area(), &app.state.cwd_display, &app.state.status),
         ViewMode::Rlm => render_rlm(
@@ -60,9 +58,7 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &crate::session::Session
         ),
         ViewMode::Latency => render_latency(f, f.area(), app),
         ViewMode::Protocol => {}
-        ViewMode::FilePicker => {
-            crate::tui::app::file_picker::render_file_picker(f, f.area(), app)
-        }
+        ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
         ViewMode::Inspector => super::inspector::render_inspector_view(f, app),
     }
 }

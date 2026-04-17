@@ -25,6 +25,8 @@ pub fn pending_images_badge(app: &App) -> Option<Span<'static>> {
     }
     Some(Span::styled(
         format!(" 📷 {count} attached "),
-        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(Color::Magenta)
+            .add_modifier(Modifier::BOLD),
     ))
 }

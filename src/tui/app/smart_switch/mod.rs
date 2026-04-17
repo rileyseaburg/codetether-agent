@@ -18,9 +18,7 @@ pub use candidates::smart_switch_candidates;
 pub use error_detection::{
     is_retryable_provider_error, normalize_provider_alias, smart_switch_model_key,
 };
-pub use helpers::{
-    should_execute_smart_switch, smart_switch_max_retries,
-};
+pub use helpers::{should_execute_smart_switch, smart_switch_max_retries};
 pub use models::smart_switch_preferred_models;
 pub use retry::{PendingSmartSwitchRetry, maybe_schedule_smart_switch_retry};
 

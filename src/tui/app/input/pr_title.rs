@@ -16,9 +16,7 @@ pub(super) fn truncate_title(s: &str, max: usize) -> &str {
     if s.len() <= max {
         return s;
     }
-    let boundary = s[..=max]
-        .rfind(|c: char| c.is_whitespace())
-        .unwrap_or(max);
+    let boundary = s[..=max].rfind(|c: char| c.is_whitespace()).unwrap_or(max);
     &s[..boundary]
 }
 
@@ -26,10 +24,7 @@ pub(super) fn truncate_title(s: &str, max: usize) -> &str {
 ///
 /// Falls back to `"codetether: {name}"` when no prompt
 /// is available or the prompt is empty.
-pub(super) fn build_title(
-    prompt: Option<&str>,
-    fallback_name: &str,
-) -> String {
+pub(super) fn build_title(prompt: Option<&str>, fallback_name: &str) -> String {
     prompt
         .map(|p| truncate_title(p.trim(), 72).to_string())
         .filter(|t| !t.is_empty())

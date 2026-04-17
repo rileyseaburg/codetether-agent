@@ -1,6 +1,6 @@
 //! Bottom status-line renderer widget.
 
-use ratatui::{text::Line, widgets::Paragraph, Frame};
+use ratatui::{Frame, text::Line, widgets::Paragraph};
 
 use super::status::build_status_spans;
 use crate::tui::app::state::App;

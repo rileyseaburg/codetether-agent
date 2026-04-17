@@ -18,9 +18,7 @@
 //! assert_eq!(resp.usage.total_tokens, 4);
 //! ```
 
-use crate::provider::{
-    CompletionResponse, ContentPart, FinishReason, Message, Role, Usage,
-};
+use crate::provider::{CompletionResponse, ContentPart, FinishReason, Message, Role, Usage};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;

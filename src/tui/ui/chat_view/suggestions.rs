@@ -1,11 +1,11 @@
 //! Slash-command autocomplete suggestions list.
 
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState},
-    Frame,
 };
 
 use crate::tui::app::state::App;
@@ -25,7 +25,11 @@ pub fn render_suggestions(f: &mut Frame, app: &App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(idx, cmd)| {
-            let prefix = if idx == app.state.selected_slash_suggestion { "▶ " } else { "  " };
+            let prefix = if idx == app.state.selected_slash_suggestion {
+                "▶ "
+            } else {
+                "  "
+            };
             ListItem::new(Line::from(vec![
                 Span::raw(prefix),
                 Span::styled(cmd.clone(), Style::default().fg(Color::Cyan).bold()),

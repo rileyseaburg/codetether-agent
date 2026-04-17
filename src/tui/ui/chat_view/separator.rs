@@ -5,8 +5,8 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use crate::tui::ui::tool_panel::separator_pattern;
 use crate::tui::ui::tool_panel::RenderEntry;
+use crate::tui::ui::tool_panel::separator_pattern;
 
 /// Push a dim horizontal rule into `lines` based on the entry type.
 ///
@@ -20,11 +20,7 @@ use crate::tui::ui::tool_panel::RenderEntry;
 /// push_separator(&mut lines, &entry, 20);
 /// assert_eq!(lines.len(), 1);
 /// ```
-pub fn push_separator(
-    lines: &mut Vec<Line<'static>>,
-    entry: &RenderEntry<'_>,
-    width: usize,
-) {
+pub fn push_separator(lines: &mut Vec<Line<'static>>, entry: &RenderEntry<'_>, width: usize) {
     let sep = separator_pattern(entry);
     lines.push(Line::from(Span::styled(
         sep.repeat(width),

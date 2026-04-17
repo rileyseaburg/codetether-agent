@@ -235,9 +235,9 @@ impl Provider for BedrockProvider {
 
         let body = self.build_converse_body(&request, model_id);
 
-        // Do NOT percent-encode colons: reqwest handles `:` in URL paths
-        // natively. Pre-encoding to `%3A` triggers double-encoding to `%253A`,
-        // which breaks SigV4.
+        // Keep the runtime URL readable; the SigV4 signer canonicalizes path
+        // segments so model suffixes like `:0` are encoded exactly once when
+        // constructing the signature.
         let url = format!("{}/model/{}/converse", self.base_url(), model_id);
         tracing::debug!("Bedrock request URL: {}", url);
 

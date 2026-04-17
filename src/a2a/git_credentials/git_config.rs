@@ -9,7 +9,7 @@
 //! run_git_command(repo_path, &["config", "--local", "credential.useHttpPath", "true"])?;
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::path::Path;
 use std::process::Command;
 
@@ -46,11 +46,7 @@ pub(super) fn run_git_command(repo_path: &Path, args: &[&str]) -> Result<()> {
 /// ```ignore
 /// set_local_config(repo_path, "codetether.githubAppId", Some("123"))?;
 /// ```
-pub(super) fn set_local_config(
-    repo_path: &Path,
-    key: &str,
-    value: Option<&str>,
-) -> Result<()> {
+pub(super) fn set_local_config(repo_path: &Path, key: &str, value: Option<&str>) -> Result<()> {
     value
         .filter(|value| !value.trim().is_empty())
         .map_or(Ok(()), |value| {

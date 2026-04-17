@@ -24,6 +24,7 @@ use super::BedrockProvider;
 use super::auth::BedrockAuth;
 use anyhow::{Context, Result};
 use hmac::{Hmac, Mac};
+use reqwest::Url;
 use sha2::{Digest, Sha256};
 
 impl BedrockProvider {
@@ -122,24 +123,17 @@ impl BedrockProvider {
         let now = chrono::Utc::now();
         let datestamp = now.format("%Y%m%d").to_string();
         let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
-
-        let host_start = url.find("://").map(|i| i + 3).unwrap_or(0);
-        let after_host = url[host_start..]
-            .find('/')
-            .map(|i| host_start + i)
-            .unwrap_or(url.len());
-        let host = url[host_start..after_host].to_string();
-        let path_and_query = &url[after_host..];
-        let (canonical_uri, canonical_querystring) = match path_and_query.split_once('?') {
-            Some((p, q)) => (p.to_string(), q.to_string()),
-            None => (path_and_query.to_string(), String::new()),
-        };
+        let canonical_url = canonicalize_url(url)?;
+        let host = canonical_url.host;
+        let canonical_uri = canonical_url.canonical_uri;
+        let canonical_querystring = canonical_url.canonical_querystring;
 
         let payload_hash = sha256_hex(body);
 
         let mut headers_map: Vec<(&str, String)> = vec![
             ("content-type", "application/json".to_string()),
             ("host", host.clone()),
+            ("x-amz-content-sha256", payload_hash.clone()),
             ("x-amz-date", amz_date.clone()),
         ];
         if let Some(token) = &creds.session_token {
@@ -206,6 +200,65 @@ impl BedrockProvider {
             .await
             .context("Failed to send signed request to Bedrock")
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct CanonicalUrl {
+    pub(super) host: String,
+    pub(super) canonical_uri: String,
+    pub(super) canonical_querystring: String,
+}
+
+pub(super) fn canonicalize_url(url: &str) -> Result<CanonicalUrl> {
+    let parsed = Url::parse(url).with_context(|| format!("Invalid Bedrock URL: {url}"))?;
+    let host = canonical_host(&parsed).context("Bedrock URL missing host")?;
+    let canonical_uri = canonical_uri(&parsed)?;
+    let canonical_querystring = canonical_querystring(&parsed);
+    Ok(CanonicalUrl {
+        host,
+        canonical_uri,
+        canonical_querystring,
+    })
+}
+
+fn canonical_host(url: &Url) -> Option<String> {
+    let host = url.host_str()?.to_string();
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host,
+    })
+}
+
+fn canonical_uri(url: &Url) -> Result<String> {
+    let segments = url.path_segments().context("Bedrock URL missing path")?;
+    let encoded = segments
+        .map(canonical_path_segment)
+        .collect::<Result<Vec<_>>>()?;
+    Ok(format!("/{}", encoded.join("/")))
+}
+
+fn canonical_path_segment(segment: &str) -> Result<String> {
+    let decoded = urlencoding::decode(segment)
+        .with_context(|| format!("invalid percent-encoding in path segment `{segment}`"))?;
+    Ok(urlencoding::encode(&decoded).into_owned())
+}
+
+fn canonical_querystring(url: &Url) -> String {
+    let mut pairs = url
+        .query_pairs()
+        .map(|(key, value)| {
+            (
+                urlencoding::encode(&key).into_owned(),
+                urlencoding::encode(&value).into_owned(),
+            )
+        })
+        .collect::<Vec<_>>();
+    pairs.sort();
+    pairs
+        .into_iter()
+        .map(|(key, value)| format!("{key}={value}"))
+        .collect::<Vec<_>>()
+        .join("&")
 }
 
 /// HMAC-SHA256 helper returning raw bytes.

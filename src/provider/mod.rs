@@ -55,21 +55,45 @@ pub mod local_cuda {
     pub struct LocalCudaProvider;
 
     impl LocalCudaProvider {
-        pub fn new(_m: String) -> Result<Self> { Err(feature_error()) }
-        pub fn with_model(_m: String, _p: String) -> Result<Self> { Err(feature_error()) }
+        pub fn new(_m: String) -> Result<Self> {
+            Err(feature_error())
+        }
+        pub fn with_model(_m: String, _p: String) -> Result<Self> {
+            Err(feature_error())
+        }
         pub fn with_paths(
-            _m: String, _p: String, _t: Option<String>, _a: Option<String>,
-        ) -> Result<Self> { Err(feature_error()) }
-        pub fn is_cuda_available() -> bool { false }
-        pub fn device_info() -> String { "CUDA unavailable".into() }
+            _m: String,
+            _p: String,
+            _t: Option<String>,
+            _a: Option<String>,
+        ) -> Result<Self> {
+            Err(feature_error())
+        }
+        pub fn is_cuda_available() -> bool {
+            false
+        }
+        pub fn device_info() -> String {
+            "CUDA unavailable".into()
+        }
     }
 
     #[async_trait]
     impl Provider for LocalCudaProvider {
-        fn name(&self) -> &str { "local_cuda" }
-        async fn list_models(&self) -> Result<Vec<ModelInfo>> { Err(feature_error()) }
-        async fn complete(&self, _: CompletionRequest) -> Result<CompletionResponse> { Err(feature_error()) }
-        async fn complete_stream(&self, _: CompletionRequest) -> Result<BoxStream<'static, StreamChunk>> { Err(feature_error()) }
+        fn name(&self) -> &str {
+            "local_cuda"
+        }
+        async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+            Err(feature_error())
+        }
+        async fn complete(&self, _: CompletionRequest) -> Result<CompletionResponse> {
+            Err(feature_error())
+        }
+        async fn complete_stream(
+            &self,
+            _: CompletionRequest,
+        ) -> Result<BoxStream<'static, StreamChunk>> {
+            Err(feature_error())
+        }
     }
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -87,10 +111,14 @@ pub mod local_cuda {
     impl Default for LocalCudaConfig {
         fn default() -> Self {
             Self {
-                model_name: "qwen3.5-9b".into(), model_path: None,
-                context_window: Some(8192), max_new_tokens: Some(4096),
-                temperature: Some(0.7), top_p: Some(0.9),
-                repeat_penalty: Some(1.1), cuda_device: Some(0),
+                model_name: "qwen3.5-9b".into(),
+                model_path: None,
+                context_window: Some(8192),
+                max_new_tokens: Some(4096),
+                temperature: Some(0.7),
+                top_p: Some(0.9),
+                repeat_penalty: Some(1.1),
+                cuda_device: Some(0),
             }
         }
     }

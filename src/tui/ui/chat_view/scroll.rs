@@ -32,7 +32,11 @@ pub fn clamp_scroll(app: &mut App, messages_rect: Rect, lines: &[Line<'_>]) -> u
         .iter()
         .map(|l| {
             let w = l.width();
-            if w == 0 || content_width == 0 { 1 } else { w.div_ceil(content_width) }
+            if w == 0 || content_width == 0 {
+                1
+            } else {
+                w.div_ceil(content_width)
+            }
         })
         .sum();
     let visible = messages_rect.height.saturating_sub(2) as usize;

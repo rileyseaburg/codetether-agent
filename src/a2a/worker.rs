@@ -725,7 +725,7 @@ fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> Strin
             "zhipuai" | "zai" => "glm-5".to_string(),
             "openrouter" => "z-ai/glm-5".to_string(),
             "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
-            "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
+            "bedrock" => "us.anthropic.claude-opus-4-6-v1".to_string(),
             _ => "glm-5".to_string(),
         },
         _ => match provider {

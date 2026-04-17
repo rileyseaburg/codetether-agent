@@ -50,8 +50,14 @@ pub(super) async fn dispatch_prompt(
 
     if let Some(reg) = registry {
         spawn_provider_task(
-            app, cwd, session, reg, &effective_prompt,
-            pending_images, event_tx, result_tx,
+            app,
+            cwd,
+            session,
+            reg,
+            &effective_prompt,
+            pending_images,
+            event_tx,
+            result_tx,
         )
         .await;
     } else {

@@ -12,8 +12,8 @@
 //! assert!(registry.list().is_empty());
 //! ```
 
-use super::traits::Provider;
 use super::parse::parse_model_string;
+use super::traits::Provider;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;

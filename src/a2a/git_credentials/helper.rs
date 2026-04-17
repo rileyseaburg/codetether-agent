@@ -9,7 +9,7 @@
 //! run_git_credential_helper(&args).await?;
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use super::gh_cli::{emit_credentials_via_gh_cli, should_delegate_to_gh_cli};
 use super::request_git_credentials;
@@ -25,9 +25,7 @@ use super::stdin_query::read_git_credential_query_from_stdin;
 /// ```ignore
 /// run_git_credential_helper(&args).await?;
 /// ```
-pub async fn run_git_credential_helper(
-    args: &crate::cli::GitCredentialHelperArgs,
-) -> Result<()> {
+pub async fn run_git_credential_helper(args: &crate::cli::GitCredentialHelperArgs) -> Result<()> {
     let operation = args.operation.as_deref().unwrap_or("get").trim();
     if matches!(operation, "store" | "erase") {
         return Ok(());
@@ -37,9 +35,7 @@ pub async fn run_git_credential_helper(
         .server
         .clone()
         .or_else(|| std::env::var("CODETETHER_SERVER").ok())
-        .ok_or_else(|| {
-            anyhow!("CODETETHER_SERVER is not set for Git credential helper")
-        })?;
+        .ok_or_else(|| anyhow!("CODETETHER_SERVER is not set for Git credential helper"))?;
     let token = args
         .token
         .clone()

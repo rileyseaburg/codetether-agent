@@ -9,8 +9,8 @@
 //! ```rust
 //! use codetether_agent::provider::bedrock::{estimate_context_window, estimate_max_output};
 //!
-//! assert_eq!(estimate_context_window("us.anthropic.claude-opus-4-7-v1:0"), 1_000_000);
-//! assert_eq!(estimate_max_output("us.anthropic.claude-opus-4-7-v1:0"), 128_000);
+//! assert_eq!(estimate_context_window("us.anthropic.claude-opus-4-7"), 1_000_000);
+//! assert_eq!(estimate_max_output("us.anthropic.claude-opus-4-7"), 128_000);
 //! assert_eq!(estimate_context_window("amazon.nova-lite-v1:0"), 300_000);
 //! ```
 

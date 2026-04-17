@@ -54,8 +54,15 @@ pub(super) async fn handle_enter_chat(
 
     push_user_messages(app, &prompt, &pending_images);
     dispatch_prompt(
-        app, cwd, session, registry, worker_bridge,
-        &prompt, pending_images, event_tx, result_tx,
+        app,
+        cwd,
+        session,
+        registry,
+        worker_bridge,
+        &prompt,
+        pending_images,
+        event_tx,
+        result_tx,
     )
     .await;
 }

@@ -8,10 +8,7 @@ use std::path::Path;
 /// Return the one-line commit log between `base` and HEAD.
 ///
 /// Falls back to the last 20 commits if `base` is `None`.
-pub(super) async fn collect_commit_log(
-    dir: &Path,
-    base: Option<&str>,
-) -> Vec<String> {
+pub(super) async fn collect_commit_log(dir: &Path, base: Option<&str>) -> Vec<String> {
     let range = base
         .map(|b| format!("{b}..HEAD"))
         .unwrap_or_else(|| "HEAD~20..HEAD".to_string());

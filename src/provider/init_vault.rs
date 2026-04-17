@@ -51,8 +51,8 @@ impl ProviderRegistry {
         // Bedrock auto-detect from local AWS creds if Vault didn't register it
         if !registry.providers.contains_key("bedrock") && !disable_env {
             if let Some(creds) = bedrock::AwsCredentials::from_environment() {
-                let region = bedrock::AwsCredentials::detect_region()
-                    .unwrap_or_else(|| "us-east-1".into());
+                let region =
+                    bedrock::AwsCredentials::detect_region().unwrap_or_else(|| "us-east-1".into());
                 match bedrock::BedrockProvider::with_credentials(creds, region) {
                     Ok(p) => {
                         tracing::info!("Registered Bedrock from local AWS credentials");
@@ -66,13 +66,19 @@ impl ProviderRegistry {
         if !disable_env {
             init_env::register_env_fallbacks(&mut registry);
         } else {
-            tracing::info!("Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)");
+            tracing::info!(
+                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+            );
         }
 
         tracing::info!(
             "Registered {} providers{}",
             registry.providers.len(),
-            if disable_env { " (Vault only)" } else { " (Vault + env fallback)" }
+            if disable_env {
+                " (Vault only)"
+            } else {
+                " (Vault + env fallback)"
+            }
         );
         Ok(registry)
     }

@@ -36,7 +36,8 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
         }),
         ("zai", "ZAI_API_KEY", |k| {
             Ok(Arc::new(super::zai::ZaiProvider::with_base_url(
-                k, super::zai::DEFAULT_BASE_URL.into(),
+                k,
+                super::zai::DEFAULT_BASE_URL.into(),
             )?))
         }),
         ("github-copilot", "GITHUB_COPILOT_TOKEN", |t| {
@@ -64,12 +65,16 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
 }
 
 fn register_huggingface(registry: &mut ProviderRegistry) {
-    if registry.providers.contains_key("huggingface") { return; }
-    let url = std::env::var("HF_BASE_URL").ok()
+    if registry.providers.contains_key("huggingface") {
+        return;
+    }
+    let url = std::env::var("HF_BASE_URL")
+        .ok()
         .or_else(|| std::env::var("HUGGINGFACE_BASE_URL").ok())
         .or_else(|| std::env::var("HUGGINGFACE_ENDPOINT").ok());
     let Some(base_url) = url else { return };
-    let key = std::env::var("HF_TOKEN").ok()
+    let key = std::env::var("HF_TOKEN")
+        .ok()
         .or_else(|| std::env::var("HUGGINGFACE_API_KEY").ok())
         .filter(|v| !v.trim().is_empty());
     match super::openai::OpenAIProvider::with_base_url_optional_key(key, base_url, "huggingface") {
@@ -82,11 +87,14 @@ fn register_huggingface(registry: &mut ProviderRegistry) {
 }
 
 fn register_glm5(registry: &mut ProviderRegistry) {
-    if registry.providers.contains_key("glm5") { return; }
-    let Ok(base_url) = std::env::var("GLM5_BASE_URL") else { return };
+    if registry.providers.contains_key("glm5") {
+        return;
+    }
+    let Ok(base_url) = std::env::var("GLM5_BASE_URL") else {
+        return;
+    };
     let key = std::env::var("GLM5_API_KEY").unwrap_or_default();
-    let model = std::env::var("GLM5_MODEL")
-        .unwrap_or_else(|_| super::glm5::DEFAULT_MODEL.into());
+    let model = std::env::var("GLM5_MODEL").unwrap_or_else(|_| super::glm5::DEFAULT_MODEL.into());
     match super::glm5::Glm5Provider::with_model(key, base_url, model) {
         Ok(p) => {
             tracing::info!("Registered glm5 from GLM5_BASE_URL env var");
@@ -97,22 +105,32 @@ fn register_glm5(registry: &mut ProviderRegistry) {
 }
 
 fn register_local_cuda(registry: &mut ProviderRegistry) {
-    if registry.providers.contains_key("local_cuda") { return; }
+    if registry.providers.contains_key("local_cuda") {
+        return;
+    }
     let enabled = std::env::var("CODETETHER_LOCAL_CUDA")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false);
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
     let name = std::env::var("LOCAL_CUDA_MODEL")
         .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
         .unwrap_or_else(|_| "qwen3.5-9b".into());
     let path = std::env::var("LOCAL_CUDA_MODEL_PATH")
-        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL_PATH")).ok();
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL_PATH"))
+        .ok();
     let tok = std::env::var("LOCAL_CUDA_TOKENIZER_PATH")
-        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_TOKENIZER_PATH")).ok();
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_TOKENIZER_PATH"))
+        .ok();
     let arch = std::env::var("LOCAL_CUDA_ARCH")
-        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_ARCH")).ok();
+        .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_ARCH"))
+        .ok();
     let has_config = std::env::var("LOCAL_CUDA_MODEL").is_ok()
         || std::env::var("CODETETHER_LOCAL_CUDA_MODEL").is_ok()
-        || path.is_some() || tok.is_some() || arch.is_some();
-    if !enabled && !has_config { return; }
+        || path.is_some()
+        || tok.is_some()
+        || arch.is_some();
+    if !enabled && !has_config {
+        return;
+    }
     let result = if let Some(p) = path {
         super::local_cuda::LocalCudaProvider::with_paths(name.clone(), p, tok, arch)
     } else {

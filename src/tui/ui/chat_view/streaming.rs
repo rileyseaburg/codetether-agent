@@ -41,7 +41,9 @@ pub fn push_streaming_preview(
         Span::styled("assistant", Style::default().fg(Color::Cyan).bold()),
         Span::styled(
             " (streaming…)",
-            Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM),
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::DIM),
         ),
     ]));
     let formatted = formatter.format_content(&state.streaming_text, "assistant");

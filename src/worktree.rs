@@ -694,7 +694,11 @@ Recovery steps:\n\
                 .await;
             match out {
                 Ok(o) if o.status.success() => {
-                    tracing::info!(branch, remote = remote_name, "Deleted remote worktree branch");
+                    tracing::info!(
+                        branch,
+                        remote = remote_name,
+                        "Deleted remote worktree branch"
+                    );
                 }
                 Ok(o) => {
                     let err = String::from_utf8_lossy(&o.stderr);

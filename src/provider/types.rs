@@ -69,9 +69,15 @@ pub enum ContentPart {
     /// Plain text.
     Text { text: String },
     /// Image referenced by URL.
-    Image { url: String, mime_type: Option<String> },
+    Image {
+        url: String,
+        mime_type: Option<String>,
+    },
     /// File attachment.
-    File { path: String, mime_type: Option<String> },
+    File {
+        path: String,
+        mime_type: Option<String>,
+    },
     /// A tool call made by the model.
     ToolCall {
         id: String,
@@ -82,7 +88,10 @@ pub enum ContentPart {
         thought_signature: Option<String>,
     },
     /// Tool execution result to return to the model.
-    ToolResult { tool_call_id: String, content: String },
+    ToolResult {
+        tool_call_id: String,
+        content: String,
+    },
     /// Extended thinking / reasoning output.
     Thinking { text: String },
 }

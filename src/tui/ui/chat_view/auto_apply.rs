@@ -23,7 +23,11 @@ pub fn auto_apply_spans(app: &App) -> Vec<Span<'static>> {
         Span::styled("auto-apply", Style::default().fg(Color::DarkGray)),
         Span::raw(": "),
         Span::styled(
-            if app.state.auto_apply_edits { "ON" } else { "OFF" },
+            if app.state.auto_apply_edits {
+                "ON"
+            } else {
+                "OFF"
+            },
             Style::default().fg(if app.state.auto_apply_edits {
                 Color::Green
             } else {

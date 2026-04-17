@@ -33,7 +33,11 @@ fn levenshtein(a: &str, b: &str) -> usize {
     }
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
-    let (short, long) = if a.len() < b.len() { (&a, &b) } else { (&b, &a) };
+    let (short, long) = if a.len() < b.len() {
+        (&a, &b)
+    } else {
+        (&b, &a)
+    };
     let mut prev_row: Vec<usize> = (0..=short.len()).collect();
     let mut curr_row = vec![0; short.len() + 1];
     for (i, &c_long) in long.iter().enumerate() {

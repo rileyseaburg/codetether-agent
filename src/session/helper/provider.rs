@@ -171,9 +171,7 @@ mod tests {
         assert!(temperature_is_deprecated("claude-4-7-opus"));
         assert!(temperature_is_deprecated("claude-opus_4_7"));
         assert!(temperature_is_deprecated("claude-opus_47"));
-        assert!(temperature_is_deprecated(
-            "us.anthropic.claude-opus-4-7-v1:0"
-        ));
+        assert!(temperature_is_deprecated("us.anthropic.claude-opus-4-7"));
     }
 
     #[test]

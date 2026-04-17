@@ -32,18 +32,50 @@ struct GitCredentialRequestBody<'a> {
 /// ```ignore
 /// let creds = request_git_credentials(client, server, &token, None, "ws-1", "get", &query).await?;
 /// ```
-pub async fn request_git_credentials(server: &str, token: &Option<String>, worker_id: Option<&str>, workspace_id: &str, operation: &str, query: &GitCredentialQuery) -> Result<Option<GitCredentialMaterial>> {
+pub async fn request_git_credentials(
+    server: &str,
+    token: &Option<String>,
+    worker_id: Option<&str>,
+    workspace_id: &str,
+    operation: &str,
+    query: &GitCredentialQuery,
+) -> Result<Option<GitCredentialMaterial>> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .unwrap_or_default();
-    let mut request = client.post(format!("{}/v1/agent/workspaces/{workspace_id}/git/credentials", server.trim_end_matches('/')));
-    if let Some(token) = token { request = request.bearer_auth(token); }
-    if let Some(worker_id) = worker_id.filter(|value| !value.trim().is_empty()) { request = request.header("X-Worker-ID", worker_id); }
-    let response = request.json(&GitCredentialRequestBody { operation, protocol: query.protocol.as_deref(), host: query.host.as_deref(), path: query.path.as_deref() }).send().await.context("Failed to request Git credentials from server")?;
+    let mut request = client.post(format!(
+        "{}/v1/agent/workspaces/{workspace_id}/git/credentials",
+        server.trim_end_matches('/')
+    ));
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
+    if let Some(worker_id) = worker_id.filter(|value| !value.trim().is_empty()) {
+        request = request.header("X-Worker-ID", worker_id);
+    }
+    let response = request
+        .json(&GitCredentialRequestBody {
+            operation,
+            protocol: query.protocol.as_deref(),
+            host: query.host.as_deref(),
+            path: query.path.as_deref(),
+        })
+        .send()
+        .await
+        .context("Failed to request Git credentials from server")?;
     match response.status() {
-        StatusCode::OK => Ok(Some(response.json::<GitCredentialMaterial>().await.context("Failed to decode Git credential response")?)),
+        StatusCode::OK => Ok(Some(
+            response
+                .json::<GitCredentialMaterial>()
+                .await
+                .context("Failed to decode Git credential response")?,
+        )),
         StatusCode::NOT_FOUND => Ok(None),
-        status => Err(anyhow!("Git credential request failed with {}: {}", status, response.text().await.unwrap_or_default())),
+        status => Err(anyhow!(
+            "Git credential request failed with {}: {}",
+            status,
+            response.text().await.unwrap_or_default()
+        )),
     }
 }

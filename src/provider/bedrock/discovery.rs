@@ -169,10 +169,7 @@ fn foundation_model_to_info(m: &Value) -> Option<ModelInfo> {
     })
 }
 
-fn inference_profile_to_info(
-    p: &Value,
-    models: &HashMap<String, ModelInfo>,
-) -> Option<ModelInfo> {
+fn inference_profile_to_info(p: &Value, models: &HashMap<String, ModelInfo>) -> Option<ModelInfo> {
     let pid = p
         .get("inferenceProfileId")
         .and_then(|v| v.as_str())

@@ -24,8 +24,17 @@ use super::{GitCredentialMaterial, GitCredentialQuery};
 /// ```ignore
 /// assert!(should_delegate_to_gh_cli(&query, &creds));
 /// ```
-pub(super) fn should_delegate_to_gh_cli(query: &GitCredentialQuery, credentials: &GitCredentialMaterial) -> bool {
-    query.host.as_deref().or(credentials.host.as_deref()).unwrap_or_default().trim().eq_ignore_ascii_case("github.com")
+pub(super) fn should_delegate_to_gh_cli(
+    query: &GitCredentialQuery,
+    credentials: &GitCredentialMaterial,
+) -> bool {
+    query
+        .host
+        .as_deref()
+        .or(credentials.host.as_deref())
+        .unwrap_or_default()
+        .trim()
+        .eq_ignore_ascii_case("github.com")
 }
 
 /// Emits Git credentials through `gh auth git-credential get`.
@@ -37,7 +46,10 @@ pub(super) fn should_delegate_to_gh_cli(query: &GitCredentialQuery, credentials:
 /// ```ignore
 /// emit_credentials_via_gh_cli(&query, &creds)?;
 /// ```
-pub(super) fn emit_credentials_via_gh_cli(query: &GitCredentialQuery, credentials: &GitCredentialMaterial) -> Result<()> {
+pub(super) fn emit_credentials_via_gh_cli(
+    query: &GitCredentialQuery,
+    credentials: &GitCredentialMaterial,
+) -> Result<()> {
     let mut child = Command::new("gh")
         .args(["auth", "git-credential", "get"])
         .env("GH_TOKEN", &credentials.password)
@@ -58,6 +70,11 @@ pub(super) fn emit_credentials_via_gh_cli(query: &GitCredentialQuery, credential
     let output = child
         .wait_with_output()
         .context("Failed to read gh auth git-credential output")?;
-    if output.status.success() { return Ok(()); }
-    Err(anyhow!("gh auth git-credential failed: {}", String::from_utf8_lossy(&output.stderr).trim()))
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "gh auth git-credential failed: {}",
+        String::from_utf8_lossy(&output.stderr).trim()
+    ))
 }

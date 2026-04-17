@@ -38,10 +38,10 @@ mod server;
 mod session;
 pub mod swarm;
 pub mod telemetry;
-pub mod util;
 mod tls;
 mod tool;
 mod tui;
+pub mod util;
 mod worker_server;
 mod worktree;
 

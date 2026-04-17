@@ -33,7 +33,7 @@ pub(super) fn default_model_for_provider(provider: &str, model_tier: Option<&str
         ("openai", _) => "o3".to_string(),
         ("google", "fast" | "quick") => "gemini-2.5-flash".to_string(),
         ("google", _) => "gemini-2.5-pro".to_string(),
-        ("bedrock", "heavy" | "deep") => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
+        ("bedrock", "heavy" | "deep") => "us.anthropic.claude-opus-4-6-v1".to_string(),
         ("bedrock", _) => "amazon.nova-lite-v1:0".to_string(),
         _ => "glm-5.1".to_string(),
     }

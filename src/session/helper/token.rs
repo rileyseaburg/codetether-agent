@@ -12,7 +12,10 @@ pub fn context_window_for_model(model: &str) -> usize {
         128_000
     } else if m.contains("gpt-5") {
         256_000
-    } else if m.contains("claude-opus-4-7") || m.contains("claude-opus-4.7") || m.contains("4.7-opus") {
+    } else if m.contains("claude-opus-4-7")
+        || m.contains("claude-opus-4.7")
+        || m.contains("4.7-opus")
+    {
         1_000_000
     } else if m.contains("claude") {
         200_000

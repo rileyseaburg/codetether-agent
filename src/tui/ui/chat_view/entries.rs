@@ -4,9 +4,7 @@ use ratatui::text::Line;
 
 use crate::tui::color_palette::ColorPalette;
 use crate::tui::message_formatter::MessageFormatter;
-use crate::tui::ui::tool_panel::{
-    RenderEntry, build_tool_activity_panel, render_chat_message,
-};
+use crate::tui::ui::tool_panel::{RenderEntry, build_tool_activity_panel, render_chat_message};
 
 use super::entry_result::EntryAppendResult;
 use super::separator::push_separator;

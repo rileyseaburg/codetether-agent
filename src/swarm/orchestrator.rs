@@ -489,7 +489,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
     match provider {
         "moonshotai" => "kimi-k2.5".to_string(),
         "anthropic" => "claude-sonnet-4-20250514".to_string(),
-        "bedrock" => "us.anthropic.claude-opus-4-6-v1:0".to_string(),
+        "bedrock" => "us.anthropic.claude-opus-4-6-v1".to_string(),
         "openai" => "gpt-4o".to_string(),
         "google" => "gemini-2.5-pro".to_string(),
         "zhipuai" | "zai" => "glm-5".to_string(),
