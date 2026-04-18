@@ -150,6 +150,55 @@ impl ToolResult {
         self.metadata.insert(key.into(), value);
         self
     }
+
+    /// Truncate `output` to at most `max_bytes`, tagging `metadata.truncated`
+    /// with the original length when truncation occurs.
+    ///
+    /// Uses UTF-8-safe truncation. When the output fits, returns `self`
+    /// unchanged.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use codetether_agent::tool::ToolResult;
+    ///
+    /// let r = ToolResult::success("x".repeat(1_000)).truncate_to(100);
+    /// assert!(r.output.len() <= 100 + 32); // + marker
+    /// assert!(r.metadata.contains_key("truncated"));
+    /// ```
+    pub fn truncate_to(mut self, max_bytes: usize) -> Self {
+        if self.output.len() <= max_bytes {
+            return self;
+        }
+        let original_len = self.output.len();
+        let head = crate::util::truncate_bytes_safe(&self.output, max_bytes);
+        self.output = format!(
+            "{head}\n…[truncated: {original_len} bytes, showing first {max_bytes}]"
+        );
+        self.metadata.insert(
+            "truncated".to_string(),
+            serde_json::json!({
+                "original_bytes": original_len,
+                "shown_bytes": max_bytes,
+            }),
+        );
+        self
+    }
+}
+
+/// Default per-tool-output byte budget. Tunable at runtime via the
+/// `CODETETHER_TOOL_OUTPUT_MAX_BYTES` environment variable. Chosen to keep a
+/// single tool result well under typical provider context windows even after
+/// JSON re-encoding overhead.
+pub const DEFAULT_TOOL_OUTPUT_MAX_BYTES: usize = 64 * 1024;
+
+/// Resolve the current tool-output byte budget from env, falling back to
+/// [`DEFAULT_TOOL_OUTPUT_MAX_BYTES`]. Invalid values fall back to the default.
+pub fn tool_output_budget() -> usize {
+    std::env::var("CODETETHER_TOOL_OUTPUT_MAX_BYTES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(DEFAULT_TOOL_OUTPUT_MAX_BYTES)
 }
 
 /// Registry of available tools

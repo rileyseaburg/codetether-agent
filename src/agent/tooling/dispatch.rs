@@ -52,10 +52,14 @@ impl Agent {
 }
 
 async fn execute_registered_tool(tool: Arc<dyn Tool>, arguments: Value) -> ToolResult {
-    match tool.execute(arguments).await {
+    let result = match tool.execute(arguments).await {
         Ok(result) => result,
         Err(error) => ToolResult::error(format!("Tool execution failed: {error}")),
-    }
+    };
+    // Cap gigantic outputs (bash stdout, recursive greps, etc.) at the
+    // configured byte budget before they flow into the session history and
+    // provider context. Truncation is tagged in result.metadata.truncated.
+    result.truncate_to(crate::tool::tool_output_budget())
 }
 
 async fn execute_invalid_tool(agent: &Agent, name: &str, arguments: Value) -> ToolResult {
