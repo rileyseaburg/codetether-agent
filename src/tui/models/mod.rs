@@ -1,3 +1,7 @@
+pub mod view_mode_display;
+pub mod view_mode_help;
+pub mod view_mode_registry;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
