@@ -131,6 +131,8 @@ pipeline {
                         set -euo pipefail
                         export SSHPASS="${MAC_PASS}"
                         MAC_HOST_ADDR="${MAC_USER}@192.168.50.251"
+                        DEPOT_TOKEN_ESCAPED=$(printf '%q' "${DEPOT_TOKEN}")
+                        DEPOT_PROJECT_ID_ESCAPED=$(printf '%q' "${DEPOT_PROJECT_ID}")
                         echo "==> Building macOS binaries on Mac Mini (${MAC_HOST_ADDR})..."
 
                         # Copy source to Mac Mini
@@ -139,23 +141,22 @@ pipeline {
                             ./ "${MAC_HOST_ADDR}":/tmp/codetether-build/
 
                         # Build both architectures (native arm64 + cross-compiled x86_64)
-                        sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" bash -s <<'REMOTE'
-                            set -euo pipefail
-                            cd /tmp/codetether-build
-                            source $HOME/.cargo/env 2>/dev/null || true
-                            export DEPOT_TOKEN="${DEPOT_TOKEN}"
-                            export DEPOT_PROJECT_ID="${DEPOT_PROJECT_ID}"
-                            export DEPOT_INSTALL_DIR="$HOME/.local/bin"
-                            mkdir -p "$DEPOT_INSTALL_DIR"
-                            export PATH="$DEPOT_INSTALL_DIR:$PATH"
-                            curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
+                        sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" \
+                            "DEPOT_TOKEN=${DEPOT_TOKEN_ESCAPED} DEPOT_PROJECT_ID=${DEPOT_PROJECT_ID_ESCAPED} bash -s" <<'REMOTE'
+set -euo pipefail
+cd /tmp/codetether-build
+source "$HOME/.cargo/env" 2>/dev/null || true
+export DEPOT_INSTALL_DIR="$HOME/.local/bin"
+mkdir -p "$DEPOT_INSTALL_DIR"
+export PATH="$DEPOT_INSTALL_DIR:$PATH"
+curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
 
-                            echo "===> Building arm64 (native)..."
-                            depot cargo build --release --target aarch64-apple-darwin --features functiongemma
+echo "===> Building arm64 (native)..."
+depot cargo build --release --target aarch64-apple-darwin --features functiongemma
 
-                            echo "===> Building x86_64 (cross)..."
-                            depot cargo build --release --target x86_64-apple-darwin --features functiongemma
-                        REMOTE
+echo "===> Building x86_64 (cross)..."
+depot cargo build --release --target x86_64-apple-darwin --features functiongemma
+REMOTE
 
                         # Fetch artifacts back
                         mkdir -p dist
