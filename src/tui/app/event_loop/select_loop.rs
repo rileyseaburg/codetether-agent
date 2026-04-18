@@ -56,6 +56,10 @@ pub(super) async fn select_once(
         }
         Some(evt) = event_rx.recv() => {
             crate::tui::app::session_events::handle_session_event(app, session, worker_bridge, evt).await;
+            // Coalesce bursts: streaming chunks often arrive dozens per frame
+            // interval. Drain any additional pending events non-blocking so
+            // the outer loop redraws once per batch instead of once per chunk.
+            coalesce_session_events(app, session, worker_bridge, event_rx).await;
         }
         Some(result) = result_rx.recv() => {
             crate::tui::app::background::apply_single_result(app, cwd, session, worker_bridge, result).await;
@@ -79,4 +83,34 @@ pub(super) async fn select_once(
     )
     .await;
     Ok(false)
+}
+
+/// Drain additional pending [`SessionEvent`]s from `event_rx` without
+/// awaiting. Caps at [`COALESCE_LIMIT`] to guarantee the outer loop still
+/// redraws promptly under pathological bursts.
+///
+/// This is the primary optimization for streaming throughput: provider SSE
+/// deltas frequently arrive at 100–300 per second, far faster than the 50 ms
+/// render tick. Without coalescing, each delta forced a full `terminal.draw`.
+async fn coalesce_session_events(
+    app: &mut crate::tui::app::state::App,
+    session: &mut crate::session::Session,
+    worker_bridge: &mut Option<crate::tui::worker_bridge::TuiWorkerBridge>,
+    event_rx: &mut mpsc::Receiver<crate::session::SessionEvent>,
+) {
+    const COALESCE_LIMIT: usize = 64;
+    for _ in 0..COALESCE_LIMIT {
+        match event_rx.try_recv() {
+            Ok(evt) => {
+                crate::tui::app::session_events::handle_session_event(
+                    app,
+                    session,
+                    worker_bridge,
+                    evt,
+                )
+                .await;
+            }
+            Err(_) => break,
+        }
+    }
 }
