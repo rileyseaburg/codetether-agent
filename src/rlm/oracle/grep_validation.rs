@@ -57,25 +57,105 @@ pub fn validate_grep_payload(
         }
     };
 
-    let _oracle = GrepOracle::new(source.to_string());
-    let matched = grep_payload
+    let oracle = GrepOracle::new(source.to_string());
+    let ground_truth = match oracle.grep(&grep_payload.pattern) {
+        Ok(matches) => matches,
+        Err(error) => {
+            let mut trace = base_trace();
+            trace.verdict = "unverified".into();
+            return OracleResult::Unverified {
+                reason: format!("Could not run grep: {error}"),
+                trace,
+            };
+        }
+    };
+    let claimed: Vec<(usize, String)> = grep_payload
         .matches
         .iter()
-        .filter(|m| source.contains(&m.text))
-        .count();
-    let total = grep_payload.matches.len().max(1);
-    let ratio = matched as f32 / total as f32;
+        .map(|m| (m.line, m.text.clone()))
+        .collect();
 
-    let mut trace = base_trace();
-    if ratio >= confidence_threshold {
-        trace.verification_method = VerificationMethod::GrepOracle;
-        trace.verdict = "golden".into();
-        OracleResult::Golden(trace)
-    } else {
-        trace.verdict = "unverified".into();
-        OracleResult::Unverified {
-            reason: format!("Grep match ratio {ratio:.2} below {confidence_threshold:.2}"),
-            trace,
+    match oracle.verify_matches(&claimed, &ground_truth) {
+        super::grep_oracle::GrepVerification::ExactMatch
+        | super::grep_oracle::GrepVerification::UnorderedMatch => {
+            let mut trace = base_trace();
+            trace.verification_method = VerificationMethod::GrepOracle;
+            trace.verdict = "golden".into();
+            OracleResult::Golden(trace)
+        }
+        super::grep_oracle::GrepVerification::SubsetMatch { claimed, actual } => {
+            let coverage = claimed as f32 / actual.max(1) as f32;
+            if coverage >= confidence_threshold {
+                let mut trace = base_trace();
+                trace.verification_method = VerificationMethod::GrepOracle;
+                trace.verdict = "golden".into();
+                OracleResult::Golden(trace)
+            } else {
+                let diff = format!(
+                    "Subset match: model claimed {} but source has {} (coverage: {:.1}%)",
+                    claimed,
+                    actual,
+                    coverage * 100.0
+                );
+                let mut trace = base_trace();
+                trace.verification_method = VerificationMethod::GrepOracle;
+                trace.verdict = "failed".into();
+                trace.oracle_diff = Some(diff.clone());
+                OracleResult::Failed {
+                    reason: diff.clone(),
+                    diff: Some(diff),
+                    trace,
+                }
+            }
+        }
+        super::grep_oracle::GrepVerification::HasFalsePositives { false_positives } => {
+            let diff = format!(
+                "False positives: {} claims not found in source: {:?}",
+                false_positives.len(),
+                false_positives
+            );
+            let mut trace = base_trace();
+            trace.verification_method = VerificationMethod::GrepOracle;
+            trace.verdict = "failed".into();
+            trace.oracle_diff = Some(diff.clone());
+            OracleResult::Failed {
+                reason: diff.clone(),
+                diff: Some(diff),
+                trace,
+            }
+        }
+        super::grep_oracle::GrepVerification::HasFalseNegatives { false_negatives } => {
+            let diff = format!(
+                "False negatives: {} items in source not claimed: {:?}",
+                false_negatives.len(),
+                false_negatives
+            );
+            let mut trace = base_trace();
+            trace.verification_method = VerificationMethod::GrepOracle;
+            trace.verdict = "failed".into();
+            trace.oracle_diff = Some(diff.clone());
+            OracleResult::Failed {
+                reason: diff.clone(),
+                diff: Some(diff),
+                trace,
+            }
+        }
+        super::grep_oracle::GrepVerification::Mismatch => {
+            let diff = "Grep verification mismatch between claimed and source matches".to_string();
+            let mut trace = base_trace();
+            trace.verification_method = VerificationMethod::GrepOracle;
+            trace.verdict = "failed".into();
+            trace.oracle_diff = Some(diff.clone());
+            OracleResult::Failed {
+                reason: diff.clone(),
+                diff: Some(diff),
+                trace,
+            }
+        }
+        super::grep_oracle::GrepVerification::CannotVerify { reason } => {
+            let mut trace = base_trace();
+            trace.verdict = "unverified".into();
+            OracleResult::Unverified { reason, trace }
         }
     }
 }

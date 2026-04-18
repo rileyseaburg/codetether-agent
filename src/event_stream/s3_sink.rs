@@ -421,6 +421,12 @@ pub struct ArchivedEventFile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
 
     // Helper to ensure clean environment before each test
     fn clean_env() {
@@ -447,6 +453,7 @@ mod tests {
 
     #[test]
     fn test_config_from_env() {
+        let _lock = env_lock().lock().expect("env lock");
         // Always start clean
         clean_env();
 
@@ -476,6 +483,7 @@ mod tests {
 
     #[test]
     fn test_config_defaults() {
+        let _lock = env_lock().lock().expect("env lock");
         clean_env();
 
         unsafe {
@@ -490,6 +498,7 @@ mod tests {
 
     #[test]
     fn test_is_configured() {
+        let _lock = env_lock().lock().expect("env lock");
         // Always start clean - remove the var first to ensure isolation
         clean_env();
 

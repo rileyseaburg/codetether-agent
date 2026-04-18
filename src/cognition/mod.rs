@@ -716,6 +716,16 @@ impl CognitionRuntime {
 
         // Load persisted state before construction to avoid blocking_write()
         // inside a tokio runtime (which panics).
+        #[cfg(test)]
+        let (init_personas, init_beliefs, init_proposals, init_attention, init_workspace) = (
+            HashMap::new(),
+            HashMap::new(),
+            HashMap::new(),
+            Vec::new(),
+            GlobalWorkspace::default(),
+        );
+
+        #[cfg(not(test))]
         let (init_personas, init_beliefs, init_proposals, init_attention, init_workspace) =
             if let Some(persisted) = persistence::load_state() {
                 tracing::info!(

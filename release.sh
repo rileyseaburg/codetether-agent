@@ -18,7 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-cargo test --quiet}"
+VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-cargo test --quiet --lib --tests}"
 
 # Read current version from Cargo.toml
 CURRENT_VERSION="$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"

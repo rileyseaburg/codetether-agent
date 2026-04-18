@@ -17,6 +17,15 @@ fn rlm_fails_fast_without_provider() {
         .env_remove("OPENAI_API_KEY")
         .env_remove("ANTHROPIC_API_KEY")
         .env_remove("GOOGLE_API_KEY")
+        .env_remove("CODETETHER_LOCAL_CUDA")
+        .env_remove("LOCAL_CUDA_MODEL")
+        .env_remove("CODETETHER_LOCAL_CUDA_MODEL")
+        .env_remove("LOCAL_CUDA_MODEL_PATH")
+        .env_remove("CODETETHER_LOCAL_CUDA_MODEL_PATH")
+        .env_remove("LOCAL_CUDA_TOKENIZER_PATH")
+        .env_remove("CODETETHER_LOCAL_CUDA_TOKENIZER_PATH")
+        .env_remove("LOCAL_CUDA_ARCH")
+        .env_remove("CODETETHER_LOCAL_CUDA_ARCH")
         .output()
         .expect("run codetether rlm");
 

@@ -5,11 +5,17 @@ use codetether_agent::tool::morph_backend;
 use codetether_agent::tool::multiedit::MultiEditTool;
 use serde_json::{Value, json};
 use std::sync::{
-    Arc,
+    Arc, OnceLock,
     atomic::{AtomicUsize, Ordering},
 };
 use tempfile::tempdir;
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
+
+fn morph_env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 #[derive(Clone)]
 struct MockState {
@@ -120,8 +126,9 @@ impl Drop for EnvGuard {
     }
 }
 
-#[test]
-fn morph_backend_is_opt_in() {
+#[tokio::test]
+async fn morph_backend_is_opt_in() {
+    let _lock = morph_env_lock().lock().await;
     let _guard = EnvGuard::new("CODETETHER_MORPH_TOOL_BACKEND");
     unsafe {
         std::env::remove_var("CODETETHER_MORPH_TOOL_BACKEND");
@@ -133,6 +140,7 @@ fn morph_backend_is_opt_in() {
 
 #[tokio::test]
 async fn morph_backed_edit_tool_flow() -> anyhow::Result<()> {
+    let _lock = morph_env_lock().lock().await;
     let dir = tempdir()?;
     let file_path = dir.path().join("sample.txt");
     tokio::fs::write(&file_path, "line-1\nline-2\n").await?;
@@ -176,6 +184,7 @@ async fn morph_backed_edit_tool_flow() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn exact_replace_edit_skips_morph_even_when_enabled() -> anyhow::Result<()> {
+    let _lock = morph_env_lock().lock().await;
     let dir = tempdir()?;
     let file_path = dir.path().join("exact-edit.txt");
     tokio::fs::write(&file_path, "alpha\nbeta\n").await?;
@@ -204,6 +213,7 @@ async fn exact_replace_edit_skips_morph_even_when_enabled() -> anyhow::Result<()
 
 #[tokio::test]
 async fn morph_backed_multiedit_tool_flow() -> anyhow::Result<()> {
+    let _lock = morph_env_lock().lock().await;
     let dir = tempdir()?;
     let file_path = dir.path().join("multi.txt");
     tokio::fs::write(&file_path, "a\n").await?;
@@ -235,6 +245,7 @@ async fn morph_backed_multiedit_tool_flow() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn exact_replace_multiedit_skips_morph_even_when_enabled() -> anyhow::Result<()> {
+    let _lock = morph_env_lock().lock().await;
     let dir = tempdir()?;
     let file_path = dir.path().join("multi-exact.txt");
     tokio::fs::write(&file_path, "a\n").await?;
