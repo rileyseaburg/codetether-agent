@@ -15,7 +15,7 @@ COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
 
-RUN cargo build --release --bin codetether --features functiongemma
+RUN cargo build --release --bin codetether
 
 FROM scratch AS artifact
 

@@ -20,7 +20,7 @@ COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
 
-RUN cargo build --release --target x86_64-pc-windows-gnu --bin codetether --features functiongemma
+RUN cargo build --release --target x86_64-pc-windows-gnu --bin codetether
 
 FROM scratch AS artifact
 

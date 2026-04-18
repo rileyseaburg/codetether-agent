@@ -152,10 +152,10 @@ export PATH="$DEPOT_INSTALL_DIR:$PATH"
 curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
 
 echo "===> Building arm64 (native)..."
-depot cargo build --release --target aarch64-apple-darwin --features functiongemma
+depot cargo build --release --target aarch64-apple-darwin
 
 echo "===> Building x86_64 (cross)..."
-depot cargo build --release --target x86_64-apple-darwin --features functiongemma
+depot cargo build --release --target x86_64-apple-darwin
 REMOTE
 
                         # Fetch artifacts back
@@ -258,7 +258,7 @@ REMOTE
                     ]) {
                         sh '''
                             echo "Publishing ${VERSION} to crates.io ..."
-                            cargo publish --allow-dirty --features functiongemma
+                            cargo publish --allow-dirty
                         '''
                     }
                 }
