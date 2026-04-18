@@ -664,9 +664,14 @@ pub struct McpArgs {
     #[arg(value_parser = ["serve", "connect", "list-tools", "call"])]
     pub action: String,
 
-    /// Command to spawn for connecting to MCP server
+    /// Command to spawn for connecting to MCP server (flag form)
     #[arg(short, long)]
     pub command: Option<String>,
+
+    /// Command (and args) to spawn for connecting to MCP server (positional form).
+    /// Example: `codetether mcp connect npx -y @modelcontextprotocol/server-filesystem /path`
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub command_args: Vec<String>,
 
     /// Server name for registry
     #[arg(long)]

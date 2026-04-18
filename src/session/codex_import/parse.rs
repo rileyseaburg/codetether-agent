@@ -1,5 +1,6 @@
 use super::super::{Session, SessionMetadata};
-use super::records::{CodexJsonlRecord, CodexSessionMetaPayload, CodexTurnContextPayload};
+use super::legacy::{extract_cwd_from_env_context, normalize_line};
+use super::records::{CodexSessionMetaPayload, CodexTurnContextPayload};
 use super::response::parse_response_item;
 use super::title::derive_title_from_text;
 use super::usage::parse_event_msg_usage;
@@ -11,6 +12,13 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
+/// Parse a Codex rollout JSONL file into a native [`Session`].
+///
+/// Accepts both the modern `{timestamp, type, payload}` envelope format and
+/// the legacy flat format produced by older Codex CLI versions. Legacy
+/// records are normalized via [`normalize_line`]. When the legacy session
+/// meta lacks `cwd`, this function recovers it from the first
+/// `<environment_context>` user message.
 pub(crate) fn parse_codex_session_from_path(
     path: &Path,
     title_override: Option<&str>,
@@ -29,8 +37,13 @@ pub(crate) fn parse_codex_session_from_path(
         if line.trim().is_empty() {
             continue;
         }
-        let record: CodexJsonlRecord = serde_json::from_str(&line)
-            .with_context(|| format!("Failed to parse {}", path.display()))?;
+        let session_ts = session_meta.as_ref().map(|m| m.timestamp);
+        let record = match normalize_line(&line, session_ts)
+            .with_context(|| format!("Failed to parse {}", path.display()))?
+        {
+            Some(r) => r,
+            None => continue,
+        };
         updated_at =
             Some(updated_at.map_or(record.timestamp, |current| current.max(record.timestamp)));
         match record.kind.as_str() {
@@ -42,6 +55,13 @@ pub(crate) fn parse_codex_session_from_path(
                 }
             }
             "response_item" => {
+                // Recover cwd from legacy <environment_context> before consuming the payload.
+                if let Some(meta) = session_meta.as_mut()
+                    && meta.cwd.is_empty()
+                    && let Some(cwd) = extract_cwd_from_env_context(&record.payload)
+                {
+                    meta.cwd = cwd;
+                }
                 if let Some(message) = parse_response_item(record.payload, &mut first_user_text)? {
                     messages.push(message);
                 }

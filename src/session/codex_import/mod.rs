@@ -2,6 +2,7 @@ mod api;
 mod discover;
 mod index;
 mod info;
+mod legacy;
 mod meta;
 mod parse;
 mod paths;

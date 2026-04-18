@@ -786,3 +786,6 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 
 ### **Code Review Expectations**
 These are **hard rules**, not suggestions. Violations will be rejected in code review.
+
+
+!Important Never run `cargo build` or `cargo check`, let the CI catch any build or type errors.

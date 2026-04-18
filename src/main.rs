@@ -818,6 +818,27 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Some(Command::Mcp(args)) => {
+            // Resolve the target MCP server command from either `--command "cmd args"`
+            // (flag form) or trailing positional args (e.g. `connect npx -y @x/foo /path`).
+            let resolved_command: Option<(String, Vec<String>)> = {
+                if !args.command_args.is_empty() {
+                    let mut parts = args.command_args.iter().cloned();
+                    let cmd = parts.next().unwrap();
+                    Some((cmd, parts.collect()))
+                } else if let Some(s) = args.command.as_ref() {
+                    let parts: Vec<String> =
+                        s.split_whitespace().map(str::to_string).collect();
+                    if parts.is_empty() {
+                        None
+                    } else {
+                        let mut it = parts.into_iter();
+                        let cmd = it.next().unwrap();
+                        Some((cmd, it.collect()))
+                    }
+                } else {
+                    None
+                }
+            };
             match args.action.as_str() {
                 "serve" => {
                     tracing::info!("Starting MCP server over stdio...");
@@ -960,22 +981,15 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
                 "connect" => {
-                    let command = args
-                        .command
-                        .as_ref()
-                        .ok_or_else(|| anyhow::anyhow!("--command required for connect action"))?;
+                    let (cmd, cmd_args) = resolved_command.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "command required for connect action (pass it positionally, e.g. `codetether mcp connect npx -y @modelcontextprotocol/server-filesystem /path`, or via --command)"
+                        )
+                    })?;
+                    let cmd_arg_refs: Vec<&str> = cmd_args.iter().map(String::as_str).collect();
 
-                    // Parse command into parts
-                    let parts: Vec<&str> = command.split_whitespace().collect();
-                    if parts.is_empty() {
-                        anyhow::bail!("Empty command");
-                    }
-
-                    let cmd = parts[0];
-                    let cmd_args: Vec<&str> = parts[1..].to_vec();
-
-                    tracing::info!("Connecting to MCP server: {}", command);
-                    let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                    tracing::info!("Connecting to MCP server: {} {}", cmd, cmd_args.join(" "));
+                    let client = mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
 
                     // List available tools
                     let tools = client.tools().await;
@@ -1001,15 +1015,12 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
                 "list-tools" => {
-                    if let Some(command) = args.command.as_ref() {
+                    if let Some((cmd, cmd_args)) = resolved_command.as_ref() {
                         // Connect to external MCP server and list its tools
-                        let parts: Vec<&str> = command.split_whitespace().collect();
-                        if parts.is_empty() {
-                            anyhow::bail!("Empty command");
-                        }
-                        let cmd = parts[0];
-                        let cmd_args: Vec<&str> = parts[1..].to_vec();
-                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                        let cmd_arg_refs: Vec<&str> =
+                            cmd_args.iter().map(String::as_str).collect();
+                        let client =
+                            mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
                         let tools = client.tools().await;
                         if args.json {
                             println!("{}", serde_json::to_string_pretty(&tools)?);
@@ -1057,15 +1068,12 @@ async fn main() -> anyhow::Result<()> {
                         .transpose()?
                         .unwrap_or(serde_json::json!({}));
 
-                    if let Some(command) = args.command.as_ref() {
+                    if let Some((cmd, cmd_args)) = resolved_command.as_ref() {
                         // Call tool on external MCP server
-                        let parts: Vec<&str> = command.split_whitespace().collect();
-                        if parts.is_empty() {
-                            anyhow::bail!("Empty command");
-                        }
-                        let cmd = parts[0];
-                        let cmd_args: Vec<&str> = parts[1..].to_vec();
-                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_args).await?;
+                        let cmd_arg_refs: Vec<&str> =
+                            cmd_args.iter().map(String::as_str).collect();
+                        let client =
+                            mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
                         let result = client.call_tool(tool, arguments).await?;
                         client.close().await?;
 
