@@ -34,9 +34,20 @@ pub fn build_chat_lines(
     if let Some(cached) = app.state.get_or_build_message_lines(max_width) {
         return cached;
     }
-    let mut lines = Vec::new();
     let separator_width = content_width.saturating_sub(2).min(60);
     let panel_width = content_width.saturating_sub(4);
+
+    // Fast path: messages / width / processing unchanged — only streaming_text
+    // differs. Reuse the frozen prefix and rebuild just the streaming suffix.
+    if let Some(mut lines) = app.state.clone_frozen_prefix(max_width) {
+        let frozen_len = lines.len();
+        push_streaming_preview(&mut lines, &app.state, separator_width, formatter);
+        app.state
+            .store_message_lines_with_frozen(lines.clone(), max_width, frozen_len);
+        return lines;
+    }
+
+    let mut lines = Vec::new();
     let entries = build_render_entries(&app.state.messages);
     if entries.is_empty() {
         push_empty_placeholder(&mut lines);
@@ -54,7 +65,9 @@ pub fn build_chat_lines(
         app.state
             .set_tool_preview_max_scroll(result.tool_preview_max_scroll);
     }
+    let frozen_len = lines.len();
     push_streaming_preview(&mut lines, &app.state, separator_width, formatter);
-    app.state.store_message_lines(lines, max_width);
-    app.state.cached_message_lines.clone()
+    app.state
+        .store_message_lines_with_frozen(lines.clone(), max_width, frozen_len);
+    lines
 }

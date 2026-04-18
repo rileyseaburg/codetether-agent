@@ -283,6 +283,16 @@ pub struct AppState {
     pub cached_max_width: usize,
     pub cached_streaming_snapshot: Option<String>,
     pub cached_processing: bool,
+    /// Number of cached lines that belong to finalized messages (i.e. exclude
+    /// the in-flight streaming preview). When only `streaming_text` changes,
+    /// the renderer truncates to this length and re-appends the streaming
+    /// suffix instead of rebuilding the entire buffer.
+    pub cached_frozen_len: usize,
+    /// Number of cached lines that belong to finalized messages (i.e. exclude
+    /// the in-flight streaming preview). When only `streaming_text` changes,
+    /// the renderer truncates to this length and re-appends the streaming
+    /// suffix instead of rebuilding the entire buffer.
+    pub cached_frozen_len: usize,
     // Watchdog notification for stalled request UI
     pub watchdog_notification: Option<super::watchdog::WatchdogNotification>,
     // Watchdog state for stuck request detection
@@ -383,11 +393,13 @@ impl Default for AppState {
             active_spawned_agent: None,
             streaming_agent_texts: HashMap::new(),
             // Message line cache
+            cached_frozen_len: 0,
             cached_message_lines: Vec::new(),
             cached_messages_len: 0,
             cached_max_width: 0,
             cached_streaming_snapshot: None,
             cached_processing: false,
+            cached_frozen_len: 0,
             // Watchdog notification
             watchdog_notification: None,
             // Watchdog state
@@ -432,6 +444,17 @@ impl AppState {
             && self.cached_streaming_snapshot.as_deref() == Some(&self.streaming_text)
             && self.cached_processing == self.processing
     }
+
+    /// Check whether the **frozen prefix** of the cache (finalized messages,
+    /// excluding the streaming preview) is still reusable. This lets callers
+    /// skip rebuilding the bulk of the line buffer when only `streaming_text`
+    /// has changed between frames.
+    pub(crate) fn is_frozen_prefix_valid(&self, max_width: usize) -> bool {
+        self.cached_messages_len == self.messages.len()
+            && self.cached_max_width == max_width
+            && self.cached_processing == self.processing
+            && self.cached_frozen_len <= self.cached_message_lines.len()
+    }
     /// Combined cache-check method: returns cached lines (cloned, preserving the cache)
     /// when the cache is still valid for `max_width`, or `None` when a rebuild
     /// is required.
@@ -448,8 +471,31 @@ impl AppState {
         self.cached_message_lines.drain(..).collect()
     }
 
+    /// Return a clone of the frozen prefix (finalized-message lines only),
+    /// truncated to `cached_frozen_len`, if the prefix is still valid.
+    pub(crate) fn clone_frozen_prefix(
+        &self,
+        max_width: usize,
+    ) -> Option<Vec<Line<'static>>> {
+        if !self.is_frozen_prefix_valid(max_width) {
+            return None;
+        }
+        Some(self.cached_message_lines[..self.cached_frozen_len].to_vec())
+    }
+
     /// Store rebuilt message lines in the cache.
-    pub(crate) fn store_message_lines(&mut self, lines: Vec<Line<'static>>, max_width: usize) {
+    ///
+    /// `frozen_len` is the line-count prefix that represents finalized
+    /// messages (everything before the streaming preview). On subsequent
+    /// streaming-only updates the renderer reuses lines `[..frozen_len]`
+    /// instead of rebuilding them.
+    pub(crate) fn store_message_lines_with_frozen(
+        &mut self,
+        lines: Vec<Line<'static>>,
+        max_width: usize,
+        frozen_len: usize,
+    ) {
+        self.cached_frozen_len = frozen_len.min(lines.len());
         self.cached_message_lines = lines;
         self.cached_messages_len = self.messages.len();
         self.cached_max_width = max_width;
@@ -459,6 +505,14 @@ impl AppState {
             None
         };
         self.cached_processing = self.processing;
+    }
+
+    /// Backwards-compatible shim: stores lines with `frozen_len` equal to the
+    /// full buffer length. Prefer [`Self::store_message_lines_with_frozen`]
+    /// to enable streaming-suffix-only rebuilds.
+    pub(crate) fn store_message_lines(&mut self, lines: Vec<Line<'static>>, max_width: usize) {
+        let frozen = lines.len();
+        self.store_message_lines_with_frozen(lines, max_width, frozen);
     }
 
     fn input_char_count(&self) -> usize {
