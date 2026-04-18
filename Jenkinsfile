@@ -149,7 +149,17 @@ if command -v brew >/dev/null 2>&1; then
   fi
 fi
 if ! command -v protoc >/dev/null 2>&1; then
-  brew install protobuf
+  if command -v brew >/dev/null 2>&1; then
+    brew install protobuf
+  else
+    PROTOC_BOOTSTRAP_DIR="$HOME/.local/protoc"
+    mkdir -p "$PROTOC_BOOTSTRAP_DIR"
+    curl -L \
+      https://github.com/protocolbuffers/protobuf/releases/download/v31.1/protoc-31.1-osx-universal_binary.zip \
+      -o /tmp/protoc.zip
+    unzip -oq /tmp/protoc.zip -d "$PROTOC_BOOTSTRAP_DIR"
+    export PATH="$PROTOC_BOOTSTRAP_DIR/bin:$PATH"
+  fi
 fi
 export PROTOC="$(command -v protoc)"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
