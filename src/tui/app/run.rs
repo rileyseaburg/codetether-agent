@@ -62,6 +62,7 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
     let registry = ProviderRegistry::from_vault().await.ok().map(Arc::new);
     let cwd = std::env::current_dir().unwrap_or_default();
     let bus = AgentBus::new().into_arc();
+    crate::bus::set_global(bus.clone());
     let mut bus_handle = bus.handle("tui");
     let worker_bridge = TuiWorkerBridge::spawn(None, None, None, Arc::clone(&bus))
         .await

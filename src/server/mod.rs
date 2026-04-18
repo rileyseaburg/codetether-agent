@@ -594,6 +594,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
 
     // Create agent bus for in-process communication
     let bus = AgentBus::new().into_arc();
+    crate::bus::set_global(bus.clone());
 
     // Auto-start S3 sink if MinIO is configured (set MINIO_ENDPOINT to enable)
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());

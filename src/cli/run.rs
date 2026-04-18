@@ -842,6 +842,7 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
     // Wire bus for thinking capture + S3 training data
     let bus = AgentBus::new().into_arc();
+    crate::bus::set_global(bus.clone());
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
     session.bus = Some(bus);
 

@@ -18,9 +18,12 @@
 //! | `broadcast` | Global announcements |
 //! | `tools.{name}` | Tool-specific channels |
 
+pub mod global;
 pub mod registry;
 pub mod relay;
 pub mod s3_sink;
+
+pub use global::{global, set_global};
 
 use crate::a2a::types::{Artifact, Part, TaskState};
 use chrono::{DateTime, Utc};

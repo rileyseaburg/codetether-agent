@@ -77,6 +77,7 @@ pub(super) async fn create_agent_session(
     let mut session = Session::new().await.context("Failed to create session")?;
     session.set_agent_name(name.to_string());
     session.metadata.model = Some(model.to_string());
+    session.bus = crate::bus::global();
     session.add_message(Message {
         role: Role::System,
         content: vec![ContentPart::Text {

@@ -33,6 +33,11 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
     let registry = helpers::get_registry().await?;
     let (tx, mut rx) = mpsc::channel::<SessionEvent>(256);
     let mut session_for_task = session.clone();
+    // `bus` is `#[serde(skip)]`, so reloaded sessions start with `None`.
+    // Re-attach the process-wide bus so sub-agent traffic is visible to peers.
+    if session_for_task.bus.is_none() {
+        session_for_task.bus = crate::bus::global();
+    }
 
     let handle = tokio::spawn(async move {
         session_for_task
