@@ -50,7 +50,7 @@ use self::helper::edit::{
     normalize_tool_call_for_execution,
 };
 use self::helper::error::{
-    is_prompt_too_long_error, is_retryable_upstream_error, messages_to_rlm_context,
+    is_prompt_too_long_error, is_retryable_upstream_error,
 };
 use self::helper::markup::normalize_textual_tool_calls;
 use self::helper::provider::{
@@ -65,7 +65,7 @@ use self::helper::runtime::{
 use self::helper::stream::collect_stream_completion_with_events;
 use self::helper::text::{extract_text_content, truncate_with_ellipsis};
 use self::helper::token::{
-    context_window_for_model, estimate_request_tokens, estimate_tokens_for_messages,
+    context_window_for_model, estimate_tokens_for_messages,
     session_completion_max_tokens,
 };
 use self::helper::validation::{
@@ -373,65 +373,10 @@ impl Session {
         keep_last: usize,
         reason: &str,
     ) -> Result<bool> {
-        if self.messages.len() <= keep_last {
-            return Ok(false);
-        }
-
-        let split_idx = self.messages.len().saturating_sub(keep_last);
-        let tail = self.messages.split_off(split_idx);
-        let prefix = std::mem::take(&mut self.messages);
-
-        let context = messages_to_rlm_context(&prefix);
-        let ctx_window = context_window_for_model(model);
-
-        // We call auto_process directly for session context. It internally
-        // compresses very large inputs before hitting the model.
-        let rlm_config = RlmConfig::default();
-        let auto_ctx = AutoProcessContext {
-            tool_id: "session_context",
-            tool_args: serde_json::json!({"reason": reason}),
-            session_id: &self.id,
-            abort: None,
-            on_progress: None,
-            provider,
-            model: model.to_string(),
-        };
-
-        let summary = match RlmRouter::auto_process(&context, auto_ctx, &rlm_config).await {
-            Ok(result) => {
-                tracing::info!(
-                    reason,
-                    input_tokens = result.stats.input_tokens,
-                    output_tokens = result.stats.output_tokens,
-                    compression_ratio = result.stats.compression_ratio,
-                    "RLM: Compressed session history"
-                );
-                result.processed
-            }
-            Err(e) => {
-                tracing::warn!(reason, error = %e, "RLM: Failed to compress session history; falling back to chunk compression");
-                // Fallback: keep a smaller, semantically chunked excerpt.
-                RlmChunker::compress(&context, (ctx_window as f64 * 0.25) as usize, None)
-            }
-        };
-
-        let summary_msg = Message {
-            role: Role::Assistant,
-            content: vec![ContentPart::Text {
-                text: format!(
-                    "[AUTO CONTEXT COMPRESSION]\nOlder conversation + tool output was compressed to fit the model context window.\n\n{}",
-                    summary
-                ),
-            }],
-        };
-
-        let mut new_messages = Vec::with_capacity(1 + tail.len());
-        new_messages.push(summary_msg);
-        new_messages.extend(tail);
-        self.messages = new_messages;
-        self.updated_at = Utc::now();
-
-        Ok(true)
+        self::helper::compression::compress_history_keep_last(
+            self, provider, model, keep_last, reason,
+        )
+        .await
     }
 
     async fn enforce_context_window(
@@ -441,46 +386,14 @@ impl Session {
         system_prompt: &str,
         tools: &[ToolDefinition],
     ) -> Result<()> {
-        let ctx_window = context_window_for_model(model);
-
-        // Reserve response tokens + a small fixed overhead for tool schemas,
-        // protocol framing, and provider-specific wrappers.
-        let reserve = session_completion_max_tokens().saturating_add(2048);
-        let budget = ctx_window.saturating_sub(reserve);
-        let safety_budget = (budget as f64 * 0.90) as usize;
-
-        // Try progressively more aggressive compression.
-        let keep_last_candidates = [16usize, 12, 8, 6];
-        for keep_last in keep_last_candidates {
-            let est = estimate_request_tokens(system_prompt, &self.messages, tools);
-            if est <= safety_budget {
-                return Ok(());
-            }
-
-            tracing::info!(
-                est_tokens = est,
-                ctx_window,
-                safety_budget,
-                keep_last,
-                "Context window approaching limit; compressing older session history"
-            );
-
-            let did = self
-                .compress_history_keep_last(
-                    Arc::clone(&provider),
-                    model,
-                    keep_last,
-                    "context_budget",
-                )
-                .await?;
-
-            if !did {
-                // Nothing left to compress.
-                break;
-            }
-        }
-
-        Ok(())
+        self::helper::compression::enforce_context_window(
+            self,
+            provider,
+            model,
+            system_prompt,
+            tools,
+        )
+        .await
     }
 
     /// Execute a prompt and get the result

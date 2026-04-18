@@ -1,5 +1,6 @@
 pub mod bootstrap;
 pub mod build;
+pub mod compression;
 pub mod edit;
 pub mod error;
 pub mod markup;
