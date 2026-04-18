@@ -14,12 +14,7 @@ pub fn format_relay_participant(participant: &str) -> String {
 
 /// Format a relay handoff line: `[relay ID • round N] from → to`.
 #[allow(dead_code)]
-pub fn format_relay_handoff_line(
-    relay_id: &str,
-    round: usize,
-    from: &str,
-    to: &str,
-) -> String {
+pub fn format_relay_handoff_line(relay_id: &str, round: usize, from: &str, to: &str) -> String {
     format!(
         "[relay {relay_id} • round {round}] {} → {}",
         format_relay_participant(from),

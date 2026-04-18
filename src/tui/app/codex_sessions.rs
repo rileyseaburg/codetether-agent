@@ -13,6 +13,7 @@ pub async fn load_selected_session(
     match load_or_import_session(session_id).await {
         Ok(loaded) => {
             *session = loaded;
+            session.attach_global_bus_if_missing();
             app.state.auto_apply_edits = session.metadata.auto_apply_edits;
             app.state.use_worktree = session.metadata.use_worktree;
             app.state.session_id = Some(session.id.clone());

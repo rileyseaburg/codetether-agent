@@ -1925,15 +1925,7 @@ async fn handle_clone_repo_task(
         install_commit_msg_hook(&repo_path)?;
 
         register_cloned_workspace(client, server, token, worker_id, &workspace, &repo_path).await?;
-        enqueue_post_clone_task(
-            client,
-            server,
-            token,
-            worker_id,
-            &workspace_id,
-            metadata,
-        )
-        .await?;
+        enqueue_post_clone_task(client, server, token, worker_id, &workspace_id, metadata).await?;
 
         Ok::<String, anyhow::Error>(format!(
             "Repository ready at {} (branch: {})",

@@ -1,10 +1,10 @@
 //! MinIO/S3 client construction.
 
 use anyhow::Result;
+use minio::s3::Client as MinioClient;
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use minio::s3::types::S3Api;
-use minio::s3::Client as MinioClient;
 
 use super::config_types::ChatSyncConfig;
 
@@ -15,7 +15,11 @@ pub fn build_minio_client(endpoint: &str, config: &ChatSyncConfig) -> Result<Min
         base_url,
         Some(Box::new(provider)),
         None,
-        if config.ignore_cert_check { Some(true) } else { None },
+        if config.ignore_cert_check {
+            Some(true)
+        } else {
+            None
+        },
     )?;
 
     tracing::debug!(

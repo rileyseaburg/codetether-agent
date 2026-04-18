@@ -50,9 +50,7 @@ pub use convert::{convert_messages, convert_tools};
 pub use estimates::{estimate_context_window, estimate_max_output};
 pub use response::{BedrockError, parse_converse_response};
 
-use crate::provider::{
-    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
-};
+use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 use crate::util;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -259,8 +257,8 @@ impl Provider for BedrockProvider {
                 return parse_converse_response(&text);
             }
 
-            let retryable = retry::should_retry_status(status.as_u16())
-                && attempt < policy.max_attempts;
+            let retryable =
+                retry::should_retry_status(status.as_u16()) && attempt < policy.max_attempts;
             if retryable {
                 let sleep = policy.delay_for(attempt);
                 tracing::warn!(

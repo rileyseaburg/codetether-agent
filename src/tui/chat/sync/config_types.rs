@@ -19,11 +19,19 @@ pub struct ChatSyncConfig {
 
 pub fn normalize_minio_endpoint(endpoint: &str) -> String {
     let mut n = endpoint.trim().trim_end_matches('/').to_string();
-    if let Some(s) = n.strip_suffix("/login") { n = s.trim_end_matches('/').to_string(); }
-    if !n.starts_with("http://") && !n.starts_with("https://") { n = format!("http://{n}"); }
+    if let Some(s) = n.strip_suffix("/login") {
+        n = s.trim_end_matches('/').to_string();
+    }
+    if !n.starts_with("http://") && !n.starts_with("https://") {
+        n = format!("http://{n}");
+    }
     n
 }
 
 pub fn minio_fallback_endpoint(endpoint: &str) -> Option<String> {
-    if endpoint.contains(":9001") { Some(endpoint.replacen(":9001", ":9000", 1)) } else { None }
+    if endpoint.contains(":9001") {
+        Some(endpoint.replacen(":9001", ":9000", 1))
+    } else {
+        None
+    }
 }

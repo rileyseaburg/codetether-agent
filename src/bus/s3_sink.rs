@@ -630,7 +630,44 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
     }
 }
 
-fn flush_training_group(records: &mut [TrainingRecord], lines: &mut Vec<String>) {
+type ToolGroupKey = (String, usize, Option<String>);
+
+fn collect_training_records(envelopes: &[BusEnvelope]) -> Vec<TrainingRecord> {
+    let mut grouped_records: BTreeMap<ToolGroupKey, Vec<TrainingRecord>> = BTreeMap::new();
+    let mut passthrough_records = Vec::new();
+
+    for env in envelopes {
+        if matches!(env.message, BusMessage::Heartbeat { .. }) {
+            continue;
+        }
+        let record = envelope_to_training_record(env);
+        if let Some(step) = record.metadata.step
+            && matches!(
+                env.message,
+                BusMessage::ToolRequest { .. } | BusMessage::ToolResponse { .. }
+            )
+        {
+            grouped_records
+                .entry((
+                    record.metadata.sender_id.clone(),
+                    step,
+                    record.metadata.correlation_id.clone(),
+                ))
+                .or_default()
+                .push(record);
+            continue;
+        }
+        passthrough_records.push(record);
+    }
+
+    let mut records = passthrough_records;
+    for (_key, mut group) in grouped_records {
+        append_training_group(&mut group, &mut records);
+    }
+    records
+}
+
+fn append_training_group(records: &mut [TrainingRecord], output: &mut Vec<TrainingRecord>) {
     if records.is_empty() {
         return;
     }
@@ -682,22 +719,33 @@ fn flush_training_group(records: &mut [TrainingRecord], lines: &mut Vec<String>)
         merged.metadata.bus_kind = "tool_request_batch".into();
         merged.metadata.envelope_id = envelope_ids.join(",");
 
-        if let Ok(line) = serde_json::to_string(&merged) {
-            lines.push(line);
-        }
-        for record in records.iter().skip(assistant_prefix_len) {
-            if let Ok(line) = serde_json::to_string(record) {
-                lines.push(line);
-            }
-        }
+        output.push(merged);
+        output.extend(records.iter().skip(assistant_prefix_len).cloned());
         return;
     }
 
-    for record in records.iter() {
-        if let Ok(line) = serde_json::to_string(record) {
-            lines.push(line);
-        }
-    }
+    output.extend(records.iter().cloned());
+}
+
+fn serialize_training_records(records: &[TrainingRecord]) -> Vec<String> {
+    records
+        .iter()
+        .filter_map(|record| serde_json::to_string(record).ok())
+        .collect()
+}
+
+fn build_s3_key(prefix: &str, now: chrono::DateTime<Utc>) -> String {
+    let prefix = if prefix.is_empty() {
+        String::new()
+    } else if prefix.ends_with('/') {
+        prefix.to_string()
+    } else {
+        format!("{prefix}/")
+    };
+    let date_path = now.format("%Y/%m/%d/%H").to_string();
+    let timestamp = now.format("%Y%m%dT%H%M%S").to_string();
+    let uuid = uuid::Uuid::new_v4();
+    format!("{prefix}v2/{date_path}/batch_{timestamp}_{uuid}.jsonl")
 }
 
 /// Extract the serde tag name from a `BusMessage` variant.
@@ -898,41 +946,12 @@ impl BusS3Sink {
             .unwrap_or_else(|| Utc::now().to_rfc3339());
         let envelopes = std::mem::take(batch);
 
-        // Build JSONL: buffer tool requests/responses by agent step so
-        // parallel tool calls remain grouped as one assistant message with
-        // N tool_calls followed by N matching tool responses.
-        let mut lines = Vec::with_capacity(envelopes.len());
-        let mut grouped_records: BTreeMap<(String, usize), Vec<TrainingRecord>> = BTreeMap::new();
-        let mut passthrough_records = Vec::new();
-        for env in &envelopes {
-            if matches!(env.message, BusMessage::Heartbeat { .. }) {
-                continue;
-            }
-            let record = envelope_to_training_record(env);
-            if let Some(step) = record.metadata.step
-                && matches!(
-                    env.message,
-                    BusMessage::ToolRequest { .. } | BusMessage::ToolResponse { .. }
-                )
-            {
-                grouped_records
-                    .entry((record.metadata.sender_id.clone(), step))
-                    .or_default()
-                    .push(record);
-                continue;
-            }
-            passthrough_records.push(record);
-        }
-
-        for record in passthrough_records {
-            if let Ok(line) = serde_json::to_string(&record) {
-                lines.push(line);
-            }
-        }
-        for (_key, mut records) in grouped_records {
-            flush_training_group(&mut records, &mut lines);
-        }
-
+        // Build JSONL: buffer tool requests/responses by agent step and
+        // correlation id so separate turns do not merge when a sender reuses
+        // the same step number. Legacy producers with `None` correlation ids
+        // still group together compatibly.
+        let records = collect_training_records(&envelopes);
+        let lines = serialize_training_records(&records);
         if lines.is_empty() {
             return Ok(());
         }
@@ -940,15 +959,9 @@ impl BusS3Sink {
         let count = lines.len();
         let jsonl = lines.join("\n");
 
-        // S3 key: prefix/YYYY/MM/DD/HH/batch_YYYYMMDDTHHMMSS_uuid.jsonl
+        // S3 key: prefix/v2/YYYY/MM/DD/HH/batch_YYYYMMDDTHHMMSS_uuid.jsonl
         let now = Utc::now();
-        let date_path = now.format("%Y/%m/%d/%H").to_string();
-        let timestamp = now.format("%Y%m%dT%H%M%S").to_string();
-        let uuid = uuid::Uuid::new_v4();
-        let s3_key = format!(
-            "{}{}/batch_{}_{}.jsonl",
-            self.config.prefix, date_path, timestamp, uuid
-        );
+        let s3_key = build_s3_key(&self.config.prefix, now);
 
         let content = ObjectContent::from(jsonl.into_bytes());
 
@@ -1039,6 +1052,7 @@ pub fn spawn_bus_s3_sink(bus: Arc<AgentBus>) -> tokio::task::JoinHandle<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
 
     #[test]
     fn test_normalize_endpoint() {
@@ -1185,5 +1199,98 @@ mod tests {
         // Heartbeats produce a record but flush_batch filters them out
         assert_eq!(record.role, "system");
         assert!(record.content.is_none());
+    }
+
+    #[test]
+    fn test_tool_grouping_keeps_different_correlation_ids_separate() {
+        let envelopes = vec![
+            tool_request_envelope("env-1", "req-1", Some("turn-1")),
+            tool_response_envelope("env-2", "req-1", Some("turn-1")),
+            tool_request_envelope("env-3", "req-2", Some("turn-2")),
+            tool_response_envelope("env-4", "req-2", Some("turn-2")),
+        ];
+
+        let records = collect_training_records(&envelopes);
+        let assistant_batches: Vec<_> = records
+            .iter()
+            .filter(|record| record.metadata.bus_kind == "tool_request_batch")
+            .collect();
+
+        assert_eq!(records.len(), 4);
+        assert_eq!(assistant_batches.len(), 2);
+        assert_eq!(
+            assistant_batches[0].metadata.correlation_id.as_deref(),
+            Some("turn-1")
+        );
+        assert_eq!(
+            assistant_batches[1].metadata.correlation_id.as_deref(),
+            Some("turn-2")
+        );
+        assert_eq!(assistant_batches[0].tool_calls.as_ref().unwrap().len(), 1);
+        assert_eq!(assistant_batches[1].tool_calls.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_tool_grouping_keeps_legacy_none_correlation_compatible() {
+        let envelopes = vec![
+            tool_request_envelope("env-1", "req-1", None),
+            tool_request_envelope("env-2", "req-2", None),
+            tool_response_envelope("env-3", "req-1", None),
+            tool_response_envelope("env-4", "req-2", None),
+        ];
+
+        let records = collect_training_records(&envelopes);
+        let assistant_batches: Vec<_> = records
+            .iter()
+            .filter(|record| record.metadata.bus_kind == "tool_request_batch")
+            .collect();
+
+        assert_eq!(records.len(), 3);
+        assert_eq!(assistant_batches.len(), 1);
+        assert!(assistant_batches[0].metadata.correlation_id.is_none());
+        assert_eq!(assistant_batches[0].tool_calls.as_ref().unwrap().len(), 2);
+    }
+
+    fn tool_request_envelope(
+        envelope_id: &str,
+        request_id: &str,
+        correlation_id: Option<&str>,
+    ) -> BusEnvelope {
+        BusEnvelope {
+            id: envelope_id.into(),
+            topic: "tools.read_file".into(),
+            sender_id: "agent-0".into(),
+            correlation_id: correlation_id.map(str::to_string),
+            timestamp: Utc::now(),
+            message: BusMessage::ToolRequest {
+                request_id: request_id.into(),
+                agent_id: "agent-0".into(),
+                tool_name: "read_file".into(),
+                arguments: Value::Null,
+                step: 1,
+            },
+        }
+    }
+
+    fn tool_response_envelope(
+        envelope_id: &str,
+        request_id: &str,
+        correlation_id: Option<&str>,
+    ) -> BusEnvelope {
+        BusEnvelope {
+            id: envelope_id.into(),
+            topic: "tools.read_file".into(),
+            sender_id: "agent-0".into(),
+            correlation_id: correlation_id.map(str::to_string),
+            timestamp: Utc::now(),
+            message: BusMessage::ToolResponse {
+                request_id: request_id.into(),
+                agent_id: "agent-0".into(),
+                tool_name: "read_file".into(),
+                result: "ok".into(),
+                success: true,
+                step: 1,
+            },
+        }
     }
 }

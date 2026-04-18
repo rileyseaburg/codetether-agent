@@ -644,6 +644,10 @@ async fn handle_message_stream(
                     SessionEvent::SessionSync(_) => {
                         continue; // Don't emit session sync to SSE
                     }
+                    // New non-exhaustive variants (context management, RLM
+                    // progress, token estimates). They are handled by the
+                    // dedicated SessionBus subscribers rather than SSE.
+                    _ => continue,
                 };
 
                 // Emit to bus for SSE subscribers

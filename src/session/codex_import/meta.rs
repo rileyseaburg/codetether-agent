@@ -35,10 +35,10 @@ pub(crate) fn read_session_meta(path: &Path) -> Result<Option<CodexSessionMetaPa
                 .with_context(|| format!("Failed to parse {}", path.display()))?
             {
                 Some(record) if record.kind == "session_meta" => {
-                    let payload: CodexSessionMetaPayload =
-                        serde_json::from_value(record.payload).with_context(|| {
-                            format!("Invalid session_meta in {}", path.display())
-                        })?;
+                    let payload: CodexSessionMetaPayload = serde_json::from_value(record.payload)
+                        .with_context(|| {
+                        format!("Invalid session_meta in {}", path.display())
+                    })?;
                     // Modern meta already carries cwd — we're done.
                     if !payload.cwd.is_empty() {
                         return Ok(Some(payload));

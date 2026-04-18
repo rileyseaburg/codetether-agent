@@ -1,43 +1,37 @@
-//! Response-assembly helpers: convert HTTP results into `ToolResult`.
-
+use crate::browser::{BrowserError, BrowserOutput};
 use crate::tool::ToolResult;
-use anyhow::Result;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::HashMap;
-use std::path::Path;
 
-pub(super) fn response_result(
-    action: &str,
-    base_url: &str,
-    path: &str,
-    status: u16,
-    body: Value,
-) -> Result<ToolResult> {
-    let pretty = serde_json::to_string_pretty(&body).unwrap_or_else(|_| body.to_string());
-    let success = (200..300).contains(&status);
-    let mut metadata = HashMap::new();
-    metadata.insert("action".to_string(), json!(action));
-    metadata.insert("base_url".to_string(), json!(base_url));
-    metadata.insert("endpoint".to_string(), json!(path));
-    metadata.insert("http_status".to_string(), json!(status));
-    for key in ["url", "title", "path", "active_index"] {
-        if let Some(v) = body.get(key) {
-            metadata.insert(key.to_string(), v.clone());
-        }
-    }
-    Ok(ToolResult {
-        output: pretty,
-        success,
-        metadata,
-    })
+pub(super) fn error_result(error: BrowserError) -> ToolResult {
+    ToolResult::error(error.to_string()).with_metadata("browser_error", json!(error.to_string()))
 }
 
-pub(super) fn screenshot_metadata(body: &Value) -> Option<Value> {
-    let path = body.get("path")?.as_str()?;
-    let path_obj = Path::new(path);
-    Some(json!({
-        "path": path,
-        "exists": path_obj.exists(),
-        "absolute": path_obj.is_absolute(),
-    }))
+pub(super) async fn success_result(
+    input: &super::input::BrowserCtlInput,
+    output: BrowserOutput,
+) -> anyhow::Result<ToolResult> {
+    let mut metadata = HashMap::new();
+    let body = match output {
+        BrowserOutput::Json(value) => value,
+        BrowserOutput::Ack(value) => serde_json::to_value(value)?,
+        BrowserOutput::Eval(value) => serde_json::to_value(value)?,
+        BrowserOutput::Html(value) => serde_json::to_value(value)?,
+        BrowserOutput::Snapshot(value) => {
+            metadata.insert("url".into(), json!(value.url));
+            metadata.insert("title".into(), json!(value.title));
+            serde_json::to_value(value)?
+        }
+        BrowserOutput::Tabs(value) => serde_json::to_value(value)?,
+        BrowserOutput::Text(value) => serde_json::to_value(value)?,
+        BrowserOutput::Toggle(value) => serde_json::to_value(value)?,
+        BrowserOutput::Screenshot(value) => {
+            super::screenshot::write(input, value, &mut metadata).await?
+        }
+    };
+    Ok(ToolResult {
+        output: serde_json::to_string_pretty(&body)?,
+        success: true,
+        metadata,
+    })
 }

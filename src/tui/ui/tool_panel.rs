@@ -163,7 +163,10 @@ fn render_formatted_message(
         Span::styled(label.to_string(), Style::default().fg(color).bold()),
     ]));
     let formatted = crate::tui::ui::chat_view::format_cache::format_message_cached(
-        message, label, formatter, formatter.max_width(),
+        message,
+        label,
+        formatter,
+        formatter.max_width(),
     );
     for line in formatted {
         let mut spans = vec![Span::styled("  ", Style::default().fg(color))];

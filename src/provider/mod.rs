@@ -25,6 +25,7 @@ pub mod copilot;
 pub mod gemini_web;
 pub mod glm5;
 pub mod google;
+pub mod limits;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;
 pub mod util;

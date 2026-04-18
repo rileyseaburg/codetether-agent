@@ -172,9 +172,8 @@ impl ToolResult {
         }
         let original_len = self.output.len();
         let head = crate::util::truncate_bytes_safe(&self.output, max_bytes);
-        self.output = format!(
-            "{head}\n…[truncated: {original_len} bytes, showing first {max_bytes}]"
-        );
+        self.output =
+            format!("{head}\n…[truncated: {original_len} bytes, showing first {max_bytes}]");
         self.metadata.insert(
             "truncated".to_string(),
             serde_json::json!({
@@ -388,6 +387,7 @@ impl ToolRegistry {
         registry.register(Arc::new(rlm::RlmTool::new(
             Arc::clone(&provider),
             model.clone(),
+            crate::rlm::RlmConfig::default(),
         )));
         // RalphTool with provider for autonomous execution
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));

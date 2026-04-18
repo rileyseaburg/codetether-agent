@@ -54,6 +54,14 @@ pub struct Config {
     /// LSP / linter server settings
     #[serde(default)]
     pub lsp: LspSettings,
+
+    /// RLM (Recursive Language Model) settings.
+    ///
+    /// Controls when and how large-output tool results and long
+    /// conversation prefixes are handed off to the RLM router for
+    /// compression/analysis. See [`crate::rlm::RlmConfig`] for fields.
+    #[serde(default)]
+    pub rlm: crate::rlm::RlmConfig,
 }
 
 impl Default for Config {
@@ -71,6 +79,7 @@ impl Default for Config {
             session: SessionConfig::default(),
             telemetry: TelemetryConfig::default(),
             lsp: LspSettings::default(),
+            rlm: crate::rlm::RlmConfig::default(),
         }
     }
 }

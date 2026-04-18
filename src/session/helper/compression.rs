@@ -68,7 +68,7 @@ pub(crate) async fn compress_history_keep_last(
     let context = messages_to_rlm_context(&prefix);
     let ctx_window = context_window_for_model(model);
 
-    let rlm_config = RlmConfig::default();
+    let rlm_config = session.metadata.rlm.clone();
     let auto_ctx = AutoProcessContext {
         tool_id: "session_context",
         tool_args: serde_json::json!({"reason": reason}),
@@ -77,6 +77,10 @@ pub(crate) async fn compress_history_keep_last(
         on_progress: None,
         provider,
         model: model.to_string(),
+        bus: None,
+        trace_id: None,
+        subcall_provider: session.metadata.subcall_provider.clone(),
+        subcall_model: session.metadata.subcall_model_name.clone(),
     };
 
     let summary = match RlmRouter::auto_process(&context, auto_ctx, &rlm_config).await {

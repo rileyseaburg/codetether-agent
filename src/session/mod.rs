@@ -40,6 +40,10 @@
 //! - [`prompt_api`] — public [`prompt`](Session::prompt) entry points.
 //! - [`helper`] — the agentic loop implementation (non-public details).
 
+mod bus;
+mod event_compaction;
+mod event_rlm;
+mod event_token;
 mod events;
 mod lifecycle;
 mod persistence;
@@ -52,9 +56,15 @@ pub mod helper;
 mod listing;
 mod listing_all;
 
+pub use self::bus::{DurableSink, NoopSink, SessionBus};
 pub use self::codex_import::{
     import_codex_session_by_id, import_codex_sessions_for_directory, load_or_import_session,
 };
+pub use self::event_compaction::{
+    CompactionFailure, CompactionOutcome, CompactionStart, ContextTruncation, FallbackStrategy,
+};
+pub use self::event_rlm::{RlmCompletion, RlmOutcome, RlmProgressEvent, RlmSubcallFallback};
+pub use self::event_token::{TokenDelta, TokenEstimate, TokenSource};
 pub use self::events::{SessionEvent, SessionResult};
 pub use self::listing::{SessionSummary, list_sessions};
 pub use self::listing_all::list_all_sessions_for_directory;

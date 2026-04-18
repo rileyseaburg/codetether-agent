@@ -21,27 +21,50 @@ thread_local! {
 }
 
 fn role_discrim(r: &str) -> u8 {
-    match r { "user" => 1, "assistant" => 2, "system" => 3, "error" => 4, _ => 0 }
+    match r {
+        "user" => 1,
+        "assistant" => 2,
+        "system" => 3,
+        "error" => 4,
+        _ => 0,
+    }
 }
 
 fn ts_nanos(m: &ChatMessage) -> u128 {
-    m.timestamp.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
+    m.timestamp
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0)
 }
 
 /// Format `message.content` for `role` at `max_width`, reusing prior parses.
 pub fn format_message_cached(
-    message: &ChatMessage, role: &str, formatter: &MessageFormatter, max_width: usize,
+    message: &ChatMessage,
+    role: &str,
+    formatter: &MessageFormatter,
+    max_width: usize,
 ) -> Vec<Line<'static>> {
-    let key = (ts_nanos(message), message.content.len(), max_width, role_discrim(role));
+    let key = (
+        ts_nanos(message),
+        message.content.len(),
+        max_width,
+        role_discrim(role),
+    );
     FORMAT_CACHE.with(|c| {
-        if let Some(l) = c.borrow().get(&key) { return l.clone(); }
+        if let Some(l) = c.borrow().get(&key) {
+            return l.clone();
+        }
         let lines = formatter.format_content(&message.content, role);
         let mut m = c.borrow_mut();
-        if m.len() >= CACHE_CAP { m.clear(); }
+        if m.len() >= CACHE_CAP {
+            m.clear();
+        }
         m.insert(key, lines.clone());
         lines
     })
 }
 
 /// Clear the entire cache.
-pub fn reset_format_cache() { FORMAT_CACHE.with(|c| c.borrow_mut().clear()); }
+pub fn reset_format_cache() {
+    FORMAT_CACHE.with(|c| c.borrow_mut().clear());
+}

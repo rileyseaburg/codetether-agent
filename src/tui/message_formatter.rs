@@ -2,6 +2,7 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
 };
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// Enhanced message formatter with syntax highlighting and improved styling
 pub struct MessageFormatter {
@@ -241,15 +242,116 @@ impl MessageFormatter {
         spans
     }
 
-    /// Wrap text to fit within width
-    fn wrap_line(&self, spans: Vec<Span<'static>>, _width: usize) -> Vec<Line<'static>> {
+    /// Greedy word-wrap a list of styled spans to `width` display columns.
+    ///
+    /// Preserves per-span [`Style`] as content splits across rows. Breaks on
+    /// whitespace when possible; for overlong tokens (URLs, code without
+    /// spaces) falls back to a hard char boundary. Uses [`UnicodeWidthStr`]
+    /// for display width so CJK and emoji count correctly.
+    ///
+    /// # Arguments
+    ///
+    /// * `spans` — styled input spans for a single logical line.
+    /// * `width` — target column width (display columns, not bytes).
+    ///
+    /// # Returns
+    ///
+    /// One or more [`Line<'static>`] values whose combined content equals
+    /// the input (modulo whitespace collapsed at wrap points) and each of
+    /// which has display width `<= width`. If `spans` is empty, returns a
+    /// single empty line. If `width == 0`, returns the input unsplit.
+    ///
+    /// Invoked via [`MessageFormatter::format_content`]; tested indirectly
+    /// by the unit tests in this module.
+    fn wrap_line(&self, spans: Vec<Span<'static>>, width: usize) -> Vec<Line<'static>> {
         if spans.is_empty() {
             return vec![Line::from("")];
         }
+        if width == 0 {
+            return vec![Line::from(spans)];
+        }
 
-        // Simple wrapping - for now, just return as single line
-        vec![Line::from(spans)]
+        let mut out: Vec<Line<'static>> = Vec::new();
+        let mut cur: Vec<Span<'static>> = Vec::new();
+        let mut cur_w: usize = 0;
+
+        for span in spans {
+            let style = span.style;
+            let mut text = span.content.into_owned();
+            while !text.is_empty() {
+                let remaining = width.saturating_sub(cur_w);
+                if remaining == 0 {
+                    out.push(Line::from(std::mem::take(&mut cur)));
+                    cur_w = 0;
+                    continue;
+                }
+                let (taken, rest) = take_fit(&text, remaining, cur_w == 0);
+                if taken.is_empty() {
+                    // nothing fits on this row; flush and retry at col 0.
+                    out.push(Line::from(std::mem::take(&mut cur)));
+                    cur_w = 0;
+                    continue;
+                }
+                cur_w += UnicodeWidthStr::width(taken.as_str());
+                cur.push(Span::styled(taken, style));
+                text = rest;
+                if !text.is_empty() {
+                    out.push(Line::from(std::mem::take(&mut cur)));
+                    cur_w = 0;
+                }
+            }
+        }
+        if !cur.is_empty() {
+            out.push(Line::from(cur));
+        }
+        if out.is_empty() {
+            out.push(Line::from(""));
+        }
+        out
     }
+}
+
+/// Take the longest prefix of `text` whose display width fits in `width`.
+///
+/// Prefers breaking after the last whitespace inside the fitting prefix.
+/// When no whitespace is available (e.g. a long URL), falls back to a hard
+/// char-boundary split at the last character that still fits.
+///
+/// # Arguments
+///
+/// * `text` — UTF-8 input, possibly wider than `width`.
+/// * `width` — maximum display columns the returned `taken` may occupy.
+/// * `at_start` — if `true`, leading whitespace is trimmed before measuring
+///   so wrapped continuation rows don't begin with a space.
+///
+/// # Returns
+///
+/// Tuple `(taken, rest)` where `taken` fits in `width` columns and
+/// `rest` is the remainder to wrap onto following rows. If the whole
+/// input fits, `rest` is empty.
+fn take_fit(text: &str, width: usize, at_start: bool) -> (String, String) {
+    let trimmed = if at_start { text.trim_start() } else { text };
+    let mut end_byte = 0usize;
+    let mut last_ws_byte: Option<usize> = None;
+    let mut w: usize = 0;
+    for (i, ch) in trimmed.char_indices() {
+        let cw = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if w + cw > width {
+            break;
+        }
+        w += cw;
+        end_byte = i + ch.len_utf8();
+        if ch.is_whitespace() {
+            last_ws_byte = Some(end_byte);
+        }
+    }
+    if end_byte == trimmed.len() {
+        return (trimmed.to_string(), String::new());
+    }
+    let split = last_ws_byte.unwrap_or(end_byte).max(1).min(trimmed.len());
+    let taken = trimmed[..split].trim_end().to_string();
+    let rest = trimmed[split..].to_string();
+    (taken, rest)
 }
 
 #[cfg(test)]
@@ -274,5 +376,71 @@ mod tests {
         ];
         let highlighted = formatter.highlight_code_block_syntect(&lines, "rust");
         assert_eq!(highlighted.len(), 3);
+    }
+    #[test]
+    fn take_fit_breaks_on_whitespace() {
+        let (taken, rest) = take_fit("hello world foo", 8, true);
+        assert_eq!(taken, "hello");
+        assert_eq!(rest, "world foo");
+    }
+
+    #[test]
+    fn take_fit_hard_breaks_long_token() {
+        let (taken, rest) = take_fit("abcdefghij", 4, true);
+        assert_eq!(taken, "abcd");
+        assert_eq!(rest, "efghij");
+    }
+
+    #[test]
+    fn take_fit_trims_leading_ws_at_start() {
+        let (taken, rest) = take_fit("   hello", 8, true);
+        assert_eq!(taken, "hello");
+        assert!(rest.is_empty());
+    }
+
+    #[test]
+    fn take_fit_whole_input_fits() {
+        let (taken, rest) = take_fit("short", 10, true);
+        assert_eq!(taken, "short");
+        assert!(rest.is_empty());
+    }
+
+    #[test]
+    fn wrap_line_empty_returns_single_blank() {
+        let f = MessageFormatter::new(20);
+        let out = f.wrap_line(vec![], 16);
+        assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn wrap_line_splits_at_whitespace() {
+        let f = MessageFormatter::new(20);
+        let spans = vec![Span::raw("hello world foo bar")];
+        let out = f.wrap_line(spans, 10);
+        assert!(out.len() >= 2);
+        for line in &out {
+            assert!(line.width() <= 10, "line too wide: {}", line.width());
+        }
+    }
+
+    #[test]
+    fn wrap_line_preserves_style_across_wraps() {
+        let f = MessageFormatter::new(20);
+        let styled = Style::default().add_modifier(Modifier::BOLD);
+        let spans = vec![Span::styled("alpha beta gamma delta", styled)];
+        let out = f.wrap_line(spans, 10);
+        for line in &out {
+            for span in &line.spans {
+                assert_eq!(span.style, styled);
+            }
+        }
+    }
+
+    #[test]
+    fn wrap_line_width_zero_is_noop() {
+        let f = MessageFormatter::new(20);
+        let spans = vec![Span::raw("anything")];
+        let out = f.wrap_line(spans, 0);
+        assert_eq!(out.len(), 1);
     }
 }

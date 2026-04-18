@@ -43,6 +43,7 @@ pub(super) async fn select_once(
     result_tx: &mpsc::Sender<anyhow::Result<Session>>,
     event_rx: &mut mpsc::Receiver<SessionEvent>,
     result_rx: &mut mpsc::Receiver<anyhow::Result<Session>>,
+    shutdown_rx: &mut mpsc::Receiver<()>,
     watchdog_timer: &mut tokio::time::Interval,
     watchdog_interval: Duration,
     tick_timer: &mut tokio::time::Interval,
@@ -64,6 +65,9 @@ pub(super) async fn select_once(
         Some(result) = result_rx.recv() => {
             crate::tui::app::background::apply_single_result(app, cwd, session, worker_bridge, result).await;
             super::smart_retry::execute_smart_switch_retry(app, session, registry, event_tx, result_tx).await;
+        }
+        Some(()) = shutdown_rx.recv() => {
+            return Ok(true);
         }
         _ = watchdog_timer.tick() => {
             super::watchdog::maybe_watchdog_restart(app, session, registry, event_tx, result_tx, watchdog_interval).await;

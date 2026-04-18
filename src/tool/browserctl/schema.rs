@@ -6,18 +6,7 @@ pub(super) fn parameters_schema() -> Value {
     json!({
         "type": "object",
         "properties": {
-            "action": {
-                "type": "string",
-                "enum": [
-                    "health","start","stop","snapshot","console","goto","click","fill","type",
-                    "press","text","html","eval","console_eval","click_text","fill_native",
-                    "toggle","screenshot","mouse_click","keyboard_type","keyboard_press",
-                    "reload","tabs","tabs_select","tabs_new","tabs_close","back","wait"
-                ],
-                "description": "Browserctl action to execute"
-            },
-            "base_url": {"type": "string", "description": "Override browserctl base URL (default: BROWSERCTL_BASE or http://127.0.0.1:4477)"},
-            "token": {"type": "string", "description": "Bearer token override (default: BROWSERCTL_TOKEN env)"},
+            "action": {"type": "string", "enum": ["health","start","stop","snapshot","console","goto","click","fill","type","press","text","html","eval","console_eval","click_text","fill_native","toggle","screenshot","mouse_click","keyboard_type","keyboard_press","reload","tabs","tabs_select","tabs_new","tabs_close","back","wait"], "description": "Browserctl action to execute"},
             "headless": {"type": "boolean", "description": "For start: launch headless browser (default true)"},
             "executable_path": {"type": "string", "description": "For start: optional browser binary path"},
             "url": {"type": "string", "description": "For goto or tabs_new: target URL"},
@@ -42,15 +31,6 @@ pub(super) fn parameters_schema() -> Value {
             "exact": {"type": "boolean", "description": "For click_text: exact text match (default true)"}
         },
         "required": ["action"],
-        "examples": [
-            {"action": "health"},
-            {"action": "goto", "url": "https://github.com"},
-            {"action": "back"},
-            {"action": "wait", "text": "Environment is ready", "timeout_ms": 15000},
-            {"action": "console_eval", "script": "return { title: document.title, url: location.href };"},
-            {"action": "fill_native", "selector": "#email", "value": "user@example.com"},
-            {"action": "toggle", "selector": "#rating", "text": "1"},
-            {"action": "screenshot", "path": "/tmp/page.png", "full_page": true}
-        ]
+        "examples": [{"action": "health"}, {"action": "goto", "url": "https://github.com"}, {"action": "back"}, {"action": "wait", "text": "Environment is ready", "timeout_ms": 15000}, {"action": "console_eval", "script": "return { title: document.title, url: location.href };"}, {"action": "fill_native", "selector": "#email", "value": "user@example.com"}, {"action": "toggle", "selector": "#rating", "text": "1"}, {"action": "screenshot", "path": "/tmp/page.png", "full_page": true}]
     })
 }

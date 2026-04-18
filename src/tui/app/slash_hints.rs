@@ -1,7 +1,10 @@
 //! Slash command hint descriptions for autocomplete.
 
 pub const SLASH_HINTS: &[(&str, &str)] = &[
-    ("/go ", "OKR-gated relay (requires approval, tracks outcomes)"),
+    (
+        "/go ",
+        "OKR-gated relay (requires approval, tracks outcomes)",
+    ),
     ("/add ", "Easy mode: create a teammate"),
     ("/talk ", "Easy mode: message or focus a teammate"),
     ("/list", "Easy mode: list teammates"),
@@ -10,7 +13,10 @@ pub const SLASH_HINTS: &[(&str, &str)] = &[
     ("/help", "Open help"),
     ("/spawn ", "Create a named sub-agent"),
     ("/autochat ", "Tactical relay (fast path, no OKR tracking)"),
-    ("/autochat-local ", "Tactical relay forced to local CUDA model"),
+    (
+        "/autochat-local ",
+        "Tactical relay forced to local CUDA model",
+    ),
     ("/local", "Switch active model to local CUDA"),
     ("/agents", "List spawned sub-agents"),
     ("/kill ", "Remove a spawned sub-agent"),

@@ -73,7 +73,7 @@ pub struct Session {
 }
 
 /// Persistent, user-facing configuration for a [`Session`].
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct SessionMetadata {
     /// Workspace directory the session operates in.
     pub directory: Option<PathBuf>,
@@ -99,6 +99,50 @@ pub struct SessionMetadata {
     pub shared: bool,
     /// Public share URL, if any.
     pub share_url: Option<String>,
+    /// RLM (Recursive Language Model) settings active for this session.
+    ///
+    /// Seeded from [`crate::config::Config::rlm`] at session creation
+    /// (via [`crate::session::Session::apply_config`]) and persisted on
+    /// disk so subsequent runs honour the same thresholds, models, and
+    /// iteration limits. Existing sessions without this field load with
+    /// [`crate::rlm::RlmConfig::default`].
+    #[serde(default)]
+    pub rlm: crate::rlm::RlmConfig,
+    /// Pre-resolved subcall provider from
+    /// [`RlmConfig::subcall_model`](crate::rlm::RlmConfig::subcall_model).
+    ///
+    /// Not serialised — re-resolved from the provider registry each time
+    /// [`Session::apply_config`] runs. When `None`, all RLM iterations
+    /// use the root provider.
+    #[serde(skip)]
+    pub subcall_provider: Option<std::sync::Arc<dyn crate::provider::Provider>>,
+    /// Model name resolved alongside [`Self::subcall_provider`].
+    /// Not serialised.
+    #[serde(skip)]
+    pub subcall_model_name: Option<String>,
+}
+
+impl std::fmt::Debug for SessionMetadata {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionMetadata")
+            .field("directory", &self.directory)
+            .field("model", &self.model)
+            .field("knowledge_snapshot", &self.knowledge_snapshot)
+            .field("provenance", &self.provenance)
+            .field("auto_apply_edits", &self.auto_apply_edits)
+            .field("allow_network", &self.allow_network)
+            .field("slash_autocomplete", &self.slash_autocomplete)
+            .field("use_worktree", &self.use_worktree)
+            .field("shared", &self.shared)
+            .field("share_url", &self.share_url)
+            .field("rlm", &self.rlm)
+            .field(
+                "subcall_provider",
+                &self.subcall_provider.as_ref().map(|_| "<provider>"),
+            )
+            .field("subcall_model_name", &self.subcall_model_name)
+            .finish()
+    }
 }
 
 fn default_slash_autocomplete() -> bool {

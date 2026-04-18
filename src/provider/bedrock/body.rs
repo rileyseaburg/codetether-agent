@@ -67,10 +67,7 @@ pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value
     // Anthropic prompt caching: mark the system prompt with a cache point so
     // subsequent requests with identical system text get a 90% input discount.
     // Only meaningful when CODETETHER_BEDROCK_PROMPT_CACHE is not "0"/"false".
-    if prompt_cache_enabled()
-        && supports_prompt_caching(model_id)
-        && !system_parts.is_empty()
-    {
+    if prompt_cache_enabled() && supports_prompt_caching(model_id) && !system_parts.is_empty() {
         system_parts.push(json!({"cachePoint": {"type": "default"}}));
     }
 
@@ -129,7 +126,10 @@ fn configured_service_tier() -> Option<String> {
 /// to disable.
 fn prompt_cache_enabled() -> bool {
     match std::env::var("CODETETHER_BEDROCK_PROMPT_CACHE") {
-        Ok(v) => !matches!(v.trim().to_ascii_lowercase().as_str(), "0" | "false" | "no" | "off"),
+        Ok(v) => !matches!(
+            v.trim().to_ascii_lowercase().as_str(),
+            "0" | "false" | "no" | "off"
+        ),
         Err(_) => true,
     }
 }

@@ -18,7 +18,7 @@ use std::path::PathBuf;
 #[command(version, about, long_about = None)]
 pub struct Cli {
     /// Project directory to operate on
-    #[arg(global = true)]
+    #[arg(global = true, last = true)]
     pub project: Option<PathBuf>,
 
     /// Print logs to stderr
@@ -668,11 +668,6 @@ pub struct McpArgs {
     #[arg(short, long)]
     pub command: Option<String>,
 
-    /// Command (and args) to spawn for connecting to MCP server (positional form).
-    /// Example: `codetether mcp connect npx -y @modelcontextprotocol/server-filesystem /path`
-    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-    pub command_args: Vec<String>,
-
     /// Server name for registry
     #[arg(long)]
     pub server_name: Option<String>,
@@ -703,6 +698,11 @@ pub struct McpArgs {
     /// Example: http://localhost:8001/v1/bus/stream
     #[arg(long)]
     pub bus_url: Option<String>,
+
+    /// Command (and args) to spawn for connecting to MCP server (positional form).
+    /// Example: `codetether mcp connect npx -y @modelcontextprotocol/server-filesystem /path`
+    #[arg(allow_hyphen_values = true)]
+    pub command_args: Vec<String>,
 }
 
 #[derive(Parser, Debug)]

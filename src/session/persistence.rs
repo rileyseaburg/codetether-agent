@@ -75,8 +75,7 @@ impl Session {
                 Ok(session) => {
                     if let Some(ref ws) = canonical_workspace {
                         if let Some(ref dir) = session.metadata.directory {
-                            let canonical_dir =
-                                dir.canonicalize().unwrap_or_else(|_| dir.clone());
+                            let canonical_dir = dir.canonicalize().unwrap_or_else(|_| dir.clone());
                             if &canonical_dir == ws {
                                 return Ok(session);
                             }

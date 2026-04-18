@@ -24,10 +24,14 @@ pub async fn sync_batch(
     host_tag: &str,
     offset: u64,
 ) -> Result<Option<ChatSyncBatch>> {
-    if !archive_path.exists() { return Ok(None); }
+    if !archive_path.exists() {
+        return Ok(None);
+    }
     ensure_minio_bucket(client, &config.bucket).await?;
     let (payload, next_offset, records) = read_chat_archive_batch(archive_path, offset)?;
-    if payload.is_empty() { return Ok(None); }
+    if payload.is_empty() {
+        return Ok(None);
+    }
     let ts = chrono::Utc::now().format("%Y%m%dT%H%M%SZ");
     let pfx = config.prefix.trim_matches('/');
     let key = if pfx.is_empty() {
@@ -36,6 +40,14 @@ pub async fn sync_batch(
         format!("{pfx}/{host_tag}/{ts}-chat-evts-{offset:020}-{next_offset:020}.jsonl")
     };
     let bytes = payload.len() as u64;
-    client.put_object_content(&config.bucket, &key, ObjectContent::from(payload)).send().await?;
-    Ok(Some(ChatSyncBatch { bytes, records, object_key: key, next_offset }))
+    client
+        .put_object_content(&config.bucket, &key, ObjectContent::from(payload))
+        .send()
+        .await?;
+    Ok(Some(ChatSyncBatch {
+        bytes,
+        records,
+        object_key: key,
+        next_offset,
+    }))
 }

@@ -43,8 +43,6 @@ pub fn render_messages(
         .border_style(Style::default().fg(palette.border))
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, &lines);
-    let chat = Paragraph::new(lines)
-        .block(block)
-        .scroll((scroll, 0));
+    let chat = Paragraph::new(lines).block(block).scroll((scroll, 0));
     f.render_widget(chat, chunks.messages);
 }

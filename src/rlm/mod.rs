@@ -40,13 +40,54 @@ pub struct RlmStats {
     pub compression_ratio: f64,
 }
 
-/// RLM processing result
+/// RLM processing result.
+///
+/// The `trace` field is populated when the caller supplied a
+/// [`crate::session::SessionBus`] (or otherwise opted in) so downstream
+/// consumers — the TUI `/rlm` view, the JSONL flywheel, trace-driven
+/// tuning jobs — can reconstruct the iteration-by-iteration behaviour
+/// of the loop after the fact.
+///
+/// `trace_id` is always generated for a run (even when no bus is
+/// attached) and is echoed in the matching
+/// [`crate::session::SessionEvent::RlmComplete`] event. Callers who
+/// supplied a bus can use it to correlate the durable completion
+/// record with this returned value.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::rlm::{RlmResult, RlmStats};
+///
+/// let r = RlmResult {
+///     processed: "summary".into(),
+///     stats: RlmStats::default(),
+///     success: true,
+///     error: None,
+///     trace: None,
+///     trace_id: None,
+/// };
+/// assert!(r.success);
+/// assert!(r.trace.is_none());
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RlmResult {
+    /// The final text produced by the loop (summary or answer).
     pub processed: String,
+    /// Aggregate statistics for the run.
     pub stats: RlmStats,
+    /// `true` when the loop converged within its iteration budget.
     pub success: bool,
+    /// Populated when `success` is `false` — a short diagnostic.
     pub error: Option<String>,
+    /// Optional per-iteration event trace. Serialised only when present
+    /// so existing on-disk `RlmResult` records stay compatible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace: Option<context_trace::ContextTrace>,
+    /// Identifier echoed on the matching `RlmComplete` bus event.
+    /// `None` for on-disk records written before this field existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_id: Option<uuid::Uuid>,
 }
 
 /// RLM configuration

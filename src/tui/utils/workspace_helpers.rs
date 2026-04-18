@@ -21,7 +21,11 @@ pub fn detect_git_branch(root: &Path) -> Option<String> {
         return None;
     }
     let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if branch.is_empty() { None } else { Some(branch) }
+    if branch.is_empty() {
+        None
+    } else {
+        Some(branch)
+    }
 }
 
 pub fn detect_git_dirty_files(root: &Path) -> usize {

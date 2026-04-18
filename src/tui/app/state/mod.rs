@@ -42,7 +42,7 @@ pub mod worker_bridge;
 mod tests;
 
 // Re-exports so external `use crate::tui::app::state::X` still works.
-pub use agent_profile::{agent_profile, SpawnedAgent};
+pub use agent_profile::{SpawnedAgent, agent_profile};
 pub use profile_defs::AgentProfile;
 pub use slash_commands::SLASH_COMMANDS;
 
@@ -143,8 +143,7 @@ pub struct AppState {
     pub main_inflight_prompt: Option<String>,
     pub okr_repository: Option<Arc<crate::okr::OkrRepository>>,
     pub pending_okr_approval: Option<super::okr_gate::PendingOkrApproval>,
-    pub pending_smart_switch_retry:
-        Option<crate::tui::app::smart_switch::PendingSmartSwitchRetry>,
+    pub pending_smart_switch_retry: Option<crate::tui::app::smart_switch::PendingSmartSwitchRetry>,
     pub smart_switch_retry_count: u32,
     pub smart_switch_attempted_models: Vec<String>,
     pub chat_sync_rx:

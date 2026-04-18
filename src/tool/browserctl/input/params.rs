@@ -1,0 +1,29 @@
+use serde::Deserialize;
+
+#[rustfmt::skip]
+#[derive(Debug, Deserialize)]
+pub(in crate::tool::browserctl) struct BrowserCtlInput {
+    pub action: super::BrowserCtlAction,
+    #[serde(default)] pub headless: Option<bool>,
+    #[serde(default)] pub executable_path: Option<String>,
+    #[serde(default)] pub url: Option<String>,
+    #[serde(default)] pub wait_until: Option<String>,
+    #[serde(default)] pub selector: Option<String>,
+    #[serde(default)] pub frame_selector: Option<String>,
+    #[serde(default)] pub value: Option<String>,
+    #[serde(default)] pub text: Option<String>,
+    #[serde(default)] pub text_gone: Option<String>,
+    #[serde(default)] pub delay_ms: Option<u64>,
+    #[serde(default)] pub key: Option<String>,
+    #[serde(default)] pub expression: Option<String>,
+    #[serde(default)] pub script: Option<String>,
+    #[serde(default)] pub url_contains: Option<String>,
+    #[serde(default)] pub state: Option<String>,
+    #[serde(default)] pub timeout_ms: Option<u64>,
+    #[serde(default)] pub path: Option<String>,
+    #[serde(default)] pub full_page: Option<bool>,
+    #[serde(default)] pub x: Option<f64>,
+    #[serde(default)] pub y: Option<f64>,
+    #[serde(default)] pub index: Option<usize>,
+    #[serde(default)] pub exact: Option<bool>,
+}

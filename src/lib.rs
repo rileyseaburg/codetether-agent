@@ -8,6 +8,7 @@ pub mod agent;
 pub mod audit;
 pub mod autochat;
 pub mod benchmark;
+pub mod browser;
 pub mod bus;
 pub mod cli;
 pub mod cloudevents;

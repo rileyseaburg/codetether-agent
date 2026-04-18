@@ -113,20 +113,13 @@ pub(crate) fn normalize_line(
 /// assert_eq!(meta.id, "ce59ef14");
 /// assert_eq!(meta.cwd, "/home/riley/project");
 /// ```
-pub(crate) fn legacy_session_meta(
-    value: &Value,
-    cwd: String,
-) -> Option<CodexSessionMetaPayload> {
+pub(crate) fn legacy_session_meta(value: &Value, cwd: String) -> Option<CodexSessionMetaPayload> {
     let id = value.get("id")?.as_str()?.to_string();
     let ts_str = value.get("timestamp")?.as_str()?;
     let timestamp = DateTime::parse_from_rfc3339(ts_str)
         .ok()?
         .with_timezone(&Utc);
-    Some(CodexSessionMetaPayload {
-        id,
-        timestamp,
-        cwd,
-    })
+    Some(CodexSessionMetaPayload { id, timestamp, cwd })
 }
 
 /// Heuristic check for whether a raw JSON value looks like a *legacy*

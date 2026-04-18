@@ -17,11 +17,22 @@ use std::sync::Arc;
 pub struct RlmTool {
     provider: Arc<dyn Provider>,
     model: String,
+    config: RlmConfig,
 }
 
 impl RlmTool {
-    pub fn new(provider: Arc<dyn Provider>, model: String) -> Self {
-        Self { provider, model }
+    /// Build an `RlmTool` backed by `provider`/`model`.
+    ///
+    /// The `config` argument is used for threshold, iteration limits,
+    /// and — once subcall routing lands — sub-LLM model selection.
+    /// Callers that do not care about RLM tuning can pass
+    /// [`RlmConfig::default`].
+    pub fn new(provider: Arc<dyn Provider>, model: String, config: RlmConfig) -> Self {
+        Self {
+            provider,
+            model,
+            config,
+        }
     }
 }
 
@@ -128,8 +139,12 @@ impl Tool for RlmTool {
                     on_progress: None,
                     provider: Arc::clone(&self.provider),
                     model: self.model.clone(),
+                    bus: None,
+                    trace_id: None,
+                    subcall_provider: None,
+                    subcall_model: None,
                 };
-                let config = RlmConfig::default();
+                let config = self.config.clone();
 
                 match RlmRouter::auto_process(&all_content, auto_ctx, &config).await {
                     Ok(result) => {

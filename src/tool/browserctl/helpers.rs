@@ -1,27 +1,6 @@
-//! Input-extraction helpers: base URL, token, and required/optional field accessors.
+//! Input-extraction helpers for required and optional browserctl fields.
 
-use super::input::BrowserCtlInput;
 use anyhow::Result;
-
-const DEFAULT_BASE_URL: &str = "http://127.0.0.1:4477";
-
-pub(super) fn base_url(input: &BrowserCtlInput) -> String {
-    input
-        .base_url
-        .clone()
-        .or_else(|| std::env::var("BROWSERCTL_BASE").ok())
-        .unwrap_or_else(|| DEFAULT_BASE_URL.to_string())
-        .trim_end_matches('/')
-        .to_string()
-}
-
-pub(super) fn token(input: &BrowserCtlInput) -> Option<String> {
-    input
-        .token
-        .clone()
-        .or_else(|| std::env::var("BROWSERCTL_TOKEN").ok())
-        .filter(|value| !value.trim().is_empty())
-}
 
 pub(super) fn require_string<'a>(value: &'a Option<String>, field: &str) -> Result<&'a str> {
     value

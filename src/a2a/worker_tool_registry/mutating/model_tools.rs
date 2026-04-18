@@ -27,6 +27,7 @@ pub fn register_model_tools(
     registry.register(Arc::new(rlm::RlmTool::new(
         Arc::clone(&provider),
         model.clone(),
+        crate::rlm::RlmConfig::default(),
     )));
     registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
 }

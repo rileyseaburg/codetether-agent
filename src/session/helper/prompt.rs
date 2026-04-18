@@ -8,6 +8,8 @@
 //! the Session facade small and keep the loop's behavior stable. Refinements
 //! to the loop should be made here (and mirrored in [`prompt_events`](super::prompt_events)
 //! where appropriate).
+// TODO: Keep this loop in sync with `prompt_events.rs` until both prompt
+// loops are consolidated into one shared implementation.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -15,6 +17,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::audit::{AuditCategory, AuditOutcome, try_audit_log};
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
@@ -68,6 +71,7 @@ use super::validation::{build_validation_report, capture_git_dirty_files, track_
 /// See [`Session::prompt`](super::super::Session::prompt) for the public-facing contract.
 pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<SessionResult> {
     let registry = ProviderRegistry::from_vault().await?;
+    session.resolve_subcall_provider(&registry);
 
     let providers = registry.list();
     if providers.is_empty() {
@@ -161,6 +165,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
     let mut consecutive_codesearch_no_matches: u32 = 0;
     let mut build_mode_tool_retry_count: u8 = 0;
     let mut native_tool_promise_retry_count: u8 = 0;
+    let turn_id = Uuid::new_v4().to_string();
 
     let tool_router: Option<ToolCallRouter> = {
         let cfg = ToolRouterConfig::from_env();
@@ -393,13 +398,14 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 ContentPart::Thinking { text } if !text.is_empty() => {
                     if let Some(ref bus) = session.bus {
                         let handle = bus.handle(&session.agent);
-                        handle.send(
+                        handle.send_with_correlation(
                             format!("agent.{}.thinking", session.agent),
                             crate::bus::BusMessage::AgentThinking {
                                 agent_id: session.agent.clone(),
                                 thinking: text.clone(),
                                 step,
                             },
+                            Some(turn_id.clone()),
                         );
                     }
                 }
@@ -415,8 +421,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             session.add_message(response.message.clone());
             if is_build_agent(&session.agent) {
                 if let Some(report) =
-                    build_validation_report(&cwd, &touched_files, &baseline_git_dirty_files)
-                        .await?
+                    build_validation_report(&cwd, &touched_files, &baseline_git_dirty_files).await?
                 {
                     validation_retry_count += 1;
                     tracing::warn!(
@@ -537,7 +542,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             if let Some(ref bus) = session.bus {
                 let handle = bus.handle(&session.agent);
-                handle.send(
+                handle.send_with_correlation(
                     format!("agent.{}.tool.request", session.agent),
                     crate::bus::BusMessage::ToolRequest {
                         request_id: tool_id.clone(),
@@ -546,6 +551,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                         arguments: tool_input.clone(),
                         step,
                     },
+                    Some(turn_id.clone()),
                 );
             }
 
@@ -594,43 +600,40 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             )
             .await;
 
-            let requires_confirmation =
-                tool_result_requires_confirmation(tool_metadata.as_ref());
-            let (content, success, tool_metadata, requires_confirmation) =
-                if requires_confirmation && session.metadata.auto_apply_edits {
-                    let preview_content = content.clone();
-                    match auto_apply_pending_confirmation(
-                        &tool_name,
-                        &exec_input,
-                        tool_metadata.as_ref(),
-                    )
-                    .await
-                    {
-                        Ok(Some((content, success, tool_metadata))) => {
-                            tracing::info!(
-                                tool = %tool_name,
-                                "Auto-applied pending confirmation in TUI session"
-                            );
-                            (content, success, tool_metadata, false)
-                        }
-                        Ok(None) => (content, success, tool_metadata, true),
-                        Err(error) => (
-                            format!(
-                                "{}\n\nTUI edit auto-apply failed: {}",
-                                pending_confirmation_tool_result_content(
-                                    &tool_name,
-                                    &preview_content,
-                                ),
-                                error
-                            ),
-                            false,
-                            tool_metadata,
-                            true,
-                        ),
+            let requires_confirmation = tool_result_requires_confirmation(tool_metadata.as_ref());
+            let (content, success, tool_metadata, requires_confirmation) = if requires_confirmation
+                && session.metadata.auto_apply_edits
+            {
+                let preview_content = content.clone();
+                match auto_apply_pending_confirmation(
+                    &tool_name,
+                    &exec_input,
+                    tool_metadata.as_ref(),
+                )
+                .await
+                {
+                    Ok(Some((content, success, tool_metadata))) => {
+                        tracing::info!(
+                            tool = %tool_name,
+                            "Auto-applied pending confirmation in TUI session"
+                        );
+                        (content, success, tool_metadata, false)
                     }
-                } else {
-                    (content, success, tool_metadata, requires_confirmation)
-                };
+                    Ok(None) => (content, success, tool_metadata, true),
+                    Err(error) => (
+                        format!(
+                            "{}\n\nTUI edit auto-apply failed: {}",
+                            pending_confirmation_tool_result_content(&tool_name, &preview_content,),
+                            error
+                        ),
+                        false,
+                        tool_metadata,
+                        true,
+                    ),
+                }
+            } else {
+                (content, success, tool_metadata, requires_confirmation)
+            };
             let rendered_content = if requires_confirmation {
                 pending_confirmation_tool_result_content(&tool_name, &content)
             } else {
@@ -653,7 +656,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             if let Some(ref bus) = session.bus {
                 let handle = bus.handle(&session.agent);
-                handle.send(
+                handle.send_with_correlation(
                     format!("agent.{}.tool.response", session.agent),
                     crate::bus::BusMessage::ToolResponse {
                         request_id: tool_id.clone(),
@@ -663,8 +666,9 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                         success,
                         step,
                     },
+                    Some(turn_id.clone()),
                 );
-                handle.send(
+                handle.send_with_correlation(
                     format!("agent.{}.tool.output", session.agent),
                     crate::bus::BusMessage::ToolOutputFull {
                         agent_id: session.agent.clone(),
@@ -673,6 +677,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                         success,
                         step,
                     },
+                    Some(turn_id.clone()),
                 );
             }
 
@@ -697,6 +702,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 &session.messages,
                 &model,
                 Arc::clone(&provider),
+                &session.metadata.rlm,
             )
             .await;
 
@@ -740,11 +746,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
     session.save().await?;
 
-    super::archive::archive_event_stream_to_s3(
-        &session.id,
-        super::archive::event_stream_path(),
-    )
-    .await;
+    super::archive::archive_event_stream_to_s3(&session.id, super::archive::event_stream_path())
+        .await;
 
     Ok(SessionResult {
         text: final_output.trim().to_string(),
@@ -753,10 +756,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 }
 
 /// Split the session's configured model string into `(provider, model_id)`.
-fn parse_session_model_selector(
-    session: &Session,
-    providers: &[&str],
-) -> (Option<String>, String) {
+fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Option<String>, String) {
     let Some(ref model_str) = session.metadata.model else {
         return (None, String::new());
     };
@@ -804,8 +804,12 @@ async fn compress_user_message_if_oversized(
         on_progress: None,
         provider: Arc::clone(provider),
         model: model.to_string(),
+        bus: None,
+        trace_id: None,
+        subcall_provider: session.metadata.subcall_provider.clone(),
+        subcall_model: session.metadata.subcall_model_name.clone(),
     };
-    let rlm_config = RlmConfig::default();
+    let rlm_config = session.metadata.rlm.clone();
     match RlmRouter::auto_process(message, auto_ctx, &rlm_config).await {
         Ok(result) => {
             tracing::info!(
@@ -978,6 +982,7 @@ async fn maybe_route_through_rlm(
     messages: &[Message],
     model: &str,
     provider: Arc<dyn crate::provider::Provider>,
+    rlm_config: &RlmConfig,
 ) -> String {
     let ctx_window = context_window_for_model(model);
     let current_tokens = estimate_tokens_for_messages(messages);
@@ -988,8 +993,7 @@ async fn maybe_route_through_rlm(
         model_context_limit: ctx_window,
         current_context_tokens: Some(current_tokens),
     };
-    let rlm_config = RlmConfig::default();
-    let routing = RlmRouter::should_route(rendered_content, &routing_ctx, &rlm_config);
+    let routing = RlmRouter::should_route(rendered_content, &routing_ctx, rlm_config);
     if !routing.should_route {
         return rendered_content.to_string();
     }
@@ -1008,6 +1012,10 @@ async fn maybe_route_through_rlm(
         on_progress: None,
         provider: Arc::clone(&provider),
         model: model.to_string(),
+        bus: None,
+        trace_id: None,
+        subcall_provider: None,
+        subcall_model: None,
     };
     match RlmRouter::auto_process(rendered_content, auto_ctx, &rlm_config).await {
         Ok(result) => {
@@ -1021,12 +1029,8 @@ async fn maybe_route_through_rlm(
         }
         Err(e) => {
             tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
-            let (truncated, _, _) = RlmRouter::smart_truncate(
-                rendered_content,
-                tool_name,
-                tool_input,
-                ctx_window / 4,
-            );
+            let (truncated, _, _) =
+                RlmRouter::smart_truncate(rendered_content, tool_name, tool_input, ctx_window / 4);
             truncated
         }
     }

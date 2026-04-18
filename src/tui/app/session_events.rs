@@ -127,6 +127,7 @@ pub async fn handle_session_event(
         }
         SessionEvent::SessionSync(updated) => {
             *session = *updated;
+            session.attach_global_bus_if_missing();
             app.state.session_id = Some(session.id.clone());
         }
         SessionEvent::Done => {
@@ -181,6 +182,11 @@ pub async fn handle_session_event(
             app.state.status = "Error".to_string();
             app.state.scroll_to_bottom();
         }
+        // New non-exhaustive variants (TokenEstimate, TokenUsage,
+        // RlmProgress, RlmComplete, Compaction*, ContextTruncated) are
+        // consumed by dedicated SessionBus subscribers, not this legacy
+        // mpsc handler. Intentionally ignored here.
+        _ => {}
     }
 }
 

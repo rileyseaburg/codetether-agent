@@ -56,4 +56,3 @@ pub fn agent_profile(agent_name: &str) -> AgentProfile {
     }
     FALLBACK_PROFILES[hash as usize % FALLBACK_PROFILES.len()]
 }
-

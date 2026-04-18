@@ -37,14 +37,8 @@ impl Session {
         event_tx: tokio::sync::mpsc::Sender<SessionEvent>,
         registry: Arc<crate::provider::ProviderRegistry>,
     ) -> Result<SessionResult> {
-        helper::prompt_events::run_prompt_with_events(
-            self,
-            message,
-            Vec::new(),
-            event_tx,
-            registry,
-        )
-        .await
+        helper::prompt_events::run_prompt_with_events(self, message, Vec::new(), event_tx, registry)
+            .await
     }
 
     /// Execute a prompt with optional image attachments and stream events.

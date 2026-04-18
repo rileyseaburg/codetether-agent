@@ -47,10 +47,7 @@ impl super::AppState {
     /// Returns `None` if there is no cache or the frozen prefix is empty.
     /// Used by the fast-path render that reuses the frozen prefix and
     /// only rebuilds the streaming suffix.
-    pub(crate) fn clone_frozen_prefix(
-        &self,
-        max_width: usize,
-    ) -> Option<Vec<Line<'static>>> {
+    pub(crate) fn clone_frozen_prefix(&self, max_width: usize) -> Option<Vec<Line<'static>>> {
         if self.cached_frozen_len == 0
             || self.cached_messages_len != self.messages.len()
             || self.cached_max_width != max_width

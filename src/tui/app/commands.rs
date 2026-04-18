@@ -432,6 +432,7 @@ pub async fn handle_slash_command(
                     new_session.metadata.model = session.metadata.model.clone();
 
                     *session = new_session;
+                    session.attach_global_bus_if_missing();
                     if let Err(error) = session.save().await {
                         tracing::warn!(error = %error, "Failed to save new session");
                         app.state.status =

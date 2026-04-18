@@ -14,6 +14,7 @@ mod agent;
 mod audit;
 mod autochat;
 mod benchmark;
+mod browser;
 mod bus;
 mod cli;
 mod cloudevents;
@@ -555,18 +556,20 @@ async fn main() -> anyhow::Result<()> {
     let app_config = crash::maybe_prompt_for_consent(&app_config, allow_crash_prompt).await;
     crash::initialize(&app_config).await;
 
-    // Initialize HashiCorp Vault connection for secrets
-    if let Ok(secrets_manager) = secrets::SecretsManager::from_env().await {
-        if secrets_manager.is_connected() {
-            tracing::info!("Connected to HashiCorp Vault for secrets management");
+    if !is_tui {
+        // Initialize HashiCorp Vault connection for secrets
+        if let Ok(secrets_manager) = secrets::SecretsManager::from_env().await {
+            if secrets_manager.is_connected() {
+                tracing::info!("Connected to HashiCorp Vault for secrets management");
+            }
+            // Store in global
+            let _ = secrets::init_from_manager(secrets_manager);
+        } else {
+            tracing::warn!(
+                "HashiCorp Vault not configured - Vault provider API keys will be unavailable"
+            );
+            tracing::warn!("Set VAULT_ADDR and VAULT_TOKEN environment variables to connect");
         }
-        // Store in global
-        let _ = secrets::init_from_manager(secrets_manager);
-    } else {
-        tracing::warn!(
-            "HashiCorp Vault not configured - Vault provider API keys will be unavailable"
-        );
-        tracing::warn!("Set VAULT_ADDR and VAULT_TOKEN environment variables to connect");
     }
 
     let mcp_control_plane_url = cli.server.clone();
@@ -826,8 +829,7 @@ async fn main() -> anyhow::Result<()> {
                     let cmd = parts.next().unwrap();
                     Some((cmd, parts.collect()))
                 } else if let Some(s) = args.command.as_ref() {
-                    let parts: Vec<String> =
-                        s.split_whitespace().map(str::to_string).collect();
+                    let parts: Vec<String> = s.split_whitespace().map(str::to_string).collect();
                     if parts.is_empty() {
                         None
                     } else {
@@ -1017,10 +1019,8 @@ async fn main() -> anyhow::Result<()> {
                 "list-tools" => {
                     if let Some((cmd, cmd_args)) = resolved_command.as_ref() {
                         // Connect to external MCP server and list its tools
-                        let cmd_arg_refs: Vec<&str> =
-                            cmd_args.iter().map(String::as_str).collect();
-                        let client =
-                            mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
+                        let cmd_arg_refs: Vec<&str> = cmd_args.iter().map(String::as_str).collect();
+                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
                         let tools = client.tools().await;
                         if args.json {
                             println!("{}", serde_json::to_string_pretty(&tools)?);
@@ -1070,10 +1070,8 @@ async fn main() -> anyhow::Result<()> {
 
                     if let Some((cmd, cmd_args)) = resolved_command.as_ref() {
                         // Call tool on external MCP server
-                        let cmd_arg_refs: Vec<&str> =
-                            cmd_args.iter().map(String::as_str).collect();
-                        let client =
-                            mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
+                        let cmd_arg_refs: Vec<&str> = cmd_args.iter().map(String::as_str).collect();
+                        let client = mcp::McpClient::connect_subprocess(cmd, &cmd_arg_refs).await?;
                         let result = client.call_tool(tool, arguments).await?;
                         client.close().await?;
 

@@ -1,34 +1,12 @@
 use crate::provider::{ContentPart, Message, ToolDefinition};
 use crate::rlm::RlmChunker;
 
-/// Return the context window size (in tokens) for known models.
-pub fn context_window_for_model(model: &str) -> usize {
-    let m = model.to_ascii_lowercase();
-    if m.contains("kimi-k2") {
-        256_000
-    } else if m.contains("glm-5") || m.contains("glm5") {
-        200_000
-    } else if m.contains("gpt-4o") {
-        128_000
-    } else if m.contains("gpt-5") {
-        256_000
-    } else if m.contains("claude-opus-4-7")
-        || m.contains("claude-opus-4.7")
-        || m.contains("4.7-opus")
-    {
-        1_000_000
-    } else if m.contains("claude") {
-        200_000
-    } else if m.contains("gemini") {
-        1_000_000
-    } else if m.contains("minimax") || m.contains("m2.5") {
-        256_000
-    } else if m.contains("qwen") {
-        131_072
-    } else {
-        128_000 // conservative default
-    }
-}
+/// Delegate to the canonical implementation in [`crate::provider::limits`].
+///
+/// Kept here as a re-export so existing call sites don't need to update
+/// their import paths. New code may import
+/// [`crate::provider::limits::context_window_for_model`] directly.
+pub use crate::provider::limits::context_window_for_model;
 
 pub fn session_completion_max_tokens() -> usize {
     std::env::var("CODETETHER_SESSION_MAX_TOKENS")

@@ -64,6 +64,7 @@ pub async fn run_event_loop(
     mut result_rx: mpsc::Receiver<anyhow::Result<Session>>,
 ) -> anyhow::Result<()> {
     let mut reader = EventStream::new();
+    let mut shutdown_rx = crate::tui::app::signal_shutdown::spawn_shutdown_listener();
     let tick = Duration::from_millis(50);
     let mut tick_timer = tokio::time::interval(tick);
     let wd_interval = Duration::from_secs(MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS);
@@ -83,6 +84,7 @@ pub async fn run_event_loop(
             &result_tx,
             &mut event_rx,
             &mut result_rx,
+            &mut shutdown_rx,
             &mut wd_timer,
             wd_interval,
             &mut tick_timer,

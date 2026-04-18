@@ -7,36 +7,31 @@ use ratatui::{
 
 /// Enhanced token usage display with costs and warnings
 pub struct TokenDisplay {
-    model_context_limits: std::collections::HashMap<String, u64>,
+    /// Pricing data (not context limits — those come from the canonical
+    /// [`crate::provider::limits::context_window_for_model`]).
+    model_pricing: std::collections::HashMap<String, (f64, f64)>,
 }
 
 impl TokenDisplay {
     pub fn new() -> Self {
-        let mut limits = std::collections::HashMap::new();
-
-        // Common model context limits
-        limits.insert("gpt-4".to_string(), 128_000);
-        limits.insert("gpt-4-turbo".to_string(), 128_000);
-        limits.insert("gpt-4o".to_string(), 128_000);
-        limits.insert("gpt-4o-mini".to_string(), 128_000);
-        limits.insert("claude-3-5-sonnet".to_string(), 200_000);
-        limits.insert("claude-3-5-haiku".to_string(), 200_000);
-        limits.insert("claude-3-opus".to_string(), 200_000);
-        limits.insert("claude-opus-4-6".to_string(), 200_000);
-        limits.insert("gemini-2.0-flash".to_string(), 1_000_000);
-        limits.insert("gemini-1.5-flash".to_string(), 1_000_000);
-        limits.insert("gemini-1.5-pro".to_string(), 2_000_000);
-        limits.insert("k1.5".to_string(), 200_000);
-        limits.insert("k1.6".to_string(), 200_000);
-
         Self {
-            model_context_limits: limits,
+            model_pricing: std::collections::HashMap::new(),
         }
     }
 
-    /// Get context limit for a model
+    /// Get context limit for a model by delegating to the canonical
+    /// [`crate::provider::limits::context_window_for_model`].
+    ///
+    /// Returns `None` only for the zero-length model string edge case;
+    /// callers that relied on the old `HashMap::get` returning `None`
+    /// for unknown models will now get the default 128 000 instead,
+    /// which is strictly more correct (all models have *some* context
+    /// window).
     pub fn get_context_limit(&self, model: &str) -> Option<u64> {
-        self.model_context_limits.get(model).copied()
+        if model.is_empty() {
+            return None;
+        }
+        Some(crate::provider::limits::context_window_for_model(model) as u64)
     }
 
     /// Get pricing for a model (returns $ per million tokens for input/output)

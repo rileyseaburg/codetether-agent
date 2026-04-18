@@ -14,7 +14,11 @@ pub fn sanitize_s3_key_segment(value: &str) -> String {
         }
     }
     let cleaned = out.trim_matches('-').to_string();
-    if cleaned.is_empty() { "unknown".into() } else { cleaned }
+    if cleaned.is_empty() {
+        "unknown".into()
+    } else {
+        cleaned
+    }
 }
 
 pub fn chat_sync_checkpoint_path(archive_path: &Path, config: &ChatSyncConfig) -> PathBuf {

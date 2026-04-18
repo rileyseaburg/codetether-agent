@@ -55,9 +55,7 @@ pub fn resolve_model_id(model: &str) -> &str {
         "claude-sonnet-4.6" | "claude-4.6-sonnet" | "claude-sonnet-4-6" => {
             "us.anthropic.claude-sonnet-4-6-v1:0"
         }
-        "claude-sonnet-4.5" | "claude-4.5-sonnet" => {
-            "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-        }
+        "claude-sonnet-4.5" | "claude-4.5-sonnet" => "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         "claude-sonnet-4" | "claude-4-sonnet" => "us.anthropic.claude-sonnet-4-20250514-v1:0",
         "claude-haiku-4.5" | "claude-4.5-haiku" => "us.anthropic.claude-haiku-4-5-20251001-v1:0",
 

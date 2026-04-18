@@ -18,10 +18,7 @@ use crate::tool::confirm_multiedit::ConfirmMultiEditTool;
 
 /// Reminder appended to tool output when `auto_apply_edits` is **off** and the
 /// tool produced only a preview.
-pub(crate) fn pending_confirmation_tool_result_content(
-    tool_name: &str,
-    content: &str,
-) -> String {
+pub(crate) fn pending_confirmation_tool_result_content(tool_name: &str, content: &str) -> String {
     format!(
         "{content}\n\nStatus: Pending confirmation only. `{tool_name}` has NOT been applied yet. \
          Auto-apply is off. Enable it in TUI Settings or with `/autoapply on` if you want pending \
