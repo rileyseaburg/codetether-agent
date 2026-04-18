@@ -121,8 +121,6 @@ pipeline {
                     }
                     env.RELEASE_REF = releaseRefName()
                     withCredentials([
-                        string(credentialsId: 'depot-token', variable: 'DEPOT_TOKEN'),
-                        string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID'),
                         usernamePassword(credentialsId: 'mac-mini-ssh',
                                          usernameVariable: 'MAC_USER',
                                          passwordVariable: 'MAC_PASS')
@@ -131,8 +129,6 @@ pipeline {
                         set -euo pipefail
                         export SSHPASS="${MAC_PASS}"
                         MAC_HOST_ADDR="${MAC_USER}@192.168.50.251"
-                        DEPOT_TOKEN_ESCAPED=$(printf '%q' "${DEPOT_TOKEN}")
-                        DEPOT_PROJECT_ID_ESCAPED=$(printf '%q' "${DEPOT_PROJECT_ID}")
                         echo "==> Building macOS binaries on Mac Mini (${MAC_HOST_ADDR})..."
 
                         # Copy source to Mac Mini
@@ -142,20 +138,17 @@ pipeline {
 
                         # Build both architectures (native arm64 + cross-compiled x86_64)
                         sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" \
-                            "DEPOT_TOKEN=${DEPOT_TOKEN_ESCAPED} DEPOT_PROJECT_ID=${DEPOT_PROJECT_ID_ESCAPED} bash -s" <<'REMOTE'
+                            "bash -s" <<'REMOTE'
 set -euo pipefail
 cd /tmp/codetether-build
 source "$HOME/.cargo/env" 2>/dev/null || true
-export DEPOT_INSTALL_DIR="$HOME/.local/bin"
-mkdir -p "$DEPOT_INSTALL_DIR"
-export PATH="$DEPOT_INSTALL_DIR:$PATH"
-curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
 echo "===> Building arm64 (native)..."
-depot cargo build --release --target aarch64-apple-darwin
+cargo build --release --target aarch64-apple-darwin
 
 echo "===> Building x86_64 (cross)..."
-depot cargo build --release --target x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin
 REMOTE
 
                         # Fetch artifacts back
