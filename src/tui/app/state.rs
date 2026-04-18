@@ -288,11 +288,6 @@ pub struct AppState {
     /// the renderer truncates to this length and re-appends the streaming
     /// suffix instead of rebuilding the entire buffer.
     pub cached_frozen_len: usize,
-    /// Number of cached lines that belong to finalized messages (i.e. exclude
-    /// the in-flight streaming preview). When only `streaming_text` changes,
-    /// the renderer truncates to this length and re-appends the streaming
-    /// suffix instead of rebuilding the entire buffer.
-    pub cached_frozen_len: usize,
     // Watchdog notification for stalled request UI
     pub watchdog_notification: Option<super::watchdog::WatchdogNotification>,
     // Watchdog state for stuck request detection
@@ -394,7 +389,6 @@ impl Default for AppState {
             active_spawned_agent: None,
             streaming_agent_texts: HashMap::new(),
             // Message line cache
-            cached_frozen_len: 0,
             cached_message_lines: Vec::new(),
             cached_messages_len: 0,
             cached_max_width: 0,
