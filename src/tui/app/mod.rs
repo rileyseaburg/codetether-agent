@@ -7,6 +7,7 @@ pub mod event_handlers;
 #[path = "event_loop/mod.rs"]
 pub mod event_loop;
 pub mod file_picker;
+pub mod file_preview;
 pub mod file_share;
 pub mod impl_app;
 #[path = "input/mod.rs"]
