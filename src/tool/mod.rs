@@ -34,6 +34,7 @@ pub mod podcast;
 pub mod prd;
 pub mod question;
 pub mod ralph;
+pub mod readonly;
 pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
