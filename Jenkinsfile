@@ -53,7 +53,10 @@ pipeline {
                         ]) {
                             sh '''
                                 rustc --version
-                                curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+                                export DEPOT_INSTALL_DIR="${WORKSPACE}/.depot/bin"
+                                mkdir -p "${DEPOT_INSTALL_DIR}"
+                                export PATH="${DEPOT_INSTALL_DIR}:${PATH}"
+                                curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="${DEPOT_INSTALL_DIR}" sh
                                 depot cargo build --release --features functiongemma
                             '''
                         }
@@ -67,7 +70,10 @@ pipeline {
                         ]) {
                             sh '''
                                 echo "Cross-compiling for Windows..."
-                                curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+                                export DEPOT_INSTALL_DIR="${WORKSPACE}/.depot/bin"
+                                mkdir -p "${DEPOT_INSTALL_DIR}"
+                                export PATH="${DEPOT_INSTALL_DIR}:${PATH}"
+                                curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="${DEPOT_INSTALL_DIR}" sh
                                 depot cargo build --target x86_64-pc-windows-gnu --release --features functiongemma
                             '''
                         }
@@ -109,9 +115,10 @@ pipeline {
                         source $HOME/.cargo/env 2>/dev/null || true
                         export DEPOT_TOKEN="${DEPOT_TOKEN}"
                         export DEPOT_PROJECT_ID="${DEPOT_PROJECT_ID}"
-                        if command -v brew >/dev/null 2>&1; then
-                            brew list depot/tap/depot >/dev/null 2>&1 || brew install depot/tap/depot
-                        fi
+                        export DEPOT_INSTALL_DIR="$HOME/.local/bin"
+                        mkdir -p "$DEPOT_INSTALL_DIR"
+                        export PATH="$DEPOT_INSTALL_DIR:$PATH"
+                        curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
 
                         echo "===> Building arm64 (native)..."
                         depot cargo build --release --target aarch64-apple-darwin --features functiongemma
