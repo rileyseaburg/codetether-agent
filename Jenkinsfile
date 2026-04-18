@@ -1,3 +1,11 @@
+def releaseRefName() {
+    return (env.TAG_NAME ?: env.BRANCH_NAME ?: '').trim()
+}
+
+def isReleaseRefBuild() {
+    return releaseRefName() ==~ /^v\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$/
+}
+
 // Jenkins Job Configuration Requirements:
 // - Multibranch Pipeline: Add "Discover tags" behavior in Branch Sources → Git → Behaviors
 // - Or configure GitHub webhook to trigger builds on tag push events
@@ -15,14 +23,6 @@ pipeline {
         PATH                  = "/usr/local/bin:${env.HOME}/.cargo/bin:${env.PATH}"
         REPO                  = 'rileyseaburg/codetether-agent'
         BINARY_NAME           = 'codetether'
-
-        // sccache backed by MinIO S3
-        RUSTC_WRAPPER         = 'sccache'
-        SCCACHE_BUCKET        = 'sccache'
-        SCCACHE_ENDPOINT      = 'http://192.168.50.223:9000'
-        SCCACHE_REGION        = 'us-east-1'
-        SCCACHE_S3_KEY_PREFIX = 'codetether'
-        SCCACHE_S3_USE_SSL    = 'false'
 
         // macOS SSH options (Mac Mini uses password auth via sshpass)
         MAC_SSH_OPTS          = '-o StrictHostKeyChecking=no -o ConnectTimeout=30'
@@ -48,16 +48,13 @@ pipeline {
                 stage('Linux x86_64') {
                     steps {
                         withCredentials([
-                            string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                            string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                            string(credentialsId: 'depot-token', variable: 'DEPOT_TOKEN'),
+                            string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID')
                         ]) {
                             sh '''
                                 rustc --version
-                                sccache --start-server 2>/dev/null || true
-                                sccache --show-stats 2>&1 | grep "Cache location" || true
-                                cargo build --release --features functiongemma
-                                echo "=== sccache stats ==="
-                                sccache --show-stats || true
+                                curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+                                depot cargo build --release --features functiongemma
                             '''
                         }
                     }
@@ -65,12 +62,13 @@ pipeline {
                 stage('Windows x86_64') {
                     steps {
                         withCredentials([
-                            string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                            string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                            string(credentialsId: 'depot-token', variable: 'DEPOT_TOKEN'),
+                            string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID')
                         ]) {
                             sh '''
                                 echo "Cross-compiling for Windows..."
-                                cargo build --target x86_64-pc-windows-gnu --release --features functiongemma
+                                curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+                                depot cargo build --target x86_64-pc-windows-gnu --release --features functiongemma
                             '''
                         }
                     }
@@ -80,10 +78,15 @@ pipeline {
 
         stage('macOS (native)') {
             when {
-                buildingTag()
+                expression { isReleaseRefBuild() }
             }
             steps {
+                script {
+                    env.RELEASE_REF = releaseRefName()
+                }
                 withCredentials([
+                    string(credentialsId: 'depot-token', variable: 'DEPOT_TOKEN'),
+                    string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID'),
                     usernamePassword(credentialsId: 'mac-mini-ssh',
                                      usernameVariable: 'MAC_USER',
                                      passwordVariable: 'MAC_PASS')
@@ -104,22 +107,27 @@ pipeline {
                         set -euo pipefail
                         cd /tmp/codetether-build
                         source $HOME/.cargo/env 2>/dev/null || true
+                        export DEPOT_TOKEN="${DEPOT_TOKEN}"
+                        export DEPOT_PROJECT_ID="${DEPOT_PROJECT_ID}"
+                        if command -v brew >/dev/null 2>&1; then
+                            brew list depot/tap/depot >/dev/null 2>&1 || brew install depot/tap/depot
+                        fi
 
                         echo "===> Building arm64 (native)..."
-                        cargo build --release --target aarch64-apple-darwin --features functiongemma
+                        depot cargo build --release --target aarch64-apple-darwin --features functiongemma
 
                         echo "===> Building x86_64 (cross)..."
-                        cargo build --release --target x86_64-apple-darwin --features functiongemma
+                        depot cargo build --release --target x86_64-apple-darwin --features functiongemma
                     REMOTE
 
                     # Fetch artifacts back
                     mkdir -p dist
                     sshpass -e scp ${MAC_SSH_OPTS} \
                         "${MAC_HOST_ADDR}":/tmp/codetether-build/target/aarch64-apple-darwin/release/${BINARY_NAME} \
-                        dist/${BINARY_NAME}-${TAG_NAME}-aarch64-apple-darwin
+                        dist/${BINARY_NAME}-${RELEASE_REF}-aarch64-apple-darwin
                     sshpass -e scp ${MAC_SSH_OPTS} \
                         "${MAC_HOST_ADDR}":/tmp/codetether-build/target/x86_64-apple-darwin/release/${BINARY_NAME} \
-                        dist/${BINARY_NAME}-${TAG_NAME}-x86_64-apple-darwin
+                        dist/${BINARY_NAME}-${RELEASE_REF}-x86_64-apple-darwin
 
                     chmod 755 dist/${BINARY_NAME}-*-apple-darwin
                     echo "==> macOS binaries fetched successfully"
@@ -130,11 +138,12 @@ pipeline {
 
         stage('Package & Release') {
             when {
-                buildingTag()
+                expression { isReleaseRefBuild() }
             }
             steps {
                 script {
-                    env.VERSION = env.TAG_NAME
+                    env.VERSION = releaseRefName()
+                    env.RELEASE_REF = env.VERSION
                 }
                 sh """
                     mkdir -p dist
@@ -169,7 +178,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh """
                         # Extract release notes from annotated tag (generated by release.sh via codetether)
-                        TAG_BODY=\$(git tag -l --format='%(contents:body)' ${env.TAG_NAME} 2>/dev/null || echo '')
+                        TAG_BODY=\$(git tag -l --format='%(contents:body)' ${env.RELEASE_REF} 2>/dev/null || echo '')
                         if [ -n "\$TAG_BODY" ]; then
                             echo "\$TAG_BODY" > /tmp/release-notes.md
                             NOTES_FLAG="--notes-file /tmp/release-notes.md"
@@ -177,16 +186,16 @@ pipeline {
                             NOTES_FLAG="--generate-notes"
                         fi
 
-                        gh release create ${env.TAG_NAME} \
+                        gh release create ${env.RELEASE_REF} \
                             dist/*.tar.gz \
                             dist/*.exe \
                             dist/SHA256SUMS-${VERSION}.txt \
                             --repo ${REPO} \
-                            --title "${env.TAG_NAME} - CodeTether Agent" \
+                            --title "${env.RELEASE_REF} - CodeTether Agent" \
                             \$NOTES_FLAG \
                             --latest \
                             --verify-tag || \
-                        gh release upload ${env.TAG_NAME} \
+                        gh release upload ${env.RELEASE_REF} \
                             dist/*.tar.gz \
                             dist/*.exe \
                             dist/SHA256SUMS-${VERSION}.txt \
@@ -198,16 +207,17 @@ pipeline {
 
         stage('Publish to crates.io') {
             when {
-                buildingTag()
+                expression { isReleaseRefBuild() }
             }
             steps {
+                script {
+                    env.VERSION = releaseRefName()
+                }
                 withCredentials([
-                    string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN'),
-                    string(credentialsId: 'minio-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'minio-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN')
                 ]) {
                     sh '''
-                        echo "Publishing ${TAG_NAME} to crates.io ..."
+                        echo "Publishing ${VERSION} to crates.io ..."
                         cargo publish --allow-dirty --features functiongemma
                     '''
                 }
