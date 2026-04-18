@@ -1,4 +1,12 @@
 def releaseRefName() {
+    def jobBaseName = env.JOB_BASE_NAME?.trim()
+    if (jobBaseName) {
+        return jobBaseName
+    }
+    def jobLeaf = env.JOB_NAME?.tokenize('/')?.last()?.trim()
+    if (jobLeaf) {
+        return jobLeaf
+    }
     def revisionAction = currentBuild?.rawBuild?.getAction(jenkins.scm.api.SCMRevisionAction)
     def headName = revisionAction?.revision?.head?.name?.trim()
     if (headName) {
