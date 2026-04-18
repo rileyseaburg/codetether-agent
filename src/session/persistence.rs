@@ -71,17 +71,28 @@ impl Session {
                     continue;
                 }
             };
-            if let Ok(session) = serde_json::from_str::<Session>(&content) {
-                if let Some(ref ws) = canonical_workspace {
-                    if let Some(ref dir) = session.metadata.directory {
-                        let canonical_dir = dir.canonicalize().unwrap_or_else(|_| dir.clone());
-                        if &canonical_dir == ws {
-                            return Ok(session);
+            match serde_json::from_str::<Session>(&content) {
+                Ok(session) => {
+                    if let Some(ref ws) = canonical_workspace {
+                        if let Some(ref dir) = session.metadata.directory {
+                            let canonical_dir =
+                                dir.canonicalize().unwrap_or_else(|_| dir.clone());
+                            if &canonical_dir == ws {
+                                return Ok(session);
+                            }
                         }
+                        continue;
                     }
+                    return Ok(session);
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        path = %entry.path().display(),
+                        error = %err,
+                        "skipping session file with malformed JSON",
+                    );
                     continue;
                 }
-                return Ok(session);
             }
         }
 

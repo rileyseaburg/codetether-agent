@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::config::ChatSyncConfig;
+use super::config_types::ChatSyncConfig;
 
 pub fn sanitize_s3_key_segment(value: &str) -> String {
     let mut out = String::with_capacity(value.len());

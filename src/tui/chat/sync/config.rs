@@ -32,7 +32,7 @@ pub async fn parse_chat_sync_config(required: bool) -> Result<Option<ChatSyncCon
     let endpoint = normalize_minio_endpoint(&ep_raw);
     let ak = env_non_placeholder("CODETETHER_CHAT_SYNC_MINIO_ACCESS_KEY")
         .or_else(|| vault.as_ref().and_then(|s| vault_str(s, &["access_key","api_key"])
-            .or_else(|| s.api_key.as_ref().map(|v|v.trim().into()).filter(|v|!v.is_empty()))))
+            .or_else(|| s.api_key.as_ref().map(|v: &String| v.trim().to_string()).filter(|v: &String| !v.is_empty()))))
         .ok_or("CODETETHER_CHAT_SYNC_MINIO_ACCESS_KEY required")?;
     let sk = env_non_placeholder("CODETETHER_CHAT_SYNC_MINIO_SECRET_KEY")
         .or_else(|| vault.as_ref().and_then(|s| vault_str(s, &["secret_key","password","secret"])))
@@ -48,7 +48,7 @@ pub async fn parse_chat_sync_config(required: bool) -> Result<Option<ChatSyncCon
     let tls = env_bool("CODETETHER_CHAT_SYNC_MINIO_INSECURE_SKIP_TLS_VERIFY")
         .or_else(|| vault.as_ref().and_then(|s| vault_bool_val(s, &["insecure_skip_tls_verify"]))).unwrap_or(false);
     Ok(Some(ChatSyncConfig {
-        endpoint, fallback_endpoint: minio_fallback_endpoint(&endpoint),
+        endpoint: endpoint.clone(), fallback_endpoint: minio_fallback_endpoint(&endpoint),
         access_key: ak, secret_key: sk, bucket, prefix, interval_secs: iv, ignore_cert_check: tls,
     }))
 }

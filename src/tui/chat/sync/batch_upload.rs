@@ -9,7 +9,6 @@ use minio::s3::types::S3Api;
 use super::archive_reader::read_chat_archive_batch;
 use super::config_types::ChatSyncConfig;
 use super::minio_client::ensure_minio_bucket;
-use super::s3_key::sanitize_s3_key_segment;
 
 pub struct ChatSyncBatch {
     pub bytes: u64,

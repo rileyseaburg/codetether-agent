@@ -18,6 +18,20 @@ use crate::tui::app::session_sync::refresh_sessions;
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
+/// Outcome of trying to resume the most recent workspace session at startup.
+///
+/// Used to populate an informative status line so the user can distinguish
+/// "no prior session existed" from "prior session loaded with 0 messages".
+enum SessionLoadOutcome {
+    Loaded {
+        msg_count: usize,
+        title: Option<String>,
+    },
+    NewFallback {
+        reason: String,
+    },
+}
+
 struct TerminalGuard;
 
 impl Drop for TerminalGuard {
@@ -69,10 +83,20 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
         .ok()
         .flatten();
 
-    let mut session = match Session::last_for_directory(Some(&cwd)).await {
-        Ok(existing) => existing,
-        Err(_) => Session::new().await?,
-    };
+    let (mut session, session_load_outcome) =
+        match Session::last_for_directory(Some(&cwd)).await {
+            Ok(existing) => {
+                let msg_count = existing.messages.len();
+                let title = existing.title.clone();
+                (existing, SessionLoadOutcome::Loaded { msg_count, title })
+            }
+            Err(err) => (
+                Session::new().await?,
+                SessionLoadOutcome::NewFallback {
+                    reason: err.to_string(),
+                },
+            ),
+        };
 
     let (event_tx, event_rx) = mpsc::channel::<SessionEvent>(256);
     let (result_tx, result_rx) = mpsc::channel::<anyhow::Result<Session>>(8);
@@ -98,10 +122,18 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
     }
     app.state.refresh_slash_suggestions();
     app.state.move_cursor_end();
-    app.state.status = if app.state.messages.is_empty() {
-        "Ready — type a message, or use /help for commands.".to_string()
-    } else {
-        "Loaded previous workspace session".to_string()
+    app.state.status = match &session_load_outcome {
+        SessionLoadOutcome::Loaded { msg_count: 0, .. } => format!(
+            "Loaded session {} (empty — type a message to start)",
+            session.id
+        ),
+        SessionLoadOutcome::Loaded { msg_count, title } => {
+            let label = title.as_deref().unwrap_or("(untitled)");
+            format!("Loaded previous session: {label} — {msg_count} messages")
+        }
+        SessionLoadOutcome::NewFallback { reason } => {
+            format!("New session (no prior session for this workspace: {reason})")
+        }
     };
 
     run_event_loop(
