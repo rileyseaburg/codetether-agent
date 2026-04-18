@@ -1,4 +1,9 @@
 def releaseRefName() {
+    def revisionAction = currentBuild?.rawBuild?.getAction(jenkins.scm.api.SCMRevisionAction)
+    def headName = revisionAction?.revision?.head?.name?.trim()
+    if (headName) {
+        return headName
+    }
     return (env.TAG_NAME ?: env.BRANCH_NAME ?: '').trim()
 }
 
