@@ -13,6 +13,11 @@ impl MessageFormatter {
         Self { max_width }
     }
 
+    /// Configured maximum wrap width for this formatter.
+    pub fn max_width(&self) -> usize {
+        self.max_width
+    }
+
     /// Format message content with enhanced features
     pub fn format_content(&self, content: &str, role: &str) -> Vec<Line<'static>> {
         let mut lines = Vec::new();

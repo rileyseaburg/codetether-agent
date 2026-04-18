@@ -9,6 +9,7 @@ pub mod cursor;
 pub mod empty;
 pub mod entries;
 pub mod entry_result;
+pub mod format_cache;
 pub mod images_badge;
 pub mod input_area;
 pub mod layout_chunks;
