@@ -4,6 +4,7 @@ pub mod candidates;
 pub mod error_detection;
 pub mod extra;
 pub mod helpers;
+pub mod local_model;
 pub mod models;
 pub mod priority;
 pub mod retry;
