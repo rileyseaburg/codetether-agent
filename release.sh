@@ -5,7 +5,7 @@
 # 2. Asks whether this is a major, minor, or patch bump
 # 3. Commits any pending changes via commit.sh (AI-generated commit message)
 # 4. Updates the version number in Cargo.toml
-# 5. Runs cargo check to verify the build
+# 5. Runs release verification to catch obvious failures before tagging
 # 6. Commits the version bump and pushes to the main branch
 # 7. Generates AI release notes from commits since the last tag
 # 8. Creates an annotated git tag with those release notes
@@ -17,6 +17,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-cargo test --quiet}"
 
 # Read current version from Cargo.toml
 CURRENT_VERSION="$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"
@@ -139,18 +141,18 @@ sed -i "s|^version = \".*\"|version = \"${new_version}\"|" Cargo.toml
 # Regenerate Cargo.lock
 cargo generate-lockfile --quiet
 
-# Step 4: Verify the project compiles
-echo "==> Running cargo check..."
-if ! cargo check --quiet 2>&1; then
-    echo "Error: cargo check failed after version bump. Reverting."
-    git checkout -- Cargo.toml
+# Step 4: Verify the release candidate
+echo "==> Running release verification: $VERIFY_CMD"
+if ! bash -lc "$VERIFY_CMD"; then
+    echo "Error: release verification failed after version bump. Reverting."
+    git restore Cargo.toml Cargo.lock
     exit 1
 fi
 
 # Step 5: Commit the version bump
-git add Cargo.toml
+git add Cargo.toml Cargo.lock
 git commit -m "chore: bump version to $new_version"
-git push origin main
+git push origin "$CURRENT_BRANCH"
 
 # Step 6: Generate AI release notes
 echo "==> Generating release notes with codetether..."
@@ -187,7 +189,7 @@ fi
 } > RELEASE_NOTES.md
 git add RELEASE_NOTES.md
 git commit -m "docs: release notes for v${new_version}" --allow-empty
-git push origin main
+git push origin "$CURRENT_BRANCH"
 
 # Step 7: Create annotated tag with release notes and push
 git tag -a "v$new_version" -m "$(echo "$RELEASE_NOTES")"

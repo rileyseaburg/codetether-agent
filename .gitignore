@@ -18,6 +18,8 @@ Thumbs.db
 *.dylib
 *.dll
 /dist/
+__pycache__/
+*.pyc
 nohup.out
 
 # Debug

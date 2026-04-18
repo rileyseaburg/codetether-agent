@@ -35,6 +35,8 @@ pub enum BrowserError {
         subtype: Option<String>,
         description: String,
     },
+    #[error("evaluation wrapper error: {0}")]
+    EvalWrapperError(String),
     #[error("browser operation failed: {0}")]
     OperationFailed(String),
 }
