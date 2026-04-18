@@ -96,150 +96,153 @@ pipeline {
         }
 
         stage('macOS (native)') {
-            when {
-                expression { isReleaseRefBuild() }
-            }
             steps {
                 script {
+                    if (!isReleaseRefBuild()) {
+                        echo "Skipping macOS build for non-release ref: ${releaseRefName()}"
+                        return
+                    }
                     env.RELEASE_REF = releaseRefName()
-                }
-                withCredentials([
-                    string(credentialsId: 'depot-token', variable: 'DEPOT_TOKEN'),
-                    string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID'),
-                    usernamePassword(credentialsId: 'mac-mini-ssh',
-                                     usernameVariable: 'MAC_USER',
-                                     passwordVariable: 'MAC_PASS')
-                ]) {
-                    sh '''#!/bin/bash
-                    set -euo pipefail
-                    export SSHPASS="${MAC_PASS}"
-                    MAC_HOST_ADDR="${MAC_USER}@192.168.50.251"
-                    echo "==> Building macOS binaries on Mac Mini (${MAC_HOST_ADDR})..."
-
-                    # Copy source to Mac Mini
-                    sshpass -e rsync -az --delete --exclude target --exclude .git \
-                        -e "ssh ${MAC_SSH_OPTS}" \
-                        ./ "${MAC_HOST_ADDR}":/tmp/codetether-build/
-
-                    # Build both architectures (native arm64 + cross-compiled x86_64)
-                    sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" bash -s <<'REMOTE'
+                    withCredentials([
+                        string(credentialsId: 'depot-token', variable: 'DEPOT_TOKEN'),
+                        string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID'),
+                        usernamePassword(credentialsId: 'mac-mini-ssh',
+                                         usernameVariable: 'MAC_USER',
+                                         passwordVariable: 'MAC_PASS')
+                    ]) {
+                        sh '''#!/bin/bash
                         set -euo pipefail
-                        cd /tmp/codetether-build
-                        source $HOME/.cargo/env 2>/dev/null || true
-                        export DEPOT_TOKEN="${DEPOT_TOKEN}"
-                        export DEPOT_PROJECT_ID="${DEPOT_PROJECT_ID}"
-                        export DEPOT_INSTALL_DIR="$HOME/.local/bin"
-                        mkdir -p "$DEPOT_INSTALL_DIR"
-                        export PATH="$DEPOT_INSTALL_DIR:$PATH"
-                        curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
+                        export SSHPASS="${MAC_PASS}"
+                        MAC_HOST_ADDR="${MAC_USER}@192.168.50.251"
+                        echo "==> Building macOS binaries on Mac Mini (${MAC_HOST_ADDR})..."
 
-                        echo "===> Building arm64 (native)..."
-                        depot cargo build --release --target aarch64-apple-darwin --features functiongemma
+                        # Copy source to Mac Mini
+                        sshpass -e rsync -az --delete --exclude target --exclude .git \
+                            -e "ssh ${MAC_SSH_OPTS}" \
+                            ./ "${MAC_HOST_ADDR}":/tmp/codetether-build/
 
-                        echo "===> Building x86_64 (cross)..."
-                        depot cargo build --release --target x86_64-apple-darwin --features functiongemma
-                    REMOTE
+                        # Build both architectures (native arm64 + cross-compiled x86_64)
+                        sshpass -e ssh ${MAC_SSH_OPTS} "${MAC_HOST_ADDR}" bash -s <<'REMOTE'
+                            set -euo pipefail
+                            cd /tmp/codetether-build
+                            source $HOME/.cargo/env 2>/dev/null || true
+                            export DEPOT_TOKEN="${DEPOT_TOKEN}"
+                            export DEPOT_PROJECT_ID="${DEPOT_PROJECT_ID}"
+                            export DEPOT_INSTALL_DIR="$HOME/.local/bin"
+                            mkdir -p "$DEPOT_INSTALL_DIR"
+                            export PATH="$DEPOT_INSTALL_DIR:$PATH"
+                            curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="$DEPOT_INSTALL_DIR" sh
 
-                    # Fetch artifacts back
-                    mkdir -p dist
-                    sshpass -e scp ${MAC_SSH_OPTS} \
-                        "${MAC_HOST_ADDR}":/tmp/codetether-build/target/aarch64-apple-darwin/release/${BINARY_NAME} \
-                        dist/${BINARY_NAME}-${RELEASE_REF}-aarch64-apple-darwin
-                    sshpass -e scp ${MAC_SSH_OPTS} \
-                        "${MAC_HOST_ADDR}":/tmp/codetether-build/target/x86_64-apple-darwin/release/${BINARY_NAME} \
-                        dist/${BINARY_NAME}-${RELEASE_REF}-x86_64-apple-darwin
+                            echo "===> Building arm64 (native)..."
+                            depot cargo build --release --target aarch64-apple-darwin --features functiongemma
 
-                    chmod 755 dist/${BINARY_NAME}-*-apple-darwin
-                    echo "==> macOS binaries fetched successfully"
-                    '''
+                            echo "===> Building x86_64 (cross)..."
+                            depot cargo build --release --target x86_64-apple-darwin --features functiongemma
+                        REMOTE
+
+                        # Fetch artifacts back
+                        mkdir -p dist
+                        sshpass -e scp ${MAC_SSH_OPTS} \
+                            "${MAC_HOST_ADDR}":/tmp/codetether-build/target/aarch64-apple-darwin/release/${BINARY_NAME} \
+                            dist/${BINARY_NAME}-${RELEASE_REF}-aarch64-apple-darwin
+                        sshpass -e scp ${MAC_SSH_OPTS} \
+                            "${MAC_HOST_ADDR}":/tmp/codetether-build/target/x86_64-apple-darwin/release/${BINARY_NAME} \
+                            dist/${BINARY_NAME}-${RELEASE_REF}-x86_64-apple-darwin
+
+                        chmod 755 dist/${BINARY_NAME}-*-apple-darwin
+                        echo "==> macOS binaries fetched successfully"
+                        '''
+                    }
                 }
             }
         }
 
         stage('Package & Release') {
-            when {
-                expression { isReleaseRefBuild() }
-            }
             steps {
                 script {
+                    if (!isReleaseRefBuild()) {
+                        echo "Skipping packaging for non-release ref: ${releaseRefName()}"
+                        return
+                    }
                     env.VERSION = releaseRefName()
                     env.RELEASE_REF = env.VERSION
-                }
-                sh """
-                    mkdir -p dist
-
-                    # Linux x86_64
-                    LINUX_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-unknown-linux-gnu"
-                    cp target/release/${BINARY_NAME} "dist/\${LINUX_ARTIFACT}"
-                    cd dist && tar czf "\${LINUX_ARTIFACT}.tar.gz" "\${LINUX_ARTIFACT}" && cd ..
-
-                    # Windows x86_64
-                    WIN_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-pc-windows-gnu.exe"
-                    cp target/x86_64-pc-windows-gnu/release/${BINARY_NAME}.exe "dist/\${WIN_ARTIFACT}"
-                    cd dist && tar czf "\${WIN_ARTIFACT%.exe}.tar.gz" "\${WIN_ARTIFACT}" && cd ..
-
-                    # macOS arm64
-                    MAC_ARM64="${BINARY_NAME}-${VERSION}-aarch64-apple-darwin"
-                    if [ -f "dist/${BINARY_NAME}-\${VERSION}-aarch64-apple-darwin" ]; then
-                        cd dist && tar czf "\${MAC_ARM64}.tar.gz" "${BINARY_NAME}-\${VERSION}-aarch64-apple-darwin" && cd ..
-                    fi
-
-                    # macOS x86_64
-                    MAC_X86="${BINARY_NAME}-${VERSION}-x86_64-apple-darwin"
-                    if [ -f "dist/${BINARY_NAME}-\${VERSION}-x86_64-apple-darwin" ]; then
-                        cd dist && tar czf "\${MAC_X86}.tar.gz" "${BINARY_NAME}-\${VERSION}-x86_64-apple-darwin" && cd ..
-                    fi
-
-                    # Checksums for all artifacts
-                    cd dist && sha256sum *.tar.gz *.exe > SHA256SUMS-${VERSION}.txt && cd ..
-                """
-                archiveArtifacts artifacts: 'dist/*.tar.gz, dist/*.exe, dist/SHA256SUMS-*.txt', fingerprint: true
-
-                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh """
-                        # Extract release notes from annotated tag (generated by release.sh via codetether)
-                        TAG_BODY=\$(git tag -l --format='%(contents:body)' ${env.RELEASE_REF} 2>/dev/null || echo '')
-                        if [ -n "\$TAG_BODY" ]; then
-                            echo "\$TAG_BODY" > /tmp/release-notes.md
-                            NOTES_FLAG="--notes-file /tmp/release-notes.md"
-                        else
-                            NOTES_FLAG="--generate-notes"
+                        mkdir -p dist
+
+                        # Linux x86_64
+                        LINUX_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-unknown-linux-gnu"
+                        cp target/release/${BINARY_NAME} "dist/\${LINUX_ARTIFACT}"
+                        cd dist && tar czf "\${LINUX_ARTIFACT}.tar.gz" "\${LINUX_ARTIFACT}" && cd ..
+
+                        # Windows x86_64
+                        WIN_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-pc-windows-gnu.exe"
+                        cp target/x86_64-pc-windows-gnu/release/${BINARY_NAME}.exe "dist/\${WIN_ARTIFACT}"
+                        cd dist && tar czf "\${WIN_ARTIFACT%.exe}.tar.gz" "\${WIN_ARTIFACT}" && cd ..
+
+                        # macOS arm64
+                        MAC_ARM64="${BINARY_NAME}-${VERSION}-aarch64-apple-darwin"
+                        if [ -f "dist/${BINARY_NAME}-\${VERSION}-aarch64-apple-darwin" ]; then
+                            cd dist && tar czf "\${MAC_ARM64}.tar.gz" "${BINARY_NAME}-\${VERSION}-aarch64-apple-darwin" && cd ..
                         fi
 
-                        gh release create ${env.RELEASE_REF} \
-                            dist/*.tar.gz \
-                            dist/*.exe \
-                            dist/SHA256SUMS-${VERSION}.txt \
-                            --repo ${REPO} \
-                            --title "${env.RELEASE_REF} - CodeTether Agent" \
-                            \$NOTES_FLAG \
-                            --latest \
-                            --verify-tag || \
-                        gh release upload ${env.RELEASE_REF} \
-                            dist/*.tar.gz \
-                            dist/*.exe \
-                            dist/SHA256SUMS-${VERSION}.txt \
-                            --repo ${REPO} --clobber
+                        # macOS x86_64
+                        MAC_X86="${BINARY_NAME}-${VERSION}-x86_64-apple-darwin"
+                        if [ -f "dist/${BINARY_NAME}-\${VERSION}-x86_64-apple-darwin" ]; then
+                            cd dist && tar czf "\${MAC_X86}.tar.gz" "${BINARY_NAME}-\${VERSION}-x86_64-apple-darwin" && cd ..
+                        fi
+
+                        # Checksums for all artifacts
+                        cd dist && sha256sum *.tar.gz *.exe > SHA256SUMS-${VERSION}.txt && cd ..
                     """
+                    archiveArtifacts artifacts: 'dist/*.tar.gz, dist/*.exe, dist/SHA256SUMS-*.txt', fingerprint: true
+
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                        sh """
+                            # Extract release notes from annotated tag (generated by release.sh via codetether)
+                            TAG_BODY=\$(git tag -l --format='%(contents:body)' ${env.RELEASE_REF} 2>/dev/null || echo '')
+                            if [ -n "\$TAG_BODY" ]; then
+                                echo "\$TAG_BODY" > /tmp/release-notes.md
+                                NOTES_FLAG="--notes-file /tmp/release-notes.md"
+                            else
+                                NOTES_FLAG="--generate-notes"
+                            fi
+
+                            gh release create ${env.RELEASE_REF} \
+                                dist/*.tar.gz \
+                                dist/*.exe \
+                                dist/SHA256SUMS-${VERSION}.txt \
+                                --repo ${REPO} \
+                                --title "${env.RELEASE_REF} - CodeTether Agent" \
+                                \$NOTES_FLAG \
+                                --latest \
+                                --verify-tag || \
+                            gh release upload ${env.RELEASE_REF} \
+                                dist/*.tar.gz \
+                                dist/*.exe \
+                                dist/SHA256SUMS-${VERSION}.txt \
+                                --repo ${REPO} --clobber
+                        """
+                    }
                 }
             }
         }
 
         stage('Publish to crates.io') {
-            when {
-                expression { isReleaseRefBuild() }
-            }
             steps {
                 script {
+                    if (!isReleaseRefBuild()) {
+                        echo "Skipping crates publish for non-release ref: ${releaseRefName()}"
+                        return
+                    }
                     env.VERSION = releaseRefName()
-                }
-                withCredentials([
-                    string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN')
-                ]) {
-                    sh '''
-                        echo "Publishing ${VERSION} to crates.io ..."
-                        cargo publish --allow-dirty --features functiongemma
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'cargo-registry-token', variable: 'CARGO_REGISTRY_TOKEN')
+                    ]) {
+                        sh '''
+                            echo "Publishing ${VERSION} to crates.io ..."
+                            cargo publish --allow-dirty --features functiongemma
+                        '''
+                    }
                 }
             }
         }
