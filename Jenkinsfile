@@ -23,7 +23,7 @@ def isReleaseRefBuild() {
 // - Multibranch Pipeline: Add "Discover tags" behavior in Branch Sources → Git → Behaviors
 // - Or configure GitHub webhook to trigger builds on tag push events
 // - The "Package & Release" and "Publish to crates.io" stages only run when building tags
-// - Windows cross-compilation requires: mingw-w64 (gcc + g++), rustup target x86_64-pc-windows-gnu
+// - Linux and Windows release binaries build on Depot remote builders via `depot build`
 // - macOS builds run on the local Mac Mini via SSH (requires mac-mini-ssh Jenkins credential: usernamePassword type)
 // - sshpass must be installed on the Jenkins agent for macOS builds
 
@@ -65,12 +65,21 @@ pipeline {
                             string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID')
                         ]) {
                             sh '''
-                                rustc --version
                                 export DEPOT_INSTALL_DIR="${WORKSPACE}/.depot/bin"
                                 mkdir -p "${DEPOT_INSTALL_DIR}"
                                 export PATH="${DEPOT_INSTALL_DIR}:${PATH}"
+                                rm -rf dist/linux
+                                mkdir -p dist/linux
                                 curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="${DEPOT_INSTALL_DIR}" sh
-                                depot cargo build --release --features functiongemma
+                                depot build \
+                                  --project "${DEPOT_PROJECT_ID}" \
+                                  --progress plain \
+                                  --platform linux/amd64 \
+                                  --file docker/release/linux.Dockerfile \
+                                  --target artifact \
+                                  --output "type=local,dest=dist/linux" \
+                                  .
+                                chmod 755 dist/linux/codetether
                             '''
                         }
                     }
@@ -82,12 +91,20 @@ pipeline {
                             string(credentialsId: 'depot-project-id', variable: 'DEPOT_PROJECT_ID')
                         ]) {
                             sh '''
-                                echo "Cross-compiling for Windows..."
                                 export DEPOT_INSTALL_DIR="${WORKSPACE}/.depot/bin"
                                 mkdir -p "${DEPOT_INSTALL_DIR}"
                                 export PATH="${DEPOT_INSTALL_DIR}:${PATH}"
+                                rm -rf dist/windows
+                                mkdir -p dist/windows
                                 curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="${DEPOT_INSTALL_DIR}" sh
-                                depot cargo build --target x86_64-pc-windows-gnu --release --features functiongemma
+                                depot build \
+                                  --project "${DEPOT_PROJECT_ID}" \
+                                  --progress plain \
+                                  --platform linux/amd64 \
+                                  --file docker/release/windows.Dockerfile \
+                                  --target artifact \
+                                  --output "type=local,dest=dist/windows" \
+                                  .
                             '''
                         }
                     }
@@ -171,12 +188,12 @@ pipeline {
 
                         # Linux x86_64
                         LINUX_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-unknown-linux-gnu"
-                        cp target/release/${BINARY_NAME} "dist/\${LINUX_ARTIFACT}"
+                        cp dist/linux/${BINARY_NAME} "dist/\${LINUX_ARTIFACT}"
                         cd dist && tar czf "\${LINUX_ARTIFACT}.tar.gz" "\${LINUX_ARTIFACT}" && cd ..
 
                         # Windows x86_64
                         WIN_ARTIFACT="${BINARY_NAME}-${VERSION}-x86_64-pc-windows-gnu.exe"
-                        cp target/x86_64-pc-windows-gnu/release/${BINARY_NAME}.exe "dist/\${WIN_ARTIFACT}"
+                        cp dist/windows/${BINARY_NAME}.exe "dist/\${WIN_ARTIFACT}"
                         cd dist && tar czf "\${WIN_ARTIFACT%.exe}.tar.gz" "\${WIN_ARTIFACT}" && cd ..
 
                         # macOS arm64
