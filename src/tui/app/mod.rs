@@ -21,6 +21,8 @@ pub mod run;
 pub mod session_events;
 pub mod session_sync;
 pub mod settings;
+pub mod slash_hint_match;
+pub mod slash_hints;
 pub mod smart_switch;
 pub mod state;
 pub mod symbols;
