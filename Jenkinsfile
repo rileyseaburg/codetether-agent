@@ -142,6 +142,16 @@ pipeline {
 set -euo pipefail
 cd /tmp/codetether-build
 source "$HOME/.cargo/env" 2>/dev/null || true
+if command -v brew >/dev/null 2>&1; then
+  BREW_PROTOBUF_PREFIX="$(brew --prefix protobuf 2>/dev/null || true)"
+  if [ -n "$BREW_PROTOBUF_PREFIX" ] && [ -x "$BREW_PROTOBUF_PREFIX/bin/protoc" ]; then
+    export PATH="$BREW_PROTOBUF_PREFIX/bin:$PATH"
+  fi
+fi
+if ! command -v protoc >/dev/null 2>&1; then
+  brew install protobuf
+fi
+export PROTOC="$(command -v protoc)"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
 echo "===> Building arm64 (native)..."
