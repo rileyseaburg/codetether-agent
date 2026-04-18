@@ -26,11 +26,9 @@ impl BrowserService {
     }
 
     pub fn session(&self) -> BrowserSession {
-        if let Some(session) = self.session.lock().clone() {
-            return session;
-        }
-        let session = BrowserSession::new();
-        *self.session.lock() = Some(session.clone());
-        session
+        self.session
+            .lock()
+            .get_or_insert_with(BrowserSession::new)
+            .clone()
     }
 }

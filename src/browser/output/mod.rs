@@ -10,7 +10,7 @@ pub use ack::Ack;
 pub use content::{HtmlContent, TextContent};
 pub use eval::EvalOutput;
 pub use screenshot::ScreenshotData;
-pub use snapshot::PageSnapshot;
+pub use snapshot::{PageSnapshot, Viewport};
 pub use tabs::TabList;
 pub use toggle::ToggleOutput;
 

@@ -13,6 +13,8 @@ pub(in crate::tool::browserctl) async fn start(
     let request = StartRequest {
         headless: input.headless.unwrap_or(true),
         executable_path: input.executable_path.clone(),
+        user_data_dir: input.user_data_dir.clone(),
+        ws_url: input.ws_url.clone(),
     };
     super::super::execute(input, BrowserCommand::Start(request)).await
 }

@@ -62,6 +62,50 @@ function isWindows() {
   return process.platform === 'win32';
 }
 
+function fallbackTriples(targetTriple, isWindowsTarget = isWindows()) {
+  if (!isWindowsTarget) {
+    return [targetTriple];
+  }
+
+  const triples = [targetTriple];
+  if (targetTriple.endsWith('-pc-windows-msvc')) {
+    triples.push(targetTriple.replace(/-pc-windows-msvc$/, '-pc-windows-gnu'));
+  } else if (targetTriple.endsWith('-pc-windows-gnu')) {
+    triples.push(targetTriple.replace(/-pc-windows-gnu$/, '-pc-windows-msvc'));
+  }
+
+  return triples;
+}
+
+function assetCandidatesForInstall({ tag, targetTriple, isWindowsTarget = isWindows() }) {
+  const candidates = [];
+
+  for (const triple of fallbackTriples(targetTriple, isWindowsTarget)) {
+    const assetBase = `codetether-${tag}-${triple}`;
+    if (isWindowsTarget) {
+      candidates.push({ name: `${assetBase}.zip`, kind: 'zip', assetBase, targetTriple: triple });
+      candidates.push({ name: `${assetBase}.exe`, kind: 'exe', assetBase, targetTriple: triple });
+      candidates.push({ name: `${assetBase}.tar.gz`, kind: 'tar.gz', assetBase, targetTriple: triple });
+    } else {
+      candidates.push({ name: `${assetBase}.tar.gz`, kind: 'tar.gz', assetBase, targetTriple: triple });
+      candidates.push({ name: assetBase, kind: 'bin', assetBase, targetTriple: triple });
+    }
+  }
+
+  return candidates;
+}
+
+function selectAssetCandidates({ tag, targetTriple, availableAssetNames, isWindowsTarget = isWindows() }) {
+  const candidates = assetCandidatesForInstall({ tag, targetTriple, isWindowsTarget });
+  if (!availableAssetNames || availableAssetNames.length === 0) {
+    return candidates;
+  }
+
+  const available = new Set(availableAssetNames);
+  const matching = candidates.filter((candidate) => available.has(candidate.name));
+  return matching.length > 0 ? matching : candidates;
+}
+
 function defaultCacheDir() {
   if (process.env.CODETETHER_NPX_CACHE_DIR) {
     return process.env.CODETETHER_NPX_CACHE_DIR;
@@ -146,6 +190,17 @@ async function getLatestReleaseTag(repo) {
     throw new Error('GitHub API response missing tag_name');
   }
   return data.tag_name;
+}
+
+async function getReleaseAssetNames(repo, tag) {
+  const data = await requestJson(`https://api.github.com/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`);
+  if (!data || !Array.isArray(data.assets)) {
+    return [];
+  }
+
+  return data.assets
+    .map((asset) => asset && asset.name)
+    .filter((name) => typeof name === 'string' && name.length > 0);
 }
 
 function downloadFile(url, destPath) {
@@ -282,6 +337,19 @@ function extractZip(AdmZip, zipPath, cwd) {
   zip.extractAllTo(cwd, true);
 }
 
+function findExtractedBinary({ tmpDir, assetBase, isWindowsTarget = isWindows() }) {
+  const files = listFilesRecursive(tmpDir);
+  if (isWindowsTarget) {
+    const candidate1 = files.find((p) => path.basename(p).toLowerCase() === 'codetether.exe');
+    const candidate2 = files.find((p) => path.basename(p).toLowerCase() === `${assetBase}.exe`.toLowerCase());
+    return candidate1 || candidate2 || null;
+  }
+
+  const candidate1 = files.find((p) => path.basename(p) === 'codetether');
+  const candidate2 = files.find((p) => path.basename(p) === assetBase);
+  return candidate1 || candidate2 || null;
+}
+
 function sha256OfFile(p) {
   const hash = crypto.createHash('sha256');
   const data = fs.readFileSync(p);
@@ -388,8 +456,51 @@ async function withInstallLock(lockPath, fn) {
   }
 }
 
+async function installFromAssetCandidate({ repo, tag, candidate, destPath }) {
+  const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'codetether-npx-'));
+
+  try {
+    const isWin = isWindows();
+    const assetPath = path.join(tmpDir, candidate.name);
+    const url = `https://github.com/${repo}/releases/download/${tag}/${candidate.name}`;
+
+    await downloadFile(url, assetPath);
+    await verifyArchiveChecksum({ repo, tag, archiveName: candidate.name, archivePath: assetPath });
+
+    if (candidate.kind === 'exe' || candidate.kind === 'bin') {
+      await fsp.copyFile(assetPath, destPath);
+      if (!isWin) {
+        await fsp.chmod(destPath, 0o755);
+      }
+      return;
+    }
+
+    if (candidate.kind === 'zip') {
+      // eslint-disable-next-line global-require
+      const AdmZip = require('adm-zip');
+      extractZip(AdmZip, assetPath, tmpDir);
+    } else {
+      // eslint-disable-next-line global-require
+      const tar = require('tar');
+      await extractTarGz(tar, assetPath, tmpDir);
+    }
+
+    const extracted = findExtractedBinary({ tmpDir, assetBase: candidate.assetBase, isWindowsTarget: isWin });
+    if (!extracted) {
+      const expectedName = isWin ? `${candidate.assetBase}.exe` : candidate.assetBase;
+      throw new Error(`Expected extracted binary not found: ${expectedName}`);
+    }
+
+    await fsp.copyFile(extracted, destPath);
+    if (!isWin) {
+      await fsp.chmod(destPath, 0o755);
+    }
+  } finally {
+    rmdirRecursiveSafe(tmpDir);
+  }
+}
+
 async function installForTag({ repo, tag, targetTriple }) {
-  const assetBase = `codetether-${tag}-${targetTriple}`;
   const destPath = binDestPath({ tag, targetTriple });
   const destDir = path.dirname(destPath);
 
@@ -405,58 +516,41 @@ async function installForTag({ repo, tag, targetTriple }) {
       return { destPath, tag, targetTriple, reused: true };
     }
 
-    const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'codetether-npx-'));
+    let assetNames = [];
     try {
-      const isWin = isWindows();
-      const archiveName = isWin ? `${assetBase}.zip` : `${assetBase}.tar.gz`;
-      const url = `https://github.com/${repo}/releases/download/${tag}/${archiveName}`;
-      const archivePath = path.join(tmpDir, archiveName);
-
-      await downloadFile(url, archivePath);
-      await verifyArchiveChecksum({ repo, tag, archiveName, archivePath });
-
-      if (isWin) {
-        // eslint-disable-next-line global-require
-        const AdmZip = require('adm-zip');
-        extractZip(AdmZip, archivePath, tmpDir);
-
-        const files = listFilesRecursive(tmpDir);
-        const candidate1 = files.find((p) => path.basename(p).toLowerCase() === 'codetether.exe');
-        const candidate2 = files.find((p) => path.basename(p).toLowerCase() === `${assetBase}.exe`.toLowerCase());
-        const found = candidate1 || candidate2;
-        if (!found) {
-          throw new Error(`Could not find codetether.exe or ${assetBase}.exe inside ${archiveName}`);
-        }
-
-        await fsp.copyFile(found, destPath);
-      } else {
-        // eslint-disable-next-line global-require
-        const tar = require('tar');
-        await extractTarGz(tar, archivePath, tmpDir);
-
-        const extracted = path.join(tmpDir, assetBase);
-        if (!fileExists(extracted)) {
-          throw new Error(`Expected extracted binary not found: ${assetBase}`);
-        }
-
-        await fsp.copyFile(extracted, destPath);
-        await fsp.chmod(destPath, 0o755);
-      }
-
-      // Write a small marker file for debugging.
-      const meta = {
-        repo,
-        tag,
-        targetTriple,
-        installedAt: new Date().toISOString(),
-        sha256: sha256OfFile(destPath),
-      };
-      await fsp.writeFile(path.join(destDir, 'install-meta.json'), `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
-
-      return { destPath, tag, targetTriple, reused: false };
-    } finally {
-      rmdirRecursiveSafe(tmpDir);
+      assetNames = await getReleaseAssetNames(repo, tag);
+    } catch {
+      assetNames = [];
     }
+
+    const candidates = selectAssetCandidates({ tag, targetTriple, availableAssetNames: assetNames });
+    let lastErr = null;
+
+    for (const candidate of candidates) {
+      try {
+        await installFromAssetCandidate({ repo, tag, candidate, destPath });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    if (lastErr) {
+      throw lastErr;
+    }
+
+    // Write a small marker file for debugging.
+    const meta = {
+      repo,
+      tag,
+      targetTriple,
+      installedAt: new Date().toISOString(),
+      sha256: sha256OfFile(destPath),
+    };
+    await fsp.writeFile(path.join(destDir, 'install-meta.json'), `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
+
+    return { destPath, tag, targetTriple, reused: false };
   });
 }
 
@@ -537,6 +631,8 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
 
 module.exports = {
   ensureInstalled,
+  assetCandidatesForInstall,
   platformTriple,
   normalizeTag,
+  selectAssetCandidates,
 };

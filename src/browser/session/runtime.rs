@@ -1,17 +1,15 @@
-// TODO(chromiumoxide): store the CDP handler JoinHandle and cancellation
-// token here when the real session runtime lands.
-
 pub async fn execute(
+    session: &crate::browser::BrowserSession,
     command: crate::browser::BrowserCommand,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
     use crate::browser::BrowserCommand as Command;
     match command {
-        Command::Health => err(),
-        Command::Start(request) => todo_err(request),
-        Command::Stop => err(),
-        Command::Snapshot => err(),
+        Command::Health => super::health::run(session).await,
+        Command::Start(request) => super::lifecycle::start(session, request).await,
+        Command::Stop => super::lifecycle::stop(session).await,
+        Command::Snapshot => super::snapshot::run(session).await,
         Command::Console => err(),
-        Command::Goto(request) => todo_err(request),
+        Command::Goto(request) => super::navigation::goto(session, request).await,
         Command::Back => err(),
         Command::Reload => err(),
         Command::Wait(request) => todo_err(request),
@@ -21,12 +19,12 @@ pub async fn execute(
         Command::Press(request) => todo_err(request),
         Command::Text(request) => todo_err(request),
         Command::Html(request) => todo_err(request),
-        Command::Eval(request) => todo_err(request),
+        Command::Eval(request) => super::eval::run(session, request).await,
         Command::ConsoleEval(request) => todo_err(request),
         Command::ClickText(request) => todo_err(request),
         Command::FillNative(request) => todo_err(request),
         Command::Toggle(request) => todo_err(request),
-        Command::Screenshot(request) => todo_err(request),
+        Command::Screenshot(request) => super::screen::capture(session, request).await,
         Command::MouseClick(request) => todo_err(request),
         Command::KeyboardType(request) => todo_err(request),
         Command::KeyboardPress(request) => todo_err(request),

@@ -1,17 +1,13 @@
+mod access;
+mod eval;
+mod health;
+mod lifecycle;
+mod navigation;
 mod runtime;
+mod runtime_state;
+mod screen;
+mod snapshot;
+mod state;
 
-#[derive(Clone, Default)]
-pub struct BrowserSession;
-
-impl BrowserSession {
-    pub fn new() -> Self {
-        Self
-    }
-
-    pub async fn execute(
-        &self,
-        command: crate::browser::BrowserCommand,
-    ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
-        runtime::execute(command).await
-    }
-}
+pub(super) use runtime_state::{SessionMode, SessionRuntime};
+pub use state::BrowserSession;

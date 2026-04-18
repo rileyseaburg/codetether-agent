@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "4.5.0"
+version = "4.5.1"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -155,6 +155,7 @@ async-trait = "0.1"
 lazy_static = "1.4"
 once_cell = "1.19"
 parking_lot = "0.12"
+chromiumoxide = "0.9.1"
 dashmap = "6"
 glob = "0.3"
 html-escape = "0.2"

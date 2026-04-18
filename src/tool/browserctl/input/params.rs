@@ -6,6 +6,8 @@ pub(in crate::tool::browserctl) struct BrowserCtlInput {
     pub action: super::BrowserCtlAction,
     #[serde(default)] pub headless: Option<bool>,
     #[serde(default)] pub executable_path: Option<String>,
+    #[serde(default)] pub user_data_dir: Option<String>,
+    #[serde(default)] pub ws_url: Option<String>,
     #[serde(default)] pub url: Option<String>,
     #[serde(default)] pub wait_until: Option<String>,
     #[serde(default)] pub selector: Option<String>,

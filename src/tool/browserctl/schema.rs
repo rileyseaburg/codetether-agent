@@ -9,6 +9,8 @@ pub(super) fn parameters_schema() -> Value {
             "action": {"type": "string", "enum": ["health","start","stop","snapshot","console","goto","click","fill","type","press","text","html","eval","console_eval","click_text","fill_native","toggle","screenshot","mouse_click","keyboard_type","keyboard_press","reload","tabs","tabs_select","tabs_new","tabs_close","back","wait"], "description": "Browserctl action to execute"},
             "headless": {"type": "boolean", "description": "For start: launch headless browser (default true)"},
             "executable_path": {"type": "string", "description": "For start: optional browser binary path"},
+            "user_data_dir": {"type": "string", "description": "For start in launch mode: optional browser profile directory"},
+            "ws_url": {"type": "string", "description": "For start in connect mode: DevTools websocket URL for an existing browser"},
             "url": {"type": "string", "description": "For goto or tabs_new: target URL"},
             "wait_until": {"type": "string", "description": "For goto: wait strategy, default domcontentloaded"},
             "selector": {"type": "string", "description": "CSS selector for selector-based actions"},
@@ -31,6 +33,6 @@ pub(super) fn parameters_schema() -> Value {
             "exact": {"type": "boolean", "description": "For click_text: exact text match (default true)"}
         },
         "required": ["action"],
-        "examples": [{"action": "health"}, {"action": "goto", "url": "https://github.com"}, {"action": "back"}, {"action": "wait", "text": "Environment is ready", "timeout_ms": 15000}, {"action": "console_eval", "script": "return { title: document.title, url: location.href };"}, {"action": "fill_native", "selector": "#email", "value": "user@example.com"}, {"action": "toggle", "selector": "#rating", "text": "1"}, {"action": "screenshot", "path": "/tmp/page.png", "full_page": true}]
+        "examples": [{"action": "health"}, {"action": "start", "ws_url": "ws://localhost:9222/devtools/browser/session-id"}, {"action": "start", "headless": true, "user_data_dir": "/tmp/codetether-browser"}, {"action": "goto", "url": "https://github.com"}, {"action": "back"}, {"action": "wait", "text": "Environment is ready", "timeout_ms": 15000}, {"action": "console_eval", "script": "return { title: document.title, url: location.href };"}, {"action": "fill_native", "selector": "#email", "value": "user@example.com"}, {"action": "toggle", "selector": "#rating", "text": "1"}, {"action": "screenshot", "path": "/tmp/page.png", "full_page": true}]
     })
 }

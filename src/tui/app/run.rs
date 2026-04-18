@@ -103,7 +103,8 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
         .ok()
         .flatten();
 
-    let (loaded_session, session_load_outcome) = match Session::last_for_directory(Some(&cwd)).await {
+    let (loaded_session, session_load_outcome) = match Session::last_for_directory(Some(&cwd)).await
+    {
         Ok(existing) => {
             let msg_count = existing.messages.len();
             let title = existing.title.clone();

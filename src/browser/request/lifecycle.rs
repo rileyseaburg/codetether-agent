@@ -4,6 +4,8 @@ use serde::Serialize;
 pub struct StartRequest {
     pub headless: bool,
     pub executable_path: Option<String>,
+    pub user_data_dir: Option<String>,
+    pub ws_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

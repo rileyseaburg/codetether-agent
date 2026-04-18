@@ -5,9 +5,9 @@ use crate::browser::{BrowserCommand, request::EvalRequest};
 pub(in crate::tool::browserctl) async fn eval(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
+    frame_scope(input)?;
     let request = EvalRequest {
-        source: require_string(&input.expression, "expression")?.to_string(),
-        frame_selector: input.frame_selector.clone(),
+        expression: require_string(&input.expression, "expression")?.to_string(),
     };
     super::execute(input, BrowserCommand::Eval(request)).await
 }
@@ -15,9 +15,22 @@ pub(in crate::tool::browserctl) async fn eval(
 pub(in crate::tool::browserctl) async fn console_eval(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
+    frame_scope(input)?;
     let request = EvalRequest {
-        source: require_string(&input.script, "script")?.to_string(),
-        frame_selector: input.frame_selector.clone(),
+        expression: require_string(&input.script, "script")?.to_string(),
     };
     super::execute(input, BrowserCommand::ConsoleEval(request)).await
+}
+
+fn frame_scope(input: &BrowserCtlInput) -> Result<(), crate::browser::BrowserError> {
+    if input
+        .frame_selector
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        return Err(crate::browser::BrowserError::OperationFailed(
+            "frame-scoped eval is not implemented yet".into(),
+        ));
+    }
+    Ok(())
 }
