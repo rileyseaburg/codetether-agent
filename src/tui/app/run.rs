@@ -79,6 +79,7 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
 
     let mut app = App::default();
     app.state.cwd_display = cwd.display().to_string();
+    app.state.workspace = crate::tui::models::WorkspaceSnapshot::capture(&cwd, 18);
     app.state.auto_apply_edits = session.metadata.auto_apply_edits;
     app.state.allow_network = session.metadata.allow_network || allow_network;
     app.state.slash_autocomplete = session.metadata.slash_autocomplete;

@@ -324,6 +324,7 @@ pub struct AppState {
     pub file_picker_filter: String,
     pub file_picker_active: bool,
     pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
+    pub workspace: crate::tui::models::WorkspaceSnapshot,
 }
 
 impl Default for AppState {
@@ -429,6 +430,7 @@ impl Default for AppState {
             file_picker_filter: String::new(),
             file_picker_active: false,
             chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
+            workspace: crate::tui::models::WorkspaceSnapshot::default(),
         }
     }
 }
