@@ -23,7 +23,7 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 /// ```ignore
 /// push_user_messages(&mut app, "hello", &[]);
 /// ```
-pub(super) fn push_user_messages(app: &mut App, prompt: &str, images: &[ImageAttachment]) {
+pub(crate) fn push_user_messages(app: &mut App, prompt: &str, images: &[ImageAttachment]) {
     app.state
         .messages
         .push(ChatMessage::new(MessageType::User, prompt.to_string()));

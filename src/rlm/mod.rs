@@ -101,7 +101,29 @@ pub struct RlmConfig {
     #[serde(default = "default_threshold")]
     pub threshold: f64,
 
-    /// Maximum iterations for RLM processing
+    /// Maximum iterations for RLM processing.
+    ///
+    /// # Semantics
+    ///
+    /// An "iteration" is one full router step: system prompt + tools →
+    /// LLM round-trip → tool calls → results → next LLM round-trip.
+    /// The loop terminates in one of four ways, mapped directly to
+    /// [`RlmOutcome`](crate::session::RlmOutcome) on the emitted
+    /// [`RlmComplete`](crate::session::SessionEvent::RlmComplete) event:
+    ///
+    /// | Termination condition                                 | Outcome       |
+    /// |-------------------------------------------------------|---------------|
+    /// | Model emitted a `FINAL:` marker                        | `Converged`   |
+    /// | `max_iterations` reached without `FINAL:`              | `Exhausted`   |
+    /// | Provider or tool raised an error                       | `Failed`      |
+    /// | The caller's `AbortHandle` fired                       | `Aborted`     |
+    ///
+    /// `Exhausted` is **not** an error — the partial result is still
+    /// returned and the caller decides whether to retry with a higher
+    /// limit, fall back to chunk compression, or surface the partial
+    /// answer to the user. Session-level context compaction (see
+    /// [`crate::session::helper::compression`]) treats `Exhausted` the
+    /// same as success and re-uses the summary it produced.
     #[serde(default = "default_max_iterations")]
     pub max_iterations: usize,
 

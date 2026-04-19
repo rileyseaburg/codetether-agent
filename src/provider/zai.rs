@@ -54,7 +54,7 @@ impl ZaiProvider {
             "Creating Z.AI provider with custom base URL"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
             base_url,
         })

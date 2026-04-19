@@ -208,6 +208,7 @@ pub(crate) async fn run_prompt_with_events(
             &model,
             &system_prompt,
             &advertised_tool_definitions,
+            Some(&event_tx),
         )
         .await?;
 

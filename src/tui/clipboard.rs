@@ -46,3 +46,13 @@ pub fn get_clipboard_image() -> Option<ImageAttachment> {
         mime_type: Some("image/png".to_string()),
     })
 }
+
+/// Extract plain text from the system clipboard, returning `None` when
+/// unavailable (SSH/headless, no clipboard, or no text content).
+pub fn get_clipboard_text() -> Option<String> {
+    if is_ssh_or_headless() {
+        return None;
+    }
+    let mut clipboard = arboard::Clipboard::new().ok()?;
+    clipboard.get_text().ok().filter(|t| !t.is_empty())
+}

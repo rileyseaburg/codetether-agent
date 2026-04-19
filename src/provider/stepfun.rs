@@ -37,7 +37,7 @@ impl StepFunProvider {
         );
         Ok(Self {
             api_key,
-            client: reqwest::Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
         })
     }
 

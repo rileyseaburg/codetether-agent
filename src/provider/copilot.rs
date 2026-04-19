@@ -34,7 +34,7 @@ impl CopilotProvider {
 
     pub fn with_base_url(token: String, base_url: String, provider_name: &str) -> Result<Self> {
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             token,
             base_url: base_url.trim_end_matches('/').to_string(),
             provider_name: provider_name.to_string(),
@@ -193,10 +193,15 @@ impl CopilotProvider {
             return Vec::new();
         }
 
-        let parsed: CopilotModelsResponse = match response.json().await {
+        let parsed: CopilotModelsResponse = match crate::provider::body_cap::json_capped(
+            response,
+            crate::provider::body_cap::PROVIDER_METADATA_BODY_CAP,
+        )
+        .await
+        {
             Ok(p) => p,
             Err(e) => {
-                tracing::warn!(provider = %self.provider_name, error = %e, "Failed to parse Copilot models response");
+                tracing::warn!(provider = %self.provider_name, error = %e, "Failed to parse Copilot models response (or exceeded body cap)");
                 return Vec::new();
             }
         };

@@ -3,7 +3,6 @@
 //! Each function handles provider-specific secret schemas (service accounts,
 //! OAuth tokens, model paths, etc.) that don't fit the generic `api_key` pattern.
 
-use super::init_dispatch;
 use crate::provider::traits::Provider;
 use crate::secrets::ProviderSecrets;
 use std::sync::Arc;

@@ -5,7 +5,6 @@ use super::bedrock;
 use super::google;
 use super::openai;
 use super::registry::ProviderRegistry;
-use crate::provider::traits::Provider;
 use anyhow::Result;
 use std::sync::Arc;
 

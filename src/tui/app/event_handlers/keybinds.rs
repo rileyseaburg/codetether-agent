@@ -16,7 +16,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
@@ -66,6 +66,18 @@ pub(super) async fn handle_unmodified_key(
         KeyCode::Right => nav::handle_right(app, key.modifiers),
         KeyCode::Delete => nav::handle_delete(app),
         KeyCode::Enter if symbols::symbol_search_active(app) => nav::handle_symbol_enter(app),
+        // Shift+Enter / Alt+Enter inserts a literal newline into the
+        // chat input instead of submitting. Must come BEFORE the bare
+        // `KeyCode::Enter` arm. Shift+Enter requires the terminal to
+        // report modifier bits on Enter (kitty keyboard protocol or
+        // xterm modifyOtherKeys — see `PushKeyboardEnhancementFlags`
+        // in run.rs); Alt+Enter is universally distinguishable.
+        KeyCode::Enter
+            if key.modifiers.contains(KeyModifiers::SHIFT)
+                || key.modifiers.contains(KeyModifiers::ALT) =>
+        {
+            app.state.insert_char('\n');
+        }
         KeyCode::Enter => {
             input::handle_enter(
                 app,

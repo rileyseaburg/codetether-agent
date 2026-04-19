@@ -16,7 +16,6 @@ use tokio::process::Command;
 use tokio::time::{Duration, timeout};
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
-use crate::util;
 
 /// Execute shell commands
 pub struct BashTool {
@@ -222,9 +221,12 @@ impl Tool for BashTool {
                 ..SandboxPolicy::default()
             };
             let work_dir = effective_cwd.as_deref();
+            let shell = super::bash_shell::resolve();
+            let mut sandbox_args: Vec<String> = shell.prefix_args.clone();
+            sandbox_args.push(wrapped_command.clone());
             let sandbox_result = execute_sandboxed(
-                "bash",
-                &["-c".to_string(), wrapped_command.clone()],
+                &shell.program,
+                &sandbox_args,
                 &policy,
                 work_dir,
             )
@@ -318,8 +320,9 @@ impl Tool for BashTool {
             };
         }
 
-        let mut cmd = Command::new("bash");
-        cmd.arg("-c")
+        let shell = super::bash_shell::resolve();
+        let mut cmd = Command::new(&shell.program);
+        cmd.args(&shell.prefix_args)
             .arg(&wrapped_command)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())

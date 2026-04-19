@@ -121,40 +121,41 @@ impl TuiWorkerBridge {
                 .unwrap_or_else(|_| ".".to_string()),
         ];
 
-        // Register with the server
-        let token_opt = Some(token.clone());
-        if let Err(e) = register_worker(
-            &client,
-            &server,
-            &token_opt,
-            &worker_id,
-            &worker_name,
-            &codebases,
-            None,
-        )
-        .await
-        {
-            tracing::warn!("Failed to register worker with A2A server: {}", e);
-            // Continue anyway - we can still try to process tasks
-        }
-
-        // Start heartbeat
-        let heartbeat_handle = start_heartbeat(
-            client.clone(),
-            server.clone(),
-            token_opt.clone(),
-            heartbeat_state.clone(),
-            processing.clone(),
-            cognition_config,
-        );
-
         // Spawn the main bridge task
         let handle = tokio::spawn({
             let server = server.clone();
             let token = token.clone();
             let worker_id = worker_id.clone();
             let worker_name = worker_name.clone();
+            let client = client.clone();
+            let processing = processing.clone();
+            let heartbeat_state = heartbeat_state.clone();
             async move {
+                let token_opt = Some(token.clone());
+                if let Err(e) = register_worker(
+                    &client,
+                    &server,
+                    &token_opt,
+                    &worker_id,
+                    &worker_name,
+                    &codebases,
+                    None,
+                )
+                .await
+                {
+                    tracing::warn!("Failed to register worker with A2A server: {}", e);
+                    // Continue anyway - we can still try to process tasks
+                }
+
+                let heartbeat_handle = start_heartbeat(
+                    client.clone(),
+                    server.clone(),
+                    token_opt.clone(),
+                    heartbeat_state.clone(),
+                    processing.clone(),
+                    cognition_config,
+                );
+
                 // Background task: connect to SSE stream for incoming tasks
                 let sse_handle = tokio::spawn({
                     let server = server.clone();

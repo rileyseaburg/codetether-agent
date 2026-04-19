@@ -45,11 +45,16 @@ mod event_compaction;
 mod event_rlm;
 mod event_token;
 mod events;
+mod header;
 mod lifecycle;
 mod persistence;
 mod prompt_api;
+mod tail_load;
+mod tail_seed;
 mod title;
 mod types;
+mod workspace_index;
+mod workspace_index_io;
 
 pub mod codex_import;
 pub mod helper;
@@ -68,6 +73,7 @@ pub use self::event_token::{TokenDelta, TokenEstimate, TokenSource};
 pub use self::events::{SessionEvent, SessionResult};
 pub use self::listing::{SessionSummary, list_sessions};
 pub use self::listing_all::list_all_sessions_for_directory;
+pub use self::tail_load::TailLoad;
 pub use self::types::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionMetadata};
 
 #[cfg(test)]

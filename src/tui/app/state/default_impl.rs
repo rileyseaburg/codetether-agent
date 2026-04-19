@@ -66,6 +66,7 @@ impl Default for super::AppState {
             last_tool_success: None,
             pending_images: Vec::new(),
             queued_steering: Vec::new(),
+            current_turn_cancel: None,
             auto_apply_edits: false,
             allow_network: false,
             slash_autocomplete: true,

@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use super::workspace_entries::{collect_entries, sort_entries};
-use super::workspace_helpers::{detect_git_branch, detect_git_dirty_files};
+use super::workspace_helpers::detect_git_status;
 
 pub use super::workspace_types::{WorkspaceEntry, WorkspaceEntryKind, WorkspaceSnapshot};
 
@@ -17,10 +17,11 @@ impl WorkspaceSnapshot {
         let mut entries = collect_entries(root);
         sort_entries(&mut entries);
         entries.truncate(max_entries);
+        let (git_branch, git_dirty_files) = detect_git_status(root);
         Self {
             root_display: root.to_string_lossy().to_string(),
-            git_branch: detect_git_branch(root),
-            git_dirty_files: detect_git_dirty_files(root),
+            git_branch,
+            git_dirty_files,
             entries,
             captured_at: chrono::Local::now().format("%H:%M:%S").to_string(),
         }

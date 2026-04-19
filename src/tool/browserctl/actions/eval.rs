@@ -12,16 +12,6 @@ pub(in crate::tool::browserctl) async fn eval(
     super::execute(input, BrowserCommand::Eval(request)).await
 }
 
-pub(in crate::tool::browserctl) async fn console_eval(
-    input: &BrowserCtlInput,
-) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
-    frame_scope(input)?;
-    let request = EvalRequest {
-        expression: require_string(&input.script, "script")?.to_string(),
-    };
-    super::execute(input, BrowserCommand::ConsoleEval(request)).await
-}
-
 fn frame_scope(input: &BrowserCtlInput) -> Result<(), crate::browser::BrowserError> {
     if input
         .frame_selector

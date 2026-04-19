@@ -171,14 +171,19 @@ impl OpenAIProvider {
             return Vec::new();
         }
 
-        let payload: Value = match response.json().await {
+        let payload: Value = match crate::provider::body_cap::json_capped(
+            response,
+            crate::provider::body_cap::PROVIDER_METADATA_BODY_CAP,
+        )
+        .await
+        {
             Ok(payload) => payload,
             Err(error) => {
                 tracing::debug!(
                     provider = %self.provider_name,
                     url = %url,
                     error = %error,
-                    "Failed to parse OpenAI-compatible /models response"
+                    "Failed to parse OpenAI-compatible /models response (or exceeded body cap)"
                 );
                 return Vec::new();
             }

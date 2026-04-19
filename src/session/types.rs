@@ -53,16 +53,22 @@ pub struct Session {
     pub created_at: DateTime<Utc>,
     /// When the session was last modified.
     pub updated_at: DateTime<Utc>,
+    /// Durable session configuration.
+    ///
+    /// Serialized *before* [`Self::messages`] so cheap workspace-match
+    /// prefiltering (see [`crate::session::header::SessionHeader`]) can
+    /// avoid lexing past the transcript.
+    pub metadata: SessionMetadata,
+    /// Name of the agent persona that owns this session.
+    pub agent: String,
     /// Ordered conversation transcript.
+    #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
     pub messages: Vec<Message>,
     /// Per-tool-call audit records.
+    #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
     pub tool_uses: Vec<ToolUse>,
     /// Aggregate token usage across all completions in this session.
     pub usage: Usage,
-    /// Name of the agent persona that owns this session.
-    pub agent: String,
-    /// Durable session configuration.
-    pub metadata: SessionMetadata,
     /// Maximum agentic loop steps. [`None`] falls back to
     /// [`DEFAULT_MAX_STEPS`].
     #[serde(skip)]

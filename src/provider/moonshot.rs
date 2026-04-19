@@ -22,7 +22,7 @@ pub struct MoonshotProvider {
 impl MoonshotProvider {
     pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
             base_url: "https://api.moonshot.ai/v1".to_string(),
         })

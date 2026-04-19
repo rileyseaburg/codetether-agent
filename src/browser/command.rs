@@ -1,7 +1,8 @@
 use super::request::{
-    ClickTextRequest, CloseTabRequest, EvalRequest, FillRequest, KeyPressRequest,
-    NavigationRequest, NewTabRequest, ScopeRequest, ScreenshotRequest, SelectorRequest,
-    StartRequest, TabSelectRequest, ToggleRequest, TypeRequest, WaitRequest,
+    AxiosRequest, ClickTextRequest, CloseTabRequest, DiagnoseRequest, EvalRequest, FetchRequest,
+    FillRequest, KeyPressRequest, NavigationRequest, NetworkLogRequest, NewTabRequest,
+    ScopeRequest, ScreenshotRequest, SelectorRequest, StartRequest, TabSelectRequest,
+    ToggleRequest, TypeRequest, UploadRequest, WaitRequest,
 };
 
 pub enum BrowserCommand {
@@ -9,19 +10,18 @@ pub enum BrowserCommand {
     Start(StartRequest),
     Stop,
     Snapshot,
-    Console,
     Goto(NavigationRequest),
     Back,
     Reload,
     Wait(WaitRequest),
     Click(SelectorRequest),
+    Upload(UploadRequest),
     Fill(FillRequest),
     Type(TypeRequest),
     Press(KeyPressRequest),
     Text(ScopeRequest),
     Html(ScopeRequest),
     Eval(EvalRequest),
-    ConsoleEval(EvalRequest),
     ClickText(ClickTextRequest),
     FillNative(FillRequest),
     Toggle(ToggleRequest),
@@ -33,4 +33,8 @@ pub enum BrowserCommand {
     TabsSelect(TabSelectRequest),
     TabsNew(NewTabRequest),
     TabsClose(CloseTabRequest),
+    NetworkLog(NetworkLogRequest),
+    Fetch(FetchRequest),
+    Axios(AxiosRequest),
+    Diagnose(DiagnoseRequest),
 }

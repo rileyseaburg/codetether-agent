@@ -1,3 +1,4 @@
+use chromiumoxide::cdp::browser_protocol::target::TargetId;
 use chromiumoxide::{browser::Browser, page::Page};
 use std::sync::{
     Arc,
@@ -11,10 +12,11 @@ use tokio::{
 pub(crate) struct SessionRuntime {
     pub alive: Arc<AtomicBool>,
     pub browser: Arc<Mutex<Browser>>,
-    pub current_page: Arc<Mutex<Page>>,
+    pub current_page: Arc<Mutex<Option<Page>>>,
     pub handler_task: JoinHandle<()>,
     pub mode: SessionMode,
     pub shutdown: watch::Sender<bool>,
+    pub tab_order: Arc<Mutex<Vec<TargetId>>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

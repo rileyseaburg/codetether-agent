@@ -15,6 +15,7 @@
 //! ```
 
 mod autochat;
+mod auto_drain;
 mod select_loop;
 mod shutdown;
 mod smart_retry;

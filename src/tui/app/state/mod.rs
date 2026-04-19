@@ -50,7 +50,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::session::{ImageAttachment, Session, SessionSummary};
+use crate::session::{ImageAttachment, SessionSummary};
 use crate::tui::bus_log::BusLogState;
 use crate::tui::chat::message::ChatMessage;
 use crate::tui::help::HelpScrollState;
@@ -161,4 +161,8 @@ pub struct AppState {
     pub file_picker_active: bool,
     pub workspace: crate::tui::models::WorkspaceSnapshot,
     pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
+    /// Cancel handle for the in-flight provider turn. Notifying this
+    /// interrupts the current LLM stream so a user steering message can
+    /// be applied immediately instead of waiting for the turn to finish.
+    pub current_turn_cancel: Option<Arc<tokio::sync::Notify>>,
 }

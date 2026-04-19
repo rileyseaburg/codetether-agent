@@ -18,7 +18,7 @@ use super::chat_spawn::spawn_provider_task;
 ///
 /// Applies steering prefix, updates UI state, and either
 /// spawns the provider task or shows an error.
-pub(super) async fn dispatch_prompt(
+pub(crate) async fn dispatch_prompt(
     app: &mut App,
     cwd: &Path,
     session: &mut Session,

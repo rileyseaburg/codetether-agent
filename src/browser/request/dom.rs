@@ -51,3 +51,10 @@ pub struct ToggleRequest {
     pub text: String,
     pub timeout_ms: u64,
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UploadRequest {
+    pub selector: String,
+    pub paths: Vec<String>,
+    pub frame_selector: Option<String>,
+}

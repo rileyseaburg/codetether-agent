@@ -65,6 +65,13 @@ pub(super) async fn select_once(
         Some(result) = result_rx.recv() => {
             crate::tui::app::background::apply_single_result(app, cwd, session, worker_bridge, result).await;
             super::smart_retry::execute_smart_switch_retry(app, session, registry, event_tx, result_tx).await;
+            // After the turn settles, auto-submit anything the user
+            // typed mid-stream. Without this, a message queued while
+            // the agent was busy would sit in `queued_steering` until
+            // the user pressed Enter again.
+            super::auto_drain::auto_drain_queued_input(
+                app, cwd, session, registry, worker_bridge, event_tx, result_tx,
+            ).await;
         }
         Some(()) = shutdown_rx.recv() => {
             return Ok(true);

@@ -15,7 +15,7 @@ pub(in crate::tool::browserctl) async fn wait(
         selector: input.selector.clone(),
         frame_selector: input.frame_selector.clone(),
         state: input.state.clone().unwrap_or_else(|| "visible".into()),
-        timeout_ms: input.timeout_ms.unwrap_or(5_000),
+        timeout_ms: input.timeout_ms.unwrap_or(30_000),
     };
     super::execute(input, BrowserCommand::Wait(request)).await
 }

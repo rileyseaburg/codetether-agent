@@ -38,7 +38,7 @@ impl GoogleProvider {
             "Creating Google Gemini provider"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
         })
     }

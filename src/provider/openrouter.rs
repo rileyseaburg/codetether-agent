@@ -265,10 +265,25 @@ impl Provider for OpenRouterProvider {
             context_length: Option<usize>,
         }
 
-        let models: ModelsResponse = response
-            .json()
-            .await
-            .unwrap_or(ModelsResponse { data: vec![] });
+        // Cap body size: OpenRouter's /models payload is normally sub-MiB
+        // but has grown over time. A hard cap prevents a runaway response
+        // (or a misconfigured proxy) from OOM'ing the process during TUI
+        // startup / worker registration.
+        let models: ModelsResponse = match crate::provider::body_cap::json_capped(
+            response,
+            crate::provider::body_cap::PROVIDER_METADATA_BODY_CAP,
+        )
+        .await
+        {
+            Ok(v) => v,
+            Err(err) => {
+                tracing::warn!(
+                    error = %err,
+                    "openrouter /models response exceeded body cap or failed to decode; returning empty list",
+                );
+                return Ok(vec![]);
+            }
+        };
 
         Ok(models
             .data

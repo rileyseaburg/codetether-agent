@@ -88,7 +88,7 @@ impl Glm5Provider {
             "Creating GLM-5 FP8 provider"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
             base_url,
             model_name,

@@ -18,7 +18,7 @@
 //! assert!(!should_retry_status(200));
 //! ```
 
-use rand::{Rng, RngExt};
+use rand::RngExt;
 use std::time::Duration;
 
 /// Exponential backoff config.

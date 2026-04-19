@@ -8,7 +8,6 @@ use super::bedrock;
 use super::init_dispatch;
 use super::init_env;
 use super::registry::ProviderRegistry;
-use crate::provider::traits::Provider;
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -35,10 +34,24 @@ impl ProviderRegistry {
             let providers = mgr.list_configured_providers().await?;
             tracing::info!("Found {} providers configured in Vault", providers.len());
 
-            for pid in providers {
-                let secrets = match mgr.get_provider_secrets(&pid).await? {
-                    Some(s) => s,
-                    None => continue,
+            // Fetch every provider's secrets concurrently; each fetch is an
+            // independent Vault HTTP round-trip so there's no reason to
+            // serialize them. With ~10 providers this turns ~10 * RTT
+            // latency into ~1 * RTT.
+            let fetches = providers.into_iter().map(|pid| async move {
+                let secrets = mgr.get_provider_secrets(&pid).await;
+                (pid, secrets)
+            });
+            let results = futures::future::join_all(fetches).await;
+
+            for (pid, secrets) in results {
+                let secrets = match secrets {
+                    Ok(Some(s)) => s,
+                    Ok(None) => continue,
+                    Err(err) => {
+                        tracing::warn!(provider = %pid, %err, "vault fetch failed; skipping");
+                        continue;
+                    }
                 };
                 if let Some(provider) = init_dispatch::dispatch(&pid, &secrets) {
                     registry.register(provider);

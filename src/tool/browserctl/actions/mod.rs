@@ -14,4 +14,6 @@ pub(super) mod dom_extra;
 pub(super) mod eval;
 pub(super) mod lifecycle;
 pub(super) mod nav;
+pub(super) mod net;
 pub(super) mod tabs;
+pub(super) mod upload;

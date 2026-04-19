@@ -21,6 +21,7 @@
 
 pub mod anthropic;
 pub mod bedrock;
+pub mod body_cap;
 pub mod copilot;
 pub mod gemini_web;
 pub mod glm5;
@@ -132,6 +133,7 @@ pub mod openai;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod retry;
+pub mod shared_http;
 pub mod stepfun;
 pub mod vertex_anthropic;
 pub mod vertex_glm;

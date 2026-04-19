@@ -187,6 +187,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             &model,
             &system_prompt,
             &advertised_tool_definitions,
+            None,
         )
         .await?;
 

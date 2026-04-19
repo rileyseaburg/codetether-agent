@@ -46,6 +46,11 @@ pub(super) async fn spawn_provider_task(
     let original_dir = session.metadata.directory.clone();
     let prompt_for_pr = prompt.clone();
 
+    // Register a cancel handle so a mid-turn user steering message can
+    // interrupt the provider stream instead of merely queueing.
+    let cancel = Arc::new(tokio::sync::Notify::new());
+    app.state.current_turn_cancel = Some(Arc::clone(&cancel));
+
     tokio::spawn(run_spawned_task(
         session_for_task,
         prompt,
@@ -56,5 +61,6 @@ pub(super) async fn spawn_provider_task(
         result_tx,
         worktree_state,
         prompt_for_pr,
+        cancel,
     ));
 }

@@ -280,7 +280,7 @@ impl OpenAiCodexProvider {
 
     pub fn from_api_key(api_key: String) -> Self {
         Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             cached_tokens: Arc::new(RwLock::new(None)),
             static_api_key: Some(api_key),
             chatgpt_account_id: None,
@@ -302,7 +302,7 @@ impl OpenAiCodexProvider {
             .or_else(|| Self::extract_chatgpt_account_id_from_jwt(&credentials.access_token));
 
         Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             cached_tokens: Arc::new(RwLock::new(None)),
             static_api_key: None,
             chatgpt_account_id,
@@ -314,7 +314,7 @@ impl OpenAiCodexProvider {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             cached_tokens: Arc::new(RwLock::new(None)),
             static_api_key: None,
             chatgpt_account_id: None,
@@ -510,7 +510,7 @@ impl OpenAiCodexProvider {
         verifier: &str,
         redirect_uri: &str,
     ) -> Result<OAuthCredentials> {
-        let client = Client::new();
+        let client = crate::provider::shared_http::shared_client().clone();
         let form_body = format!(
             "grant_type={}&client_id={}&code={}&code_verifier={}&redirect_uri={}",
             urlencoding::encode("authorization_code"),
@@ -573,7 +573,7 @@ impl OpenAiCodexProvider {
             access_token: String,
         }
 
-        let client = Client::new();
+        let client = crate::provider::shared_http::shared_client().clone();
         let form_body = format!(
             "grant_type={}&client_id={}&requested_token={}&subject_token={}&subject_token_type={}",
             urlencoding::encode("urn:ietf:params:oauth:grant-type:token-exchange"),

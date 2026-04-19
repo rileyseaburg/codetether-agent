@@ -8,38 +8,32 @@ pub async fn execute(
         Command::Start(request) => super::lifecycle::start(session, request).await,
         Command::Stop => super::lifecycle::stop(session).await,
         Command::Snapshot => super::snapshot::run(session).await,
-        Command::Console => err(),
         Command::Goto(request) => super::navigation::goto(session, request).await,
-        Command::Back => err(),
-        Command::Reload => err(),
-        Command::Wait(request) => todo_err(request),
-        Command::Click(request) => todo_err(request),
-        Command::Fill(request) => todo_err(request),
-        Command::Type(request) => todo_err(request),
-        Command::Press(request) => todo_err(request),
-        Command::Text(request) => todo_err(request),
-        Command::Html(request) => todo_err(request),
+        Command::Back => super::navigation::back(session).await,
+        Command::Reload => super::navigation::reload(session).await,
+        Command::Wait(request) => super::wait::for_selector(session, request).await,
+        Command::Click(request) => super::dom::click(session, request).await,
+        Command::Upload(request) => super::upload::run(session, request).await,
+        Command::Fill(request) => super::dom::fill(session, request).await,
+        Command::Type(request) => super::dom_extra::type_text(session, request).await,
+        Command::Press(request) => super::dom_extra::press(session, request).await,
+        Command::Text(request) => super::dom::text(session, request).await,
+        Command::Html(request) => super::dom::html(session, request).await,
         Command::Eval(request) => super::eval::run(session, request).await,
-        Command::ConsoleEval(request) => todo_err(request),
-        Command::ClickText(request) => todo_err(request),
-        Command::FillNative(request) => todo_err(request),
-        Command::Toggle(request) => todo_err(request),
+        Command::ClickText(request) => super::dom_extra::click_text(session, request).await,
+        Command::FillNative(request) => super::dom_extra::fill_native(session, request).await,
+        Command::Toggle(request) => super::dom_extra::toggle(session, request).await,
         Command::Screenshot(request) => super::screen::capture(session, request).await,
-        Command::MouseClick(request) => todo_err(request),
-        Command::KeyboardType(request) => todo_err(request),
-        Command::KeyboardPress(request) => todo_err(request),
-        Command::Tabs => err(),
-        Command::TabsSelect(request) => todo_err(request),
-        Command::TabsNew(request) => todo_err(request),
-        Command::TabsClose(request) => todo_err(request),
+        Command::MouseClick(request) => super::device::mouse_click(session, request).await,
+        Command::KeyboardType(request) => super::device::keyboard_type(session, request).await,
+        Command::KeyboardPress(request) => super::device::keyboard_press(session, request).await,
+        Command::Tabs => super::tabs::list(session).await,
+        Command::TabsSelect(request) => super::tabs::select(session, request).await,
+        Command::TabsNew(request) => super::tabs::new(session, request).await,
+        Command::TabsClose(request) => super::tabs::close(session, request).await,
+        Command::NetworkLog(request) => super::net::network_log(session, request).await,
+        Command::Fetch(request) => super::net::fetch(session, request).await,
+        Command::Axios(request) => super::net::axios(session, request).await,
+        Command::Diagnose(request) => super::net::diagnose(session, request).await,
     }
-}
-
-fn err() -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
-    Err(crate::browser::BrowserError::NotImplemented)
-}
-
-fn todo_err<T>(request: T) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
-    let _ = request;
-    err()
 }

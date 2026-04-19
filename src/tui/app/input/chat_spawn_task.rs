@@ -10,12 +10,18 @@ use crate::session::{ImageAttachment, Session, SessionEvent};
 use futures::FutureExt;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{Notify, mpsc};
 
 /// Run the provider inside a panic-catching wrapper.
 ///
 /// Delegates to [`run_prompt`] then handles worktree result
 /// and sends the outcome through `result_tx`.
+///
+/// `cancel` is a shared [`Notify`] that, when triggered (e.g. by the TUI
+/// when the user submits a steering message mid-stream), aborts the
+/// in-flight provider call so the partial assistant content already
+/// streamed via `event_tx` can be treated as a completed turn and the
+/// new user message dispatched immediately.
 pub(super) async fn run_spawned_task(
     mut session: Session,
     prompt: String,
@@ -26,17 +32,29 @@ pub(super) async fn run_spawned_task(
     result_tx: mpsc::Sender<anyhow::Result<Session>>,
     worktree: Option<WorktreeState>,
     prompt_for_pr: String,
+    cancel: Arc<Notify>,
 ) {
+    let session_snapshot = session.clone();
     let result = std::panic::AssertUnwindSafe(async {
-        run_prompt(
-            &mut session,
-            &prompt,
-            images,
-            event_tx,
-            registry,
-            original_dir,
-        )
-        .await
+        tokio::select! {
+            biased;
+            _ = cancel.notified() => {
+                tracing::info!("Provider turn interrupted by user steering");
+                // Partial assistant / tool content was already applied to
+                // the shared `session` via SessionEvent streaming, so the
+                // snapshot captured before select! is the right baseline
+                // and returning Ok keeps that partial turn in history.
+                Ok(session_snapshot)
+            }
+            r = run_prompt(
+                &mut session,
+                &prompt,
+                images,
+                event_tx,
+                registry,
+                original_dir,
+            ) => r,
+        }
     })
     .catch_unwind()
     .await;
