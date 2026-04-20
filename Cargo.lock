@@ -840,6 +840,8 @@ dependencies = [
  "lazy_static",
  "libc",
  "lsp-types",
+ "memchr",
+ "memmap2",
  "minio",
  "once_cell",
  "parking_lot",

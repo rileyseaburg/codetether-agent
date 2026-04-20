@@ -165,4 +165,11 @@ pub struct AppState {
     /// interrupts the current LLM stream so a user steering message can
     /// be applied immediately instead of waiting for the turn to finish.
     pub current_turn_cancel: Option<Arc<tokio::sync::Notify>>,
+    /// Timestamp of the previous key event. Used to detect paste bursts
+    /// on terminals that don't forward bracketed-paste markers — if a
+    /// bare `Enter` arrives within `PASTE_BURST_WINDOW_MS` of the last
+    /// key, we treat it as an embedded newline in pasted text instead
+    /// of a submit, so pasting multi-line content doesn't emit one
+    /// chat message per line.
+    pub last_key_at: Option<Instant>,
 }

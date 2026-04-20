@@ -2,7 +2,7 @@ use super::request::{
     AxiosRequest, ClickTextRequest, CloseTabRequest, DiagnoseRequest, EvalRequest, FetchRequest,
     FillRequest, KeyPressRequest, NavigationRequest, NetworkLogRequest, NewTabRequest,
     ScopeRequest, ScreenshotRequest, SelectorRequest, StartRequest, TabSelectRequest,
-    ToggleRequest, TypeRequest, UploadRequest, WaitRequest,
+    ToggleRequest, TypeRequest, UploadRequest, WaitRequest, XhrRequest,
 };
 
 pub enum BrowserCommand {
@@ -36,5 +36,6 @@ pub enum BrowserCommand {
     NetworkLog(NetworkLogRequest),
     Fetch(FetchRequest),
     Axios(AxiosRequest),
+    Xhr(XhrRequest),
     Diagnose(DiagnoseRequest),
 }

@@ -4,7 +4,7 @@ use super::super::helpers::require_string;
 use super::super::input::BrowserCtlInput;
 use crate::browser::{
     BrowserCommand,
-    request::{AxiosRequest, DiagnoseRequest, FetchRequest, NetworkLogRequest},
+    request::{AxiosRequest, DiagnoseRequest, FetchRequest, NetworkLogRequest, XhrRequest},
 };
 
 pub(in crate::tool::browserctl) async fn network_log(
@@ -78,4 +78,21 @@ pub(in crate::tool::browserctl) async fn diagnose(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
     super::execute(input, BrowserCommand::Diagnose(DiagnoseRequest {})).await
+}
+
+pub(in crate::tool::browserctl) async fn xhr(
+    input: &BrowserCtlInput,
+) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
+    let url = require_string(&input.url, "url")
+        .map_err(|e| crate::browser::BrowserError::OperationFailed(e.to_string()))?
+        .to_string();
+    let method = input.method.clone().unwrap_or_else(|| "GET".to_string());
+    let request = XhrRequest {
+        method,
+        url,
+        headers: input.headers.clone(),
+        body: input.body.clone(),
+        with_credentials: input.with_credentials,
+    };
+    super::execute(input, BrowserCommand::Xhr(request)).await
 }

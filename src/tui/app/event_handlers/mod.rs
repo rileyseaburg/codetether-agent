@@ -78,7 +78,7 @@ pub async fn handle_event(
         return result;
     }
 
-    handle_unmodified_key(
+    let out = handle_unmodified_key(
         app,
         cwd,
         session,
@@ -88,5 +88,10 @@ pub async fn handle_event(
         result_tx,
         key,
     )
-    .await
+    .await;
+    // Stamp the key-arrival time *after* dispatch so the Enter arm in
+    // `handle_unmodified_key` can see the *previous* key's timestamp
+    // for its paste-burst heuristic.
+    app.state.last_key_at = Some(std::time::Instant::now());
+    out
 }

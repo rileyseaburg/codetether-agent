@@ -8,7 +8,7 @@
 use super::{BrowserSession, access};
 use crate::browser::{
     BrowserError, BrowserOutput,
-    request::{AxiosRequest, DiagnoseRequest, FetchRequest, NetworkLogRequest},
+    request::{AxiosRequest, DiagnoseRequest, FetchRequest, NetworkLogRequest, XhrRequest},
 };
 use std::time::Duration;
 
@@ -84,6 +84,79 @@ pub(super) async fn fetch(
 }})()"#,
         url = url,
         init_str = init_str,
+    );
+    let result = tokio::time::timeout(EVAL_TIMEOUT, page.evaluate_expression(script))
+        .await
+        .map_err(|_| BrowserError::EvaluationTimeout)??;
+    let value = result
+        .object()
+        .value
+        .clone()
+        .unwrap_or(serde_json::json!({"ok": false, "status": 0, "error": "no value"}));
+    Ok(BrowserOutput::Json(value))
+}
+
+/// Replay an HTTP request via a raw `XMLHttpRequest` inside the page, so
+/// the bytes on the wire match the app's own XHR save path (including
+/// `Sec-Fetch-*` headers, cookie handling, and service-worker bypass).
+pub(super) async fn xhr(
+    session: &BrowserSession,
+    request: XhrRequest,
+) -> Result<BrowserOutput, BrowserError> {
+    let page = access::current_page(session).await?;
+    let headers_json = serde_json::to_string(&request.headers.unwrap_or_default())?;
+    let url_json = serde_json::to_string(&request.url)?;
+    let method_json = serde_json::to_string(&request.method.to_uppercase())?;
+    let body_json = serde_json::to_string(&request.body)?;
+    let with_credentials = request.with_credentials.unwrap_or(true);
+    let script = format!(
+        r#"(() => new Promise((resolve) => {{
+  try {{
+    const xhr = new XMLHttpRequest();
+    xhr.open({method_json}, {url_json}, true);
+    xhr.withCredentials = {with_credentials};
+    const headers = {headers_json};
+    for (const [k, v] of Object.entries(headers)) {{
+      try {{ xhr.setRequestHeader(k, v); }} catch (_) {{}}
+    }}
+    xhr.onload = () => {{
+      const hdrs = {{}};
+      try {{
+        const raw = xhr.getAllResponseHeaders() || '';
+        raw.trim().split(/\r?\n/).forEach((line) => {{
+          const idx = line.indexOf(':');
+          if (idx > 0) hdrs[line.slice(0, idx).trim().toLowerCase()] = line.slice(idx + 1).trim();
+        }});
+      }} catch (_) {{}}
+      resolve({{
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        status_text: xhr.statusText,
+        url: xhr.responseURL,
+        headers: hdrs,
+        body: xhr.responseText,
+      }});
+    }};
+    xhr.onerror = () => resolve({{
+      ok: false, status: xhr.status || 0, status_text: 'network error',
+      url: {url_json}, headers: {{}}, body: null,
+      error: 'xhr.onerror (likely CORS / WAF / offline)',
+    }});
+    xhr.ontimeout = () => resolve({{
+      ok: false, status: 0, status_text: 'timeout',
+      url: {url_json}, headers: {{}}, body: null, error: 'xhr timeout',
+    }});
+    const body = {body_json};
+    xhr.send(body === null || body === undefined ? null : body);
+  }} catch (err) {{
+    resolve({{ ok: false, status: 0, status_text: String((err && err.message) || err), url: {url_json}, headers: {{}}, body: null, error: String(err && err.stack || err) }});
+  }}
+}}))()"#,
+        method_json = method_json,
+        url_json = url_json,
+        with_credentials = with_credentials,
+        headers_json = headers_json,
+        body_json = body_json,
     );
     let result = tokio::time::timeout(EVAL_TIMEOUT, page.evaluate_expression(script))
         .await

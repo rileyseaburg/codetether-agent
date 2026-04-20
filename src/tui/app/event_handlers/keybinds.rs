@@ -79,16 +79,32 @@ pub(super) async fn handle_unmodified_key(
             app.state.insert_char('\n');
         }
         KeyCode::Enter => {
-            input::handle_enter(
-                app,
-                cwd,
-                session,
-                registry,
-                worker_bridge,
-                event_tx,
-                result_tx,
-            )
-            .await;
+            // Paste-burst heuristic: if another key arrived in the
+            // last ~20 ms (faster than any human can physically type),
+            // the Enter is almost certainly part of a pasted block on
+            // a terminal that swallowed the bracketed-paste markers.
+            // Convert it to an in-buffer newline so the whole paste
+            // becomes a single chat message instead of N messages.
+            if app.state.view_mode == crate::tui::models::ViewMode::Chat
+                && app
+                    .state
+                    .last_key_at
+                    .map(|t| t.elapsed() < std::time::Duration::from_millis(20))
+                    .unwrap_or(false)
+            {
+                app.state.insert_char('\n');
+            } else {
+                input::handle_enter(
+                    app,
+                    cwd,
+                    session,
+                    registry,
+                    worker_bridge,
+                    event_tx,
+                    result_tx,
+                )
+                .await;
+            }
         }
         _ => handle_char_or_mode_key(app, session, key).await,
     }

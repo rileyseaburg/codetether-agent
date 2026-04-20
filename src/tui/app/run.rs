@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
 use crossterm::{
-    event::{
-        EnableBracketedPaste, EnableMouseCapture, KeyboardEnhancementFlags,
-        PushKeyboardEnhancementFlags,
-    },
+    event::{EnableBracketedPaste, KeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
     execute,
     terminal::{EnterAlternateScreen, enable_raw_mode},
 };
@@ -106,12 +103,14 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
     let _panic_guard = install_panic_cleanup_hook();
 
     let mut stdout = std::io::stdout();
-    execute!(
-        stdout,
-        EnterAlternateScreen,
-        EnableMouseCapture,
-        EnableBracketedPaste
-    )?;
+    // NOTE: We intentionally do NOT enable mouse capture. Capturing
+    // mouse events breaks native terminal text selection (users can't
+    // click-drag to select chat output and copy it). Keyboard scrolling
+    // via ↑↓ / PageUp / PageDown is already bound. Hold the
+    // terminal-specific modifier (Shift on most emulators, Option/Alt
+    // on macOS Terminal.app) during drag if mouse capture is ever
+    // re-enabled in the future.
+    execute!(stdout, EnterAlternateScreen, EnableBracketedPaste)?;
     // Request the kitty keyboard protocol so terminals that support it
     // (kitty, foot, WezTerm, Ghostty, modern Konsole, Alacritty ≥ 0.13)
     // report modifier bits on Enter, enabling Shift+Enter to insert a

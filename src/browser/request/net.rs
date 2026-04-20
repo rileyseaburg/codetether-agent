@@ -62,3 +62,33 @@ pub struct AxiosRequest {
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct DiagnoseRequest {}
 
+/// Replay an HTTP request through a raw `XMLHttpRequest` inside the page.
+///
+/// Use this when [`FetchRequest`] returns "Failed to fetch" but
+/// `network_log` shows the app's own successful request had `kind: xhr`.
+/// The XHR transport differs from `fetch` in several ways that matter for
+/// WAF / CORS / service-worker routing:
+///
+/// - XHR does not send `Sec-Fetch-Mode: cors` / `Sec-Fetch-Dest: empty`
+///   headers the same way, which some edge rules use to block tool replays.
+/// - XHR inherits the document's full cookie jar and Origin by default;
+///   there is no `credentials: 'omit'` equivalent.
+/// - Service workers often pass XHR through untouched while intercepting
+///   `fetch`, so a SW-rewriting auth header won't affect this path.
+/// - Simple XHRs (GET/POST with allowlisted headers) skip CORS preflight
+///   on the same rules as the original page script.
+///
+/// Request body is sent verbatim; set `Content-Type` explicitly in
+/// `headers` when sending JSON.
+#[derive(Debug, Clone, Serialize)]
+pub struct XhrRequest {
+    pub method: String,
+    pub url: String,
+    pub headers: Option<HashMap<String, String>>,
+    pub body: Option<String>,
+    /// When true (default), sets `xhr.withCredentials = true` so cookies
+    /// and `Authorization` travel cross-origin. Set false to mimic a
+    /// public-asset request.
+    pub with_credentials: Option<bool>,
+}
+
