@@ -564,6 +564,8 @@ pub async fn handle_slash_command(
             | "/agents"
             | "/agent"
             | "/autochat"
+            | "/protocols"
+            | "/registry"
     ) {
         app.state.status = format!("Unknown command: {normalized}");
     }

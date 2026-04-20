@@ -35,6 +35,7 @@ pub async fn execute(
         Command::Fetch(request) => super::net::fetch::fetch(session, request).await,
         Command::Axios(request) => super::net::axios::axios(session, request).await,
         Command::Xhr(request) => super::net::xhr::xhr(session, request).await,
+        Command::Replay(request) => super::net::replay::replay(session, request).await,
         Command::Diagnose(request) => super::net::diagnose::diagnose(session, request).await,
     }
 }

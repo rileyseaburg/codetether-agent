@@ -237,7 +237,7 @@ pub(in crate::browser::session) async fn install_page_hooks(
             };
             const ctClipBody = (b) => {
                 if (b == null) return null;
-                if (typeof b === 'string') return b.length > 8192 ? b.slice(0, 8192) + '…' : b;
+                if (typeof b === 'string') return b.length > 1048576 ? b.slice(0, 1048576) + '…' : b;
                 try { return '[' + (b.constructor && b.constructor.name) + ']'; } catch (_) { return '[body]'; }
             };
             const bump = (delta) => {

@@ -22,6 +22,8 @@ mod fallback_js;
 pub(crate) mod fetch;
 mod fetch_tmpl;
 pub(crate) mod log;
+pub(crate) mod replay;
+mod replay_tmpl;
 pub(crate) mod xhr;
 mod xhr_tmpl;
 

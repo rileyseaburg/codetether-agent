@@ -35,5 +35,6 @@ pub(in crate::tool::browserctl) enum BrowserCtlAction {
     Fetch,
     Axios,
     Xhr,
+    Replay,
     Diagnose,
 }

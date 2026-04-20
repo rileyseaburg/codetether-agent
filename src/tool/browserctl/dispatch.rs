@@ -36,6 +36,7 @@ pub(super) async fn dispatch(
         BrowserCtlAction::Fetch => net::fetch(input).await,
         BrowserCtlAction::Axios => net::axios(input).await,
         BrowserCtlAction::Xhr => net::xhr(input).await,
+        BrowserCtlAction::Replay => net::replay(input).await,
         BrowserCtlAction::Diagnose => net::diagnose(input).await,
         BrowserCtlAction::Detect => unreachable!("Detect is handled before dispatch"),
     }

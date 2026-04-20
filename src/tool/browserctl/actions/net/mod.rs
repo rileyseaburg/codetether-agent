@@ -15,10 +15,12 @@ mod axios;
 mod diagnose;
 mod fetch;
 mod log;
+mod replay;
 mod xhr;
 
 pub(in crate::tool::browserctl) use axios::axios;
 pub(in crate::tool::browserctl) use diagnose::diagnose;
 pub(in crate::tool::browserctl) use fetch::fetch;
 pub(in crate::tool::browserctl) use log::network_log;
+pub(in crate::tool::browserctl) use replay::replay;
 pub(in crate::tool::browserctl) use xhr::xhr;

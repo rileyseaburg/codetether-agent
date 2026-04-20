@@ -36,5 +36,6 @@ pub(in crate::tool::browserctl) struct BrowserCtlInput {
     #[serde(default)] pub limit: Option<usize>,
     #[serde(default)] pub axios_path: Option<String>,
     #[serde(default)] pub json_body: Option<serde_json::Value>,
+    #[serde(default)] pub body_patch: Option<serde_json::Value>,
     #[serde(default)] pub with_credentials: Option<bool>,
 }

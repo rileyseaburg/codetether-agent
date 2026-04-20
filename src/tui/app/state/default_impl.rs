@@ -23,6 +23,8 @@ impl Default for super::AppState {
             chat_last_max_scroll: 0,
             tool_preview_scroll: 0,
             tool_preview_last_max_scroll: 0,
+            protocol_selected: 0,
+            protocol_scroll: 0,
             status: "Ready — type a message and press Enter. Ctrl+C/Ctrl+Q quits.".to_string(),
             processing: false,
             session_id: None,

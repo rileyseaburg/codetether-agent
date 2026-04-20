@@ -92,3 +92,43 @@ pub struct XhrRequest {
     pub with_credentials: Option<bool>,
 }
 
+/// Replay a request captured in `window.__codetether_net_log` with
+/// optional edits.
+///
+/// Finds the most recent entry whose URL contains [`url_contains`]
+/// (and, optionally, matches [`method_filter`]), inherits its
+/// captured method, URL, and request headers (including
+/// `Authorization`), and re-fires via raw XHR. The captured request
+/// body is used as-is unless one of:
+///
+/// - [`body_override`] — replaces the body with an arbitrary string
+/// - [`body_patch`] — deep-merged into the captured body when it
+///   parses as JSON (other keys in the captured body are preserved)
+///
+/// [`url_override`] / [`method_override`] replace the captured URL /
+/// method if set. Headers supplied via [`extra_headers`] are overlaid
+/// on top of the captured headers.
+///
+/// This exists so the agent can perform the common "capture one real
+/// save, then re-save with different fields" workflow without
+/// reconstructing the request from scratch.
+///
+/// [`url_contains`]: Self::url_contains
+/// [`method_filter`]: Self::method_filter
+/// [`url_override`]: Self::url_override
+/// [`method_override`]: Self::method_override
+/// [`body_override`]: Self::body_override
+/// [`body_patch`]: Self::body_patch
+/// [`extra_headers`]: Self::extra_headers
+#[derive(Debug, Clone, Serialize)]
+pub struct ReplayRequest {
+    pub url_contains: String,
+    pub method_filter: Option<String>,
+    pub url_override: Option<String>,
+    pub method_override: Option<String>,
+    pub body_patch: Option<serde_json::Value>,
+    pub body_override: Option<String>,
+    pub extra_headers: Option<HashMap<String, String>>,
+    pub with_credentials: Option<bool>,
+}
+

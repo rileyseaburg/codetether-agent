@@ -78,6 +78,10 @@ pub struct AppState {
     pub chat_last_max_scroll: usize,
     pub tool_preview_scroll: usize,
     pub tool_preview_last_max_scroll: usize,
+    /// Selected index in the protocol/agent registry view (left pane list).
+    pub protocol_selected: usize,
+    /// Vertical scroll offset for the protocol/agent registry detail pane.
+    pub protocol_scroll: usize,
     pub status: String,
     pub processing: bool,
     pub session_id: Option<String>,
