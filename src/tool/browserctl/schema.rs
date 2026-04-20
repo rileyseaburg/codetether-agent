@@ -23,7 +23,7 @@ pub(super) fn parameters_schema() -> Value {
             "expression": {"type": "string", "description": "For eval: page expression to evaluate"},
             "url_contains": {"type": "string", "description": "For wait: wait until the page URL contains this substring"},
             "state": {"type": "string", "description": "For wait: selector/text wait state, default visible"},
-            "timeout_ms": {"type": "integer", "description": "For click_text/toggle: timeout in ms"},
+            "timeout_ms": {"type": "integer", "description": "For click_text/toggle/wait: timeout in ms. For eval: max time the async expression may run before returning a structured timeout error (default 30000)."},
             "path": {"type": "string", "description": "For screenshot: destination path. For upload: single file path shorthand"},
             "paths": {"type": "array", "items": {"type": "string"}, "description": "For upload: one or more file paths to assign to an <input type=file>"},
             "full_page": {"type": "boolean", "description": "For screenshot: capture full page (default true)"},

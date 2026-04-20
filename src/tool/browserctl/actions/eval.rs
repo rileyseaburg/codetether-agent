@@ -8,6 +8,7 @@ pub(in crate::tool::browserctl) async fn eval(
     frame_scope(input)?;
     let request = EvalRequest {
         expression: require_string(&input.expression, "expression")?.to_string(),
+        timeout_ms: input.timeout_ms.unwrap_or(30_000),
     };
     super::execute(input, BrowserCommand::Eval(request)).await
 }
