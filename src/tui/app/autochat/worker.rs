@@ -12,21 +12,12 @@ pub fn start_autochat_relay(
     task: String,
     model: String,
 ) -> mpsc::UnboundedReceiver<AutochatUiEvent> {
-    let (tx, rx) = mpsc::unbounded_channel();
-    let _ = tx.send(AutochatUiEvent::Progress(format!(
+    let (ui_tx, ui_rx) = mpsc::unbounded_channel();
+    let _ = ui_tx.send(AutochatUiEvent::Progress(format!(
         "Starting autochat relay for: {task}"
     )));
-    // TODO: wire to relay worker once autochat module exposes a public entry point.
-    // For now the relay completes immediately with a stub.
-    let tx_clone = tx.clone();
     tokio::spawn(async move {
-        let _ = tx_clone.send(AutochatUiEvent::Completed {
-            summary: "Autochat relay stub — not yet wired to backend.".into(),
-            okr_id: None,
-            okr_run_id: None,
-            relay_id: None,
-        });
+        super::run::run_relay(task, model, ui_tx).await;
     });
-    let _ = model;
-    rx
+    ui_rx
 }
