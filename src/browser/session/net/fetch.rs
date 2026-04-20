@@ -18,7 +18,7 @@ const EVAL_TIMEOUT: Duration = Duration::from_secs(60);
 ///
 /// Returns [`BrowserError::EvaluationTimeout`] if the fetch exceeds 60 s,
 /// or propagates CDP / serialization errors.
-pub(super) async fn fetch(
+pub async fn fetch(
     session: &BrowserSession,
     request: FetchRequest,
 ) -> Result<BrowserOutput, BrowserError> {

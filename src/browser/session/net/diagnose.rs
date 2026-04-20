@@ -21,7 +21,7 @@ const EVAL_TIMEOUT: Duration = Duration::from_secs(60);
 ///
 /// Returns [`BrowserError::EvaluationTimeout`] if the script exceeds 60 s,
 /// or propagates CDP errors from the page evaluation.
-pub(super) async fn diagnose(
+pub async fn diagnose(
     session: &BrowserSession,
     _request: DiagnoseRequest,
 ) -> Result<BrowserOutput, BrowserError> {

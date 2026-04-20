@@ -31,10 +31,10 @@ pub async fn execute(
         Command::TabsSelect(request) => super::tabs::select(session, request).await,
         Command::TabsNew(request) => super::tabs::new(session, request).await,
         Command::TabsClose(request) => super::tabs::close(session, request).await,
-        Command::NetworkLog(request) => super::net::network_log(session, request).await,
-        Command::Fetch(request) => super::net::fetch(session, request).await,
-        Command::Axios(request) => super::net::axios(session, request).await,
-        Command::Xhr(request) => super::net::xhr(session, request).await,
-        Command::Diagnose(request) => super::net::diagnose(session, request).await,
+        Command::NetworkLog(request) => super::net::log::network_log(session, request).await,
+        Command::Fetch(request) => super::net::fetch::fetch(session, request).await,
+        Command::Axios(request) => super::net::axios::axios(session, request).await,
+        Command::Xhr(request) => super::net::xhr::xhr(session, request).await,
+        Command::Diagnose(request) => super::net::diagnose::diagnose(session, request).await,
     }
 }

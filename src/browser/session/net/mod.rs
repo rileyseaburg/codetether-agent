@@ -14,19 +14,14 @@
 //! - [`diagnose`] — dump service workers, CSP, axios instances
 //! - [`fallback_js`] — shared JS for header inheritance + fallback hints
 
-mod axios;
+pub(crate) mod axios;
 mod axios_tmpl;
-mod diagnose;
+pub(crate) mod diagnose;
 mod diagnose_tmpl;
 mod fallback_js;
-mod fetch;
+pub(crate) mod fetch;
 mod fetch_tmpl;
-mod log;
-mod xhr;
+pub(crate) mod log;
+pub(crate) mod xhr;
 mod xhr_tmpl;
 
-pub(super) use axios::axios;
-pub(super) use diagnose::diagnose;
-pub(super) use fetch::fetch;
-pub(super) use log::network_log;
-pub(super) use xhr::xhr;

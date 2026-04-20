@@ -21,7 +21,7 @@ const EVAL_TIMEOUT: Duration = Duration::from_secs(60);
 ///
 /// Returns [`BrowserError::EvaluationTimeout`] if the XHR exceeds 60 s,
 /// or propagates CDP / serialization errors.
-pub(super) async fn xhr(
+pub async fn xhr(
     session: &BrowserSession,
     request: XhrRequest,
 ) -> Result<BrowserOutput, BrowserError> {

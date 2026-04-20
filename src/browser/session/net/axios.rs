@@ -21,7 +21,7 @@ const EVAL_TIMEOUT: Duration = Duration::from_secs(60);
 ///
 /// Returns [`BrowserError::EvaluationTimeout`] if the call exceeds 60 s,
 /// or propagates CDP / serialization errors.
-pub(super) async fn axios(
+pub async fn axios(
     session: &BrowserSession,
     request: AxiosRequest,
 ) -> Result<BrowserOutput, BrowserError> {

@@ -17,7 +17,7 @@ const EVAL_TIMEOUT: Duration = Duration::from_secs(60);
 ///
 /// Returns [`BrowserError::EvaluationTimeout`] if the query exceeds 60 s,
 /// or propagates CDP errors from the page evaluation.
-pub(super) async fn network_log(
+pub async fn network_log(
     session: &BrowserSession,
     request: NetworkLogRequest,
 ) -> Result<BrowserOutput, BrowserError> {
