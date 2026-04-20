@@ -1,45 +1,28 @@
-# v4.5.2
+# v4.5.7
 
 ## What's New
 
-- **Parallel read-only tool dispatch** — read-only tool calls now execute concurrently, reducing agent latency on multi-tool turns.
-- **AgentBus integration for sub-agents** — spawned sub-agents are wired to the shared [`AgentBus`](src/bus/global.rs), enabling inter-agent event propagation out of the box.
-- **Two-tier chat render cache** — frozen message prefixes are reused during streaming, eliminating redundant reformatting on every SSE chunk.
+- **XHR replay in browserctl** — New `xhr` action replays requests as raw `XMLHttpRequest`, preserving `Sec-Fetch-*` headers and cookie semantics for sites where `fetch`/`axios` replay fails.
+- **Network introspection suite** — Added `axios` (replay via the page's own axios instance with inherited interceptors/baseURL) and `diagnose` (dumps service workers, axios instances, CSP headers, and network log summary) to browserctl.
+- **TUI paste-burst heuristic** — Clipboard paste events are now detected and batched to avoid flooding the input handler with individual character events.
+- **Native text selection in TUI** — Mouse capture is disabled, allowing users to select and copy terminal text with the mouse without interfering with the TUI.
+- **Steering cancel** — Mid-generation steering can now be cancelled cleanly using `notify_one`, preventing spurious wakeups.
+- **Multi-line Enter** — The TUI input now supports multi-line entry via Enter key with proper submit handling.
+- **Browser session lifecycle** — New attach-to-existing, discovery, and enhanced launch flows for browser sessions, including device emulation and DOM inspection helpers.
+- **Session tail-loading** — Sessions now support tail-loading and tail-seeding for faster startup with large conversation histories.
+- **Shared HTTP provider utilities** — Common HTTP plumbing extracted into `shared_http.rs` and `body_cap.rs` to reduce duplication across LLM providers.
+- **Dedicated shell tool** — New `bash_shell` tool provides isolated shell execution separate from the general `bash` tool.
 
 ## Bug Fixes
 
-- **Streaming markdown O(n²)** — each SSE burst no longer triggers a full reparse; bursts are coalesced into a single redraw per frame and debounced.
-- **TUI cache drain & syntect waste** — fixed over-eager cache eviction, redundant syntax-highlight allocations, and double-wrapped render calls.
-- **Browser eval wrapper** — hardened the CDP eval wrapper against malformed responses and improved release-script reliability.
-- **Release verification** — stabilized the CI test suite and release verification pipeline.
+- **Steering cancel correctness** — Fixed steering cancellation to use `notify_one` instead of `notify_all`, eliminating unnecessary wakeups of unrelated tasks.
+- **Worker bridge stability** — Hardened the TUI ↔ worker bridge to handle edge cases in event propagation.
 
 ## Changes
 
-### Performance
-
-| Area | Improvement |
-|------|-------------|
-| Tool output | Tool results capped at 64 KB by default to prevent context blowout |
-| TUI scroll | Incremental scroll-height memo avoids recomputation on unchanged lines |
-| TUI render | Per-message formatted-line cache skips unchanged messages during repaints |
-| TUI streaming | SSE bursts coalesced into one redraw per frame with debounced markdown reparse |
-
-### Refactoring
-
-- **Session module** — the monolithic `session/mod.rs` (2 700+ lines) was decomposed into 14 focused submodules under SRP: `lifecycle`, `persistence`, `events`, `title`, `types`, `prompt_api`, and `helper/` (compression, confirmation, prompt events, stream, token, etc.).
-- **Bedrock provider** — the 1 354-line `bedrock.rs` was split into 12 single-concern modules: `auth`, `sigv4`, `body`, `convert`, `discovery`, `estimates`, `eventstream`, `response`, `retry`, `stream`, `aliases`, and `tests`.
-- **TUI state** — the 1 200-line `state.rs` was extracted into 15 ≤100-line modules (`scroll`, `history`, `input_cursor`, `message_cache`, `model_picker`, `session_nav`, `steering`, etc.).
-- **TUI chat view** — `ui/main.rs` (1 000+ lines) refactored into 25 focused `chat_view/` submodules (≤50 lines each): `render`, `scroll`, `streaming`, `format_cache`, `cursor`, `suggestions`, `status`, etc.
-- **Browser tool** — DOM and navigation actions extracted into dedicated `dom/read`, `dom/write`, `nav/lifecycle`, `nav/page` submodules.
-- **Chat sync** — split into `config`, `config_types`, `minio_client`, `s3_key`, `batch_upload`, `archive_reader`, and `worker`.
-
-### Documentation & Hygiene
-
-- Added `# Examples` rustdoc blocks to all remaining undocumented public items across the crate.
-- Lint fixes and formatter changes applied across 70 files.
-- Removed stray `src/foo.rs` from the index.
-- Deleted the legacy `tui_old.rs` (11 964 lines) and 7 fully-ported extraction stubs.
-
-### Stats
-
-307 files changed · +16 735 / −26 017 (net −9 282 lines — smaller, more focused codebase)
+- **Session persistence refactor** — Large rewrite of session persistence (`+431` lines) improving serialization, compression, and workspace indexing.
+- **Browser wait utilities** — New `wait.rs` module (`+342` lines) with composable wait strategies for browser automation.
+- **Browser network interception** — New `session/net.rs` (`+368` lines) enabling request interception and modification.
+- **RLM oracle validator** — Minor updates to the Recursive Language Model's oracle validator pipeline.
+- **Provider consistency** — Standardized request handling across Anthropic, Bedrock, OpenAI, OpenRouter, Copilot, GLM5, Google, Moonshot, StepFun, and ZAI providers.
+- **111 files changed**, 5,158 additions, 366 deletions across browser, TUI, session, provider, and tool modules.
