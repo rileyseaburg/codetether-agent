@@ -34,24 +34,13 @@ impl TokenDisplay {
         Some(crate::provider::limits::context_window_for_model(model) as u64)
     }
 
-    /// Get pricing for a model (returns $ per million tokens for input/output)
+    /// Get pricing for a model (returns $ per million tokens for input/output).
+    ///
+    /// Delegates to the canonical
+    /// [`crate::provider::pricing::pricing_for_model`] so costs in the TUI
+    /// stay in sync with the cost-guardrail enforcement path.
     fn get_model_pricing(&self, model: &str) -> (f64, f64) {
-        match model.to_lowercase().as_str() {
-            m if m.contains("gpt-4o-mini") => (0.15, 0.60), // $0.15 / $0.60 per million
-            m if m.contains("gpt-4o") => (2.50, 10.00),     // $2.50 / $10.00 per million
-            m if m.contains("gpt-4-turbo") => (10.00, 30.00), // $10 / $30 per million
-            m if m.contains("gpt-4") => (30.00, 60.00),     // $30 / $60 per million
-            m if m.contains("claude-3-5-sonnet") => (3.00, 15.00), // $3 / $15 per million
-            m if m.contains("claude-3-5-haiku") => (0.80, 4.00), // $0.80 / $4 per million
-            m if m.contains("claude-opus") => (5.00, 25.00), // $5 / $25 per million (Bedrock Opus 4.6)
-            m if m.contains("gemini-2.0-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
-            m if m.contains("gemini-1.5-flash") => (0.075, 0.30), // $0.075 / $0.30 per million
-            m if m.contains("gemini-1.5-pro") => (1.25, 5.00), // $1.25 / $5 per million
-            m if m.contains("glm-4") => (0.50, 0.50),        // ZhipuAI GLM-4 ~$0.50/million
-            m if m.contains("k1.5") => (8.00, 8.00),         // Moonshot K1.5
-            m if m.contains("k1.6") => (6.00, 6.00),         // Moonshot K1.6
-            _ => (1.00, 3.00),                               // Default fallback
-        }
+        crate::provider::pricing::pricing_for_model(model)
     }
 
     /// Calculate cost for a model given input and output token counts
@@ -121,11 +110,35 @@ impl TokenDisplay {
             ));
         }
 
-        // Cost
+        // Cost — colorized based on the configured cost guardrails so
+        // users get an immediate visual when they cross warn / hard limit
+        // thresholds (see `CODETETHER_COST_WARN_USD` /
+        // `CODETETHER_COST_LIMIT_USD`).
+        let cost_style = match crate::session::helper::cost_guard::cost_guard_level() {
+            crate::session::helper::cost_guard::CostGuardLevel::OverLimit => {
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+            }
+            crate::session::helper::cost_guard::CostGuardLevel::OverWarn => {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            }
+            crate::session::helper::cost_guard::CostGuardLevel::Ok => {
+                Style::default().fg(theme.timestamp_color.to_color())
+            }
+        };
         spans.push(Span::styled(
             format!(" Cost: {} ", session_cost.format_smart()),
-            Style::default().fg(theme.timestamp_color.to_color()),
+            cost_style,
         ));
+
+        // Prompt-cache hit rate — surfaces whether Anthropic/Bedrock
+        // prompt caching is actually saving input tokens. Only shown when
+        // the active model has recorded any cache activity at all.
+        if let Some(cache_pct) = self.get_cache_hit_rate(&model_snapshots) {
+            spans.push(Span::styled(
+                format!(" Cache: {:.0}% ", cache_pct),
+                Style::default().fg(Color::Green),
+            ));
+        }
 
         // Context warning if active model is near limit
         if let Some(warning) = self.get_context_warning(&model_snapshots) {
@@ -157,24 +170,64 @@ impl TokenDisplay {
         total
     }
 
-    /// Get context warning for active model
+    /// Get context warning for the active model based on the **current
+    /// turn's** prompt size (what the next request will send), not
+    /// cumulative lifetime tokens.
+    ///
+    /// This matters because the agent loop re-sends the growing
+    /// conversation on every step and the RLM layer compresses history
+    /// behind the scenes — users need to see the real edge of the
+    /// context window, not a bogus 6000% figure summed over all turns.
+    /// This matters because the agent loop re-sends the growing
+    /// conversation on every step and the RLM layer compresses history
+    /// behind the scenes — users need to see the real edge of the
+    /// context window, not a bogus 6000% figure summed over all turns.
     fn get_context_warning(&self, model_snapshots: &[TokenUsageSnapshot]) -> Option<String> {
         if model_snapshots.is_empty() {
             return None;
         }
 
-        // Use the model with highest usage as "active"
         let active_model = model_snapshots.iter().max_by_key(|s| s.totals.total())?;
+        let limit = self.get_context_limit(&active_model.name)?;
 
-        if let Some(limit) = self.get_context_limit(&active_model.name) {
-            let context = ContextLimit::new(active_model.totals.total(), limit);
+        // Prefer the last turn's actual prompt size; fall back to cumulative
+        // only if no turn has been recorded yet (first-render race).
+        let used = crate::telemetry::TOKEN_USAGE
+            .last_prompt_tokens_for(&active_model.name)
+            .unwrap_or_else(|| active_model.totals.total().min(limit));
 
-            if context.percentage >= 75.0 {
-                return Some(format!("⚠️ Context: {:.1}%", context.percentage));
-            }
+        let context = ContextLimit::new(used, limit);
+
+        if context.percentage >= 90.0 {
+            Some(format!("🛑 Context: {:.0}%", context.percentage))
+        } else if context.percentage >= 75.0 {
+            Some(format!("⚠️ Context: {:.0}%", context.percentage))
+        } else if context.percentage >= 50.0 {
+            Some(format!("Context: {:.0}%", context.percentage))
+        } else {
+            None
         }
+    }
 
-        None
+    /// Aggregate prompt-cache hit rate across all recorded models.
+    ///
+    /// Defined as `cache_read / (cache_read + full_price_input)` × 100,
+    /// i.e. what fraction of billable input was served from the cache.
+    /// Returns `None` when no cache activity has been recorded (which is
+    /// the common case for providers that don't support it).
+    fn get_cache_hit_rate(&self, model_snapshots: &[TokenUsageSnapshot]) -> Option<f64> {
+        let mut full_input: u64 = 0;
+        let mut cache_read: u64 = 0;
+        for s in model_snapshots {
+            full_input += s.prompt_tokens;
+            let (cr, _cw) = crate::telemetry::TOKEN_USAGE.cache_usage_for(&s.name);
+            cache_read += cr;
+        }
+        let denom = full_input + cache_read;
+        if cache_read == 0 || denom == 0 {
+            return None;
+        }
+        Some(cache_read as f64 * 100.0 / denom as f64)
     }
 
     /// Get TPS (tokens per second) display string from provider metrics
@@ -263,6 +316,22 @@ impl TokenDisplay {
                             context.percentage, limit
                         ));
                     }
+                }
+
+                // Prompt-cache stats (Anthropic / Bedrock).
+                let (cache_read, cache_write) =
+                    crate::telemetry::TOKEN_USAGE.cache_usage_for(&snapshot.name);
+                if cache_read > 0 || cache_write > 0 {
+                    let denom = snapshot.prompt_tokens + cache_read;
+                    let hit_pct = if denom > 0 {
+                        cache_read as f64 * 100.0 / denom as f64
+                    } else {
+                        0.0
+                    };
+                    lines.push(format!(
+                        "      Cache: {} read / {} write ({:.1}% hit)",
+                        cache_read, cache_write, hit_pct
+                    ));
                 }
             }
 

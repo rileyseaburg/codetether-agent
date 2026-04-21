@@ -12,6 +12,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
+pub mod guardrails;
+
+use guardrails::CostGuardrails;
+
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -51,6 +55,10 @@ pub struct Config {
     #[serde(default)]
     pub telemetry: TelemetryConfig,
 
+    /// Cost guardrails (spending caps). See [`CostGuardrails`].
+    #[serde(default)]
+    pub guardrails: CostGuardrails,
+
     /// LSP / linter server settings
     #[serde(default)]
     pub lsp: LspSettings,
@@ -78,6 +86,7 @@ impl Default for Config {
             ui: UiConfig::default(),
             session: SessionConfig::default(),
             telemetry: TelemetryConfig::default(),
+            guardrails: CostGuardrails::default(),
             lsp: LspSettings::default(),
             rlm: crate::rlm::RlmConfig::default(),
         }

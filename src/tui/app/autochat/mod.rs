@@ -3,9 +3,11 @@
 pub mod events;
 pub mod handler;
 pub mod notify;
+pub mod persona;
 pub mod request;
 pub mod run;
 pub mod state;
+pub mod step_request;
 pub mod summary;
 pub mod worker;
 

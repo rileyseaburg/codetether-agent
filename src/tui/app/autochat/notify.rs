@@ -34,6 +34,18 @@ pub fn send_success(
     let _ = ui_tx.send(completed(summary));
 }
 
+/// Notify the UI about a successful completion with pre-built summary text.
+pub fn send_success_text(
+    ui_tx: &mpsc::UnboundedSender<AutochatUiEvent>,
+    resolved_model: String,
+    summary: String,
+) {
+    let _ = ui_tx.send(AutochatUiEvent::SystemMessage(format!(
+        "Autochat relay complete (final persona on {resolved_model})"
+    )));
+    let _ = ui_tx.send(completed(summary));
+}
+
 /// Notify the UI that completion failed.
 pub fn send_completion_error(
     ui_tx: &mpsc::UnboundedSender<AutochatUiEvent>,

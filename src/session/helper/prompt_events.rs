@@ -202,6 +202,9 @@ pub(crate) async fn run_prompt_with_events(
         tracing::info!(step = step, "Agent step starting");
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
+        super::cost_guard::enforce_cost_budget()?;
+        super::experimental::apply_all(&mut session.messages);
+
         enforce_context_window(
             session,
             Arc::clone(&provider),
@@ -312,10 +315,12 @@ pub(crate) async fn run_prompt_with_events(
         };
         let response = normalize_textual_tool_calls(response, &tool_definitions);
 
-        crate::telemetry::TOKEN_USAGE.record_model_usage(
+        crate::telemetry::TOKEN_USAGE.record_model_usage_with_cache(
             &model,
             response.usage.prompt_tokens as u64,
             response.usage.completion_tokens as u64,
+            response.usage.cache_read_tokens.unwrap_or(0) as u64,
+            response.usage.cache_write_tokens.unwrap_or(0) as u64,
         );
 
         let _ = event_tx
