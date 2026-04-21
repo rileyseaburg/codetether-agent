@@ -288,6 +288,12 @@ function Show-CoreEnvInstructions {
     Write-Host "  `$env:VAULT_TOKEN = 'hvs.your-token'"
     Write-Host "  `$env:CODETETHER_DEFAULT_MODEL = 'zai/glm-5'"
     Write-Host ""
+    Write-Host "Optional (history persistence to S3/MinIO):" -ForegroundColor White
+    Write-Host "  `$env:CODETETHER_HISTORY_S3_ENDPOINT = 'http://localhost:9000'"
+    Write-Host "  `$env:CODETETHER_HISTORY_S3_BUCKET = 'codetether-history'"
+    Write-Host "  `$env:CODETETHER_HISTORY_S3_ACCESS_KEY = 'minioadmin'"
+    Write-Host "  `$env:CODETETHER_HISTORY_S3_SECRET_KEY = 'minioadmin'"
+    Write-Host ""
     Write-Host "To persist across sessions, add those lines to `$PROFILE." -ForegroundColor Gray
     Write-Host ""
 }
@@ -399,6 +405,12 @@ function Setup-CoreEnvironment {
         'VAULT_TOKEN'               = $vaultToken
         'CODETETHER_DEFAULT_MODEL'  = $defaultModel
     }
+
+    # Optional: history persistence to S3/MinIO (uncomment to enable)
+    # $envVars['CODETETHER_HISTORY_S3_ENDPOINT']  = 'http://localhost:9000'
+    # $envVars['CODETETHER_HISTORY_S3_BUCKET']    = 'codetether-history'
+    # $envVars['CODETETHER_HISTORY_S3_ACCESS_KEY'] = 'minioadmin'
+    # $envVars['CODETETHER_HISTORY_S3_SECRET_KEY'] = 'minioadmin'
 
     foreach ($kv in $envVars.GetEnumerator()) {
         [System.Environment]::SetEnvironmentVariable($kv.Key, $kv.Value, 'User')

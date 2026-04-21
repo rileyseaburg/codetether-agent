@@ -189,6 +189,11 @@ print_core_env_instructions() {
     printf "  export VAULT_ADDR=\"https://vault.example.com:8200\"\n"
     printf "  export VAULT_TOKEN=\"hvs.your-token\"\n"
     printf "  export CODETETHER_DEFAULT_MODEL=\"zai/glm-5\"\n"
+    printf "\n${BOLD}Optional (history persistence to S3/MinIO):${NC}\n"
+    printf "  export CODETETHER_HISTORY_S3_ENDPOINT=\"http://localhost:9000\"\n"
+    printf "  export CODETETHER_HISTORY_S3_BUCKET=\"codetether-history\"\n"
+    printf "  export CODETETHER_HISTORY_S3_ACCESS_KEY=\"minioadmin\"\n"
+    printf "  export CODETETHER_HISTORY_S3_SECRET_KEY=\"minioadmin\"\n"
     printf "\n  Add them to your shell profile (for example ${CYAN}~/.bashrc${NC}) to persist.\n\n"
 }
 
@@ -294,7 +299,13 @@ configure_core_env() {
     local config_block="${config_marker}
 export VAULT_ADDR=\"${vault_addr}\"
 export VAULT_TOKEN=\"${vault_token}\"
-export CODETETHER_DEFAULT_MODEL=\"${default_model}\""
+export CODETETHER_DEFAULT_MODEL=\"${default_model}\"
+# Optional: history persistence to S3/MinIO
+# export CODETETHER_HISTORY_S3_ENDPOINT=\"http://localhost:9000\"
+# export CODETETHER_HISTORY_S3_BUCKET=\"codetether-history\"
+# export CODETETHER_HISTORY_S3_ACCESS_KEY=\"minioadmin\"
+# export CODETETHER_HISTORY_S3_SECRET_KEY=\"minioadmin\""
+
 
     if [ -f "$shell_profile" ] && grep -qF "$config_marker" "$shell_profile" 2>/dev/null; then
         local tmp_profile
