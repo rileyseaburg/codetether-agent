@@ -319,32 +319,19 @@ pub async fn handle_slash_command(
         return;
     }
 
-    if let Some(rest) = command_with_optional_args(&normalized, "/steer") {
-        let value = rest.trim();
-        if value.eq_ignore_ascii_case("clear") {
-            app.state.clear_steering();
-            app.state.status = "Cleared queued steering".to_string();
-            push_system_message(app, "Cleared queued steering.");
-        } else if value.eq_ignore_ascii_case("status") || value.is_empty() {
-            let count = app.state.steering_count();
-            app.state.status = format!("Queued steering: {count}");
-            let body = if count == 0 {
-                "No queued steering.".to_string()
-            } else {
-                app.state
-                    .queued_steering
-                    .iter()
-                    .enumerate()
-                    .map(|(idx, item)| format!("{}. {item}", idx + 1))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            };
-            push_system_message(app, format!("Queued steering\n{body}"));
+    if let Some(rest) = command_with_optional_args(&normalized, "/ask") {
+        let question = rest.trim();
+        if question.is_empty() {
+            app.state.status =
+                "Usage: /ask <question> — ephemeral side question, no tools, not saved."
+                    .to_string();
+            push_system_message(
+                app,
+                "/ask runs a single no-tools completion using the current conversation \
+                 as context. The question and answer are NOT written to session history.",
+            );
         } else {
-            app.state.queue_steering(value);
-            let count = app.state.steering_count();
-            app.state.status = format!("Queued steering ({count}) for next turn");
-            push_system_message(app, format!("Queued steering for next turn: {value}"));
+            super::ask::run_ask(app, session, registry, question).await;
         }
         return;
     }

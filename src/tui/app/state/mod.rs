@@ -34,7 +34,6 @@ pub mod session_nav;
 pub mod settings_nav;
 pub mod slash_commands;
 pub mod slash_suggest;
-pub mod steering;
 pub mod timing;
 pub mod worker_bridge;
 
@@ -124,7 +123,6 @@ pub struct AppState {
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
     pub pending_images: Vec<ImageAttachment>,
-    pub queued_steering: Vec<String>,
     pub auto_apply_edits: bool,
     pub allow_network: bool,
     pub slash_autocomplete: bool,

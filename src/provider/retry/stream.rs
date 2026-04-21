@@ -53,6 +53,7 @@ where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = anyhow::Result<reqwest::Response>>,
 {
+    const MAX_ATTEMPTS: u32 = 5;
     let mut attempt = 0u32;
     loop {
         attempt += 1;
@@ -63,7 +64,10 @@ where
             Ok(resp) if is_retryable_status(resp.status()) => {
                 let status = resp.status();
                 // Drain body so the connection can be reused
-                let _ = resp.bytes().await;
+                let body = resp.text().await.unwrap_or_default();
+                if attempt >= MAX_ATTEMPTS {
+                    anyhow::bail!("Streaming error after {attempt} attempts: {status} {body}");
+                }
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, %status,
@@ -76,6 +80,9 @@ where
                 let status = resp.status();
                 let text = resp.text().await.unwrap_or_default();
                 if is_retryable_message(&text) {
+                    if attempt >= MAX_ATTEMPTS {
+                        anyhow::bail!("Streaming error after {attempt} attempts: {status} {text}");
+                    }
                     let delay = backoff_delay(attempt);
                     tracing::warn!(
                         attempt, %status,
@@ -88,6 +95,9 @@ where
                 anyhow::bail!("Streaming error: {status} {text}");
             }
             Err(e) if is_retryable_message(&e.to_string()) => {
+                if attempt >= MAX_ATTEMPTS {
+                    return Err(e);
+                }
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, error = %e,

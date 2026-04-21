@@ -10,7 +10,6 @@ mod char_input;
 mod chat_helpers;
 mod chat_spawn;
 mod chat_spawn_task;
-mod chat_steer_queue;
 mod chat_submit;
 mod chat_submit_dispatch;
 
@@ -32,7 +31,6 @@ mod sessions;
 mod tests_enter;
 mod tests_paste;
 mod tests_pr;
-mod tests_steering;
 mod tests_submit;
 mod worktree;
 mod worktree_result;

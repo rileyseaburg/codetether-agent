@@ -40,6 +40,7 @@ pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
 pub mod search;
+pub mod search_router;
 pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
@@ -465,5 +466,30 @@ impl ToolRegistry {
 impl Default for ToolRegistry {
     fn default() -> Self {
         Self::with_defaults()
+    }
+}
+
+impl ToolRegistry {
+    /// Register the LLM-routed `search` tool.
+    ///
+    /// Needs the full [`crate::provider::ProviderRegistry`] because the
+    /// router may talk to multiple providers to pick a model.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// use std::sync::Arc;
+    /// use codetether_agent::provider::ProviderRegistry;
+    /// use codetether_agent::tool::ToolRegistry;
+    ///
+    /// let mut registry = ToolRegistry::with_defaults();
+    /// let providers = Arc::new(ProviderRegistry::from_vault().await.unwrap());
+    /// registry.register_search(providers);
+    /// assert!(registry.contains("search"));
+    /// # });
+    /// ```
+    pub fn register_search(&mut self, providers: Arc<crate::provider::ProviderRegistry>) {
+        self.register(Arc::new(search_router::SearchTool::new(providers)));
     }
 }

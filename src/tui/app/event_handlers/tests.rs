@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ctrl_s_prefills_steer_command_in_chat() {
+    async fn ctrl_w_prefills_ask_command_in_chat() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
 
@@ -159,7 +159,7 @@ mod tests {
         .expect("handle_event");
 
         assert!(!quit);
-        assert_eq!(app.state.input, "/steer ");
+        assert_eq!(app.state.input, "/ask ");
     }
 
     #[tokio::test]

@@ -27,6 +27,7 @@ pub mod provenance;
 pub mod provider;
 pub mod ralph;
 pub mod rlm;
+pub mod search;
 pub mod secrets;
 pub mod server;
 pub mod session;

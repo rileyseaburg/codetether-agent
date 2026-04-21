@@ -29,23 +29,11 @@ pub(crate) async fn dispatch_prompt(
     event_tx: &mpsc::Sender<SessionEvent>,
     result_tx: &mpsc::Sender<anyhow::Result<Session>>,
 ) {
-    let effective_prompt = app
-        .state
-        .steering_prompt_prefix()
-        .map(|prefix| format!("{prefix}\nUser request:\n{prompt}"))
-        .unwrap_or_else(|| prompt.to_string());
-
-    let steering_count = app.state.steering_count();
     app.state.clear_input();
-    app.state.clear_steering();
     crate::tui::app::worker_bridge::handle_processing_started(app, worker_bridge).await;
     app.state.begin_request_timing();
-    app.state.main_inflight_prompt = Some(effective_prompt.clone());
-    app.state.status = if steering_count > 0 {
-        format!("Submitting prompt with {steering_count} steering item(s)…")
-    } else {
-        "Submitting prompt…".to_string()
-    };
+    app.state.main_inflight_prompt = Some(prompt.to_string());
+    app.state.status = "Submitting prompt…".to_string();
     app.state.scroll_to_bottom();
 
     if let Some(reg) = registry {
@@ -54,7 +42,7 @@ pub(crate) async fn dispatch_prompt(
             cwd,
             session,
             reg,
-            &effective_prompt,
+            prompt,
             pending_images,
             event_tx,
             result_tx,

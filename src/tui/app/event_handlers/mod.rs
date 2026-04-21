@@ -16,6 +16,7 @@
 mod alt_scroll;
 mod clipboard;
 mod copy_reply;
+mod ctrl_c;
 mod keybinds;
 mod keyboard;
 mod mode_keys;

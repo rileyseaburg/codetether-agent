@@ -96,10 +96,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn queued_steering_is_consumed_on_next_submit() {
+    async fn enter_while_processing_shows_hint_and_keeps_input() {
+        // Anthropic-style: while a turn is streaming, Enter no longer
+        // queues the input. It keeps the typed text in the buffer and
+        // shows a status hint pointing the user at Ctrl+C or /ask.
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
-        app.state.queue_steering("Be concise");
+        app.state.processing = true;
         app.state.input = "hello tui".to_string();
         app.state.input_cursor = app.state.input.chars().count();
 
@@ -119,9 +122,19 @@ mod tests {
         )
         .await;
 
-        assert_eq!(app.state.messages[0].content, "hello tui");
-        assert_eq!(app.state.steering_count(), 0);
-        assert!(app.state.status.contains("No providers") || app.state.status.contains("Submitting"));
+        // Input is preserved (not dispatched, not cleared)
+        assert_eq!(app.state.input, "hello tui");
+        // No user message appended to the chat buffer
+        assert!(
+            app.state.messages.is_empty()
+                || !app.state.messages.iter().any(|m| m.content == "hello tui")
+        );
+        // Status points at Ctrl+C / /ask
+        assert!(
+            app.state.status.contains("Ctrl+C") || app.state.status.contains("/ask"),
+            "status should hint at interrupt / ask, got: {}",
+            app.state.status
+        );
     }
 
     #[test]

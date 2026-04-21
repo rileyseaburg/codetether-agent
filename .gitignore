@@ -42,3 +42,23 @@ target-jammy/
 .codetether-agent/
 tp_*/
 .codetether-worktrees/
+
+# Stray one-off artifacts (cleaned 2026-04-21)
+fix_*.py
+fix.py
+patch*.patch
+prd_*.json
+prd.json
+progress_*.txt
+sq_[0-9][0-9][0-9]/
+ralph_*.log
+*.vsix
+test_gemma_env
+test_cache.rs
+test_gemma_env.rs
+test_theme.toml
+swarm_*.log
+cargo_check_errors.txt
+benchmark_results.json
+validation_report.*
+state_v5.py

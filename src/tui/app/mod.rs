@@ -1,4 +1,5 @@
 pub mod autochat;
+pub mod ask;
 pub mod background;
 pub mod codex_sessions;
 pub mod commands;

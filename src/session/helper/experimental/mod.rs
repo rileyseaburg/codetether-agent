@@ -58,7 +58,11 @@
 //! ```
 
 pub mod dedup;
+pub mod lingua;
 pub mod snippet;
+pub mod streaming_llm;
+pub mod thinking_prune;
+pub mod tool_call_dedup;
 
 use crate::provider::Message;
 
@@ -103,8 +107,12 @@ impl ExperimentalStats {
 /// ```
 pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     let mut stats = ExperimentalStats::default();
+    stats.merge(thinking_prune::prune_thinking(messages));
+    stats.merge(tool_call_dedup::collapse_duplicate_calls(messages));
     stats.merge(dedup::dedup_tool_outputs(messages));
     stats.merge(snippet::snippet_stale_tool_outputs(messages));
+    stats.merge(lingua::prune_low_entropy(messages));
+    stats.merge(streaming_llm::trim_middle(messages));
     if stats.total_bytes_saved > 0 {
         tracing::info!(
             dedup_hits = stats.dedup_hits,

@@ -3,6 +3,13 @@
 //! Validates the input, dispatches slash commands, pushes
 //! user messages, and delegates to
 //! [`super::chat_submit_dispatch::dispatch_prompt`].
+//!
+//! Mid-stream behavior (Anthropic-style): while a turn is in flight,
+//! plain-text Enter is a no-op that shows a hint directing the user to
+//! `Ctrl+C` (interrupt) or `/ask` (side question). The typed text stays
+//! in the input buffer so it is not lost. Slash commands are always
+//! dispatched immediately because they are either local (e.g. `/help`)
+//! or non-conflicting with the main turn (e.g. `/ask`).
 
 use std::{path::Path, sync::Arc};
 use tokio::sync::mpsc;
@@ -14,16 +21,15 @@ use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 use super::chat_helpers::push_user_messages;
-use super::chat_steer_queue::queue_steering_while_processing;
 use super::chat_submit_dispatch::dispatch_prompt;
 
 /// Submit the chat input to the provider.
 ///
-/// Handles slash commands, pushes user/image messages,
-/// then delegates prompt preparation and dispatch. While a
-/// previous request is still in flight, plain-text input is
-/// queued as steering instead of being rejected, so users
-/// can steer mid-stream.
+/// Handles slash commands, pushes user/image messages, then delegates
+/// prompt preparation and dispatch. While a previous request is still
+/// in flight, plain-text input is **not** auto-queued: users should
+/// press `Ctrl+C` to interrupt the current turn (the partial transcript
+/// is preserved in history) or `/ask <question>` for a side question.
 pub(super) async fn handle_enter_chat(
     app: &mut App,
     cwd: &Path,
@@ -43,7 +49,11 @@ pub(super) async fn handle_enter_chat(
         return;
     }
     if app.state.processing {
-        queue_steering_while_processing(app, &prompt);
+        // Don't discard the user's typed text; just guide them.
+        app.state.status =
+            "Agent is still responding — press Ctrl+C to interrupt, or use /ask <question> \
+             for a side question. Your text stays in the input."
+                .to_string();
         return;
     }
 

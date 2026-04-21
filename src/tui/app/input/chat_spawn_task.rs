@@ -34,17 +34,23 @@ pub(super) async fn run_spawned_task(
     prompt_for_pr: String,
     cancel: Arc<Notify>,
 ) {
-    let session_snapshot = session.clone();
+    // Clone so we can restore `metadata.directory` on the cancel branch
+    // without racing with `run_prompt`, which also consumes `original_dir`.
+    let original_dir_for_cancel = original_dir.clone();
     let result = std::panic::AssertUnwindSafe(async {
         tokio::select! {
             biased;
             _ = cancel.notified() => {
                 tracing::info!("Provider turn interrupted by user steering");
-                // Partial assistant / tool content was already applied to
-                // the shared `session` via SessionEvent streaming, so the
-                // snapshot captured before select! is the right baseline
-                // and returning Ok keeps that partial turn in history.
-                Ok(session_snapshot)
+                // `run_prompt` mutates `session` in place as assistant
+                // tokens/tool calls stream in via SessionEvent, and it's
+                // also what appends the *user* message to `session.messages`
+                // at turn start. Return the live `session` so the partial
+                // turn (including the user prompt that triggered it) is
+                // preserved in history; returning a pre-turn snapshot here
+                // would silently drop the user's message.
+                session.metadata.directory = original_dir_for_cancel;
+                Ok(session.clone())
             }
             r = run_prompt(
                 &mut session,
