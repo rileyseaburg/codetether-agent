@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
-A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
+A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, local FunctionGemma tool-call router, and **derived context per turn** — the canonical chat history stays append-only while the LLM sees a compressed, paired, and repaired ephemeral context every turn.
 
 ## Install
 
@@ -113,6 +113,9 @@ codetether stats                         # Telemetry & execution statistics
 codetether benchmark                     # Run model benchmark suite
 codetether cleanup                       # Clean orphaned worktrees
 codetether config --show                 # Show config
+codetether context reset                 # Emit a [CONTEXT RESET] marker in the session
+codetether context browse list           # List virtual session history paths
+codetether context browse show-turn N    # Show turn N as markdown
 ```
 
 `codetether index` always generates embeddings locally (no paid API required). Tune with `--embedding-model`, `--embedding-dimensions`, `--embedding-batch-size`, and `--embedding-input-chars`.
@@ -164,6 +167,26 @@ CodeTether treats security as non-optional infrastructure, not a feature flag.
 | **K8s Self-Healing** | Reconciliation loop detects unhealthy pods and triggers rolling restarts. |
 
 ## Features
+
+### Derived Context: Append-Only History + Ephemeral LLM Context
+
+Every turn the agent **derives** a fresh `DerivedContext` from the canonical `session.messages` — the transcript stays append-only and the LLM gets a compressed, paired, and repaired view. This separation means:
+
+- **True history** — `session.messages` is never rewritten by compression, so `/undo`, `/fork`, and session recall see every original turn.
+- **Compression safety** — Context-window enforcement runs on a clone, not the source of truth.
+- **Tool-call pairing repair** — Orphaned tool calls get synthetic placeholders so the provider never sees dangling `assistant.tool_calls` without matching `tool` results.
+- **Policy-driven resets** — Lu et al. reset-to-(prompt, summary) when estimated tokens exceed a threshold, via the `DerivePolicy::Reset` policy.
+- **Mid-session recall** — The `session_recall` tool recovers details from the canonical history that the compressor may have dropped from the derived context.
+
+The derivation pipeline: clone → compress last oversized message → experimental pairing → adaptive budget cascade → orphan repair → `DerivedContext { messages, compressed, origin_len }`.
+
+```bash
+# Environment variables for history persistence (optional)
+export CODETETHER_HISTORY_S3_ENDPOINT="http://localhost:9000"
+export CODETETHER_HISTORY_S3_BUCKET="codetether-history"
+export CODETETHER_HISTORY_S3_ACCESS_KEY="minioadmin"
+export CODETETHER_HISTORY_S3_SECRET_KEY="minioadmin"
+```
 
 ### FunctionGemma Tool Router
 
@@ -269,6 +292,19 @@ codetether okr export --id <uuid>       # Export as JSON
 codetether okr stats                    # Aggregate stats
 ```
 
+### Session Management
+
+The TUI provides first-class session lifecycle commands:
+
+| Command | Purpose |
+|---------|---------|
+| `/ask <question>` | Ask a one-off question without adding to session history |
+| `/undo [N]` | Remove last `N` user/assistant/tool turns from the session |
+| `/fork [N]` | Create a child session from the current state (optionally at turn `N`) |
+| `/audit` | Open the audit view to inspect action history |
+
+Sessions remain **append-only** — `/undo` and `/fork` operate on the canonical transcript, while the LLM always receives a freshly derived ephemeral context per turn.
+
 ### Swarm: Parallel Sub-Agent Execution
 
 Decomposes complex tasks into subtasks and executes them concurrently.
@@ -298,9 +334,9 @@ Terminal outcomes: `Completed` (all stories passed), `MaxIterations` (partial), 
 
 ### TUI
 
-Rich terminal UI with model selector, session picker, swarm view, Ralph view, and theme hot-reload.
+Rich terminal UI with model selector, session picker, swarm view, Ralph view, audit view, and theme hot-reload.
 
-**Slash Commands**: `/go`, `/autochat`, `/new`, `/model`, `/sessions`, `/swarm`, `/ralph`, `/rlm`, `/bus`, `/lsp`, `/latency`, `/symbols`, `/settings`, `/file`, `/image`, `/spawn`, `/kill`, `/agents`, `/undo`, `/autoapply`, `/network`, `/mcp connect|servers|tools|call`, `/import-codex`, `/keys`, `/help`
+**Slash Commands**: `/go`, `/autochat`, `/ask`, `/new`, `/model`, `/sessions`, `/swarm`, `/ralph`, `/rlm`, `/bus`, `/lsp`, `/latency`, `/symbols`, `/settings`, `/file`, `/image`, `/spawn`, `/kill`, `/agents`, `/undo`, `/fork`, `/audit`, `/autoapply`, `/network`, `/mcp connect|servers|tools|call`, `/import-codex`, `/keys`, `/help`
 
 **Keyboard**: `Ctrl+M` model selector, `Ctrl+B` toggle layout, `Ctrl+S`/`F2` swarm view, `Tab` switch agents, `Alt+j/k` scroll, `?` help
 
@@ -327,7 +363,7 @@ All keys stored in Vault at `secret/codetether/providers/<name>`.
 
 ## Tools
 
-47 built-in tools across file ops (`read`, `write`, `edit`, `multiedit`, `patch`, `glob`, `list`, `tree`, `file_info`, `head_tail`, `diff`), code intelligence (`lsp`, `grep`, `codesearch`, `advanced_edit`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), media (`image`, `voice`, `podcast`, `youtube`, `avatar`), planning (`ralph`, `prd`, `okr`, `todo_read`, `todo_write`, `plan_enter`, `plan_exit`), agent orchestration (`agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm`), knowledge (`memory`, `skill`, `mcp_bridge`), and utilities (`undo`, `question`, `k8s_tool`, `confirm_edit`, `confirm_multiedit`).
+50+ built-in tools across file ops (`read`, `write`, `edit`, `multiedit`, `patch`, `glob`, `list`, `tree`, `file_info`, `head_tail`, `diff`), code intelligence (`lsp`, `grep`, `codesearch`, `advanced_edit`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), media (`image`, `voice`, `podcast`, `youtube`, `avatar`), planning (`ralph`, `prd`, `okr`, `todo_read`, `todo_write`, `plan_enter`, `plan_exit`), agent orchestration (`agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm`), session management (`context_reset`, `context_browse`, `session_recall`, `session_task`), knowledge (`memory`, `skill`, `mcp_bridge`), and utilities (`undo`, `question`, `k8s_tool`, `confirm_edit`, `confirm_multiedit`).
 
 ## MCP Server
 
@@ -486,10 +522,10 @@ When running `codetether serve`, perpetual persona swarms with SSE event stream:
 │   │   (broadcast pub/sub, topic routing, BusHandle)   │     │
 │   └──┬──────────┬──────────┬──────────┬───────────────┘     │
 │      │          │          │          │                      │
-│   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐              │
-│   │ A2A  │  │ Swarm│  │ Tool │  │  Provider │              │
-│   │Worker│  │ Exec │  │System│  │   Layer   │              │
-│   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘              │
+   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐  ┌────────┐ │
+   │ A2A  │  │ Swarm│  │ Tool │  │  Provider │  │Derived │ │
+   │Worker│  │ Exec │  │System│  │   Layer   │  │Context │ │
+   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘  └────────┘ │
 │      │         │         │         │                        │
 │   ┌──┴─────────┴─────────┴─────────┴──┐                     │
 │   │         Agent Registry            │                     │
