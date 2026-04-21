@@ -46,7 +46,7 @@ fn session_messages_to_chat_messages(session: &Session) -> Vec<ChatMessage> {
     let mut chat_messages = Vec::new();
     let mut tool_call_names = HashMap::new();
 
-    for message in &session.messages {
+    for message in session.history() {
         chat_messages.extend(chat_messages_from_provider_message(
             message,
             &mut tool_call_names,

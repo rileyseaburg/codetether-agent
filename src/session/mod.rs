@@ -38,6 +38,9 @@
 //! - [`persistence`] — save / load / delete / directory lookup.
 //! - [`title`] — title generation and context-change hook.
 //! - [`prompt_api`] — public [`prompt`](Session::prompt) entry points.
+//! - [`context`] — [`DerivedContext`] + [`derive_context`]: produce the
+//!   per-step LLM context from the append-only chat history without
+//!   mutating [`Session::messages`]. See the Phase A plan.
 //! - [`helper`] — the agentic loop implementation (non-public details).
 
 mod bus;
@@ -57,11 +60,35 @@ mod workspace_index;
 mod workspace_index_io;
 
 pub mod codex_import;
+pub mod context;
+pub mod delegation;
+pub mod delegation_skills;
+pub mod derive_policy;
+pub mod eval;
+pub mod faults;
 pub mod helper;
-mod listing;
+pub mod history;
+pub mod history_sink;
+pub mod journal;
+pub mod listing;
 mod listing_all;
+pub mod oracle;
+pub mod pages;
+pub mod relevance;
+pub mod tasks;
 
 pub use self::bus::{DurableSink, NoopSink, SessionBus};
+pub use self::context::{DerivedContext, derive_context, derive_with_policy};
+pub use self::derive_policy::DerivePolicy;
+pub use self::faults::Fault;
+pub use self::history::History;
+pub use self::history_sink::{HistorySinkConfig, PointerHandle};
+pub use self::journal::{JournalEntry, Op, RejectReason, TxnId, WritebackJournal};
+pub use self::pages::{PageKind, ResidencyLevel};
+pub use self::delegation::{BetaPosterior, DelegationConfig, DelegationState};
+pub use self::eval::{PolicyRunResult, pareto_frontier, reuse_rate};
+pub use self::oracle::{OracleReport, replay_oracle};
+pub use self::relevance::{Bucket, Dependency, Difficulty, RelevanceMeta, ToolUse};
 pub use self::codex_import::{
     import_codex_session_by_id, import_codex_sessions_for_directory, load_or_import_session,
 };
@@ -74,6 +101,7 @@ pub use self::events::{SessionEvent, SessionResult};
 pub use self::listing::{SessionSummary, list_sessions};
 pub use self::listing_all::list_all_sessions_for_directory;
 pub use self::tail_load::TailLoad;
+pub use self::tasks::{TaskEvent, TaskLog, TaskState, TaskStatus};
 pub use self::types::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionMetadata};
 
 #[cfg(test)]

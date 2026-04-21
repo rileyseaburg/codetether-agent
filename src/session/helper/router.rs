@@ -175,3 +175,89 @@ pub fn choose_router_target(
 
     None
 }
+
+/// CADMAS-CTX-aware variant of [`choose_router_target`] (Phase C step 17).
+///
+/// When `state.config.enabled` is `true`, the rule-based candidate list
+/// from [`known_good_router_candidates`] is re-ordered by the LCB score
+/// `μ − γ·√u` under the supplied `bucket`. Candidates with no
+/// observations yet keep their original rule order (cold-start
+/// conservatism). When `state.config.enabled` is `false`, this function
+/// is exactly [`choose_router_target`].
+///
+/// The actual outcome update — `state.update(provider, "model_call",
+/// bucket, success)` — lives in the prompt loop's retry handler and is
+/// wired in a follow-up commit. This function is the *selection* half
+/// of the bandit loop; the *update* half is the hook point.
+///
+/// # Arguments
+///
+/// * `registry` — Active provider registry (same as the non-bandit path).
+/// * `state` — CADMAS-CTX sidecar for this session. Read-only here.
+/// * `bucket` — Context bucket extracted from the current turn's
+///   [`RelevanceMeta`](crate::session::relevance::RelevanceMeta).
+/// * `selected_provider` / `current_model` — Same semantics as
+///   [`choose_router_target`].
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+/// use codetether_agent::provider::ProviderRegistry;
+/// use codetether_agent::session::delegation::{DelegationConfig, DelegationState};
+/// use codetether_agent::session::helper::router::choose_router_target_bandit;
+/// use codetether_agent::session::relevance::{Bucket, Dependency, Difficulty, ToolUse};
+///
+/// let registry = ProviderRegistry::from_vault().await.unwrap();
+/// let state = DelegationState::with_config(DelegationConfig::default());
+/// let bucket = Bucket {
+///     difficulty: Difficulty::Easy,
+///     dependency: Dependency::Isolated,
+///     tool_use: ToolUse::No,
+/// };
+/// let _ = choose_router_target_bandit(&registry, &state, bucket, "openai", "gpt-5");
+/// # });
+/// ```
+pub fn choose_router_target_bandit(
+    registry: &crate::provider::ProviderRegistry,
+    state: &crate::session::delegation::DelegationState,
+    bucket: crate::session::relevance::Bucket,
+    selected_provider: &str,
+    current_model: &str,
+) -> Option<(String, String)> {
+    if !state.config.enabled {
+        return choose_router_target(registry, selected_provider, current_model);
+    }
+
+    // Enumerate rule-based candidates, annotate each with an LCB score
+    // (or 0.0 when there is no posterior yet), sort stably by score
+    // descending, and return the first one the registry knows about.
+    let candidates = known_good_router_candidates(selected_provider, current_model);
+    let mut scored: Vec<(String, f64)> = candidates
+        .into_iter()
+        .map(|raw| {
+            let (provider_name, _model_name) = crate::provider::parse_model_string(&raw);
+            let provider_name = provider_name.unwrap_or(selected_provider);
+            let score = state
+                .score(provider_name, "model_call", bucket)
+                .unwrap_or(0.0);
+            (raw, score)
+        })
+        .collect();
+    scored.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    for (candidate, _score) in scored {
+        let (provider_name, model_name) = crate::provider::parse_model_string(&candidate);
+        let provider_name = provider_name.unwrap_or(selected_provider);
+        if registry.get(provider_name).is_some() {
+            return Some((provider_name.to_string(), model_name.to_string()));
+        }
+    }
+
+    // No re-ordered candidate was registered — fall back to the
+    // original rule-based ladder so we never regress against the
+    // non-bandit behaviour.
+    choose_router_target(registry, selected_provider, current_model)
+}

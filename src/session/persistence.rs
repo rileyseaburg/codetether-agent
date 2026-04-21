@@ -120,6 +120,24 @@ impl Session {
                 }
             });
         }
+        // Phase A history sink: stream pure history to MinIO/S3.
+        // Env-gated, fire-and-forget — never blocks the save, never
+        // fails it. See [`super::history_sink`] for the env variables.
+        if let Ok(Some(sink_config)) = super::history_sink::HistorySinkConfig::from_env() {
+            let session_id = self.id.clone();
+            let messages = self.messages.clone();
+            tokio::spawn(async move {
+                if let Err(err) = super::history_sink::upload_full_history(
+                    &sink_config,
+                    &session_id,
+                    &messages,
+                )
+                .await
+                {
+                    tracing::warn!(%err, %session_id, "history sink upload failed (non-fatal)");
+                }
+            });
+        }
         Ok(())
     }
 

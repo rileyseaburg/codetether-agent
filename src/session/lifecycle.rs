@@ -195,4 +195,37 @@ impl Session {
         self.messages.push(message);
         self.updated_at = Utc::now();
     }
+
+    /// Borrow the chat-history transcript as an immutable slice.
+    ///
+    /// Preferred read path now that [`Self::messages`] is scheduled for
+    /// visibility tightening — see the Phase A plan for details. Callers
+    /// who need mutable, append-only access should wrap the buffer in a
+    /// [`History`](super::history::History) handle obtained via
+    /// [`Self::history_mut`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// use codetether_agent::session::Session;
+    ///
+    /// let session = Session::new().await.unwrap();
+    /// assert!(session.history().is_empty());
+    /// # });
+    /// ```
+    pub fn history(&self) -> &[Message] {
+        &self.messages
+    }
+
+    /// Borrow the chat-history transcript as an append-only
+    /// [`History`](super::history::History) handle.
+    ///
+    /// The returned handle can only grow the buffer via
+    /// [`History::append`](super::history::History::append). Any mutation
+    /// that would violate the Phase A invariant (destructive in-place
+    /// rewrite) is not reachable through this API surface.
+    pub fn history_mut(&mut self) -> super::history::History<'_> {
+        super::history::History::new(&mut self.messages)
+    }
 }
