@@ -17,7 +17,9 @@ pub fn render_protocol_registry(f: &mut Frame, app: &mut App, area: Rect) {
         ])
         .split(area);
     f.render_widget(list_widget(&cards), chunks[0]);
-    let block = Block::default().borders(Borders::ALL).title("Agent Details");
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title("Agent Details");
     let inner = block.inner(chunks[1]);
     f.render_widget(block, chunks[1]);
     let body = detail_widget(app, &cards).unwrap_or_else(empty_widget);
@@ -32,14 +34,21 @@ fn collect_agent_cards(app: &App) -> Vec<AgentCard> {
         .cloned()
         .collect::<Vec<_>>();
     names.sort();
-    names.into_iter().map(|name| agent_card(app, name)).collect()
+    names
+        .into_iter()
+        .map(|name| agent_card(app, name))
+        .collect()
 }
 
 fn agent_card(app: &App, name: String) -> AgentCard {
     AgentCard {
         name,
         description: String::new(),
-        url: app.state.worker_id.clone().unwrap_or_else(|| "unknown".into()),
+        url: app
+            .state
+            .worker_id
+            .clone()
+            .unwrap_or_else(|| "unknown".into()),
         version: "0.3.0".into(),
         protocol_version: "0.3.0".into(),
         preferred_transport: None,
@@ -60,7 +69,11 @@ fn agent_card(app: &App, name: String) -> AgentCard {
 
 fn list_widget(cards: &[AgentCard]) -> List<'static> {
     let items = cards.iter().map(list_item).collect::<Vec<_>>();
-    List::new(items).block(Block::default().borders(Borders::ALL).title(list_title(cards)))
+    List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(list_title(cards)),
+    )
 }
 
 fn list_title(cards: &[AgentCard]) -> String {
@@ -68,7 +81,11 @@ fn list_title(cards: &[AgentCard]) -> String {
 }
 
 fn list_item(card: &AgentCard) -> ListItem<'static> {
-    let dot = if card.capabilities.streaming { "● " } else { "○ " };
+    let dot = if card.capabilities.streaming {
+        "● "
+    } else {
+        "○ "
+    };
     let color = if card.capabilities.streaming {
         Color::Green
     } else {
@@ -76,7 +93,10 @@ fn list_item(card: &AgentCard) -> ListItem<'static> {
     };
     let line = Line::from(vec![
         Span::styled(dot, Style::default().fg(color)),
-        Span::styled(card.name.clone(), Style::default().add_modifier(Modifier::BOLD)),
+        Span::styled(
+            card.name.clone(),
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
         Span::raw("  "),
         Span::styled(card.url.clone(), Style::default().fg(Color::DarkGray)),
     ]);
@@ -84,7 +104,10 @@ fn list_item(card: &AgentCard) -> ListItem<'static> {
 }
 
 fn detail_widget(app: &App, cards: &[AgentCard]) -> Option<Paragraph<'static>> {
-    let idx = app.state.protocol_selected.min(cards.len().saturating_sub(1));
+    let idx = app
+        .state
+        .protocol_selected
+        .min(cards.len().saturating_sub(1));
     let card = cards.get(idx)?;
     Some(
         Paragraph::new(detail_lines(card))
@@ -102,16 +125,25 @@ fn detail_lines(card: &AgentCard) -> Vec<Line<'static>> {
         field("Version", card.version.clone()),
         field("Protocol", card.protocol_version.clone()),
         Line::from(""),
-        Line::from(Span::styled("─ Capabilities ─", Style::default().fg(Color::Cyan))),
+        Line::from(Span::styled(
+            "─ Capabilities ─",
+            Style::default().fg(Color::Cyan),
+        )),
         field("Streaming", yes_no(card.capabilities.streaming)),
         field("Push Notif", yes_no(card.capabilities.push_notifications)),
-        field("Transitions", yes_no(card.capabilities.state_transition_history)),
+        field(
+            "Transitions",
+            yes_no(card.capabilities.state_transition_history),
+        ),
     ]
 }
 
 fn field(label: &str, value: String) -> Line<'static> {
     Line::from(vec![
-        Span::styled(label.to_string(), Style::default().add_modifier(Modifier::BOLD)),
+        Span::styled(
+            label.to_string(),
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
         Span::raw("  "),
         Span::raw(value),
     ])

@@ -33,12 +33,7 @@ pub fn detect_git_status(root: &Path) -> (Option<String>, usize) {
     let mut dirty = 0usize;
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("## ") {
-            let name = rest
-                .split("...")
-                .next()
-                .unwrap_or(rest)
-                .trim()
-                .to_string();
+            let name = rest.split("...").next().unwrap_or(rest).trim().to_string();
             if !name.is_empty() && name != "HEAD (no branch)" {
                 branch = Some(name);
             }
@@ -48,4 +43,3 @@ pub fn detect_git_status(root: &Path) -> (Option<String>, usize) {
     }
     (branch, dirty)
 }
-

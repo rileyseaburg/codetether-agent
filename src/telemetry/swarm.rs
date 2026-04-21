@@ -61,7 +61,13 @@ impl SwarmTelemetryCollector {
         let completed = *self.completed.lock().await;
         let total = *self.total.lock().await;
 
-        tracing::info!(success, completed, total, duration_ms = duration, "Swarm completed");
+        tracing::info!(
+            success,
+            completed,
+            total,
+            duration_ms = duration,
+            "Swarm completed"
+        );
 
         TelemetryMetrics {
             tool_invocations: total as u64,

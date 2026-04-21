@@ -152,11 +152,7 @@ async fn build_recall_context(
     let mut ctx = String::new();
     let mut sources = Vec::with_capacity(sessions.len());
     for s in &sessions {
-        let label = format!(
-            "{} ({})",
-            s.title.as_deref().unwrap_or("<untitled>"),
-            &s.id
-        );
+        let label = format!("{} ({})", s.title.as_deref().unwrap_or("<untitled>"), &s.id);
         sources.push(label.clone());
         ctx.push_str(&format!(
             "\n===== SESSION {label} — updated {} =====\n",

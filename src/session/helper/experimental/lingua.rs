@@ -131,7 +131,9 @@ fn prune_text(input: &str) -> String {
         // Drop pure-punctuation or ellipsis-only lines.
         let is_noise = trimmed.is_empty()
             || trimmed.chars().all(|c| c.is_ascii_whitespace())
-            || trimmed.chars().all(|c| matches!(c, '.' | '…' | '-' | '_' | '*' | '='));
+            || trimmed
+                .chars()
+                .all(|c| matches!(c, '.' | '…' | '-' | '_' | '*' | '='));
 
         if is_noise {
             blank_run += 1;

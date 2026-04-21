@@ -36,7 +36,6 @@ use super::bootstrap::{
 use super::build::{
     build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
 };
-use crate::session::context::derive_context;
 use super::confirmation::{
     auto_apply_pending_confirmation, pending_confirmation_tool_result_content,
     tool_result_requires_confirmation,
@@ -65,6 +64,7 @@ use super::token::{
     context_window_for_model, estimate_tokens_for_messages, session_completion_max_tokens,
 };
 use super::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
+use crate::session::context::derive_context;
 
 /// Execute a prompt against the session and return a [`SessionResult`].
 ///

@@ -47,7 +47,9 @@ impl WorkspaceIndex {
 
     /// Record a session id for a canonical workspace path.
     pub(super) fn set(&mut self, workspace: &Path, session_id: &str) {
-        self.entries
-            .insert(workspace.to_string_lossy().into_owned(), session_id.to_string());
+        self.entries.insert(
+            workspace.to_string_lossy().into_owned(),
+            session_id.to_string(),
+        );
     }
 }

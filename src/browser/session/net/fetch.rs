@@ -27,7 +27,10 @@ pub async fn fetch(
     let result = tokio::time::timeout(EVAL_TIMEOUT, page.evaluate_expression(script))
         .await
         .map_err(|_| BrowserError::EvaluationTimeout)??;
-    let value = result.object().value.clone()
+    let value = result
+        .object()
+        .value
+        .clone()
         .unwrap_or(serde_json::json!({"ok": false, "status": 0, "error": "no value"}));
     Ok(BrowserOutput::Json(value))
 }

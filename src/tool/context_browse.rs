@@ -122,11 +122,16 @@ fn render_turn(msg: &Message) -> String {
         }
         match part {
             ContentPart::Text { text } => buf.push_str(text),
-            ContentPart::ToolResult { tool_call_id, content } => {
+            ContentPart::ToolResult {
+                tool_call_id,
+                content,
+            } => {
                 buf.push_str(&format!("[tool_result tool_call_id={tool_call_id}]\n"));
                 buf.push_str(content);
             }
-            ContentPart::ToolCall { name, arguments, .. } => {
+            ContentPart::ToolCall {
+                name, arguments, ..
+            } => {
                 buf.push_str(&format!("[tool_call {name}]\n{arguments}"));
             }
             ContentPart::Image { url, .. } => {
@@ -215,19 +220,20 @@ impl Tool for ContextBrowseTool {
         };
         let messages = session.history();
         match action {
-            ContextBrowseAction::ListTurns => Ok(ToolResult::success(render_listing(
-                &session.id,
-                messages,
-            ))
-            .truncate_to(super::tool_output_budget())),
-            ContextBrowseAction::ShowTurn { turn } => match messages.get(turn) {
-                Some(msg) => Ok(ToolResult::success(render_turn(msg))
-                    .truncate_to(super::tool_output_budget())),
-                None => Ok(ToolResult::error(format!(
-                    "turn {turn} out of range (have {} entries)",
-                    messages.len()
-                ))),
-            },
+            ContextBrowseAction::ListTurns => {
+                Ok(ToolResult::success(render_listing(&session.id, messages))
+                    .truncate_to(super::tool_output_budget()))
+            }
+            ContextBrowseAction::ShowTurn { turn } => {
+                match messages.get(turn) {
+                    Some(msg) => Ok(ToolResult::success(render_turn(msg))
+                        .truncate_to(super::tool_output_budget())),
+                    None => Ok(ToolResult::error(format!(
+                        "turn {turn} out of range (have {} entries)",
+                        messages.len()
+                    ))),
+                }
+            }
         }
     }
 }

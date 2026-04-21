@@ -14,8 +14,8 @@ use crate::tool::ToolRegistry;
 use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use crate::tui::swarm_view::SwarmEvent;
 use crate::worktree::WorktreeManager;
-use std::collections::HashMap;
 use futures::stream::{self, StreamExt};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
@@ -797,12 +797,11 @@ impl RalphLoop {
                     // happens in a bounded parallel pass *before* task
                     // spawn, so we no longer race the `.git/worktrees`
                     // lock inside every task.
-                    let (story_working_dir, worktree_info) =
-                        if let Some(wt) = prebuilt_worktree {
-                            (wt.path.clone(), Some(wt))
-                        } else {
-                            (working_dir.clone(), None)
-                        };
+                    let (story_working_dir, worktree_info) = if let Some(wt) = prebuilt_worktree {
+                        (wt.path.clone(), Some(wt))
+                    } else {
+                        (working_dir.clone(), None)
+                    };
 
                     info!(
                         "Working on story: {} - {} (in {:?})",

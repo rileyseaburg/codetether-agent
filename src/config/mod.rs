@@ -434,9 +434,8 @@ impl Config {
             match toml::from_str::<Config>(&content) {
                 Ok(global) => config = config.merge(global),
                 Err(err) => {
-                    return Err(err).map_err(|e| {
-                        anyhow::anyhow!("failed to parse {}: {}", path.display(), e)
-                    });
+                    return Err(err)
+                        .map_err(|e| anyhow::anyhow!("failed to parse {}: {}", path.display(), e));
                 }
             }
         }
@@ -445,9 +444,8 @@ impl Config {
             match toml::from_str::<Config>(&content) {
                 Ok(project) => config = config.merge(project),
                 Err(err) => {
-                    return Err(err).map_err(|e| {
-                        anyhow::anyhow!("failed to parse {}: {}", path.display(), e)
-                    });
+                    return Err(err)
+                        .map_err(|e| anyhow::anyhow!("failed to parse {}: {}", path.display(), e));
                 }
             }
         }

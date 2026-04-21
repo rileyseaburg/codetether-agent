@@ -197,7 +197,11 @@ async fn locate_text(page: &Page, req: &ClickTextRequest) -> Result<bool, Browse
             return true;
         }})()"
     );
-    Ok(page.evaluate(script).await?.into_value::<bool>().unwrap_or(false))
+    Ok(page
+        .evaluate(script)
+        .await?
+        .into_value::<bool>()
+        .unwrap_or(false))
 }
 
 /// Click the element previously tagged by [`locate_text`]. Re-querying via
@@ -205,7 +209,9 @@ async fn locate_text(page: &Page, req: &ClickTextRequest) -> Result<bool, Browse
 /// normal input pipeline (gesture detection, framework listeners) rather
 /// than a synthetic `el.click()` JS dispatch.
 async fn click_marked(page: &Page) -> Result<(), BrowserError> {
-    let element = page.find_element("[data-codetether-click-target=\"1\"]").await?;
+    let element = page
+        .find_element("[data-codetether-click-target=\"1\"]")
+        .await?;
     element.click().await?;
     let _ = page
         .evaluate(

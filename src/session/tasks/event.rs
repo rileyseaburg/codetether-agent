@@ -31,7 +31,10 @@ pub enum TaskEvent {
         forbidden: Vec<String>,
     },
     /// Agent explicitly reaffirmed progress toward the goal.
-    GoalReaffirmed { at: DateTime<Utc>, progress_note: String },
+    GoalReaffirmed {
+        at: DateTime<Utc>,
+        progress_note: String,
+    },
     /// Goal cleared (task complete, abandoned, or superseded).
     GoalCleared { at: DateTime<Utc>, reason: String },
     /// Task added to the session's todo list.

@@ -102,9 +102,7 @@ async fn prune_startup_pages(
 /// Called on every page we create (initial page + each `tabs_new`) because
 /// `Network.setUserAgentOverride` is page-scoped — there is no browser-wide
 /// CDP equivalent.
-pub(in crate::browser::session) async fn apply_stealth_ua(
-    page: &Page,
-) -> Result<(), BrowserError> {
+pub(in crate::browser::session) async fn apply_stealth_ua(page: &Page) -> Result<(), BrowserError> {
     use chromiumoxide::cdp::browser_protocol::network::SetUserAgentOverrideParams;
     let raw: String = page
         .evaluate("navigator.userAgent")
@@ -301,7 +299,8 @@ pub(in crate::browser::session) async fn install_page_hooks(
             }
         })();
     "#;
-    page.evaluate_on_new_document(HOOK_SCRIPT.to_string()).await?;
+    page.evaluate_on_new_document(HOOK_SCRIPT.to_string())
+        .await?;
     // Also run immediately on the current document — without this, the
     // hook only takes effect after the next navigation, which means
     // `network_log` is empty on the tab the user is already looking at.

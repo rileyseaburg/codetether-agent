@@ -20,7 +20,9 @@ pub struct TaskLog {
 impl TaskLog {
     /// Open (or lazily create) the log for the given session id.
     pub fn for_session(session_id: &str) -> Result<Self> {
-        Ok(Self { path: task_log_path(session_id)? })
+        Ok(Self {
+            path: task_log_path(session_id)?,
+        })
     }
 
     /// Open a log at an explicit path (used by tests).

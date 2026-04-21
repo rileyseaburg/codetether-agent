@@ -139,7 +139,9 @@ fn render_header(f: &mut Frame, state: &AuditViewState, area: Rect) {
         " · ".dim(),
         Span::styled(
             state.filter.label(),
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         ),
         " · ".dim(),
         format!("{} entries", state.entries.len()).into(),
@@ -208,14 +210,8 @@ fn render_detail(f: &mut Frame, state: &AuditViewState, area: Rect) {
                 AuditOutcome::Denied => "denied",
             },
         ),
-        kv_line(
-            "principal",
-            entry.principal.as_deref().unwrap_or("-"),
-        ),
-        kv_line(
-            "session",
-            entry.session_id.as_deref().unwrap_or("-"),
-        ),
+        kv_line("principal", entry.principal.as_deref().unwrap_or("-")),
+        kv_line("session", entry.session_id.as_deref().unwrap_or("-")),
         kv_line(
             "duration_ms",
             &entry
@@ -228,7 +224,10 @@ fn render_detail(f: &mut Frame, state: &AuditViewState, area: Rect) {
         Line::from(detail_json),
     ];
 
-    f.render_widget(Paragraph::new(body).block(block).wrap(Wrap { trim: false }), area);
+    f.render_widget(
+        Paragraph::new(body).block(block).wrap(Wrap { trim: false }),
+        area,
+    );
 }
 
 fn render_footer(f: &mut Frame, _state: &AuditViewState, area: Rect) {

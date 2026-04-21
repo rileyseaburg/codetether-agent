@@ -118,9 +118,9 @@ impl TokenDisplay {
             crate::session::helper::cost_guard::CostGuardLevel::OverLimit => {
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
             }
-            crate::session::helper::cost_guard::CostGuardLevel::OverWarn => {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-            }
+            crate::session::helper::cost_guard::CostGuardLevel::OverWarn => Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
             crate::session::helper::cost_guard::CostGuardLevel::Ok => {
                 Style::default().fg(theme.timestamp_color.to_color())
             }

@@ -18,7 +18,9 @@ fn parse_status(s: &str) -> Result<TaskStatus> {
 }
 
 pub(super) async fn set_goal(log: &TaskLog, p: Params) -> Result<ToolResult> {
-    let objective = p.objective.ok_or_else(|| anyhow!("`objective` is required"))?;
+    let objective = p
+        .objective
+        .ok_or_else(|| anyhow!("`objective` is required"))?;
     log.append(&TaskEvent::GoalSet {
         at: Utc::now(),
         objective: objective.clone(),
@@ -30,21 +32,31 @@ pub(super) async fn set_goal(log: &TaskLog, p: Params) -> Result<ToolResult> {
 }
 
 pub(super) async fn reaffirm(log: &TaskLog, p: Params) -> Result<ToolResult> {
-    let note = p.progress_note.ok_or_else(|| anyhow!("`progress_note` is required"))?;
-    log.append(&TaskEvent::GoalReaffirmed { at: Utc::now(), progress_note: note.clone() })
-        .await?;
+    let note = p
+        .progress_note
+        .ok_or_else(|| anyhow!("`progress_note` is required"))?;
+    log.append(&TaskEvent::GoalReaffirmed {
+        at: Utc::now(),
+        progress_note: note.clone(),
+    })
+    .await?;
     Ok(ToolResult::success(format!("Reaffirmed: {note}")))
 }
 
 pub(super) async fn clear_goal(log: &TaskLog, p: Params) -> Result<ToolResult> {
     let reason = p.reason.unwrap_or_else(|| "completed".to_string());
-    log.append(&TaskEvent::GoalCleared { at: Utc::now(), reason: reason.clone() }).await?;
+    log.append(&TaskEvent::GoalCleared {
+        at: Utc::now(),
+        reason: reason.clone(),
+    })
+    .await?;
     Ok(ToolResult::success(format!("Goal cleared: {reason}")))
 }
 
 pub(super) async fn task_add(log: &TaskLog, p: Params) -> Result<ToolResult> {
     let content = p.content.ok_or_else(|| anyhow!("`content` is required"))?;
-    let id = p.id.unwrap_or_else(|| format!("t{}", Utc::now().timestamp_millis()));
+    let id =
+        p.id.unwrap_or_else(|| format!("t{}", Utc::now().timestamp_millis()));
     log.append(&TaskEvent::TaskAdded {
         at: Utc::now(),
         id: id.clone(),

@@ -14,5 +14,7 @@ pub use dom::{
 pub use eval::EvalRequest;
 pub use lifecycle::{ScreenshotRequest, StartRequest, WaitRequest};
 pub use navigation::NavigationRequest;
-pub use net::{AxiosRequest, DiagnoseRequest, FetchRequest, NetworkLogRequest, ReplayRequest, XhrRequest};
+pub use net::{
+    AxiosRequest, DiagnoseRequest, FetchRequest, NetworkLogRequest, ReplayRequest, XhrRequest,
+};
 pub use tabs::{CloseTabRequest, NewTabRequest, TabSelectRequest};

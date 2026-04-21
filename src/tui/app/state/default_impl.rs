@@ -3,8 +3,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::tui::bus_log::BusLogState;
 use crate::tui::audit_view::AuditViewState;
+use crate::tui::bus_log::BusLogState;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::ralph_view::RalphViewState;

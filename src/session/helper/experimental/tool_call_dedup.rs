@@ -94,7 +94,10 @@ pub fn collapse_duplicate_calls(messages: &mut [Message]) -> ExperimentalStats {
     for msg in messages[..eligible].iter_mut() {
         for part in msg.content.iter_mut() {
             let ContentPart::ToolCall {
-                id, name, arguments, ..
+                id,
+                name,
+                arguments,
+                ..
             } = part
             else {
                 continue;
@@ -149,7 +152,10 @@ mod tests {
     #[test]
     fn different_names_not_merged() {
         let args = "a".repeat(200);
-        let mut msgs = vec![call("1", "read_file", &args), call("2", "write_file", &args)];
+        let mut msgs = vec![
+            call("1", "read_file", &args),
+            call("2", "write_file", &args),
+        ];
         for _ in 0..KEEP_LAST_MESSAGES + 1 {
             msgs.push(Message {
                 role: Role::User,

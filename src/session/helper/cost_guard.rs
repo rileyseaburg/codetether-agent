@@ -19,9 +19,15 @@ static WARNED: AtomicBool = AtomicBool::new(false);
 pub enum CostGuardStatus {
     Ok,
     /// Warn threshold crossed this call (one-shot).
-    Warned { spent_usd: f64, threshold_usd: f64 },
+    Warned {
+        spent_usd: f64,
+        threshold_usd: f64,
+    },
     /// Hard limit crossed.
-    Block { spent_usd: f64, limit_usd: f64 },
+    Block {
+        spent_usd: f64,
+        limit_usd: f64,
+    },
 }
 
 fn check() -> CostGuardStatus {
@@ -55,7 +61,10 @@ fn check() -> CostGuardStatus {
 /// in the no-limits-configured case.
 pub fn enforce_cost_budget() -> anyhow::Result<()> {
     match check() {
-        CostGuardStatus::Block { spent_usd, limit_usd } => {
+        CostGuardStatus::Block {
+            spent_usd,
+            limit_usd,
+        } => {
             anyhow::bail!(
                 "Cost guardrail tripped: session has spent ~${:.2} which meets/exceeds the \
                  hard limit of ${:.2}. Raise CODETETHER_COST_LIMIT_USD (or \
@@ -64,7 +73,10 @@ pub fn enforce_cost_budget() -> anyhow::Result<()> {
                 limit_usd
             )
         }
-        CostGuardStatus::Warned { spent_usd, threshold_usd } => {
+        CostGuardStatus::Warned {
+            spent_usd,
+            threshold_usd,
+        } => {
             tracing::warn!(
                 spent_usd,
                 threshold_usd,

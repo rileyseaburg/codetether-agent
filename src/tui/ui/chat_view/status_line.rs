@@ -26,4 +26,3 @@ pub fn render_status_line(f: &mut Frame, app: &App, area: ratatui::layout::Rect)
     let lines = build_status_lines(app, &session_label, area.width);
     f.render_widget(Paragraph::new(lines), area);
 }
-

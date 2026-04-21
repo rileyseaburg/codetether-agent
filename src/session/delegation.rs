@@ -248,7 +248,13 @@ impl DelegationState {
 
     /// Look up or create the posterior for `(agent, skill, bucket)`
     /// using `c_self` as the weak-prior seed.
-    pub fn ensure(&mut self, agent: &str, skill: &str, bucket: Bucket, c_self: f64) -> &mut BetaPosterior {
+    pub fn ensure(
+        &mut self,
+        agent: &str,
+        skill: &str,
+        bucket: Bucket,
+        c_self: f64,
+    ) -> &mut BetaPosterior {
         let key = Self::key(agent, skill, bucket);
         let kappa = self.config.kappa;
         self.beliefs
@@ -533,9 +539,11 @@ mod tests {
     #[test]
     fn rank_candidates_is_none_for_empty_input() {
         let state = DelegationState::with_config(DelegationConfig::default());
-        assert!(state
-            .rank_candidates(&[], "swarm_dispatch", bucket())
-            .is_none());
+        assert!(
+            state
+                .rank_candidates(&[], "swarm_dispatch", bucket())
+                .is_none()
+        );
     }
 
     #[test]

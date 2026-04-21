@@ -20,9 +20,10 @@ pub(super) async fn run(app: &mut App, provider: Arc<dyn Provider>, request: Com
     match provider.complete(request).await {
         Ok(resp) => {
             let text = extract::extract_text(&resp.message);
-            app.state
-                .messages
-                .push(ChatMessage::new(MessageType::System, format!("/ask → {text}")));
+            app.state.messages.push(ChatMessage::new(
+                MessageType::System,
+                format!("/ask → {text}"),
+            ));
             app.state.status = "/ask: answered".to_string();
             app.state.scroll_to_bottom();
         }

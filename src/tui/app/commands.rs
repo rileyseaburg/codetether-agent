@@ -249,14 +249,21 @@ async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
         }
         "done" | "clear" => TaskEvent::GoalCleared {
             at: Utc::now(),
-            reason: if tail.is_empty() { "completed".to_string() } else { tail.to_string() },
+            reason: if tail.is_empty() {
+                "completed".to_string()
+            } else {
+                tail.to_string()
+            },
         },
         "reaffirm" => {
             if tail.is_empty() {
                 app.state.status = "Usage: /goal reaffirm <progress note>".to_string();
                 return;
             }
-            TaskEvent::GoalReaffirmed { at: Utc::now(), progress_note: tail.to_string() }
+            TaskEvent::GoalReaffirmed {
+                at: Utc::now(),
+                progress_note: tail.to_string(),
+            }
         }
         other => {
             app.state.status =
@@ -304,8 +311,8 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
         s => match s.parse::<usize>() {
             Ok(v) if v >= 1 => v,
             _ => {
-                app.state.status = "Usage: /undo [N] (N = how many turns to undo, default 1)"
-                    .to_string();
+                app.state.status =
+                    "Usage: /undo [N] (N = how many turns to undo, default 1)".to_string();
                 return;
             }
         },
@@ -358,10 +365,7 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
     } else {
         String::new()
     };
-    push_system_message(
-        app,
-        format!("Undid {undo_count} turn(s){partial_note}."),
-    );
+    push_system_message(app, format!("Undid {undo_count} turn(s){partial_note}."));
 }
 
 /// Fork the current session: create a new session with a copy of the current
@@ -372,12 +376,7 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
 /// - `/fork` — fork at the current point (copy everything).
 /// - `/fork N` — fork keeping only the first (total - N) turns (i.e. undo N
 ///   turns in the *fork* while leaving the parent intact).
-async fn handle_fork_command(
-    app: &mut App,
-    _cwd: &Path,
-    session: &mut Session,
-    rest: &str,
-) {
+async fn handle_fork_command(app: &mut App, _cwd: &Path, session: &mut Session, rest: &str) {
     if app.state.processing {
         push_system_message(
             app,
@@ -525,10 +524,8 @@ async fn handle_ralph_subcommand(
 
             let prd_path = resolve_prd_path(cwd, prd_arg);
             if !prd_path.exists() {
-                app.state.status = format!(
-                    "Ralph run failed: PRD not found at {}",
-                    prd_path.display()
-                );
+                app.state.status =
+                    format!("Ralph run failed: PRD not found at {}", prd_path.display());
                 return true;
             }
 
@@ -570,7 +567,9 @@ async fn handle_ralph_subcommand(
             } else {
                 let passed = stories
                     .iter()
-                    .filter(|s| matches!(s.status, crate::tui::ralph_view::RalphStoryStatus::Passed))
+                    .filter(|s| {
+                        matches!(s.status, crate::tui::ralph_view::RalphStoryStatus::Passed)
+                    })
                     .count();
                 app.state.status = format!(
                     "Ralph: {}/{} stories passed (iteration {}/{})",

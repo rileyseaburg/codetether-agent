@@ -4,6 +4,7 @@
 
 pub mod advanced_edit;
 pub mod agent;
+pub mod alias;
 pub mod avatar;
 pub mod bash;
 #[path = "bash_github/mod.rs"]
@@ -41,10 +42,10 @@ pub mod readonly;
 pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
-pub mod session_recall;
-pub mod session_task;
 pub mod search;
 pub mod search_router;
+pub mod session_recall;
+pub mod session_task;
 pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
@@ -240,6 +241,20 @@ impl ToolRegistry {
         self.tools.insert(tool.id().to_string(), tool);
     }
 
+    fn register_compat_alias(&mut self, id: &str, inner: Arc<dyn Tool>) {
+        self.register(Arc::new(alias::AliasTool::new(id, inner)));
+    }
+
+    fn register_compat_aliases(&mut self) {
+        self.register_compat_alias("patch", Arc::new(patch::ApplyPatchTool::new()));
+        self.register_compat_alias("file_info", Arc::new(file_extras::FileInfoTool::new()));
+        self.register_compat_alias("head_tail", Arc::new(file_extras::HeadTailTool::new()));
+        self.register_compat_alias("todo_read", Arc::new(todo::TodoReadTool::new()));
+        self.register_compat_alias("todo_write", Arc::new(todo::TodoWriteTool::new()));
+        self.register_compat_alias("mcp_bridge", Arc::new(mcp_bridge::McpBridgeTool::new()));
+        self.register_compat_alias("k8s_tool", Arc::new(k8s_tool::K8sTool::new()));
+    }
+
     /// Get a tool by ID
     pub fn get(&self, id: &str) -> Option<Arc<dyn Tool>> {
         self.tools.get(id).cloned()
@@ -354,6 +369,7 @@ impl ToolRegistry {
         registry.register(Arc::new(go::GoTool::new()));
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
+        registry.register_compat_aliases();
 
         registry
     }
@@ -434,6 +450,7 @@ impl ToolRegistry {
         registry.register(Arc::new(go::GoTool::new()));
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
+        registry.register_compat_aliases();
 
         registry
     }
@@ -473,7 +490,9 @@ impl ToolRegistry {
         // can call back into it without the full vault registry.
         let mut providers = crate::provider::ProviderRegistry::new();
         providers.register(Arc::clone(&provider));
-        registry.register(Arc::new(search_router::SearchTool::new(Arc::new(providers))));
+        registry.register(Arc::new(search_router::SearchTool::new(Arc::new(
+            providers,
+        ))));
 
         // Wrap registry in Arc
         let registry = Arc::new(registry);

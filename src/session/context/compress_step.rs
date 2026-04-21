@@ -29,13 +29,26 @@ pub(super) async fn run_compression_step(
     match force_keep_last {
         Some(keep_last) => {
             compress_messages_keep_last(
-                messages, ctx, Arc::clone(&provider), model, keep_last, "prompt_too_long_retry",
+                messages,
+                ctx,
+                Arc::clone(&provider),
+                model,
+                keep_last,
+                "prompt_too_long_retry",
             )
             .await
         }
         None => {
-            enforce_on_messages(messages, ctx, provider, model, system_prompt, tools, event_tx)
-                .await?;
+            enforce_on_messages(
+                messages,
+                ctx,
+                provider,
+                model,
+                system_prompt,
+                tools,
+                event_tx,
+            )
+            .await?;
             Ok(messages_len_changed(before, messages))
         }
     }

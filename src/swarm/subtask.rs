@@ -148,16 +148,38 @@ impl SubTask {
         let haystack_instruction = self.instruction.to_ascii_lowercase();
 
         const READONLY_HINTS: &[&str] = &[
-            "research", "review", "analy", "audit", "plan", "fact",
-            "summari", "explore", "docs", "read-only", "readonly",
+            "research",
+            "review",
+            "analy",
+            "audit",
+            "plan",
+            "fact",
+            "summari",
+            "explore",
+            "docs",
+            "read-only",
+            "readonly",
         ];
         const MUTATING_HINTS: &[&str] = &[
-            "write", "edit", "create ", "fix", "implement", "refactor",
-            "apply", "commit", "patch", "scaffold", "build",
+            "write",
+            "edit",
+            "create ",
+            "fix",
+            "implement",
+            "refactor",
+            "apply",
+            "commit",
+            "patch",
+            "scaffold",
+            "build",
         ];
 
-        if READONLY_HINTS.iter().any(|k| haystack_specialty.contains(k))
-            && !MUTATING_HINTS.iter().any(|k| haystack_instruction.contains(k))
+        if READONLY_HINTS
+            .iter()
+            .any(|k| haystack_specialty.contains(k))
+            && !MUTATING_HINTS
+                .iter()
+                .any(|k| haystack_instruction.contains(k))
         {
             return false;
         }

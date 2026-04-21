@@ -249,8 +249,8 @@ impl Default for SwarmConfig {
             // accounts (e.g. 3 concurrent, 1000ms delay).
             max_concurrent_requests: 8,
             request_delay_ms: 250,
-            worktree_enabled: true,     // Enable worktree isolation by default
-            worktree_auto_merge: true,  // Auto-merge on success
+            worktree_enabled: true,    // Enable worktree isolation by default
+            worktree_auto_merge: true, // Auto-merge on success
             working_dir: None,
             execution_mode: ExecutionMode::LocalThread,
             k8s_pod_budget: 8,

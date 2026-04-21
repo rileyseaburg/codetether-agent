@@ -32,7 +32,11 @@ pub async fn network_log(
     let result = tokio::time::timeout(EVAL_TIMEOUT, page.evaluate_expression(script))
         .await
         .map_err(|_| BrowserError::EvaluationTimeout)??;
-    let value = result.object().value.clone().unwrap_or(serde_json::json!([]));
+    let value = result
+        .object()
+        .value
+        .clone()
+        .unwrap_or(serde_json::json!([]));
     Ok(BrowserOutput::Json(value))
 }
 

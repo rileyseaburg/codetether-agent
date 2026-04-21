@@ -77,7 +77,11 @@ mod tests {
         assert_eq!(copy.len(), ALL.len(), "skill names must be unique");
         for name in ALL {
             assert!(!name.is_empty());
-            assert_eq!(name.to_ascii_lowercase(), *name, "skills must be snake_case");
+            assert_eq!(
+                name.to_ascii_lowercase(),
+                *name,
+                "skills must be snake_case"
+            );
         }
     }
 

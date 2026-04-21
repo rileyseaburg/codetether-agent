@@ -84,6 +84,8 @@ struct CrashReport {
     panic_message: String,
     panic_location: Option<String>,
     backtrace: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    memory: Option<crate::telemetry::memory::MemorySnapshot>,
 }
 
 impl CrashReport {
@@ -114,6 +116,7 @@ impl CrashReport {
             panic_message: truncate_with_ellipsis(&panic_message, MAX_PANIC_MESSAGE_CHARS),
             panic_location,
             backtrace: truncate_with_ellipsis(&backtrace, MAX_BACKTRACE_CHARS),
+            memory: Some(crate::telemetry::memory::MemorySnapshot::capture()),
         }
     }
 }
@@ -196,6 +199,12 @@ pub async fn maybe_prompt_for_consent(config: &Config, allow_prompt: bool) -> Co
 pub async fn initialize(config: &Config) {
     let settings = CrashReporterSettings::from_config(config);
     install_panic_hook(settings.clone());
+
+    // Spawn the RSS watchdog alongside the panic hook. The watchdog itself
+    // is idempotent; calling `initialize` twice is a no-op for it. It writes
+    // pre-OOM breadcrumbs into the same spool the crash-report flusher
+    // already drains on next startup.
+    crate::telemetry::rss_watchdog::spawn(settings.report_dir.clone());
 
     if !settings.enabled {
         return;

@@ -65,9 +65,11 @@ pub mod a2a;
 pub mod context;
 pub mod cost;
 pub mod globals;
+pub mod memory;
 pub mod metrics;
 pub mod persistent;
 pub mod provider;
+pub mod rss_watchdog;
 pub mod swarm;
 pub mod tokens;
 pub mod tools;
@@ -77,7 +79,9 @@ pub use context::ContextLimit;
 pub use cost::CostEstimate;
 pub use globals::{PROVIDER_METRICS, TOKEN_USAGE, TOOL_EXECUTIONS};
 pub use metrics::{Telemetry, TelemetryMetrics};
-pub use persistent::{PersistentStats, PersistentStatsInner, get_persistent_stats, record_persistent};
+pub use persistent::{
+    PersistentStats, PersistentStatsInner, get_persistent_stats, record_persistent,
+};
 pub use provider::{ProviderMetrics, ProviderRequestRecord, ProviderSnapshot};
 pub use swarm::SwarmTelemetryCollector;
 pub use tokens::{

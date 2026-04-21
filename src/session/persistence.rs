@@ -59,8 +59,8 @@ impl Session {
         tokio::task::spawn_blocking(move || {
             scan_with_index(&sessions_dir, canonical_workspace, window)
         })
-            .await
-            .map_err(|e| anyhow::anyhow!("session scan task panicked: {e}"))?
+        .await
+        .map_err(|e| anyhow::anyhow!("session scan task panicked: {e}"))?
     }
 
     /// Load the most recent session globally (unscoped).
@@ -256,9 +256,7 @@ fn tail_load_sync(path: &Path, window: usize) -> Result<TailLoad> {
     let file_bytes = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
     let file = fs::File::open(path)?;
     let reader = BufReader::with_capacity(64 * 1024, file);
-    let (parsed, dropped) = with_tail_cap(window, || {
-        serde_json::from_reader::<_, Session>(reader)
-    });
+    let (parsed, dropped) = with_tail_cap(window, || serde_json::from_reader::<_, Session>(reader));
     Ok(TailLoad {
         session: parsed?,
         dropped,
@@ -359,8 +357,10 @@ fn scan_sync(
                 // Chunk candidates across available CPUs. For ~300 files
                 // a fan-out of 4-8 threads saturates I/O and CPU nicely
                 // without oversubscribing.
-                let threads =
-                    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8);
+                let threads = std::thread::available_parallelism()
+                    .map(|n| n.get())
+                    .unwrap_or(4)
+                    .min(8);
                 let chunk_size = paths.len().div_ceil(threads);
                 for chunk_idx in 0..threads {
                     let start = chunk_idx * chunk_size;

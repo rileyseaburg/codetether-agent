@@ -224,13 +224,8 @@ impl Tool for BashTool {
             let shell = super::bash_shell::resolve();
             let mut sandbox_args: Vec<String> = shell.prefix_args.clone();
             sandbox_args.push(wrapped_command.clone());
-            let sandbox_result = execute_sandboxed(
-                &shell.program,
-                &sandbox_args,
-                &policy,
-                work_dir,
-            )
-            .await;
+            let sandbox_result =
+                execute_sandboxed(&shell.program, &sandbox_args, &policy, work_dir).await;
 
             // Audit log the sandboxed execution
             if let Some(audit) = try_audit_log() {

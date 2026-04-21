@@ -54,7 +54,12 @@ impl TaskState {
 
     fn apply(&mut self, ev: &TaskEvent) {
         match ev {
-            TaskEvent::GoalSet { at, objective, success_criteria, forbidden } => {
+            TaskEvent::GoalSet {
+                at,
+                objective,
+                success_criteria,
+                forbidden,
+            } => {
                 self.goal = Some(Goal {
                     objective: objective.clone(),
                     success_criteria: success_criteria.clone(),
@@ -73,7 +78,12 @@ impl TaskState {
             TaskEvent::GoalCleared { .. } => {
                 self.goal = None;
             }
-            TaskEvent::TaskAdded { id, content, parent_id, .. } => {
+            TaskEvent::TaskAdded {
+                id,
+                content,
+                parent_id,
+                ..
+            } => {
                 self.tasks.insert(
                     id.clone(),
                     Task {
@@ -85,7 +95,9 @@ impl TaskState {
                     },
                 );
             }
-            TaskEvent::TaskStatus { id, status, note, .. } => {
+            TaskEvent::TaskStatus {
+                id, status, note, ..
+            } => {
                 if let Some(t) = self.tasks.get_mut(id) {
                     t.status = status.clone();
                     t.last_note = note.clone();

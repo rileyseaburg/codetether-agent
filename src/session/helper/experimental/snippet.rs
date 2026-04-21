@@ -105,8 +105,7 @@ pub fn snippet_stale_tool_outputs(messages: &mut [Message]) -> ExperimentalStats
             let head_end = floor_char_boundary(content, HEAD_BYTES);
             let tail_start = ceil_char_boundary(content, original_len - TAIL_BYTES);
             let elided = tail_start - head_end;
-            let mut rebuilt =
-                String::with_capacity(HEAD_BYTES + TAIL_BYTES + 64);
+            let mut rebuilt = String::with_capacity(HEAD_BYTES + TAIL_BYTES + 64);
             rebuilt.push_str(&content[..head_end]);
             rebuilt.push_str(&format!("\n[...elided {elided} bytes...]\n"));
             rebuilt.push_str(&content[tail_start..]);

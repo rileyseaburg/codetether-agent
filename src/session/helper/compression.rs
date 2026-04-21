@@ -179,7 +179,11 @@ pub(crate) fn resolve_rlm_model_bandit(
     let mut best: Option<(&str, f64)> = None;
     for candidate in RLM_MODEL_CANDIDATES {
         let score = state
-            .score(candidate, crate::session::delegation_skills::RLM_COMPACT, bucket)
+            .score(
+                candidate,
+                crate::session::delegation_skills::RLM_COMPACT,
+                bucket,
+            )
             .unwrap_or(0.0);
         match best {
             Some((_, current)) if current >= score => {}
@@ -845,7 +849,6 @@ pub(crate) fn terminal_truncate_messages(
     let after = estimate_request_tokens(system_prompt, messages, tools);
     before.saturating_sub(after)
 }
-
 
 async fn emit(event_tx: Option<&mpsc::Sender<SessionEvent>>, ev: SessionEvent) {
     if let Some(tx) = event_tx {

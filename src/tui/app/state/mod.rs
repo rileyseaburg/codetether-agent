@@ -50,8 +50,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::session::{ImageAttachment, SessionSummary};
-use crate::tui::bus_log::BusLogState;
 use crate::tui::audit_view::AuditViewState;
+use crate::tui::bus_log::BusLogState;
 use crate::tui::chat::message::ChatMessage;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};

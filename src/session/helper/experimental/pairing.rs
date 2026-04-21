@@ -188,13 +188,7 @@ mod tests {
 
     #[test]
     fn well_formed_history_is_noop() {
-        let mut msgs = vec![
-            user("q"),
-            call("a"),
-            result("a"),
-            call("b"),
-            result("b"),
-        ];
+        let mut msgs = vec![user("q"), call("a"), result("a"), call("b"), result("b")];
         let before = msgs.len();
         let stats = repair_orphans(&mut msgs);
         assert_eq!(stats.snippet_hits, 0);
@@ -232,11 +226,11 @@ mod tests {
     fn mixed_orphan_and_valid_pairs() {
         let mut msgs = vec![
             user("q"),
-            call("a"),        // will be orphaned
+            call("a"), // will be orphaned
             call("b"),
             result("b"),
             user("mid"),
-            result("c"),      // orphan — no prior call_c
+            result("c"), // orphan — no prior call_c
         ];
         let stats = repair_orphans(&mut msgs);
         // One synthetic injection for "a", one drop for "c".

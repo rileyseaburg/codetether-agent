@@ -262,7 +262,10 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     // ── Keyboard shortcuts ──
     lines.push(heading("KEYBOARD SHORTCUTS"));
     lines.push(separator());
-    lines.push(key_row("Ctrl+C", "Interrupt turn (while streaming) or quit (when idle)"));
+    lines.push(key_row(
+        "Ctrl+C",
+        "Interrupt turn (while streaming) or quit (when idle)",
+    ));
     lines.push(key_row("Ctrl+Q", "Quit"));
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));

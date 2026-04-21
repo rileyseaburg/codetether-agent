@@ -117,10 +117,7 @@ pub fn replay_oracle(messages: &[Message], h: usize) -> OracleReport {
         demand[t].sort_unstable();
     }
 
-    OracleReport {
-        demand,
-        horizon: h,
-    }
+    OracleReport { demand, horizon: h }
 }
 
 /// Index files referenced by each turn so later turns can fast-lookup

@@ -8,7 +8,11 @@ pub(super) fn build_script(request: XhrRequest) -> Result<String, BrowserError> 
     let url = serde_json::to_string(&request.url)?;
     let method = serde_json::to_string(&request.method.to_uppercase())?;
     let body = serde_json::to_string(&request.body)?;
-    let wc = if request.with_credentials.unwrap_or(true) { "true" } else { "false" };
+    let wc = if request.with_credentials.unwrap_or(true) {
+        "true"
+    } else {
+        "false"
+    };
     Ok(TEMPLATE
         .replace("__FALLBACK_JS__", super::fallback_js::PREAMBLE)
         .replace("__METHOD__", &method)

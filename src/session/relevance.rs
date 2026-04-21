@@ -183,9 +183,7 @@ impl RelevanceMeta {
         } else {
             ToolUse::Yes
         };
-        let dependency = if self.files.len() >= 2
-            || self.files.iter().any(|f| f.contains('/'))
-        {
+        let dependency = if self.files.len() >= 2 || self.files.iter().any(|f| f.contains('/')) {
             Dependency::Chained
         } else {
             Dependency::Isolated
@@ -257,10 +255,9 @@ fn append_files(text: &str, out: &mut Vec<String>) {
         if trimmed.is_empty() || trimmed.len() < 3 {
             continue;
         }
-        let looks_like_path = (trimmed.contains('/')
-            && !trimmed.contains("://")
-            && trimmed.len() > 3)
-            || ends_with_source_ext(trimmed);
+        let looks_like_path =
+            (trimmed.contains('/') && !trimmed.contains("://") && trimmed.len() > 3)
+                || ends_with_source_ext(trimmed);
         if looks_like_path && !out.contains(&trimmed.to_string()) {
             out.push(trimmed.to_string());
         }
@@ -332,7 +329,9 @@ mod tests {
 
     #[test]
     fn extract_picks_up_paths_and_dedupes() {
-        let meta = extract(&text("Edited src/lib.rs and src/lib.rs again, plus tests/a.rs"));
+        let meta = extract(&text(
+            "Edited src/lib.rs and src/lib.rs again, plus tests/a.rs",
+        ));
         assert_eq!(meta.files.len(), 2);
         assert!(meta.files.contains(&"src/lib.rs".to_string()));
         assert!(meta.files.contains(&"tests/a.rs".to_string()));
@@ -353,7 +352,9 @@ mod tests {
 
     #[test]
     fn extract_tags_error_markers_from_tool_results() {
-        let meta = extract(&tool_result("Error: file not found\n  panicked at main.rs:12"));
+        let meta = extract(&tool_result(
+            "Error: file not found\n  panicked at main.rs:12",
+        ));
         assert!(meta.error_classes.contains(&"error".to_string()));
         assert!(meta.error_classes.contains(&"panicked".to_string()));
     }

@@ -104,10 +104,7 @@ pub fn trim_middle(messages: &mut Vec<Message>) -> ExperimentalStats {
     }
 
     let dropped = cut_end - cut_start;
-    let bytes_dropped: usize = messages[cut_start..cut_end]
-        .iter()
-        .map(approx_bytes)
-        .sum();
+    let bytes_dropped: usize = messages[cut_start..cut_end].iter().map(approx_bytes).sum();
 
     let marker = Message {
         role: Role::User,
@@ -139,7 +136,9 @@ fn approx_bytes(msg: &Message) -> usize {
         .map(|p| match p {
             ContentPart::Text { text } => text.len(),
             ContentPart::ToolResult { content, .. } => content.len(),
-            ContentPart::ToolCall { arguments, name, .. } => arguments.len() + name.len(),
+            ContentPart::ToolCall {
+                arguments, name, ..
+            } => arguments.len() + name.len(),
             ContentPart::Thinking { .. } => 0,
             ContentPart::Image { .. } | ContentPart::File { .. } => 1024,
         })

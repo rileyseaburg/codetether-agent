@@ -34,14 +34,15 @@ pub(super) async fn derive_reset(
     let est = estimate_request_tokens(system_prompt, &messages, tools);
     if est <= threshold_tokens {
         experimental::pairing::repair_orphans(&mut messages);
-        return Ok(DerivedContext { messages, origin_len, compressed: false });
+        return Ok(DerivedContext {
+            messages,
+            origin_len,
+            compressed: false,
+        });
     }
 
     let Some(split_idx) = last_user_index(&messages) else {
-        return derive_context(
-            session, provider, model, system_prompt, tools, None, None,
-        )
-        .await;
+        return derive_context(session, provider, model, system_prompt, tools, None, None).await;
     };
 
     let tail = messages.split_off(split_idx);
@@ -49,7 +50,11 @@ pub(super) async fn derive_reset(
     if prefix.is_empty() {
         messages = tail;
         experimental::pairing::repair_orphans(&mut messages);
-        return Ok(DerivedContext { messages, origin_len, compressed: false });
+        return Ok(DerivedContext {
+            messages,
+            origin_len,
+            compressed: false,
+        });
     }
 
     rebuild_with_summary(session, &prefix, &tail, provider, model, origin_len).await

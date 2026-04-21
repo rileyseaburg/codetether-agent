@@ -126,7 +126,13 @@ pub fn reuse_rate(counts: &[usize; 2]) -> f64 {
 mod tests {
     use super::*;
 
-    fn sample(policy: &'static str, tokens: usize, faults: usize, gap: usize, reuse: f64) -> PolicyRunResult {
+    fn sample(
+        policy: &'static str,
+        tokens: usize,
+        faults: usize,
+        gap: usize,
+        reuse: f64,
+    ) -> PolicyRunResult {
         PolicyRunResult {
             policy,
             kept_messages: 0,

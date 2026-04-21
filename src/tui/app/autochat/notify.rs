@@ -5,10 +5,7 @@ use tokio::sync::mpsc;
 use super::events::AutochatUiEvent;
 
 /// Notify the UI that provider loading failed.
-pub fn send_registry_error(
-    ui_tx: &mpsc::UnboundedSender<AutochatUiEvent>,
-    err: anyhow::Error,
-) {
+pub fn send_registry_error(ui_tx: &mpsc::UnboundedSender<AutochatUiEvent>, err: anyhow::Error) {
     let _ = ui_tx.send(AutochatUiEvent::SystemMessage(format!(
         "Failed to load providers for /autochat: {err}"
     )));
@@ -37,13 +34,8 @@ pub fn send_success_text(
 }
 
 /// Notify the UI that completion failed.
-pub fn send_completion_error(
-    ui_tx: &mpsc::UnboundedSender<AutochatUiEvent>,
-    err: anyhow::Error,
-) {
-    let _ = ui_tx.send(completed(format!(
-        "❌ Autochat execution failed: {err}"
-    )));
+pub fn send_completion_error(ui_tx: &mpsc::UnboundedSender<AutochatUiEvent>, err: anyhow::Error) {
+    let _ = ui_tx.send(completed(format!("❌ Autochat execution failed: {err}")));
 }
 
 fn completed(summary: String) -> AutochatUiEvent {

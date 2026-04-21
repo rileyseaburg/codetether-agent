@@ -8,8 +8,8 @@
 use ratatui::Frame;
 
 use crate::tui::app::state::App;
-use crate::tui::bus_log::{ProtocolSummary, render_bus_log_with_summary};
 use crate::tui::audit_view::render_audit_view;
+use crate::tui::bus_log::{ProtocolSummary, render_bus_log_with_summary};
 use crate::tui::latency::render_latency;
 use crate::tui::lsp::render_lsp;
 use crate::tui::models::ViewMode;

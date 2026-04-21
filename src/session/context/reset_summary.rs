@@ -5,8 +5,8 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result};
 
 use crate::provider::Message;
-use crate::rlm::router::AutoProcessContext;
 use crate::rlm::RlmRouter;
+use crate::rlm::router::AutoProcessContext;
 use crate::session::helper::error::messages_to_rlm_context;
 
 /// RLM-summarise the prefix dropped by

@@ -248,9 +248,7 @@ pub fn choose_router_target_bandit(
             (raw, score)
         })
         .collect();
-    scored.sort_by(|a, b| {
-        b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-    });
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     for (candidate, _score) in scored {
         let (provider_name, model_name) = crate::provider::parse_model_string(&candidate);

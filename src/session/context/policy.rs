@@ -40,8 +40,16 @@ pub async fn derive_with_policy(
 ) -> Result<DerivedContext> {
     match policy {
         DerivePolicy::Legacy => {
-            derive_context(session, provider, model, system_prompt, tools, event_tx, None)
-                .await
+            derive_context(
+                session,
+                provider,
+                model,
+                system_prompt,
+                tools,
+                event_tx,
+                None,
+            )
+            .await
         }
         DerivePolicy::Reset { threshold_tokens } => {
             derive_reset(

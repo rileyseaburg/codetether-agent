@@ -118,7 +118,10 @@ mod tests {
     fn kind_is_snake_case_and_distinct() {
         assert_eq!(DerivePolicy::Legacy.kind(), "legacy");
         assert_eq!(
-            DerivePolicy::Reset { threshold_tokens: 0 }.kind(),
+            DerivePolicy::Reset {
+                threshold_tokens: 0
+            }
+            .kind(),
             "reset"
         );
     }

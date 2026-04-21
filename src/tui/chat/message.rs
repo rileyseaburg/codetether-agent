@@ -81,4 +81,3 @@ impl ChatMessage {
         }
     }
 }
-

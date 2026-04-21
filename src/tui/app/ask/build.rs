@@ -6,9 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::provider::{
-    CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role,
-};
+use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::Session;
 
 /// Resolve the session's provider and build the ephemeral request.

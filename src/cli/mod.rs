@@ -2,6 +2,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod context;
 pub mod go_ralph;
 pub mod oracle;
 pub mod run;
@@ -67,6 +68,9 @@ pub enum Command {
 
     /// Manage configuration
     Config(ConfigArgs),
+
+    /// Browse or reset the active session context
+    Context(ContextArgs),
 
     /// A2A worker mode (explicit - also the default)
     Worker(A2aArgs),
@@ -463,6 +467,47 @@ pub struct ConfigArgs {
     /// Set a configuration value
     #[arg(long)]
     pub set: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextArgs {
+    #[command(subcommand)]
+    pub command: ContextCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ContextCommand {
+    /// Emit a [CONTEXT RESET] marker into the latest session
+    Reset(ContextResetArgs),
+    /// Browse the latest session as virtual turn files
+    Browse(ContextBrowseArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextResetArgs {
+    /// Optional summary for the reset marker
+    #[arg(long)]
+    pub summary: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextBrowseArgs {
+    #[command(subcommand)]
+    pub command: Option<ContextBrowseCommand>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ContextBrowseCommand {
+    /// List virtual paths for each turn in the latest session
+    List,
+    /// Show one turn as markdown-like text
+    ShowTurn(ContextShowTurnArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextShowTurnArgs {
+    /// Zero-based turn index
+    pub turn: usize,
 }
 
 #[derive(Parser, Debug)]
