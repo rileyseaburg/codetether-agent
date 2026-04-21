@@ -51,6 +51,7 @@ use std::time::Instant;
 
 use crate::session::{ImageAttachment, SessionSummary};
 use crate::tui::bus_log::BusLogState;
+use crate::tui::audit_view::AuditViewState;
 use crate::tui::chat::message::ChatMessage;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
@@ -90,6 +91,7 @@ pub struct AppState {
     pub cwd_display: String,
     pub bus_log: BusLogState,
     pub swarm: SwarmViewState,
+    pub audit: AuditViewState,
     pub ralph: RalphViewState,
     pub symbol_search: SymbolSearchState,
     pub slash_suggestions: Vec<String>,

@@ -208,7 +208,7 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
                     title.as_deref().unwrap_or("large session"),
                 ));
             }
-            let msg_count = session.messages.len();
+            let msg_count = session.history().len();
             SessionLoadOutcome::Loaded {
                 msg_count,
                 title,

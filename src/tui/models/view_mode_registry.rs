@@ -16,4 +16,5 @@ pub const ALL_VIEW_MODES: &[ViewMode] = &[
     ViewMode::Protocol,
     ViewMode::FilePicker,
     ViewMode::Inspector,
+    ViewMode::Audit,
 ];

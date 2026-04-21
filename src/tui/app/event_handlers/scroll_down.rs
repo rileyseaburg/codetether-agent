@@ -53,6 +53,11 @@ pub(super) fn scroll_down_by_mode(app: &mut App, amount: usize) {
                 }
             }
         }
+        ViewMode::Audit => {
+            for _ in 0..amount {
+                app.state.audit.select_next();
+            }
+        }
         _ => {}
     }
 }

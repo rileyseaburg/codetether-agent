@@ -11,6 +11,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Gauge, List, ListItem, ListState, Paragraph, Wrap},
 };
+use tokio::sync::mpsc;
 
 // ---------------------------------------------------------------------------
 // Events
@@ -170,11 +171,58 @@ pub struct RalphViewState {
     pub detail_scroll: usize,
     /// ListState for StatefulWidget rendering
     pub list_state: ListState,
+    /// Inbound channel for events from a Ralph loop spawned via `/ralph run`.
+    ///
+    /// `None` when the view is being used purely as a passive monitor. When
+    /// a run is launched from the TUI, the slash-command handler installs a
+    /// receiver here and the tick loop drains it into [`handle_event`].
+    #[doc(hidden)]
+    pub event_rx: Option<mpsc::Receiver<RalphEvent>>,
 }
 
 impl RalphViewState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Install an event receiver connected to a live `RalphLoop` and reset
+    /// the view so it starts clean for the new run.
+    pub fn attach_event_rx(&mut self, rx: mpsc::Receiver<RalphEvent>) {
+        self.event_rx = Some(rx);
+        self.active = true;
+        self.complete = false;
+        self.final_status = None;
+        self.error = None;
+    }
+
+    /// Drain any pending events from [`Self::event_rx`] without blocking.
+    ///
+    /// Returns `true` when at least one event was applied, so callers can
+    /// cheap-gate a redraw. When the upstream sender is dropped, the
+    /// receiver is closed automatically via `None` from `try_recv`.
+    pub fn drain_events(&mut self) -> bool {
+        let Some(mut rx) = self.event_rx.take() else {
+            return false;
+        };
+        let mut any = false;
+        loop {
+            match rx.try_recv() {
+                Ok(evt) => {
+                    any = true;
+                    self.handle_event(evt);
+                }
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    self.event_rx = Some(rx);
+                    break;
+                }
+                Err(mpsc::error::TryRecvError::Disconnected) => {
+                    // The Ralph task finished or panicked. Leave the
+                    // slot None so subsequent ticks are O(1) no-ops.
+                    break;
+                }
+            }
+        }
+        any
     }
 
     pub fn mark_active(&mut self, project: impl Into<String>, feature: impl Into<String>) {

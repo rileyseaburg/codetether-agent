@@ -333,7 +333,12 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     ));
     lines.push(cmd_row("/settings", "/set", "Settings panel"));
     lines.push(cmd_row("/new", "", "Start fresh chat buffer"));
-    lines.push(cmd_row("/undo", "", "Undo last user message and response"));
+    lines.push(cmd_row("/undo", "", "Undo last turn (accepts /undo <N>)"));
+    lines.push(cmd_row(
+        "/fork",
+        "",
+        "Fork session at current point (/fork <N> drops last N turns)",
+    ));
     lines.push(blank());
 
     lines.push(heading("Protocol & Observability"));

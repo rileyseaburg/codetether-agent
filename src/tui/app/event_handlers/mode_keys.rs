@@ -51,6 +51,9 @@ pub(super) async fn handle_char_or_mode_key(app: &mut App, session: &mut Session
         KeyCode::Char('g') if app.state.view_mode == ViewMode::Bus => handle_bus_g(app),
         KeyCode::Char('c') if app.state.view_mode == ViewMode::Bus => handle_bus_c(app),
         KeyCode::Char('/') if app.state.view_mode == ViewMode::Bus => handle_bus_slash(app),
+        KeyCode::Char('f') if app.state.view_mode == ViewMode::Audit => {
+            app.state.audit.toggle_filter();
+        }
         KeyCode::Char(c) if app.state.view_mode == ViewMode::Sessions => {
             handle_sessions_char(app, key.modifiers, c);
         }

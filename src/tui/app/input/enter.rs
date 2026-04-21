@@ -63,6 +63,7 @@ pub async fn dispatch_enter(
         | ViewMode::Rlm
         | ViewMode::Latency
         | ViewMode::Protocol
-        | ViewMode::Inspector => {}
+        | ViewMode::Inspector
+        | ViewMode::Audit => {}
     }
 }

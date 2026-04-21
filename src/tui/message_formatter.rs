@@ -442,5 +442,4 @@ mod tests {
         let spans = vec![Span::raw("anything")];
         let out = f.wrap_line(spans, 0);
         assert_eq!(out.len(), 1);
-    }
-}
+    }}

@@ -25,7 +25,7 @@ use crate::provider::{
     CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
 };
 use crate::rlm::router::AutoProcessContext;
-use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
+use crate::rlm::{RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 
 use super::super::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionEvent, SessionResult};
@@ -35,7 +35,7 @@ use super::bootstrap::{
 use super::build::{
     build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
 };
-use super::compression::{compress_history_keep_last, enforce_context_window};
+use crate::session::context::derive_context;
 use super::confirmation::{
     auto_apply_pending_confirmation, pending_confirmation_tool_result_content,
     tool_result_requires_confirmation,
@@ -130,7 +130,10 @@ pub(crate) async fn run_prompt_with_events(
         default_model_for_provider(selected_provider)
     };
 
-    compress_user_message_if_oversized(session, &provider, &model, message).await;
+    // Phase A: oversized-user-message compression now happens inside
+    // `derive_context` on a clone. Keeping the original text in
+    // `session.messages` means `session_recall` and the MinIO history
+    // sink can still see what the user actually typed.
 
     let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
     let tool_definitions: Vec<_> = tool_registry
@@ -203,15 +206,20 @@ pub(crate) async fn run_prompt_with_events(
         let _ = event_tx.send(SessionEvent::Thinking).await;
 
         super::cost_guard::enforce_cost_budget()?;
-        super::experimental::apply_all(&mut session.messages);
 
-        enforce_context_window(
+        // Phase A: derive the per-step LLM context from a clone of
+        // `session.messages` rather than mutating history in place.
+        // Experimental strategies, RLM-powered context-window
+        // enforcement, and the orphan-pair safety net all run against
+        // the clone; the canonical transcript stays append-only.
+        let mut derived = derive_context(
             session,
             Arc::clone(&provider),
             &model,
             &system_prompt,
             &advertised_tool_definitions,
             Some(&event_tx),
+            None,
         )
         .await?;
 
@@ -233,7 +241,7 @@ pub(crate) async fn run_prompt_with_events(
         if let Some(msg) = &proactive_lsp_message {
             messages.push(msg.clone());
         }
-        messages.extend(session.messages.clone());
+        messages.extend(derived.messages.clone());
 
         let request = CompletionRequest {
             messages,
@@ -261,13 +269,15 @@ pub(crate) async fn run_prompt_with_events(
                 Ok(r) => break r,
                 Err(e) => {
                     if attempt == 1 && is_prompt_too_long_error(&e) {
-                        tracing::warn!(error = %e, "Provider rejected prompt as too long; forcing extra compression and retrying");
-                        let _ = compress_history_keep_last(
+                        tracing::warn!(error = %e, "Provider rejected prompt as too long; re-deriving with force_keep_last=6 and retrying");
+                        derived = derive_context(
                             session,
                             Arc::clone(&provider),
                             &model,
-                            6,
-                            "prompt_too_long_retry",
+                            &system_prompt,
+                            &advertised_tool_definitions,
+                            Some(&event_tx),
+                            Some(6),
                         )
                         .await?;
                         let mut messages = vec![Message {
@@ -279,7 +289,7 @@ pub(crate) async fn run_prompt_with_events(
                         if let Some(msg) = &proactive_lsp_message {
                             messages.push(msg.clone());
                         }
-                        messages.extend(session.messages.clone());
+                        messages.extend(derived.messages.clone());
                         let new_request = CompletionRequest {
                             messages,
                             tools: advertised_tool_definitions.clone(),
@@ -890,70 +900,6 @@ fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Optio
         (Some(model.to_string()), String::new())
     } else {
         (None, model.to_string())
-    }
-}
-
-/// Apply RLM compression to the most recent user message when it exceeds the
-/// context-window heuristic threshold.
-async fn compress_user_message_if_oversized(
-    session: &mut Session,
-    provider: &Arc<dyn crate::provider::Provider>,
-    model: &str,
-    message: &str,
-) {
-    let ctx_window = context_window_for_model(model);
-    let msg_tokens = RlmChunker::estimate_tokens(message);
-    let threshold = (ctx_window as f64 * 0.35) as usize;
-    if msg_tokens <= threshold {
-        return;
-    }
-
-    tracing::info!(
-        msg_tokens,
-        threshold,
-        ctx_window,
-        "RLM: User message exceeds context threshold, compressing"
-    );
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_context",
-        tool_args: serde_json::json!({}),
-        session_id: &session.id,
-        abort: None,
-        on_progress: None,
-        provider: Arc::clone(provider),
-        model: model.to_string(),
-        bus: None,
-        trace_id: None,
-        subcall_provider: session.metadata.subcall_provider.clone(),
-        subcall_model: session.metadata.subcall_model_name.clone(),
-    };
-    let rlm_config = session.metadata.rlm.clone();
-    match RlmRouter::auto_process(message, auto_ctx, &rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                "RLM: User message compressed"
-            );
-            if let Some(last) = session.messages.last_mut() {
-                last.content = vec![ContentPart::Text {
-                    text: format!(
-                        "[Original message: {} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
-                        msg_tokens,
-                        result.processed,
-                        message.chars().take(500).collect::<String>()
-                    ),
-                }];
-            }
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "RLM: Failed to compress user message, using truncation");
-            let max_chars = threshold * 4;
-            let truncated = RlmChunker::compress(message, max_chars / 4, None);
-            if let Some(last) = session.messages.last_mut() {
-                last.content = vec![ContentPart::Text { text: truncated }];
-            }
-        }
     }
 }
 

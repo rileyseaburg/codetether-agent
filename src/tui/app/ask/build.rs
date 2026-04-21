@@ -27,7 +27,7 @@ pub(super) fn build_request(
         .unwrap_or_else(|| "bedrock".to_string());
     let (provider, model) =
         crate::autochat::model_rotation::resolve_provider_for_model_autochat(registry, &model_ref)?;
-    let mut messages = session.messages.clone();
+    let mut messages = session.history().to_vec();
     messages.push(Message {
         role: Role::User,
         content: vec![ContentPart::Text {

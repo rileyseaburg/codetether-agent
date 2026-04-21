@@ -152,7 +152,7 @@ fn render_formatted_message(
     color: Color,
 ) {
     let timestamp = format_timestamp(message.timestamp);
-    lines.push(Line::from(vec![
+    let mut header_spans = vec![
         Span::styled(
             format!("[{timestamp}] "),
             Style::default()
@@ -161,7 +161,21 @@ fn render_formatted_message(
         ),
         Span::styled(icon.to_string(), Style::default().fg(color).bold()),
         Span::styled(label.to_string(), Style::default().fg(color).bold()),
-    ]));
+    ];
+    if let Some(u) = message.usage.as_ref() {
+        header_spans.push(Span::styled(
+            format!(
+                "  · {} in / {} out · {}",
+                format_tokens(u.prompt_tokens),
+                format_tokens(u.completion_tokens),
+                format_latency(u.duration_ms),
+            ),
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(ratatui::style::Modifier::DIM),
+        ));
+    }
+    lines.push(Line::from(header_spans));
     let formatted = crate::tui::ui::chat_view::format_cache::format_message_cached(
         message,
         label,
@@ -172,6 +186,24 @@ fn render_formatted_message(
         let mut spans = vec![Span::styled("  ", Style::default().fg(color))];
         spans.extend(line.spans.into_iter());
         lines.push(Line::from(spans));
+    }
+}
+
+fn format_tokens(n: usize) -> String {
+    if n >= 1_000_000 {
+        format!("{:.1}M", n as f64 / 1_000_000.0)
+    } else if n >= 1_000 {
+        format!("{:.1}k", n as f64 / 1_000.0)
+    } else {
+        n.to_string()
+    }
+}
+
+fn format_latency(ms: u64) -> String {
+    if ms >= 1_000 {
+        format!("{:.1}s", ms as f64 / 1_000.0)
+    } else {
+        format!("{ms}ms")
     }
 }
 
