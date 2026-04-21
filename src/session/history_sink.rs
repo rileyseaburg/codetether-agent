@@ -219,8 +219,9 @@ pub async fn upload_full_history(
 ) -> Result<()> {
     let body = encode_jsonl_delta(messages, 0)?;
     let bytes = body.into_bytes();
+    let byte_len = bytes.len();
     let client = build_client(config)?;
-    let content = ObjectContent::from(bytes.clone());
+    let content = ObjectContent::from(bytes);
     let key = config.object_key(session_id);
     client
         .put_object_content(&config.bucket, &key, content)
@@ -229,14 +230,13 @@ pub async fn upload_full_history(
         .with_context(|| {
             format!(
                 "failed to PUT s3://{}/{key} ({} bytes)",
-                config.bucket,
-                bytes.len()
+                config.bucket, byte_len
             )
         })?;
     tracing::debug!(
         bucket = %config.bucket,
         key = %key,
-        bytes = bytes.len(),
+        bytes = byte_len,
         "history sink upload complete"
     );
     Ok(())
@@ -314,8 +314,26 @@ pub async fn resolve_pointer(
     let client = build_client(config).map_err(|e| Fault::BackendError {
         reason: format!("minio client build failed: {e}"),
     })?;
+
+    // Use HTTP Range requests when the handle specifies a byte range so
+    // we don't download the whole history object just to slice out a
+    // few KB. `offset` + `length` map directly to a `Range` header in
+    // the minio 0.3 builder.
+    let (offset, length) = match handle.byte_range {
+        Some((start, end)) => {
+            let len = end.saturating_sub(start);
+            if len == 0 {
+                return Err(Fault::NoMatch);
+            }
+            (Some(start), Some(len))
+        }
+        None => (None, None),
+    };
+
     let body = client
         .get_object(&handle.bucket, &handle.key)
+        .offset(offset)
+        .length(length)
         .send()
         .await
         .map_err(|e| Fault::BackendError {
@@ -331,15 +349,7 @@ pub async fn resolve_pointer(
     if body.is_empty() {
         return Err(Fault::NoMatch);
     }
-    let bytes = body.to_vec();
-    Ok(match handle.byte_range {
-        None => bytes,
-        Some((start, end)) => {
-            let start = (start as usize).min(bytes.len());
-            let end = (end as usize).min(bytes.len()).max(start);
-            bytes[start..end].to_vec()
-        }
-    })
+    Ok(body.to_vec())
 }
 
 #[cfg(test)]

@@ -239,7 +239,11 @@ pub fn choose_router_target_bandit(
             let (provider_name, _model_name) = crate::provider::parse_model_string(&raw);
             let provider_name = provider_name.unwrap_or(selected_provider);
             let score = state
-                .score(provider_name, "model_call", bucket)
+                .score(
+                    provider_name,
+                    crate::session::delegation_skills::MODEL_CALL,
+                    bucket,
+                )
                 .unwrap_or(0.0);
             (raw, score)
         })

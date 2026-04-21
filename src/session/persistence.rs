@@ -123,20 +123,46 @@ impl Session {
         // Phase A history sink: stream pure history to MinIO/S3.
         // Env-gated, fire-and-forget — never blocks the save, never
         // fails it. See [`super::history_sink`] for the env variables.
+        //
+        // Coalesce concurrent saves per session: if an upload for this
+        // session is already in flight, skip this spawn — the next
+        // save will pick up the latest history. This prevents bursty
+        // save loops (e.g. during long tool chains) from queueing
+        // unbounded background uploads.
         if let Ok(Some(sink_config)) = super::history_sink::HistorySinkConfig::from_env() {
-            let session_id = self.id.clone();
-            let messages = self.messages.clone();
-            tokio::spawn(async move {
-                if let Err(err) = super::history_sink::upload_full_history(
-                    &sink_config,
-                    &session_id,
-                    &messages,
-                )
-                .await
-                {
-                    tracing::warn!(%err, %session_id, "history sink upload failed (non-fatal)");
-                }
-            });
+            use std::collections::HashSet;
+            use std::sync::{Mutex, OnceLock};
+            static IN_FLIGHT: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+            let in_flight = IN_FLIGHT.get_or_init(|| Mutex::new(HashSet::new()));
+
+            let inserted = in_flight
+                .lock()
+                .map(|mut s| s.insert(self.id.clone()))
+                .unwrap_or(false);
+
+            if inserted {
+                let session_id = self.id.clone();
+                let messages = self.messages.clone();
+                tokio::spawn(async move {
+                    if let Err(err) = super::history_sink::upload_full_history(
+                        &sink_config,
+                        &session_id,
+                        &messages,
+                    )
+                    .await
+                    {
+                        tracing::warn!(%err, %session_id, "history sink upload failed (non-fatal)");
+                    }
+                    if let Ok(mut s) = in_flight.lock() {
+                        s.remove(&session_id);
+                    }
+                });
+            } else {
+                tracing::debug!(
+                    session_id = %self.id,
+                    "history sink upload already in flight; skipping duplicate"
+                );
+            }
         }
         Ok(())
     }

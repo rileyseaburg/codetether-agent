@@ -342,6 +342,7 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
 
     session.messages.truncate(s_cut);
     app.state.messages.truncate(t_cut);
+    session.updated_at = chrono::Utc::now();
     app.state.streaming_text.clear();
     app.state.scroll_to_bottom();
 
@@ -790,7 +791,18 @@ pub async fn handle_slash_command(
     }
 
     if let Some(rest) = command_with_optional_args(&normalized, "/ask") {
-        super::ask::run_ask(app, session, registry, rest.trim()).await;
+        let question = rest.trim();
+        if question.is_empty() {
+            app.state.status =
+                "Usage: /ask <question> — ephemeral side question (full context, no tools, not saved)"
+                    .to_string();
+            push_system_message(
+                app,
+                "`/ask <question>` runs an ephemeral side query with full context but no tools, and is not saved to the session.",
+            );
+            return;
+        }
+        super::ask::run_ask(app, session, registry, question).await;
         return;
     }
 

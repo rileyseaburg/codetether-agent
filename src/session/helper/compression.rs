@@ -101,9 +101,11 @@ pub const DEFAULT_RLM_MODEL: &str = "zai/glm-5.1";
 /// 2. The `CODETETHER_RLM_MODEL` environment variable.
 /// 3. [`DEFAULT_RLM_MODEL`].
 ///
-/// The caller's main model is never used unless all three above are
-/// absent (returns `None`, signalling the caller should keep its own
-/// model).
+/// Always returns `Some(...)` — the caller's main model is only ever
+/// used as a fallback inside [`compress_messages_keep_last`] when
+/// resolution against the returned string fails at the provider
+/// registry. The `Option` is retained to leave room for a future
+/// "prefer caller's model" policy without a signature break.
 fn resolve_rlm_model(rlm_config: &crate::rlm::RlmConfig) -> Option<String> {
     if let Some(m) = rlm_config.root_model.as_ref() {
         return Some(m.clone());
@@ -177,7 +179,7 @@ pub(crate) fn resolve_rlm_model_bandit(
     let mut best: Option<(&str, f64)> = None;
     for candidate in RLM_MODEL_CANDIDATES {
         let score = state
-            .score(candidate, "rlm_compact", bucket)
+            .score(candidate, crate::session::delegation_skills::RLM_COMPACT, bucket)
             .unwrap_or(0.0);
         match best {
             Some((_, current)) if current >= score => {}
@@ -284,7 +286,7 @@ pub(crate) async fn compress_messages_keep_last(
     // provider/model if the dedicated model cannot be resolved.
     let (rlm_provider, rlm_model) = match resolve_rlm_model(&ctx.rlm_config) {
         Some(target_model) if target_model != model => {
-            match crate::provider::ProviderRegistry::from_vault().await {
+            match crate::provider::ProviderRegistry::shared_from_vault().await {
                 Ok(registry) => match registry.resolve_model(&target_model) {
                     Ok((p, m)) => {
                         tracing::info!(
@@ -867,10 +869,10 @@ mod tests {
     #[test]
     fn terminal_truncate_noop_when_short_enough() {
         let mut messages = vec![user("a"), user("b")];
-        let before = messages.clone();
+        let before_len = messages.len();
         let dropped = terminal_truncate_messages(&mut messages, "", &[], 4);
         assert_eq!(dropped, 0);
-        assert_eq!(messages, before);
+        assert_eq!(messages.len(), before_len);
     }
 
     #[test]

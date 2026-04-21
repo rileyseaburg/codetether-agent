@@ -227,11 +227,22 @@ impl DelegationState {
     }
 
     /// Serialise a `(agent, skill, bucket)` triple into the flat string
-    /// key used by the sidecar. Kept stable across versions.
+    /// key used by the sidecar.
+    ///
+    /// The encoding is `"{agent}|{skill}|{difficulty}|{dependency}|{tool_use}"`
+    /// where each bucket field is the canonical snake_case string from
+    /// [`Difficulty::as_str`](crate::session::relevance::Difficulty::as_str),
+    /// [`Dependency::as_str`](crate::session::relevance::Dependency::as_str),
+    /// and [`ToolUse::as_str`](crate::session::relevance::ToolUse::as_str)
+    /// — matching the serde representation. Persisted keys therefore stay
+    /// stable across enum reorderings / variant renames, because the
+    /// `as_str` methods are explicitly documented as never-renamed.
     pub fn key(agent: &str, skill: &str, bucket: Bucket) -> String {
         format!(
-            "{agent}|{skill}|{:?}|{:?}|{:?}",
-            bucket.difficulty, bucket.dependency, bucket.tool_use
+            "{agent}|{skill}|{}|{}|{}",
+            bucket.difficulty.as_str(),
+            bucket.dependency.as_str(),
+            bucket.tool_use.as_str(),
         )
     }
 

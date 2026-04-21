@@ -87,6 +87,18 @@ pub enum Difficulty {
     Hard,
 }
 
+impl Difficulty {
+    /// Stable snake_case encoding. Never renamed — used as part of the
+    /// persisted [`crate::session::delegation::DelegationState`] key.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Difficulty::Easy => "easy",
+            Difficulty::Medium => "medium",
+            Difficulty::Hard => "hard",
+        }
+    }
+}
+
 /// CADMAS-CTX dependency axis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -97,12 +109,32 @@ pub enum Dependency {
     Chained,
 }
 
+impl Dependency {
+    /// Stable snake_case encoding — see [`Difficulty::as_str`].
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Dependency::Isolated => "isolated",
+            Dependency::Chained => "chained",
+        }
+    }
+}
+
 /// CADMAS-CTX tool-use axis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolUse {
     No,
     Yes,
+}
+
+impl ToolUse {
+    /// Stable snake_case encoding — see [`Difficulty::as_str`].
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ToolUse::No => "no",
+            ToolUse::Yes => "yes",
+        }
+    }
 }
 
 /// Coarse context bucket — CADMAS-CTX Section 3.1.
@@ -214,15 +246,20 @@ pub fn extract(msg: &Message) -> RelevanceMeta {
 
 /// Extract path-like tokens from `text` and append unique ones to `out`.
 ///
-/// Heuristic: tokens containing at least one `/` or ending with a
-/// common source-file extension. Intentionally conservative.
+/// Heuristic: tokens that look like filesystem paths (contain `/` but
+/// not `://`, so URLs are excluded) or end with a common source-file
+/// extension. Intentionally conservative — this feeds
+/// [`Bucket`] projection, so false positives directly harm delegation
+/// calibration (over-reporting `Chained` dependency).
 fn append_files(text: &str, out: &mut Vec<String>) {
     for raw in text.split(|c: char| c.is_whitespace() || matches!(c, ',' | ';' | '(' | ')' | '`')) {
         let trimmed = raw.trim_matches(|c: char| matches!(c, '"' | '\'' | '.'));
         if trimmed.is_empty() || trimmed.len() < 3 {
             continue;
         }
-        let looks_like_path = trimmed.contains('/')
+        let looks_like_path = (trimmed.contains('/')
+            && !trimmed.contains("://")
+            && trimmed.len() > 3)
             || ends_with_source_ext(trimmed);
         if looks_like_path && !out.contains(&trimmed.to_string()) {
             out.push(trimmed.to_string());
@@ -252,15 +289,9 @@ fn append_error_classes(text: &str, out: &mut Vec<String>) {
 }
 
 fn dedupe_preserving_order(items: &mut Vec<String>) {
-    let mut seen: Vec<String> = Vec::with_capacity(items.len());
-    items.retain(|item| {
-        if seen.contains(item) {
-            false
-        } else {
-            seen.push(item.clone());
-            true
-        }
-    });
+    let mut seen: std::collections::HashSet<String> =
+        std::collections::HashSet::with_capacity(items.len());
+    items.retain(|item| seen.insert(item.clone()));
 }
 
 #[cfg(test)]

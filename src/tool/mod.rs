@@ -319,6 +319,8 @@ impl ToolRegistry {
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
         registry.register(Arc::new(session_task::SessionTaskTool::new()));
+        registry.register(Arc::new(context_reset::ContextResetTool));
+        registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -386,6 +388,8 @@ impl ToolRegistry {
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
         registry.register(Arc::new(session_task::SessionTaskTool::new()));
+        registry.register(Arc::new(context_reset::ContextResetTool));
+        registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));

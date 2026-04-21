@@ -215,11 +215,14 @@ impl Tool for ContextBrowseTool {
         };
         let messages = session.history();
         match action {
-            ContextBrowseAction::ListTurns => {
-                Ok(ToolResult::success(render_listing(&session.id, messages)))
-            }
+            ContextBrowseAction::ListTurns => Ok(ToolResult::success(render_listing(
+                &session.id,
+                messages,
+            ))
+            .truncate_to(super::tool_output_budget())),
             ContextBrowseAction::ShowTurn { turn } => match messages.get(turn) {
-                Some(msg) => Ok(ToolResult::success(render_turn(msg))),
+                Some(msg) => Ok(ToolResult::success(render_turn(msg))
+                    .truncate_to(super::tool_output_budget())),
                 None => Ok(ToolResult::error(format!(
                     "turn {turn} out of range (have {} entries)",
                     messages.len()
@@ -236,14 +239,31 @@ impl Tool for ContextBrowseTool {
 /// The agent-owning session is not yet threaded through the Tool
 /// trait; a future commit will switch to the in-memory live session
 /// once that signature lands.
+///
+/// Distinguishes "no sessions exist yet for this workspace" (returns
+/// `Ok(None)`) from real I/O or parse errors (returns `Err(...)`) so
+/// the caller can surface a `ToolResult::error` rather than silently
+/// masking a broken session store.
 async fn latest_session_for_cwd() -> Result<Option<Session>> {
     let cwd = std::env::current_dir().ok();
     let workspace = cwd.as_deref();
     match Session::last_for_directory(workspace).await {
         Ok(s) => Ok(Some(s)),
         Err(err) => {
-            tracing::debug!(%err, "context_browse: no session found");
-            Ok(None)
+            let msg = err.to_string().to_lowercase();
+            // `Session::last_for_directory` returns an error when no sessions
+            // exist for the workspace. Treat those as `Ok(None)` so the tool
+            // can report "no session found"; bubble everything else up.
+            if msg.contains("no session")
+                || msg.contains("not found")
+                || msg.contains("no such file")
+            {
+                tracing::debug!(%err, "context_browse: no session for workspace");
+                Ok(None)
+            } else {
+                tracing::warn!(%err, "context_browse: failed to load latest session");
+                Err(err)
+            }
         }
     }
 }

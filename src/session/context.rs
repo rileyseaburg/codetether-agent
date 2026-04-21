@@ -170,7 +170,7 @@ pub async fn derive_context(
     // is larger than 35 % of the ctx window, replace it in the clone
     // with an RLM summary. The canonical `session.messages` still holds
     // the original — preserving the Phase A invariant.
-    let _ = compress_last_message_if_oversized(
+    let step0_compressed = compress_last_message_if_oversized(
         &mut messages,
         &ctx,
         Arc::clone(&provider),
@@ -184,18 +184,16 @@ pub async fn derive_context(
 
     let before_compression = messages.len();
 
-    match force_keep_last {
-        Some(keep_last) => {
-            let _ = compress_messages_keep_last(
-                &mut messages,
-                &ctx,
-                Arc::clone(&provider),
-                model,
-                keep_last,
-                "prompt_too_long_retry",
-            )
-            .await?;
-        }
+    let step1_compressed = match force_keep_last {
+        Some(keep_last) => compress_messages_keep_last(
+            &mut messages,
+            &ctx,
+            Arc::clone(&provider),
+            model,
+            keep_last,
+            "prompt_too_long_retry",
+        )
+        .await?,
         None => {
             enforce_on_messages(
                 &mut messages,
@@ -207,18 +205,20 @@ pub async fn derive_context(
                 event_tx,
             )
             .await?;
+            messages_len_changed(before_compression, &messages)
         }
-    }
+    };
 
     // Safety net: compaction may have dropped a tool_result without its
     // matching tool_call (or vice versa). Re-run the pairing repair so
     // the provider never sees an orphaned tool_use id.
     experimental::pairing::repair_orphans(&mut messages);
 
+    let len_changed = messages_len_changed(before_compression, &messages);
     Ok(DerivedContext {
         messages,
         origin_len,
-        compressed: messages_len_changed(before_compression, &messages),
+        compressed: step0_compressed || step1_compressed || len_changed,
     })
 }
 
