@@ -968,6 +968,7 @@ async fn maybe_route_through_rlm(
         subcall_provider: None,
         subcall_model: None,
     };
+    let original_bytes = rendered_content.len();
     match RlmRouter::auto_process(rendered_content, auto_ctx, &rlm_config).await {
         Ok(result) => {
             tracing::info!(
@@ -976,7 +977,11 @@ async fn maybe_route_through_rlm(
                 iterations = result.stats.iterations,
                 "RLM: Processing complete"
             );
-            result.processed
+            format!(
+                "[RLM-SUMMARY tool={tool_name} original_bytes={original_bytes} reason={reason}]\n{body}\n[END RLM-SUMMARY — the raw tool output was replaced by this model-generated summary; re-running the same call will produce a similar summary, not the original bytes]",
+                reason = routing.reason,
+                body = result.processed,
+            )
         }
         Err(e) => {
             tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
