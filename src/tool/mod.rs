@@ -39,6 +39,7 @@ pub mod readonly;
 pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
+pub mod session_recall;
 pub mod search;
 pub mod search_router;
 pub mod skill;
@@ -391,6 +392,11 @@ impl ToolRegistry {
             model.clone(),
             crate::rlm::RlmConfig::default(),
         )));
+        registry.register(Arc::new(session_recall::SessionRecallTool::new(
+            Arc::clone(&provider),
+            model.clone(),
+            crate::rlm::RlmConfig::default(),
+        )));
         // RalphTool with provider for autonomous execution
         registry.register(Arc::new(ralph::RalphTool::with_provider(provider, model)));
         registry.register(Arc::new(prd::PrdTool::new()));
@@ -447,11 +453,18 @@ impl ToolRegistry {
     /// a two-phase initialization pattern.
     #[allow(dead_code)]
     pub fn with_provider_arc(provider: Arc<dyn Provider>, model: String) -> Arc<Self> {
-        let mut registry = Self::with_provider(provider, model);
+        let mut registry = Self::with_provider(Arc::clone(&provider), model);
 
         // Create batch tool without registry reference
         let batch_tool = Arc::new(batch::BatchTool::new());
         registry.register(batch_tool.clone());
+
+        // Auto-register the LLM-routed `search` tool. Build a single-provider
+        // `ProviderRegistry` from the provider we already have so the router
+        // can call back into it without the full vault registry.
+        let mut providers = crate::provider::ProviderRegistry::new();
+        providers.register(Arc::clone(&provider));
+        registry.register(Arc::new(search_router::SearchTool::new(Arc::new(providers))));
 
         // Wrap registry in Arc
         let registry = Arc::new(registry);
