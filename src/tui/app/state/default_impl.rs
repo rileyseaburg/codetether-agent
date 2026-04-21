@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use crate::tui::bus_log::BusLogState;
+use crate::tui::audit_view::AuditViewState;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::ralph_view::RalphViewState;
@@ -34,6 +35,7 @@ impl Default for super::AppState {
             cwd_display: String::new(),
             bus_log: BusLogState::new(),
             swarm: SwarmViewState::new(),
+            audit: AuditViewState::default(),
             ralph: RalphViewState::new(),
             symbol_search: SymbolSearchState::new(),
             slash_suggestions: vec![],

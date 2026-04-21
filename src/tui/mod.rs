@@ -21,6 +21,7 @@ pub mod ui;
 pub mod utils;
 
 pub mod agent_identity;
+pub mod audit_view;
 pub mod bus_log;
 pub mod color_palette;
 pub mod message_formatter;

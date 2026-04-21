@@ -59,6 +59,7 @@
 
 pub mod dedup;
 pub mod lingua;
+pub mod pairing;
 pub mod snippet;
 pub mod streaming_llm;
 pub mod thinking_prune;
@@ -113,6 +114,9 @@ pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     stats.merge(snippet::snippet_stale_tool_outputs(messages));
     stats.merge(lingua::prune_low_entropy(messages));
     stats.merge(streaming_llm::trim_middle(messages));
+    // Correctness pass: repair any orphaned tool_call/tool_result
+    // pairs broken by the strategies above. Must run LAST.
+    stats.merge(pairing::repair_orphans(messages));
     if stats.total_bytes_saved > 0 {
         tracing::info!(
             dedup_hits = stats.dedup_hits,

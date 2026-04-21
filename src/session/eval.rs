@@ -105,7 +105,7 @@ pub fn pareto_frontier(results: &[PolicyRunResult]) -> Vec<&PolicyRunResult> {
         .filter(|candidate| {
             !results
                 .iter()
-                .any(|other| !std::ptr::eq(candidate, other) && candidate.is_dominated_by(other))
+                .any(|other| !std::ptr::eq(*candidate, other) && candidate.is_dominated_by(other))
         })
         .collect()
 }

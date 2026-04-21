@@ -15,8 +15,6 @@ mod chat_submit_dispatch;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.
-pub(crate) use chat_helpers::push_user_messages;
-pub(crate) use chat_submit_dispatch::dispatch_prompt;
 mod enter;
 pub(crate) mod image;
 mod merge;

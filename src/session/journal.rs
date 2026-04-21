@@ -65,7 +65,7 @@ pub struct TxnId(pub u64);
 ///
 /// Extend by adding variants rather than free-form JSON so each new
 /// call site declares what it is doing.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Op {
     /// Context-window enforcement rewrote the derived buffer.

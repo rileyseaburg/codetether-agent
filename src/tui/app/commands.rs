@@ -648,7 +648,7 @@ fn spawn_ralph_run(
             ..Default::default()
         };
 
-        let ralph = match RalphLoop::new(prd_path.clone(), provider, model, config).await {
+        let mut ralph = match RalphLoop::new(prd_path.clone(), provider, model, config).await {
             Ok(r) => r.with_event_tx(event_tx.clone()),
             Err(err) => {
                 let _ = event_tx
