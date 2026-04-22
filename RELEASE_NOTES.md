@@ -1,28 +1,38 @@
-# v4.5.7
+# v4.6.0
 
 ## What's New
 
-- **XHR replay in browserctl** — New `xhr` action replays requests as raw `XMLHttpRequest`, preserving `Sec-Fetch-*` headers and cookie semantics for sites where `fetch`/`axios` replay fails.
-- **Network introspection suite** — Added `axios` (replay via the page's own axios instance with inherited interceptors/baseURL) and `diagnose` (dumps service workers, axios instances, CSP headers, and network log summary) to browserctl.
-- **TUI paste-burst heuristic** — Clipboard paste events are now detected and batched to avoid flooding the input handler with individual character events.
-- **Native text selection in TUI** — Mouse capture is disabled, allowing users to select and copy terminal text with the mouse without interfering with the TUI.
-- **Steering cancel** — Mid-generation steering can now be cancelled cleanly using `notify_one`, preventing spurious wakeups.
-- **Multi-line Enter** — The TUI input now supports multi-line entry via Enter key with proper submit handling.
-- **Browser session lifecycle** — New attach-to-existing, discovery, and enhanced launch flows for browser sessions, including device emulation and DOM inspection helpers.
-- **Session tail-loading** — Sessions now support tail-loading and tail-seeding for faster startup with large conversation histories.
-- **Shared HTTP provider utilities** — Common HTTP plumbing extracted into `shared_http.rs` and `body_cap.rs` to reduce duplication across LLM providers.
-- **Dedicated shell tool** — New `bash_shell` tool provides isolated shell execution separate from the general `bash` tool.
+- **Derived Context Architecture** — Chat history is now cleanly separated from derived LLM context. A new `codetether context` CLI subcommand lets you inspect and manage context state directly. Session context goes through a dedicated derive → compress → reset pipeline with configurable policies. (#62)
+
+- **RSS Watchdog & Memory Telemetry** — An RSS memory watchdog monitors process memory and triggers proactive context compression before OOM. The telemetry module (previously a single 812-line file) has been decomposed into focused sub-modules: token counters, tool execution tracking, provider metrics, swarm stats, cost guards, and persistent snapshots.
+
+- **TUI `/autochat` Persona Relay** — The `/autochat` command now runs a real multi-step persona relay instead of a stub. Inline autochat persona and step-request modules drive multi-turn delegation with notification helpers and run summaries.
+
+- **TUI Protocol View** — A new `/protocols` command and dedicated `ProtocolRegistryView` replace the old monolithic `protocol_registry.rs` (315 lines → 159-line focused view module). Navigation wired end-to-end.
+
+- **Unified Search Router** — A new `src/search/` module provides a dispatch engine, typed results, request parsing, and an LLM-routed search tool (`search_router`) that picks the right backend (grep, glob, web, memory, RLM) per query.
+
+- **Browser Networking Overhaul** — `browserctl` fetch/xhr replay now auto-inherits captured headers and provides JS-side fallback hints on failure. The 368-line `net.rs` has been split into ten focused modules: `fetch`, `axios`, `xhr`, `replay`, `log`, `diagnose`, each with its own template file.
+
+- **Tool Compatibility Aliases** — A new `src/tool/alias.rs` system registers alternate names for tools, smoothing over provider-specific naming differences.
+
+- **Session Internals Expanded** — New sub-modules for delegation & skills, evaluation, fault injection, history & history sink, journaling, oracle lookups, page-based context, relevance scoring, and a task subsystem (events, logs, state, rendering).
+
+- **Provider Improvements** — Bedrock body builder and conversion split into dedicated modules. New `src/provider/pricing.rs` for cost estimation. GLM-5, Google, Vertex GLM, ZAI, and OpenAI Codex providers received upstream compatibility updates. LSP client and transport hardened.
 
 ## Bug Fixes
 
-- **Steering cancel correctness** — Fixed steering cancellation to use `notify_one` instead of `notify_all`, eliminating unnecessary wakeups of unrelated tasks.
-- **Worker bridge stability** — Hardened the TUI ↔ worker bridge to handle edge cases in event propagation.
+- **Streaming trim boundary corruption** — Fixed `trim_middle` in the streaming LLM helper so `cut_end` advances past orphaned `tool_calls` that would otherwise leave half-written function-call fragments at context boundaries.
+
+- **RLM spin loops** — Narrowed the set of eligible tools available to the RLM router and added summary annotations so the recursive search terminates correctly instead of re-dispatching indefinitely. Added provider fallback in the search model layer.
+
+- **TUI autochat & OKR approval wiring** — Fixed broken event flow between autochat relay steps and OKR approval dialogs.
 
 ## Changes
 
-- **Session persistence refactor** — Large rewrite of session persistence (`+431` lines) improving serialization, compression, and workspace indexing.
-- **Browser wait utilities** — New `wait.rs` module (`+342` lines) with composable wait strategies for browser automation.
-- **Browser network interception** — New `session/net.rs` (`+368` lines) enabling request interception and modification.
-- **RLM oracle validator** — Minor updates to the Recursive Language Model's oracle validator pipeline.
-- **Provider consistency** — Standardized request handling across Anthropic, Bedrock, OpenAI, OpenRouter, Copilot, GLM5, Google, Moonshot, StepFun, and ZAI providers.
-- **111 files changed**, 5,158 additions, 366 deletions across browser, TUI, session, provider, and tool modules.
+- **329 files changed** — 14,701 insertions, 13,271 deletions (net −570 lines with dramatically better modularity).
+- **Top-level cleanup** — Removed 25+ `fix_*.py` scripts, 15 stale `prd_*.json` files, cached benchmark/error artifacts, `.vsix` extensions, and other clutter. Legacy documentation archived under `docs/legacy/`.
+- **Ralph loop** — Refactored for cleaner PRD-driven iteration with improved progress tracking.
+- **Swarm executor** — Streamlined subtask spawning; new `src/swarm/subtask.rs` isolates subtask definitions.
+- **Install scripts** — `install.sh` and `install.ps1` updated to document new history S3 environment variables.
+- **Config guardrails** — New `src/config/guardrails.rs` centralizes safety configuration.
