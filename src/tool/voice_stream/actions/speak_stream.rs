@@ -23,7 +23,7 @@ pub(crate) async fn run(client: &reqwest::Client, params: &Params) -> Result<Too
     let vid = params.voice_id.as_deref().unwrap_or("960f89fc");
     let lang = params.language.as_deref().unwrap_or("english");
 
-    let body = json!({"text": text, "voice_id": vid, "language": lang});
+    let body = json!({"script": text, "voice_id": vid, "language": lang});
 
     let resp = client
         .post(format!("{base}/tts/speak"))

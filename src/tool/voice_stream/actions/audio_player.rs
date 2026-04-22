@@ -1,6 +1,7 @@
 //! HTML audio player helper — temp file + open in browser.
 
 use anyhow::{Context, Result};
+use tracing::info;
 
 /// Write a minimal HTML audio player to a temp file and open the
 /// default browser. The temp dir is leaked so the file survives
@@ -21,6 +22,7 @@ pub(crate) fn open(job_id: &str, output_url: &str) -> Result<()> {
     // Leak the temp dir so the file persists for the browser.
     let _ = dir.into_path();
 
+    info!(job_id, output_url, "Opening voice audio player in browser");
     open::that(path).context("Failed to open browser")?;
     Ok(())
 }
