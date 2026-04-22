@@ -5,6 +5,7 @@ const os = require('node:os');
 const https = require('node:https');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { tlsOptions } = require('./darwin_tls');
 
 function repoFromEnv() {
   return process.env.CODETETHER_GITHUB_REPO || 'rileyseaburg/codetether-agent';
@@ -179,11 +180,13 @@ function canExecute(p) {
 }
 
 function requestJson(url, headers = {}) {
+  const tls = tlsOptions();
   return new Promise((resolve, reject) => {
     https
       .get(
         url,
         {
+          ...tls,
           headers: {
             'User-Agent': 'codetether-npx',
             Accept: 'application/vnd.github+json',
@@ -231,12 +234,16 @@ async function getReleaseAssetNames(repo, tag) {
 }
 
 function downloadFile(url, destPath) {
+  const tls = tlsOptions();
   return new Promise((resolve, reject) => {
     const doGet = (u, redirectsLeft) => {
+      const isRedirectToDifferentOrigin = u.startsWith('https://github.com') === false && u.startsWith('https://objects.githubusercontent.com') === false;
+      const redirectOpts = isRedirectToDifferentOrigin ? {} : tls;
       https
         .get(
           u,
           {
+            ...redirectOpts,
             headers: {
               'User-Agent': 'codetether-npx',
               Accept: '*/*',
@@ -285,12 +292,16 @@ function downloadFile(url, destPath) {
 }
 
 function downloadText(url) {
+  const tls = tlsOptions();
   return new Promise((resolve, reject) => {
     const doGet = (u, redirectsLeft) => {
+      const isRedirectToDifferentOrigin = u.startsWith('https://github.com') === false && u.startsWith('https://objects.githubusercontent.com') === false;
+      const redirectOpts = isRedirectToDifferentOrigin ? {} : tls;
       https
         .get(
           u,
           {
+            ...redirectOpts,
             headers: {
               'User-Agent': 'codetether-npx',
               Accept: '*/*',
