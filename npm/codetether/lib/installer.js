@@ -4,6 +4,7 @@ const path = require('node:path');
 const os = require('node:os');
 const https = require('node:https');
 const crypto = require('node:crypto');
+const { spawnSync } = require('node:child_process');
 
 function repoFromEnv() {
   return process.env.CODETETHER_GITHUB_REPO || 'rileyseaburg/codetether-agent';
@@ -17,6 +18,16 @@ function readPkgVersion() {
   // eslint-disable-next-line global-require
   const pkg = require(path.join(pkgRoot(), 'package.json'));
   return pkg.version;
+}
+
+function configuredPkgTag(pkg) {
+  return normalizeTag(pkg && (pkg.codetetherReleaseTag || pkg.codetetherBinaryTag || pkg.version));
+}
+
+function readPkgTag() {
+  // eslint-disable-next-line global-require
+  const pkg = require(path.join(pkgRoot(), 'package.json'));
+  return configuredPkgTag(pkg);
 }
 
 function normalizeTag(tagOrVersion) {
@@ -60,6 +71,10 @@ function platformTriple() {
 
 function isWindows() {
   return process.platform === 'win32';
+}
+
+function isDarwin() {
+  return process.platform === 'darwin';
 }
 
 function fallbackTriples(targetTriple, isWindowsTarget = isWindows()) {
@@ -106,18 +121,30 @@ function selectAssetCandidates({ tag, targetTriple, availableAssetNames, isWindo
   return matching.length > 0 ? matching : candidates;
 }
 
-function defaultCacheDir() {
-  if (process.env.CODETETHER_NPX_CACHE_DIR) {
-    return process.env.CODETETHER_NPX_CACHE_DIR;
+function defaultCacheDirFor({
+  platform = process.platform,
+  env = process.env,
+  homedir = os.homedir(),
+} = {}) {
+  if (env.CODETETHER_NPX_CACHE_DIR) {
+    return env.CODETETHER_NPX_CACHE_DIR;
   }
 
-  if (isWindows()) {
-    const base = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  if (platform === 'win32') {
+    const base = env.LOCALAPPDATA || path.join(homedir, 'AppData', 'Local');
     return path.join(base, 'codetether-npx');
   }
 
-  const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  if (platform === 'darwin') {
+    return path.join(homedir, 'Library', 'Caches', 'codetether-npx');
+  }
+
+  const base = env.XDG_CACHE_HOME || path.join(homedir, '.cache');
   return path.join(base, 'codetether-npx');
+}
+
+function defaultCacheDir() {
+  return defaultCacheDirFor();
 }
 
 function installDirFor({ tag, targetTriple }) {
@@ -350,6 +377,26 @@ function findExtractedBinary({ tmpDir, assetBase, isWindowsTarget = isWindows() 
   return candidate1 || candidate2 || null;
 }
 
+async function prepareInstalledBinary(destPath) {
+  if (!isWindows()) {
+    await fsp.chmod(destPath, 0o755);
+  }
+
+  if (!isDarwin()) {
+    return;
+  }
+
+  const xattr = spawnSync('xattr', ['-d', 'com.apple.quarantine', destPath], { stdio: 'ignore' });
+  if (xattr.error && xattr.error.code !== 'ENOENT') {
+    throw xattr.error;
+  }
+
+  const codesign = spawnSync('codesign', ['--force', '--sign', '-', destPath], { stdio: 'ignore' });
+  if (codesign.error && codesign.error.code !== 'ENOENT') {
+    throw codesign.error;
+  }
+}
+
 function sha256OfFile(p) {
   const hash = crypto.createHash('sha256');
   const data = fs.readFileSync(p);
@@ -469,9 +516,7 @@ async function installFromAssetCandidate({ repo, tag, candidate, destPath }) {
 
     if (candidate.kind === 'exe' || candidate.kind === 'bin') {
       await fsp.copyFile(assetPath, destPath);
-      if (!isWin) {
-        await fsp.chmod(destPath, 0o755);
-      }
+      await prepareInstalledBinary(destPath);
       return;
     }
 
@@ -492,9 +537,7 @@ async function installFromAssetCandidate({ repo, tag, candidate, destPath }) {
     }
 
     await fsp.copyFile(extracted, destPath);
-    if (!isWin) {
-      await fsp.chmod(destPath, 0o755);
-    }
+    await prepareInstalledBinary(destPath);
   } finally {
     rmdirRecursiveSafe(tmpDir);
   }
@@ -507,12 +550,14 @@ async function installForTag({ repo, tag, targetTriple }) {
   await fsp.mkdir(destDir, { recursive: true });
 
   if (canExecute(destPath)) {
+    await prepareInstalledBinary(destPath);
     return { destPath, tag, targetTriple, reused: true };
   }
 
   const lockPath = path.join(destDir, 'install.lock');
   return withInstallLock(lockPath, async () => {
     if (canExecute(destPath)) {
+      await prepareInstalledBinary(destPath);
       return { destPath, tag, targetTriple, reused: true };
     }
 
@@ -559,7 +604,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
   const targetTriple = platformTriple();
 
   const explicitTag = normalizeTag(process.env.CODETETHER_TAG) || normalizeTag(process.env.CODETETHER_VERSION);
-  const pkgTag = normalizeTag(readPkgVersion());
+  const pkgTag = readPkgTag();
 
   const tagsToTry = [];
   if (explicitTag) tagsToTry.push(explicitTag);
@@ -569,6 +614,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
     for (const tag of tagsToTry) {
       const p = binDestPath({ tag, targetTriple });
       if (canExecute(p)) {
+        await prepareInstalledBinary(p);
         return { destPath: p, repo, tag, targetTriple, reused: true };
       }
     }
@@ -587,6 +633,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
     try {
       const p = binDestPath({ tag, targetTriple });
       if (canExecute(p)) {
+        await prepareInstalledBinary(p);
         return { destPath: p, repo, tag, targetTriple, reused: true };
       }
       return await installForTag({ repo, tag, targetTriple });
@@ -602,6 +649,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
       if (!tagsToTry.includes(latestTag)) {
         const p = binDestPath({ tag: latestTag, targetTriple });
         if (canExecute(p)) {
+          await prepareInstalledBinary(p);
           return { destPath: p, repo, tag: latestTag, targetTriple, reused: true };
         }
         return await installForTag({ repo, tag: latestTag, targetTriple });
@@ -632,6 +680,8 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
 module.exports = {
   ensureInstalled,
   assetCandidatesForInstall,
+  configuredPkgTag,
+  defaultCacheDirFor,
   platformTriple,
   normalizeTag,
   selectAssetCandidates,

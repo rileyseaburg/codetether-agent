@@ -4,7 +4,7 @@
 # Installs the latest release of codetether to a directory on PATH.
 # No Rust toolchain required.
 #
-# Tries multiple artifact formats to support both GitHub Actions (msvc+zip) and Jenkins (gnu+tar.gz) releases.
+# Tries multiple artifact formats to support Windows release variations (.zip, .exe, .tar.gz).
 #
 # Options:
 #   -FunctionGemma      Download the FunctionGemma model for local tool-call routing (optional)
@@ -452,7 +452,7 @@ Usage: .\install.ps1 [OPTIONS]
 Options:
   -FunctionGemma      Download the FunctionGemma model for local tool-call routing
   -FunctionGemmaOnly  Only download the FunctionGemma model
-    -Force              Force reinstall even if latest is already installed
+  -Force              Force reinstall even if latest is already installed
   -Help               Show this help message
 "@
     exit 0
@@ -515,47 +515,53 @@ $exePath = $null
 
 try {
     if (-not $skipBinaryInstall) {
-        # Try each platform + archive combination
+        # Try each platform + asset combination
         foreach ($platform in $platforms) {
-            foreach ($archiveExt in @('zip', 'tar.gz')) {
+            foreach ($assetKind in @('zip', 'exe', 'tar.gz')) {
                 $artifactName = "codetether-$version-$platform"
-                $archiveName = "$artifactName.$archiveExt"
-                $url = "https://github.com/$Repo/releases/download/$version/$archiveName"
+                $assetName = "$artifactName.$assetKind"
+                $url = "https://github.com/$Repo/releases/download/$version/$assetName"
 
-                Write-Info "trying $archiveName..."
-                $archivePath = Join-Path $tmpDir $archiveName
+                Write-Info "trying $assetName..."
+                $assetPath = Join-Path $tmpDir $assetName
 
                 try {
-                    Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing -ErrorAction Stop
-                    Write-Ok "downloaded $archiveName"
+                    Invoke-WebRequest -Uri $url -OutFile $assetPath -UseBasicParsing -ErrorAction Stop
+                    Write-Ok "downloaded $assetName"
                     $downloadSuccess = $true
                 }
                 catch {
                     continue
                 }
 
+                if ($assetKind -eq 'exe') {
+                    $exePath = Get-Item $assetPath
+                    Write-Ok "found binary: $($exePath.Name)"
+                    break
+                }
+
                 # Extract based on archive type
                 Write-Info "extracting..."
                 try {
-                    if ($archiveExt -eq 'zip') {
-                        Expand-Archive -Path $archivePath -DestinationPath $tmpDir -Force
+                    if ($assetKind -eq 'zip') {
+                        Expand-Archive -Path $assetPath -DestinationPath $tmpDir -Force
                     }
                     else {
                         # .tar.gz - use Windows built-in tar
                         $tarCmd = Get-Command tar -ErrorAction SilentlyContinue
                         if (-not $tarCmd) {
-                            Write-Warn "tar command not found - skipping $archiveName"
+                            Write-Warn "tar command not found - skipping $assetName"
                             continue
                         }
-                        & tar -xzf $archivePath -C $tmpDir
+                        & tar -xzf $assetPath -C $tmpDir
                         if ($LASTEXITCODE -ne 0) {
-                            Write-Warn "tar extraction failed - skipping $archiveName"
+                            Write-Warn "tar extraction failed - skipping $assetName"
                             continue
                         }
                     }
                 }
                 catch {
-                    Write-Warn "extraction failed for $archiveName - skipping"
+                    Write-Warn "extraction failed for $assetName - skipping"
                     continue
                 }
 

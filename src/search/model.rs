@@ -34,11 +34,9 @@ pub fn resolve_router_model(
         // makes the `search` tool unusable for any user who doesn't have the
         // default `zai` provider set up — fall back to the first registered
         // provider and log a warning so the caller can see what happened.
-        let first = registry
-            .list()
-            .first()
-            .copied()
-            .ok_or_else(|| anyhow!("router provider '{prov_name}' not available and no providers configured"))?;
+        let first = registry.list().first().copied().ok_or_else(|| {
+            anyhow!("router provider '{prov_name}' not available and no providers configured")
+        })?;
         let prov = registry
             .get(first)
             .ok_or_else(|| anyhow!("provider '{first}' missing"))?;

@@ -115,14 +115,10 @@ fn write_pre_oom_report(
         "backtrace": "",
         "memory": memory,
     });
-    let file_name = format!(
-        "{}-{}.json",
-        now.format("%Y%m%dT%H%M%S%.3fZ"),
-        report_id
-    );
+    let file_name = format!("{}-{}.json", now.format("%Y%m%dT%H%M%S%.3fZ"), report_id);
     let path = spool_dir.join(file_name);
-    let bytes = serde_json::to_vec_pretty(&report)
-        .map_err(|e| std::io::Error::other(e.to_string()))?;
+    let bytes =
+        serde_json::to_vec_pretty(&report).map_err(|e| std::io::Error::other(e.to_string()))?;
     std::fs::write(path, bytes)
 }
 
