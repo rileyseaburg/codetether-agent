@@ -38,7 +38,12 @@ fn candidate_paths() -> Vec<PathBuf> {
     ];
 
     let mut bases: Vec<PathBuf> = Vec::new();
-    for var in ["ProgramFiles", "ProgramFiles(x86)", "LocalAppData", "ProgramW6432"] {
+    for var in [
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "LocalAppData",
+        "ProgramW6432",
+    ] {
         if let Some(v) = std::env::var_os(var) {
             bases.push(PathBuf::from(v));
         }
@@ -93,7 +98,13 @@ fn candidate_paths() -> Vec<PathBuf> {
 #[cfg(target_os = "windows")]
 fn platform_lookup() -> Option<PathBuf> {
     use std::process::Command;
-    for name in ["chrome.exe", "msedge.exe", "brave.exe", "vivaldi.exe", "chromium.exe"] {
+    for name in [
+        "chrome.exe",
+        "msedge.exe",
+        "brave.exe",
+        "vivaldi.exe",
+        "chromium.exe",
+    ] {
         let Ok(output) = Command::new("where.exe").arg(name).output() else {
             continue;
         };

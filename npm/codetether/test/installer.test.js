@@ -1,7 +1,32 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { selectAssetCandidates } = require('../lib/installer');
+const {
+  configuredPkgTag,
+  defaultCacheDirFor,
+  selectAssetCandidates,
+} = require('../lib/installer');
+
+test('prefers explicit release tags over npm package versions', () => {
+  assert.equal(
+    configuredPkgTag({
+      version: '1.1.6-alpha-7.2',
+      codetetherReleaseTag: 'v4.6.0',
+    }),
+    'v4.6.0'
+  );
+});
+
+test('uses the standard macOS cache directory', () => {
+  assert.equal(
+    defaultCacheDirFor({
+      platform: 'darwin',
+      env: {},
+      homedir: '/Users/tester',
+    }),
+    '/Users/tester/Library/Caches/codetether-npx'
+  );
+});
 
 test('prefers published Windows GNU fallback assets when MSVC assets are missing', () => {
   const candidates = selectAssetCandidates({

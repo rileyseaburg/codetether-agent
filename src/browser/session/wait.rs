@@ -26,12 +26,26 @@ pub(super) async fn for_selector(
     let deadline = Instant::now() + Duration::from_millis(timeout_ms);
     let page = access::current_page(session).await?;
     if let Some(text) = request.text.as_deref() {
-        return wait_text(&page, request.selector.as_deref(), text, true, deadline, timeout_ms)
-            .await;
+        return wait_text(
+            &page,
+            request.selector.as_deref(),
+            text,
+            true,
+            deadline,
+            timeout_ms,
+        )
+        .await;
     }
     if let Some(text) = request.text_gone.as_deref() {
-        return wait_text(&page, request.selector.as_deref(), text, false, deadline, timeout_ms)
-            .await;
+        return wait_text(
+            &page,
+            request.selector.as_deref(),
+            text,
+            false,
+            deadline,
+            timeout_ms,
+        )
+        .await;
     }
     if let Some(needle) = request.url_contains.as_deref() {
         return wait_url(&page, needle, deadline, timeout_ms).await;
@@ -126,7 +140,11 @@ async fn is_visible(page: &Page, selector: &str) -> Result<bool, BrowserError> {
             return s.visibility !== 'hidden' && s.display !== 'none' && parseFloat(s.opacity) > 0;
         }})()"
     );
-    Ok(page.evaluate(script).await?.into_value::<bool>().unwrap_or(false))
+    Ok(page
+        .evaluate(script)
+        .await?
+        .into_value::<bool>()
+        .unwrap_or(false))
 }
 
 async fn wait_text(

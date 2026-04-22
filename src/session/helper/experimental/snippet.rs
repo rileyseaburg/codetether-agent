@@ -17,11 +17,12 @@
 //! windows are generous enough (1 KB each by default) to surface error
 //! messages, file headers, or the last lines of a log.
 //!
-//! # Runs *after* [`super::dedup`]
+//! # Rollout
 //!
-//! Dedup replaces exact duplicates with a single line; this pass only
-//! touches what dedup could not collapse. Running in the reverse order
-//! would snippet-then-hash, weakening dedup.
+//! This strategy is intentionally kept out of the default-safe
+//! [`super::apply_all`] path. It is useful under real token pressure,
+//! but it is still lossy because it removes unique bytes from old tool
+//! outputs.
 
 use super::ExperimentalStats;
 use crate::provider::{ContentPart, Message};
@@ -105,8 +106,7 @@ pub fn snippet_stale_tool_outputs(messages: &mut [Message]) -> ExperimentalStats
             let head_end = floor_char_boundary(content, HEAD_BYTES);
             let tail_start = ceil_char_boundary(content, original_len - TAIL_BYTES);
             let elided = tail_start - head_end;
-            let mut rebuilt =
-                String::with_capacity(HEAD_BYTES + TAIL_BYTES + 64);
+            let mut rebuilt = String::with_capacity(HEAD_BYTES + TAIL_BYTES + 64);
             rebuilt.push_str(&content[..head_end]);
             rebuilt.push_str(&format!("\n[...elided {elided} bytes...]\n"));
             rebuilt.push_str(&content[tail_start..]);

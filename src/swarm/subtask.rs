@@ -49,6 +49,20 @@ pub struct SubTask {
 
     /// Stage in the execution plan (0 = can run immediately)
     pub stage: usize,
+
+    /// Explicit override for whether this subtask needs an isolated
+    /// git worktree. `None` (the default) runs [`SubTask::needs_worktree`]
+    /// heuristics on specialty + instruction; `Some(true)` forces a
+    /// worktree; `Some(false)` forces the shared working directory.
+    ///
+    /// Skipping the worktree for read-only tasks (research, review,
+    /// planning, fact-check) saves ~1s of setup, an inode, and
+    /// `.git/worktrees` lock contention when running many agents
+    /// in parallel. Tasks that edit files should keep the default or
+    /// explicitly request a worktree so their edits don't collide with
+    /// sibling agents in the same swarm.
+    #[serde(default)]
+    pub needs_worktree: Option<bool>,
 }
 
 impl SubTask {
@@ -68,6 +82,7 @@ impl SubTask {
             created_at: Utc::now(),
             completed_at: None,
             stage: 0,
+            needs_worktree: None,
         }
     }
 
@@ -99,6 +114,76 @@ impl SubTask {
     pub fn with_context(mut self, context: SubTaskContext) -> Self {
         self.context = context;
         self
+    }
+
+    /// Explicitly set whether this subtask needs a worktree.
+    ///
+    /// `true` forces isolation; `false` forces the shared directory;
+    /// omit this call to fall back to [`SubTask::needs_worktree`]
+    /// heuristics. See the field docs on [`SubTask::needs_worktree`]
+    /// for why this matters in large swarms.
+    pub fn with_needs_worktree(mut self, needs: bool) -> Self {
+        self.needs_worktree = Some(needs);
+        self
+    }
+
+    /// Decide whether this subtask should run in an isolated worktree.
+    ///
+    /// Honours the explicit override when set; otherwise applies a
+    /// conservative heuristic:
+    ///
+    /// - Specialty keywords like `research`, `review`, `analy`,
+    ///   `audit`, `plan`, `fact`, `summari`, `search`, `explore`,
+    ///   `docs` imply a read-only task → no worktree.
+    /// - Instruction keywords like `write`, `edit`, `create`, `fix`,
+    ///   `implement`, `refactor`, `apply`, `commit` imply file
+    ///   mutation → worktree.
+    /// - Unknown tasks default to `true` (worktree) to stay safe
+    ///   against accidental cross-agent edit collisions.
+    pub fn needs_worktree(&self) -> bool {
+        if let Some(explicit) = self.needs_worktree {
+            return explicit;
+        }
+        let haystack_specialty = self.specialty.as_deref().unwrap_or("").to_ascii_lowercase();
+        let haystack_instruction = self.instruction.to_ascii_lowercase();
+
+        const READONLY_HINTS: &[&str] = &[
+            "research",
+            "review",
+            "analy",
+            "audit",
+            "plan",
+            "fact",
+            "summari",
+            "explore",
+            "docs",
+            "read-only",
+            "readonly",
+        ];
+        const MUTATING_HINTS: &[&str] = &[
+            "write",
+            "edit",
+            "create ",
+            "fix",
+            "implement",
+            "refactor",
+            "apply",
+            "commit",
+            "patch",
+            "scaffold",
+            "build",
+        ];
+
+        if READONLY_HINTS
+            .iter()
+            .any(|k| haystack_specialty.contains(k))
+            && !MUTATING_HINTS
+                .iter()
+                .any(|k| haystack_instruction.contains(k))
+        {
+            return false;
+        }
+        true
     }
 
     /// Check if this subtask can run (all dependencies complete)

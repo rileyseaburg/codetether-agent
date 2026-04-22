@@ -87,6 +87,7 @@ pub(crate) fn parse_codex_session_from_path(
         created_at: meta.timestamp,
         updated_at: updated_at.unwrap_or(meta.timestamp),
         messages,
+        pages: Vec::new(),
         tool_uses: Vec::new(),
         usage,
         agent: "build".to_string(),

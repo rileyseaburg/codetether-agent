@@ -12,11 +12,7 @@ use super::step_request::build_step_request;
 use super::summary::summarize_response;
 
 /// Run the relay flow and publish UI events.
-pub async fn run_relay(
-    task: String,
-    model: String,
-    ui_tx: mpsc::UnboundedSender<AutochatUiEvent>,
-) {
+pub async fn run_relay(task: String, model: String, ui_tx: mpsc::UnboundedSender<AutochatUiEvent>) {
     let _ = ui_tx.send(AutochatUiEvent::Progress(
         "Loading providers from Vault…".to_string(),
     ));

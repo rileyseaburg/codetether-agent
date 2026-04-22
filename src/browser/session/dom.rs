@@ -80,10 +80,7 @@ pub(super) async fn click(
 /// first client rect, plus half-extents so the caller can jitter inside
 /// the element. Returns `Ok(None)` when the element exists but has no
 /// layout (zero-sized, display:none, detached).
-async fn click_point_for(
-    page: &Page,
-    selector: &str,
-) -> Result<Option<ClickPoint>, BrowserError> {
+async fn click_point_for(page: &Page, selector: &str) -> Result<Option<ClickPoint>, BrowserError> {
     let selector_lit = serde_json::to_string(selector)?;
     let script = format!(
         "(() => {{

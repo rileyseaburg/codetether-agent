@@ -39,10 +39,30 @@ enum SessionLoadOutcome {
     },
 }
 
-/// Number of trailing messages + tool uses kept when resuming a prior
-/// session. Older entries are dropped to bound startup memory; the user
-/// is notified in the status line when truncation occurs.
-const SESSION_RESUME_WINDOW: usize = 200;
+/// Default number of trailing messages + tool uses kept when resuming a
+/// prior session. Older entries are dropped to bound startup memory; the
+/// user is notified in the status line when truncation occurs.
+const DEFAULT_SESSION_RESUME_WINDOW: usize = 1_000;
+const MAX_SESSION_RESUME_WINDOW: usize = 10_000;
+
+fn session_resume_window() -> usize {
+    let parsed = std::env::var("CODETETHER_SESSION_RESUME_WINDOW")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0);
+    match parsed {
+        Some(value) if value > MAX_SESSION_RESUME_WINDOW => {
+            tracing::warn!(
+                requested = value,
+                clamped = MAX_SESSION_RESUME_WINDOW,
+                "session resume window too large; clamping"
+            );
+            MAX_SESSION_RESUME_WINDOW
+        }
+        Some(value) => value,
+        None => DEFAULT_SESSION_RESUME_WINDOW,
+    }
+}
 
 async fn init_tui_secrets_manager() {
     if crate::secrets::secrets_manager().is_some() {
@@ -149,9 +169,10 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
     // the budget we start a fresh session; the scan task is detached and
     // its result (if any) is simply dropped.
     const SESSION_SCAN_BUDGET: std::time::Duration = std::time::Duration::from_secs(3);
+    let resume_window = session_resume_window();
     let session_task = tokio::time::timeout(
         SESSION_SCAN_BUDGET,
-        Session::last_for_directory_tail(Some(&cwd), SESSION_RESUME_WINDOW),
+        Session::last_for_directory_tail(Some(&cwd), resume_window),
     );
     let config_task = crate::config::Config::load();
     let workspace_task = tokio::task::spawn_blocking({
@@ -208,7 +229,7 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
                     title.as_deref().unwrap_or("large session"),
                 ));
             }
-            let msg_count = session.messages.len();
+            let msg_count = session.history().len();
             SessionLoadOutcome::Loaded {
                 msg_count,
                 title,

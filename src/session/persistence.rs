@@ -20,7 +20,8 @@ impl Session {
     pub async fn load(id: &str) -> Result<Self> {
         let path = Self::session_path(id)?;
         let content = fs::read_to_string(&path).await?;
-        let session: Session = serde_json::from_str(&content)?;
+        let mut session: Session = serde_json::from_str(&content)?;
+        session.normalize_sidecars();
         Ok(session)
     }
 
@@ -59,8 +60,8 @@ impl Session {
         tokio::task::spawn_blocking(move || {
             scan_with_index(&sessions_dir, canonical_workspace, window)
         })
-            .await
-            .map_err(|e| anyhow::anyhow!("session scan task panicked: {e}"))?
+        .await
+        .map_err(|e| anyhow::anyhow!("session scan task panicked: {e}"))?
     }
 
     /// Load the most recent session globally (unscoped).
@@ -93,7 +94,14 @@ impl Session {
         // Clone-and-serialize off the reactor. The clone is a Vec-copy
         // (~memcpy speed) which is always cheaper than the JSON
         // formatting we are about to avoid blocking the reactor on.
-        let snapshot = self.clone();
+        let mut snapshot = self.clone();
+        snapshot.normalize_sidecars();
+        let sink_config = snapshot.metadata.history_sink.clone().or_else(|| {
+            super::history_sink::HistorySinkConfig::from_env()
+                .ok()
+                .flatten()
+        });
+        let session_id_for_journal = snapshot.id.clone();
         let content = tokio::task::spawn_blocking(move || serde_json::to_vec(&snapshot))
             .await
             .map_err(|e| anyhow::anyhow!("session serialize task panicked: {e}"))??;
@@ -109,6 +117,20 @@ impl Session {
                 ));
             }
         }
+        let mut journal = super::journal::WritebackJournal::new(&session_id_for_journal);
+        let tx = journal.stage(super::journal::Op::Save);
+        if let Err(reason) = journal.commit(tx) {
+            journal.reject(tx, reason);
+        }
+        if let Err(err) =
+            super::journal::append_entries(&session_id_for_journal, journal.entries()).await
+        {
+            tracing::warn!(
+                %err,
+                session_id = %session_id_for_journal,
+                "save journal append failed (non-fatal)"
+            );
+        }
         // Update the workspace index so the next resume is O(1). Best
         // effort — a failed index write must not fail the session save.
         if let Some(dir) = &self.metadata.directory {
@@ -119,6 +141,50 @@ impl Session {
                     tracing::debug!(%err, "workspace index upsert failed (non-fatal)");
                 }
             });
+        }
+        // Phase A history sink: stream pure history to MinIO/S3.
+        // Env-gated, fire-and-forget — never blocks the save, never
+        // fails it. See [`super::history_sink`] for the env variables.
+        //
+        // Coalesce concurrent saves per session: if an upload for this
+        // session is already in flight, skip this spawn — the next
+        // save will pick up the latest history. This prevents bursty
+        // save loops (e.g. during long tool chains) from queueing
+        // unbounded background uploads.
+        if let Some(sink_config) = sink_config {
+            use std::collections::HashSet;
+            use std::sync::{Mutex, OnceLock};
+            static IN_FLIGHT: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+            let in_flight = IN_FLIGHT.get_or_init(|| Mutex::new(HashSet::new()));
+
+            let inserted = in_flight
+                .lock()
+                .map(|mut s| s.insert(self.id.clone()))
+                .unwrap_or(false);
+
+            if inserted {
+                let session_id = self.id.clone();
+                let messages = self.messages.clone();
+                tokio::spawn(async move {
+                    if let Err(err) = super::history_sink::upload_full_history(
+                        &sink_config,
+                        &session_id,
+                        &messages,
+                    )
+                    .await
+                    {
+                        tracing::warn!(%err, %session_id, "history sink upload failed (non-fatal)");
+                    }
+                    if let Ok(mut s) = in_flight.lock() {
+                        s.remove(&session_id);
+                    }
+                });
+            } else {
+                tracing::debug!(
+                    session_id = %self.id,
+                    "history sink upload already in flight; skipping duplicate"
+                );
+            }
         }
         Ok(())
     }
@@ -212,11 +278,11 @@ fn tail_load_sync(path: &Path, window: usize) -> Result<TailLoad> {
     let file_bytes = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
     let file = fs::File::open(path)?;
     let reader = BufReader::with_capacity(64 * 1024, file);
-    let (parsed, dropped) = with_tail_cap(window, || {
-        serde_json::from_reader::<_, Session>(reader)
-    });
+    let (parsed, dropped) = with_tail_cap(window, || serde_json::from_reader::<_, Session>(reader));
+    let mut session = parsed?;
+    session.normalize_sidecars();
     Ok(TailLoad {
-        session: parsed?,
+        session,
         dropped,
         file_bytes,
     })
@@ -315,8 +381,10 @@ fn scan_sync(
                 // Chunk candidates across available CPUs. For ~300 files
                 // a fan-out of 4-8 threads saturates I/O and CPU nicely
                 // without oversubscribing.
-                let threads =
-                    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8);
+                let threads = std::thread::available_parallelism()
+                    .map(|n| n.get())
+                    .unwrap_or(4)
+                    .min(8);
                 let chunk_size = paths.len().div_ceil(threads);
                 for chunk_idx in 0..threads {
                     let start = chunk_idx * chunk_size;

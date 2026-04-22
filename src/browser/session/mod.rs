@@ -17,6 +17,6 @@ mod tabs;
 mod upload;
 mod wait;
 
-pub(super) use runtime_state::{SessionMode, SessionRuntime};
 pub use lifecycle::detect_browser;
+pub(super) use runtime_state::{SessionMode, SessionRuntime};
 pub use state::BrowserSession;

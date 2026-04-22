@@ -140,6 +140,15 @@ pub struct RlmConfig {
 
     /// Model reference for subcalls (provider:model)
     pub subcall_model: Option<String>,
+
+    /// Trigger RLM compaction once the stored session history reaches
+    /// this many messages, regardless of the token-budget estimate.
+    ///
+    /// This is a belt-and-braces trigger for cases where the token
+    /// estimator under-counts (e.g. large tool outputs, image parts,
+    /// or provider-specific protocol framing). Set to `0` to disable.
+    #[serde(default = "default_history_trigger_messages")]
+    pub history_trigger_messages: usize,
 }
 
 fn default_mode() -> String {
@@ -162,6 +171,12 @@ fn default_runtime() -> String {
     "rust".to_string()
 }
 
+/// Default number of stored messages that triggers RLM compaction
+/// independently of the token-budget check.
+fn default_history_trigger_messages() -> usize {
+    0
+}
+
 impl Default for RlmConfig {
     fn default() -> Self {
         Self {
@@ -172,6 +187,17 @@ impl Default for RlmConfig {
             runtime: default_runtime(),
             root_model: None,
             subcall_model: None,
+            history_trigger_messages: default_history_trigger_messages(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RlmConfig;
+
+    #[test]
+    fn default_history_trigger_is_disabled() {
+        assert_eq!(RlmConfig::default().history_trigger_messages, 0);
     }
 }

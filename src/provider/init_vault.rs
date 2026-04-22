@@ -95,4 +95,31 @@ impl ProviderRegistry {
         );
         Ok(registry)
     }
+
+    /// Process-wide cached [`from_vault`](Self::from_vault) registry.
+    ///
+    /// `from_vault` performs vault fetches plus env-var / AWS probing on
+    /// every call. Compression paths (e.g. RLM model resolution inside
+    /// [`enforce_on_messages`](crate::session::helper::compression::enforce_on_messages))
+    /// invoke it once per keep-last attempt per turn, which can add up
+    /// to several Vault round-trips of unnecessary latency in the hot
+    /// loop. This accessor lazily builds the registry exactly once and
+    /// hands out `Arc` clones thereafter.
+    ///
+    /// The cache is process-global. Restart the binary to pick up
+    /// re-keyed providers.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the underlying [`from_vault`](Self::from_vault) error
+    /// on the first call. Subsequent calls reuse the cached value and
+    /// cannot fail.
+    pub async fn shared_from_vault() -> Result<Arc<Self>> {
+        use tokio::sync::OnceCell;
+        static CACHED: OnceCell<Arc<ProviderRegistry>> = OnceCell::const_new();
+        CACHED
+            .get_or_try_init(|| async { Self::from_vault().await.map(Arc::new) })
+            .await
+            .cloned()
+    }
 }

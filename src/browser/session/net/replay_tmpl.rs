@@ -10,7 +10,11 @@ pub(super) fn build_script(request: ReplayRequest) -> Result<String, BrowserErro
     let body_patch = serde_json::to_string(&request.body_patch)?;
     let body_override = serde_json::to_string(&request.body_override)?;
     let extra_headers = serde_json::to_string(&request.extra_headers.unwrap_or_default())?;
-    let wc = if request.with_credentials.unwrap_or(true) { "true" } else { "false" };
+    let wc = if request.with_credentials.unwrap_or(true) {
+        "true"
+    } else {
+        "false"
+    };
     Ok(TEMPLATE
         .replace("__NEEDLE__", &needle)
         .replace("__METHOD_FILTER__", &method_filter)

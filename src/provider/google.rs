@@ -258,8 +258,12 @@ struct PromptTokenDetails {
 
 impl ApiUsage {
     fn cached_input_tokens(&self) -> usize {
-        self.cached_tokens
-            .unwrap_or_else(|| self.prompt_tokens_details.as_ref().map(|d| d.cached_tokens).unwrap_or(0))
+        self.cached_tokens.unwrap_or_else(|| {
+            self.prompt_tokens_details
+                .as_ref()
+                .map(|d| d.cached_tokens)
+                .unwrap_or(0)
+        })
     }
 }
 
@@ -507,9 +511,7 @@ impl Provider for GoogleProvider {
                     .unwrap_or(0),
                 completion_tokens: usage.map(|u| u.completion_tokens).unwrap_or(0),
                 total_tokens: usage.map(|u| u.total_tokens).unwrap_or(0),
-                cache_read_tokens: usage
-                    .map(ApiUsage::cached_input_tokens)
-                    .filter(|&n| n > 0),
+                cache_read_tokens: usage.map(ApiUsage::cached_input_tokens).filter(|&n| n > 0),
                 cache_write_tokens: None,
             },
             finish_reason,

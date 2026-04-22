@@ -25,26 +25,19 @@ use super::tools::rlm_tool_definitions;
 
 /// Tools eligible for RLM routing
 fn rlm_eligible_tools() -> HashSet<&'static str> {
-    // NOTE: This list is intentionally biased toward tools that often return
-    // large blobs of text. The router still supports routing *any* tool output
-    // when it is clearly too large to fit in the model context window.
+    // Only tools whose output is genuinely unpredictable in size AND that the
+    // agent cannot easily re-query in smaller chunks belong here. Routing
+    // replaces raw bytes with an RLM-generated prose summary, which is
+    // destructive for content-carrying tools like `read`/`grep`/`bash` — the
+    // agent has no way to get the original bytes back and re-reads produce
+    // the same summary, causing spin loops. Those tools already expose
+    // bounded slicing (offset/limit, line ranges, head/tail).
     [
-        "read",
-        "glob",
-        "grep",
-        "bash",
-        "search",
-        // File/tree-ish tools can easily explode
-        "tree",
-        "diff",
-        "headtail",
-        // Web tools are a common source of huge HTML/JS blobs
+        // Web tools commonly return megabytes of HTML/JS with no slicing API.
         "webfetch",
         "websearch",
-        // Batch aggregates outputs and can exceed the window quickly
+        // Batch aggregates many outputs and can exceed the window in one shot.
         "batch",
-        // Code search can return large listings
-        "codesearch",
     ]
     .iter()
     .copied()
@@ -194,10 +187,28 @@ impl RlmRouter {
             };
         }
 
-        // Check if adding this output would cause overflow
+        // Check if adding this output would cause overflow.
+        //
+        // Historically this branch also fired based on `current_context_tokens`
+        // alone, which silently replaced small, content-carrying tool outputs
+        // (e.g. a 2 KB `read`) with an RLM prose summary whenever the prior
+        // conversation happened to be large. The agent had no way to
+        // distinguish the summary from the file's bytes and would re-read the
+        // same path, hitting the same branch, producing the same summary —
+        // an unbreakable spin loop. Context-window pressure is the
+        // compression pass's responsibility, not the tool-output router's.
+        //
+        // We now only route on "would overflow" when the *new output itself*
+        // is responsible for a large share of the projected total. This
+        // preserves protection against a single oversized blob while leaving
+        // normal-sized tool results verbatim.
         if let Some(current) = ctx.current_context_tokens {
             let projected_total = current + estimated_tokens;
-            if projected_total > (ctx.model_context_limit as f64 * 0.8) as usize {
+            let overflow_limit = (ctx.model_context_limit as f64 * 0.8) as usize;
+            // Require the new output to contribute at least half of the
+            // overflow so we don't punish small reads for old context.
+            let output_dominates = estimated_tokens * 2 >= projected_total;
+            if projected_total > overflow_limit && output_dominates {
                 return RoutingResult {
                     should_route: true,
                     reason: if eligible {

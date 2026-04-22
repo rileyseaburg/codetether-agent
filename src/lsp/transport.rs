@@ -213,8 +213,7 @@ impl LspTransport {
                                                 .write()
                                                 .await
                                                 .insert(uri, diagnostics);
-                                            diag_publish_seq_clone
-                                                .fetch_add(1, Ordering::SeqCst);
+                                            diag_publish_seq_clone.fetch_add(1, Ordering::SeqCst);
                                         }
                                     }
                                 } else {

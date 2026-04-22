@@ -27,9 +27,9 @@ pub mod gemini_web;
 pub mod glm5;
 pub mod google;
 pub mod limits;
-pub mod pricing;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;
+pub mod pricing;
 pub mod util;
 #[cfg(not(feature = "candle-cuda"))]
 #[allow(dead_code)]

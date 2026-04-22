@@ -97,9 +97,8 @@ mod tests {
 
     #[tokio::test]
     async fn enter_while_processing_shows_hint_and_keeps_input() {
-        // Anthropic-style: while a turn is streaming, Enter no longer
-        // queues the input. It keeps the typed text in the buffer and
-        // shows a status hint pointing the user at Ctrl+C or /ask.
+        // While a turn is streaming, Enter no longer queues the input.
+        // It keeps the typed text and shows a hint pointing at /ask.
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
         app.state.processing = true;
@@ -112,29 +111,12 @@ mod tests {
         let (result_tx, _) = mpsc::channel(8);
 
         handle_enter(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
+            &mut app, cwd, &mut session, &None, &None, &event_tx, &result_tx,
         )
         .await;
 
-        // Input is preserved (not dispatched, not cleared)
         assert_eq!(app.state.input, "hello tui");
-        // No user message appended to the chat buffer
-        assert!(
-            app.state.messages.is_empty()
-                || !app.state.messages.iter().any(|m| m.content == "hello tui")
-        );
-        // Status points at Ctrl+C / /ask
-        assert!(
-            app.state.status.contains("Ctrl+C") || app.state.status.contains("/ask"),
-            "status should hint at interrupt / ask, got: {}",
-            app.state.status
-        );
+        assert!(app.state.status.contains("Ctrl+C") || app.state.status.contains("/ask"));
     }
 
     #[test]

@@ -19,7 +19,8 @@ npx codetether run "explain this codebase"
 
 Default cache locations:
 
-- Linux/macOS: `$XDG_CACHE_HOME/codetether-npx` or `~/.cache/codetether-npx`
+- macOS: `~/Library/Caches/codetether-npx`
+- Linux: `$XDG_CACHE_HOME/codetether-npx` or `~/.cache/codetether-npx`
 - Windows: `%LOCALAPPDATA%\codetether-npx`
 
 ### Overrides

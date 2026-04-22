@@ -34,6 +34,7 @@ mod provenance;
 mod provider;
 pub mod ralph;
 pub mod rlm;
+mod search;
 pub mod secrets;
 mod server;
 mod session;
@@ -644,6 +645,8 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Forage(args)) => forage::execute(args).await,
+        Some(Command::Search(args)) => cli::search::execute(args).await,
+        Some(Command::Context(args)) => cli::context::execute(args).await,
         Some(Command::Worker(mut args)) => {
             // Auto-load saved credentials if no token provided
             if args.token.is_none()

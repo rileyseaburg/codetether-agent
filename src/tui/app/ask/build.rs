@@ -6,9 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::provider::{
-    CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role,
-};
+use crate::provider::{CompletionRequest, ContentPart, Message, Provider, ProviderRegistry, Role};
 use crate::session::Session;
 
 /// Resolve the session's provider and build the ephemeral request.
@@ -27,7 +25,7 @@ pub(super) fn build_request(
         .unwrap_or_else(|| "bedrock".to_string());
     let (provider, model) =
         crate::autochat::model_rotation::resolve_provider_for_model_autochat(registry, &model_ref)?;
-    let mut messages = session.messages.clone();
+    let mut messages = session.history().to_vec();
     messages.push(Message {
         role: Role::User,
         content: vec![ContentPart::Text {

@@ -262,7 +262,10 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     // ── Keyboard shortcuts ──
     lines.push(heading("KEYBOARD SHORTCUTS"));
     lines.push(separator());
-    lines.push(key_row("Ctrl+C", "Interrupt turn (while streaming) or quit (when idle)"));
+    lines.push(key_row(
+        "Ctrl+C",
+        "Interrupt turn (while streaming) or quit (when idle)",
+    ));
     lines.push(key_row("Ctrl+Q", "Quit"));
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));
@@ -333,7 +336,12 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     ));
     lines.push(cmd_row("/settings", "/set", "Settings panel"));
     lines.push(cmd_row("/new", "", "Start fresh chat buffer"));
-    lines.push(cmd_row("/undo", "", "Undo last user message and response"));
+    lines.push(cmd_row("/undo", "", "Undo last turn (accepts /undo <N>)"));
+    lines.push(cmd_row(
+        "/fork",
+        "",
+        "Fork session at current point (/fork <N> drops last N turns)",
+    ));
     lines.push(blank());
 
     lines.push(heading("Protocol & Observability"));

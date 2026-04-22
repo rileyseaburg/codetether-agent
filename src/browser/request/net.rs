@@ -131,4 +131,3 @@ pub struct ReplayRequest {
     pub extra_headers: Option<HashMap<String, String>>,
     pub with_credentials: Option<bool>,
 }
-

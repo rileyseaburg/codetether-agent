@@ -14,6 +14,7 @@ use crate::tool::ToolRegistry;
 use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use crate::tui::swarm_view::SwarmEvent;
 use crate::worktree::WorktreeManager;
+use futures::stream::{self, StreamExt};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -687,6 +688,58 @@ impl RalphLoop {
             // Stories are already cloned from stages()
             let stories: Vec<UserStory> = stage_stories;
 
+            // Pre-create all worktrees for this stage in parallel *before*
+            // spawning the story tasks. `git worktree add` serializes on the
+            // `.git/worktrees` lock, so doing this up front (bounded to 8)
+            // drains the lock contention in one burst rather than racing it
+            // against every story's first tool call.
+            let mut worktrees_by_story: HashMap<String, crate::worktree::WorktreeInfo> =
+                HashMap::new();
+            if let Some(ref mgr) = worktree_mgr {
+                let ids: Vec<String> = stories.iter().map(|s| s.id.clone()).collect();
+                let created: Vec<(String, Option<crate::worktree::WorktreeInfo>)> =
+                    stream::iter(ids.into_iter())
+                        .map(|story_id| {
+                            let mgr = Arc::clone(mgr);
+                            async move {
+                                let slug = story_id.to_lowercase().replace("-", "_");
+                                match mgr.create(&slug).await {
+                                    Ok(wt) => {
+                                        if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
+                                            warn!(
+                                                story_id = %story_id,
+                                                error = %e,
+                                                "Failed to inject workspace stub"
+                                            );
+                                        }
+                                        info!(
+                                            story_id = %story_id,
+                                            worktree_path = %wt.path.display(),
+                                            "Pre-created worktree for story"
+                                        );
+                                        (story_id, Some(wt))
+                                    }
+                                    Err(e) => {
+                                        warn!(
+                                            story_id = %story_id,
+                                            error = %e,
+                                            "Failed to pre-create worktree, will use main directory"
+                                        );
+                                        (story_id, None)
+                                    }
+                                }
+                            }
+                        })
+                        .buffer_unordered(8)
+                        .collect()
+                        .await;
+                for (sid, wt) in created {
+                    if let Some(wt) = wt {
+                        worktrees_by_story.insert(sid, wt);
+                    }
+                }
+            }
+
             // Execute stories in parallel
             let semaphore = Arc::new(tokio::sync::Semaphore::new(
                 self.config.max_concurrent_stories,
@@ -712,6 +765,7 @@ impl RalphLoop {
                 let prd_info = prd_info.clone();
                 let working_dir = working_dir.clone();
                 let worktree_mgr = worktree_mgr.clone();
+                let prebuilt_worktree = worktrees_by_story.remove(&story.id);
                 let progress_path = progress_path.clone();
                 let ralph_tx = self.event_tx.clone();
                 let stage_learnings = accumulated_learnings.clone();
@@ -737,34 +791,14 @@ impl RalphLoop {
                 )> = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
 
-                    // Create worktree for this story if enabled
-                    let (story_working_dir, worktree_info) = if let Some(ref mgr) = worktree_mgr {
-                        match mgr.create(&story.id.to_lowercase().replace("-", "_")).await {
-                            Ok(wt) => {
-                                // Inject [workspace] stub for hermetic isolation
-                                if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
-                                    warn!(
-                                        story_id = %story.id,
-                                        error = %e,
-                                        "Failed to inject workspace stub"
-                                    );
-                                }
-                                info!(
-                                    story_id = %story.id,
-                                    worktree_path = %wt.path.display(),
-                                    "Created worktree for story"
-                                );
-                                (wt.path.clone(), Some(wt))
-                            }
-                            Err(e) => {
-                                warn!(
-                                    story_id = %story.id,
-                                    error = %e,
-                                    "Failed to create worktree, using main directory"
-                                );
-                                (working_dir.clone(), None)
-                            }
-                        }
+                    // Use the pre-created worktree for this story if one
+                    // was provisioned above; otherwise fall back to the
+                    // main working directory. Worktree creation now
+                    // happens in a bounded parallel pass *before* task
+                    // spawn, so we no longer race the `.git/worktrees`
+                    // lock inside every task.
+                    let (story_working_dir, worktree_info) = if let Some(wt) = prebuilt_worktree {
+                        (wt.path.clone(), Some(wt))
                     } else {
                         (working_dir.clone(), None)
                     };

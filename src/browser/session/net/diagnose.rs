@@ -27,9 +27,16 @@ pub async fn diagnose(
 ) -> Result<BrowserOutput, BrowserError> {
     let page = access::current_page(session).await?;
     let _ = super::super::lifecycle::install_page_hooks(&page).await;
-    let result = tokio::time::timeout(EVAL_TIMEOUT, page.evaluate_expression(super::diagnose_tmpl::SCRIPT))
-        .await
-        .map_err(|_| BrowserError::EvaluationTimeout)??;
-    let value = result.object().value.clone().unwrap_or(serde_json::json!({}));
+    let result = tokio::time::timeout(
+        EVAL_TIMEOUT,
+        page.evaluate_expression(super::diagnose_tmpl::SCRIPT),
+    )
+    .await
+    .map_err(|_| BrowserError::EvaluationTimeout)??;
+    let value = result
+        .object()
+        .value
+        .clone()
+        .unwrap_or(serde_json::json!({}));
     Ok(BrowserOutput::Json(value))
 }

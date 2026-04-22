@@ -10,7 +10,9 @@ pub(super) fn build_script(request: AxiosRequest) -> Result<String, BrowserError
     let method = request.method.to_lowercase();
     let body_methods = matches!(method.as_str(), "post" | "put" | "patch");
     let path = serde_json::to_string(
-        &request.axios_path.unwrap_or_else(|| "__autodetect__".to_string()),
+        &request
+            .axios_path
+            .unwrap_or_else(|| "__autodetect__".to_string()),
     )?;
     let method_json = serde_json::to_string(&method)?;
     Ok(TEMPLATE
@@ -19,7 +21,10 @@ pub(super) fn build_script(request: AxiosRequest) -> Result<String, BrowserError
         .replace("__BODY__", &body)
         .replace("__HEADERS__", &headers)
         .replace("__METHOD__", &method_json)
-        .replace("__BODY_METHODS__", if body_methods { "true" } else { "false" }))
+        .replace(
+            "__BODY_METHODS__",
+            if body_methods { "true" } else { "false" },
+        ))
 }
 
 const TEMPLATE: &str = r#"(async () => {

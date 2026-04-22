@@ -53,8 +53,10 @@ fn parse_tail(path: &Path, window: usize) -> Result<TailLoad> {
         serde_json::from_reader::<_, Session>(reader)
             .with_context(|| format!("parse session file {}", path.display()))
     });
+    let mut session = parsed?;
+    session.normalize_sidecars();
     Ok(TailLoad {
-        session: parsed?,
+        session,
         dropped,
         file_bytes,
     })

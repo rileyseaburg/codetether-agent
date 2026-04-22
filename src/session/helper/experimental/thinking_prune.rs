@@ -80,7 +80,8 @@ pub fn prune_thinking(messages: &mut Vec<Message>) -> ExperimentalStats {
             continue;
         }
         let before: usize = msg.content.iter().map(thinking_bytes).sum();
-        msg.content.retain(|p| !matches!(p, ContentPart::Thinking { .. }));
+        msg.content
+            .retain(|p| !matches!(p, ContentPart::Thinking { .. }));
         let after: usize = msg.content.iter().map(thinking_bytes).sum();
         let saved = before.saturating_sub(after);
         if saved > 0 {
