@@ -89,12 +89,26 @@ pub fn trim_middle(messages: &mut Vec<Message>) -> ExperimentalStats {
     let mut cut_start = SINK_MESSAGES;
     let mut cut_end = total - RECENT_MESSAGES;
 
-    // Never cut a tool_call away from its tool_result. Walk cut_end
-    // backward until the message immediately before it has no open
-    // tool_call, and walk cut_start forward past any tool message so
-    // we never start a history on a dangling Role::Tool.
-    while cut_end > cut_start && has_open_tool_call(&messages[cut_end - 1]) {
-        cut_end -= 1;
+    // Never split a tool_call ⇄ tool_result pair across the boundary.
+    //
+    // The original approach was to *retreat* cut_end past any open tool
+    // call, hoping the paired tool result sat at cut_end so both would
+    // end up in the preserved tail. That breaks when the call is
+    // orphaned at the boundary (no following Tool result in the
+    // recency window): retreating leaves the open ToolCall stranded at
+    // the head of the preserved tail followed by a User message,
+    // which every provider's chat API rejects.
+    //
+    // Instead we *advance* cut_end forward into what would have been
+    // the recent window, absorbing the orphan call (and any immediate
+    // Tool results) into the dropped middle. This costs at most a few
+    // messages of recency but guarantees the preserved tail starts on
+    // a clean boundary — no dangling Tool result, no orphan ToolCall.
+    while cut_end < total && has_open_tool_call(&messages[cut_end - 1]) {
+        cut_end += 1;
+    }
+    while cut_end < total && messages[cut_end].role == Role::Tool {
+        cut_end += 1;
     }
     while cut_start < cut_end && messages[cut_start].role == Role::Tool {
         cut_start += 1;
