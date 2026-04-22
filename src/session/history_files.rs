@@ -1,5 +1,7 @@
 //! Materialized turn files for filesystem-style history browsing.
 
+use std::collections::HashSet;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -64,24 +66,58 @@ pub(crate) fn history_dir_for_session(session: &Session) -> Result<PathBuf> {
 
 pub(crate) async fn materialize_session_history(session: &Session) -> Result<Vec<PathBuf>> {
     let dir = history_dir_for_session(session)?;
-    match fs::remove_dir_all(&dir).await {
-        Ok(()) => {}
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => return Err(err).with_context(|| format!("remove {}", dir.display())),
-    }
     fs::create_dir_all(&dir)
         .await
         .with_context(|| format!("create {}", dir.display()))?;
 
     let mut paths = Vec::with_capacity(session.history().len());
+    let mut expected = HashSet::with_capacity(session.history().len());
     for (idx, msg) in session.history().iter().enumerate() {
         let path = format_turn_path(&dir, idx, role_label(&msg.role));
-        fs::write(&path, render_turn(msg))
-            .await
-            .with_context(|| format!("write {}", path.display()))?;
+        let body = render_turn(msg);
+        write_turn_if_changed(&path, &body).await?;
+        expected.insert(file_name(&path)?);
         paths.push(path);
     }
+    prune_stale_turn_files(&dir, &expected).await?;
     Ok(paths)
+}
+
+async fn write_turn_if_changed(path: &Path, body: &str) -> Result<()> {
+    match fs::read_to_string(path).await {
+        Ok(existing) if existing == body => return Ok(()),
+        Ok(_) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => return Err(err).with_context(|| format!("read {}", path.display())),
+    }
+    fs::write(path, body)
+        .await
+        .with_context(|| format!("write {}", path.display()))
+}
+
+async fn prune_stale_turn_files(dir: &Path, expected: &HashSet<OsString>) -> Result<()> {
+    let mut entries = fs::read_dir(dir)
+        .await
+        .with_context(|| format!("read_dir {}", dir.display()))?;
+    while let Some(entry) = entries.next_entry().await? {
+        let file_type = entry.file_type().await?;
+        if !file_type.is_file() {
+            continue;
+        }
+        let name = entry.file_name();
+        if !expected.contains(&name) {
+            fs::remove_file(entry.path())
+                .await
+                .with_context(|| format!("remove {}", entry.path().display()))?;
+        }
+    }
+    Ok(())
+}
+
+fn file_name(path: &Path) -> Result<OsString> {
+    path.file_name()
+        .map(|name| name.to_os_string())
+        .context("materialized history path missing file name")
 }
 
 fn workspace_data_dir(workspace: Option<&Path>) -> PathBuf {

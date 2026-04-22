@@ -30,9 +30,7 @@ use crate::rlm::{RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 
 use super::super::{DEFAULT_MAX_STEPS, Session, SessionResult};
-use super::bootstrap::{
-    inject_tool_prompt, list_tools_bootstrap_definition, list_tools_bootstrap_output,
-};
+use super::bootstrap::list_tools_bootstrap_output;
 use super::build::{
     build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
 };
@@ -51,13 +49,12 @@ use super::loop_constants::{
 };
 use super::markup::normalize_textual_tool_calls;
 use super::provider::{
-    prefers_temperature_one, resolve_provider_for_session_request,
-    should_retry_missing_native_tool_call, temperature_is_deprecated,
+    resolve_provider_for_session_request, should_retry_missing_native_tool_call,
 };
+use super::request_state::build_provider_step_state;
 use super::router::{build_proactive_lsp_context_message, choose_router_target_bandit};
 use super::runtime::{
     enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
-    is_local_cuda_provider, local_cuda_light_system_prompt,
 };
 use super::text::extract_text_content;
 use super::token::{
@@ -111,54 +108,26 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         default_model_for_provider(&selected_provider)
     };
 
-    // Phase A: oversized-user-message compression now happens inside
-    // `derive_context` on a clone. Keeping the original text in
-    // `session.messages` means `session_recall` and the MinIO history
-    // sink can still see what the user actually typed.
-
-    let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-    let tool_definitions: Vec<_> = tool_registry
-        .definitions()
-        .into_iter()
-        .filter(|tool| !is_interactive_tool(&tool.name))
-        .collect();
-
-    let mut temperature = if temperature_is_deprecated(&model) {
-        None
-    } else if prefers_temperature_one(&model) {
-        Some(1.0)
-    } else {
-        Some(0.7)
-    };
-
-    tracing::info!("Using model: {} via provider: {}", model, selected_provider);
-    tracing::info!("Available tools: {}", tool_definitions.len());
-
-    let mut model_supports_tools = !matches!(
-        selected_provider.as_str(),
-        "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
-    );
-    let mut advertised_tool_definitions = if model_supports_tools {
-        tool_definitions.clone()
-    } else {
-        vec![list_tools_bootstrap_definition()]
-    };
-
     let cwd = session
         .metadata
         .directory
         .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-    let system_prompt = if is_local_cuda_provider(&selected_provider) {
-        local_cuda_light_system_prompt()
-    } else {
-        crate::agent::builtin::build_system_prompt(&cwd)
-    };
-    let system_prompt = if !model_supports_tools && !advertised_tool_definitions.is_empty() {
-        inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
-    } else {
-        system_prompt
-    };
+    // Phase A: oversized-user-message compression now happens inside
+    // `derive_context` on a clone. Keeping the original text in
+    // `session.messages` means `session_recall` and the MinIO history
+    // sink can still see what the user actually typed.
+    let mut provider_state =
+        build_provider_step_state(Arc::clone(&provider), &selected_provider, &model, &cwd);
+    let mut tool_registry = provider_state.tool_registry.clone();
+    let mut tool_definitions = provider_state.tool_definitions.clone();
+    let mut temperature = provider_state.temperature;
+    let mut model_supports_tools = provider_state.model_supports_tools;
+    let mut advertised_tool_definitions = provider_state.advertised_tool_definitions.clone();
+    let mut system_prompt = provider_state.system_prompt.clone();
+
+    tracing::info!("Using model: {} via provider: {}", model, selected_provider);
+    tracing::info!("Available tools: {}", tool_definitions.len());
 
     let max_steps = session.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
     let mut final_output = String::new();
@@ -207,7 +176,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         )
         .await?;
 
-        let proactive_lsp_message = build_proactive_lsp_context_message(
+        let mut proactive_lsp_message = build_proactive_lsp_context_message(
             selected_provider.as_str(),
             step,
             &tool_registry,
@@ -306,22 +275,38 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                                 anyhow::anyhow!("Provider {} not found", selected_provider.clone())
                             })?;
                             model = retry_model;
-                            temperature = if temperature_is_deprecated(&model) {
-                                None
-                            } else if prefers_temperature_one(&model) {
-                                Some(1.0)
-                            } else {
-                                Some(0.7)
-                            };
-                            model_supports_tools = !matches!(
-                                selected_provider.as_str(),
-                                "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
+                            provider_state = build_provider_step_state(
+                                Arc::clone(&provider),
+                                &selected_provider,
+                                &model,
+                                &cwd,
                             );
-                            advertised_tool_definitions = if model_supports_tools {
-                                tool_definitions.clone()
-                            } else {
-                                vec![list_tools_bootstrap_definition()]
-                            };
+                            tool_registry = provider_state.tool_registry.clone();
+                            tool_definitions = provider_state.tool_definitions.clone();
+                            temperature = provider_state.temperature;
+                            model_supports_tools = provider_state.model_supports_tools;
+                            advertised_tool_definitions =
+                                provider_state.advertised_tool_definitions.clone();
+                            system_prompt = provider_state.system_prompt.clone();
+                            derived = derive_with_policy(
+                                session,
+                                Arc::clone(&provider),
+                                &model,
+                                &system_prompt,
+                                &advertised_tool_definitions,
+                                None,
+                                policy,
+                                None,
+                            )
+                            .await?;
+                            proactive_lsp_message = build_proactive_lsp_context_message(
+                                selected_provider.as_str(),
+                                step,
+                                &tool_registry,
+                                &session.messages,
+                                &cwd,
+                            )
+                            .await;
                             session.metadata.model = Some(format!("{selected_provider}/{model}"));
                             attempt = 0;
                         }

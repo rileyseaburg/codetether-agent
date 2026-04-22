@@ -234,10 +234,14 @@ pub async fn append_entries(session_id: &str, entries: &[JournalEntry]) -> anyho
         .append(true)
         .open(&path)
         .await?;
+    let mut batch = Vec::new();
     for entry in entries {
         let line = serde_json::to_string(entry)?;
-        file.write_all(line.as_bytes()).await?;
-        file.write_all(b"\n").await?;
+        batch.extend_from_slice(line.as_bytes());
+        batch.push(b'\n');
+    }
+    if !batch.is_empty() {
+        file.write_all(&batch).await?;
     }
     file.flush().await?;
     Ok(())

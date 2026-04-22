@@ -43,13 +43,25 @@ enum SessionLoadOutcome {
 /// prior session. Older entries are dropped to bound startup memory; the
 /// user is notified in the status line when truncation occurs.
 const DEFAULT_SESSION_RESUME_WINDOW: usize = 1_000;
+const MAX_SESSION_RESUME_WINDOW: usize = 10_000;
 
 fn session_resume_window() -> usize {
-    std::env::var("CODETETHER_SESSION_RESUME_WINDOW")
+    let parsed = std::env::var("CODETETHER_SESSION_RESUME_WINDOW")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
-        .filter(|value| *value > 0)
-        .unwrap_or(DEFAULT_SESSION_RESUME_WINDOW)
+        .filter(|value| *value > 0);
+    match parsed {
+        Some(value) if value > MAX_SESSION_RESUME_WINDOW => {
+            tracing::warn!(
+                requested = value,
+                clamped = MAX_SESSION_RESUME_WINDOW,
+                "session resume window too large; clamping"
+            );
+            MAX_SESSION_RESUME_WINDOW
+        }
+        Some(value) => value,
+        None => DEFAULT_SESSION_RESUME_WINDOW,
+    }
 }
 
 async fn init_tui_secrets_manager() {
