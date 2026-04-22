@@ -1,4 +1,4 @@
-//! `context_browse`: expose the session transcript as virtual files.
+//! `context_browse`: expose the session transcript as real turn files.
 //!
 //! ## Meta-Harness filesystem-as-history (Phase B step 21)
 //!
@@ -11,16 +11,16 @@
 //! "may even hurt by compressing away diagnostically useful details".
 //!
 //! This tool gives the agent the same primitive over *its own past
-//! turns*. Every entry in [`Session::messages`] is exposed as a path
-//! of the form:
+//! turns*. Every entry in [`Session::messages`] is materialized as a file
+//! under the workspace data dir:
 //!
 //! ```text
-//! session://<session-id>/turn-NNNN-<role>.md
+//! .codetether-agent/history/<session-id>/turn-NNNN-<role>.md
 //! ```
 //!
-//! The agent's existing Shell / Read / Grep tools can already browse
-//! these paths once Phase A's history-sink backing store is populated;
-//! this tool is the *list + locate* layer on top of it.
+//! The agent's existing Shell / Read / Grep tools can browse those files
+//! directly after this tool materializes them; this tool is the *list +
+//! locate* layer on top of that directory.
 //!
 //! ## What it does
 //!
@@ -42,14 +42,14 @@
 //! ## Examples
 //!
 //! ```rust
-//! use codetether_agent::tool::context_browse::{
-//!     ContextBrowseAction, format_turn_path, parse_browse_action,
-//! };
+//! use std::path::Path;
+//!
+//! use codetether_agent::tool::context_browse::{ContextBrowseAction, format_turn_path, parse_browse_action};
 //! use serde_json::json;
 //!
 //! assert_eq!(
-//!     format_turn_path("abc-123", 7, "user"),
-//!     "session://abc-123/turn-0007-user.md",
+//!     format_turn_path(Path::new("/tmp/history/abc-123"), 7, "user"),
+//!     Path::new("/tmp/history/abc-123/turn-0007-user.md"),
 //! );
 //!
 //! let action = parse_browse_action(&json!({})).unwrap();
@@ -60,11 +60,13 @@
 //! ```
 
 use super::{Tool, ToolResult};
-use crate::provider::{ContentPart, Message, Role};
+use crate::session::Fault;
 use crate::session::Session;
+use crate::session::history_files::{materialize_session_history, render_turn};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
+use std::path::{Path, PathBuf};
 
 /// Parsed form of the JSON `args` payload.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,67 +97,18 @@ pub fn parse_browse_action(args: &Value) -> Result<ContextBrowseAction, String> 
     }
 }
 
-/// Produce the canonical virtual path for a turn.
-pub fn format_turn_path(session_id: &str, turn: usize, role: &str) -> String {
-    format!("session://{session_id}/turn-{turn:04}-{role}.md")
+/// Produce the canonical materialized filesystem path for a turn.
+pub fn format_turn_path(session_dir: &Path, turn: usize, role: &str) -> PathBuf {
+    crate::session::history_files::format_turn_path(session_dir, turn, role)
 }
 
-/// Lower-case role label used in the path.
-fn role_label(role: &Role) -> &'static str {
-    match role {
-        Role::System => "system",
-        Role::User => "user",
-        Role::Assistant => "assistant",
-        Role::Tool => "tool",
-    }
-}
-
-/// Render a message body as the text the agent would see if it opened
-/// the virtual file. Text and tool-result parts are concatenated in
-/// order; non-textual parts are replaced by a short placeholder so the
-/// path stays readable.
-fn render_turn(msg: &Message) -> String {
-    let mut buf = String::new();
-    for part in &msg.content {
-        if !buf.is_empty() {
-            buf.push_str("\n\n");
-        }
-        match part {
-            ContentPart::Text { text } => buf.push_str(text),
-            ContentPart::ToolResult {
-                tool_call_id,
-                content,
-            } => {
-                buf.push_str(&format!("[tool_result tool_call_id={tool_call_id}]\n"));
-                buf.push_str(content);
-            }
-            ContentPart::ToolCall {
-                name, arguments, ..
-            } => {
-                buf.push_str(&format!("[tool_call {name}]\n{arguments}"));
-            }
-            ContentPart::Image { url, .. } => {
-                buf.push_str(&format!("[image {url}]"));
-            }
-            ContentPart::File { path, .. } => {
-                buf.push_str(&format!("[file {path}]"));
-            }
-            ContentPart::Thinking { text } => {
-                buf.push_str(&format!("[thinking]\n{text}"));
-            }
-        }
-    }
-    buf
-}
-
-/// Render a listing of virtual paths, one per line.
-fn render_listing(session_id: &str, messages: &[Message]) -> String {
-    let mut out = String::new();
-    for (idx, msg) in messages.iter().enumerate() {
-        out.push_str(&format_turn_path(session_id, idx, role_label(&msg.role)));
-        out.push('\n');
-    }
-    out
+/// Render a listing of materialized paths, one per line.
+fn render_listing(paths: &[PathBuf]) -> String {
+    paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Meta-Harness filesystem-as-history tool.
@@ -173,11 +126,11 @@ impl Tool for ContextBrowseTool {
 
     fn description(&self) -> &str {
         "BROWSE YOUR OWN HISTORY AS A FILESYSTEM (Meta-Harness, \
-         arXiv:2603.28052). Lists virtual paths like \
-         `session://<id>/turn-NNNN-<role>.md` — one per turn in the \
-         canonical transcript — and returns the body of any specific \
-         turn on request. Use this when the active context doesn't \
-         have what you need but you suspect it was said earlier. \
+         arXiv:2603.28052). Materializes real files under \
+         `.codetether-agent/history/<session-id>/turn-NNNN-<role>.md` \
+         — one per turn in the canonical transcript — and returns the \
+         body of any specific turn on request. Use this when the active \
+         context doesn't have what you need but you suspect it was said earlier. \
          Distinct from `session_recall` (RLM-summarised archive) and \
          `memory` (curated notes). Actions: `list` (default) or \
          `show_turn` with an integer `turn`."
@@ -212,30 +165,63 @@ impl Tool for ContextBrowseTool {
         let session = match latest_session_for_cwd().await {
             Ok(Some(s)) => s,
             Ok(None) => {
-                return Ok(ToolResult::error(
+                return Ok(fault_result(
+                    Fault::NoMatch,
                     "No session found for the current workspace.",
                 ));
             }
-            Err(e) => return Ok(ToolResult::error(format!("failed to load session: {e}"))),
+            Err(e) => {
+                return Ok(fault_result(
+                    Fault::BackendError {
+                        reason: e.to_string(),
+                    },
+                    format!("failed to load session: {e}"),
+                ));
+            }
+        };
+        let paths = match materialize_session_history(&session).await {
+            Ok(paths) => paths,
+            Err(err) => {
+                return Ok(fault_result(
+                    Fault::BackendError {
+                        reason: err.to_string(),
+                    },
+                    format!("failed to materialize history files: {err}"),
+                ));
+            }
         };
         let messages = session.history();
         match action {
-            ContextBrowseAction::ListTurns => {
-                Ok(ToolResult::success(render_listing(&session.id, messages))
-                    .truncate_to(super::tool_output_budget()))
-            }
-            ContextBrowseAction::ShowTurn { turn } => {
-                match messages.get(turn) {
-                    Some(msg) => Ok(ToolResult::success(render_turn(msg))
-                        .truncate_to(super::tool_output_budget())),
-                    None => Ok(ToolResult::error(format!(
-                        "turn {turn} out of range (have {} entries)",
-                        messages.len()
-                    ))),
-                }
-            }
+            ContextBrowseAction::ListTurns => Ok(ToolResult::success(render_listing(&paths))
+                .with_metadata("session_id", json!(session.id))
+                .truncate_to(super::tool_output_budget())),
+            ContextBrowseAction::ShowTurn { turn } => match messages.get(turn) {
+                Some(msg) => Ok(ToolResult::success(render_turn(msg))
+                    .with_metadata(
+                        "path",
+                        json!(
+                            paths
+                                .get(turn)
+                                .map(|path| path.display().to_string())
+                                .unwrap_or_else(String::new)
+                        ),
+                    )
+                    .truncate_to(super::tool_output_budget())),
+                None => Ok(ToolResult::error(format!(
+                    "turn {turn} out of range (have {} entries)",
+                    messages.len()
+                ))),
+            },
         }
     }
+}
+
+fn fault_result(fault: Fault, output: impl Into<String>) -> ToolResult {
+    let code = fault.code();
+    let detail = fault.to_string();
+    ToolResult::error(output)
+        .with_metadata("fault_code", json!(code))
+        .with_metadata("fault_detail", json!(detail))
 }
 
 /// Resolve the session this tool should browse.
@@ -277,6 +263,7 @@ async fn latest_session_for_cwd() -> Result<Option<Session>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn parse_browse_action_defaults_to_list() {
@@ -297,43 +284,24 @@ mod tests {
     }
 
     #[test]
-    fn format_turn_path_pads_index_to_four_digits() {
+    fn format_turn_path_uses_real_filesystem_paths() {
+        let path0 = format_turn_path(Path::new("/tmp/history/sid"), 0, "user");
+        let path = format_turn_path(Path::new("/tmp/history/sid"), 7, "assistant");
+        assert_eq!(path0, PathBuf::from("/tmp/history/sid/turn-0000-user.md"));
         assert_eq!(
-            format_turn_path("abc-123", 0, "user"),
-            "session://abc-123/turn-0000-user.md"
+            path,
+            PathBuf::from("/tmp/history/sid/turn-0007-assistant.md")
         );
-        assert_eq!(
-            format_turn_path("abc-123", 9999, "assistant"),
-            "session://abc-123/turn-9999-assistant.md"
-        );
-    }
-
-    fn text(role: Role, s: &str) -> Message {
-        Message {
-            role,
-            content: vec![ContentPart::Text {
-                text: s.to_string(),
-            }],
-        }
     }
 
     #[test]
     fn render_listing_emits_one_path_per_turn() {
-        let msgs = vec![
-            text(Role::User, "hi"),
-            text(Role::Assistant, "hello"),
-            text(Role::User, "more"),
-        ];
-        let listing = render_listing("sid", &msgs);
-        assert_eq!(listing.lines().count(), 3);
-        assert!(listing.contains("session://sid/turn-0000-user.md"));
-        assert!(listing.contains("session://sid/turn-0001-assistant.md"));
-        assert!(listing.contains("session://sid/turn-0002-user.md"));
-    }
-
-    #[test]
-    fn render_turn_preserves_text_body() {
-        let body = render_turn(&text(Role::User, "quick brown fox"));
-        assert_eq!(body, "quick brown fox");
+        let listing = render_listing(&[
+            PathBuf::from("/tmp/history/sid/turn-0000-user.md"),
+            PathBuf::from("/tmp/history/sid/turn-0001-assistant.md"),
+        ]);
+        assert_eq!(listing.lines().count(), 2);
+        assert!(listing.contains("/tmp/history/sid/turn-0000-user.md"));
+        assert!(listing.contains("/tmp/history/sid/turn-0001-assistant.md"));
     }
 }

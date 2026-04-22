@@ -2,6 +2,8 @@
 
 use crate::provider::{ContentPart, Message, Role};
 
+const RESET_MARKER_PREFIX: &str = "[CONTEXT RESET]";
+
 /// Index of the last [`Role::User`] message in `messages`, if any.
 ///
 /// Used by [`derive_reset`](super::reset::derive_reset) to preserve
@@ -25,13 +27,31 @@ pub(super) fn build_reset_summary_message(summary: &str) -> Message {
         role: Role::Assistant,
         content: vec![ContentPart::Text {
             text: format!(
-                "[CONTEXT RESET]\nEverything older than the current user turn was \
+                "{RESET_MARKER_PREFIX}\nEverything older than the current user turn was \
                  compressed into the summary below. Recent turns were \
                  intentionally discarded — call `session_recall` if you need \
                  a specific dropped detail.\n\n{summary}"
             ),
         }],
     }
+}
+
+/// Index of the most-recent reset marker in `messages`, if any.
+pub(super) fn latest_reset_marker_index(messages: &[Message]) -> Option<usize> {
+    messages
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, msg)| message_has_reset_marker(msg))
+        .map(|(idx, _)| idx)
+}
+
+fn message_has_reset_marker(msg: &Message) -> bool {
+    msg.content.iter().any(|part| match part {
+        ContentPart::Text { text } => text.starts_with(RESET_MARKER_PREFIX),
+        ContentPart::ToolResult { content, .. } => content.starts_with(RESET_MARKER_PREFIX),
+        _ => false,
+    })
 }
 
 #[cfg(test)]

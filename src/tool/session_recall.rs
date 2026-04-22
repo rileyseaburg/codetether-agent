@@ -19,6 +19,7 @@ use super::{Tool, ToolResult};
 use crate::provider::Provider;
 use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmConfig, RlmRouter};
+use crate::session::Fault;
 use crate::session::Session;
 use crate::session::helper::error::messages_to_rlm_context;
 use anyhow::Result;
@@ -115,12 +116,16 @@ impl Tool for SessionRecallTool {
 
         let (context, sources) = match build_recall_context(session_id, limit).await {
             Ok(ok) => ok,
-            Err(e) => return Ok(ToolResult::error(format!("recall load failed: {e}"))),
+            Err(e) => {
+                let fault = fault_from_error(&e);
+                return Ok(fault_result(fault, format!("recall load failed: {e}")));
+            }
         };
 
         if context.trim().is_empty() {
-            return Ok(ToolResult::success(
-                "No prior session history found for this workspace.".to_string(),
+            return Ok(fault_result(
+                Fault::NoMatch,
+                "No prior session history found for this workspace.",
             ));
         }
 
@@ -134,6 +139,27 @@ impl Tool for SessionRecallTool {
         )
         .await
     }
+}
+
+fn fault_from_error(err: &anyhow::Error) -> Fault {
+    let message = err.to_string();
+    let lowered = message.to_ascii_lowercase();
+    if lowered.contains("no session")
+        || lowered.contains("not found")
+        || lowered.contains("no such file")
+    {
+        Fault::NoMatch
+    } else {
+        Fault::BackendError { reason: message }
+    }
+}
+
+fn fault_result(fault: Fault, output: impl Into<String>) -> ToolResult {
+    let code = fault.code();
+    let detail = fault.to_string();
+    ToolResult::error(output)
+        .with_metadata("fault_code", json!(code))
+        .with_metadata("fault_detail", json!(detail))
 }
 
 /// Load session transcripts and flatten them into an RLM-ready string.
@@ -227,6 +253,11 @@ async fn run_recall(
             result.stats.iterations,
             result.processed
         ))),
-        Err(e) => Ok(ToolResult::error(format!("RLM recall failed: {e}"))),
+        Err(e) => Ok(fault_result(
+            Fault::BackendError {
+                reason: e.to_string(),
+            },
+            format!("RLM recall failed: {e}"),
+        )),
     }
 }

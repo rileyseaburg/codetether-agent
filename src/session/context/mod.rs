@@ -13,4 +13,4 @@ mod reset_summary;
 
 pub use self::derive::derive_context;
 pub use self::helpers::DerivedContext;
-pub use self::policy::derive_with_policy;
+pub use self::policy::{derive_with_policy, effective_policy};

@@ -5,13 +5,14 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use crate::provider::ToolDefinition;
+use crate::session::ResidencyLevel;
 use crate::session::Session;
 use crate::session::helper::experimental;
 use crate::session::helper::token::estimate_request_tokens;
 
 use super::derive::derive_context;
 use super::helpers::DerivedContext;
-use super::reset_helpers::last_user_index;
+use super::reset_helpers::{last_user_index, latest_reset_marker_index};
 use super::reset_rebuild::rebuild_with_summary;
 
 /// [`DerivePolicy::Reset`](crate::session::derive_policy::DerivePolicy::Reset) implementation.
@@ -30,18 +31,55 @@ pub(super) async fn derive_reset(
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
     let mut messages = session.messages.clone();
+    let mut dropped_ranges = Vec::new();
+    let mut provenance = Vec::new();
+    let mut base_index = 0usize;
 
     let est = estimate_request_tokens(system_prompt, &messages, tools);
     if est <= threshold_tokens {
         experimental::pairing::repair_orphans(&mut messages);
         return Ok(DerivedContext {
+            resolutions: vec![ResidencyLevel::Full; messages.len()],
+            dropped_ranges: Vec::new(),
+            provenance: vec!["reset_below_threshold".to_string()],
             messages,
             origin_len,
             compressed: false,
         });
     }
 
+    if let Some(reset_idx) = latest_reset_marker_index(&messages).filter(|idx| *idx > 0) {
+        messages = messages.split_off(reset_idx);
+        base_index = reset_idx;
+        dropped_ranges.push((0, reset_idx));
+        provenance.push("reset_marker".to_string());
+
+        let anchored_est = estimate_request_tokens(system_prompt, &messages, tools);
+        if anchored_est <= threshold_tokens {
+            experimental::pairing::repair_orphans(&mut messages);
+            return Ok(DerivedContext {
+                resolutions: vec![ResidencyLevel::Full; messages.len()],
+                dropped_ranges,
+                provenance,
+                messages,
+                origin_len,
+                compressed: true,
+            });
+        }
+    }
+
     let Some(split_idx) = last_user_index(&messages) else {
+        if !provenance.is_empty() {
+            experimental::pairing::repair_orphans(&mut messages);
+            return Ok(DerivedContext {
+                resolutions: vec![ResidencyLevel::Full; messages.len()],
+                dropped_ranges,
+                provenance,
+                messages,
+                origin_len,
+                compressed: true,
+            });
+        }
         return derive_context(session, provider, model, system_prompt, tools, None, None).await;
     };
 
@@ -51,11 +89,27 @@ pub(super) async fn derive_reset(
         messages = tail;
         experimental::pairing::repair_orphans(&mut messages);
         return Ok(DerivedContext {
+            resolutions: vec![ResidencyLevel::Full; messages.len()],
+            dropped_ranges,
+            provenance: if provenance.is_empty() {
+                vec!["reset_without_prefix".to_string()]
+            } else {
+                provenance
+            },
             messages,
             origin_len,
-            compressed: false,
+            compressed: base_index > 0,
         });
     }
 
-    rebuild_with_summary(session, &prefix, &tail, provider, model, origin_len).await
+    let prefix_len = prefix.len();
+    let mut derived =
+        rebuild_with_summary(session, &prefix, &tail, provider, model, origin_len).await?;
+    dropped_ranges.push((base_index, base_index + prefix_len));
+    if !provenance.is_empty() {
+        provenance.extend(derived.provenance);
+        derived.provenance = provenance;
+    }
+    derived.dropped_ranges = dropped_ranges;
+    Ok(derived)
 }

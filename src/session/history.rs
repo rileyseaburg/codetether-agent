@@ -46,6 +46,7 @@
 //! ```
 
 use crate::provider::Message;
+use crate::session::pages::{PageKind, classify, classify_all};
 
 /// Append-only handle to a chat-history buffer.
 ///
@@ -76,6 +77,7 @@ use crate::provider::Message;
 /// ```
 pub struct History<'a> {
     buf: &'a mut Vec<Message>,
+    pages: Option<&'a mut Vec<PageKind>>,
 }
 
 impl<'a> History<'a> {
@@ -98,7 +100,15 @@ impl<'a> History<'a> {
     /// assert!(history.view().is_empty());
     /// ```
     pub fn new(buf: &'a mut Vec<Message>) -> Self {
-        Self { buf }
+        Self { buf, pages: None }
+    }
+
+    /// Wrap a history buffer plus its parallel page sidecar.
+    pub(crate) fn with_pages(buf: &'a mut Vec<Message>, pages: &'a mut Vec<PageKind>) -> Self {
+        Self {
+            buf,
+            pages: Some(pages),
+        }
     }
 
     /// Append a single message to the end of the history.
@@ -106,6 +116,12 @@ impl<'a> History<'a> {
     /// The only mutating operation on [`History`] — every other mutation
     /// must be routed through a dedicated API on the owning type.
     pub fn append(&mut self, msg: Message) {
+        if let Some(pages) = self.pages.as_deref_mut() {
+            if pages.len() != self.buf.len() {
+                *pages = classify_all(self.buf);
+            }
+            pages.push(classify(&msg));
+        }
         self.buf.push(msg);
     }
 

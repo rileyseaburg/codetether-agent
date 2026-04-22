@@ -23,9 +23,11 @@
 //! * Only triggers when arguments exceed [`MIN_COLLAPSE_BYTES`] so
 //!   micro-arguments like `{}` stay readable.
 //!
-//! # Always-on
+//! # Rollout
 //!
-//! No config flag.
+//! This strategy is intentionally kept out of the default-safe
+//! [`super::apply_all`] path because replacing historical arguments
+//! with back-references can erase still-relevant call details.
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;

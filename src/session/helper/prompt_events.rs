@@ -41,7 +41,7 @@ use super::confirmation::{
 };
 use super::defaults::default_model_for_provider;
 use super::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
-use super::error::is_prompt_too_long_error;
+use super::error::{is_prompt_too_long_error, is_retryable_upstream_error};
 use super::loop_constants::{
     BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE, CODESEARCH_THRASH_NUDGE,
     FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, MAX_CONSECUTIVE_SAME_TOOL,
@@ -53,7 +53,7 @@ use super::provider::{
     prefers_temperature_one, resolve_provider_for_session_request,
     should_retry_missing_native_tool_call, temperature_is_deprecated,
 };
-use super::router::build_proactive_lsp_context_message;
+use super::router::{build_proactive_lsp_context_message, choose_router_target_bandit};
 use super::runtime::{
     enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
     is_local_cuda_provider, local_cuda_light_system_prompt,
@@ -64,7 +64,9 @@ use super::token::{
     context_window_for_model, estimate_tokens_for_messages, session_completion_max_tokens,
 };
 use super::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
-use crate::session::context::derive_context;
+use crate::session::{
+    bucket_for_messages, delegation_skills, derive_with_policy, effective_policy,
+};
 
 /// Execute a prompt with optional image attachments and stream events to the
 /// provided channel.
@@ -91,12 +93,13 @@ pub(crate) async fn run_prompt_with_events(
 
     let (provider_name, model_id) = parse_session_model_selector(session, &providers);
 
-    let selected_provider =
-        resolve_provider_for_session_request(providers.as_slice(), provider_name.as_deref())?;
+    let mut selected_provider =
+        resolve_provider_for_session_request(providers.as_slice(), provider_name.as_deref())?
+            .to_string();
 
-    let provider = registry
-        .get(selected_provider)
-        .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
+    let mut provider = registry
+        .get(&selected_provider)
+        .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider.clone()))?;
 
     let mut content_parts = vec![ContentPart::Text {
         text: message.to_string(),
@@ -124,10 +127,10 @@ pub(crate) async fn run_prompt_with_events(
         session.generate_title().await?;
     }
 
-    let model = if !model_id.is_empty() {
+    let mut model = if !model_id.is_empty() {
         model_id
     } else {
-        default_model_for_provider(selected_provider)
+        default_model_for_provider(&selected_provider)
     };
 
     // Phase A: oversized-user-message compression now happens inside
@@ -142,7 +145,7 @@ pub(crate) async fn run_prompt_with_events(
         .filter(|tool| !is_interactive_tool(&tool.name))
         .collect();
 
-    let temperature = if temperature_is_deprecated(&model) {
+    let mut temperature = if temperature_is_deprecated(&model) {
         None
     } else if prefers_temperature_one(&model) {
         Some(1.0)
@@ -153,20 +156,22 @@ pub(crate) async fn run_prompt_with_events(
     tracing::info!("Using model: {} via provider: {}", model, selected_provider);
     tracing::info!("Available tools: {}", tool_definitions.len());
 
-    let model_supports_tools = !matches!(
-        selected_provider,
+    let mut model_supports_tools = !matches!(
+        selected_provider.as_str(),
         "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
     );
-    let advertised_tool_definitions = if model_supports_tools {
+    let mut advertised_tool_definitions = if model_supports_tools {
         tool_definitions.clone()
     } else {
         vec![list_tools_bootstrap_definition()]
     };
 
-    let cwd = std::env::var("PWD")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
-    let system_prompt = if is_local_cuda_provider(selected_provider) {
+    let cwd = session
+        .metadata
+        .directory
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    let system_prompt = if is_local_cuda_provider(&selected_provider) {
         local_cuda_light_system_prompt()
     } else {
         crate::agent::builtin::build_system_prompt(&cwd)
@@ -212,52 +217,55 @@ pub(crate) async fn run_prompt_with_events(
         // Experimental strategies, RLM-powered context-window
         // enforcement, and the orphan-pair safety net all run against
         // the clone; the canonical transcript stays append-only.
-        let mut derived = derive_context(
+        let policy = effective_policy(session);
+        let mut derived = derive_with_policy(
             session,
             Arc::clone(&provider),
             &model,
             &system_prompt,
             &advertised_tool_definitions,
             Some(&event_tx),
+            policy,
             None,
         )
         .await?;
 
         let proactive_lsp_message = build_proactive_lsp_context_message(
-            selected_provider,
+            selected_provider.as_str(),
             step,
             &tool_registry,
             &session.messages,
             &cwd,
         )
         .await;
-
-        let mut messages = vec![Message {
-            role: Role::System,
-            content: vec![ContentPart::Text {
-                text: system_prompt.clone(),
-            }],
-        }];
-        if let Some(msg) = &proactive_lsp_message {
-            messages.push(msg.clone());
-        }
-        messages.extend(derived.messages.clone());
-
-        let request = CompletionRequest {
-            messages,
-            tools: advertised_tool_definitions.clone(),
-            model: model.clone(),
-            temperature,
-            top_p: None,
-            max_tokens: Some(session_completion_max_tokens()),
-            stop: Vec::new(),
-        };
+        let bucket = bucket_for_messages(session.history());
 
         let llm_start = std::time::Instant::now();
         let mut attempt = 0;
+        let mut upstream_retry_count: u8 = 0;
+        const MAX_UPSTREAM_RETRIES: u8 = 3;
         #[allow(clippy::never_loop)]
         let response = loop {
             attempt += 1;
+            let mut messages = vec![Message {
+                role: Role::System,
+                content: vec![ContentPart::Text {
+                    text: system_prompt.clone(),
+                }],
+            }];
+            if let Some(msg) = &proactive_lsp_message {
+                messages.push(msg.clone());
+            }
+            messages.extend(derived.messages.clone());
+            let request = CompletionRequest {
+                messages,
+                tools: advertised_tool_definitions.clone(),
+                model: model.clone(),
+                temperature,
+                top_p: None,
+                max_tokens: Some(session_completion_max_tokens()),
+                stop: Vec::new(),
+            };
             let completion_result = if model_supports_tools {
                 let stream = provider.complete_stream(request.clone()).await?;
                 collect_stream_completion_with_events(stream, Some(&event_tx)).await
@@ -266,49 +274,87 @@ pub(crate) async fn run_prompt_with_events(
             };
 
             match completion_result {
-                Ok(r) => break r,
+                Ok(r) => {
+                    session.metadata.delegation.update(
+                        &selected_provider,
+                        delegation_skills::MODEL_CALL,
+                        bucket,
+                        true,
+                    );
+                    break r;
+                }
                 Err(e) => {
                     if attempt == 1 && is_prompt_too_long_error(&e) {
                         tracing::warn!(error = %e, "Provider rejected prompt as too long; re-deriving with force_keep_last=6 and retrying");
-                        derived = derive_context(
+                        derived = derive_with_policy(
                             session,
                             Arc::clone(&provider),
                             &model,
                             &system_prompt,
                             &advertised_tool_definitions,
                             Some(&event_tx),
+                            policy,
                             Some(6),
                         )
                         .await?;
-                        let mut messages = vec![Message {
-                            role: Role::System,
-                            content: vec![ContentPart::Text {
-                                text: system_prompt.clone(),
-                            }],
-                        }];
-                        if let Some(msg) = &proactive_lsp_message {
-                            messages.push(msg.clone());
+                        continue;
+                    }
+                    if upstream_retry_count < MAX_UPSTREAM_RETRIES
+                        && is_retryable_upstream_error(&e)
+                    {
+                        session.metadata.delegation.update(
+                            &selected_provider,
+                            delegation_skills::MODEL_CALL,
+                            bucket,
+                            false,
+                        );
+                        upstream_retry_count += 1;
+                        let backoff_secs = 1u64 << (upstream_retry_count - 1).min(2);
+                        tracing::warn!(
+                            error = %e,
+                            retry = upstream_retry_count,
+                            max = MAX_UPSTREAM_RETRIES,
+                            backoff_secs,
+                            "Retryable upstream provider error; sleeping and retrying"
+                        );
+                        tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
+                        if let Some((retry_provider, retry_model)) = choose_router_target_bandit(
+                            &registry,
+                            &session.metadata.delegation,
+                            bucket,
+                            &selected_provider,
+                            &model,
+                        ) {
+                            tracing::info!(
+                                to_provider = %retry_provider,
+                                to_model = %retry_model,
+                                "Failing over to alternate provider/model"
+                            );
+                            selected_provider = retry_provider;
+                            provider = registry.get(&selected_provider).ok_or_else(|| {
+                                anyhow::anyhow!("Provider {} not found", selected_provider.clone())
+                            })?;
+                            model = retry_model;
+                            temperature = if temperature_is_deprecated(&model) {
+                                None
+                            } else if prefers_temperature_one(&model) {
+                                Some(1.0)
+                            } else {
+                                Some(0.7)
+                            };
+                            model_supports_tools = !matches!(
+                                selected_provider.as_str(),
+                                "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
+                            );
+                            advertised_tool_definitions = if model_supports_tools {
+                                tool_definitions.clone()
+                            } else {
+                                vec![list_tools_bootstrap_definition()]
+                            };
+                            session.metadata.model = Some(format!("{selected_provider}/{model}"));
+                            attempt = 0;
                         }
-                        messages.extend(derived.messages.clone());
-                        let new_request = CompletionRequest {
-                            messages,
-                            tools: advertised_tool_definitions.clone(),
-                            model: model.clone(),
-                            temperature,
-                            top_p: None,
-                            max_tokens: Some(session_completion_max_tokens()),
-                            stop: Vec::new(),
-                        };
-                        let retry_result = if model_supports_tools {
-                            let stream = provider.complete_stream(new_request).await?;
-                            collect_stream_completion_with_events(stream, Some(&event_tx)).await
-                        } else {
-                            provider.complete(new_request).await
-                        };
-                        match retry_result {
-                            Ok(r2) => break r2,
-                            Err(e2) => return Err(e2),
-                        }
+                        continue;
                     }
                     return Err(e);
                 }
@@ -402,7 +448,7 @@ pub(crate) async fn run_prompt_with_events(
             continue;
         }
         if should_retry_missing_native_tool_call(
-            selected_provider,
+            selected_provider.as_str(),
             &model,
             native_tool_promise_retry_count,
             &tool_definitions,
