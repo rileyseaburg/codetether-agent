@@ -50,6 +50,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::env;
 
 use super::relevance::Bucket;
 
@@ -224,6 +225,14 @@ impl DelegationState {
             beliefs: BTreeMap::new(),
             config,
         }
+    }
+
+    /// Whether CADMAS-CTX routing is enabled for this session.
+    ///
+    /// `CODETETHER_DELEGATION_ENABLED` overrides the persisted config when
+    /// present so operators can toggle the feature process-wide.
+    pub fn enabled(&self) -> bool {
+        env_enabled_override().unwrap_or(self.config.enabled)
     }
 
     /// Serialise a `(agent, skill, bucket)` triple into the flat string
@@ -410,6 +419,15 @@ impl DelegationState {
             .or_insert_with(|| BetaPosterior::from_self_confidence(0.5, kappa));
         post.alpha += avg_alpha * m_z;
         post.beta += avg_beta * m_z;
+    }
+}
+
+fn env_enabled_override() -> Option<bool> {
+    let raw = env::var("CODETETHER_DELEGATION_ENABLED").ok()?;
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => Some(true),
+        "0" | "false" | "no" | "off" => Some(false),
+        _ => None,
     }
 }
 

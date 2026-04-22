@@ -2,7 +2,7 @@
 
 use crate::provider::{ContentPart, Message, Role};
 
-use super::{build_reset_summary_message, last_user_index};
+use super::{build_reset_summary_message, last_user_index, latest_reset_marker_index};
 
 fn text(role: Role, s: &str) -> Message {
     Message {
@@ -42,4 +42,26 @@ fn reset_summary_message_carries_expected_markers() {
     } else {
         panic!("expected text content");
     }
+}
+
+#[test]
+fn latest_reset_marker_index_finds_text_markers() {
+    let msgs = vec![
+        text(Role::User, "before"),
+        build_reset_summary_message("summary"),
+        text(Role::Assistant, "after"),
+    ];
+    assert_eq!(latest_reset_marker_index(&msgs), Some(1));
+}
+
+#[test]
+fn latest_reset_marker_index_finds_tool_result_markers() {
+    let msgs = vec![Message {
+        role: Role::Tool,
+        content: vec![ContentPart::ToolResult {
+            tool_call_id: "call-1".to_string(),
+            content: "[CONTEXT RESET]\nsummary".to_string(),
+        }],
+    }];
+    assert_eq!(latest_reset_marker_index(&msgs), Some(0));
 }

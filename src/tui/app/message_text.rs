@@ -47,6 +47,9 @@ fn session_messages_to_chat_messages(session: &Session) -> Vec<ChatMessage> {
     let mut tool_call_names = HashMap::new();
 
     for message in session.history() {
+        if is_hidden_context_marker(message) {
+            continue;
+        }
         chat_messages.extend(chat_messages_from_provider_message(
             message,
             &mut tool_call_names,
@@ -54,6 +57,17 @@ fn session_messages_to_chat_messages(session: &Session) -> Vec<ChatMessage> {
     }
 
     chat_messages
+}
+
+fn is_hidden_context_marker(message: &Message) -> bool {
+    matches!(
+        (&message.role, message.content.as_slice()),
+        (
+            Role::Assistant,
+            [ContentPart::Text { text }]
+        ) if text.starts_with("[AUTO CONTEXT COMPRESSION]")
+            || text.starts_with("[CONTEXT TRUNCATED]")
+    )
 }
 
 fn chat_messages_from_provider_message(

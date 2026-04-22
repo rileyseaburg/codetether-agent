@@ -178,11 +178,11 @@ pub fn choose_router_target(
 
 /// CADMAS-CTX-aware variant of [`choose_router_target`] (Phase C step 17).
 ///
-/// When `state.config.enabled` is `true`, the rule-based candidate list
+/// When delegation is enabled on `state`, the rule-based candidate list
 /// from [`known_good_router_candidates`] is re-ordered by the LCB score
 /// `μ − γ·√u` under the supplied `bucket`. Candidates with no
 /// observations yet keep their original rule order (cold-start
-/// conservatism). When `state.config.enabled` is `false`, this function
+/// conservatism). When delegation is disabled, this function
 /// is exactly [`choose_router_target`].
 ///
 /// The actual outcome update — `state.update(provider, "model_call",
@@ -225,7 +225,7 @@ pub fn choose_router_target_bandit(
     selected_provider: &str,
     current_model: &str,
 ) -> Option<(String, String)> {
-    if !state.config.enabled {
+    if !state.enabled() {
         return choose_router_target(registry, selected_provider, current_model);
     }
 

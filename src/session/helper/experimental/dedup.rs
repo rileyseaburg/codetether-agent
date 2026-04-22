@@ -35,6 +35,14 @@ use crate::provider::{ContentPart, Message};
 /// content it replaces.
 pub const MIN_DEDUP_BYTES: usize = 256;
 
+/// Never deduplicate tool results in this many trailing messages. When
+/// a user asks the agent to re-run an identical call (e.g. "try that
+/// again"), the freshly-produced output would otherwise be replaced
+/// with a back-reference to the previous sighting, making the retry
+/// appear to produce no new information. Keeping the tail verbatim
+/// lets the model see that the retry actually happened.
+pub const KEEP_LAST_MESSAGES: usize = 8;
+
 /// Replace duplicate tool-result contents with a back-reference marker.
 ///
 /// Walks `messages` in order. The first tool result for a given content
@@ -49,7 +57,9 @@ pub const MIN_DEDUP_BYTES: usize = 256;
 ///
 /// ```rust
 /// use codetether_agent::provider::{ContentPart, Message, Role};
-/// use codetether_agent::session::helper::experimental::dedup::dedup_tool_outputs;
+/// use codetether_agent::session::helper::experimental::dedup::{
+///     dedup_tool_outputs, KEEP_LAST_MESSAGES,
+/// };
 ///
 /// let big = "x".repeat(1024);
 /// let mut msgs = vec![
@@ -68,6 +78,14 @@ pub const MIN_DEDUP_BYTES: usize = 256;
 ///         }],
 ///     },
 /// ];
+/// // Push enough padding so both tool results fall outside the
+/// // trailing keep-window and are eligible for dedup.
+/// for _ in 0..KEEP_LAST_MESSAGES {
+///     msgs.push(Message {
+///         role: Role::User,
+///         content: vec![ContentPart::Text { text: "...".into() }],
+///     });
+/// }
 ///
 /// let stats = dedup_tool_outputs(&mut msgs);
 /// assert_eq!(stats.dedup_hits, 1);
@@ -92,7 +110,13 @@ pub fn dedup_tool_outputs(messages: &mut [Message]) -> ExperimentalStats {
     let mut seen: HashMap<[u8; 32], String> = HashMap::new();
     let mut stats = ExperimentalStats::default();
 
-    for msg in messages.iter_mut() {
+    let total = messages.len();
+    let eligible = total.saturating_sub(KEEP_LAST_MESSAGES);
+    if eligible == 0 {
+        return stats;
+    }
+
+    for msg in messages[..eligible].iter_mut() {
         for part in msg.content.iter_mut() {
             let ContentPart::ToolResult {
                 tool_call_id,
@@ -140,9 +164,19 @@ mod tests {
         }
     }
 
+    fn padding_msg() -> Message {
+        Message {
+            role: crate::provider::Role::User,
+            content: vec![ContentPart::Text { text: "...".into() }],
+        }
+    }
+
     #[test]
     fn short_outputs_are_not_deduplicated() {
         let mut msgs = vec![tool_msg("a", "ok"), tool_msg("b", "ok")];
+        for _ in 0..KEEP_LAST_MESSAGES {
+            msgs.push(padding_msg());
+        }
         let stats = dedup_tool_outputs(&mut msgs);
         assert_eq!(stats.dedup_hits, 0);
     }
@@ -153,6 +187,9 @@ mod tests {
             tool_msg("a", &"x".repeat(1024)),
             tool_msg("b", &"y".repeat(1024)),
         ];
+        for _ in 0..KEEP_LAST_MESSAGES {
+            msgs.push(padding_msg());
+        }
         let stats = dedup_tool_outputs(&mut msgs);
         assert_eq!(stats.dedup_hits, 0);
         assert_eq!(stats.total_bytes_saved, 0);
@@ -166,6 +203,9 @@ mod tests {
             tool_msg("second", &big),
             tool_msg("third", &big),
         ];
+        for _ in 0..KEEP_LAST_MESSAGES {
+            msgs.push(padding_msg());
+        }
         let stats = dedup_tool_outputs(&mut msgs);
         assert_eq!(stats.dedup_hits, 2);
 
@@ -175,5 +215,21 @@ mod tests {
             };
             assert!(content.contains("tool_call_id=first"));
         }
+    }
+
+    #[test]
+    fn recent_identical_tool_result_is_not_deduplicated() {
+        // Regression: when the user asks the agent to re-run a call,
+        // the fresh output must remain verbatim. Previously this
+        // replaced the retry's content with a back-reference, making
+        // the retry appear to produce no new information.
+        let big = "r".repeat(1024);
+        let mut msgs = vec![tool_msg("old", &big), tool_msg("retry", &big)];
+        let stats = dedup_tool_outputs(&mut msgs);
+        assert_eq!(stats.dedup_hits, 0);
+        let ContentPart::ToolResult { content, .. } = &msgs[1].content[0] else {
+            panic!("expected tool result");
+        };
+        assert_eq!(content.len(), 1024);
     }
 }

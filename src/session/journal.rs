@@ -51,6 +51,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio::io::AsyncWriteExt;
 
 /// Opaque handle returned from [`WritebackJournal::stage`] and required
 /// by [`WritebackJournal::validate`] / [`WritebackJournal::commit`].
@@ -216,6 +217,34 @@ impl WritebackJournal {
     pub fn pending_count(&self) -> usize {
         self.pending.len()
     }
+}
+
+/// Append journal entries to `<session-id>.journal.jsonl`.
+///
+/// Best-effort durability helper used by lifecycle call sites such as
+/// `Session::save`. The journal remains append-only: callers hand us a
+/// pre-built ordered slice and we stream it as JSONL.
+pub async fn append_entries(session_id: &str, entries: &[JournalEntry]) -> anyhow::Result<()> {
+    let path = crate::session::Session::sessions_dir()?.join(format!("{session_id}.journal.jsonl"));
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    let mut file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await?;
+    let mut batch = Vec::new();
+    for entry in entries {
+        let line = serde_json::to_string(entry)?;
+        batch.extend_from_slice(line.as_bytes());
+        batch.push(b'\n');
+    }
+    if !batch.is_empty() {
+        file.write_all(&batch).await?;
+    }
+    file.flush().await?;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -11,6 +11,10 @@ use serde::{Deserialize, Serialize};
 use crate::agent::ToolUse;
 use crate::provenance::ExecutionProvenance;
 use crate::provider::{Message, Usage};
+use crate::session::delegation::DelegationState;
+use crate::session::derive_policy::DerivePolicy;
+use crate::session::history_sink::HistorySinkConfig;
+use crate::session::pages::PageKind;
 
 /// Default maximum agentic loop iterations when [`Session::max_steps`] is
 /// `None`.
@@ -64,6 +68,12 @@ pub struct Session {
     /// Ordered conversation transcript.
     #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
     pub messages: Vec<Message>,
+    /// Per-message page classification sidecar.
+    ///
+    /// Backfilled on load for legacy sessions that predate the
+    /// history/context split.
+    #[serde(default)]
+    pub pages: Vec<PageKind>,
     /// Per-tool-call audit records.
     #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
     pub tool_uses: Vec<ToolUse>,
@@ -114,6 +124,21 @@ pub struct SessionMetadata {
     /// [`crate::rlm::RlmConfig::default`].
     #[serde(default)]
     pub rlm: crate::rlm::RlmConfig,
+    /// Per-session context derivation policy.
+    ///
+    /// Defaults to [`DerivePolicy::Legacy`]. The prompt loop can still
+    /// override this at runtime via `CODETETHER_CONTEXT_POLICY`.
+    #[serde(default)]
+    pub context_policy: DerivePolicy,
+    /// CADMAS-CTX routing posteriors for this session.
+    #[serde(default)]
+    pub delegation: DelegationState,
+    /// Runtime MinIO / S3 history sink configuration.
+    ///
+    /// Intentionally not serialized: carrying live access keys inside the
+    /// session JSON would persist secrets to disk.
+    #[serde(skip)]
+    pub history_sink: Option<HistorySinkConfig>,
     /// Pre-resolved subcall provider from
     /// [`RlmConfig::subcall_model`](crate::rlm::RlmConfig::subcall_model).
     ///
@@ -142,6 +167,15 @@ impl std::fmt::Debug for SessionMetadata {
             .field("shared", &self.shared)
             .field("share_url", &self.share_url)
             .field("rlm", &self.rlm)
+            .field("context_policy", &self.context_policy)
+            .field("delegation", &self.delegation)
+            .field(
+                "history_sink",
+                &self
+                    .history_sink
+                    .as_ref()
+                    .map(|cfg| (&cfg.endpoint, &cfg.bucket, &cfg.prefix)),
+            )
             .field(
                 "subcall_provider",
                 &self.subcall_provider.as_ref().map(|_| "<provider>"),

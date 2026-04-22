@@ -348,6 +348,7 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
     let t_cut = tui_user_idxs[available - undo_count];
 
     session.messages.truncate(s_cut);
+    session.pages.truncate(s_cut);
     app.state.messages.truncate(t_cut);
     session.updated_at = chrono::Utc::now();
     app.state.streaming_text.clear();
@@ -442,12 +443,20 @@ async fn handle_fork_command(app: &mut App, _cwd: &Path, session: &mut Session, 
     };
 
     child.messages = session.messages[..session_cut].to_vec();
+    child.pages = if session.pages.len() >= session_cut {
+        session.pages[..session_cut].to_vec()
+    } else {
+        crate::session::pages::classify_all(&child.messages)
+    };
     child.metadata.auto_apply_edits = session.metadata.auto_apply_edits;
     child.metadata.allow_network = session.metadata.allow_network;
     child.metadata.slash_autocomplete = session.metadata.slash_autocomplete;
     child.metadata.use_worktree = session.metadata.use_worktree;
     child.metadata.model = session.metadata.model.clone();
     child.metadata.rlm = session.metadata.rlm.clone();
+    child.metadata.context_policy = session.metadata.context_policy;
+    child.metadata.delegation = session.metadata.delegation.clone();
+    child.metadata.history_sink = session.metadata.history_sink.clone();
     child.title = session
         .title
         .as_ref()

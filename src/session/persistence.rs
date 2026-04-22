@@ -20,7 +20,8 @@ impl Session {
     pub async fn load(id: &str) -> Result<Self> {
         let path = Self::session_path(id)?;
         let content = fs::read_to_string(&path).await?;
-        let session: Session = serde_json::from_str(&content)?;
+        let mut session: Session = serde_json::from_str(&content)?;
+        session.normalize_sidecars();
         Ok(session)
     }
 
@@ -93,7 +94,14 @@ impl Session {
         // Clone-and-serialize off the reactor. The clone is a Vec-copy
         // (~memcpy speed) which is always cheaper than the JSON
         // formatting we are about to avoid blocking the reactor on.
-        let snapshot = self.clone();
+        let mut snapshot = self.clone();
+        snapshot.normalize_sidecars();
+        let sink_config = snapshot.metadata.history_sink.clone().or_else(|| {
+            super::history_sink::HistorySinkConfig::from_env()
+                .ok()
+                .flatten()
+        });
+        let session_id_for_journal = snapshot.id.clone();
         let content = tokio::task::spawn_blocking(move || serde_json::to_vec(&snapshot))
             .await
             .map_err(|e| anyhow::anyhow!("session serialize task panicked: {e}"))??;
@@ -108,6 +116,20 @@ impl Session {
                     "session rename failed: {primary} (retry: {retry})"
                 ));
             }
+        }
+        let mut journal = super::journal::WritebackJournal::new(&session_id_for_journal);
+        let tx = journal.stage(super::journal::Op::Save);
+        if let Err(reason) = journal.commit(tx) {
+            journal.reject(tx, reason);
+        }
+        if let Err(err) =
+            super::journal::append_entries(&session_id_for_journal, journal.entries()).await
+        {
+            tracing::warn!(
+                %err,
+                session_id = %session_id_for_journal,
+                "save journal append failed (non-fatal)"
+            );
         }
         // Update the workspace index so the next resume is O(1). Best
         // effort — a failed index write must not fail the session save.
@@ -129,7 +151,7 @@ impl Session {
         // save will pick up the latest history. This prevents bursty
         // save loops (e.g. during long tool chains) from queueing
         // unbounded background uploads.
-        if let Ok(Some(sink_config)) = super::history_sink::HistorySinkConfig::from_env() {
+        if let Some(sink_config) = sink_config {
             use std::collections::HashSet;
             use std::sync::{Mutex, OnceLock};
             static IN_FLIGHT: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
@@ -257,8 +279,10 @@ fn tail_load_sync(path: &Path, window: usize) -> Result<TailLoad> {
     let file = fs::File::open(path)?;
     let reader = BufReader::with_capacity(64 * 1024, file);
     let (parsed, dropped) = with_tail_cap(window, || serde_json::from_reader::<_, Session>(reader));
+    let mut session = parsed?;
+    session.normalize_sidecars();
     Ok(TailLoad {
-        session: parsed?,
+        session,
         dropped,
         file_bytes,
     })

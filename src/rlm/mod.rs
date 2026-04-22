@@ -174,7 +174,7 @@ fn default_runtime() -> String {
 /// Default number of stored messages that triggers RLM compaction
 /// independently of the token-budget check.
 fn default_history_trigger_messages() -> usize {
-    60
+    0
 }
 
 impl Default for RlmConfig {
@@ -189,5 +189,15 @@ impl Default for RlmConfig {
             subcall_model: None,
             history_trigger_messages: default_history_trigger_messages(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RlmConfig;
+
+    #[test]
+    fn default_history_trigger_is_disabled() {
+        assert_eq!(RlmConfig::default().history_trigger_messages, 0);
     }
 }

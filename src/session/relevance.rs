@@ -242,6 +242,27 @@ pub fn extract(msg: &Message) -> RelevanceMeta {
     meta
 }
 
+/// Project a coarse CADMAS-CTX bucket from a recent message window.
+///
+/// Merges the last few entries into a single synthetic
+/// [`RelevanceMeta`] so routing decisions can key off the active task
+/// rather than a single arbitrary turn.
+pub fn bucket_for_messages(messages: &[Message]) -> Bucket {
+    let start = messages.len().saturating_sub(8);
+    let mut merged = RelevanceMeta::default();
+    for msg in &messages[start..] {
+        let next = extract(msg);
+        merged.files.extend(next.files);
+        merged.tools.extend(next.tools);
+        merged.error_classes.extend(next.error_classes);
+        merged.explicit_refs.extend(next.explicit_refs);
+    }
+    dedupe_preserving_order(&mut merged.files);
+    dedupe_preserving_order(&mut merged.tools);
+    dedupe_preserving_order(&mut merged.error_classes);
+    merged.project_bucket()
+}
+
 /// Extract path-like tokens from `text` and append unique ones to `out`.
 ///
 /// Heuristic: tokens that look like filesystem paths (contain `/` but
@@ -380,5 +401,17 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(meta.project_bucket().difficulty, Difficulty::Hard);
+    }
+
+    #[test]
+    fn bucket_for_messages_merges_recent_window() {
+        let bucket = bucket_for_messages(&[
+            text("edited src/lib.rs"),
+            tool_call("Shell"),
+            tool_result("Error: broken"),
+        ]);
+        assert_eq!(bucket.tool_use, ToolUse::Yes);
+        assert_eq!(bucket.dependency, Dependency::Chained);
+        assert_eq!(bucket.difficulty, Difficulty::Medium);
     }
 }

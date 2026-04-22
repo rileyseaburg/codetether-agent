@@ -27,10 +27,10 @@
 //!
 //! # Default-on, no config
 //!
-//! These strategies are always active — there is intentionally no env
-//! flag to disable them. If a future regression requires an escape
-//! hatch, add a field to [`crate::config::Config`] rather than a magic
-//! env var so the setting is discoverable.
+//! The conservative strategies in [`apply_all`] are always active —
+//! there is intentionally no env flag to disable them. More aggressive
+//! transforms should stay opt-in until they prove they do not erase
+//! still-relevant chat state.
 //!
 //! # Examples
 //!
@@ -60,9 +60,12 @@
 pub mod dedup;
 pub mod lingua;
 pub mod pairing;
+#[allow(dead_code)]
 pub mod snippet;
+#[allow(dead_code)]
 pub mod streaming_llm;
 pub mod thinking_prune;
+#[allow(dead_code)]
 pub mod tool_call_dedup;
 
 use crate::provider::Message;
@@ -86,15 +89,16 @@ impl ExperimentalStats {
     }
 }
 
-/// Apply every experimental strategy in order, mutating `messages` in
-/// place. Returns aggregate statistics suitable for logging.
+/// Apply the default-safe experimental strategies in order, mutating
+/// `messages` in place. Returns aggregate statistics suitable for
+/// logging.
 ///
 /// Order matters:
 ///
-/// 1. [`dedup::dedup_tool_outputs`] runs first because it can eliminate
-///    a duplicate in full before [`snippet`] has to think about it.
-/// 2. [`snippet::snippet_stale_tool_outputs`] runs second, snipping any
-///    remaining oversized tool outputs older than the recency window.
+/// 1. [`dedup::dedup_tool_outputs`] runs before text cleanup so repeated
+///    tool outputs collapse against the original bytes.
+/// 2. [`lingua::prune_low_entropy`] runs after that to strip formatting
+///    noise from older assistant text without touching semantics.
 ///
 /// # Examples
 ///
@@ -109,11 +113,8 @@ impl ExperimentalStats {
 pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     let mut stats = ExperimentalStats::default();
     stats.merge(thinking_prune::prune_thinking(messages));
-    stats.merge(tool_call_dedup::collapse_duplicate_calls(messages));
     stats.merge(dedup::dedup_tool_outputs(messages));
-    stats.merge(snippet::snippet_stale_tool_outputs(messages));
     stats.merge(lingua::prune_low_entropy(messages));
-    stats.merge(streaming_llm::trim_middle(messages));
     // Correctness pass: repair any orphaned tool_call/tool_result
     // pairs broken by the strategies above. Must run LAST.
     stats.merge(pairing::repair_orphans(messages));
@@ -127,3 +128,8 @@ pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     }
     stats
 }
+
+#[cfg(test)]
+mod apply_all_tests;
+#[cfg(test)]
+mod apply_all_tool_history_tests;

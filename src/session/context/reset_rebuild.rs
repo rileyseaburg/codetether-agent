@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use crate::provider::Message;
+use crate::session::ResidencyLevel;
 use crate::session::Session;
 use crate::session::helper::experimental;
 
@@ -41,6 +42,9 @@ pub(super) async fn rebuild_with_summary(
     experimental::pairing::repair_orphans(&mut reset_messages);
 
     Ok(DerivedContext {
+        resolutions: vec![ResidencyLevel::Full; reset_messages.len()],
+        dropped_ranges: Vec::new(),
+        provenance: vec!["reset".to_string(), "rlm_summary".to_string()],
         messages: reset_messages,
         origin_len,
         compressed: true,

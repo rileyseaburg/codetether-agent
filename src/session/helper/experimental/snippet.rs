@@ -17,11 +17,12 @@
 //! windows are generous enough (1 KB each by default) to surface error
 //! messages, file headers, or the last lines of a log.
 //!
-//! # Runs *after* [`super::dedup`]
+//! # Rollout
 //!
-//! Dedup replaces exact duplicates with a single line; this pass only
-//! touches what dedup could not collapse. Running in the reverse order
-//! would snippet-then-hash, weakening dedup.
+//! This strategy is intentionally kept out of the default-safe
+//! [`super::apply_all`] path. It is useful under real token pressure,
+//! but it is still lossy because it removes unique bytes from old tool
+//! outputs.
 
 use super::ExperimentalStats;
 use crate::provider::{ContentPart, Message};

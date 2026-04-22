@@ -25,11 +25,12 @@
 //! unresolved tool call. This preserves the tool-call ⇄ tool-result
 //! pairing required by every provider's chat API.
 //!
-//! # Always-on
+//! # Rollout
 //!
-//! No config flag. If history is short, this is a no-op. If history is
-//! long, the trim is beneficial regardless of model — the bytes saved
-//! go straight to input-token cost.
+//! This strategy is intentionally kept separate from the default-safe
+//! [`super::apply_all`] path. It is materially lossier than the other
+//! transforms because it can remove semantically relevant turns even
+//! when the request is still well within the model's context budget.
 
 use super::ExperimentalStats;
 use crate::provider::{ContentPart, Message, Role};

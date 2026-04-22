@@ -6,6 +6,7 @@ use anyhow::Result;
 use tokio::sync::mpsc;
 
 use crate::provider::ToolDefinition;
+use crate::session::ResidencyLevel;
 use crate::session::Session;
 use crate::session::SessionEvent;
 use crate::session::helper::compression::{CompressContext, compress_last_message_if_oversized};
@@ -71,7 +72,20 @@ pub async fn derive_context(
     experimental::pairing::repair_orphans(&mut messages);
 
     let compressed = step0 || step1 || messages_len_changed(before, &messages);
+    let mut provenance = vec!["legacy".to_string()];
+    if step0 {
+        provenance.push("oversized_last_message".to_string());
+    }
+    if step1 {
+        provenance.push("context_window".to_string());
+    }
+    if compressed && provenance.len() == 1 {
+        provenance.push("experimental".to_string());
+    }
     Ok(DerivedContext {
+        resolutions: vec![ResidencyLevel::Full; messages.len()],
+        dropped_ranges: Vec::new(),
+        provenance,
         messages,
         origin_len,
         compressed,

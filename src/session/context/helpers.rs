@@ -1,6 +1,7 @@
 //! Shared types and tiny helpers used across the context derivation modules.
 
 use crate::provider::Message;
+use crate::session::ResidencyLevel;
 
 /// The per-step LLM context, derived from an append-only chat history.
 ///
@@ -12,6 +13,9 @@ use crate::provider::Message;
 /// * `messages` — The message list to include in the completion request.
 /// * `origin_len` — Length of the source history at the moment of derivation.
 /// * `compressed` — Whether compression fired during this derivation.
+/// * `dropped_ranges` — Best-effort ranges elided from the working context.
+/// * `provenance` — Pipeline steps that produced this context.
+/// * `resolutions` — Per-message residency levels in the derived context.
 ///
 /// # Examples
 ///
@@ -22,6 +26,9 @@ use crate::provider::Message;
 ///     messages: Vec::new(),
 ///     origin_len: 0,
 ///     compressed: false,
+///     dropped_ranges: Vec::new(),
+///     provenance: Vec::new(),
+///     resolutions: Vec::new(),
 /// };
 /// assert_eq!(derived.origin_len, 0);
 /// assert!(!derived.compressed);
@@ -34,6 +41,12 @@ pub struct DerivedContext {
     pub origin_len: usize,
     /// `true` when any compression / truncation pass rewrote the clone.
     pub compressed: bool,
+    /// Best-effort elided ranges from the source history.
+    pub dropped_ranges: Vec<(usize, usize)>,
+    /// Names of the pipeline stages that shaped this context.
+    pub provenance: Vec<String>,
+    /// Per-message residency level in the derived context.
+    pub resolutions: Vec<ResidencyLevel>,
 }
 
 /// Compare two message counts and return whether compression fired.
@@ -61,11 +74,15 @@ mod tests {
             }],
             origin_len: 1,
             compressed: false,
+            dropped_ranges: Vec::new(),
+            provenance: Vec::new(),
+            resolutions: vec![ResidencyLevel::Full],
         };
         let cloned = ctx.clone();
         assert_eq!(ctx.origin_len, cloned.origin_len);
         assert_eq!(ctx.compressed, cloned.compressed);
         assert_eq!(ctx.messages.len(), cloned.messages.len());
+        assert_eq!(ctx.resolutions, cloned.resolutions);
     }
 
     #[test]

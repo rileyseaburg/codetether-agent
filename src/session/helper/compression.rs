@@ -134,7 +134,7 @@ const RLM_MODEL_CANDIDATES: &[&str] = &[
 
 /// CADMAS-CTX-aware variant of [`resolve_rlm_model`] (Phase C step 30).
 ///
-/// When `state.config.enabled` is `true`, ranks [`RLM_MODEL_CANDIDATES`]
+/// When delegation is enabled on `state`, ranks [`RLM_MODEL_CANDIDATES`]
 /// by the LCB score `μ − γ·√u` under the supplied `bucket` (skill
 /// key: `"rlm_compact"`) and returns the highest-scoring candidate.
 /// When delegation is disabled, this is exactly [`resolve_rlm_model`].
@@ -162,7 +162,7 @@ pub(crate) fn resolve_rlm_model_bandit(
     state: &crate::session::delegation::DelegationState,
     bucket: crate::session::relevance::Bucket,
 ) -> Option<String> {
-    if !state.config.enabled {
+    if !state.enabled() {
         return resolve_rlm_model(rlm_config);
     }
     // Explicit configuration still wins — the bandit only disambiguates
@@ -921,6 +921,7 @@ mod tests {
             metadata: Default::default(),
             agent: "test".to_string(),
             messages: Vec::new(),
+            pages: Vec::new(),
             tool_uses: Vec::new(),
             usage: Default::default(),
             max_steps: None,
