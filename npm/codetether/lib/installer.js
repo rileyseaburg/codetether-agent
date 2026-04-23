@@ -2,9 +2,9 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
-const https = require('node:https');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { downloadFile, downloadText, requestJson } = require('./http');
 
 function repoFromEnv() {
   return process.env.CODETETHER_GITHUB_REPO || 'rileyseaburg/codetether-agent';
@@ -178,39 +178,6 @@ function canExecute(p) {
   }
 }
 
-function requestJson(url, headers = {}) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(
-        url,
-        {
-          headers: {
-            'User-Agent': 'codetether-npx',
-            Accept: 'application/vnd.github+json',
-            ...headers,
-          },
-        },
-        (res) => {
-          const chunks = [];
-          res.on('data', (d) => chunks.push(d));
-          res.on('end', () => {
-            const body = Buffer.concat(chunks).toString('utf8');
-            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-              try {
-                resolve(JSON.parse(body));
-              } catch (e) {
-                reject(new Error(`Failed to parse JSON from ${url}: ${e.message}`));
-              }
-              return;
-            }
-            reject(new Error(`HTTP ${res.statusCode} fetching ${url}: ${body.slice(0, 400)}`));
-          });
-        }
-      )
-      .on('error', reject);
-  });
-}
-
 async function getLatestReleaseTag(repo) {
   const data = await requestJson(`https://api.github.com/repos/${repo}/releases/latest`);
   if (!data || !data.tag_name) {
@@ -228,109 +195,6 @@ async function getReleaseAssetNames(repo, tag) {
   return data.assets
     .map((asset) => asset && asset.name)
     .filter((name) => typeof name === 'string' && name.length > 0);
-}
-
-function downloadFile(url, destPath) {
-  return new Promise((resolve, reject) => {
-    const doGet = (u, redirectsLeft) => {
-      https
-        .get(
-          u,
-          {
-            headers: {
-              'User-Agent': 'codetether-npx',
-              Accept: '*/*',
-            },
-          },
-          (res) => {
-            // Follow redirects (GitHub assets redirect to S3)
-            if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
-              const loc = res.headers.location;
-              if (!loc) {
-                reject(new Error(`Redirect without location from ${u}`));
-                return;
-              }
-              if (redirectsLeft <= 0) {
-                reject(new Error(`Too many redirects downloading ${url}`));
-                return;
-              }
-              res.resume();
-              doGet(loc, redirectsLeft - 1);
-              return;
-            }
-
-            if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-              const chunks = [];
-              res.on('data', (d) => chunks.push(d));
-              res.on('end', () => {
-                const body = Buffer.concat(chunks).toString('utf8');
-                const err = new Error(`HTTP ${res.statusCode} downloading ${u}: ${body.slice(0, 400)}`);
-                err.statusCode = res.statusCode;
-                reject(err);
-              });
-              return;
-            }
-
-            const out = fs.createWriteStream(destPath);
-            res.pipe(out);
-            out.on('finish', () => out.close(resolve));
-            out.on('error', reject);
-          }
-        )
-        .on('error', reject);
-    };
-
-    doGet(url, 8);
-  });
-}
-
-function downloadText(url) {
-  return new Promise((resolve, reject) => {
-    const doGet = (u, redirectsLeft) => {
-      https
-        .get(
-          u,
-          {
-            headers: {
-              'User-Agent': 'codetether-npx',
-              Accept: '*/*',
-            },
-          },
-          (res) => {
-            if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
-              const loc = res.headers.location;
-              if (!loc) {
-                reject(new Error(`Redirect without location from ${u}`));
-                return;
-              }
-              if (redirectsLeft <= 0) {
-                reject(new Error(`Too many redirects downloading ${url}`));
-                return;
-              }
-              res.resume();
-              doGet(loc, redirectsLeft - 1);
-              return;
-            }
-
-            const chunks = [];
-            res.on('data', (d) => chunks.push(d));
-            res.on('end', () => {
-              const body = Buffer.concat(chunks).toString('utf8');
-              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-                resolve(body);
-                return;
-              }
-              const err = new Error(`HTTP ${res.statusCode} downloading ${u}: ${body.slice(0, 400)}`);
-              err.statusCode = res.statusCode;
-              reject(err);
-            });
-          }
-        )
-        .on('error', reject);
-    };
-
-    doGet(url, 8);
-  });
 }
 
 function rmdirRecursiveSafe(p) {
