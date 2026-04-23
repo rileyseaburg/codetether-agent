@@ -6,6 +6,50 @@ const {
   defaultCacheDirFor,
   selectAssetCandidates,
 } = require('../lib/installer');
+const { downloadText } = require('../lib/http');
+
+function mockHttpsGet(responses, calls) {
+  return (url, options, onResponse) => {
+    const spec = responses.get(url);
+    const req = {
+      on(event, handler) {
+        if (event === 'error') {
+          this.onError = handler;
+        }
+        return this;
+      },
+    };
+
+    process.nextTick(() => {
+      if (!spec) {
+        req.onError(new Error(`Unexpected URL: ${url}`));
+        return;
+      }
+
+      const listeners = {};
+      const res = {
+        statusCode: spec.statusCode,
+        headers: spec.headers || {},
+        on(event, handler) {
+          listeners[event] = handler;
+          return this;
+        },
+        resume() {},
+      };
+
+      calls.push({ url, options });
+      onResponse(res);
+      if (spec.body && listeners.data) {
+        listeners.data(Buffer.from(spec.body));
+      }
+      if (listeners.end) {
+        listeners.end();
+      }
+    });
+
+    return req;
+  };
+}
 
 test('prefers explicit release tags over npm package versions', () => {
   assert.equal(
@@ -68,4 +112,29 @@ test('keeps preferred Windows asset order when release assets cannot be enumerat
       'codetether-v4.4.1-x86_64-pc-windows-gnu.tar.gz',
     ]
   );
+});
+
+test('preserves TLS options across redirected installer downloads', async () => {
+  const agent = { name: 'darwin-agent' };
+  const calls = [];
+  const responses = new Map([
+    [
+      'https://github.com/rileyseaburg/codetether-agent/releases/download/v4.6.1/test.txt',
+      { statusCode: 302, headers: { location: 'https://objects.example.com/test.txt' } },
+    ],
+    ['https://objects.example.com/test.txt', { statusCode: 200, body: 'ok' }],
+  ]);
+
+  const body = await downloadText(
+    'https://github.com/rileyseaburg/codetether-agent/releases/download/v4.6.1/test.txt',
+    {
+      httpsGet: mockHttpsGet(responses, calls),
+      tlsOptions: () => ({ agent }),
+    }
+  );
+
+  assert.equal(body, 'ok');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].options.agent, agent);
+  assert.equal(calls[1].options.agent, agent);
 });
