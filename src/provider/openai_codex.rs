@@ -246,6 +246,8 @@ impl OpenAiCodexProvider {
             "gpt-5.3-codex",
             "gpt-5.4",
             "gpt-5.4-fast",
+            "gpt-5.5",
+            "gpt-5.5-fast",
             "o3",
             "o4-mini",
         ]
@@ -1145,8 +1147,9 @@ impl OpenAiCodexProvider {
 
     fn parse_service_tier_model_alias(model: &str) -> (String, Option<CodexServiceTier>) {
         match model {
-            // OpenAI's Codex app implements GPT-5.4 Fast mode via `service_tier=priority`.
+            // OpenAI's Codex app implements Fast mode via `service_tier=priority`.
             "gpt-5.4-fast" => ("gpt-5.4".to_string(), Some(CodexServiceTier::Priority)),
+            "gpt-5.5-fast" => ("gpt-5.5".to_string(), Some(CodexServiceTier::Priority)),
             _ => (model.to_string(), None),
         }
     }
@@ -2135,6 +2138,32 @@ impl Provider for OpenAiCodexProvider {
         ];
 
         if self.using_chatgpt_backend() {
+            models.extend([
+                ModelInfo {
+                    id: "gpt-5.5".to_string(),
+                    name: "GPT-5.5".to_string(),
+                    provider: "openai-codex".to_string(),
+                    context_window: 400_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.0),
+                    output_cost_per_million: Some(0.0),
+                },
+                ModelInfo {
+                    id: "gpt-5.5-fast".to_string(),
+                    name: "GPT-5.5 Fast".to_string(),
+                    provider: "openai-codex".to_string(),
+                    context_window: 400_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.0),
+                    output_cost_per_million: Some(0.0),
+                },
+            ]);
             models.retain(|model| Self::chatgpt_supported_models().contains(&model.id.as_str()));
         }
 
@@ -2225,6 +2254,14 @@ mod tests {
         assert_eq!(model, "gpt-5.4");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
         assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
+
+        let (model, level, service_tier) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort_and_service_tier(
+                "gpt-5.5-fast:high",
+            );
+        assert_eq!(model, "gpt-5.5");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
+        assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
     }
 
     #[test]
@@ -2243,7 +2280,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn lists_gpt_5_4_models() {
+    async fn lists_chatgpt_codex_models() {
         let provider = OpenAiCodexProvider::new();
         let models = provider
             .list_models()
@@ -2252,7 +2289,21 @@ mod tests {
 
         assert!(models.iter().any(|model| model.id == "gpt-5.4"));
         assert!(models.iter().any(|model| model.id == "gpt-5.4-fast"));
+        assert!(models.iter().any(|model| model.id == "gpt-5.5"));
+        assert!(models.iter().any(|model| model.id == "gpt-5.5-fast"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));
+    }
+
+    #[tokio::test]
+    async fn omits_gpt_5_5_from_api_key_model_listing_for_now() {
+        let provider = OpenAiCodexProvider::from_api_key("test-key".to_string());
+        let models = provider
+            .list_models()
+            .await
+            .expect("model listing should succeed");
+
+        assert!(!models.iter().any(|model| model.id == "gpt-5.5"));
+        assert!(!models.iter().any(|model| model.id == "gpt-5.5-fast"));
     }
 
     #[test]
@@ -2281,6 +2332,9 @@ mod tests {
         provider
             .validate_model_for_backend("gpt-5.4-fast:high")
             .expect("chatgpt backend should allow fast alias");
+        provider
+            .validate_model_for_backend("gpt-5.5-fast:high")
+            .expect("chatgpt backend should allow GPT-5.5 fast alias");
     }
 
     #[test]
