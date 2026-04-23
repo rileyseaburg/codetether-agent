@@ -45,13 +45,18 @@ const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPE: &str = "openid profile email offline_access";
 const THINKING_LEVEL_ENV: &str = "CODETETHER_OPENAI_CODEX_THINKING_LEVEL";
 const REASONING_EFFORT_ENV: &str = "CODETETHER_OPENAI_CODEX_REASONING_EFFORT";
-const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are a helpful assistant.";
+const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are CodeTether Agent running on OpenAI Codex. \
+Resolve software tasks directly: inspect the workspace, make focused changes, validate with \
+available tools, and report concise results. When model availability or external APIs are involved, \
+verify live behavior before treating it as supported.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ThinkingLevel {
+    NoReasoning,
     Low,
     Medium,
     High,
+    XHigh,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,18 +73,22 @@ enum CodexServiceTier {
 impl ThinkingLevel {
     fn parse(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
+            "none" => Some(Self::NoReasoning),
             "low" => Some(Self::Low),
             "medium" => Some(Self::Medium),
             "high" => Some(Self::High),
+            "xhigh" => Some(Self::XHigh),
             _ => None,
         }
     }
 
     fn as_str(self) -> &'static str {
         match self {
+            Self::NoReasoning => "none",
             Self::Low => "low",
             Self::Medium => "medium",
             Self::High => "high",
+            Self::XHigh => "xhigh",
         }
     }
 }
@@ -2243,6 +2252,16 @@ mod tests {
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:high");
         assert_eq!(model, "gpt-5.3-codex");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
+
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:none");
+        assert_eq!(model, "gpt-5.5");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("none"));
+
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:xhigh");
+        assert_eq!(model, "gpt-5.5");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("xhigh"));
     }
 
     #[test]
@@ -2269,6 +2288,11 @@ mod tests {
         let (model, level) =
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:turbo");
         assert_eq!(model, "gpt-5.3-codex:turbo");
+        assert_eq!(level, None);
+
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:minimal");
+        assert_eq!(model, "gpt-5.5:minimal");
         assert_eq!(level, None);
     }
 
