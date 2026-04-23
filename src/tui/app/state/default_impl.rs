@@ -111,6 +111,7 @@ impl Default for super::AppState {
             chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
             last_key_at: None,
             recording_stop_flag: None,
+            pending_voice_text: None,
         }
     }
 }
