@@ -245,7 +245,6 @@ impl OpenAiCodexProvider {
             "gpt-5.2",
             "gpt-5.3-codex",
             "gpt-5.4",
-            "gpt-5.4-fast",
             "o3",
             "o4-mini",
         ]
@@ -2243,7 +2242,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn lists_gpt_5_4_models() {
+    async fn chatgpt_backend_lists_supported_gpt_5_4_models() {
         let provider = OpenAiCodexProvider::new();
         let models = provider
             .list_models()
@@ -2251,7 +2250,8 @@ mod tests {
             .expect("model listing should succeed");
 
         assert!(models.iter().any(|model| model.id == "gpt-5.4"));
-        assert!(models.iter().any(|model| model.id == "gpt-5.4-fast"));
+        assert!(models.iter().any(|model| model.id == "gpt-5-mini"));
+        assert!(!models.iter().any(|model| model.id == "gpt-5.4-fast"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));
     }
 
