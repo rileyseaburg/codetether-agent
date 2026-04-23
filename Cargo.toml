@@ -141,6 +141,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # JWT token minting
 jsonwebtoken = "9"
 
+# Voice input (microphone capture + WAV encoding)
+cpal = "0.15"
+hound = "3.5"
+
 # Utilities
 anyhow = "1.0.101"
 thiserror = "2"

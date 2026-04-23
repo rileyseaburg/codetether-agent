@@ -28,6 +28,7 @@ mod paste;
 mod scroll_down;
 mod scroll_up;
 mod tests;
+mod voice;
 
 use std::path::Path;
 use std::sync::Arc;

@@ -110,6 +110,7 @@ impl Default for super::AppState {
             workspace: crate::tui::models::WorkspaceSnapshot::default(),
             chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
             last_key_at: None,
+            recording_stop_flag: None,
         }
     }
 }
