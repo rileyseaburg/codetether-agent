@@ -20,12 +20,14 @@ function resolveRedirectUrl(currentUrl, location) {
 }
 
 function getWithRedirects(url, headers, handleResponse, deps = {}) {
+  const action = deps.action || 'fetching';
   const httpsGet = deps.httpsGet || https.get;
   const tlsOptions = deps.tlsOptions || defaultTlsOptions;
 
   return new Promise((resolve, reject) => {
     const doGet = (currentUrl, redirectsLeft) => {
       httpsGet(currentUrl, requestOptions(headers, tlsOptions), (res) => {
+        res.on('error', reject);
         if (res.statusCode && REDIRECT_STATUSES.has(res.statusCode)) {
           const loc = res.headers.location;
           if (!loc) {
@@ -33,7 +35,7 @@ function getWithRedirects(url, headers, handleResponse, deps = {}) {
             return;
           }
           if (redirectsLeft <= 0) {
-            reject(new Error(`Too many redirects downloading ${url}`));
+            reject(new Error(`Too many redirects ${action} ${url}`));
             return;
           }
           res.resume();
@@ -73,7 +75,7 @@ function requestJson(url, headers = {}, deps = {}) {
           reject(new Error(`HTTP ${res.statusCode} fetching ${currentUrl}: ${body.slice(0, 400)}`));
         });
       }),
-    deps
+    { ...deps, action: 'fetching' }
   );
 }
 
@@ -96,11 +98,13 @@ function downloadText(url, deps = {}) {
           reject(err);
         });
       }),
-    deps
+    { ...deps, action: 'downloading' }
   );
 }
 
 function downloadFile(url, destPath, deps = {}) {
+  const createWriteStream = deps.createWriteStream || fs.createWriteStream;
+
   return getWithRedirects(
     url,
     {},
@@ -118,12 +122,20 @@ function downloadFile(url, destPath, deps = {}) {
           return;
         }
 
-        const out = fs.createWriteStream(destPath);
+        const out = createWriteStream(destPath);
         res.pipe(out);
-        out.on('finish', () => out.close(resolve));
+        out.on('finish', () =>
+          out.close((err) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve();
+          })
+        );
         out.on('error', reject);
       }),
-    deps
+    { ...deps, action: 'downloading' }
   );
 }
 

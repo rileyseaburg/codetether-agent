@@ -6,7 +6,7 @@ const {
   defaultCacheDirFor,
   selectAssetCandidates,
 } = require('../lib/installer');
-const { downloadText } = require('../lib/http');
+const { downloadFile, downloadText, requestJson } = require('../lib/http');
 
 function mockHttpsGet(responses, calls) {
   return (url, options, onResponse) => {
@@ -35,10 +35,22 @@ function mockHttpsGet(responses, calls) {
           return this;
         },
         resume() {},
+        pipe(dest) {
+          process.nextTick(() => {
+            if (typeof dest.emit === 'function') {
+              dest.emit('finish');
+            }
+          });
+          return dest;
+        },
       };
 
       calls.push({ url, options });
       onResponse(res);
+      if (spec.error && listeners.error) {
+        listeners.error(spec.error);
+        return;
+      }
       if (spec.body && listeners.data) {
         listeners.data(Buffer.from(spec.body));
       }
@@ -137,4 +149,56 @@ test('preserves TLS options across redirected installer downloads', async () => 
   assert.equal(calls.length, 2);
   assert.equal(calls[0].options.agent, agent);
   assert.equal(calls[1].options.agent, agent);
+});
+
+test('propagates response stream errors from redirected downloads', async () => {
+  const boom = new Error('socket reset');
+  const responses = new Map([['https://objects.example.com/test.txt', { statusCode: 200, error: boom }]]);
+
+  await assert.rejects(
+    downloadText('https://objects.example.com/test.txt', {
+      httpsGet: mockHttpsGet(responses, []),
+    }),
+    /socket reset/
+  );
+});
+
+test('reports requestJson redirect exhaustion as fetching', async () => {
+  const url = 'https://api.github.com/repos/rileyseaburg/codetether-agent/releases/latest';
+  const responses = new Map([[url, { statusCode: 302, headers: { location: url } }]]);
+
+  await assert.rejects(
+    requestJson(url, {}, { httpsGet: mockHttpsGet(responses, []) }),
+    /Too many redirects fetching/
+  );
+});
+
+test('rejects downloadFile when closing the output stream fails', async () => {
+  const closeError = new Error('close failed');
+  const responses = new Map([['https://objects.example.com/test.bin', { statusCode: 200 }]]);
+  const createWriteStream = () => {
+    const listeners = {};
+    return {
+      on(event, handler) {
+        listeners[event] = handler;
+        return this;
+      },
+      emit(event, value) {
+        if (listeners[event]) {
+          listeners[event](value);
+        }
+      },
+      close(callback) {
+        callback(closeError);
+      },
+    };
+  };
+
+  await assert.rejects(
+    downloadFile('https://objects.example.com/test.bin', '/tmp/test.bin', {
+      httpsGet: mockHttpsGet(responses, []),
+      createWriteStream,
+    }),
+    /close failed/
+  );
 });
