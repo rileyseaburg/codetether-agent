@@ -1187,6 +1187,31 @@ impl OpenAiCodexProvider {
         }
     }
 
+    fn model_info(
+        id: &str,
+        name: &str,
+        context_window: usize,
+        max_output_tokens: usize,
+        supports_vision: bool,
+    ) -> ModelInfo {
+        ModelInfo {
+            id: id.to_string(),
+            name: name.to_string(),
+            provider: "openai-codex".to_string(),
+            context_window,
+            max_output_tokens: Some(max_output_tokens),
+            supports_vision,
+            supports_tools: true,
+            supports_streaming: true,
+            input_cost_per_million: Some(0.0),
+            output_cost_per_million: Some(0.0),
+        }
+    }
+
+    fn api_key_hidden_model(model: &str) -> bool {
+        matches!(model, "gpt-5.5" | "gpt-5.5-fast")
+    }
+
     fn format_openai_api_error(status: StatusCode, body: &str, model: &str) -> String {
         if status == StatusCode::UNAUTHORIZED && body.contains("Missing scopes: model.request") {
             return format!(
@@ -2024,156 +2049,24 @@ impl Provider for OpenAiCodexProvider {
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         let mut models = vec![
-            ModelInfo {
-                id: "gpt-5".to_string(),
-                name: "GPT-5".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5-mini".to_string(),
-                name: "GPT-5 Mini".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 264_000,
-                max_output_tokens: Some(64_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.1-codex".to_string(),
-                name: "GPT-5.1 Codex".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.2".to_string(),
-                name: "GPT-5.2".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.3-codex".to_string(),
-                name: "GPT-5.3 Codex".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.4".to_string(),
-                name: "GPT-5.4".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.4-fast".to_string(),
-                name: "GPT-5.4 Fast".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.4-pro".to_string(),
-                name: "GPT-5.4 Pro".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "o3".to_string(),
-                name: "O3".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(100_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "o4-mini".to_string(),
-                name: "O4 Mini".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(100_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
+            Self::model_info("gpt-5", "GPT-5", 400_000, 128_000, false),
+            Self::model_info("gpt-5-mini", "GPT-5 Mini", 264_000, 64_000, false),
+            Self::model_info("gpt-5.1-codex", "GPT-5.1 Codex", 400_000, 128_000, false),
+            Self::model_info("gpt-5.2", "GPT-5.2", 400_000, 128_000, false),
+            Self::model_info("gpt-5.3-codex", "GPT-5.3 Codex", 400_000, 128_000, false),
+            Self::model_info("gpt-5.4", "GPT-5.4", 272_000, 128_000, false),
+            Self::model_info("gpt-5.4-fast", "GPT-5.4 Fast", 272_000, 128_000, false),
+            Self::model_info("gpt-5.4-pro", "GPT-5.4 Pro", 272_000, 128_000, false),
+            Self::model_info("gpt-5.5", "GPT-5.5", 400_000, 128_000, false),
+            Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 400_000, 128_000, false),
+            Self::model_info("o3", "O3", 200_000, 100_000, true),
+            Self::model_info("o4-mini", "O4 Mini", 200_000, 100_000, true),
         ];
 
         if self.using_chatgpt_backend() {
-            models.extend([
-                ModelInfo {
-                    id: "gpt-5.5".to_string(),
-                    name: "GPT-5.5".to_string(),
-                    provider: "openai-codex".to_string(),
-                    context_window: 400_000,
-                    max_output_tokens: Some(128_000),
-                    supports_vision: false,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: Some(0.0),
-                    output_cost_per_million: Some(0.0),
-                },
-                ModelInfo {
-                    id: "gpt-5.5-fast".to_string(),
-                    name: "GPT-5.5 Fast".to_string(),
-                    provider: "openai-codex".to_string(),
-                    context_window: 400_000,
-                    max_output_tokens: Some(128_000),
-                    supports_vision: false,
-                    supports_tools: true,
-                    supports_streaming: true,
-                    input_cost_per_million: Some(0.0),
-                    output_cost_per_million: Some(0.0),
-                },
-            ]);
             models.retain(|model| Self::chatgpt_supported_models().contains(&model.id.as_str()));
+        } else {
+            models.retain(|model| !Self::api_key_hidden_model(&model.id));
         }
 
         Ok(models)
