@@ -2,6 +2,7 @@ use anyhow::{Context, Result, bail};
 use std::time::Duration;
 
 pub async fn check(
+    client: &reqwest::Client,
     url: &str,
     method: &str,
     expect_status: u16,
@@ -11,10 +12,11 @@ pub async fn check(
     let method = method
         .parse::<reqwest::Method>()
         .with_context(|| format!("invalid HTTP method `{method}`"))?;
-    let client = reqwest::Client::builder()
+    let response = client
+        .request(method, url)
         .timeout(Duration::from_secs(timeout_secs))
-        .build()?;
-    let response = client.request(method, url).send().await?;
+        .send()
+        .await?;
     let status = response.status().as_u16();
     let body = response.text().await?;
 

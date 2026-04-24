@@ -11,8 +11,9 @@ use std::path::Path;
 
 pub async fn run_story_verification(root: &Path, story: &UserStory) -> Result<()> {
     let mut failures = Vec::new();
+    let client = reqwest::Client::new();
     for (index, item) in story.verification_steps.iter().enumerate() {
-        if let Err(error) = step::run(root, item).await {
+        if let Err(error) = step::run(root, item, &client).await {
             failures.push(format!("step {}: {error}", index + 1));
         }
     }

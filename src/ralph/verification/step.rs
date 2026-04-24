@@ -3,7 +3,7 @@ use crate::ralph::types::VerificationStep;
 use anyhow::Result;
 use std::path::Path;
 
-pub async fn run(root: &Path, step: &VerificationStep) -> Result<()> {
+pub async fn run(root: &Path, step: &VerificationStep, client: &reqwest::Client) -> Result<()> {
     match step {
         VerificationStep::Shell {
             command,
@@ -28,6 +28,7 @@ pub async fn run(root: &Path, step: &VerificationStep) -> Result<()> {
             ..
         } => {
             url::check(
+                client,
                 target,
                 method,
                 *expect_status,

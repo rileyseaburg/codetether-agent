@@ -140,6 +140,21 @@ impl RalphLoop {
         }
     }
 
+    fn record_story_result(&self, story: &UserStory, passed: bool, error: Option<String>) {
+        if let Some(ref store) = self.store {
+            let s = store.clone();
+            let rid = self.run_id.clone();
+            let entry = StoryResultEntry {
+                story_id: story.id.clone(),
+                title: story.title.clone(),
+                passed,
+                iteration: self.state.current_iteration,
+                error,
+            };
+            self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
+        }
+    }
+
     /// Publish story learnings, handoff context, and progress to the bus.
     fn bus_publish_story_result(
         &self,
@@ -524,20 +539,7 @@ impl RalphLoop {
                             {
                                 let error = format!("Verification steps failed: {error}");
                                 warn!(story_id = %story.id, error = %error);
-                                if let Some(ref store) = self.store {
-                                    let s = store.clone();
-                                    let rid = self.run_id.clone();
-                                    let entry = StoryResultEntry {
-                                        story_id: story.id.clone(),
-                                        title: story.title.clone(),
-                                        passed: false,
-                                        iteration: self.state.current_iteration,
-                                        error: Some(error.clone()),
-                                    };
-                                    self.store_fire_and_forget(async move {
-                                        s.record_story_result(&rid, &entry).await
-                                    });
-                                }
+                                self.record_story_result(&story, false, Some(error.clone()));
                                 self.try_send_event(RalphEvent::StoryComplete {
                                     story_id: story.id.clone(),
                                     passed: false,
@@ -547,20 +549,7 @@ impl RalphLoop {
                             self.state.prd.mark_passed(&story.id);
 
                             // Record story result in store
-                            if let Some(ref store) = self.store {
-                                let s = store.clone();
-                                let rid = self.run_id.clone();
-                                let entry = StoryResultEntry {
-                                    story_id: story.id.clone(),
-                                    title: story.title.clone(),
-                                    passed: true,
-                                    iteration: self.state.current_iteration,
-                                    error: None,
-                                };
-                                self.store_fire_and_forget(async move {
-                                    s.record_story_result(&rid, &entry).await
-                                });
-                            }
+                            self.record_story_result(&story, true, None);
 
                             self.try_send_event(RalphEvent::StoryComplete {
                                 story_id: story.id.clone(),
@@ -587,20 +576,11 @@ impl RalphLoop {
                             warn!("Story {} failed quality checks", story.id);
 
                             // Record failed story result in store
-                            if let Some(ref store) = self.store {
-                                let s = store.clone();
-                                let rid = self.run_id.clone();
-                                let entry = StoryResultEntry {
-                                    story_id: story.id.clone(),
-                                    title: story.title.clone(),
-                                    passed: false,
-                                    iteration: self.state.current_iteration,
-                                    error: Some("Quality checks failed".to_string()),
-                                };
-                                self.store_fire_and_forget(async move {
-                                    s.record_story_result(&rid, &entry).await
-                                });
-                            }
+                            self.record_story_result(
+                                &story,
+                                false,
+                                Some("Quality checks failed".to_string()),
+                            );
 
                             // Publish failure learnings to bus
                             let next = self.state.prd.next_story().map(|s| s.id.clone());
@@ -623,20 +603,7 @@ impl RalphLoop {
                         {
                             let error = format!("Verification steps failed: {error}");
                             warn!(story_id = %story.id, error = %error);
-                            if let Some(ref store) = self.store {
-                                let s = store.clone();
-                                let rid = self.run_id.clone();
-                                let entry = StoryResultEntry {
-                                    story_id: story.id.clone(),
-                                    title: story.title.clone(),
-                                    passed: false,
-                                    iteration: self.state.current_iteration,
-                                    error: Some(error.clone()),
-                                };
-                                self.store_fire_and_forget(async move {
-                                    s.record_story_result(&rid, &entry).await
-                                });
-                            }
+                            self.record_story_result(&story, false, Some(error.clone()));
                             self.try_send_event(RalphEvent::StoryComplete {
                                 story_id: story.id.clone(),
                                 passed: false,
@@ -647,20 +614,7 @@ impl RalphLoop {
                         self.state.prd.save(&self.state.prd_path).await?;
 
                         // Record story result in store
-                        if let Some(ref store) = self.store {
-                            let s = store.clone();
-                            let rid = self.run_id.clone();
-                            let entry = StoryResultEntry {
-                                story_id: story.id.clone(),
-                                title: story.title.clone(),
-                                passed: true,
-                                iteration: self.state.current_iteration,
-                                error: None,
-                            };
-                            self.store_fire_and_forget(async move {
-                                s.record_story_result(&rid, &entry).await
-                            });
-                        }
+                        self.record_story_result(&story, true, None);
 
                         self.try_send_event(RalphEvent::StoryComplete {
                             story_id: story.id.clone(),
@@ -1237,21 +1191,11 @@ impl RalphLoop {
                                                         "Verification steps failed after merge: {error}"
                                                     );
                                                     warn!(story_id = %story.id, error = %error);
-                                                    if let Some(ref store) = self.store {
-                                                        let s = store.clone();
-                                                        let rid = self.run_id.clone();
-                                                        let entry = StoryResultEntry {
-                                                            story_id: story.id.clone(),
-                                                            title: story.title.clone(),
-                                                            passed: false,
-                                                            iteration: self.state.current_iteration,
-                                                            error: Some(error),
-                                                        };
-                                                        self.store_fire_and_forget(async move {
-                                                            s.record_story_result(&rid, &entry)
-                                                                .await
-                                                        });
-                                                    }
+                                                    self.record_story_result(
+                                                        &story,
+                                                        false,
+                                                        Some(error),
+                                                    );
                                                     self.try_send_event(
                                                         RalphEvent::StoryComplete {
                                                             story_id: story.id.clone(),
@@ -1273,20 +1217,7 @@ impl RalphLoop {
                                                 });
 
                                                 // Record story result in store
-                                                if let Some(ref store) = self.store {
-                                                    let s = store.clone();
-                                                    let rid = self.run_id.clone();
-                                                    let entry = StoryResultEntry {
-                                                        story_id: story.id.clone(),
-                                                        title: story.title.clone(),
-                                                        passed: true,
-                                                        iteration: self.state.current_iteration,
-                                                        error: None,
-                                                    };
-                                                    self.store_fire_and_forget(async move {
-                                                        s.record_story_result(&rid, &entry).await
-                                                    });
-                                                }
+                                                self.record_story_result(&story, true, None);
 
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(&wt.name).await;
@@ -1350,20 +1281,15 @@ impl RalphLoop {
                                                                                     story_id = %story.id,
                                                                                     error = %error
                                                                                 );
-                                                                                if let Some(ref store) = self.store {
-                                                                                    let s = store.clone();
-                                                                                    let rid = self.run_id.clone();
-                                                                                    let entry = StoryResultEntry {
-                                                                                        story_id: story.id.clone(),
-                                                                                        title: story.title.clone(),
-                                                                                        passed: false,
-                                                                                        iteration: self.state.current_iteration,
-                                                                                        error: Some(error),
-                                                                                    };
-                                                                                    self.store_fire_and_forget(async move {
-                                                                                        s.record_story_result(&rid, &entry).await
-                                                                                    });
-                                                                                }
+                                                                                self.record_story_result(
+                                                                                    &story,
+                                                                                    false,
+                                                                                    Some(error),
+                                                                                );
+                                                                                self.try_send_event(RalphEvent::StoryComplete {
+                                                                                    story_id: story.id.clone(),
+                                                                                    passed: false,
+                                                                                });
                                                                             }
                                                                         }
                                                                     } else {
@@ -1440,20 +1366,7 @@ impl RalphLoop {
                                     {
                                         let error = format!("Verification steps failed: {error}");
                                         warn!(story_id = %story.id, error = %error);
-                                        if let Some(ref store) = self.store {
-                                            let s = store.clone();
-                                            let rid = self.run_id.clone();
-                                            let entry = StoryResultEntry {
-                                                story_id: story.id.clone(),
-                                                title: story.title.clone(),
-                                                passed: false,
-                                                iteration: self.state.current_iteration,
-                                                error: Some(error),
-                                            };
-                                            self.store_fire_and_forget(async move {
-                                                s.record_story_result(&rid, &entry).await
-                                            });
-                                        }
+                                        self.record_story_result(&story, false, Some(error));
                                         self.try_send_event(RalphEvent::StoryComplete {
                                             story_id: story.id.clone(),
                                             passed: false,
@@ -1467,20 +1380,7 @@ impl RalphLoop {
                                     });
 
                                     // Record story result in store
-                                    if let Some(ref store) = self.store {
-                                        let s = store.clone();
-                                        let rid = self.run_id.clone();
-                                        let entry = StoryResultEntry {
-                                            story_id: story.id.clone(),
-                                            title: story.title.clone(),
-                                            passed: true,
-                                            iteration: self.state.current_iteration,
-                                            error: None,
-                                        };
-                                        self.store_fire_and_forget(async move {
-                                            s.record_story_result(&rid, &entry).await
-                                        });
-                                    }
+                                    self.record_story_result(&story, true, None);
                                 }
                             }
                         } else {
@@ -1496,20 +1396,7 @@ impl RalphLoop {
                                 story_id: story.id.clone(),
                                 error: error.clone(),
                             });
-                            if let Some(ref store) = self.store {
-                                let s = store.clone();
-                                let rid = self.run_id.clone();
-                                let entry = StoryResultEntry {
-                                    story_id: story.id.clone(),
-                                    title: story.title.clone(),
-                                    passed: false,
-                                    iteration: self.state.current_iteration,
-                                    error: Some(error),
-                                };
-                                self.store_fire_and_forget(async move {
-                                    s.record_story_result(&rid, &entry).await
-                                });
-                            }
+                            self.record_story_result(&story, false, Some(error));
                             if let Some(ref wt) = worktree_info {
                                 info!(
                                     story_id = %story.id,
