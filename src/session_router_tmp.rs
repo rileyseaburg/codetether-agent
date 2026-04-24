@@ -30,7 +30,7 @@ fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<Strin
             vec![format!("{provider}/gpt-5-mini")]
         }
         "openai-codex" => {
-            vec!["openai-codex/gpt-5.4".to_string(), "openai-codex/gpt-5-mini".to_string()]
+            vec!["openai-codex/gpt-5.5".to_string(), "openai-codex/gpt-5-mini".to_string()]
         }
         "gemini-web" => vec!["gemini-web/gemini-2.5-flash".to_string()],
         "local_cuda" => vec!["local_cuda/qwen3.5-9b".to_string()],

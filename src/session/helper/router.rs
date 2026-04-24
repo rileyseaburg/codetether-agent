@@ -128,7 +128,7 @@ pub fn known_good_router_candidates(provider: &str, failed_model: &str) -> Vec<S
         }
         "openai-codex" => {
             vec![
-                "openai-codex/gpt-5.4".to_string(),
+                "openai-codex/gpt-5.5".to_string(),
                 "openai-codex/gpt-5-mini".to_string(),
             ]
         }

@@ -93,6 +93,7 @@ jobs:
           github_token: ${{ steps.app-token.outputs.token }}
           vault_addr: ${{ secrets.VAULT_ADDR }}
           vault_token: ${{ secrets.VAULT_TOKEN }}
+          model: openai-codex/gpt-5.5
           max_steps: "60"
           task_wait_seconds: "1200"
           workspace_path: ${{ github.workspace }}/repo

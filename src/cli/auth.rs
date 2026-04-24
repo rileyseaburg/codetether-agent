@@ -581,7 +581,7 @@ async fn store_codex_credentials(credentials: OAuthCredentials) -> Result<()> {
         println!("Using ChatGPT workspace/account ID: {}", account_id);
     }
     println!("Access token expires at {}", expires_display);
-    println!("You can now select models like `openai-codex/gpt-5.4`.");
+    println!("You can now select models like `openai-codex/gpt-5.5`.");
     Ok(())
 }
 

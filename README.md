@@ -168,7 +168,7 @@ codetether forage --loop --execute --interval-secs 120 --top 3
 
 # Smart swarms in forage loop
 codetether forage --loop --execute --execution-engine swarm --interval-secs 120 --top 3 \
-  --swarm-max-subagents 8 --swarm-strategy auto --model openai-codex/gpt-5.1-codex
+  --swarm-max-subagents 8 --swarm-strategy auto --model openai-codex/gpt-5.5
 
 # Moonshot rubric: mission statements that bias prioritization
 codetether forage --loop --execute --execution-engine swarm --interval-secs 120 --top 3 \
@@ -404,7 +404,7 @@ Rich terminal UI with model selector, session picker, swarm view, Ralph view, au
 | `moonshotai` | `kimi-k2.5` | Excellent for coding |
 | `github-copilot` | `claude-opus-4` | GitHub Copilot models |
 | `openai` | `gpt-4o` | OpenAI GPT models |
-| `openai-codex` | `gpt-5-codex` | ChatGPT subscription OAuth |
+| `openai-codex` | `gpt-5.5` | ChatGPT subscription OAuth |
 | `openrouter` | `stepfun/step-3.5-flash:free` | Access to many models |
 | `google` | `gemini-2.5-pro` | Google AI |
 | `anthropic` | `claude-sonnet-4-20250514` | Direct API |

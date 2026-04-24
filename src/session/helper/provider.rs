@@ -104,10 +104,10 @@ pub fn should_retry_missing_native_tool_call(
 
 pub fn choose_default_provider<'a>(providers: &'a [&'a str]) -> Option<&'a str> {
     let preferred = [
+        "openai-codex",
         "openai",
         "anthropic",
         "github-copilot",
-        "openai-codex",
         "zai",
         "minimax",
         "openrouter",

@@ -17,7 +17,7 @@
 ///
 /// Supports:
 /// - `provider/model` → (`provider`, `model`)
-/// - nested provider namespaces like `openai-codex/gpt-5.4`
+/// - nested provider namespaces like `openai-codex/gpt-5.5`
 /// - OpenRouter-style paths like `openrouter/openai/gpt-5-codex`
 ///
 /// For three-or-more path segments, the first segment is the provider and

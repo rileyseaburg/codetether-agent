@@ -2,6 +2,8 @@
 
 mod clone_location;
 mod clone_target;
+mod model_defaults;
+mod model_preferences;
 
 use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
@@ -33,6 +35,8 @@ use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed
 use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
 use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
 use clone_target::prepare_clone_target;
+use self::model_defaults::{default_model_for_provider, prefers_temperature_one};
+use self::model_preferences::choose_provider_for_tier;
 
 /// Worker status for heartbeat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -654,96 +658,6 @@ fn model_ref_to_provider_model(model: &str) -> String {
     } else {
         model.to_string()
     }
-}
-
-fn provider_preferences_for_tier(model_tier: Option<&str>) -> &'static [&'static str] {
-    match model_tier.unwrap_or("balanced") {
-        "fast" | "quick" => &[
-            "zai",
-            "openai",
-            "github-copilot",
-            "moonshotai",
-            "openrouter",
-            "novita",
-            "google",
-            "anthropic",
-        ],
-        "heavy" | "deep" => &[
-            "zai",
-            "anthropic",
-            "openai",
-            "github-copilot",
-            "moonshotai",
-            "openrouter",
-            "novita",
-            "google",
-        ],
-        _ => &[
-            "zai",
-            "openai",
-            "github-copilot",
-            "anthropic",
-            "moonshotai",
-            "openrouter",
-            "novita",
-            "google",
-        ],
-    }
-}
-
-fn choose_provider_for_tier<'a>(providers: &'a [&'a str], model_tier: Option<&str>) -> &'a str {
-    for preferred in provider_preferences_for_tier(model_tier) {
-        if let Some(found) = providers.iter().copied().find(|p| *p == *preferred) {
-            return found;
-        }
-    }
-    if let Some(found) = providers.iter().copied().find(|p| *p == "zai") {
-        return found;
-    }
-    providers[0]
-}
-
-fn default_model_for_provider(provider: &str, model_tier: Option<&str>) -> String {
-    match model_tier.unwrap_or("balanced") {
-        "fast" | "quick" => match provider {
-            "moonshotai" => "kimi-k2.5".to_string(),
-            "anthropic" => "claude-haiku-4-5".to_string(),
-            "openai" => "gpt-4o-mini".to_string(),
-            "google" => "gemini-2.5-flash".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
-            "openrouter" => "z-ai/glm-5".to_string(),
-            "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
-            "bedrock" => "amazon.nova-lite-v1:0".to_string(),
-            _ => "glm-5".to_string(),
-        },
-        "heavy" | "deep" => match provider {
-            "moonshotai" => "kimi-k2.5".to_string(),
-            "anthropic" => "claude-sonnet-4-20250514".to_string(),
-            "openai" => "o3".to_string(),
-            "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
-            "openrouter" => "z-ai/glm-5".to_string(),
-            "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
-            "bedrock" => "us.anthropic.claude-opus-4-6-v1".to_string(),
-            _ => "glm-5".to_string(),
-        },
-        _ => match provider {
-            "moonshotai" => "kimi-k2.5".to_string(),
-            "anthropic" => "claude-sonnet-4-20250514".to_string(),
-            "openai" => "gpt-4o".to_string(),
-            "google" => "gemini-2.5-pro".to_string(),
-            "zhipuai" | "zai" => "glm-5".to_string(),
-            "openrouter" => "z-ai/glm-5".to_string(),
-            "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
-            "bedrock" => "amazon.nova-lite-v1:0".to_string(),
-            _ => "glm-5".to_string(),
-        },
-    }
-}
-
-fn prefers_temperature_one(model: &str) -> bool {
-    let normalized = model.to_ascii_lowercase();
-    normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
 }
 
 fn is_swarm_agent(agent_type: &str) -> bool {
