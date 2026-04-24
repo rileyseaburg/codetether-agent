@@ -130,6 +130,9 @@ kube = { version = "3.0.1", features = ["runtime", "client", "derive", "config"]
 k8s-openapi = { version = "0.27.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
+# TetherScript's scripting VM API is not available from crates.io yet.
+# See docs/tetherscript_dependency.md for the build requirement.
+tetherscript = { git = "https://github.com/kiln-rs/kiln.git", rev = "d95f638e80a6131a62b8324f5dd42619ff2cb86e" }
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"

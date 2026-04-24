@@ -51,6 +51,7 @@ pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
 pub mod task;
+pub mod tetherscript;
 pub mod todo;
 pub mod undo;
 pub mod voice;
@@ -374,6 +375,8 @@ impl ToolRegistry {
         registry.register(Arc::new(go::GoTool::new()));
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
+        // TetherScript plugin runtime for project-local extension hooks
+        registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
         registry.register_compat_aliases();
 
         registry
@@ -457,6 +460,8 @@ impl ToolRegistry {
         registry.register(Arc::new(go::GoTool::new()));
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
+        // TetherScript plugin runtime for project-local extension hooks
+        registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
         registry.register_compat_aliases();
 
         registry
