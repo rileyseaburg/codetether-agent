@@ -121,10 +121,26 @@ pub struct RegisteredTool {
     pub capabilities: Vec<String>,
     pub parameters: serde_json::Value,
     pub execution_mode: String,
-    pub agent_executable: bool,
     pub registered_at: chrono::DateTime<chrono::Utc>,
     pub last_heartbeat: chrono::DateTime<chrono::Utc>,
     pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize)]
+struct RegisteredToolView {
+    #[serde(flatten)]
+    tool: RegisteredTool,
+    agent_executable: bool,
+}
+
+impl From<RegisteredTool> for RegisteredToolView {
+    fn from(tool: RegisteredTool) -> Self {
+        let agent_executable = tool_contract::is_agent_executable(&tool.execution_mode);
+        Self {
+            tool,
+            agent_executable,
+        }
+    }
 }
 
 /// Tool registry with TTL-based expiry
@@ -202,6 +218,7 @@ pub struct AppState {
     pub knative_tasks: KnativeTaskQueue,
     pub tool_registry: ToolRegistry,
     pub plugin_registry: AgentPluginRegistry,
+    pub server_fingerprint: String,
 }
 
 /// Audit middleware — logs every request/response to the audit trail.
@@ -566,7 +583,9 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     );
 
     // Set up tool registry for cognition execution engine.
-    cognition.set_tools(Arc::new(crate::tool::ToolRegistry::with_defaults()));
+    let runtime_tools = Arc::new(crate::tool::ToolRegistry::with_defaults());
+    let plugin_registry = runtime_tools.plugins().clone();
+    cognition.set_tools(runtime_tools);
     tracing::info!(
         elapsed_ms = t0.elapsed().as_millis(),
         "[startup] tools registered"
@@ -686,7 +705,8 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         bus,
         knative_tasks: KnativeTaskQueue::new(),
         tool_registry: ToolRegistry::new(),
-        plugin_registry: AgentPluginRegistry::from_env(),
+        plugin_registry,
+        server_fingerprint: hash_bytes(env!("CARGO_PKG_VERSION").as_bytes()),
     };
 
     // Spawn the tool reaper background task (runs every 15s to clean up expired tools)
@@ -2667,13 +2687,21 @@ pub struct RegisterToolRequest {
 /// Response from registering a tool
 #[derive(Serialize)]
 struct RegisterToolResponse {
-    tool: RegisteredTool,
+    tool: RegisteredToolView,
     message: String,
 }
 
 /// List all registered tools (active, non-expired)
-async fn list_tools(State(state): State<AppState>) -> Json<Vec<RegisteredTool>> {
-    Json(state.tool_registry.list().await)
+async fn list_tools(State(state): State<AppState>) -> Json<Vec<RegisteredToolView>> {
+    Json(
+        state
+            .tool_registry
+            .list()
+            .await
+            .into_iter()
+            .map(RegisteredToolView::from)
+            .collect(),
+    )
 }
 
 /// Register a new tool
@@ -2691,7 +2719,6 @@ async fn register_tool(
         capabilities: req.capabilities,
         parameters: req.parameters,
         execution_mode: tool_contract::DISCOVERY_ONLY_MODE.to_string(),
-        agent_executable: tool_contract::is_agent_executable(tool_contract::DISCOVERY_ONLY_MODE),
         registered_at: now,
         last_heartbeat: now,
         expires_at: now + Duration::from_secs(90),
@@ -2702,11 +2729,8 @@ async fn register_tool(
     tracing::info!(tool_id = %tool.id, "Tool registered");
 
     Ok(Json(RegisterToolResponse {
-        tool,
-        message: format!(
-            "{} Heartbeat required every 30s.",
-            tool_contract::DISCOVERY_ONLY_MESSAGE
-        ),
+        tool: RegisteredToolView::from(tool),
+        message: tool_contract::discovery_registration_message(),
     }))
 }
 
@@ -2714,27 +2738,27 @@ async fn register_tool(
 async fn tool_heartbeat(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<RegisteredTool>, (StatusCode, String)> {
+) -> Result<Json<RegisteredToolView>, (StatusCode, String)> {
     state
         .tool_registry
         .heartbeat(&id)
         .await
         .map(|tool| {
             tracing::info!(tool_id = %id, "Tool heartbeat received");
-            Json(tool)
+            Json(RegisteredToolView::from(tool))
         })
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Tool {} not found", id)))
 }
 
 /// List registered plugins.
 async fn list_plugins(State(state): State<AppState>) -> Json<PluginListResponse> {
-    let server_fingerprint = hash_bytes(env!("CARGO_PKG_VERSION").as_bytes());
-    let test_sig = state
-        .plugin_registry
-        .signing_key()
-        .sign("_probe", "0.0.0", &server_fingerprint);
+    let test_sig =
+        state
+            .plugin_registry
+            .signing_key()
+            .sign("_probe", "0.0.0", &state.server_fingerprint);
     Json(PluginListResponse {
-        server_fingerprint,
+        server_fingerprint: state.server_fingerprint.clone(),
         signing_available: !test_sig.is_empty(),
         plugins: state.plugin_registry.list().await,
     })
@@ -3154,7 +3178,8 @@ fn env_bool(name: &str, default: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{match_policy_rule, normalize_model_reference};
+    use super::{RegisteredTool, RegisteredToolView, match_policy_rule, normalize_model_reference};
+    use serde_json::json;
 
     #[test]
     fn policy_prompt_session_requires_execute_permission() {
@@ -3192,5 +3217,28 @@ mod tests {
             normalize_model_reference("openai:gpt-4o"),
             "openai/gpt-4o".to_string()
         );
+    }
+
+    #[test]
+    fn registered_tool_view_derives_discovery_contract() {
+        let now = chrono::Utc::now();
+        let tool = RegisteredTool {
+            id: "demo".into(),
+            name: "Demo".into(),
+            description: "Demo tool".into(),
+            version: "1.0.0".into(),
+            endpoint: "https://example.test/tool".into(),
+            capabilities: vec!["demo".into()],
+            parameters: json!({}),
+            execution_mode: super::tool_contract::DISCOVERY_ONLY_MODE.into(),
+            registered_at: now,
+            last_heartbeat: now,
+            expires_at: now,
+        };
+
+        let value = serde_json::to_value(RegisteredToolView::from(tool)).unwrap();
+
+        assert_eq!(value["execution_mode"], "discovery_only");
+        assert_eq!(value["agent_executable"], false);
     }
 }
