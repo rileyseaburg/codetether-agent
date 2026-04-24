@@ -10,6 +10,8 @@ fn preferred_models_returns_list_for_known_providers() {
     assert!(models.contains(&"MiniMax-M2.5"));
     let models = smart_switch_preferred_models("zai");
     assert!(models.contains(&"glm-5"));
+    let models = smart_switch_preferred_models("openai-codex");
+    assert_eq!(models.first().copied(), Some("gpt-5.4"));
 }
 
 #[test]
