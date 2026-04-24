@@ -17,6 +17,7 @@ pub mod config;
 pub mod event_stream;
 pub mod forage;
 pub mod github_pr;
+pub mod image_clipboard;
 pub mod indexer;
 pub mod k8s;
 pub mod lsp;
