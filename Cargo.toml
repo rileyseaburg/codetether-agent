@@ -130,6 +130,7 @@ kube = { version = "3.0.1", features = ["runtime", "client", "derive", "config"]
 k8s-openapi = { version = "0.27.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
+kiln = { git = "https://github.com/kiln-rs/kiln.git", rev = "a0c3efab4d36bd7abaa27cb98144d7247023f5ad" }
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"

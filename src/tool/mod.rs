@@ -21,6 +21,7 @@ pub mod go;
 pub mod image;
 pub mod invalid;
 pub mod k8s_tool;
+pub mod kiln;
 pub mod lsp;
 pub mod mcp_bridge;
 pub mod mcp_tools;
@@ -345,6 +346,8 @@ impl ToolRegistry {
         registry.register(Arc::new(go::GoTool::new()));
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
+        // Kiln plugin runtime for project-local extension hooks
+        registry.register(Arc::new(kiln::KilnPluginTool::new()));
 
         registry
     }
@@ -417,6 +420,8 @@ impl ToolRegistry {
         registry.register(Arc::new(go::GoTool::new()));
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
+        // Kiln plugin runtime for project-local extension hooks
+        registry.register(Arc::new(kiln::KilnPluginTool::new()));
 
         registry
     }
