@@ -74,7 +74,6 @@ pub(super) async fn select_once(
         }
         _ = tick_timer.tick() => {
             super::autochat::drain_autochat(app);
-            crate::tui::app::event_handlers::voice::drain_voice_transcription(&mut app.state);
             if app.state.view_mode == crate::tui::models::ViewMode::Audit {
                 crate::tui::audit_view::refresh_audit_snapshot(&mut app.state.audit).await;
             }

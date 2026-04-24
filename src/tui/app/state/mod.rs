@@ -176,9 +176,4 @@ pub struct AppState {
     /// of a submit, so pasting multi-line content doesn't emit one
     /// chat message per line.
     pub last_key_at: Option<Instant>,
-    /// Stop flag for in-progress voice recording. `Some` means recording.
-    pub recording_stop_flag: Option<Arc<std::sync::atomic::AtomicBool>>,
-    /// Shared slot for the background voice thread to deliver transcribed text.
-    /// The tick loop polls this and injects into [`AppState::input`].
-    pub pending_voice_text: Option<Arc<std::sync::Mutex<Option<String>>>>,
 }

@@ -1,7 +1,7 @@
 //! Ctrl-key and special-key bindings for the TUI.
 //!
 //! Handles Ctrl-C/Q (quit), Ctrl-T (symbol search), Ctrl-B
-//! (layout toggle), Ctrl-O (file picker), Ctrl-V (voice input
+//! (layout toggle), Ctrl-O (file picker), Ctrl-V (clipboard
 //! image), Ctrl-X (watchdog cancel), Ctrl-G/G (scroll
 //! top/bottom), and Alt-j/k/d/u (scroll by 1 or 5).
 //!
@@ -21,9 +21,9 @@ use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
 use super::alt_scroll::handle_alt_scroll;
+use super::clipboard::handle_clipboard_paste;
 use super::copy_reply::handle_copy_reply;
 use super::ctrl_c::handle_ctrl_c;
-use super::voice::handle_voice_input;
 
 /// Try to handle a Ctrl/Alt modified key press.
 ///
@@ -84,7 +84,7 @@ pub(super) fn handle_ctrl_key(
             crate::tui::app::file_picker::open_file_picker(app, cwd);
         }
         KeyCode::Char('v') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            handle_voice_input(app);
+            handle_clipboard_paste(app);
         }
         KeyCode::Char('y') if ctrl && app.state.view_mode == ViewMode::Chat => {
             handle_copy_reply(app);
