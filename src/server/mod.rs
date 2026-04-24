@@ -4,6 +4,7 @@
 
 pub mod auth;
 pub mod policy;
+mod tool_contract;
 
 use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
@@ -18,7 +19,7 @@ use crate::cognition::{
 };
 use crate::config::Config;
 use crate::k8s::K8sManager;
-use crate::tool::{PluginManifest, SigningKey, hash_bytes, hash_file};
+use crate::tool::{PluginManifest, PluginRegistry as AgentPluginRegistry, hash_bytes, hash_file};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
@@ -119,6 +120,8 @@ pub struct RegisteredTool {
     pub endpoint: String,
     pub capabilities: Vec<String>,
     pub parameters: serde_json::Value,
+    pub execution_mode: String,
+    pub agent_executable: bool,
     pub registered_at: chrono::DateTime<chrono::Utc>,
     pub last_heartbeat: chrono::DateTime<chrono::Utc>,
     pub expires_at: chrono::DateTime<chrono::Utc>,
@@ -198,6 +201,7 @@ pub struct AppState {
     pub bus: Arc<AgentBus>,
     pub knative_tasks: KnativeTaskQueue,
     pub tool_registry: ToolRegistry,
+    pub plugin_registry: AgentPluginRegistry,
 }
 
 /// Audit middleware — logs every request/response to the audit trail.
@@ -682,6 +686,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         bus,
         knative_tasks: KnativeTaskQueue::new(),
         tool_registry: ToolRegistry::new(),
+        plugin_registry: AgentPluginRegistry::from_env(),
     };
 
     // Spawn the tool reaper background task (runs every 15s to clean up expired tools)
@@ -2685,6 +2690,8 @@ async fn register_tool(
         endpoint: req.endpoint,
         capabilities: req.capabilities,
         parameters: req.parameters,
+        execution_mode: tool_contract::DISCOVERY_ONLY_MODE.to_string(),
+        agent_executable: tool_contract::is_agent_executable(tool_contract::DISCOVERY_ONLY_MODE),
         registered_at: now,
         last_heartbeat: now,
         expires_at: now + Duration::from_secs(90),
@@ -2696,7 +2703,10 @@ async fn register_tool(
 
     Ok(Json(RegisterToolResponse {
         tool,
-        message: "Tool registered successfully. Heartbeat required every 30s.".to_string(),
+        message: format!(
+            "{} Heartbeat required every 30s.",
+            tool_contract::DISCOVERY_ONLY_MESSAGE
+        ),
     }))
 }
 
@@ -2717,14 +2727,16 @@ async fn tool_heartbeat(
 }
 
 /// List registered plugins.
-async fn list_plugins(State(_state): State<AppState>) -> Json<PluginListResponse> {
+async fn list_plugins(State(state): State<AppState>) -> Json<PluginListResponse> {
     let server_fingerprint = hash_bytes(env!("CARGO_PKG_VERSION").as_bytes());
-    let signing_key = SigningKey::from_env();
-    let test_sig = signing_key.sign("_probe", "0.0.0", &server_fingerprint);
+    let test_sig = state
+        .plugin_registry
+        .signing_key()
+        .sign("_probe", "0.0.0", &server_fingerprint);
     Json(PluginListResponse {
         server_fingerprint,
         signing_available: !test_sig.is_empty(),
-        plugins: Vec::<PluginManifest>::new(),
+        plugins: state.plugin_registry.list().await,
     })
 }
 
