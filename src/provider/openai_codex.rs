@@ -45,13 +45,18 @@ const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPE: &str = "openid profile email offline_access";
 const THINKING_LEVEL_ENV: &str = "CODETETHER_OPENAI_CODEX_THINKING_LEVEL";
 const REASONING_EFFORT_ENV: &str = "CODETETHER_OPENAI_CODEX_REASONING_EFFORT";
-const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are a helpful assistant.";
+const DEFAULT_RESPONSES_INSTRUCTIONS: &str = "You are CodeTether Agent running on OpenAI Codex. \
+Resolve software tasks directly: inspect the workspace, make focused changes, validate with \
+available tools, and report concise results. When model availability or external APIs are involved, \
+verify live behavior before treating it as supported.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ThinkingLevel {
+    NoReasoning,
     Low,
     Medium,
     High,
+    XHigh,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,18 +73,22 @@ enum CodexServiceTier {
 impl ThinkingLevel {
     fn parse(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
+            "none" => Some(Self::NoReasoning),
             "low" => Some(Self::Low),
             "medium" => Some(Self::Medium),
             "high" => Some(Self::High),
+            "xhigh" => Some(Self::XHigh),
             _ => None,
         }
     }
 
     fn as_str(self) -> &'static str {
         match self {
+            Self::NoReasoning => "none",
             Self::Low => "low",
             Self::Medium => "medium",
             Self::High => "high",
+            Self::XHigh => "xhigh",
         }
     }
 }
@@ -245,6 +254,8 @@ impl OpenAiCodexProvider {
             "gpt-5.2",
             "gpt-5.3-codex",
             "gpt-5.4",
+            "gpt-5.5",
+            "gpt-5.5-fast",
             "o3",
             "o4-mini",
         ]
@@ -1144,8 +1155,9 @@ impl OpenAiCodexProvider {
 
     fn parse_service_tier_model_alias(model: &str) -> (String, Option<CodexServiceTier>) {
         match model {
-            // OpenAI's Codex app implements GPT-5.4 Fast mode via `service_tier=priority`.
+            // OpenAI's Codex app implements Fast mode via `service_tier=priority`.
             "gpt-5.4-fast" => ("gpt-5.4".to_string(), Some(CodexServiceTier::Priority)),
+            "gpt-5.5-fast" => ("gpt-5.5".to_string(), Some(CodexServiceTier::Priority)),
             _ => (model.to_string(), None),
         }
     }
@@ -1172,6 +1184,31 @@ impl OpenAiCodexProvider {
         if let Some(service_tier) = service_tier {
             payload["service_tier"] = json!(service_tier.as_str());
         }
+    }
+
+    fn model_info(
+        id: &str,
+        name: &str,
+        context_window: usize,
+        max_output_tokens: usize,
+        supports_vision: bool,
+    ) -> ModelInfo {
+        ModelInfo {
+            id: id.to_string(),
+            name: name.to_string(),
+            provider: "openai-codex".to_string(),
+            context_window,
+            max_output_tokens: Some(max_output_tokens),
+            supports_vision,
+            supports_tools: true,
+            supports_streaming: true,
+            input_cost_per_million: Some(0.0),
+            output_cost_per_million: Some(0.0),
+        }
+    }
+
+    fn api_key_hidden_model(model: &str) -> bool {
+        matches!(model, "gpt-5.5" | "gpt-5.5-fast")
     }
 
     fn format_openai_api_error(status: StatusCode, body: &str, model: &str) -> String {
@@ -2011,130 +2048,24 @@ impl Provider for OpenAiCodexProvider {
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
         let mut models = vec![
-            ModelInfo {
-                id: "gpt-5".to_string(),
-                name: "GPT-5".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5-mini".to_string(),
-                name: "GPT-5 Mini".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 264_000,
-                max_output_tokens: Some(64_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.1-codex".to_string(),
-                name: "GPT-5.1 Codex".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.2".to_string(),
-                name: "GPT-5.2".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.3-codex".to_string(),
-                name: "GPT-5.3 Codex".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 400_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.4".to_string(),
-                name: "GPT-5.4".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.4-fast".to_string(),
-                name: "GPT-5.4 Fast".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "gpt-5.4-pro".to_string(),
-                name: "GPT-5.4 Pro".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "o3".to_string(),
-                name: "O3".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(100_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
-            ModelInfo {
-                id: "o4-mini".to_string(),
-                name: "O4 Mini".to_string(),
-                provider: "openai-codex".to_string(),
-                context_window: 200_000,
-                max_output_tokens: Some(100_000),
-                supports_vision: true,
-                supports_tools: true,
-                supports_streaming: true,
-                input_cost_per_million: Some(0.0),
-                output_cost_per_million: Some(0.0),
-            },
+            Self::model_info("gpt-5", "GPT-5", 400_000, 128_000, false),
+            Self::model_info("gpt-5-mini", "GPT-5 Mini", 264_000, 64_000, false),
+            Self::model_info("gpt-5.1-codex", "GPT-5.1 Codex", 400_000, 128_000, false),
+            Self::model_info("gpt-5.2", "GPT-5.2", 400_000, 128_000, false),
+            Self::model_info("gpt-5.3-codex", "GPT-5.3 Codex", 400_000, 128_000, false),
+            Self::model_info("gpt-5.4", "GPT-5.4", 272_000, 128_000, false),
+            Self::model_info("gpt-5.4-fast", "GPT-5.4 Fast", 272_000, 128_000, false),
+            Self::model_info("gpt-5.4-pro", "GPT-5.4 Pro", 272_000, 128_000, false),
+            Self::model_info("gpt-5.5", "GPT-5.5", 400_000, 128_000, false),
+            Self::model_info("gpt-5.5-fast", "GPT-5.5 Fast", 400_000, 128_000, false),
+            Self::model_info("o3", "O3", 200_000, 100_000, true),
+            Self::model_info("o4-mini", "O4 Mini", 200_000, 100_000, true),
         ];
 
         if self.using_chatgpt_backend() {
             models.retain(|model| Self::chatgpt_supported_models().contains(&model.id.as_str()));
+        } else {
+            models.retain(|model| !Self::api_key_hidden_model(&model.id));
         }
 
         Ok(models)
@@ -2213,6 +2144,16 @@ mod tests {
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:high");
         assert_eq!(model, "gpt-5.3-codex");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
+
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:none");
+        assert_eq!(model, "gpt-5.5");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("none"));
+
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:xhigh");
+        assert_eq!(model, "gpt-5.5");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("xhigh"));
     }
 
     #[test]
@@ -2224,6 +2165,14 @@ mod tests {
         assert_eq!(model, "gpt-5.4");
         assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
         assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
+
+        let (model, level, service_tier) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort_and_service_tier(
+                "gpt-5.5-fast:high",
+            );
+        assert_eq!(model, "gpt-5.5");
+        assert_eq!(level.map(ThinkingLevel::as_str), Some("high"));
+        assert_eq!(service_tier.map(CodexServiceTier::as_str), Some("priority"));
     }
 
     #[test]
@@ -2231,6 +2180,11 @@ mod tests {
         let (model, level) =
             OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.3-codex:turbo");
         assert_eq!(model, "gpt-5.3-codex:turbo");
+        assert_eq!(level, None);
+
+        let (model, level) =
+            OpenAiCodexProvider::resolve_model_and_reasoning_effort("gpt-5.5:minimal");
+        assert_eq!(model, "gpt-5.5:minimal");
         assert_eq!(level, None);
     }
 
@@ -2242,7 +2196,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn chatgpt_backend_lists_supported_gpt_5_4_models() {
+    async fn lists_chatgpt_codex_models() {
         let provider = OpenAiCodexProvider::new();
         let models = provider
             .list_models()
@@ -2252,7 +2206,21 @@ mod tests {
         assert!(models.iter().any(|model| model.id == "gpt-5.4"));
         assert!(models.iter().any(|model| model.id == "gpt-5-mini"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.4-fast"));
+        assert!(models.iter().any(|model| model.id == "gpt-5.5"));
+        assert!(models.iter().any(|model| model.id == "gpt-5.5-fast"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));
+    }
+
+    #[tokio::test]
+    async fn omits_gpt_5_5_from_api_key_model_listing_for_now() {
+        let provider = OpenAiCodexProvider::from_api_key("test-key".to_string());
+        let models = provider
+            .list_models()
+            .await
+            .expect("model listing should succeed");
+
+        assert!(!models.iter().any(|model| model.id == "gpt-5.5"));
+        assert!(!models.iter().any(|model| model.id == "gpt-5.5-fast"));
     }
 
     #[test]
@@ -2281,6 +2249,9 @@ mod tests {
         provider
             .validate_model_for_backend("gpt-5.4-fast:high")
             .expect("chatgpt backend should allow fast alias");
+        provider
+            .validate_model_for_backend("gpt-5.5-fast:high")
+            .expect("chatgpt backend should allow GPT-5.5 fast alias");
     }
 
     #[test]
