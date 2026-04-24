@@ -10,6 +10,7 @@ pub mod bash;
 #[path = "bash_github/mod.rs"]
 mod bash_github;
 mod bash_identity;
+mod bash_noninteractive;
 mod bash_shell;
 pub mod batch;
 pub mod browserctl;

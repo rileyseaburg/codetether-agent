@@ -18,6 +18,7 @@ pub mod rate_limiter;
 pub mod remote_subtask;
 pub mod result_store;
 pub mod subtask;
+mod tool_policy;
 
 pub use cache::{CacheConfig, CacheStats, SwarmCache};
 pub use collapse_controller::{
