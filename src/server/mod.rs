@@ -4,6 +4,7 @@
 
 pub mod auth;
 pub mod policy;
+mod policy_user;
 
 use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
@@ -487,7 +488,7 @@ const POLICY_RULES: &[PolicyRule] = &[
 ];
 
 /// Find the required permission for a given path + method.
-/// Returns `Some("")` for exempt, `Some(perm)` for required, `None` for unmatched (pass-through).
+/// Returns `Some("")` for exempt, `Some(perm)` for required, `None` for unmatched.
 fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
     for rule in POLICY_RULES {
         let matches = if rule.pattern.ends_with('/') {
@@ -507,31 +508,28 @@ fn match_policy_rule(path: &str, method: &str) -> Option<&'static str> {
     None
 }
 
+fn required_permission(path: &str, method: &str) -> Result<Option<&'static str>, StatusCode> {
+    match match_policy_rule(path, method) {
+        Some("") => Ok(None),
+        Some(permission) => Ok(Some(permission)),
+        None => Err(StatusCode::FORBIDDEN),
+    }
+}
+
 /// Policy authorization middleware for Axum.
 ///
 /// Maps request paths to OPA permission strings and enforces authorization.
 /// Runs after `require_auth` so the bearer token is already validated.
-/// Currently maps the static bearer token to an admin role since
-/// codetether-agent uses a single shared token model.
 async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     let path = request.uri().path().to_string();
     let method = request.method().as_str().to_string();
 
-    let permission = match match_policy_rule(&path, &method) {
-        None | Some("") => return Ok(next.run(request).await),
-        Some(perm) => perm,
+    let permission = match required_permission(&path, &method)? {
+        None => return Ok(next.run(request).await),
+        Some(permission) => permission,
     };
 
-    // The current auth model uses a single static token for all access.
-    // When this is the case, the authenticated user effectively has admin role.
-    // Future: extract user claims from JWT and build a proper PolicyUser.
-    let user = policy::PolicyUser {
-        user_id: "bearer-token-user".to_string(),
-        roles: vec!["admin".to_string()],
-        tenant_id: None,
-        scopes: vec![],
-        auth_source: "static_token".to_string(),
-    };
+    let user = policy_user::from_request(&request);
 
     if let Err(status) = policy::enforce_policy(&user, permission, None).await {
         tracing::warn!(
@@ -3142,7 +3140,8 @@ fn env_bool(name: &str, default: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{match_policy_rule, normalize_model_reference};
+    use super::{match_policy_rule, normalize_model_reference, required_permission};
+    use axum::http::StatusCode;
 
     #[test]
     fn policy_prompt_session_requires_execute_permission() {
@@ -3172,6 +3171,12 @@ mod tests {
     fn policy_openai_chat_completions_requires_execute_permission() {
         let permission = match_policy_rule("/v1/chat/completions", "POST");
         assert_eq!(permission, Some("agent:execute"));
+    }
+
+    #[test]
+    fn policy_unmapped_route_is_denied() {
+        let permission = required_permission("/v1/new-route", "GET");
+        assert_eq!(permission, Err(StatusCode::FORBIDDEN));
     }
 
     #[test]

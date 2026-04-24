@@ -14,6 +14,9 @@ use serde::{Deserialize, Serialize};
 ///     topics: vec!["agent.alpha".into()],
 ///     subject: Some("worker-1".into()),
 ///     scopes: vec!["bus:read".into()],
+///     roles: vec!["viewer".into()],
+///     tenant_id: Some("tenant-1".into()),
+///     auth_source: Some("jwt".into()),
 /// };
 ///
 /// assert_eq!(claims.subject.as_deref(), Some("worker-1"));
@@ -30,4 +33,13 @@ pub struct JwtClaims {
     /// Additional scopes from the JWT.
     #[serde(default)]
     pub scopes: Vec<String>,
+    /// Authorization roles from the JWT or API key claim payload.
+    #[serde(default)]
+    pub roles: Vec<String>,
+    /// Optional tenant identifier for policy isolation.
+    #[serde(default)]
+    pub tenant_id: Option<String>,
+    /// Authentication source, for example `jwt` or `api_key`.
+    #[serde(default)]
+    pub auth_source: Option<String>,
 }
