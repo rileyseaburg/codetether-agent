@@ -42,10 +42,15 @@ pub fn kiln_to_json(value: &KilnValue) -> Value {
 fn number_to_kiln(number: Number) -> KilnValue {
     if let Some(value) = number.as_i64() {
         KilnValue::Int(value)
-    } else if let Some(value) = number.as_u64().and_then(|value| i64::try_from(value).ok()) {
-        KilnValue::Int(value)
+    } else if let Some(value) = number.as_u64() {
+        match i64::try_from(value) {
+            Ok(value) => KilnValue::Int(value),
+            Err(_) => KilnValue::Str(Rc::new(value.to_string())),
+        }
+    } else if let Some(value) = number.as_f64() {
+        KilnValue::Float(value)
     } else {
-        KilnValue::Float(number.as_f64().unwrap_or_default())
+        KilnValue::Str(Rc::new(number.to_string()))
     }
 }
 

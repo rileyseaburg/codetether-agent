@@ -1,16 +1,30 @@
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use super::input::KilnPluginInput;
 use super::runner;
-use crate::tool::{Tool, ToolResult};
+use crate::tool::{Tool, ToolResult, tool_output_budget};
 
-pub struct KilnPluginTool;
+const DEFAULT_TIMEOUT_SECS: u64 = 10;
+const MAX_TIMEOUT_SECS: u64 = 60;
+
+pub struct KilnPluginTool {
+    root: PathBuf,
+}
 
 impl KilnPluginTool {
     pub fn new() -> Self {
-        Self
+        Self {
+            root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        }
+    }
+
+    pub fn with_root(root: PathBuf) -> Self {
+        Self { root }
     }
 }
 
@@ -54,6 +68,10 @@ impl Tool for KilnPluginTool {
                     "type": "array",
                     "description": "JSON arguments converted to Kiln values",
                     "items": {}
+                },
+                "timeout_secs": {
+                    "type": "integer",
+                    "description": "Maximum wall-clock seconds to wait for the hook; capped at 60"
                 }
             },
             "required": ["hook"]
@@ -61,7 +79,20 @@ impl Tool for KilnPluginTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        let input: KilnPluginInput = serde_json::from_value(args).context("Invalid params")?;
+        let input: KilnPluginInput = match serde_json::from_value(args) {
+            Ok(input) => input,
+            Err(error) => {
+                return Ok(ToolResult::structured_error(
+                    "invalid_params",
+                    self.id(),
+                    &format!("Invalid kiln_plugin params: {error}"),
+                    None,
+                    Some(
+                        json!({"source": "fn validate() { return Ok(\"ok\") }", "hook": "validate"}),
+                    ),
+                ));
+            }
+        };
         if !input.has_source() && !input.has_path() {
             return Ok(ToolResult::structured_error(
                 "missing_field",
@@ -72,35 +103,93 @@ impl Tool for KilnPluginTool {
             ));
         }
 
-        let (source_name, source) = load_source(&input).await?;
+        let (source_name, source) = match load_source(&input, &self.root).await {
+            Ok(source) => source,
+            Err(error) => return Ok(ToolResult::error(error.to_string())),
+        };
         let hook = input.hook;
         let values = input.args;
-        let result =
-            tokio::task::spawn_blocking(move || runner::run(source_name, source, hook, values))
-                .await
-                .context("Kiln plugin task panicked")?;
+        let timeout = Duration::from_secs(
+            input
+                .timeout_secs
+                .unwrap_or(DEFAULT_TIMEOUT_SECS)
+                .min(MAX_TIMEOUT_SECS),
+        );
+        let task =
+            tokio::task::spawn_blocking(move || runner::run(source_name, source, hook, values));
+        let result = match tokio::time::timeout(timeout, task).await {
+            Ok(joined) => joined.map_err(|join_error| {
+                if join_error.is_panic() {
+                    anyhow::anyhow!("Kiln plugin task panicked: {join_error}")
+                } else {
+                    anyhow::anyhow!("Kiln plugin task join failed: {join_error}")
+                }
+            })?,
+            Err(_) => {
+                return Ok(ToolResult::error(format!(
+                    "Kiln plugin timed out after {} second(s)",
+                    timeout.as_secs()
+                )));
+            }
+        };
 
         match result {
             Ok(outcome) => Ok(ToolResult {
                 output: outcome.output,
                 success: outcome.success,
                 metadata: [("value".to_string(), outcome.value)].into(),
-            }),
-            Err(error) => Ok(ToolResult::error(format!("Kiln plugin failed: {error}"))),
+            }
+            .truncate_to(tool_output_budget())),
+            Err(error) => Ok(ToolResult::error(format!("Kiln plugin failed: {error}"))
+                .truncate_to(tool_output_budget())),
         }
     }
 }
 
-async fn load_source(input: &KilnPluginInput) -> Result<(String, String)> {
+async fn load_source(input: &KilnPluginInput, root: &Path) -> Result<(String, String)> {
     if let Some(source) = input.source.as_deref().filter(|source| !source.is_empty()) {
         return Ok(("inline.kiln".to_string(), source.to_string()));
     }
 
     let path = input.path.as_deref().context("missing Kiln plugin path")?;
-    let source = tokio::fs::read_to_string(path)
+    let path = resolve_plugin_path(root, path).await?;
+    let source = tokio::fs::read_to_string(&path)
         .await
-        .with_context(|| format!("Failed to read Kiln plugin file: {path}"))?;
-    Ok((path.to_string(), source))
+        .with_context(|| format!("Failed to read Kiln plugin file: {}", path.display()))?;
+    Ok((path.display().to_string(), source))
+}
+
+async fn resolve_plugin_path(root: &Path, raw_path: &str) -> Result<PathBuf> {
+    let root = tokio::fs::canonicalize(root)
+        .await
+        .with_context(|| format!("Failed to resolve Kiln plugin root: {}", root.display()))?;
+    let raw = Path::new(raw_path);
+    let candidate = if raw.is_absolute() {
+        raw.to_path_buf()
+    } else {
+        root.join(raw)
+    };
+    let candidate = tokio::fs::canonicalize(&candidate).await.with_context(|| {
+        format!(
+            "Failed to resolve Kiln plugin file: {}",
+            candidate.display()
+        )
+    })?;
+
+    if !candidate.starts_with(&root) {
+        anyhow::bail!(
+            "Kiln plugin path '{}' escapes workspace root '{}'",
+            candidate.display(),
+            root.display()
+        );
+    }
+    if candidate.extension().and_then(|ext| ext.to_str()) != Some("kl") {
+        anyhow::bail!(
+            "Kiln plugin path '{}' must use the .kl extension",
+            candidate.display()
+        );
+    }
+    Ok(candidate)
 }
 
 #[cfg(test)]
@@ -165,10 +254,10 @@ fn validate(name) {
         .await
         .unwrap();
 
-        let tool = KilnPluginTool::new();
+        let tool = KilnPluginTool::with_root(dir.path().to_path_buf());
         let result = tool
             .execute(json!({
-                "path": path.to_string_lossy(),
+                "path": "feature.kl",
                 "hook": "validate",
                 "args": ["rust-project"]
             }))
@@ -180,6 +269,38 @@ fn validate(name) {
             result.metadata.get("value"),
             Some(&json!({"ok": "accepted rust-project"}))
         );
+    }
+
+    #[tokio::test]
+    async fn rejects_project_file_escape() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("workspace");
+        tokio::fs::create_dir_all(&root).await.unwrap();
+        let outside = dir.path().join("outside.kl");
+        tokio::fs::write(&outside, r#"fn validate() { return Ok("bad") }"#)
+            .await
+            .unwrap();
+
+        let tool = KilnPluginTool::with_root(root);
+        let result = tool
+            .execute(json!({
+                "path": "../outside.kl",
+                "hook": "validate"
+            }))
+            .await
+            .unwrap();
+
+        assert!(!result.success);
+        assert!(result.output.contains("escapes workspace root"));
+    }
+
+    #[tokio::test]
+    async fn invalid_params_return_tool_error() {
+        let tool = KilnPluginTool::new();
+        let result = tool.execute(json!({"hook": 42})).await.unwrap();
+
+        assert!(!result.success);
+        assert!(result.output.contains("Invalid kiln_plugin params"));
     }
 
     #[test]

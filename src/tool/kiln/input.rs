@@ -10,6 +10,8 @@ pub struct KilnPluginInput {
     pub hook: String,
     #[serde(default)]
     pub args: Vec<Value>,
+    #[serde(default)]
+    pub timeout_secs: Option<u64>,
 }
 
 impl KilnPluginInput {
