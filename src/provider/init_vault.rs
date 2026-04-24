@@ -81,7 +81,7 @@ impl ProviderRegistry {
         } else {
             tracing::info!(
                 env = fallback_policy::DISABLE_ENV_FALLBACK,
-                "Environment variable fallback disabled"
+                "Env/AWS fallback disabled"
             );
         }
 

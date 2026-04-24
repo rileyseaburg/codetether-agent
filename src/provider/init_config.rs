@@ -24,13 +24,14 @@ impl ProviderRegistry {
     /// ```
     pub async fn from_config(config: &crate::config::Config) -> Result<Self> {
         let mut registry = Self::new();
+        let disable_env = fallback_policy::env_fallback_disabled();
 
         // ---- OpenAI ----
         if let Some(pc) = config.providers.get("openai") {
             if let Some(key) = &pc.api_key {
                 registry.register(Arc::new(openai::OpenAIProvider::new(key.clone())?));
             }
-        } else if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+        } else if !disable_env && let Ok(key) = std::env::var("OPENAI_API_KEY") {
             registry.register(Arc::new(openai::OpenAIProvider::new(key)?));
         }
 
@@ -44,7 +45,7 @@ impl ProviderRegistry {
                 };
                 registry.register(Arc::new(p));
             }
-        } else if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+        } else if !disable_env && let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
             registry.register(Arc::new(anthropic::AnthropicProvider::new(key)?));
         }
 
@@ -53,7 +54,7 @@ impl ProviderRegistry {
             if let Some(key) = &pc.api_key {
                 registry.register(Arc::new(google::GoogleProvider::new(key.clone())?));
             }
-        } else if let Ok(key) = std::env::var("GOOGLE_API_KEY") {
+        } else if !disable_env && let Ok(key) = std::env::var("GOOGLE_API_KEY") {
             registry.register(Arc::new(google::GoogleProvider::new(key)?));
         }
 
@@ -73,7 +74,7 @@ impl ProviderRegistry {
         }
 
         // ---- Bedrock (auto-detect from env / ~/.aws) ----
-        if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+        if !disable_env && let Some(creds) = bedrock::AwsCredentials::from_environment() {
             let region = bedrock::AwsCredentials::detect_region()
                 .unwrap_or_else(|| bedrock::DEFAULT_REGION.to_string());
             match bedrock::BedrockProvider::with_credentials(creds, region) {
@@ -83,13 +84,12 @@ impl ProviderRegistry {
         }
 
         // ---- Env-var fallback ----
-        let disable = fallback_policy::env_fallback_disabled();
-        if !disable {
+        if !disable_env {
             super::init_env::register_env_fallbacks(&mut registry);
         } else {
             tracing::info!(
                 env = fallback_policy::DISABLE_ENV_FALLBACK,
-                "Environment variable fallback disabled"
+                "Env/AWS fallback disabled"
             );
         }
 
