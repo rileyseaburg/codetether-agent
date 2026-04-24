@@ -5,6 +5,7 @@ const os = require('node:os');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { downloadFile, downloadText, requestJson } = require('./http');
+const { tlsRemediationFor } = require('./tls_remediation');
 
 function repoFromEnv() {
   return process.env.CODETETHER_GITHUB_REPO || 'rileyseaburg/codetether-agent';
@@ -534,6 +535,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
     '',
     'Or build from source:',
     '  cargo install codetether-agent',
+    ...tlsRemediationFor(lastErr),
   ].join('\n');
 
   const err = new Error(`${help}\n\nUnderlying error: ${lastErr ? lastErr.message : 'unknown'}`);
