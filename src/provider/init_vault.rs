@@ -1,10 +1,12 @@
 //! Build a [`ProviderRegistry`](super::ProviderRegistry) from HashiCorp Vault.
 //!
 //! Iterates all providers configured in Vault, delegates each to
-//! [`super::init_dispatch::dispatch`], then falls back to env-var / AWS
-//! auto-detection when `CODETETHER_DISABLE_ENV_FALLBACK` is not set.
+//! [`super::init_dispatch::dispatch`], then adds env-var / AWS auto-detection
+//! unless [`CODETETHER_DISABLE_ENV_FALLBACK`](super::fallback_policy::DISABLE_ENV_FALLBACK)
+//! is set.
 
 use super::bedrock;
+use super::fallback_policy;
 use super::init_dispatch;
 use super::init_env;
 use super::registry::ProviderRegistry;
@@ -12,7 +14,7 @@ use anyhow::Result;
 use std::sync::Arc;
 
 impl ProviderRegistry {
-    /// Initialize providers from HashiCorp Vault with env-var fallback.
+    /// Initialize providers from HashiCorp Vault with optional env/AWS fallback.
     ///
     /// See [module-level docs](super) for the security model and fallback order.
     ///
@@ -26,9 +28,7 @@ impl ProviderRegistry {
     /// ```
     pub async fn from_vault() -> Result<Self> {
         let mut registry = Self::new();
-        let disable_env = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
+        let disable_env = fallback_policy::env_fallback_disabled();
 
         if let Some(mgr) = crate::secrets::secrets_manager() {
             let providers = mgr.list_configured_providers().await?;
@@ -80,18 +80,15 @@ impl ProviderRegistry {
             init_env::register_env_fallbacks(&mut registry);
         } else {
             tracing::info!(
-                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+                env = fallback_policy::DISABLE_ENV_FALLBACK,
+                "Env/AWS fallback disabled"
             );
         }
 
         tracing::info!(
-            "Registered {} providers{}",
+            mode = fallback_policy::registry_mode_label(disable_env),
+            "Registered {} providers",
             registry.providers.len(),
-            if disable_env {
-                " (Vault only)"
-            } else {
-                " (Vault + env fallback)"
-            }
         );
         Ok(registry)
     }
