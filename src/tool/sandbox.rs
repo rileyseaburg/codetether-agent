@@ -294,13 +294,8 @@ pub async fn execute_sandboxed(
         .unwrap_or_else(std::env::temp_dir);
 
     let mut cmd = Command::new(command);
-    cmd.args(args)
-        .current_dir(&work_dir)
-        .env_clear()
-        .envs(&env)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
+    cmd.args(args).current_dir(&work_dir).env_clear().envs(&env);
+    super::bash_noninteractive::configure(&mut cmd);
 
     let timeout = std::time::Duration::from_secs(policy.timeout_secs);
 

@@ -10,6 +10,7 @@ pub mod bash;
 #[path = "bash_github/mod.rs"]
 mod bash_github;
 mod bash_identity;
+mod bash_noninteractive;
 mod bash_shell;
 pub mod batch;
 pub mod browserctl;
@@ -42,9 +43,9 @@ pub mod readonly;
 pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
-pub mod session_recall;
 pub mod search;
 pub mod search_router;
+pub mod session_recall;
 pub mod session_task;
 pub mod skill;
 pub mod swarm_execute;
