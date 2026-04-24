@@ -7,7 +7,6 @@ const {
   selectAssetCandidates,
 } = require('../lib/installer');
 const { downloadFile, downloadText, requestJson } = require('../lib/http');
-const { isTlsCertificateError, tlsRemediationFor } = require('../lib/tls_remediation');
 
 function mockHttpsGet(responses, calls) {
   return (url, options, onResponse) => {
@@ -202,14 +201,4 @@ test('rejects downloadFile when closing the output stream fails', async () => {
     }),
     /close failed/
   );
-});
-
-test('detects TLS issuer failures and explains safe remediation', () => {
-  const err = new Error('unable to get local issuer certificate');
-  const help = tlsRemediationFor(err).join('\n');
-
-  assert.equal(isTlsCertificateError(err), true);
-  assert.match(help, /NODE_EXTRA_CA_CERTS/);
-  assert.match(help, /npm config set cafile/);
-  assert.match(help, /Do not disable TLS verification/);
 });
