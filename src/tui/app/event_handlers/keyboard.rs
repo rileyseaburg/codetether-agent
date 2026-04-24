@@ -1,8 +1,8 @@
 //! Ctrl-key and special-key bindings for the TUI.
 //!
 //! Handles Ctrl-C/Q (quit), Ctrl-T (symbol search), Ctrl-B
-//! (layout toggle), Ctrl-O (file picker), Ctrl-V (clipboard
-//! image), Ctrl-X (watchdog cancel), Ctrl-G/G (scroll
+//! (layout toggle), Ctrl-O (file picker), Ctrl-R (voice input),
+//! Ctrl-V (clipboard paste), Ctrl-X (watchdog cancel), Ctrl-G/G (scroll
 //! top/bottom), and Alt-j/k/d/u (scroll by 1 or 5).
 //!
 //! # Examples
@@ -83,6 +83,9 @@ pub(super) fn handle_ctrl_key(
         KeyCode::Char('o') if ctrl && app.state.view_mode == ViewMode::Chat => {
             crate::tui::app::file_picker::open_file_picker(app, cwd);
         }
+        KeyCode::Char('r') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            handle_voice_key(app);
+        }
         KeyCode::Char('v') if ctrl && app.state.view_mode == ViewMode::Chat => {
             handle_clipboard_paste(app);
         }
@@ -95,4 +98,14 @@ pub(super) fn handle_ctrl_key(
         _ => return None,
     }
     Some(Ok(false))
+}
+
+#[cfg(not(test))]
+fn handle_voice_key(app: &mut App) {
+    super::voice::handle_voice_input(app);
+}
+
+#[cfg(test)]
+fn handle_voice_key(app: &mut App) {
+    app.state.status = "Voice shortcut".to_string();
 }

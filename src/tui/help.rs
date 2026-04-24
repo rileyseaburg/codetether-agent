@@ -271,7 +271,8 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));
     lines.push(key_row("Ctrl+W", "Start a /ask side question in chat"));
     lines.push(key_row("Ctrl+Y", "Copy latest assistant reply"));
-    lines.push(key_row("Ctrl+V", "Paste image from clipboard"));
+    lines.push(key_row("Ctrl+R", "Record voice input"));
+    lines.push(key_row("Ctrl+V", "Paste from clipboard"));
     lines.push(key_row("Enter", "Send message or run slash command"));
     lines.push(key_row("Tab", "Accept slash autocomplete"));
     lines.push(blank());

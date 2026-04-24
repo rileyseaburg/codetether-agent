@@ -28,6 +28,10 @@ mod paste;
 mod scroll_down;
 mod scroll_up;
 mod tests;
+mod voice;
+mod voice_capture;
+mod voice_drain;
+mod voice_transcribe;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -45,6 +49,7 @@ use keyboard::handle_ctrl_key;
 
 pub use mouse::handle_mouse_event;
 pub use paste::handle_paste_event;
+pub(crate) use voice_drain::drain_voice_transcription;
 
 /// Dispatch a single key press to the appropriate handler.
 ///

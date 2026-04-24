@@ -54,6 +54,8 @@ pub mod task;
 pub mod todo;
 pub mod undo;
 pub mod voice;
+pub mod voice_input;
+pub mod voice_stream;
 pub mod webfetch;
 pub mod websearch;
 pub mod youtube;
@@ -347,6 +349,8 @@ impl ToolRegistry {
         registry.register(Arc::new(prd::PrdTool::new()));
         registry.register(Arc::new(undo::UndoTool));
         registry.register(Arc::new(voice::VoiceTool::new()));
+        registry.register(Arc::new(voice_input::VoiceInputTool::new()));
+        registry.register(Arc::new(voice_stream::VoiceStreamTool::new()));
         registry.register(Arc::new(podcast::PodcastTool::new()));
         registry.register(Arc::new(youtube::YouTubeTool::new()));
         registry.register(Arc::new(avatar::AvatarTool::new()));
@@ -428,6 +432,8 @@ impl ToolRegistry {
         registry.register(Arc::new(prd::PrdTool::new()));
         registry.register(Arc::new(undo::UndoTool));
         registry.register(Arc::new(voice::VoiceTool::new()));
+        registry.register(Arc::new(voice_input::VoiceInputTool::new()));
+        registry.register(Arc::new(voice_stream::VoiceStreamTool::new()));
         registry.register(Arc::new(podcast::PodcastTool::new()));
         registry.register(Arc::new(youtube::YouTubeTool::new()));
         registry.register(Arc::new(avatar::AvatarTool::new()));
