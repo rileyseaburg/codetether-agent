@@ -1,27 +1,7 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use kiln::value::{ResultValue, Value as KilnValue};
 use serde_json::{Map, Number, Value};
-
-pub fn json_to_kiln(value: Value) -> KilnValue {
-    match value {
-        Value::Null => KilnValue::Nil,
-        Value::Bool(value) => KilnValue::Bool(value),
-        Value::Number(number) => number_to_kiln(number),
-        Value::String(value) => KilnValue::Str(Rc::new(value)),
-        Value::Array(values) => KilnValue::List(Rc::new(RefCell::new(
-            values.into_iter().map(json_to_kiln).collect(),
-        ))),
-        Value::Object(values) => KilnValue::Map(Rc::new(RefCell::new(
-            values
-                .into_iter()
-                .map(|(key, value)| (key, json_to_kiln(value)))
-                .collect(),
-        ))),
-    }
-}
 
 pub fn kiln_to_json(value: &KilnValue) -> Value {
     match value {
@@ -36,21 +16,6 @@ pub fn kiln_to_json(value: &KilnValue) -> Value {
         KilnValue::Fn(_) | KilnValue::VmFn(_) | KilnValue::Native(_) | KilnValue::Capability(_) => {
             Value::String(value.to_string())
         }
-    }
-}
-
-fn number_to_kiln(number: Number) -> KilnValue {
-    if let Some(value) = number.as_i64() {
-        KilnValue::Int(value)
-    } else if let Some(value) = number.as_u64() {
-        match i64::try_from(value) {
-            Ok(value) => KilnValue::Int(value),
-            Err(_) => KilnValue::Str(Rc::new(value.to_string())),
-        }
-    } else if let Some(value) = number.as_f64() {
-        KilnValue::Float(value)
-    } else {
-        KilnValue::Str(Rc::new(number.to_string()))
     }
 }
 

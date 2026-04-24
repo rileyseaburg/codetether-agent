@@ -130,6 +130,8 @@ kube = { version = "3.0.1", features = ["runtime", "client", "derive", "config"]
 k8s-openapi = { version = "0.27.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
+# Kiln's scripting VM API is not available from crates.io yet.
+# See docs/kiln_dependency.md for the build requirement.
 kiln = { git = "https://github.com/kiln-rs/kiln.git", rev = "e66e606de09b57fabea109ae6190b807f8ab79f6" }
 sha2 = "0.10"
 hmac = "0.12"
