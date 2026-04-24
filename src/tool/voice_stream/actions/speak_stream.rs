@@ -42,9 +42,10 @@ pub(crate) async fn run(client: &reqwest::Client, params: &Params) -> Result<Too
     let job_id = data["job_id"].as_str().unwrap_or("unknown");
     let output_url = data["output_url"]
         .as_str()
-        .unwrap_or(&format!("{base}/outputs/{job_id}"));
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("{base}/outputs/{job_id}"));
 
-    super::audio_player::open(job_id, output_url)?;
+    super::audio_player::open(job_id, &output_url)?;
 
     Ok(ToolResult::success(format!(
         "Speech opened in browser.\nJob ID: {job_id}\nURL: {output_url}"

@@ -4,7 +4,7 @@ pub mod record_then_transcribe;
 
 pub mod transcribe_api;
 
-use super::Params;
+use super::params::Params;
 use crate::tool::ToolResult;
 use anyhow::Result;
 use serde_json::json;

@@ -28,12 +28,9 @@ pub(crate) async fn run(
         .min(MAX_DURATION);
 
     let stop = Arc::new(AtomicBool::new(false));
-    let stop_clone = stop.clone();
-
-    let handle = std::thread::spawn(move || recorder::record(max_secs, stop_clone));
-    let samples = handle
-        .join()
-        .map_err(|_| anyhow::anyhow!("Recording thread panicked"))??;
+    let samples = tokio::task::spawn_blocking(move || recorder::record(max_secs, stop))
+        .await
+        .map_err(|_| anyhow::anyhow!("Recording task panicked"))??;
 
     if samples.is_empty() {
         return Ok(ToolResult::error(

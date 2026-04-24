@@ -162,6 +162,26 @@ mod tests {
         assert_eq!(app.state.input, "/ask ");
     }
 
+    #[test]
+    fn ctrl_r_dispatches_voice_shortcut() {
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+        let key = KeyEvent {
+            code: KeyCode::Char('r'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+
+        let handled =
+            super::super::keyboard::handle_ctrl_key(&mut app, std::path::Path::new("."), key)
+                .expect("voice shortcut should be handled")
+                .expect("voice shortcut should not error");
+
+        assert!(!handled);
+        assert_eq!(app.state.status, "Voice shortcut");
+    }
+
     #[tokio::test]
     async fn rapid_enter_after_chars_inserts_newline_not_submit() {
         // Simulates a terminal that strips bracketed-paste markers:

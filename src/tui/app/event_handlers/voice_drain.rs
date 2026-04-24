@@ -9,11 +9,17 @@ pub fn drain_voice_transcription(state: &mut AppState) {
         Some(s) => s.clone(),
         None => return,
     };
-    let text = match slot.lock().ok().and_then(|mut g| g.take()) {
-        Some(t) if !t.is_empty() => t,
-        _ => return,
-    };
-    state.pending_voice_text = None;
-    state.insert_text(&text);
-    state.status = "Voice transcribed ✓".into();
+    let text = slot.lock().ok().and_then(|mut g| g.take());
+    match text {
+        Some(t) if !t.is_empty() => {
+            state.pending_voice_text = None;
+            state.insert_text(&t);
+            state.status = "Voice transcribed ✓".into();
+        }
+        Some(_) => {
+            state.pending_voice_text = None;
+            state.status = "Voice transcription failed".into();
+        }
+        None => {}
+    }
 }

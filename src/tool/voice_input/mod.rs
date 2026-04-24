@@ -6,9 +6,11 @@
 
 mod actions;
 mod client;
-mod encoder;
+pub(crate) mod encoder;
+mod input_config;
+mod input_stream;
 mod params;
-mod recorder;
+pub(crate) mod recorder;
 mod schema;
 
 use super::{Tool, ToolResult};

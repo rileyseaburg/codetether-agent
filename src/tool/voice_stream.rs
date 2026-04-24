@@ -10,7 +10,7 @@ use super::{Tool, ToolResult};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 pub struct VoiceStreamTool {
     client: reqwest::Client,

@@ -4,8 +4,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use anyhow::{Result, anyhow};
+use cpal::traits::{HostTrait, StreamTrait};
+
+use super::input_stream;
 
 /// Capture audio from the default microphone at 16kHz mono.
 ///
@@ -17,26 +19,8 @@ pub fn record(max_duration_secs: u64, stop_flag: Arc<AtomicBool>) -> Result<Vec<
         .default_input_device()
         .ok_or_else(|| anyhow::anyhow!("No audio input device found. Connect a microphone."))?;
 
-    let config = cpal::StreamConfig {
-        channels: 1,
-        sample_rate: cpal::SampleRate(16000),
-        buffer_size: cpal::BufferSize::Default,
-    };
-
     let samples: Arc<Mutex<Vec<i16>>> = Arc::new(Mutex::new(Vec::new()));
-    let sc = samples.clone();
-
-    let stream = device.build_input_stream(
-        &config,
-        move |data: &[f32], _: &cpal::InputCallbackInfo| {
-            let mut buf = sc.lock().unwrap();
-            for &s in data {
-                buf.push((s * 32767.0).clamp(-32768.0, 32767.0) as i16);
-            }
-        },
-        |err| tracing::error!("Audio capture error: {err}"),
-        None,
-    )?;
+    let stream = input_stream::build(&device, samples.clone())?;
 
     stream.play()?;
     tracing::info!("Recording started (max {max_duration_secs}s)");
@@ -49,5 +33,8 @@ pub fn record(max_duration_secs: u64, stop_flag: Arc<AtomicBool>) -> Result<Vec<
     drop(stream);
     tracing::info!("Recording stopped");
 
-    Ok(Arc::try_unwrap(samples).unwrap().into_inner().unwrap())
+    let mut samples = samples
+        .lock()
+        .map_err(|_| anyhow!("Recorded audio buffer lock poisoned"))?;
+    Ok(std::mem::take(&mut *samples))
 }
