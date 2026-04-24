@@ -3,15 +3,22 @@ set -euo pipefail
 
 MAX_LINES=50
 BASE_REF=${FILE_LIMIT_BASE_REF:-origin/main}
-BASE=$(git merge-base HEAD "$BASE_REF" 2>/dev/null || echo HEAD)
+if ! BASE=$(git merge-base HEAD "$BASE_REF" 2>/dev/null); then
+    echo "ERROR: unable to resolve FILE_LIMIT_BASE_REF '$BASE_REF'"
+    echo "Fetch the base ref or set FILE_LIMIT_BASE_REF to a reachable commit."
+    exit 1
+fi
 ERRORS=0
 
 count_lines() {
     awk '
         /^[[:space:]]*$/ { next }
         /^[[:space:]]*\/\// { next }
-        /^[[:space:]]*\/\*/ { next }
-        /^[[:space:]]*\*/ { next }
+        /^[[:space:]]*\/\*/ { in_block = 1 }
+        in_block {
+            if (/\*\//) in_block = 0
+            next
+        }
         { count++ }
         END { print count + 0 }
     ' "$@"
@@ -19,7 +26,7 @@ count_lines() {
 
 changed_files() {
     {
-        git diff --name-only --diff-filter=AM "$BASE" -- 'src/**/*.rs'
+        git diff --name-only --diff-filter=ACMRT "$BASE" -- 'src/**/*.rs'
         git ls-files --others --exclude-standard -- 'src/**/*.rs'
     } | sort -u
 }
