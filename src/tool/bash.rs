@@ -240,6 +240,7 @@ impl Tool for BashTool {
                             "exit_code": r.exit_code,
                             "duration_ms": r.duration_ms,
                             "violations": r.sandbox_violations,
+                            "unsafe_fallbacks": r.unsafe_fallbacks,
                         }),
                     ),
                     Err(e) => (
@@ -289,6 +290,7 @@ impl Tool for BashTool {
                                 "sandbox_violations".to_string(),
                                 json!(r.sandbox_violations),
                             ),
+                            ("unsafe_fallbacks".to_string(), json!(r.unsafe_fallbacks)),
                         ]
                         .into_iter()
                         .collect(),
@@ -466,6 +468,8 @@ impl Tool for BashTool {
                     metadata: [
                         ("exit_code".to_string(), json!(exit_code)),
                         ("truncated".to_string(), json!(truncated)),
+                        ("sandboxed".to_string(), json!(false)),
+                        ("unsafe_execution".to_string(), json!(true)),
                         (
                             "interactive_auth_prompt".to_string(),
                             json!(auth_prompt_blocked),
@@ -491,13 +495,13 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(ToolResult::structured_error(
+                Ok(mark_unsafe_unsandboxed(ToolResult::structured_error(
                     "EXECUTION_FAILED",
                     "bash",
                     &format!("Failed to execute command: {}", e),
                     None,
                     Some(json!({"command": command})),
-                ))
+                )))
             }
             Err(_) => {
                 let duration = exec_start.elapsed();
@@ -515,7 +519,7 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(ToolResult::structured_error(
+                Ok(mark_unsafe_unsandboxed(ToolResult::structured_error(
                     "TIMEOUT",
                     "bash",
                     &format!("Command timed out after {} seconds", timeout_secs),
@@ -524,10 +528,16 @@ impl Tool for BashTool {
                         "command": command,
                         "hint": "Consider increasing timeout or breaking into smaller commands"
                     })),
-                ))
+                )))
             }
         }
     }
+}
+
+fn mark_unsafe_unsandboxed(result: ToolResult) -> ToolResult {
+    result
+        .with_metadata("sandboxed", json!(false))
+        .with_metadata("unsafe_execution", json!(true))
 }
 
 impl Default for BashTool {
@@ -568,6 +578,38 @@ mod tests {
             .await
             .unwrap();
         assert!(!result.success);
+    }
+
+    #[tokio::test]
+    async fn unsandboxed_bash_reports_unsafe_metadata() {
+        let tool = BashTool {
+            timeout_secs: 10,
+            sandboxed: false,
+            default_cwd: None,
+        };
+        let result = tool
+            .execute(json!({ "command": "echo unsafe path" }))
+            .await
+            .unwrap();
+        assert!(result.success);
+        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
+        assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
+    }
+
+    #[tokio::test]
+    async fn unsandboxed_bash_timeout_reports_unsafe_metadata() {
+        let tool = BashTool {
+            timeout_secs: 1,
+            sandboxed: false,
+            default_cwd: None,
+        };
+        let result = tool
+            .execute(json!({ "command": "sleep 30" }))
+            .await
+            .unwrap();
+        assert!(!result.success);
+        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
+        assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
     }
 
     #[test]

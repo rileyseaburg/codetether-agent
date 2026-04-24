@@ -1,15 +1,14 @@
-//! Plugin sandboxing and code-signing for tool execution.
+//! Plugin signing, content verification, and subprocess policy checks.
 //!
-//! Every tool invocation is mediated through a sandbox that:
-//! 1. Validates the tool manifest signature before execution.
-//! 2. Runs external/plugin tools in an isolated subprocess with restricted
-//!    environment, working directory, and resource limits.
-//! 3. Records execution results in the audit trail.
+//! Plugin registration fails closed unless the manifest signature is valid and
+//! the declared content hash matches the bytes or file supplied by the caller.
+//! Subprocess execution enforces pre-spawn policy checks and reports any
+//! platform fallback that is only advisory.
 //!
-//! Built-in tools (those compiled into the binary) are trusted but still
-//! audit-logged.  Third-party plugin tools must have a valid manifest
-//! signature to execute.
+//! Built-in tools are trusted. Third-party plugins must be registered with
+//! verified content before callers should execute them.
 
+use super::{sandbox_limits, sandbox_network, sandbox_paths};
 use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -31,8 +30,7 @@ pub struct PluginManifest {
     pub content_hash: String,
     /// Who signed this manifest.
     pub signed_by: String,
-    /// Hex-encoded HMAC-SHA256 signature of `id|version|content_hash` using
-    /// the server's signing key.
+    /// Hex-encoded HMAC-SHA256 signature of `id|version|content_hash`.
     pub signature: String,
     /// Allowed capabilities (e.g., "fs:read", "net:connect", "exec:shell").
     #[serde(default)]
@@ -68,7 +66,7 @@ impl Default for SandboxPolicy {
             allow_network: false,
             allow_exec: false,
             timeout_secs: 30,
-            max_memory_bytes: 256 * 1024 * 1024, // 256 MB
+            max_memory_bytes: 0,
         }
     }
 }
@@ -84,6 +82,9 @@ pub struct SandboxResult {
     pub exit_code: Option<i32>,
     pub duration_ms: u64,
     pub sandbox_violations: Vec<String>,
+    /// Isolation gaps that are visible to callers instead of hidden.
+    #[serde(default)]
+    pub unsafe_fallbacks: Vec<String>,
 }
 
 /// The signing key used to verify plugin manifests.
@@ -103,7 +104,7 @@ impl std::fmt::Debug for SigningKey {
 }
 
 impl SigningKey {
-    /// Load from `CODETETHER_PLUGIN_SIGNING_KEY` or generate a random one.
+    /// Load the HMAC key from `CODETETHER_PLUGIN_SIGNING_KEY` or generate one.
     pub fn from_env() -> Self {
         let key = match std::env::var("CODETETHER_PLUGIN_SIGNING_KEY") {
             Ok(hex) if hex.len() >= 32 => {
@@ -164,6 +165,15 @@ pub fn hash_file(path: &Path) -> Result<String> {
     Ok(hex::encode(hasher.finalize()))
 }
 
+async fn hash_file_async(path: &Path) -> Result<String> {
+    let contents = tokio::fs::read(path)
+        .await
+        .with_context(|| format!("Failed to read file for hashing: {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(&contents);
+    Ok(hex::encode(hasher.finalize()))
+}
+
 /// Compute SHA-256 hash of byte content.
 pub fn hash_bytes(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
@@ -191,8 +201,35 @@ impl PluginRegistry {
         Self::new(SigningKey::shared())
     }
 
-    /// Register a plugin after verifying its signature.
+    /// Register a plugin manifest only when unsafe content bypass is enabled.
     pub async fn register(&self, manifest: PluginManifest) -> Result<()> {
+        if !allow_unverified_content_registration() {
+            return Err(anyhow!(
+                "Plugin '{}' v{} requires content verification; use register_bytes or register_file",
+                manifest.id,
+                manifest.version,
+            ));
+        }
+        self.register_checked(manifest, None).await
+    }
+
+    /// Register a plugin after verifying its signature and byte content.
+    pub async fn register_bytes(&self, manifest: PluginManifest, content: &[u8]) -> Result<()> {
+        self.register_checked(manifest, Some(hash_bytes(content)))
+            .await
+    }
+
+    /// Register a plugin after verifying its signature and file content.
+    pub async fn register_file(&self, manifest: PluginManifest, path: &Path) -> Result<()> {
+        self.register_checked(manifest, Some(hash_file_async(path).await?))
+            .await
+    }
+
+    async fn register_checked(
+        &self,
+        manifest: PluginManifest,
+        actual_hash: Option<String>,
+    ) -> Result<()> {
         if !self.signing_key.verify(&manifest) {
             return Err(anyhow!(
                 "Plugin '{}' v{} has an invalid signature — refusing to register",
@@ -201,14 +238,25 @@ impl PluginRegistry {
             ));
         }
 
-        // Verify content hash matches manifest
-        let expected_hash = hash_bytes(manifest.id.as_bytes());
-        tracing::debug!(
-            plugin_id = %manifest.id,
-            manifest_hash = %manifest.content_hash,
-            computed_id_hash = %expected_hash,
-            "Content hash verification completed"
-        );
+        if let Some(actual_hash) = actual_hash {
+            if actual_hash != manifest.content_hash {
+                return Err(anyhow!(
+                    "Plugin '{}' v{} content hash mismatch — refusing to register",
+                    manifest.id,
+                    manifest.version,
+                ));
+            }
+            tracing::debug!(
+                plugin_id = %manifest.id,
+                manifest_hash = %manifest.content_hash,
+                "Content hash verification completed"
+            );
+        } else {
+            tracing::warn!(
+                plugin_id = %manifest.id,
+                "Plugin registered through explicit unsafe content verification bypass"
+            );
+        }
 
         tracing::info!(
             plugin_id = %manifest.id,
@@ -248,9 +296,15 @@ impl PluginRegistry {
             .get(plugin_id)
             .await
             .ok_or_else(|| anyhow!("Plugin '{}' not registered", plugin_id))?;
-        let file_hash = hash_file(path)?;
+        let file_hash = hash_file_async(path).await?;
         Ok(file_hash == manifest.content_hash)
     }
+}
+
+fn allow_unverified_content_registration() -> bool {
+    std::env::var("CODETETHER_ALLOW_UNVERIFIED_PLUGIN_CONTENT")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
 }
 
 /// Execute a tool in a sandboxed subprocess.
@@ -265,6 +319,11 @@ pub async fn execute_sandboxed(
 
     let started = Instant::now();
     let mut violations = Vec::new();
+    let mut unsafe_fallbacks = Vec::new();
+
+    if !policy.allow_exec {
+        return Err(anyhow!("Sandbox policy denies process execution"));
+    }
 
     // Build restricted environment — strip everything except essentials.
     let mut env: HashMap<String, String> = HashMap::new();
@@ -273,24 +332,25 @@ pub async fn execute_sandboxed(
     env.insert("LANG".to_string(), "C.UTF-8".to_string());
     inject_codetether_runtime_env(&mut env);
 
+    unsafe_fallbacks.extend(sandbox_network::validate(policy, command, args)?);
     if !policy.allow_network {
-        // On Linux we can use unshare to disable networking, but as a
-        // baseline we set a marker environment variable that cooperative
-        // tools can honour and we log the restriction.
+        // Keep the advisory marker visible for cooperative child processes.
+        // Non-cooperative known network commands are rejected before spawn.
         env.insert("CODETETHER_SANDBOX_NO_NETWORK".to_string(), "1".to_string());
-    }
-
-    if !policy.allow_exec {
-        env.insert("CODETETHER_SANDBOX_NO_EXEC".to_string(), "1".to_string());
     }
 
     let work_dir = working_dir
         .map(|p| p.to_path_buf())
         .unwrap_or_else(std::env::temp_dir);
+    sandbox_paths::validate_working_dir(policy, &work_dir).await?;
 
     let mut cmd = Command::new(command);
     cmd.args(args).current_dir(&work_dir).env_clear().envs(&env);
     super::bash_noninteractive::configure(&mut cmd);
+    unsafe_fallbacks.extend(sandbox_limits::apply_memory_limit(
+        &mut cmd,
+        policy.max_memory_bytes,
+    ));
 
     let timeout = std::time::Duration::from_secs(policy.timeout_secs);
 
@@ -325,6 +385,7 @@ pub async fn execute_sandboxed(
         exit_code,
         duration_ms,
         sandbox_violations: violations,
+        unsafe_fallbacks,
     })
 }
 
@@ -368,6 +429,20 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn signed_manifest(key: &SigningKey, id: &str, content: &[u8]) -> PluginManifest {
+        let hash = hash_bytes(content);
+        PluginManifest {
+            id: id.to_string(),
+            name: id.to_string(),
+            version: "1.0.0".to_string(),
+            content_hash: hash.clone(),
+            signed_by: "test".to_string(),
+            signature: key.sign(id, "1.0.0", &hash),
+            capabilities: vec!["fs:read".to_string()],
+            timeout_secs: 30,
+        }
+    }
 
     #[test]
     fn sign_and_verify_roundtrip() {
@@ -433,7 +508,107 @@ mod tests {
             timeout_secs: 10,
         };
 
-        assert!(registry.register(manifest).await.is_err());
+        assert!(registry.register_bytes(manifest, b"content").await.is_err());
         assert!(!registry.is_verified("bad-plugin").await);
+    }
+
+    #[tokio::test]
+    async fn plugin_registry_registers_matching_content() {
+        let key = SigningKey::with_key(b"test-key".to_vec());
+        let manifest = signed_manifest(&key, "good-plugin", b"content");
+        let registry = PluginRegistry::new(key);
+
+        registry
+            .register_bytes(manifest, b"content")
+            .await
+            .expect("matching content registers");
+        assert!(registry.is_verified("good-plugin").await);
+    }
+
+    #[tokio::test]
+    async fn plugin_registry_rejects_wrong_content_hash() {
+        let key = SigningKey::with_key(b"test-key".to_vec());
+        let manifest = signed_manifest(&key, "mismatch-plugin", b"content");
+        let registry = PluginRegistry::new(key);
+
+        assert!(
+            registry
+                .register_bytes(manifest, b"tampered")
+                .await
+                .is_err()
+        );
+        assert!(!registry.is_verified("mismatch-plugin").await);
+    }
+
+    #[tokio::test]
+    async fn plugin_registry_requires_content_by_default() {
+        let key = SigningKey::with_key(b"test-key".to_vec());
+        let manifest = signed_manifest(&key, "needs-content", b"content");
+        let registry = PluginRegistry::new(key);
+
+        assert!(registry.register(manifest).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn sandbox_denies_working_dir_outside_allowed_paths() {
+        let allowed = tempfile::tempdir().expect("allowed tempdir");
+        let denied = tempfile::tempdir().expect("denied tempdir");
+        let policy = SandboxPolicy {
+            allowed_paths: vec![allowed.path().to_path_buf()],
+            allow_network: true,
+            allow_exec: true,
+            ..SandboxPolicy::default()
+        };
+
+        let err = execute_sandboxed(
+            "sh",
+            &["-c".to_string(), "echo denied".to_string()],
+            &policy,
+            Some(denied.path()),
+        )
+        .await
+        .expect_err("denied path should fail closed");
+        assert!(err.to_string().contains("denied working directory"));
+    }
+
+    #[test]
+    fn sandbox_memory_limit_is_opt_in_by_default() {
+        assert_eq!(SandboxPolicy::default().max_memory_bytes, 0);
+    }
+
+    #[tokio::test]
+    async fn sandbox_denies_network_commands_when_network_disabled() {
+        let policy = SandboxPolicy {
+            allow_network: false,
+            allow_exec: true,
+            ..SandboxPolicy::default()
+        };
+        let err = execute_sandboxed(
+            "sh",
+            &["-c".to_string(), "curl https://example.com".to_string()],
+            &policy,
+            None,
+        )
+        .await
+        .expect_err("network command should fail closed");
+        assert!(err.to_string().contains("denies network access"));
+    }
+
+    #[tokio::test]
+    async fn sandbox_denies_dequoted_network_commands() {
+        let policy = SandboxPolicy {
+            allow_network: false,
+            allow_exec: true,
+            ..SandboxPolicy::default()
+        };
+        let err = execute_sandboxed(
+            "sh",
+            &["-c".to_string(), "c\"\"url https://example.com".to_string()],
+            &policy,
+            None,
+        )
+        .await
+        .expect_err("dequoted network command should fail closed");
+        assert!(err.to_string().contains("denies network access"));
     }
 }
