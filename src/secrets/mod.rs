@@ -1,7 +1,8 @@
 //! Secrets management via HashiCorp Vault
 //!
-//! All API keys and secrets are loaded exclusively from HashiCorp Vault.
-//! Environment variables are NOT used for secrets.
+//! This module only reads HashiCorp Vault. Provider initialization may add
+//! local-development env/AWS fallback credentials unless
+//! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;

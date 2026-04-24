@@ -254,7 +254,6 @@ impl OpenAiCodexProvider {
             "gpt-5.2",
             "gpt-5.3-codex",
             "gpt-5.4",
-            "gpt-5.4-fast",
             "gpt-5.5",
             "gpt-5.5-fast",
             "o3",
@@ -2205,7 +2204,8 @@ mod tests {
             .expect("model listing should succeed");
 
         assert!(models.iter().any(|model| model.id == "gpt-5.4"));
-        assert!(models.iter().any(|model| model.id == "gpt-5.4-fast"));
+        assert!(models.iter().any(|model| model.id == "gpt-5-mini"));
+        assert!(!models.iter().any(|model| model.id == "gpt-5.4-fast"));
         assert!(models.iter().any(|model| model.id == "gpt-5.5"));
         assert!(models.iter().any(|model| model.id == "gpt-5.5-fast"));
         assert!(!models.iter().any(|model| model.id == "gpt-5.4-pro"));

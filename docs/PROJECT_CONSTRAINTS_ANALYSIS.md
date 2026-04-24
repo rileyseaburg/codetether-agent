@@ -31,7 +31,7 @@ This document defines the comprehensive constraints framework for the CodeTether
 - **AI/LLM:** async-openai 0.32.4 (OpenAI-compatible APIs only)
 - **TUI:** ratatui 0.30.0, crossterm 0.29.0
 - **LSP:** jsonrpc-core 18, lsp-types 0.97.0
-- **Secrets:** vaultrs 0.7 (HashiCorp Vault only)
+- **Secrets:** vaultrs 0.7 (Vault-first, optional env/AWS fallback)
 
 **Constraint Implications:**
 - Major version upgrades require significant refactoring
@@ -75,8 +75,8 @@ This document defines the comprehensive constraints framework for the CodeTether
 - Streaming support varies by provider
 
 **Vault Requirements:**
-- HashiCorp Vault mandatory for all API keys
-- No environment variable fallback for secrets
+- HashiCorp Vault is the production source for provider API keys
+- Env/AWS fallback is available for local development unless disabled
 - Requires VAULT_ADDR and VAULT_TOKEN environment variables
 
 ---
@@ -343,8 +343,8 @@ Based on historical data (Ralph dogfooding):
 ### 6.3 Security Requirements
 
 **Secrets Management:**
-- All API keys in HashiCorp Vault only
-- No secrets in environment variables
+- Store production API keys in HashiCorp Vault
+- Set `CODETETHER_DISABLE_ENV_FALLBACK=1` to reject env/AWS fallback
 - No secrets in code or config files
 - Vault token rotation required quarterly
 

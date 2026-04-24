@@ -11,6 +11,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "anthropic" => "claude-sonnet-4-20250514".to_string(),
         "minimax" => "MiniMax-M2.5".to_string(),
         "openai" => "gpt-4o".to_string(),
+        "openai-codex" => "gpt-5.4".to_string(),
         "google" => "gemini-2.5-pro".to_string(),
         "local_cuda" => std::env::var("LOCAL_CUDA_MODEL")
             .or_else(|_| std::env::var("CODETETHER_LOCAL_CUDA_MODEL"))
@@ -31,6 +32,11 @@ mod tests {
     #[test]
     fn openai_defaults_to_gpt4o() {
         assert_eq!(default_model_for_provider("openai"), "gpt-4o");
+    }
+
+    #[test]
+    fn openai_codex_defaults_to_gpt_5_4() {
+        assert_eq!(default_model_for_provider("openai-codex"), "gpt-5.4");
     }
 
     #[test]

@@ -5,6 +5,8 @@ use super::kubernetes_executor::{
     RemoteBranchProbe, SWARM_SUBTASK_PROBE_PREFIX, SWARM_SUBTASK_RESULT_PREFIX, decode_payload,
 };
 use super::subtask::SubTaskResult;
+use super::tool_policy;
+use crate::agent::builtin::load_agents_md;
 use crate::cli::SwarmSubagentArgs;
 use crate::provider::ProviderRegistry;
 use crate::tool::ToolRegistry;
@@ -40,25 +42,39 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         .get(&payload.provider)
         .ok_or_else(|| anyhow!("Provider '{}' unavailable in remote pod", payload.provider))?;
 
-    let tool_registry =
-        ToolRegistry::with_provider_arc(Arc::clone(&provider), payload.model.clone());
-    // Remote pod is autonomous; interactive question tool is intentionally excluded.
-    let tool_defs = tool_registry
-        .definitions()
-        .into_iter()
-        .filter(|t| t.name != "question")
-        .collect();
+    let (tool_registry, tool_defs) = if payload.read_only {
+        let mut registry =
+            ToolRegistry::with_provider(Arc::clone(&provider), payload.model.clone());
+        tool_policy::restrict_registry(&mut registry, true);
+        let registry = Arc::new(registry);
+        let definitions = tool_policy::definitions(&registry.definitions(), true);
+        (registry, definitions)
+    } else {
+        let registry =
+            ToolRegistry::with_provider_arc(Arc::clone(&provider), payload.model.clone());
+        let definitions = tool_policy::definitions(&registry.definitions(), false);
+        (registry, definitions)
+    };
 
     let specialty = if payload.specialty.is_empty() {
         "generalist".to_string()
     } else {
         payload.specialty.clone()
     };
-    let system_prompt = format!(
-        "You are a {specialty} specialist sub-agent (ID: {}). \
-Use tools to execute the task and summarize concrete outputs.",
-        payload.subtask_id
-    );
+    let agents_md_content = load_agents_md(&working_dir)
+        .map(|(content, _)| format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}"))
+        .unwrap_or_default();
+    let working_dir_display = working_dir.display().to_string();
+    let prd_filename = format!("prd_{}.json", payload.subtask_id.replace("-", "_"));
+    let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
+        specialty: &specialty,
+        subtask_id: &payload.subtask_id,
+        working_dir: &working_dir_display,
+        model: &payload.model,
+        prd_filename: &prd_filename,
+        agents_md: &agents_md_content,
+        read_only: payload.read_only,
+    });
     let user_prompt = if payload.context.trim().is_empty() {
         payload.instruction.clone()
     } else {

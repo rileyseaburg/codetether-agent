@@ -241,7 +241,7 @@ fn preferred_models_for_provider(provider_name: &str) -> &'static [&'static str]
         "minimax" => &["MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
         "minimax-credits" => &["MiniMax-M2.5-highspeed", "MiniMax-M2.1-highspeed"],
         "zai" => &["glm-5", "glm-4.7", "glm-4.7-flash"],
-        "openai-codex" => &["gpt-5-mini", "gpt-5", "gpt-5.1-codex"],
+        "openai-codex" => &["gpt-5.4", "gpt-5-mini", "gpt-5"],
         "github-copilot" | "github-copilot-enterprise" => &["gpt-5-mini", "gpt-4.1", "gpt-4o"],
         "openrouter" => &["z-ai/glm-5:free", "z-ai/glm-5", "z-ai/glm-4.7:free"],
         _ => &[],
@@ -264,7 +264,8 @@ fn normalize_provider_name(provider_name: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        RelayModelRotation, choose_copilot_model, choose_openrouter_model, normalize_provider_name,
+        RelayModelRotation, choose_copilot_model, choose_openrouter_model,
+        default_model_for_provider, normalize_provider_name,
     };
     use crate::provider::ModelInfo;
 
@@ -307,6 +308,11 @@ mod tests {
             model("claude-sonnet-4"),
         ];
         assert_eq!(choose_copilot_model(&models).as_deref(), Some("gpt-5-mini"));
+    }
+
+    #[test]
+    fn openai_codex_defaults_to_gpt_5_4() {
+        assert_eq!(default_model_for_provider("openai-codex"), Some("gpt-5.4"));
     }
 
     fn model(id: &str) -> ModelInfo {

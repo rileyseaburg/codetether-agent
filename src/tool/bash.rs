@@ -10,7 +10,6 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::process::Stdio;
 use std::time::Instant;
 use tokio::process::Command;
 use tokio::time::{Duration, timeout};
@@ -158,7 +157,7 @@ impl Tool for BashTool {
     }
 
     fn description(&self) -> &str {
-        "bash(command: string, cwd?: string, timeout?: int) - Execute a shell command. Commands run in a bash shell with the current working directory."
+        "bash(command: string, cwd?: string, timeout?: int) - Execute a noninteractive shell command. Password prompts are disabled; use noninteractive credentials or flags such as sudo -n."
     }
 
     fn parameters(&self) -> Value {
@@ -317,16 +316,8 @@ impl Tool for BashTool {
 
         let shell = super::bash_shell::resolve();
         let mut cmd = Command::new(&shell.program);
-        cmd.args(&shell.prefix_args)
-            .arg(&wrapped_command)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .env("GIT_TERMINAL_PROMPT", "0")
-            .env("GCM_INTERACTIVE", "never")
-            .env("DEBIAN_FRONTEND", "noninteractive")
-            .env("SUDO_ASKPASS", "/bin/false")
-            .env("SSH_ASKPASS", "/bin/false");
+        cmd.args(&shell.prefix_args).arg(&wrapped_command);
+        super::bash_noninteractive::configure(&mut cmd);
         if let Some((codetether_bin, path)) = codetether_runtime_env() {
             cmd.env("CODETETHER_BIN", codetether_bin).env("PATH", path);
         }
@@ -398,10 +389,18 @@ impl Tool for BashTool {
                 );
 
                 let success = output.status.success();
+                let auth_prompt_blocked = !success && looks_like_auth_prompt(&combined);
 
-                if !success && looks_like_auth_prompt(&combined) {
+                if auth_prompt_blocked {
                     tracing::warn!("Interactive auth prompt detected in output");
                 }
+                let combined = if auth_prompt_blocked {
+                    format!(
+                        "{combined}\n\n[CodeTether] Interactive password prompts are disabled for agent-run commands. Use non-interactive credentials or commands such as `sudo -n`."
+                    )
+                } else {
+                    combined
+                };
 
                 // Truncate if too long
                 let max_len = 50_000;
@@ -467,6 +466,10 @@ impl Tool for BashTool {
                     metadata: [
                         ("exit_code".to_string(), json!(exit_code)),
                         ("truncated".to_string(), json!(truncated)),
+                        (
+                            "interactive_auth_prompt".to_string(),
+                            json!(auth_prompt_blocked),
+                        ),
                     ]
                     .into_iter()
                     .collect(),

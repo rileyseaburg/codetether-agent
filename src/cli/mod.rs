@@ -2,6 +2,7 @@
 
 pub mod auth;
 pub mod browserctl;
+pub mod clipboard;
 pub mod config;
 pub mod context;
 pub mod go_ralph;
@@ -69,6 +70,9 @@ pub enum Command {
 
     /// Manage configuration
     Config(ConfigArgs),
+
+    /// Convert clipboard images into terminal-pasteable CodeTether input
+    Clipboard(clipboard::ClipboardArgs),
 
     /// Browse or reset the active session context
     Context(ContextArgs),
