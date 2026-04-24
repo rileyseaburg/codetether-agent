@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -11,6 +11,8 @@ pub struct BrowserCtlArgs {
     pub ws_url: Option<String>,
     #[arg(long, global = true)]
     pub json: bool,
+    #[arg(long, global = true, default_value_t = true, action = ArgAction::Set)]
+    pub headless: bool,
     #[command(subcommand)]
     pub command: BrowserCtlCommand,
 }
@@ -19,8 +21,6 @@ pub struct BrowserCtlArgs {
 pub enum BrowserCtlCommand {
     /// Attach to an existing DevTools endpoint or launch a managed browser
     Start {
-        #[arg(long, default_value_t = true)]
-        headless: bool,
         #[arg(long)]
         executable_path: Option<String>,
         #[arg(long)]

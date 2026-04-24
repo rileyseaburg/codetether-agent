@@ -4,14 +4,14 @@ use serde_json::{Value, json};
 pub fn needs_attach(command: &BrowserCtlCommand) -> bool {
     !matches!(
         command,
-        BrowserCtlCommand::Start { .. } | BrowserCtlCommand::Stop
+        BrowserCtlCommand::Start { .. } | BrowserCtlCommand::Stop | BrowserCtlCommand::Health
     )
 }
 
 pub fn attach(args: &BrowserCtlArgs) -> Value {
     json!({
         "action": "start",
-        "headless": true,
+        "headless": args.headless,
         "ws_url": args.ws_url,
     })
 }
@@ -19,12 +19,11 @@ pub fn attach(args: &BrowserCtlArgs) -> Value {
 pub fn command(args: &BrowserCtlArgs) -> Value {
     match &args.command {
         BrowserCtlCommand::Start {
-            headless,
             executable_path,
             user_data_dir,
         } => json!({
             "action": "start",
-            "headless": headless,
+            "headless": args.headless,
             "executable_path": executable_path,
             "user_data_dir": user_data_dir,
             "ws_url": args.ws_url,

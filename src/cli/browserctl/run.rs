@@ -21,6 +21,17 @@ async fn call(tool: &BrowserCtlTool, payload: Value) -> Result<crate::tool::Tool
     Ok(result)
 }
 
-fn print_output(output: &str, _json: bool) {
-    println!("{output}");
+fn print_output(output: &str, json: bool) {
+    println!("{}", format_output(output, json));
+}
+
+pub(super) fn format_output(output: &str, json: bool) -> String {
+    let Ok(value) = serde_json::from_str::<Value>(output) else {
+        return output.to_string();
+    };
+    if json {
+        serde_json::to_string(&value).unwrap_or_else(|_| output.to_string())
+    } else {
+        serde_json::to_string_pretty(&value).unwrap_or_else(|_| output.to_string())
+    }
 }
