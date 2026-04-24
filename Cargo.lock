@@ -3101,8 +3101,8 @@ dependencies = [
 
 [[package]]
 name = "kiln"
-version = "0.1.0-alpha.1"
-source = "git+https://github.com/kiln-rs/kiln.git?rev=a0c3efab4d36bd7abaa27cb98144d7247023f5ad#a0c3efab4d36bd7abaa27cb98144d7247023f5ad"
+version = "0.1.0-alpha.2"
+source = "git+https://github.com/kiln-rs/kiln.git?rev=3bf157308b10174adb785f8ab7bc7268cc72da83#3bf157308b10174adb785f8ab7bc7268cc72da83"
 dependencies = [
  "base64 0.22.1",
  "chrono",
