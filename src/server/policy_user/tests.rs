@@ -11,6 +11,6 @@ fn claims_drive_policy_user() {
         topics: vec![],
     };
     let user = from_claims(&claims);
-    assert_eq!(user.roles, vec!["viewer"]);
+    assert_eq!(user.roles, vec!["viewer".to_string()]);
     assert_eq!(user.auth_source, "api_key");
 }

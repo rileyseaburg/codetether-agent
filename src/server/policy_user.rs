@@ -39,8 +39,9 @@ fn static_user(roles: Vec<String>, auth_source: &str) -> PolicyUser {
 }
 
 fn static_token_admin_enabled() -> bool {
-    std::env::var("CODETETHER_STATIC_TOKEN_ADMIN")
-        .is_ok_and(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
+    static ENABLED: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| super::env_bool("CODETETHER_STATIC_TOKEN_ADMIN", false));
+    *ENABLED
 }
 
 #[cfg(test)]

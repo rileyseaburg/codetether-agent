@@ -521,10 +521,10 @@ fn required_permission(path: &str, method: &str) -> Result<Option<&'static str>,
 /// Maps request paths to OPA permission strings and enforces authorization.
 /// Runs after `require_auth` so the bearer token is already validated.
 async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
-    let path = request.uri().path().to_string();
-    let method = request.method().as_str().to_string();
+    let path = request.uri().path();
+    let method = request.method().as_str();
 
-    let permission = match required_permission(&path, &method)? {
+    let permission = match required_permission(path, method)? {
         None => return Ok(next.run(request).await),
         Some(permission) => permission,
     };
