@@ -12,6 +12,7 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    libasound2-dev \
     g++ \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
@@ -33,6 +34,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
