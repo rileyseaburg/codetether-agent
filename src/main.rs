@@ -646,6 +646,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Forage(args)) => forage::execute(args).await,
         Some(Command::Search(args)) => cli::search::execute(args).await,
+        Some(Command::Browserctl(args)) => cli::browserctl::execute(args).await,
         Some(Command::Context(args)) => cli::context::execute(args).await,
         Some(Command::Worker(mut args)) => {
             // Auto-load saved credentials if no token provided
