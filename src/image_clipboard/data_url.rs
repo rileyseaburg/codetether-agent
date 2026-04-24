@@ -1,8 +1,12 @@
 //! Parse pasted image data URLs.
 
 use base64::Engine;
+use std::borrow::Cow;
 
 use crate::session::ImageAttachment;
+
+const MAX_IMAGE_DECODED_BYTES: usize = 10 * 1024 * 1024;
+pub(crate) const MAX_BASE64_PAYLOAD_CHARS: usize = (MAX_IMAGE_DECODED_BYTES + 2) / 3 * 4;
 
 const IMAGE_MIME_TYPES: &[&str] = &[
     "image/png",
@@ -35,19 +39,34 @@ const IMAGE_MIME_TYPES: &[&str] = &[
 /// ```
 pub fn attachment_from_data_url(text: &str) -> Option<ImageAttachment> {
     let data = text.trim().strip_prefix("data:")?;
-    let (mime, payload) = data.split_once(";base64,")?;
+    let (mime, raw_payload) = data.split_once(";base64,")?;
     if !IMAGE_MIME_TYPES.contains(&mime) {
         return None;
     }
-    let payload: String = payload.split_ascii_whitespace().collect();
-    if payload.is_empty() {
+    let payload = normalized_payload(raw_payload)?;
+    if payload.len() > MAX_BASE64_PAYLOAD_CHARS {
         return None;
     }
-    base64::engine::general_purpose::STANDARD
-        .decode(&payload)
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(payload.as_ref())
         .ok()?;
+    if decoded.len() > MAX_IMAGE_DECODED_BYTES {
+        return None;
+    }
     Some(ImageAttachment {
         data_url: format!("data:{mime};base64,{payload}"),
         mime_type: Some(mime.to_string()),
     })
+}
+
+fn normalized_payload(payload: &str) -> Option<Cow<'_, str>> {
+    let payload = payload.trim();
+    if payload.is_empty() {
+        return None;
+    }
+    if !payload.as_bytes().iter().any(u8::is_ascii_whitespace) {
+        return Some(Cow::Borrowed(payload));
+    }
+    let payload: String = payload.split_ascii_whitespace().collect();
+    (!payload.is_empty()).then_some(Cow::Owned(payload))
 }

@@ -10,9 +10,9 @@ pub(crate) fn try_attach_data_url(app: &mut App, text: &str) -> bool {
     app.state.pending_images.push(image);
     let count = app.state.pending_images.len();
     app.state.status = if count == 1 {
-        "Attached pasted image. Type a message and press Enter to send.".to_string()
+        "Attached pasted image. Press Enter to send, or add text first.".to_string()
     } else {
-        format!("Attached {count} pasted images. Press Enter to send them.")
+        format!("Attached {count} pasted images. Press Enter to send, or add text first.")
     };
     true
 }

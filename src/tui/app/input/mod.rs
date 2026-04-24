@@ -28,6 +28,7 @@ mod pr_helpers;
 mod pr_title;
 mod sessions;
 mod tests_enter;
+mod tests_image_paste;
 mod tests_paste;
 mod tests_pr;
 mod tests_submit;
