@@ -58,6 +58,9 @@ fn paste_chars_no_newlines(text: &str, mut f: impl FnMut(char)) {
 
 /// Insert pasted text into the chat input buffer.
 fn paste_into_chat(app: &mut App, normalized: &str) {
+    if super::try_attach_data_url(app, normalized) {
+        return;
+    }
     app.state.input_mode = if app.state.input.is_empty() && normalized.starts_with('/') {
         InputMode::Command
     } else if app.state.input.starts_with('/') {

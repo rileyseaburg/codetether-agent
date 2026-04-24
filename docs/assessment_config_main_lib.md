@@ -72,9 +72,9 @@ Add comprehensive crate-level documentation:
 //!
 //! # Security
 //!
-//! All API keys and secrets are loaded exclusively from HashiCorp Vault.
-//! Environment variables are used only for Vault connection bootstrap
-//! (`VAULT_ADDR`, `VAULT_TOKEN`).
+//! Provider credentials are loaded from HashiCorp Vault first.
+//! Local-development env/AWS fallback is available unless
+//! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 //!
 //! # Feature Flags
 //!
@@ -149,8 +149,9 @@ Expand the module documentation:
 //!
 //! # Security
 //!
-//! All API keys and secrets are loaded exclusively from HashiCorp Vault.
-//! Environment variables are NOT used for secrets (only for Vault connection bootstrap).
+//! Provider credentials are loaded from HashiCorp Vault first.
+//! Local-development env/AWS fallback is available unless
+//! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 //!
 //! Required environment variables for Vault:
 //! - `VAULT_ADDR`: Vault server URL (e.g., "https://vault.example.com:8200")

@@ -30,6 +30,9 @@ use crate::tui::models::InputMode;
 /// ```
 pub(super) fn handle_clipboard_paste(app: &mut App) {
     if let Some(text) = crate::tui::clipboard::get_clipboard_text() {
+        if crate::tui::app::input::try_attach_data_url(app, &text) {
+            return;
+        }
         insert_clipboard_text(app, &text);
         return;
     }
@@ -45,7 +48,9 @@ pub(super) fn handle_clipboard_paste(app: &mut App) {
             };
         }
         None => {
-            app.state.status = "Clipboard empty — use /image <path> for images".into();
+            app.state.status =
+                "Clipboard unavailable; use /image <path> or `codetether clipboard image` locally."
+                    .into();
         }
     }
 }

@@ -172,7 +172,7 @@ pub fn hash_bytes(data: &[u8]) -> String {
 }
 
 /// Plugin registry — tracks registered and verified plugins.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PluginRegistry {
     signing_key: SigningKey,
     /// Verified plugins: id -> manifest.
@@ -271,11 +271,6 @@ pub async fn execute_sandboxed(
     env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
     env.insert("HOME".to_string(), "/tmp".to_string());
     env.insert("LANG".to_string(), "C.UTF-8".to_string());
-    env.insert("GIT_TERMINAL_PROMPT".to_string(), "0".to_string());
-    env.insert("GCM_INTERACTIVE".to_string(), "never".to_string());
-    env.insert("DEBIAN_FRONTEND".to_string(), "noninteractive".to_string());
-    env.insert("SUDO_ASKPASS".to_string(), "/bin/false".to_string());
-    env.insert("SSH_ASKPASS".to_string(), "/bin/false".to_string());
     inject_codetether_runtime_env(&mut env);
 
     if !policy.allow_network {
@@ -294,13 +289,8 @@ pub async fn execute_sandboxed(
         .unwrap_or_else(std::env::temp_dir);
 
     let mut cmd = Command::new(command);
-    cmd.args(args)
-        .current_dir(&work_dir)
-        .env_clear()
-        .envs(&env)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
+    cmd.args(args).current_dir(&work_dir).env_clear().envs(&env);
+    super::bash_noninteractive::configure(&mut cmd);
 
     let timeout = std::time::Duration::from_secs(policy.timeout_secs);
 
