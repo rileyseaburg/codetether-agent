@@ -843,45 +843,7 @@ impl SwarmExecutor {
         // Create base tool registry with provider for ralph and batch tool
         let base_tool_registry =
             ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-        let mut tool_definitions = base_tool_registry.definitions();
-
-        // Add swarm_share tool definition so LLMs know it's available
-        let swarm_share_def = crate::provider::ToolDefinition {
-            name: "swarm_share".to_string(),
-            description: "Share results with other sub-agents in the swarm. Actions: publish \
-                          (share a result), get (retrieve a result by key), query_tags (find \
-                          results by tags), query_prefix (find results by key prefix), list \
-                          (show all shared results)."
-                .to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["publish", "get", "query_tags", "query_prefix", "list"],
-                        "description": "Action to perform"
-                    },
-                    "key": {
-                        "type": "string",
-                        "description": "Result key (for publish/get)"
-                    },
-                    "value": {
-                        "description": "Result value to publish (any JSON value)"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Tags for publish or query_tags"
-                    },
-                    "prefix": {
-                        "type": "string",
-                        "description": "Key prefix for query_prefix"
-                    }
-                },
-                "required": ["action"]
-            }),
-        };
-        tool_definitions.push(swarm_share_def);
+        let tool_definitions = base_tool_registry.definitions();
 
         // Clone the result store for sub-agent sharing
         let result_store = Arc::clone(&self.result_store);
@@ -930,11 +892,10 @@ impl SwarmExecutor {
             pending_subtasks.push(subtask);
         }
 
-        // PRE-PASS 2 (worktrees): create all worktrees for non-cached
-        // subtasks concurrently (bounded to avoid git .git/worktrees
-        // lock contention). Drops wall time from O(N·T_create) to
-        // ~O(N·T_create / WORKTREE_PARALLELISM). Failures are swallowed
-        // — the sub-agent falls back to the shared directory.
+        // PRE-PASS 2 (worktrees): create worktrees for mutating non-cached
+        // subtasks concurrently. Mutating subtasks fail closed when their
+        // required worktree cannot be created; read-only subtasks continue in
+        // the shared directory.
         let mut worktrees_by_id: HashMap<String, WorktreeInfo> = HashMap::new();
         if let Some(ref mgr) = worktree_manager {
             // Only provision worktrees for subtasks that actually
@@ -960,9 +921,6 @@ impl SwarmExecutor {
                 active_worktrees.insert(sid.clone(), wt.clone());
                 all_worktrees.insert(sid.clone(), wt.clone());
             }
-        }
-
-        if worktree_manager.is_some() {
             let mut runnable = Vec::with_capacity(pending_subtasks.len());
             for subtask in pending_subtasks.into_iter() {
                 if subtask.needs_worktree() && !worktrees_by_id.contains_key(&subtask.id) {
@@ -1008,10 +966,8 @@ impl SwarmExecutor {
             let base_delay_ms = self.config.base_delay_ms;
             let max_delay_ms = self.config.max_delay_ms;
 
-            // Look up the pre-created worktree. Parallel creation
-            // happened before this loop (see PRE-PASS 2 above). `None`
-            // means either worktrees are disabled or creation failed —
-            // the sub-agent falls back to the shared working directory.
+            // Look up the pre-created worktree. `None` means worktrees are
+            // disabled or this is a read-only subtask that does not need one.
             let worktree_info = worktrees_by_id.remove(&subtask_id);
 
             let working_dir = worktree_info
@@ -1064,43 +1020,15 @@ impl SwarmExecutor {
 
                 // Build the system prompt for this sub-agent
                 let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
-                let mode_prompt = tool_policy::mode_prompt(read_only_task);
-                let tools_prompt = tool_policy::tools_prompt(read_only_task);
-                let coordination_prompt = if read_only_task {
-                    String::new()
-                } else {
-                    format!(
-                        "SMART SPAWN POLICY (mandatory):\n- Any spawned agent MUST use a different model than your current model ('{}')\n- Spawned model MUST be free/subscription-eligible (e.g. '*:free', openai-codex/*, github-copilot/*, gemini-web/*, local_cuda/*)\n- Include `model` when calling agent.spawn\n\nSHARING RESULTS:\nUse swarm_share to collaborate with other sub-agents:\n- swarm_share({{action: 'publish', key: 'my-finding', value: '...', tags: ['research']}}) to share a result\n- swarm_share({{action: 'get', key: 'some-key'}}) to retrieve a result from another agent\n- swarm_share({{action: 'list'}}) to see all shared results\n- swarm_share({{action: 'query_tags', tags: ['research']}}) to find results by tag",
-                        model
-                    )
-                };
-                let workflow_prompt = if read_only_task {
-                    String::new()
-                } else {
-                    format!(
-                        "COMPLEX TASKS:\nIf your task is complex and involves multiple implementation steps, use the prd + ralph workflow:\n1. Call prd({{action: 'analyze', task_description: '...'}}) to understand what's needed\n2. Break down into user stories with acceptance criteria\n3. Call prd({{action: 'save', prd_path: '{}', project: '...', feature: '...', stories: [...]}})\n4. Call ralph({{action: 'run', prd_path: '{}'}}) to execute\n\nNOTE: Use your unique PRD file '{}' so parallel agents don't conflict.",
-                        prd_filename, prd_filename, prd_filename
-                    )
-                };
-                let system_prompt = format!(
-                    "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.
-
-WORKING DIRECTORY: {}
-All file operations should be relative to this directory.
-
-{mode_prompt}
-
-{tools_prompt}
-
-{coordination_prompt}
-
-{workflow_prompt}
-
-When done, provide a brief summary of what you accomplished.{agents_md_content}",
-                    specialty,
-                    subtask_id,
-                    working_dir,
-                );
+                let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
+                    specialty: &specialty,
+                    subtask_id: &subtask_id,
+                    working_dir: &working_dir,
+                    model: &model,
+                    prd_filename: &prd_filename,
+                    agents_md: &agents_md_content,
+                    read_only: read_only_task,
+                });
 
                 let user_prompt = if context.is_empty() {
                     format!("Complete this task:\n\n{}", instruction)
@@ -1134,8 +1062,14 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     Arc::clone(&agent_result_store),
                     subtask_id.clone(),
                 )));
+                let batch_tool = Arc::new(crate::tool::batch::BatchTool::new());
+                agent_registry.register(batch_tool.clone());
+                let mut search_providers = crate::provider::ProviderRegistry::new();
+                search_providers.register(Arc::clone(&provider));
+                agent_registry.register_search(Arc::new(search_providers));
                 tool_policy::restrict_registry(&mut agent_registry, read_only_task);
                 let registry = Arc::new(agent_registry);
+                batch_tool.set_registry(Arc::downgrade(&registry));
 
                 // Execute with exponential backoff retry
                 let mut attempt = 0u32;

@@ -1,4 +1,6 @@
 use super::*;
+use crate::provider::ToolDefinition;
+use crate::tool::ToolRegistry;
 
 #[test]
 fn read_only_definitions_hide_mutating_tools() {

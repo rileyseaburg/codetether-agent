@@ -6,6 +6,7 @@ use super::kubernetes_executor::{
 };
 use super::subtask::SubTaskResult;
 use super::tool_policy;
+use crate::agent::builtin::load_agents_md;
 use crate::cli::SwarmSubagentArgs;
 use crate::provider::ProviderRegistry;
 use crate::tool::ToolRegistry;
@@ -60,17 +61,20 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
     } else {
         payload.specialty.clone()
     };
-    let mode_prompt = tool_policy::mode_prompt(payload.read_only);
-    let tools_prompt = tool_policy::tools_prompt(payload.read_only);
-    let system_prompt = format!(
-        "You are a {specialty} specialist sub-agent (ID: {}). \
-{mode_prompt}
-
-{tools_prompt}
-
-Summarize concrete outputs when done.",
-        payload.subtask_id
-    );
+    let agents_md_content = load_agents_md(&working_dir)
+        .map(|(content, _)| format!("\n\nPROJECT INSTRUCTIONS (from AGENTS.md):\n{content}"))
+        .unwrap_or_default();
+    let working_dir_display = working_dir.display().to_string();
+    let prd_filename = format!("prd_{}.json", payload.subtask_id.replace("-", "_"));
+    let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
+        specialty: &specialty,
+        subtask_id: &payload.subtask_id,
+        working_dir: &working_dir_display,
+        model: &payload.model,
+        prd_filename: &prd_filename,
+        agents_md: &agents_md_content,
+        read_only: payload.read_only,
+    });
     let user_prompt = if payload.context.trim().is_empty() {
         payload.instruction.clone()
     } else {
