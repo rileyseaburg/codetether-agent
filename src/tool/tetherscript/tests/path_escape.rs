@@ -1,22 +1,22 @@
 use serde_json::json;
 
 use crate::tool::Tool;
-use crate::tool::kiln::KilnPluginTool;
+use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
 async fn rejects_project_file_escape() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("workspace");
     tokio::fs::create_dir_all(&root).await.unwrap();
-    let outside = dir.path().join("outside.kl");
+    let outside = dir.path().join("outside.tether");
     tokio::fs::write(&outside, r#"fn validate() { return Ok("bad") }"#)
         .await
         .unwrap();
 
-    let tool = KilnPluginTool::with_root(root);
+    let tool = TetherScriptPluginTool::with_root(root);
     let result = tool
         .execute(json!({
-            "path": "../outside.kl",
+            "path": "../outside.tether",
             "hook": "validate"
         }))
         .await

@@ -1,11 +1,11 @@
 use serde_json::json;
 
 use crate::tool::Tool;
-use crate::tool::kiln::KilnPluginTool;
+use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
-async fn kiln_err_result_becomes_failed_tool_result() {
-    let tool = KilnPluginTool::new();
+async fn tetherscript_err_result_becomes_failed_tool_result() {
+    let tool = TetherScriptPluginTool::new();
     let result = tool
         .execute(json!({
             "source": r#"fn validate() { return Err("feature rejected") }"#,

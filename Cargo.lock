@@ -836,7 +836,6 @@ dependencies = [
  "jsonrpc-core",
  "jsonwebtoken",
  "k8s-openapi",
- "kiln",
  "kube",
  "lazy_static",
  "libc",
@@ -858,6 +857,7 @@ dependencies = [
  "streaming-iterator",
  "syntect",
  "tempfile",
+ "tetherscript",
  "thiserror 2.0.18",
  "tokenizers",
  "tokio",
@@ -3074,11 +3074,6 @@ dependencies = [
  "portable-atomic",
  "thiserror 2.0.18",
 ]
-
-[[package]]
-name = "kiln"
-version = "0.1.0-alpha.2"
-source = "git+https://github.com/kiln-rs/kiln.git?rev=269d43ca5ca67bce4119dd0f33fa31c83320d475#269d43ca5ca67bce4119dd0f33fa31c83320d475"
 
 [[package]]
 name = "kube"
@@ -5647,6 +5642,11 @@ dependencies = [
  "wezterm-input-types",
  "winapi",
 ]
+
+[[package]]
+name = "tetherscript"
+version = "0.1.0-alpha.2"
+source = "git+https://github.com/kiln-rs/kiln.git?rev=d95f638e80a6131a62b8324f5dd42619ff2cb86e#d95f638e80a6131a62b8324f5dd42619ff2cb86e"
 
 [[package]]
 name = "thiserror"

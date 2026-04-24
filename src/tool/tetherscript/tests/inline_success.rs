@@ -1,16 +1,16 @@
 use serde_json::json;
 
 use crate::tool::Tool;
-use crate::tool::kiln::KilnPluginTool;
+use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
-async fn executes_inline_kiln_hook_through_tool_trait() {
-    let tool = KilnPluginTool::new();
+async fn executes_inline_tetherscript_hook_through_tool_trait() {
+    let tool = TetherScriptPluginTool::new();
     let result = tool
         .execute(json!({
             "source": r#"
 fn validate(name) {
-    println("kiln saw " + name)
+    println("tetherscript saw " + name)
     return Ok("hello " + name)
 }
 "#,
@@ -21,7 +21,7 @@ fn validate(name) {
         .unwrap();
 
     assert!(result.success);
-    assert!(result.output.contains("kiln saw codetether"));
+    assert!(result.output.contains("tetherscript saw codetether"));
     assert!(result.output.contains("Ok(hello codetether)"));
     assert_eq!(
         result.metadata.get("value"),

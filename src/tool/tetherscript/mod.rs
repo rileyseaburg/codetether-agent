@@ -1,4 +1,4 @@
-//! Kiln-backed plugin tool.
+//! TetherScript-backed plugin tool.
 
 mod convert;
 mod errors;
@@ -15,4 +15,4 @@ mod tool;
 #[cfg(test)]
 mod tests;
 
-pub use tool::KilnPluginTool;
+pub use tool::TetherScriptPluginTool;

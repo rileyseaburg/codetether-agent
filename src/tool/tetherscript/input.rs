@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
-pub struct KilnPluginInput {
+pub struct TetherScriptPluginInput {
     #[serde(default)]
     pub path: Option<String>,
     #[serde(default)]
@@ -14,7 +14,7 @@ pub struct KilnPluginInput {
     pub timeout_secs: Option<u64>,
 }
 
-impl KilnPluginInput {
+impl TetherScriptPluginInput {
     pub fn has_source(&self) -> bool {
         self.source
             .as_deref()

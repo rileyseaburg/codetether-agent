@@ -5,21 +5,21 @@ use serde_json::Value;
 use super::{errors, load, result, schema, task};
 use crate::tool::{Tool, ToolResult};
 
-use super::input::KilnPluginInput;
-use super::tool::KilnPluginTool;
+use super::input::TetherScriptPluginInput;
+use super::tool::TetherScriptPluginTool;
 
 #[async_trait]
-impl Tool for KilnPluginTool {
+impl Tool for TetherScriptPluginTool {
     fn id(&self) -> &str {
-        "kiln_plugin"
+        "tetherscript_plugin"
     }
 
     fn name(&self) -> &str {
-        "Kiln Plugin"
+        "TetherScript Plugin"
     }
 
     fn description(&self) -> &str {
-        "Execute a Kiln plugin hook from inline `.kl` source or a `.kl` file path."
+        "Execute a TetherScript plugin hook from inline source or a `.tether`/legacy `.kl` file path."
     }
 
     fn parameters(&self) -> Value {
@@ -27,12 +27,12 @@ impl Tool for KilnPluginTool {
     }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
-        execute_kiln(self, args).await
+        execute_tetherscript(self, args).await
     }
 }
 
-async fn execute_kiln(tool: &KilnPluginTool, args: Value) -> Result<ToolResult> {
-    let input: KilnPluginInput = match serde_json::from_value(args) {
+async fn execute_tetherscript(tool: &TetherScriptPluginTool, args: Value) -> Result<ToolResult> {
+    let input: TetherScriptPluginInput = match serde_json::from_value(args) {
         Ok(input) => input,
         Err(error) => return Ok(errors::invalid_params(tool.id(), error)),
     };
@@ -44,6 +44,6 @@ async fn execute_kiln(tool: &KilnPluginTool, args: Value) -> Result<ToolResult> 
         Ok(source) => source,
         Err(error) => return Ok(ToolResult::error(error.to_string())),
     };
-    let request = task::KilnRun::new(source_name, source, input);
+    let request = task::TetherScriptRun::new(source_name, source, input);
     Ok(result::from_run(task::run(request).await?))
 }

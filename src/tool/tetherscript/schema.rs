@@ -6,19 +6,19 @@ pub fn parameters() -> Value {
         "properties": {
             "path": {
                 "type": "string",
-                "description": "Path to a Kiln .kl plugin file"
+                "description": "Path to a TetherScript .tether plugin file; legacy .kl files are accepted during migration"
             },
             "source": {
                 "type": "string",
-                "description": "Inline Kiln plugin source; used instead of path when provided"
+                "description": "Inline TetherScript plugin source; used instead of path when provided"
             },
             "hook": {
                 "type": "string",
-                "description": "Top-level Kiln function to call"
+                "description": "Top-level TetherScript function to call"
             },
             "args": {
                 "type": "array",
-                "description": "JSON arguments converted to Kiln values",
+                "description": "JSON arguments converted to TetherScript values",
                 "items": {}
             },
             "timeout_secs": {

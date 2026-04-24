@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
-pub struct KilnPluginTool {
+pub struct TetherScriptPluginTool {
     root: PathBuf,
 }
 
-impl KilnPluginTool {
+impl TetherScriptPluginTool {
     pub fn new() -> Self {
         Self {
             root: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
@@ -20,7 +20,7 @@ impl KilnPluginTool {
     }
 }
 
-impl Default for KilnPluginTool {
+impl Default for TetherScriptPluginTool {
     fn default() -> Self {
         Self::new()
     }
