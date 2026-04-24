@@ -66,7 +66,7 @@ impl Default for SandboxPolicy {
             allow_network: false,
             allow_exec: false,
             timeout_secs: 30,
-            max_memory_bytes: 256 * 1024 * 1024, // 256 MB
+            max_memory_bytes: 0,
         }
     }
 }
@@ -165,6 +165,15 @@ pub fn hash_file(path: &Path) -> Result<String> {
     Ok(hex::encode(hasher.finalize()))
 }
 
+async fn hash_file_async(path: &Path) -> Result<String> {
+    let contents = tokio::fs::read(path)
+        .await
+        .with_context(|| format!("Failed to read file for hashing: {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(&contents);
+    Ok(hex::encode(hasher.finalize()))
+}
+
 /// Compute SHA-256 hash of byte content.
 pub fn hash_bytes(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
@@ -212,7 +221,7 @@ impl PluginRegistry {
 
     /// Register a plugin after verifying its signature and file content.
     pub async fn register_file(&self, manifest: PluginManifest, path: &Path) -> Result<()> {
-        self.register_checked(manifest, Some(hash_file(path)?))
+        self.register_checked(manifest, Some(hash_file_async(path).await?))
             .await
     }
 
@@ -237,18 +246,17 @@ impl PluginRegistry {
                     manifest.version,
                 ));
             }
+            tracing::debug!(
+                plugin_id = %manifest.id,
+                manifest_hash = %manifest.content_hash,
+                "Content hash verification completed"
+            );
         } else {
             tracing::warn!(
                 plugin_id = %manifest.id,
                 "Plugin registered through explicit unsafe content verification bypass"
             );
         }
-
-        tracing::debug!(
-            plugin_id = %manifest.id,
-            manifest_hash = %manifest.content_hash,
-            "Content hash verification completed"
-        );
 
         tracing::info!(
             plugin_id = %manifest.id,
@@ -288,7 +296,7 @@ impl PluginRegistry {
             .get(plugin_id)
             .await
             .ok_or_else(|| anyhow!("Plugin '{}' not registered", plugin_id))?;
-        let file_hash = hash_file(path)?;
+        let file_hash = hash_file_async(path).await?;
         Ok(file_hash == manifest.content_hash)
     }
 }
@@ -339,7 +347,7 @@ pub async fn execute_sandboxed(
     let work_dir = working_dir
         .map(|p| p.to_path_buf())
         .unwrap_or_else(std::env::temp_dir);
-    sandbox_paths::validate_working_dir(policy, &work_dir)?;
+    sandbox_paths::validate_working_dir(policy, &work_dir).await?;
 
     let mut cmd = Command::new(command);
     cmd.args(args)
@@ -573,6 +581,11 @@ mod tests {
         assert!(err.to_string().contains("denied working directory"));
     }
 
+    #[test]
+    fn sandbox_memory_limit_is_opt_in_by_default() {
+        assert_eq!(SandboxPolicy::default().max_memory_bytes, 0);
+    }
+
     #[tokio::test]
     async fn sandbox_denies_network_commands_when_network_disabled() {
         let policy = SandboxPolicy {
@@ -588,6 +601,24 @@ mod tests {
         )
         .await
         .expect_err("network command should fail closed");
+        assert!(err.to_string().contains("denies network access"));
+    }
+
+    #[tokio::test]
+    async fn sandbox_denies_dequoted_network_commands() {
+        let policy = SandboxPolicy {
+            allow_network: false,
+            allow_exec: true,
+            ..SandboxPolicy::default()
+        };
+        let err = execute_sandboxed(
+            "sh",
+            &["-c".to_string(), "c\"\"url https://example.com".to_string()],
+            &policy,
+            None,
+        )
+        .await
+        .expect_err("dequoted network command should fail closed");
         assert!(err.to_string().contains("denies network access"));
     }
 }

@@ -7,11 +7,19 @@ pub fn apply_memory_limit(cmd: &mut tokio::process::Command, max_bytes: u64) -> 
 
 #[cfg(unix)]
 fn apply(cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
+    let max_rlim = libc::rlim_t::MAX;
+    let mut fallbacks = Vec::new();
+    let limit_bytes = if u128::from(max_bytes) > max_rlim as u128 {
+        fallbacks.push("memory_limit_clamped".to_string());
+        max_rlim
+    } else {
+        max_bytes as libc::rlim_t
+    };
     unsafe {
         cmd.pre_exec(move || {
             let limit = libc::rlimit {
-                rlim_cur: max_bytes as libc::rlim_t,
-                rlim_max: max_bytes as libc::rlim_t,
+                rlim_cur: limit_bytes,
+                rlim_max: limit_bytes,
             };
             if libc::setrlimit(libc::RLIMIT_AS, &limit) != 0 {
                 return Err(std::io::Error::last_os_error());
@@ -19,7 +27,7 @@ fn apply(cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
             Ok(())
         });
     }
-    Vec::new()
+    fallbacks
 }
 
 #[cfg(not(unix))]

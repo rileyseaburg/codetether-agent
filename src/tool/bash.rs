@@ -492,13 +492,13 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(ToolResult::structured_error(
+                Ok(mark_unsafe_unsandboxed(ToolResult::structured_error(
                     "EXECUTION_FAILED",
                     "bash",
                     &format!("Failed to execute command: {}", e),
                     None,
                     Some(json!({"command": command})),
-                ))
+                )))
             }
             Err(_) => {
                 let duration = exec_start.elapsed();
@@ -516,7 +516,7 @@ impl Tool for BashTool {
                     &serde_json::to_value(&exec).unwrap_or_default(),
                 );
 
-                Ok(ToolResult::structured_error(
+                Ok(mark_unsafe_unsandboxed(ToolResult::structured_error(
                     "TIMEOUT",
                     "bash",
                     &format!("Command timed out after {} seconds", timeout_secs),
@@ -525,10 +525,16 @@ impl Tool for BashTool {
                         "command": command,
                         "hint": "Consider increasing timeout or breaking into smaller commands"
                     })),
-                ))
+                )))
             }
         }
     }
+}
+
+fn mark_unsafe_unsandboxed(result: ToolResult) -> ToolResult {
+    result
+        .with_metadata("sandboxed", json!(false))
+        .with_metadata("unsafe_execution", json!(true))
 }
 
 impl Default for BashTool {
@@ -583,6 +589,22 @@ mod tests {
             .await
             .unwrap();
         assert!(result.success);
+        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
+        assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
+    }
+
+    #[tokio::test]
+    async fn unsandboxed_bash_timeout_reports_unsafe_metadata() {
+        let tool = BashTool {
+            timeout_secs: 1,
+            sandboxed: false,
+            default_cwd: None,
+        };
+        let result = tool
+            .execute(json!({ "command": "sleep 30" }))
+            .await
+            .unwrap();
+        assert!(!result.success);
         assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
         assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
     }
