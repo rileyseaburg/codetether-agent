@@ -1,6 +1,7 @@
 //! CLI command definitions and handlers
 
 pub mod auth;
+pub mod browserctl;
 pub mod clipboard;
 pub mod config;
 pub mod context;
@@ -131,6 +132,10 @@ pub enum Command {
 
     /// LLM-routed search across grep/glob/web/memory/RLM backends
     Search(SearchArgs),
+
+    /// Control a local Chromium browser via DevTools (alias: browser)
+    #[command(name = "browserctl", visible_alias = "browser")]
+    Browserctl(browserctl::BrowserCtlArgs),
 }
 
 #[derive(Parser, Debug)]
