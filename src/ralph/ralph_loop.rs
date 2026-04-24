@@ -2303,69 +2303,8 @@ Respond with the implementation and any shell commands needed.
 
     /// Run quality gates and emit events for each check
     async fn run_quality_gates_with_events(&self, story_id: &str) -> anyhow::Result<bool> {
-        // Find the Cargo root (where Cargo.toml lives)
-        let cargo_root = Self::find_cargo_root(&self.state.working_dir);
-        debug!(
-            working_dir = %self.state.working_dir.display(),
-            cargo_root = %cargo_root.display(),
-            "Running quality gates"
-        );
-
-        let checks = &self.state.prd.quality_checks;
-        let mut all_passed = true;
-
-        for (name, cmd) in [
-            ("typecheck", &checks.typecheck),
-            ("lint", &checks.lint),
-            ("test", &checks.test),
-            ("build", &checks.build),
-        ] {
-            if let Some(command) = cmd {
-                debug!("Running {} check in {:?}: {}", name, cargo_root, command);
-                let output = Command::new("/bin/sh")
-                    .arg("-c")
-                    .arg(command)
-                    .current_dir(&cargo_root)
-                    .output()
-                    .map_err(|e| {
-                        anyhow::anyhow!("Failed to run quality check '{}': {}", name, e)
-                    })?;
-
-                let passed = output.status.success();
-                self.try_send_event(RalphEvent::StoryQualityCheck {
-                    story_id: story_id.to_string(),
-                    check_name: name.to_string(),
-                    passed,
-                });
-
-                if !passed {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let combined = format!("{}\n{}", stdout, stderr);
-                    let error_summary: String = combined
-                        .lines()
-                        .filter(|line| {
-                            line.starts_with("error")
-                                || line.contains("error:")
-                                || line.contains("error[")
-                        })
-                        .take(5)
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    warn!(
-                        check = %name,
-                        cargo_root = %cargo_root.display(),
-                        error_summary = %error_summary.chars().take(300).collect::<String>(),
-                        "{} check failed in {:?}",
-                        name, cargo_root
-                    );
-                    all_passed = false;
-                    break; // Short-circuit: stop at first failure to save time
-                }
-            }
-        }
-
-        Ok(all_passed)
+        self.run_quality_gates_in_dir_with_events(&self.state.working_dir, story_id)
+            .await
     }
 
     /// Commit changes for a story

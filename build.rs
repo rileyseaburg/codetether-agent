@@ -1,4 +1,5 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("cargo::rerun-if-env-changed=PROTOC");
     // If PROTOC isn't set, try common locations
     if std::env::var("PROTOC").is_err() {
         let home = std::env::var("HOME").unwrap_or_default();
@@ -8,7 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             unsafe {
                 std::env::set_var("PROTOC", &local_protoc);
             }
-            println!("cargo::warning=Using protoc from {local_protoc}");
         }
     }
 

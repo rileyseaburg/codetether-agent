@@ -447,6 +447,7 @@ impl OpenAiCodexProvider {
         Ok(request)
     }
 
+    #[cfg(test)]
     fn build_responses_ws_request_with_base_url(
         base_url: &str,
         token: &str,
@@ -1162,6 +1163,7 @@ impl OpenAiCodexProvider {
         }
     }
 
+    #[cfg(test)]
     fn resolve_model_and_reasoning_effort(model: &str) -> (String, Option<ThinkingLevel>) {
         let (base_model, level, _) =
             Self::resolve_model_and_reasoning_effort_and_service_tier(model);
@@ -1231,6 +1233,7 @@ impl OpenAiCodexProvider {
         format!("OpenAI API error ({status}): {body}")
     }
 
+    #[cfg(test)]
     fn build_responses_ws_create_event(
         request: &CompletionRequest,
         model: &str,

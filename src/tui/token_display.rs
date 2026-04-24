@@ -6,17 +6,11 @@ use ratatui::{
 };
 
 /// Enhanced token usage display with costs and warnings
-pub struct TokenDisplay {
-    /// Pricing data (not context limits — those come from the canonical
-    /// [`crate::provider::limits::context_window_for_model`]).
-    model_pricing: std::collections::HashMap<String, (f64, f64)>,
-}
+pub struct TokenDisplay;
 
 impl TokenDisplay {
     pub fn new() -> Self {
-        Self {
-            model_pricing: std::collections::HashMap::new(),
-        }
+        Self
     }
 
     /// Get context limit for a model by delegating to the canonical

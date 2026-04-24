@@ -4,6 +4,7 @@
 
 use codetether_agent::rlm::context_trace::{ContextEvent, ContextTrace};
 use codetether_agent::rlm::oracle::{GrepOracle, OracleResult, TraceValidator, TreeSitterOracle};
+use codetether_agent::rlm::{RlmAnalysisResult, RlmStats, SubQuery};
 
 fn main() {
     println!("=== RLM Oracle System Demo ===\n");
@@ -139,6 +140,36 @@ enum Status {
 
     println!("Validator can verify pattern-match and structural queries,");
     println!("producing golden traces for training data generation.");
+    let validator = TraceValidator::new();
+    let answer = source_code
+        .lines()
+        .enumerate()
+        .find_map(|(index, line)| {
+            line.contains("pub async fn process")
+                .then(|| format!("{}:{}", index + 1, line))
+        })
+        .expect("sample source contains async function");
+    let analysis = RlmAnalysisResult {
+        answer,
+        iterations: 1,
+        sub_queries: vec![SubQuery {
+            query: "Find all async functions".to_string(),
+            context_slice: None,
+            response: String::new(),
+            tokens_used: 0,
+        }],
+        stats: RlmStats::default(),
+    };
+    let verdict = validator.validate(&analysis, source_code, Some("demo.rs"), None, None);
+    match verdict {
+        OracleResult::Golden(trace) => {
+            println!(
+                "Demo validation: {} via {:?}",
+                trace.verdict, trace.verification_method
+            );
+        }
+        other => println!("Demo validation: {:?}", other),
+    }
     println!();
     println!("Query types supported:");
     println!("  - Pattern-match: grep-based (find, list, count, search)");

@@ -688,6 +688,11 @@ pub async fn handle_slash_command(
     let normalized = normalize_easy_command(command);
     let normalized = normalize_slash_command(&normalized);
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/go") {
+        handle_go_command(app, session, registry, rest).await;
+        return;
+    }
+
     if let Some(rest) = command_with_optional_args(&normalized, "/image") {
         let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
         if cleaned.is_empty() {
