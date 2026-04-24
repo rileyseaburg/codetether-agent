@@ -5,6 +5,7 @@ use super::kubernetes_executor::{
     RemoteBranchProbe, SWARM_SUBTASK_PROBE_PREFIX, SWARM_SUBTASK_RESULT_PREFIX, decode_payload,
 };
 use super::subtask::SubTaskResult;
+use super::tool_policy;
 use crate::cli::SwarmSubagentArgs;
 use crate::provider::ProviderRegistry;
 use crate::tool::ToolRegistry;
@@ -40,23 +41,34 @@ pub async fn run_swarm_subagent(args: SwarmSubagentArgs) -> Result<()> {
         .get(&payload.provider)
         .ok_or_else(|| anyhow!("Provider '{}' unavailable in remote pod", payload.provider))?;
 
-    let tool_registry =
-        ToolRegistry::with_provider_arc(Arc::clone(&provider), payload.model.clone());
-    // Remote pod is autonomous; interactive question tool is intentionally excluded.
-    let tool_defs = tool_registry
-        .definitions()
-        .into_iter()
-        .filter(|t| t.name != "question")
-        .collect();
+    let (tool_registry, tool_defs) = if payload.read_only {
+        let mut registry =
+            ToolRegistry::with_provider(Arc::clone(&provider), payload.model.clone());
+        tool_policy::restrict_registry(&mut registry, true);
+        let registry = Arc::new(registry);
+        let definitions = tool_policy::definitions(&registry.definitions(), true);
+        (registry, definitions)
+    } else {
+        let registry =
+            ToolRegistry::with_provider_arc(Arc::clone(&provider), payload.model.clone());
+        let definitions = tool_policy::definitions(&registry.definitions(), false);
+        (registry, definitions)
+    };
 
     let specialty = if payload.specialty.is_empty() {
         "generalist".to_string()
     } else {
         payload.specialty.clone()
     };
+    let mode_prompt = tool_policy::mode_prompt(payload.read_only);
+    let tools_prompt = tool_policy::tools_prompt(payload.read_only);
     let system_prompt = format!(
         "You are a {specialty} specialist sub-agent (ID: {}). \
-Use tools to execute the task and summarize concrete outputs.",
+{mode_prompt}
+
+{tools_prompt}
+
+Summarize concrete outputs when done.",
         payload.subtask_id
     );
     let user_prompt = if payload.context.trim().is_empty() {
