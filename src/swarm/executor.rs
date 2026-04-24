@@ -14,6 +14,7 @@ use super::{
     orchestrator::Orchestrator,
     result_store::ResultStore,
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
+    tool_policy,
 };
 use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
@@ -842,51 +843,7 @@ impl SwarmExecutor {
         // Create base tool registry with provider for ralph and batch tool
         let base_tool_registry =
             ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-        // Filter out 'question' tool - sub-agents must be autonomous, not interactive
-        // Include 'swarm_share' definition so LLMs know about it (registered per-agent below)
-        let mut tool_definitions: Vec<_> = base_tool_registry
-            .definitions()
-            .into_iter()
-            .filter(|t| t.name != "question")
-            .collect();
-
-        // Add swarm_share tool definition so LLMs know it's available
-        let swarm_share_def = crate::provider::ToolDefinition {
-            name: "swarm_share".to_string(),
-            description: "Share results with other sub-agents in the swarm. Actions: publish \
-                          (share a result), get (retrieve a result by key), query_tags (find \
-                          results by tags), query_prefix (find results by key prefix), list \
-                          (show all shared results)."
-                .to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["publish", "get", "query_tags", "query_prefix", "list"],
-                        "description": "Action to perform"
-                    },
-                    "key": {
-                        "type": "string",
-                        "description": "Result key (for publish/get)"
-                    },
-                    "value": {
-                        "description": "Result value to publish (any JSON value)"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Tags for publish or query_tags"
-                    },
-                    "prefix": {
-                        "type": "string",
-                        "description": "Key prefix for query_prefix"
-                    }
-                },
-                "required": ["action"]
-            }),
-        };
-        tool_definitions.push(swarm_share_def);
+        let tool_definitions = base_tool_registry.definitions();
 
         // Clone the result store for sub-agent sharing
         let result_store = Arc::clone(&self.result_store);
@@ -935,11 +892,10 @@ impl SwarmExecutor {
             pending_subtasks.push(subtask);
         }
 
-        // PRE-PASS 2 (worktrees): create all worktrees for non-cached
-        // subtasks concurrently (bounded to avoid git .git/worktrees
-        // lock contention). Drops wall time from O(N·T_create) to
-        // ~O(N·T_create / WORKTREE_PARALLELISM). Failures are swallowed
-        // — the sub-agent falls back to the shared directory.
+        // PRE-PASS 2 (worktrees): create worktrees for mutating non-cached
+        // subtasks concurrently. Mutating subtasks fail closed when their
+        // required worktree cannot be created; read-only subtasks continue in
+        // the shared directory.
         let mut worktrees_by_id: HashMap<String, WorktreeInfo> = HashMap::new();
         if let Some(ref mgr) = worktree_manager {
             // Only provision worktrees for subtasks that actually
@@ -965,6 +921,15 @@ impl SwarmExecutor {
                 active_worktrees.insert(sid.clone(), wt.clone());
                 all_worktrees.insert(sid.clone(), wt.clone());
             }
+            let mut runnable = Vec::with_capacity(pending_subtasks.len());
+            for subtask in pending_subtasks.into_iter() {
+                if subtask.needs_worktree() && !worktrees_by_id.contains_key(&subtask.id) {
+                    cached_results.push(required_worktree_failure(&subtask));
+                } else {
+                    runnable.push(subtask);
+                }
+            }
+            pending_subtasks = runnable;
         }
 
         for (idx, subtask) in pending_subtasks.into_iter().enumerate() {
@@ -990,6 +955,7 @@ impl SwarmExecutor {
             let instruction = subtask.instruction.clone();
             let subtask_name = subtask.name.clone();
             let specialty = subtask.specialty.clone().unwrap_or_default();
+            let read_only_task = tool_policy::is_read_only_task(&subtask);
             let subtask_id = subtask.id.clone();
             let subtask_id_for_handle = subtask_id.clone();
             let max_steps = self.config.max_steps_per_subagent;
@@ -1000,10 +966,8 @@ impl SwarmExecutor {
             let base_delay_ms = self.config.base_delay_ms;
             let max_delay_ms = self.config.max_delay_ms;
 
-            // Look up the pre-created worktree. Parallel creation
-            // happened before this loop (see PRE-PASS 2 above). `None`
-            // means either worktrees are disabled or creation failed —
-            // the sub-agent falls back to the shared working directory.
+            // Look up the pre-created worktree. `None` means worktrees are
+            // disabled or this is a read-only subtask that does not need one.
             let worktree_info = worktrees_by_id.remove(&subtask_id);
 
             let working_dir = worktree_info
@@ -1013,7 +977,7 @@ impl SwarmExecutor {
             let working_dir_path = worktree_info.as_ref().map(|wt| wt.path.clone());
 
             // Clone for the async block
-            let tools = tool_definitions.clone();
+            let tools = tool_policy::definitions(&tool_definitions, read_only_task);
             let _base_registry = Arc::clone(&base_tool_registry);
             let agent_result_store = Arc::clone(&result_store);
             let sem = Arc::clone(&semaphore);
@@ -1056,59 +1020,15 @@ impl SwarmExecutor {
 
                 // Build the system prompt for this sub-agent
                 let prd_filename = format!("prd_{}.json", subtask_id.replace("-", "_"));
-                let system_prompt = format!(
-                    "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.
-
-WORKING DIRECTORY: {}
-All file operations should be relative to this directory.
-
-IMPORTANT: You MUST use tools to make changes. Do not just describe what to do - actually do it using the tools available.
-
-Available tools:
-- read: Read file contents
-- write: Write/create files
-- edit: Edit existing files (search and replace)
-- multiedit: Make multiple edits at once
-- glob: Find files by pattern
-- grep: Search file contents
-- bash: Run shell commands (use cwd: \"{}\" parameter)
-- webfetch: Fetch web pages
-- prd: Generate structured PRD for complex tasks
-- ralph: Run autonomous agent loop on a PRD
-- swarm_share: Share results with other sub-agents running in parallel
-- agent: Spawn specialized helper agents when needed (smart delegation)
-
-SMART SPAWN POLICY (mandatory):
-- Any spawned agent MUST use a different model than your current model ('{}')
-- Spawned model MUST be free/subscription-eligible (e.g. '*:free', openai-codex/*, github-copilot/*, gemini-web/*, local_cuda/*)
-- Include `model` when calling agent.spawn
-
-SHARING RESULTS:
-Use swarm_share to collaborate with other sub-agents:
-- swarm_share({{action: 'publish', key: 'my-finding', value: '...', tags: ['research']}}) to share a result
-- swarm_share({{action: 'get', key: 'some-key'}}) to retrieve a result from another agent
-- swarm_share({{action: 'list'}}) to see all shared results
-- swarm_share({{action: 'query_tags', tags: ['research']}}) to find results by tag
-
-COMPLEX TASKS:
-If your task is complex and involves multiple implementation steps, use the prd + ralph workflow:
-1. Call prd({{action: 'analyze', task_description: '...'}}) to understand what's needed
-2. Break down into user stories with acceptance criteria
-3. Call prd({{action: 'save', prd_path: '{}', project: '...', feature: '...', stories: [...]}})
-4. Call ralph({{action: 'run', prd_path: '{}'}}) to execute
-
-NOTE: Use your unique PRD file '{}' so parallel agents don't conflict.
-
-When done, provide a brief summary of what you accomplished.{agents_md_content}",
-                    specialty,
-                    subtask_id,
-                    working_dir,
-                    working_dir,
-                    model,
-                    prd_filename,
-                    prd_filename,
-                    prd_filename
-                );
+                let system_prompt = tool_policy::system_prompt(tool_policy::SystemPromptInput {
+                    specialty: &specialty,
+                    subtask_id: &subtask_id,
+                    working_dir: &working_dir,
+                    model: &model,
+                    prd_filename: &prd_filename,
+                    agents_md: &agents_md_content,
+                    read_only: read_only_task,
+                });
 
                 let user_prompt = if context.is_empty() {
                     format!("Complete this task:\n\n{}", instruction)
@@ -1142,7 +1062,14 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     Arc::clone(&agent_result_store),
                     subtask_id.clone(),
                 )));
+                let batch_tool = Arc::new(crate::tool::batch::BatchTool::new());
+                agent_registry.register(batch_tool.clone());
+                let mut search_providers = crate::provider::ProviderRegistry::new();
+                search_providers.register(Arc::clone(&provider));
+                agent_registry.register_search(Arc::new(search_providers));
+                tool_policy::restrict_registry(&mut agent_registry, read_only_task);
                 let registry = Arc::new(agent_registry);
+                batch_tool.set_registry(Arc::downgrade(&registry));
 
                 // Execute with exponential backoff retry
                 let mut attempt = 0u32;
@@ -1712,6 +1639,7 @@ When done, provide a brief summary of what you accomplished.{agents_md_content}"
                     max_steps: self.config.max_steps_per_subagent,
                     timeout_secs: self.config.subagent_timeout_secs,
                     working_dir: self.config.working_dir.clone(),
+                    read_only: tool_policy::is_read_only_task(&subtask),
                     probe_interval_secs: COLLAPSE_SAMPLE_SECS,
                 };
                 let payload_b64 = match encode_payload(&payload) {
@@ -2289,6 +2217,22 @@ impl Default for SwarmExecutorBuilder {
 /// `.git/worktrees` lock. 8 is empirically a sweet spot — past 8,
 /// throughput plateaus and flaky lock errors increase.
 const WORKTREE_CREATE_PARALLELISM: usize = 8;
+
+fn required_worktree_failure(subtask: &SubTask) -> SubTaskResult {
+    let error = "Failed to create required worktree for mutating subtask".to_string();
+    SubTaskResult {
+        subtask_id: subtask.id.clone(),
+        subagent_id: "worktree-preflight".to_string(),
+        success: false,
+        result: error.clone(),
+        steps: 0,
+        tool_calls: 0,
+        execution_time_ms: 0,
+        error: Some(error),
+        artifacts: Vec::new(),
+        retry_count: 0,
+    }
+}
 
 /// Create worktrees for a batch of subtask IDs in parallel.
 ///
