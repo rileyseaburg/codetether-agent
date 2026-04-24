@@ -117,11 +117,11 @@ impl Tool for K8sTool {
                 },
                 "namespace": {
                     "type": "string",
-                    "description": "Namespace override for this action."
+                    "description": "Namespace override. Respected by list_pods, status, scale, rolling_restart, spawn_pod, delete_pod, pod_state, and logs."
                 },
                 "deployment": {
                     "type": "string",
-                    "description": "Deployment override for status, scale, rolling_restart, and list_pods."
+                    "description": "Deployment name override. Respected by status, scale, rolling_restart, and list_pods."
                 },
                 "replicas": {
                     "type": "integer",

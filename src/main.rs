@@ -821,7 +821,7 @@ async fn main() -> anyhow::Result<()> {
 
                     // Create agent bus + S3 sink so tool calls sync to MinIO
                     let bus = bus::AgentBus::new().into_arc();
-                    bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+                    codetether_agent::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
 
                     // Try to load provider from Vault so tools like Ralph can execute autonomously
                     let registry = match provider::ProviderRegistry::from_vault().await {
@@ -1463,7 +1463,7 @@ async fn main() -> anyhow::Result<()> {
 
         // OKR commands
         Some(Command::Okr(args)) => {
-            use okr::{KeyResult, Okr, OkrRepository, OkrStatus};
+            use okr::{KeyResult, Okr, OkrRepository, OkrRun, OkrStatus};
             use uuid::Uuid;
 
             let repo = OkrRepository::from_config().await?;
@@ -1609,8 +1609,8 @@ async fn main() -> anyhow::Result<()> {
                     if args.json {
                         #[derive(serde::Serialize)]
                         struct RunsOutput {
-                            okrs: Vec<okr::Okr>,
-                            runs: Vec<okr::OkrRun>,
+                            okrs: Vec<Okr>,
+                            runs: Vec<OkrRun>,
                         }
                         println!(
                             "{}",
@@ -1645,8 +1645,8 @@ async fn main() -> anyhow::Result<()> {
 
                     #[derive(serde::Serialize)]
                     struct ExportData {
-                        okrs: Vec<okr::Okr>,
-                        runs: Vec<okr::OkrRun>,
+                        okrs: Vec<Okr>,
+                        runs: Vec<OkrRun>,
                         exported_at: chrono::DateTime<chrono::Utc>,
                     }
 
@@ -1706,8 +1706,8 @@ async fn main() -> anyhow::Result<()> {
                         if args.json {
                             #[derive(serde::Serialize)]
                             struct OkrReport {
-                                okr: okr::Okr,
-                                runs: Vec<okr::OkrRun>,
+                                okr: Okr,
+                                runs: Vec<OkrRun>,
                                 total_progress: f64,
                             }
                             let runs = repo.query_runs_by_okr(uuid).await?;
@@ -1787,8 +1787,8 @@ async fn main() -> anyhow::Result<()> {
                             let okr = repo.get_okr(run.okr_id).await?;
                             #[derive(serde::Serialize)]
                             struct RunReport {
-                                run: okr::OkrRun,
-                                okr: Option<okr::Okr>,
+                                run: OkrRun,
+                                okr: Option<Okr>,
                             }
                             let report = RunReport {
                                 run: run.clone(),

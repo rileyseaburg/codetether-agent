@@ -6,17 +6,11 @@ use ratatui::{
 };
 
 /// Enhanced token usage display with costs and warnings
-pub struct TokenDisplay {
-    /// Pricing data (not context limits — those come from the canonical
-    /// [`crate::provider::limits::context_window_for_model`]).
-    model_pricing: std::collections::HashMap<String, (f64, f64)>,
-}
+pub struct TokenDisplay;
 
 impl TokenDisplay {
     pub fn new() -> Self {
-        Self {
-            model_pricing: std::collections::HashMap::new(),
-        }
+        Self
     }
 
     /// Get context limit for a model by delegating to the canonical
@@ -40,9 +34,6 @@ impl TokenDisplay {
     /// [`crate::provider::pricing::pricing_for_model`] so costs in the TUI
     /// stay in sync with the cost-guardrail enforcement path.
     fn get_model_pricing(&self, model: &str) -> (f64, f64) {
-        if let Some(pricing) = self.model_pricing.get(model) {
-            return *pricing;
-        }
         crate::provider::pricing::pricing_for_model(model)
     }
 

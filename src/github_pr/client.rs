@@ -67,11 +67,6 @@ fn build_body(args: &CreatePrArgs, context: &RepoContext) -> Result<String> {
     let base = match (&args.body, &args.body_file) {
         (Some(body), _) => body.clone(),
         (None, Some(path)) => {
-            let path = if path.is_absolute() {
-                path.clone()
-            } else {
-                context.repo_root.join(path)
-            };
             std::fs::read_to_string(path)?
         }
         (None, None) => String::new(),
