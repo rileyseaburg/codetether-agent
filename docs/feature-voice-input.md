@@ -18,10 +18,10 @@ into TUI input field.
 
 ## TUI UX Flow
 
-1. User presses `Ctrl+V` in chat mode
-2. Status bar shows `Recording... (Ctrl+V to stop)` in red
+1. User presses `Ctrl+R` in chat mode
+2. Status bar shows `Recording... (Ctrl+R to stop)` in red
 3. Audio captures from default microphone at 16kHz mono
-4. User presses `Ctrl+V` again to stop (auto-stop after 60s)
+4. User presses `Ctrl+R` again to stop (auto-stop after 60s)
 5. Status changes to `Transcribing...`
 6. WAV is POSTed to Voice API `/transcribe`
 7. Transcribed text is inserted into the input field
@@ -62,7 +62,7 @@ hound = "3.5"     # WAV encoding
 | `src/tool/voice_input/encoder.rs` | hound WAV encoding from i16 samples |
 | `src/tool/voice_input/schema.rs` | JSON schema for tool params |
 | `src/tool/voice_input/actions.rs` | record_then_transcribe action |
-| `src/tui/app/event_handlers/voice.rs` | Ctrl+V keybinding handler for TUI |
+| `src/tui/app/event_handlers/voice.rs` | Ctrl+R keybinding handler for TUI |
 
 ## Key Design Decisions
 
