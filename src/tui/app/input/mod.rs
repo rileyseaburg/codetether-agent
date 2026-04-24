@@ -17,6 +17,7 @@ mod chat_submit_dispatch;
 // user message as a fresh turn without duplicating the dispatch logic.
 mod enter;
 pub(crate) mod image;
+mod image_data_paste;
 mod merge;
 mod paste;
 mod pr;
@@ -38,5 +39,6 @@ pub use bus::{handle_bus_c, handle_bus_g, handle_bus_slash};
 pub use char_input::handle_char;
 pub use enter::dispatch_enter as handle_enter;
 pub(crate) use image::attach_image_file;
+pub(crate) use image_data_paste::try_attach_data_url;
 pub use paste::handle_paste;
 pub use sessions::handle_sessions_char;
