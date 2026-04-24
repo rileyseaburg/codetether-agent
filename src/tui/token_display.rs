@@ -40,6 +40,9 @@ impl TokenDisplay {
     /// [`crate::provider::pricing::pricing_for_model`] so costs in the TUI
     /// stay in sync with the cost-guardrail enforcement path.
     fn get_model_pricing(&self, model: &str) -> (f64, f64) {
+        if let Some(pricing) = self.model_pricing.get(model) {
+            return *pricing;
+        }
         crate::provider::pricing::pricing_for_model(model)
     }
 

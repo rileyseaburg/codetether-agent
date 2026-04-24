@@ -45,6 +45,7 @@ mod types;
 mod validator;
 
 pub use grep_oracle::{GrepOracle, GrepVerification};
+pub use query_type::QueryType;
 pub use record::OracleTraceRecord;
 pub use schema::{AstPayload, AstResult, FinalPayload, GrepMatch, GrepPayload, SemanticPayload};
 pub use storage::{
@@ -55,17 +56,6 @@ pub use trace_types::{OracleResult, ValidatedTrace};
 pub use tree_sitter_oracle::{TreeSitterOracle, TreeSitterVerification};
 pub use types::{TraceStep, VerificationMethod};
 pub use validator::{BatchValidationStats, SplitWriteStats, TraceValidator};
-
-/// Query type classification for routing to the appropriate oracle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum QueryType {
-    /// Pattern-match query (grep-based: line numbers, text matches)
-    PatternMatch,
-    /// Structural query (AST-based: function signatures, struct fields)
-    Structural,
-    /// Semantic query (requires LLM understanding - no deterministic oracle)
-    Semantic,
-}
 
 /// Classification of an RLM FINAL() answer format.
 #[derive(Debug, Clone, PartialEq)]

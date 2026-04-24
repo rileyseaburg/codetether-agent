@@ -28,9 +28,12 @@ mod paste;
 mod scroll_down;
 mod scroll_up;
 mod tests;
+#[cfg(not(test))]
 mod voice;
+#[cfg(not(test))]
 mod voice_capture;
 mod voice_drain;
+#[cfg(not(test))]
 mod voice_transcribe;
 
 use std::path::Path;

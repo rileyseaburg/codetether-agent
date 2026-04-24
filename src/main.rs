@@ -10,47 +10,12 @@
 //! Local development may also use env/AWS fallback credentials unless
 //! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set for Vault-only mode.
 
-mod a2a;
-mod agent;
-mod audit;
-mod autochat;
-mod benchmark;
-mod browser;
-mod bus;
-mod cli;
-mod cloudevents;
-mod cognition;
-mod config;
-mod crash;
-mod event_stream;
-mod forage;
-mod github_pr;
-mod image_clipboard;
-mod indexer;
-mod k8s;
-mod lsp;
-pub mod mcp;
-mod moltbook;
-mod okr;
-mod provenance;
-mod provider;
-pub mod ralph;
-pub mod rlm;
-mod search;
-pub mod secrets;
-mod server;
-mod session;
-pub mod swarm;
-pub mod telemetry;
-mod tls;
-mod tool;
-mod tui;
-pub mod util;
-mod worker_server;
-mod worktree;
-
 use clap::Parser;
 use cli::{Cli, Command};
+use codetether_agent::{
+    a2a, benchmark, bus, cli, config, crash, forage, github_pr, indexer, mcp, moltbook, okr,
+    provider, ralph, rlm, secrets, server, swarm, telemetry, tool, tui, worker_server, worktree,
+};
 use std::io::IsTerminal;
 use std::sync::Arc;
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
@@ -855,11 +820,11 @@ async fn main() -> anyhow::Result<()> {
                     tracing::info!("Starting MCP server over stdio...");
 
                     // Create agent bus + S3 sink so tool calls sync to MinIO
-                    let bus = crate::bus::AgentBus::new().into_arc();
-                    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+                    let bus = bus::AgentBus::new().into_arc();
+                    bus::s3_sink::spawn_bus_s3_sink(bus.clone());
 
                     // Try to load provider from Vault so tools like Ralph can execute autonomously
-                    let registry = match crate::provider::ProviderRegistry::from_vault().await {
+                    let registry = match provider::ProviderRegistry::from_vault().await {
                         Ok(provider_registry) => {
                             let fallbacks = [
                                 "zai",
@@ -1498,7 +1463,7 @@ async fn main() -> anyhow::Result<()> {
 
         // OKR commands
         Some(Command::Okr(args)) => {
-            use crate::okr::{KeyResult, Okr, OkrRepository, OkrStatus};
+            use okr::{KeyResult, Okr, OkrRepository, OkrStatus};
             use uuid::Uuid;
 
             let repo = OkrRepository::from_config().await?;
@@ -1644,8 +1609,8 @@ async fn main() -> anyhow::Result<()> {
                     if args.json {
                         #[derive(serde::Serialize)]
                         struct RunsOutput {
-                            okrs: Vec<crate::okr::Okr>,
-                            runs: Vec<crate::okr::OkrRun>,
+                            okrs: Vec<okr::Okr>,
+                            runs: Vec<okr::OkrRun>,
                         }
                         println!(
                             "{}",
@@ -1680,8 +1645,8 @@ async fn main() -> anyhow::Result<()> {
 
                     #[derive(serde::Serialize)]
                     struct ExportData {
-                        okrs: Vec<crate::okr::Okr>,
-                        runs: Vec<crate::okr::OkrRun>,
+                        okrs: Vec<okr::Okr>,
+                        runs: Vec<okr::OkrRun>,
                         exported_at: chrono::DateTime<chrono::Utc>,
                     }
 
@@ -1741,8 +1706,8 @@ async fn main() -> anyhow::Result<()> {
                         if args.json {
                             #[derive(serde::Serialize)]
                             struct OkrReport {
-                                okr: crate::okr::Okr,
-                                runs: Vec<crate::okr::OkrRun>,
+                                okr: okr::Okr,
+                                runs: Vec<okr::OkrRun>,
                                 total_progress: f64,
                             }
                             let runs = repo.query_runs_by_okr(uuid).await?;
@@ -1822,8 +1787,8 @@ async fn main() -> anyhow::Result<()> {
                             let okr = repo.get_okr(run.okr_id).await?;
                             #[derive(serde::Serialize)]
                             struct RunReport {
-                                run: crate::okr::OkrRun,
-                                okr: Option<crate::okr::Okr>,
+                                run: okr::OkrRun,
+                                okr: Option<okr::Okr>,
                             }
                             let report = RunReport {
                                 run: run.clone(),

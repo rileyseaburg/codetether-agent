@@ -66,7 +66,14 @@ fn project_root(project: Option<&PathBuf>) -> Option<&std::path::Path> {
 fn build_body(args: &CreatePrArgs, context: &RepoContext) -> Result<String> {
     let base = match (&args.body, &args.body_file) {
         (Some(body), _) => body.clone(),
-        (None, Some(path)) => std::fs::read_to_string(path)?,
+        (None, Some(path)) => {
+            let path = if path.is_absolute() {
+                path.clone()
+            } else {
+                context.repo_root.join(path)
+            };
+            std::fs::read_to_string(path)?
+        }
         (None, None) => String::new(),
     };
     Ok(merge_signature(&base, &context.signature))
@@ -78,6 +85,13 @@ async fn github_client(context: &RepoContext) -> Result<Client> {
     let token = std::env::var("CODETETHER_TOKEN").ok();
     let worker_id = std::env::var("CODETETHER_WORKER_ID").ok();
     let path = format!("{}/{}.git", context.owner, context.repo);
+    tracing::debug!(
+        repo_root = %context.repo_root.display(),
+        workspace_id = %context.workspace_id,
+        github_installation_id = context.github_installation_id.as_deref().unwrap_or(""),
+        github_app_id = context.github_app_id.as_deref().unwrap_or(""),
+        "Requesting GitHub credentials for PR helper"
+    );
     let credentials = request_git_credentials(
         &server,
         &token,

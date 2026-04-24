@@ -209,6 +209,18 @@ impl K8sManager {
         self.client.is_some()
     }
 
+    /// Return a clone scoped to an explicit namespace and/or deployment.
+    pub fn scoped(&self, namespace: Option<&str>, deployment_name: Option<&str>) -> Self {
+        let mut scoped = self.clone();
+        if let Some(namespace) = namespace.filter(|value| !value.trim().is_empty()) {
+            scoped.namespace = namespace.to_string();
+        }
+        if let Some(deployment_name) = deployment_name.filter(|value| !value.trim().is_empty()) {
+            scoped.deployment_name = Some(deployment_name.to_string());
+        }
+        scoped
+    }
+
     /// Get current status.
     pub async fn status(&self) -> K8sStatus {
         let (replicas, available) = if let Some(ref client) = self.client {
@@ -350,6 +362,14 @@ impl K8sManager {
 
     /// List pods belonging to our deployment.
     pub async fn list_pods(&self) -> Result<Vec<PodInfo>> {
+        self.list_pods_with_selector(None).await
+    }
+
+    /// List pods using an optional label selector override.
+    pub async fn list_pods_with_selector(
+        &self,
+        label_selector: Option<&str>,
+    ) -> Result<Vec<PodInfo>> {
         let client = self
             .client
             .as_ref()
@@ -357,10 +377,10 @@ impl K8sManager {
 
         let pods: Api<Pod> = Api::namespaced(client.clone(), &self.namespace);
 
-        let label_selector = self
-            .deployment_name
-            .as_ref()
-            .map(|n| format!("app={}", n))
+        let label_selector = label_selector
+            .filter(|value| !value.trim().is_empty())
+            .map(ToString::to_string)
+            .or_else(|| self.deployment_name.as_ref().map(|n| format!("app={}", n)))
             .unwrap_or_else(|| "app=codetether".to_string());
 
         let list = pods

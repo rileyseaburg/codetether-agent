@@ -219,6 +219,10 @@ pub(crate) struct CompressContext {
     pub subcall_provider: Option<Arc<dyn crate::provider::Provider>>,
     /// Model name resolved alongside [`Self::subcall_provider`].
     pub subcall_model: Option<String>,
+    /// CADMAS-CTX routing state used to rank fallback RLM compaction models.
+    pub delegation: crate::session::delegation::DelegationState,
+    /// Context bucket for the current transcript projection.
+    pub bucket: crate::session::relevance::Bucket,
 }
 
 impl CompressContext {
@@ -229,6 +233,8 @@ impl CompressContext {
             session_id: session.id.clone(),
             subcall_provider: session.metadata.subcall_provider.clone(),
             subcall_model: session.metadata.subcall_model_name.clone(),
+            delegation: session.metadata.delegation.clone(),
+            bucket: crate::session::relevance::bucket_for_messages(&session.messages),
         }
     }
 }
@@ -288,7 +294,11 @@ pub(crate) async fn compress_messages_keep_last(
     // Prefer a cheap dedicated RLM model over the caller's main model
     // to keep compaction cost bounded. Falls back to the caller's
     // provider/model if the dedicated model cannot be resolved.
-    let (rlm_provider, rlm_model) = match resolve_rlm_model(&ctx.rlm_config) {
+    let (rlm_provider, rlm_model) = match resolve_rlm_model_bandit(
+        &ctx.rlm_config,
+        &ctx.delegation,
+        ctx.bucket,
+    ) {
         Some(target_model) if target_model != model => {
             match crate::provider::ProviderRegistry::shared_from_vault().await {
                 Ok(registry) => match registry.resolve_model(&target_model) {
@@ -544,7 +554,7 @@ fn extract_message_text(msg: &Message) -> String {
 /// # Errors
 ///
 /// Propagates any error from the underlying core.
-pub(crate) async fn compress_history_keep_last(
+pub async fn compress_history_keep_last(
     session: &mut Session,
     provider: Arc<dyn crate::provider::Provider>,
     model: &str,
@@ -765,7 +775,7 @@ pub(crate) async fn enforce_on_messages(
 /// # Errors
 ///
 /// Propagates any error from the underlying core.
-pub(crate) async fn enforce_context_window(
+pub async fn enforce_context_window(
     session: &mut Session,
     provider: Arc<dyn crate::provider::Provider>,
     model: &str,

@@ -14,6 +14,7 @@ pub mod cli;
 pub mod cloudevents;
 pub mod cognition;
 pub mod config;
+pub mod crash;
 pub mod event_stream;
 pub mod forage;
 pub mod github_pr;
