@@ -241,6 +241,7 @@ impl Tool for BashTool {
                             "exit_code": r.exit_code,
                             "duration_ms": r.duration_ms,
                             "violations": r.sandbox_violations,
+                            "unsafe_fallbacks": r.unsafe_fallbacks,
                         }),
                     ),
                     Err(e) => (
@@ -290,6 +291,7 @@ impl Tool for BashTool {
                                 "sandbox_violations".to_string(),
                                 json!(r.sandbox_violations),
                             ),
+                            ("unsafe_fallbacks".to_string(), json!(r.unsafe_fallbacks)),
                         ]
                         .into_iter()
                         .collect(),
@@ -467,6 +469,8 @@ impl Tool for BashTool {
                     metadata: [
                         ("exit_code".to_string(), json!(exit_code)),
                         ("truncated".to_string(), json!(truncated)),
+                        ("sandboxed".to_string(), json!(false)),
+                        ("unsafe_execution".to_string(), json!(true)),
                     ]
                     .into_iter()
                     .collect(),
@@ -565,6 +569,22 @@ mod tests {
             .await
             .unwrap();
         assert!(!result.success);
+    }
+
+    #[tokio::test]
+    async fn unsandboxed_bash_reports_unsafe_metadata() {
+        let tool = BashTool {
+            timeout_secs: 10,
+            sandboxed: false,
+            default_cwd: None,
+        };
+        let result = tool
+            .execute(json!({ "command": "echo unsafe path" }))
+            .await
+            .unwrap();
+        assert!(result.success);
+        assert_eq!(result.metadata.get("sandboxed"), Some(&json!(false)));
+        assert_eq!(result.metadata.get("unsafe_execution"), Some(&json!(true)));
     }
 
     #[test]
