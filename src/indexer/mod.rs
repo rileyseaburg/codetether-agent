@@ -260,7 +260,7 @@ pub async fn build_index(root: &Path, options: &BuildOptions) -> Result<Codebase
     let walker = WalkDir::new(root)
         .follow_links(false)
         .into_iter()
-        .filter_entry(|entry| should_descend(entry, options.include_hidden));
+        .filter_entry(|entry| should_descend(entry, root, options.include_hidden));
 
     for entry in walker.filter_map(std::result::Result::ok) {
         let path = entry.path();
@@ -270,7 +270,9 @@ pub async fn build_index(root: &Path, options: &BuildOptions) -> Result<Codebase
 
         stats.total_seen_files += 1;
 
-        if !options.include_hidden && is_hidden_path(path) {
+        let rel_path = path.strip_prefix(root).unwrap_or(path);
+
+        if !options.include_hidden && is_hidden_path(rel_path) {
             stats.skipped_hidden += 1;
             continue;
         }
@@ -309,11 +311,7 @@ pub async fn build_index(root: &Path, options: &BuildOptions) -> Result<Codebase
         };
         let symbol_hints = estimate_symbol_hints(path, &content);
 
-        let rel_path = path
-            .strip_prefix(root)
-            .unwrap_or(path)
-            .to_string_lossy()
-            .to_string();
+        let rel_path = rel_path.to_string_lossy().to_string();
 
         let modified_unix_ms = metadata
             .modified()
@@ -1302,10 +1300,11 @@ fn default_knowledge_graph_path(root: &Path) -> PathBuf {
         .join(format!("workspace-knowledge-{short}.json"))
 }
 
-fn should_descend(entry: &DirEntry, include_hidden: bool) -> bool {
+fn should_descend(entry: &DirEntry, root: &Path, include_hidden: bool) -> bool {
     let path = entry.path();
+    let rel_path = path.strip_prefix(root).unwrap_or(path);
 
-    if !include_hidden && is_hidden_path(path) {
+    if !include_hidden && is_hidden_path(rel_path) {
         return false;
     }
 
@@ -1410,14 +1409,7 @@ fn estimate_symbol_hints(path: &Path, content: &str) -> u32 {
     let mut count = 0u32;
     for line in content.lines().map(str::trim_start) {
         let hit = match ext.as_str() {
-            "rs" => {
-                line.starts_with("fn ")
-                    || line.starts_with("pub fn ")
-                    || line.starts_with("struct ")
-                    || line.starts_with("enum ")
-                    || line.starts_with("trait ")
-                    || line.starts_with("impl ")
-            }
+            "rs" => estimate_rust_symbol_hint(line),
             "py" => line.starts_with("def ") || line.starts_with("class "),
             "ts" | "tsx" | "js" | "jsx" => {
                 line.starts_with("function ")
@@ -1441,6 +1433,30 @@ fn estimate_symbol_hints(path: &Path, content: &str) -> u32 {
     }
 
     count
+}
+
+fn estimate_rust_symbol_hint(line: &str) -> bool {
+    let normalized = strip_prefixes(
+        line,
+        &[
+            "pub(crate) ",
+            "pub(super) ",
+            "pub(self) ",
+            "pub ",
+            "async ",
+            "unsafe ",
+        ],
+    );
+
+    normalized.starts_with("fn ")
+        || normalized.starts_with("struct ")
+        || normalized.starts_with("enum ")
+        || normalized.starts_with("trait ")
+        || normalized.starts_with("impl ")
+        || normalized.starts_with("mod ")
+        || normalized.starts_with("type ")
+        || normalized.starts_with("const ")
+        || normalized.starts_with("static ")
 }
 
 #[cfg(test)]

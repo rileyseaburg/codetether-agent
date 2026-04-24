@@ -161,7 +161,9 @@ impl Provider for YourProvider {
 
 ## Secrets Management
 
-**CRITICAL**: Never hardcode API keys. All secrets come from HashiCorp Vault.
+**CRITICAL**: Never hardcode API keys. Provider secrets are loaded from
+HashiCorp Vault first. Local development may also use env vars and local AWS
+credentials unless `CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 
 ```rust
 // Good - load from Vault
@@ -777,6 +779,8 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 - **WHEN** a file exceeds 50 lines, **MUST** split into smaller modules
 - **IF** you're at 45+ lines, proactively refactor before hitting the limit
 - **FILES** should be focused: one struct, one function group, or one concern
+- **ENFORCEMENT** runs globally for changed `src/**/*.rs` files via `./check_file_limits.sh`
+- **OVERSIZED LEGACY FILES** are grandfathered only as a ratchet: do not add lines before splitting them
 
 ### **Type Safety Enforcement**
 - **NEVER** use `any` type - if the project maintainer sees `any`, they will assume you are a bad developer and will be forced to fix it without asking

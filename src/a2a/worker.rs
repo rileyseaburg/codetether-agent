@@ -15,7 +15,6 @@ use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::swarm_view::SwarmEvent;
-use crate::util;
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use reqwest::Client;
@@ -1214,7 +1213,23 @@ pub async fn register_worker(
 /// Load ProviderRegistry and collect all available models grouped by provider.
 /// Tries Vault first, then falls back to config/env vars if Vault is unreachable.
 /// Returns ModelInfo structs (with pricing data when available).
+///
+/// Result is cached process-wide: repeated calls (e.g. TUI startup +
+/// background worker registration) do not re-hit every provider's
+/// `/models` endpoint. The cache is populated exactly once per process
+/// on the first call, so concurrent callers share one network fanout.
 async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>> {
+    use tokio::sync::OnceCell;
+    static CACHE: OnceCell<HashMap<String, Vec<crate::provider::ModelInfo>>> =
+        OnceCell::const_new();
+    CACHE
+        .get_or_try_init(|| async { load_provider_models_uncached().await })
+        .await
+        .cloned()
+}
+
+async fn load_provider_models_uncached() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>>
+{
     // Try Vault first
     let registry = match ProviderRegistry::from_vault().await {
         Ok(r) if !r.list().is_empty() => {

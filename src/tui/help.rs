@@ -262,10 +262,14 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     // ── Keyboard shortcuts ──
     lines.push(heading("KEYBOARD SHORTCUTS"));
     lines.push(separator());
-    lines.push(key_row("Ctrl+C / Ctrl+Q", "Quit"));
+    lines.push(key_row(
+        "Ctrl+C",
+        "Interrupt turn (while streaming) or quit (when idle)",
+    ));
+    lines.push(key_row("Ctrl+Q", "Quit"));
     lines.push(key_row("Esc", "Back / close overlay / exit detail"));
     lines.push(key_row("Ctrl+T", "Symbol search (workspace)"));
-    lines.push(key_row("Ctrl+W", "Start a /steer command in chat"));
+    lines.push(key_row("Ctrl+W", "Start a /ask side question in chat"));
     lines.push(key_row("Ctrl+Y", "Copy latest assistant reply"));
     lines.push(key_row("Ctrl+V", "Paste image from clipboard"));
     lines.push(key_row("Enter", "Send message or run slash command"));
@@ -326,13 +330,18 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         "Toggle slash-command Tab autocomplete",
     ));
     lines.push(cmd_row(
-        "/steer",
+        "/ask",
         "",
-        "Queue guidance for the next turn (/steer clear to reset)",
+        "Ephemeral side question (full context, no tools, not saved)",
     ));
     lines.push(cmd_row("/settings", "/set", "Settings panel"));
     lines.push(cmd_row("/new", "", "Start fresh chat buffer"));
-    lines.push(cmd_row("/undo", "", "Undo last user message and response"));
+    lines.push(cmd_row("/undo", "", "Undo last turn (accepts /undo <N>)"));
+    lines.push(cmd_row(
+        "/fork",
+        "",
+        "Fork session at current point (/fork <N> drops last N turns)",
+    ));
     lines.push(blank());
 
     lines.push(heading("Protocol & Observability"));

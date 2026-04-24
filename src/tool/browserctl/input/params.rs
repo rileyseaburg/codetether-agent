@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[rustfmt::skip]
 #[derive(Debug, Deserialize)]
@@ -18,14 +19,23 @@ pub(in crate::tool::browserctl) struct BrowserCtlInput {
     #[serde(default)] pub delay_ms: Option<u64>,
     #[serde(default)] pub key: Option<String>,
     #[serde(default)] pub expression: Option<String>,
-    #[serde(default)] pub script: Option<String>,
     #[serde(default)] pub url_contains: Option<String>,
     #[serde(default)] pub state: Option<String>,
     #[serde(default)] pub timeout_ms: Option<u64>,
     #[serde(default)] pub path: Option<String>,
+    #[serde(default)] pub paths: Option<Vec<String>>,
     #[serde(default)] pub full_page: Option<bool>,
     #[serde(default)] pub x: Option<f64>,
     #[serde(default)] pub y: Option<f64>,
     #[serde(default)] pub index: Option<usize>,
     #[serde(default)] pub exact: Option<bool>,
+    #[serde(default)] pub method: Option<String>,
+    #[serde(default)] pub headers: Option<HashMap<String, String>>,
+    #[serde(default)] pub body: Option<String>,
+    #[serde(default)] pub credentials: Option<String>,
+    #[serde(default)] pub limit: Option<usize>,
+    #[serde(default)] pub axios_path: Option<String>,
+    #[serde(default)] pub json_body: Option<serde_json::Value>,
+    #[serde(default)] pub body_patch: Option<serde_json::Value>,
+    #[serde(default)] pub with_credentials: Option<bool>,
 }

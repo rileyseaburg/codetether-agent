@@ -13,7 +13,7 @@ pub const SLASH_COMMANDS: &[&str] = &[
     "/autoapply",
     "/network",
     "/autocomplete",
-    "/steer",
+    "/ask",
     "/mcp",
     "/model",
     "/settings",

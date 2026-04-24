@@ -17,6 +17,7 @@ pub fn view_mode_display_name(mode: ViewMode) -> &'static str {
         ViewMode::Protocol => "Protocol",
         ViewMode::FilePicker => "File Picker",
         ViewMode::Inspector => "Inspector",
+        ViewMode::Audit => "Audit",
     }
 }
 
@@ -35,5 +36,6 @@ pub fn view_mode_shortcut_hint(mode: ViewMode) -> &'static str {
         ViewMode::Protocol => "Ctrl+P",
         ViewMode::FilePicker => "Ctrl+O",
         ViewMode::Inspector => "/inspector",
+        ViewMode::Audit => "/audit",
     }
 }

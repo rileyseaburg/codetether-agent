@@ -120,6 +120,18 @@ pub async fn handle_session_event(
             app.state.last_completion_latency_ms = Some(duration_ms);
             app.state.last_completion_prompt_tokens = Some(prompt_tokens);
             app.state.last_completion_output_tokens = Some(completion_tokens);
+            // Attach usage to the most recent message attributable to this
+            // completion: prefer the last Assistant text, else fall back to
+            // the last ToolCall. This gives a visible per-message token tag.
+            attach_usage_to_last_completion_message(
+                &mut app.state.messages,
+                crate::tui::chat::message::MessageUsage {
+                    model: model.clone(),
+                    prompt_tokens,
+                    completion_tokens,
+                    duration_ms,
+                },
+            );
             app.state.status = format!(
                 "Completed with model {model} • {} in / {} out • {} ms",
                 prompt_tokens, completion_tokens, duration_ms
@@ -187,6 +199,55 @@ pub async fn handle_session_event(
         // consumed by dedicated SessionBus subscribers, not this legacy
         // mpsc handler. Intentionally ignored here.
         _ => {}
+    }
+}
+
+/// Attach a [`MessageUsage`] to the chat message most likely produced
+/// by the completion that generated it.
+///
+/// Walks backward and attaches to the first `Assistant` or `ToolCall`
+/// message without a usage already set. If every recent candidate is
+/// already tagged (e.g. a repeat `UsageReport` for the same turn), the
+/// usage is silently dropped rather than clobbering an earlier tag.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::tui::chat::message::{ChatMessage, MessageType, MessageUsage};
+/// use codetether_agent::tui::app::session_events::attach_usage_to_last_completion_message;
+///
+/// let mut msgs = vec![
+///     ChatMessage::new(MessageType::User, "hi"),
+///     ChatMessage::new(MessageType::Assistant, "hello!"),
+/// ];
+/// attach_usage_to_last_completion_message(
+///     &mut msgs,
+///     MessageUsage {
+///         model: "test/model".into(),
+///         prompt_tokens: 10,
+///         completion_tokens: 3,
+///         duration_ms: 120,
+///     },
+/// );
+/// assert!(msgs[1].usage.is_some());
+/// ```
+pub fn attach_usage_to_last_completion_message(
+    messages: &mut [ChatMessage],
+    usage: crate::tui::chat::message::MessageUsage,
+) {
+    for msg in messages.iter_mut().rev() {
+        if msg.usage.is_some() {
+            continue;
+        }
+        match &msg.message_type {
+            MessageType::Assistant | MessageType::ToolCall { .. } => {
+                msg.usage = Some(usage);
+                return;
+            }
+            // Stop walking past a user turn — usage can't belong there.
+            MessageType::User => return,
+            _ => {}
+        }
     }
 }
 

@@ -234,11 +234,18 @@ OUTPUT FORMAT (JSON):
       "instruction": "Detailed instruction for this subtask",
       "specialty": "Role/specialty (e.g., Researcher, Coder, Analyst)",
       "dependencies": ["id-of-dependency-1"],
-      "priority": 1
+      "priority": 1,
+      "needs_worktree": false
     }}
   ]
 }}
 ```
+
+Set `needs_worktree: true` only when the subtask will **edit or create \
+files** in the repository (implementation, refactor, patch). Set it to \
+`false` for read-only work (research, review, analysis, fact-check, \
+planning, summarisation). When in doubt, omit the field and the \
+executor will decide from heuristics.
 
 Decompose the task now:"#,
             task = task,
@@ -281,6 +288,8 @@ Decompose the task now:"#,
             dependencies: Vec<String>,
             #[serde(default)]
             priority: i32,
+            #[serde(default)]
+            needs_worktree: Option<bool>,
         }
 
         let parsed: DecompositionResponse = serde_json::from_str(json_str.trim())
@@ -298,6 +307,11 @@ Decompose the task now:"#,
                 subtask.with_specialty(specialty)
             } else {
                 subtask
+            };
+
+            let subtask = match def.needs_worktree {
+                Some(explicit) => subtask.with_needs_worktree(explicit),
+                None => subtask,
             };
 
             name_to_id.insert(def.name.clone(), subtask.id.clone());
@@ -495,7 +509,8 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
         "zhipuai" | "zai" => "glm-5".to_string(),
         "openrouter" => "z-ai/glm-5".to_string(),
         "novita" => "Qwen/Qwen3.5-35B-A3B".to_string(),
-        "github-copilot" | "github-copilot-enterprise" | "openai-codex" => "gpt-5-mini".to_string(),
+        "github-copilot" | "github-copilot-enterprise" => "gpt-5-mini".to_string(),
+        "openai-codex" => "gpt-5.4".to_string(),
         _ => "gpt-4o".to_string(),
     }
 }

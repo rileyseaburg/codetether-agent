@@ -43,6 +43,9 @@ impl Tool for BrowserCtlTool {
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let input: input::BrowserCtlInput =
             serde_json::from_value(args).context("Invalid browserctl args")?;
+        if matches!(&input.action, input::BrowserCtlAction::Detect) {
+            return Ok(detect_result());
+        }
         let result = match dispatch::dispatch(&input).await {
             Ok(output) => response::success_result(&input, output).await?,
             Err(error) => response::error_result(error),
@@ -51,5 +54,34 @@ impl Tool for BrowserCtlTool {
             crate::browser::browser_service().clear();
         }
         Ok(result)
+    }
+}
+
+fn detect_result() -> ToolResult {
+    match crate::browser::detect_browser() {
+        Some(path) => {
+            let output = serde_json::json!({
+                "found": true,
+                "executable_path": path.display().to_string(),
+                "platform": std::env::consts::OS,
+            });
+            ToolResult {
+                output: serde_json::to_string_pretty(&output).unwrap_or_default(),
+                success: true,
+                metadata: Default::default(),
+            }
+        }
+        None => {
+            let output = serde_json::json!({
+                "found": false,
+                "platform": std::env::consts::OS,
+                "hint": "Install Chrome, Edge, Brave, or Vivaldi, or pass `executable_path` to `start`. Firefox and Safari are not supported.",
+            });
+            ToolResult {
+                output: serde_json::to_string_pretty(&output).unwrap_or_default(),
+                success: true,
+                metadata: Default::default(),
+            }
+        }
     }
 }

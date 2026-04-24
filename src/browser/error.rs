@@ -6,12 +6,30 @@ mod cdp;
 #[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum BrowserError {
-    #[error("browser command is not implemented")]
-    NotImplemented,
+    #[error("browser command is not implemented: {0}")]
+    NotImplemented(String),
     #[error("navigation timed out")]
     NavigationTimeout,
     #[error("element not found: {0}")]
     ElementNotFound(String),
+    #[error("element is not fillable: tag={tag}, input_type={input_type:?}")]
+    ElementNotFillable {
+        tag: String,
+        input_type: Option<String>,
+    },
+    #[error("element is not a file input: tag={tag}, input_type={input_type:?}")]
+    ElementNotFileInput {
+        tag: String,
+        input_type: Option<String>,
+    },
+    #[error("file does not exist: {0}")]
+    FileNotFound(String),
+    #[error("file input does not accept multiple files: {0}")]
+    MultipleFilesNotAllowed(String),
+    #[error("waiting for selector timed out: {selector} after {timeout_ms}ms")]
+    WaitTimeout { selector: String, timeout_ms: u64 },
+    #[error("tab not found: {0}")]
+    TabNotFound(usize),
     #[error("javascript exception: {message}{stack_suffix}", stack_suffix = stack_suffix(.stack.as_deref()))]
     JsException {
         message: String,

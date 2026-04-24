@@ -2,10 +2,10 @@
 
 use super::anthropic;
 use super::bedrock;
+use super::fallback_policy;
 use super::google;
 use super::openai;
 use super::registry::ProviderRegistry;
-use crate::provider::traits::Provider;
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -24,13 +24,14 @@ impl ProviderRegistry {
     /// ```
     pub async fn from_config(config: &crate::config::Config) -> Result<Self> {
         let mut registry = Self::new();
+        let disable_env = fallback_policy::env_fallback_disabled();
 
         // ---- OpenAI ----
         if let Some(pc) = config.providers.get("openai") {
             if let Some(key) = &pc.api_key {
                 registry.register(Arc::new(openai::OpenAIProvider::new(key.clone())?));
             }
-        } else if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+        } else if !disable_env && let Ok(key) = std::env::var("OPENAI_API_KEY") {
             registry.register(Arc::new(openai::OpenAIProvider::new(key)?));
         }
 
@@ -44,7 +45,7 @@ impl ProviderRegistry {
                 };
                 registry.register(Arc::new(p));
             }
-        } else if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+        } else if !disable_env && let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
             registry.register(Arc::new(anthropic::AnthropicProvider::new(key)?));
         }
 
@@ -53,7 +54,7 @@ impl ProviderRegistry {
             if let Some(key) = &pc.api_key {
                 registry.register(Arc::new(google::GoogleProvider::new(key.clone())?));
             }
-        } else if let Ok(key) = std::env::var("GOOGLE_API_KEY") {
+        } else if !disable_env && let Ok(key) = std::env::var("GOOGLE_API_KEY") {
             registry.register(Arc::new(google::GoogleProvider::new(key)?));
         }
 
@@ -73,7 +74,7 @@ impl ProviderRegistry {
         }
 
         // ---- Bedrock (auto-detect from env / ~/.aws) ----
-        if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+        if !disable_env && let Some(creds) = bedrock::AwsCredentials::from_environment() {
             let region = bedrock::AwsCredentials::detect_region()
                 .unwrap_or_else(|| bedrock::DEFAULT_REGION.to_string());
             match bedrock::BedrockProvider::with_credentials(creds, region) {
@@ -83,14 +84,12 @@ impl ProviderRegistry {
         }
 
         // ---- Env-var fallback ----
-        let disable = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
-        if !disable {
+        if !disable_env {
             super::init_env::register_env_fallbacks(&mut registry);
         } else {
             tracing::info!(
-                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+                env = fallback_policy::DISABLE_ENV_FALLBACK,
+                "Env/AWS fallback disabled"
             );
         }
 

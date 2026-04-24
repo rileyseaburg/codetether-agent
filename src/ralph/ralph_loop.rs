@@ -2,6 +2,7 @@
 
 use super::state_store::{RalphRunState, RalphStateStore, StoryResultEntry};
 use super::types::*;
+use super::verification::run_story_verification;
 use crate::bus::AgentBus;
 use crate::bus::relay::{ProtocolRelayRuntime, RelayAgentProfile};
 use crate::provenance::{
@@ -14,6 +15,7 @@ use crate::tool::ToolRegistry;
 use crate::tui::ralph_view::{RalphEvent, RalphStoryInfo, RalphStoryStatus};
 use crate::tui::swarm_view::SwarmEvent;
 use crate::worktree::WorktreeManager;
+use futures::stream::{self, StreamExt};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -135,6 +137,21 @@ impl RalphLoop {
     fn try_send_event(&self, event: RalphEvent) {
         if let Some(ref tx) = self.event_tx {
             let _ = tx.try_send(event);
+        }
+    }
+
+    fn record_story_result(&self, story: &UserStory, passed: bool, error: Option<String>) {
+        if let Some(ref store) = self.store {
+            let s = store.clone();
+            let rid = self.run_id.clone();
+            let entry = StoryResultEntry {
+                story_id: story.id.clone(),
+                title: story.title.clone(),
+                passed,
+                iteration: self.state.current_iteration,
+                error,
+            };
+            self.store_fire_and_forget(async move { s.record_story_result(&rid, &entry).await });
         }
     }
 
@@ -517,23 +534,22 @@ impl RalphLoop {
                     if self.config.quality_checks_enabled {
                         if self.run_quality_gates_with_events(&story.id).await? {
                             info!("Story {} passed quality checks!", story.id);
+                            if let Err(error) =
+                                run_story_verification(&self.state.working_dir, &story).await
+                            {
+                                let error = format!("Verification steps failed: {error}");
+                                warn!(story_id = %story.id, error = %error);
+                                self.record_story_result(&story, false, Some(error.clone()));
+                                self.try_send_event(RalphEvent::StoryComplete {
+                                    story_id: story.id.clone(),
+                                    passed: false,
+                                });
+                                continue;
+                            }
                             self.state.prd.mark_passed(&story.id);
 
                             // Record story result in store
-                            if let Some(ref store) = self.store {
-                                let s = store.clone();
-                                let rid = self.run_id.clone();
-                                let entry = StoryResultEntry {
-                                    story_id: story.id.clone(),
-                                    title: story.title.clone(),
-                                    passed: true,
-                                    iteration: self.state.current_iteration,
-                                    error: None,
-                                };
-                                self.store_fire_and_forget(async move {
-                                    s.record_story_result(&rid, &entry).await
-                                });
-                            }
+                            self.record_story_result(&story, true, None);
 
                             self.try_send_event(RalphEvent::StoryComplete {
                                 story_id: story.id.clone(),
@@ -560,20 +576,11 @@ impl RalphLoop {
                             warn!("Story {} failed quality checks", story.id);
 
                             // Record failed story result in store
-                            if let Some(ref store) = self.store {
-                                let s = store.clone();
-                                let rid = self.run_id.clone();
-                                let entry = StoryResultEntry {
-                                    story_id: story.id.clone(),
-                                    title: story.title.clone(),
-                                    passed: false,
-                                    iteration: self.state.current_iteration,
-                                    error: Some("Quality checks failed".to_string()),
-                                };
-                                self.store_fire_and_forget(async move {
-                                    s.record_story_result(&rid, &entry).await
-                                });
-                            }
+                            self.record_story_result(
+                                &story,
+                                false,
+                                Some("Quality checks failed".to_string()),
+                            );
 
                             // Publish failure learnings to bus
                             let next = self.state.prd.next_story().map(|s| s.id.clone());
@@ -590,25 +597,24 @@ impl RalphLoop {
                             });
                         }
                     } else {
-                        // No quality checks, just mark as passed
+                        // No quality checks; verification still gates completion.
+                        if let Err(error) =
+                            run_story_verification(&self.state.working_dir, &story).await
+                        {
+                            let error = format!("Verification steps failed: {error}");
+                            warn!(story_id = %story.id, error = %error);
+                            self.record_story_result(&story, false, Some(error.clone()));
+                            self.try_send_event(RalphEvent::StoryComplete {
+                                story_id: story.id.clone(),
+                                passed: false,
+                            });
+                            continue;
+                        }
                         self.state.prd.mark_passed(&story.id);
                         self.state.prd.save(&self.state.prd_path).await?;
 
                         // Record story result in store
-                        if let Some(ref store) = self.store {
-                            let s = store.clone();
-                            let rid = self.run_id.clone();
-                            let entry = StoryResultEntry {
-                                story_id: story.id.clone(),
-                                title: story.title.clone(),
-                                passed: true,
-                                iteration: self.state.current_iteration,
-                                error: None,
-                            };
-                            self.store_fire_and_forget(async move {
-                                s.record_story_result(&rid, &entry).await
-                            });
-                        }
+                        self.record_story_result(&story, true, None);
 
                         self.try_send_event(RalphEvent::StoryComplete {
                             story_id: story.id.clone(),
@@ -687,6 +693,58 @@ impl RalphLoop {
             // Stories are already cloned from stages()
             let stories: Vec<UserStory> = stage_stories;
 
+            // Pre-create all worktrees for this stage in parallel *before*
+            // spawning the story tasks. `git worktree add` serializes on the
+            // `.git/worktrees` lock, so doing this up front (bounded to 8)
+            // drains the lock contention in one burst rather than racing it
+            // against every story's first tool call.
+            let mut worktrees_by_story: HashMap<String, crate::worktree::WorktreeInfo> =
+                HashMap::new();
+            if let Some(ref mgr) = worktree_mgr {
+                let ids: Vec<String> = stories.iter().map(|s| s.id.clone()).collect();
+                let created: Vec<(String, Option<crate::worktree::WorktreeInfo>)> =
+                    stream::iter(ids.into_iter())
+                        .map(|story_id| {
+                            let mgr = Arc::clone(mgr);
+                            async move {
+                                let slug = story_id.to_lowercase().replace("-", "_");
+                                match mgr.create(&slug).await {
+                                    Ok(wt) => {
+                                        if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
+                                            warn!(
+                                                story_id = %story_id,
+                                                error = %e,
+                                                "Failed to inject workspace stub"
+                                            );
+                                        }
+                                        info!(
+                                            story_id = %story_id,
+                                            worktree_path = %wt.path.display(),
+                                            "Pre-created worktree for story"
+                                        );
+                                        (story_id, Some(wt))
+                                    }
+                                    Err(e) => {
+                                        warn!(
+                                            story_id = %story_id,
+                                            error = %e,
+                                            "Failed to pre-create worktree, will use main directory"
+                                        );
+                                        (story_id, None)
+                                    }
+                                }
+                            }
+                        })
+                        .buffer_unordered(8)
+                        .collect()
+                        .await;
+                for (sid, wt) in created {
+                    if let Some(wt) = wt {
+                        worktrees_by_story.insert(sid, wt);
+                    }
+                }
+            }
+
             // Execute stories in parallel
             let semaphore = Arc::new(tokio::sync::Semaphore::new(
                 self.config.max_concurrent_stories,
@@ -712,6 +770,7 @@ impl RalphLoop {
                 let prd_info = prd_info.clone();
                 let working_dir = working_dir.clone();
                 let worktree_mgr = worktree_mgr.clone();
+                let prebuilt_worktree = worktrees_by_story.remove(&story.id);
                 let progress_path = progress_path.clone();
                 let ralph_tx = self.event_tx.clone();
                 let stage_learnings = accumulated_learnings.clone();
@@ -734,37 +793,18 @@ impl RalphLoop {
                     Option<crate::worktree::WorktreeInfo>,
                     Option<std::sync::Arc<crate::worktree::WorktreeManager>>,
                     bool, // quality_passed
+                    Option<String>,
                 )> = tokio::spawn(async move {
                     let _permit = sem.acquire().await.expect("semaphore closed");
 
-                    // Create worktree for this story if enabled
-                    let (story_working_dir, worktree_info) = if let Some(ref mgr) = worktree_mgr {
-                        match mgr.create(&story.id.to_lowercase().replace("-", "_")).await {
-                            Ok(wt) => {
-                                // Inject [workspace] stub for hermetic isolation
-                                if let Err(e) = mgr.inject_workspace_stub(&wt.path) {
-                                    warn!(
-                                        story_id = %story.id,
-                                        error = %e,
-                                        "Failed to inject workspace stub"
-                                    );
-                                }
-                                info!(
-                                    story_id = %story.id,
-                                    worktree_path = %wt.path.display(),
-                                    "Created worktree for story"
-                                );
-                                (wt.path.clone(), Some(wt))
-                            }
-                            Err(e) => {
-                                warn!(
-                                    story_id = %story.id,
-                                    error = %e,
-                                    "Failed to create worktree, using main directory"
-                                );
-                                (working_dir.clone(), None)
-                            }
-                        }
+                    // Use the pre-created worktree for this story if one
+                    // was provisioned above; otherwise fall back to the
+                    // main working directory. Worktree creation now
+                    // happens in a bounded parallel pass *before* task
+                    // spawn, so we no longer race the `.git/worktrees`
+                    // lock inside every task.
+                    let (story_working_dir, worktree_info) = if let Some(wt) = prebuilt_worktree {
+                        (wt.path.clone(), Some(wt))
                     } else {
                         (working_dir.clone(), None)
                     };
@@ -895,10 +935,11 @@ impl RalphLoop {
 
                     // Quality-gate retry loop: if agent succeeded but quality gates fail,
                     // feed errors back and let the agent try to fix them.
-                    let (final_result, quality_passed) = match call_result {
+                    let (final_result, quality_passed, failure_reason) = match call_result {
                         Ok(initial_output) => {
                             let mut output = initial_output;
-                            let mut qg_passed = !quality_checks_enabled; // skip if disabled
+                            let mut qg_passed = false;
+                            let mut failure_reason = None;
 
                             if quality_checks_enabled {
                                 for qg_attempt in 0..=max_quality_retries {
@@ -954,16 +995,31 @@ impl RalphLoop {
                                     }
 
                                     if all_ok {
-                                        qg_passed = true;
-                                        info!(
-                                            story_id = %story.id,
-                                            attempt = qg_attempt + 1,
-                                            "Quality gates passed"
-                                        );
-                                        break;
+                                        match run_story_verification(&story_working_dir, &story)
+                                            .await
+                                        {
+                                            Ok(()) => {
+                                                qg_passed = true;
+                                                failure_reason = None;
+                                                info!(
+                                                    story_id = %story.id,
+                                                    attempt = qg_attempt + 1,
+                                                    "Quality gates and verification passed"
+                                                );
+                                                break;
+                                            }
+                                            Err(e) => {
+                                                error_output =
+                                                    format!("Verification steps failed:\n{e}");
+                                                failure_reason = Some(error_output.clone());
+                                            }
+                                        }
                                     }
 
                                     if qg_attempt < max_quality_retries {
+                                        if !error_output.is_empty() {
+                                            failure_reason = Some(error_output.clone());
+                                        }
                                         // Feed errors back to agent for self-repair
                                         warn!(
                                             story_id = %story.id,
@@ -1019,6 +1075,9 @@ impl RalphLoop {
                                             }
                                         }
                                     } else {
+                                        if !error_output.is_empty() {
+                                            failure_reason = Some(error_output.clone());
+                                        }
                                         warn!(
                                             story_id = %story.id,
                                             "Quality gates still failing after {} retries",
@@ -1026,11 +1085,22 @@ impl RalphLoop {
                                         );
                                     }
                                 }
+                            } else {
+                                match run_story_verification(&story_working_dir, &story).await {
+                                    Ok(()) => {
+                                        qg_passed = true;
+                                        failure_reason = None;
+                                    }
+                                    Err(e) => {
+                                        failure_reason =
+                                            Some(format!("Verification steps failed:\n{e}"));
+                                    }
+                                }
                             }
 
-                            (Ok(output), qg_passed)
+                            (Ok(output), qg_passed, failure_reason)
                         }
-                        Err(e) => (Err(e), false),
+                        Err(e) => (Err(e), false, None),
                     };
 
                     let entry = match &final_result {
@@ -1068,6 +1138,7 @@ impl RalphLoop {
                         worktree_info,
                         worktree_mgr,
                         quality_passed,
+                        failure_reason,
                     )
                 });
 
@@ -1078,7 +1149,15 @@ impl RalphLoop {
             let _stage_passed = 0usize;
             for handle in handles {
                 match handle.await {
-                    Ok((story, success, entry, worktree_info, worktree_mgr, quality_passed)) => {
+                    Ok((
+                        story,
+                        success,
+                        entry,
+                        worktree_info,
+                        worktree_mgr,
+                        quality_passed,
+                        failure_reason,
+                    )) => {
                         self.state.progress_log.push(entry);
 
                         if success && quality_passed {
@@ -1104,6 +1183,28 @@ impl RalphLoop {
                                                     files_changed = merge_result.files_changed,
                                                     "Merged story changes successfully"
                                                 );
+                                                if let Err(error) =
+                                                    run_story_verification(&working_dir, &story)
+                                                        .await
+                                                {
+                                                    let error = format!(
+                                                        "Verification steps failed after merge: {error}"
+                                                    );
+                                                    warn!(story_id = %story.id, error = %error);
+                                                    self.record_story_result(
+                                                        &story,
+                                                        false,
+                                                        Some(error),
+                                                    );
+                                                    self.try_send_event(
+                                                        RalphEvent::StoryComplete {
+                                                            story_id: story.id.clone(),
+                                                            passed: false,
+                                                        },
+                                                    );
+                                                    let _ = mgr.cleanup(&wt.name).await;
+                                                    continue;
+                                                }
                                                 self.state.prd.mark_passed(&story.id);
                                                 self.try_send_event(RalphEvent::StoryMerge {
                                                     story_id: story.id.clone(),
@@ -1116,20 +1217,7 @@ impl RalphLoop {
                                                 });
 
                                                 // Record story result in store
-                                                if let Some(ref store) = self.store {
-                                                    let s = store.clone();
-                                                    let rid = self.run_id.clone();
-                                                    let entry = StoryResultEntry {
-                                                        story_id: story.id.clone(),
-                                                        title: story.title.clone(),
-                                                        passed: true,
-                                                        iteration: self.state.current_iteration,
-                                                        error: None,
-                                                    };
-                                                    self.store_fire_and_forget(async move {
-                                                        s.record_story_result(&rid, &entry).await
-                                                    });
-                                                }
+                                                self.record_story_result(&story, true, None);
 
                                                 // Cleanup worktree
                                                 let _ = mgr.cleanup(&wt.name).await;
@@ -1173,9 +1261,37 @@ impl RalphLoop {
                                                                             story_id = %story.id,
                                                                             "Merge completed after conflict resolution"
                                                                         );
-                                                                        self.state
-                                                                            .prd
-                                                                            .mark_passed(&story.id);
+                                                                        match run_story_verification(
+                                                                            &working_dir,
+                                                                            &story,
+                                                                        )
+                                                                        .await
+                                                                        {
+                                                                            Ok(()) => self
+                                                                                .state
+                                                                                .prd
+                                                                                .mark_passed(
+                                                                                    &story.id,
+                                                                                ),
+                                                                            Err(e) => {
+                                                                                let error = format!(
+                                                                                    "Verification failed after conflict resolution: {e}"
+                                                                                );
+                                                                                warn!(
+                                                                                    story_id = %story.id,
+                                                                                    error = %error
+                                                                                );
+                                                                                self.record_story_result(
+                                                                                    &story,
+                                                                                    false,
+                                                                                    Some(error),
+                                                                                );
+                                                                                self.try_send_event(RalphEvent::StoryComplete {
+                                                                                    story_id: story.id.clone(),
+                                                                                    passed: false,
+                                                                                });
+                                                                            }
+                                                                        }
                                                                     } else {
                                                                         warn!(
                                                                             story_id = %story.id,
@@ -1244,7 +1360,19 @@ impl RalphLoop {
                                         }
                                     }
                                 } else {
-                                    // No worktree, just mark passed
+                                    // No worktree; verification still gates completion.
+                                    if let Err(error) =
+                                        run_story_verification(&working_dir, &story).await
+                                    {
+                                        let error = format!("Verification steps failed: {error}");
+                                        warn!(story_id = %story.id, error = %error);
+                                        self.record_story_result(&story, false, Some(error));
+                                        self.try_send_event(RalphEvent::StoryComplete {
+                                            story_id: story.id.clone(),
+                                            passed: false,
+                                        });
+                                        continue;
+                                    }
                                     self.state.prd.mark_passed(&story.id);
                                     self.try_send_event(RalphEvent::StoryComplete {
                                         story_id: story.id.clone(),
@@ -1252,28 +1380,23 @@ impl RalphLoop {
                                     });
 
                                     // Record story result in store
-                                    if let Some(ref store) = self.store {
-                                        let s = store.clone();
-                                        let rid = self.run_id.clone();
-                                        let entry = StoryResultEntry {
-                                            story_id: story.id.clone(),
-                                            title: story.title.clone(),
-                                            passed: true,
-                                            iteration: self.state.current_iteration,
-                                            error: None,
-                                        };
-                                        self.store_fire_and_forget(async move {
-                                            s.record_story_result(&rid, &entry).await
-                                        });
-                                    }
+                                    self.record_story_result(&story, true, None);
                                 }
                             }
                         } else {
                             // Failed - cleanup worktree without merging (keep for debugging)
+                            let error = failure_reason.unwrap_or_else(|| {
+                                if success {
+                                    "Quality or verification checks failed".to_string()
+                                } else {
+                                    "LLM call failed".to_string()
+                                }
+                            });
                             self.try_send_event(RalphEvent::StoryError {
                                 story_id: story.id.clone(),
-                                error: "LLM call failed".to_string(),
+                                error: error.clone(),
                             });
+                            self.record_story_result(&story, false, Some(error));
                             if let Some(ref wt) = worktree_info {
                                 info!(
                                     story_id = %story.id,
@@ -1350,6 +1473,9 @@ impl RalphLoop {
 ### Acceptance Criteria:
 {}
 
+### Verification Steps:
+{}
+
 ## WORKFLOW (follow this exactly):
 
 1. **EXPLORE** (2-4 tool calls): Use `glob` and `read` to understand existing code
@@ -1395,9 +1521,19 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
                 .map(|c| format!("- {}", c))
                 .collect::<Vec<_>>()
                 .join("\n"),
+            Self::format_verification_steps(story),
             story.id,
             story.id
         )
+    }
+
+    fn format_verification_steps(story: &UserStory) -> String {
+        if story.verification_steps.is_empty() {
+            "None".to_string()
+        } else {
+            serde_json::to_string_pretty(&story.verification_steps)
+                .unwrap_or_else(|_| "Unable to render verification steps".to_string())
+        }
     }
 
     /// Call LLM with agentic tool loop (static version for parallel execution)
@@ -2054,6 +2190,9 @@ Working directory: {}
 ### Acceptance Criteria:
 {}
 
+### Verification Steps:
+{}
+
 ## Previous Progress:
 {}
 
@@ -2076,6 +2215,7 @@ Respond with the implementation and any shell commands needed.
                 .map(|c| format!("- {}", c))
                 .collect::<Vec<_>>()
                 .join("\n"),
+            Self::format_verification_steps(story),
             if progress.is_empty() {
                 "None yet".to_string()
             } else {

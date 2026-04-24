@@ -204,6 +204,9 @@ pub fn handle_page_down(app: &mut App) {
         ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.detail_scroll_down(10),
         ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.detail_scroll_down(10),
         ViewMode::Bus if app.state.bus_log.detail_mode => app.state.bus_log.detail_scroll_down(10),
+        ViewMode::Protocol => {
+            app.state.protocol_scroll = app.state.protocol_scroll.saturating_add(10);
+        }
         ViewMode::Chat => app.state.scroll_down(10),
         _ => {}
     }

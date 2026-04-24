@@ -2,8 +2,10 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
-const https = require('node:https');
 const crypto = require('node:crypto');
+const { spawnSync } = require('node:child_process');
+const { downloadFile, downloadText, requestJson } = require('./http');
+const { tlsRemediationFor } = require('./tls_remediation');
 
 function repoFromEnv() {
   return process.env.CODETETHER_GITHUB_REPO || 'rileyseaburg/codetether-agent';
@@ -17,6 +19,16 @@ function readPkgVersion() {
   // eslint-disable-next-line global-require
   const pkg = require(path.join(pkgRoot(), 'package.json'));
   return pkg.version;
+}
+
+function configuredPkgTag(pkg) {
+  return normalizeTag(pkg && (pkg.codetetherReleaseTag || pkg.codetetherBinaryTag || pkg.version));
+}
+
+function readPkgTag() {
+  // eslint-disable-next-line global-require
+  const pkg = require(path.join(pkgRoot(), 'package.json'));
+  return configuredPkgTag(pkg);
 }
 
 function normalizeTag(tagOrVersion) {
@@ -60,6 +72,10 @@ function platformTriple() {
 
 function isWindows() {
   return process.platform === 'win32';
+}
+
+function isDarwin() {
+  return process.platform === 'darwin';
 }
 
 function fallbackTriples(targetTriple, isWindowsTarget = isWindows()) {
@@ -106,18 +122,30 @@ function selectAssetCandidates({ tag, targetTriple, availableAssetNames, isWindo
   return matching.length > 0 ? matching : candidates;
 }
 
-function defaultCacheDir() {
-  if (process.env.CODETETHER_NPX_CACHE_DIR) {
-    return process.env.CODETETHER_NPX_CACHE_DIR;
+function defaultCacheDirFor({
+  platform = process.platform,
+  env = process.env,
+  homedir = os.homedir(),
+} = {}) {
+  if (env.CODETETHER_NPX_CACHE_DIR) {
+    return env.CODETETHER_NPX_CACHE_DIR;
   }
 
-  if (isWindows()) {
-    const base = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  if (platform === 'win32') {
+    const base = env.LOCALAPPDATA || path.join(homedir, 'AppData', 'Local');
     return path.join(base, 'codetether-npx');
   }
 
-  const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  if (platform === 'darwin') {
+    return path.join(homedir, 'Library', 'Caches', 'codetether-npx');
+  }
+
+  const base = env.XDG_CACHE_HOME || path.join(homedir, '.cache');
   return path.join(base, 'codetether-npx');
+}
+
+function defaultCacheDir() {
+  return defaultCacheDirFor();
 }
 
 function installDirFor({ tag, targetTriple }) {
@@ -151,39 +179,6 @@ function canExecute(p) {
   }
 }
 
-function requestJson(url, headers = {}) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(
-        url,
-        {
-          headers: {
-            'User-Agent': 'codetether-npx',
-            Accept: 'application/vnd.github+json',
-            ...headers,
-          },
-        },
-        (res) => {
-          const chunks = [];
-          res.on('data', (d) => chunks.push(d));
-          res.on('end', () => {
-            const body = Buffer.concat(chunks).toString('utf8');
-            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-              try {
-                resolve(JSON.parse(body));
-              } catch (e) {
-                reject(new Error(`Failed to parse JSON from ${url}: ${e.message}`));
-              }
-              return;
-            }
-            reject(new Error(`HTTP ${res.statusCode} fetching ${url}: ${body.slice(0, 400)}`));
-          });
-        }
-      )
-      .on('error', reject);
-  });
-}
-
 async function getLatestReleaseTag(repo) {
   const data = await requestJson(`https://api.github.com/repos/${repo}/releases/latest`);
   if (!data || !data.tag_name) {
@@ -201,109 +196,6 @@ async function getReleaseAssetNames(repo, tag) {
   return data.assets
     .map((asset) => asset && asset.name)
     .filter((name) => typeof name === 'string' && name.length > 0);
-}
-
-function downloadFile(url, destPath) {
-  return new Promise((resolve, reject) => {
-    const doGet = (u, redirectsLeft) => {
-      https
-        .get(
-          u,
-          {
-            headers: {
-              'User-Agent': 'codetether-npx',
-              Accept: '*/*',
-            },
-          },
-          (res) => {
-            // Follow redirects (GitHub assets redirect to S3)
-            if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
-              const loc = res.headers.location;
-              if (!loc) {
-                reject(new Error(`Redirect without location from ${u}`));
-                return;
-              }
-              if (redirectsLeft <= 0) {
-                reject(new Error(`Too many redirects downloading ${url}`));
-                return;
-              }
-              res.resume();
-              doGet(loc, redirectsLeft - 1);
-              return;
-            }
-
-            if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-              const chunks = [];
-              res.on('data', (d) => chunks.push(d));
-              res.on('end', () => {
-                const body = Buffer.concat(chunks).toString('utf8');
-                const err = new Error(`HTTP ${res.statusCode} downloading ${u}: ${body.slice(0, 400)}`);
-                err.statusCode = res.statusCode;
-                reject(err);
-              });
-              return;
-            }
-
-            const out = fs.createWriteStream(destPath);
-            res.pipe(out);
-            out.on('finish', () => out.close(resolve));
-            out.on('error', reject);
-          }
-        )
-        .on('error', reject);
-    };
-
-    doGet(url, 8);
-  });
-}
-
-function downloadText(url) {
-  return new Promise((resolve, reject) => {
-    const doGet = (u, redirectsLeft) => {
-      https
-        .get(
-          u,
-          {
-            headers: {
-              'User-Agent': 'codetether-npx',
-              Accept: '*/*',
-            },
-          },
-          (res) => {
-            if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
-              const loc = res.headers.location;
-              if (!loc) {
-                reject(new Error(`Redirect without location from ${u}`));
-                return;
-              }
-              if (redirectsLeft <= 0) {
-                reject(new Error(`Too many redirects downloading ${url}`));
-                return;
-              }
-              res.resume();
-              doGet(loc, redirectsLeft - 1);
-              return;
-            }
-
-            const chunks = [];
-            res.on('data', (d) => chunks.push(d));
-            res.on('end', () => {
-              const body = Buffer.concat(chunks).toString('utf8');
-              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-                resolve(body);
-                return;
-              }
-              const err = new Error(`HTTP ${res.statusCode} downloading ${u}: ${body.slice(0, 400)}`);
-              err.statusCode = res.statusCode;
-              reject(err);
-            });
-          }
-        )
-        .on('error', reject);
-    };
-
-    doGet(url, 8);
-  });
 }
 
 function rmdirRecursiveSafe(p) {
@@ -348,6 +240,26 @@ function findExtractedBinary({ tmpDir, assetBase, isWindowsTarget = isWindows() 
   const candidate1 = files.find((p) => path.basename(p) === 'codetether');
   const candidate2 = files.find((p) => path.basename(p) === assetBase);
   return candidate1 || candidate2 || null;
+}
+
+async function prepareInstalledBinary(destPath) {
+  if (!isWindows()) {
+    await fsp.chmod(destPath, 0o755);
+  }
+
+  if (!isDarwin()) {
+    return;
+  }
+
+  const xattr = spawnSync('xattr', ['-d', 'com.apple.quarantine', destPath], { stdio: 'ignore' });
+  if (xattr.error && xattr.error.code !== 'ENOENT') {
+    throw xattr.error;
+  }
+
+  const codesign = spawnSync('codesign', ['--force', '--sign', '-', destPath], { stdio: 'ignore' });
+  if (codesign.error && codesign.error.code !== 'ENOENT') {
+    throw codesign.error;
+  }
 }
 
 function sha256OfFile(p) {
@@ -469,9 +381,7 @@ async function installFromAssetCandidate({ repo, tag, candidate, destPath }) {
 
     if (candidate.kind === 'exe' || candidate.kind === 'bin') {
       await fsp.copyFile(assetPath, destPath);
-      if (!isWin) {
-        await fsp.chmod(destPath, 0o755);
-      }
+      await prepareInstalledBinary(destPath);
       return;
     }
 
@@ -492,9 +402,7 @@ async function installFromAssetCandidate({ repo, tag, candidate, destPath }) {
     }
 
     await fsp.copyFile(extracted, destPath);
-    if (!isWin) {
-      await fsp.chmod(destPath, 0o755);
-    }
+    await prepareInstalledBinary(destPath);
   } finally {
     rmdirRecursiveSafe(tmpDir);
   }
@@ -507,12 +415,14 @@ async function installForTag({ repo, tag, targetTriple }) {
   await fsp.mkdir(destDir, { recursive: true });
 
   if (canExecute(destPath)) {
+    await prepareInstalledBinary(destPath);
     return { destPath, tag, targetTriple, reused: true };
   }
 
   const lockPath = path.join(destDir, 'install.lock');
   return withInstallLock(lockPath, async () => {
     if (canExecute(destPath)) {
+      await prepareInstalledBinary(destPath);
       return { destPath, tag, targetTriple, reused: true };
     }
 
@@ -559,7 +469,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
   const targetTriple = platformTriple();
 
   const explicitTag = normalizeTag(process.env.CODETETHER_TAG) || normalizeTag(process.env.CODETETHER_VERSION);
-  const pkgTag = normalizeTag(readPkgVersion());
+  const pkgTag = readPkgTag();
 
   const tagsToTry = [];
   if (explicitTag) tagsToTry.push(explicitTag);
@@ -569,6 +479,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
     for (const tag of tagsToTry) {
       const p = binDestPath({ tag, targetTriple });
       if (canExecute(p)) {
+        await prepareInstalledBinary(p);
         return { destPath: p, repo, tag, targetTriple, reused: true };
       }
     }
@@ -587,6 +498,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
     try {
       const p = binDestPath({ tag, targetTriple });
       if (canExecute(p)) {
+        await prepareInstalledBinary(p);
         return { destPath: p, repo, tag, targetTriple, reused: true };
       }
       return await installForTag({ repo, tag, targetTriple });
@@ -602,6 +514,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
       if (!tagsToTry.includes(latestTag)) {
         const p = binDestPath({ tag: latestTag, targetTriple });
         if (canExecute(p)) {
+          await prepareInstalledBinary(p);
           return { destPath: p, repo, tag: latestTag, targetTriple, reused: true };
         }
         return await installForTag({ repo, tag: latestTag, targetTriple });
@@ -622,6 +535,7 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
     '',
     'Or build from source:',
     '  cargo install codetether-agent',
+    ...tlsRemediationFor(lastErr),
   ].join('\n');
 
   const err = new Error(`${help}\n\nUnderlying error: ${lastErr ? lastErr.message : 'unknown'}`);
@@ -632,6 +546,8 @@ async function ensureInstalled({ allowLatestFallback = true } = {}) {
 module.exports = {
   ensureInstalled,
   assetCandidatesForInstall,
+  configuredPkgTag,
+  defaultCacheDirFor,
   platformTriple,
   normalizeTag,
   selectAssetCandidates,

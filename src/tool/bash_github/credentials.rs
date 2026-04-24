@@ -11,7 +11,6 @@
 
 use crate::a2a::git_credentials::{GitCredentialQuery, request_git_credentials};
 use anyhow::Result;
-use reqwest::Client;
 
 /// Requests a GitHub token for the current CodeTether workspace.
 ///

@@ -6,8 +6,9 @@
 //! By default, runs as an A2A worker connecting to the CodeTether platform.
 //! Use the 'tui' subcommand for interactive terminal mode.
 //!
-//! SECURITY: All API keys and secrets are loaded exclusively from HashiCorp Vault.
-//! Environment variables are NOT used for secrets (only for Vault connection bootstrap).
+//! SECURITY: Provider credentials are loaded from HashiCorp Vault first.
+//! Local development may also use env/AWS fallback credentials unless
+//! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set for Vault-only mode.
 
 mod a2a;
 mod agent;
@@ -24,6 +25,7 @@ mod crash;
 mod event_stream;
 mod forage;
 mod github_pr;
+mod image_clipboard;
 mod indexer;
 mod k8s;
 mod lsp;
@@ -34,6 +36,7 @@ mod provenance;
 mod provider;
 pub mod ralph;
 pub mod rlm;
+mod search;
 pub mod secrets;
 mod server;
 mod session;
@@ -513,7 +516,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Check if we're running TUI - if so, redirect logs to file instead of stderr
     // TUI is the default when no subcommand is given
-    let is_tui = matches!(cli.command, Some(Command::Tui(_)) | None);
+    let is_tui = matches!(&cli.command, Some(Command::Tui(_)) | None);
 
     // Initialize tracing
     if is_tui {
@@ -556,7 +559,9 @@ async fn main() -> anyhow::Result<()> {
     let app_config = crash::maybe_prompt_for_consent(&app_config, allow_crash_prompt).await;
     crash::initialize(&app_config).await;
 
-    if !is_tui {
+    let needs_vault = !is_tui && !matches!(&cli.command, Some(Command::Clipboard(_)));
+
+    if needs_vault {
         // Initialize HashiCorp Vault connection for secrets
         if let Ok(secrets_manager) = secrets::SecretsManager::from_env().await {
             if secrets_manager.is_connected() {
@@ -586,6 +591,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
         Some(Command::Pr(args)) => github_pr::run(args).await,
+        Some(Command::Clipboard(args)) => cli::clipboard::execute(args),
         Some(Command::Models(args)) => {
             let registry = provider::ProviderRegistry::from_vault().await?;
             let mut all_models: Vec<provider::ModelInfo> = Vec::new();
@@ -644,6 +650,8 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Index(args)) => indexer::run(args).await,
         Some(Command::Auth(args)) => cli::auth::execute(args).await,
         Some(Command::Forage(args)) => forage::execute(args).await,
+        Some(Command::Search(args)) => cli::search::execute(args).await,
+        Some(Command::Context(args)) => cli::context::execute(args).await,
         Some(Command::Worker(mut args)) => {
             // Auto-load saved credentials if no token provided
             if args.token.is_none()

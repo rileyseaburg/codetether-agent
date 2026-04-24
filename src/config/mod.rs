@@ -12,6 +12,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
+pub mod guardrails;
+
+use guardrails::CostGuardrails;
+
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -51,6 +55,10 @@ pub struct Config {
     #[serde(default)]
     pub telemetry: TelemetryConfig,
 
+    /// Cost guardrails (spending caps). See [`CostGuardrails`].
+    #[serde(default)]
+    pub guardrails: CostGuardrails,
+
     /// LSP / linter server settings
     #[serde(default)]
     pub lsp: LspSettings,
@@ -78,6 +86,7 @@ impl Default for Config {
             ui: UiConfig::default(),
             session: SessionConfig::default(),
             telemetry: TelemetryConfig::default(),
+            guardrails: CostGuardrails::default(),
             lsp: LspSettings::default(),
             rlm: crate::rlm::RlmConfig::default(),
         }
@@ -388,25 +397,56 @@ fn default_lsp_timeout() -> u64 {
 
 impl Config {
     /// Load configuration from all sources (global, project, env)
+    ///
+    /// Performance: issues every candidate file read concurrently so that
+    /// slow-disk or network-mounted home directories don't sum their
+    /// latency. Merge order is preserved: global < project-root <
+    /// project-dot-dir < env.
     pub async fn load() -> Result<Self> {
-        let mut config = Self::default();
+        // Resolve all candidate paths up front.
+        let global_path = Self::global_config_path();
+        let project_paths = [
+            PathBuf::from("codetether.toml"),
+            PathBuf::from(".codetether/config.toml"),
+        ];
 
-        // Load global config
-        if let Some(global_path) = Self::global_config_path()
-            && global_path.exists()
-        {
-            let content = fs::read_to_string(&global_path).await?;
-            let global: Config = toml::from_str(&content)?;
-            config = config.merge(global);
+        // Fire all reads in parallel. Each future returns (path, Option<content>).
+        // Missing / unreadable files yield `None` and are simply skipped.
+        async fn read_opt(p: PathBuf) -> (PathBuf, Option<String>) {
+            match fs::read_to_string(&p).await {
+                Ok(s) => (p, Some(s)),
+                Err(_) => (p, None),
+            }
         }
 
-        // Load project config
-        for name in ["codetether.toml", ".codetether/config.toml"] {
-            let path = PathBuf::from(name);
-            if path.exists() {
-                let content = fs::read_to_string(&path).await?;
-                let project: Config = toml::from_str(&content)?;
-                config = config.merge(project);
+        let global_future = async {
+            match global_path {
+                Some(p) => Some(read_opt(p).await),
+                None => None,
+            }
+        };
+        let project_futures = futures::future::join_all(project_paths.into_iter().map(read_opt));
+
+        let (global_result, project_results) = tokio::join!(global_future, project_futures);
+
+        let mut config = Self::default();
+        if let Some((path, Some(content))) = global_result {
+            match toml::from_str::<Config>(&content) {
+                Ok(global) => config = config.merge(global),
+                Err(err) => {
+                    return Err(err)
+                        .map_err(|e| anyhow::anyhow!("failed to parse {}: {}", path.display(), e));
+                }
+            }
+        }
+        for (path, maybe) in project_results {
+            let Some(content) = maybe else { continue };
+            match toml::from_str::<Config>(&content) {
+                Ok(project) => config = config.merge(project),
+                Err(err) => {
+                    return Err(err)
+                        .map_err(|e| anyhow::anyhow!("failed to parse {}: {}", path.display(), e));
+                }
             }
         }
 

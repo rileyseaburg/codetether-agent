@@ -34,7 +34,6 @@ pub mod session_nav;
 pub mod settings_nav;
 pub mod slash_commands;
 pub mod slash_suggest;
-pub mod steering;
 pub mod timing;
 pub mod worker_bridge;
 
@@ -50,7 +49,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::session::{ImageAttachment, Session, SessionSummary};
+use crate::session::{ImageAttachment, SessionSummary};
+use crate::tui::audit_view::AuditViewState;
 use crate::tui::bus_log::BusLogState;
 use crate::tui::chat::message::ChatMessage;
 use crate::tui::help::HelpScrollState;
@@ -78,6 +78,10 @@ pub struct AppState {
     pub chat_last_max_scroll: usize,
     pub tool_preview_scroll: usize,
     pub tool_preview_last_max_scroll: usize,
+    /// Selected index in the protocol/agent registry view (left pane list).
+    pub protocol_selected: usize,
+    /// Vertical scroll offset for the protocol/agent registry detail pane.
+    pub protocol_scroll: usize,
     pub status: String,
     pub processing: bool,
     pub session_id: Option<String>,
@@ -87,6 +91,7 @@ pub struct AppState {
     pub cwd_display: String,
     pub bus_log: BusLogState,
     pub swarm: SwarmViewState,
+    pub audit: AuditViewState,
     pub ralph: RalphViewState,
     pub symbol_search: SymbolSearchState,
     pub slash_suggestions: Vec<String>,
@@ -120,7 +125,6 @@ pub struct AppState {
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
     pub pending_images: Vec<ImageAttachment>,
-    pub queued_steering: Vec<String>,
     pub auto_apply_edits: bool,
     pub allow_network: bool,
     pub slash_autocomplete: bool,
@@ -161,4 +165,15 @@ pub struct AppState {
     pub file_picker_active: bool,
     pub workspace: crate::tui::models::WorkspaceSnapshot,
     pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
+    /// Cancel handle for the in-flight provider turn. Notifying this
+    /// interrupts the current LLM stream so a user steering message can
+    /// be applied immediately instead of waiting for the turn to finish.
+    pub current_turn_cancel: Option<Arc<tokio::sync::Notify>>,
+    /// Timestamp of the previous key event. Used to detect paste bursts
+    /// on terminals that don't forward bracketed-paste markers — if a
+    /// bare `Enter` arrives within `PASTE_BURST_WINDOW_MS` of the last
+    /// key, we treat it as an embedded newline in pasted text instead
+    /// of a submit, so pasting multi-line content doesn't emit one
+    /// chat message per line.
+    pub last_key_at: Option<Instant>,
 }

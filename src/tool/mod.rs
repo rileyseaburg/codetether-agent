@@ -4,16 +4,21 @@
 
 pub mod advanced_edit;
 pub mod agent;
+pub mod alias;
 pub mod avatar;
 pub mod bash;
 #[path = "bash_github/mod.rs"]
 mod bash_github;
 mod bash_identity;
+mod bash_noninteractive;
+mod bash_shell;
 pub mod batch;
 pub mod browserctl;
 pub mod codesearch;
 pub mod confirm_edit;
 pub mod confirm_multiedit;
+pub mod context_browse;
+pub mod context_reset;
 pub mod edit;
 pub mod file;
 pub mod file_extras;
@@ -39,6 +44,9 @@ pub mod relay_autochat;
 pub mod rlm;
 pub mod sandbox;
 pub mod search;
+pub mod search_router;
+pub mod session_recall;
+pub mod session_task;
 pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
@@ -235,6 +243,20 @@ impl ToolRegistry {
         self.tools.insert(tool.id().to_string(), tool);
     }
 
+    fn register_compat_alias(&mut self, id: &str, inner: Arc<dyn Tool>) {
+        self.register(Arc::new(alias::AliasTool::new(id, inner)));
+    }
+
+    fn register_compat_aliases(&mut self) {
+        self.register_compat_alias("patch", Arc::new(patch::ApplyPatchTool::new()));
+        self.register_compat_alias("file_info", Arc::new(file_extras::FileInfoTool::new()));
+        self.register_compat_alias("head_tail", Arc::new(file_extras::HeadTailTool::new()));
+        self.register_compat_alias("todo_read", Arc::new(todo::TodoReadTool::new()));
+        self.register_compat_alias("todo_write", Arc::new(todo::TodoWriteTool::new()));
+        self.register_compat_alias("mcp_bridge", Arc::new(mcp_bridge::McpBridgeTool::new()));
+        self.register_compat_alias("k8s_tool", Arc::new(k8s_tool::K8sTool::new()));
+    }
+
     /// Get a tool by ID
     pub fn get(&self, id: &str) -> Option<Arc<dyn Tool>> {
         self.tools.get(id).cloned()
@@ -313,6 +335,9 @@ impl ToolRegistry {
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
+        registry.register(Arc::new(session_task::SessionTaskTool::new()));
+        registry.register(Arc::new(context_reset::ContextResetTool));
+        registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -348,6 +373,7 @@ impl ToolRegistry {
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
         registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
+        registry.register_compat_aliases();
 
         registry
     }
@@ -381,6 +407,9 @@ impl ToolRegistry {
         registry.register(Arc::new(patch::ApplyPatchTool::new()));
         registry.register(Arc::new(todo::TodoReadTool::new()));
         registry.register(Arc::new(todo::TodoWriteTool::new()));
+        registry.register(Arc::new(session_task::SessionTaskTool::new()));
+        registry.register(Arc::new(context_reset::ContextResetTool));
+        registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -388,6 +417,11 @@ impl ToolRegistry {
         registry.register(Arc::new(skill::SkillTool::new()));
         registry.register(Arc::new(memory::MemoryTool::new()));
         registry.register(Arc::new(rlm::RlmTool::new(
+            Arc::clone(&provider),
+            model.clone(),
+            crate::rlm::RlmConfig::default(),
+        )));
+        registry.register(Arc::new(session_recall::SessionRecallTool::new(
             Arc::clone(&provider),
             model.clone(),
             crate::rlm::RlmConfig::default(),
@@ -422,6 +456,7 @@ impl ToolRegistry {
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
         registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
+        registry.register_compat_aliases();
 
         registry
     }
@@ -450,11 +485,20 @@ impl ToolRegistry {
     /// a two-phase initialization pattern.
     #[allow(dead_code)]
     pub fn with_provider_arc(provider: Arc<dyn Provider>, model: String) -> Arc<Self> {
-        let mut registry = Self::with_provider(provider, model);
+        let mut registry = Self::with_provider(Arc::clone(&provider), model);
 
         // Create batch tool without registry reference
         let batch_tool = Arc::new(batch::BatchTool::new());
         registry.register(batch_tool.clone());
+
+        // Auto-register the LLM-routed `search` tool. Build a single-provider
+        // `ProviderRegistry` from the provider we already have so the router
+        // can call back into it without the full vault registry.
+        let mut providers = crate::provider::ProviderRegistry::new();
+        providers.register(Arc::clone(&provider));
+        registry.register(Arc::new(search_router::SearchTool::new(Arc::new(
+            providers,
+        ))));
 
         // Wrap registry in Arc
         let registry = Arc::new(registry);
@@ -469,5 +513,30 @@ impl ToolRegistry {
 impl Default for ToolRegistry {
     fn default() -> Self {
         Self::with_defaults()
+    }
+}
+
+impl ToolRegistry {
+    /// Register the LLM-routed `search` tool.
+    ///
+    /// Needs the full [`crate::provider::ProviderRegistry`] because the
+    /// router may talk to multiple providers to pick a model.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// use std::sync::Arc;
+    /// use codetether_agent::provider::ProviderRegistry;
+    /// use codetether_agent::tool::ToolRegistry;
+    ///
+    /// let mut registry = ToolRegistry::with_defaults();
+    /// let providers = Arc::new(ProviderRegistry::from_vault().await.unwrap());
+    /// registry.register_search(providers);
+    /// assert!(registry.contains("search"));
+    /// # });
+    /// ```
+    pub fn register_search(&mut self, providers: Arc<crate::provider::ProviderRegistry>) {
+        self.register(Arc::new(search_router::SearchTool::new(providers)));
     }
 }

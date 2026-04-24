@@ -2,15 +2,24 @@ use super::{BrowserSession, access};
 use crate::browser::{BrowserError, BrowserOutput, output::EvalOutput, request::EvalRequest};
 use std::time::Duration;
 
-const EVAL_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_EVAL_TIMEOUT_MS: u64 = 30_000;
+// Rust-side guard exceeds JS-side deadline so the in-page timer wins
+// (returns a structured error) before tokio cancels the CDP call.
+const RUST_GUARD_MARGIN: Duration = Duration::from_secs(5);
 
 pub(super) async fn run(
     session: &BrowserSession,
     request: EvalRequest,
 ) -> Result<BrowserOutput, BrowserError> {
     let page = access::current_page(session).await?;
-    let script = script(request.expression)?;
-    let result = tokio::time::timeout(EVAL_TIMEOUT, page.evaluate_expression(script))
+    let timeout_ms = if request.timeout_ms == 0 {
+        DEFAULT_EVAL_TIMEOUT_MS
+    } else {
+        request.timeout_ms
+    };
+    let script = script(request.expression, timeout_ms)?;
+    let rust_deadline = Duration::from_millis(timeout_ms) + RUST_GUARD_MARGIN;
+    let result = tokio::time::timeout(rust_deadline, page.evaluate_expression(script))
         .await
         .map_err(|_| BrowserError::EvaluationTimeout)??;
     let body = result
@@ -54,8 +63,9 @@ fn wrapper_error(message: &str) -> BrowserError {
     BrowserError::EvalWrapperError(message.to_string())
 }
 
-fn script(expression: String) -> Result<String, BrowserError> {
+fn script(expression: String, timeout_ms: u64) -> Result<String, BrowserError> {
     let source = serde_json::to_string(&expression)?;
+    let deadline_ms = timeout_ms;
     Ok(format!(
         r#"(() => {{
   const __ct_kind = "__codetether_kind";
@@ -101,7 +111,14 @@ fn script(expression: String) -> Result<String, BrowserError> {
   }};
   const __ct_async_function = Object.getPrototypeOf(async function () {{}}).constructor;
   const __ct_value = __ct_async_function("return (" + {source} + ");")();
-  return __ct_value && typeof __ct_value.then === "function" ? __ct_value.then(__ct_serialize) : __ct_serialize(__ct_value);
+  if (!__ct_value || typeof __ct_value.then !== "function") return __ct_serialize(__ct_value);
+  const __ct_deadline_ms = {deadline_ms};
+  const __ct_timeout = new Promise((__ct_resolve) => setTimeout(() => __ct_resolve({{
+    [__ct_kind]: "error",
+    type: "timeout",
+    description: "eval exceeded timeout_ms of " + __ct_deadline_ms + "ms",
+  }}), __ct_deadline_ms));
+  return Promise.race([__ct_value.then(__ct_serialize), __ct_timeout]);
 }})()"#
     ))
 }

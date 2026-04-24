@@ -88,7 +88,7 @@ impl Glm5Provider {
             "Creating GLM-5 FP8 provider"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
             base_url,
             model_name,
@@ -285,6 +285,36 @@ struct Glm5Usage {
     completion_tokens: usize,
     #[serde(default)]
     total_tokens: usize,
+    /// OpenAI-compatible prompt-cache breakdown. GLM-5 surfaces
+    /// `prompt_tokens_details.cached_tokens` when the implicit KV-cache
+    /// hit on the input; we subtract it from `prompt_tokens` so the
+    /// cost estimator can price the cached portion at the discounted
+    /// rate (see [`crate::provider::pricing::cache_read_multiplier`]).
+    #[serde(default)]
+    prompt_tokens_details: Option<Glm5PromptTokenDetails>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct Glm5PromptTokenDetails {
+    #[serde(default)]
+    cached_tokens: usize,
+}
+
+impl Glm5Usage {
+    fn to_usage(&self) -> Usage {
+        let cached = self
+            .prompt_tokens_details
+            .as_ref()
+            .map(|d| d.cached_tokens)
+            .unwrap_or(0);
+        Usage {
+            prompt_tokens: self.prompt_tokens.saturating_sub(cached),
+            completion_tokens: self.completion_tokens,
+            total_tokens: self.total_tokens,
+            cache_read_tokens: if cached > 0 { Some(cached) } else { None },
+            cache_write_tokens: None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -477,17 +507,11 @@ impl Provider for Glm5Provider {
                 role: Role::Assistant,
                 content,
             },
-            usage: Usage {
-                prompt_tokens: parsed.usage.as_ref().map(|u| u.prompt_tokens).unwrap_or(0),
-                completion_tokens: parsed
-                    .usage
-                    .as_ref()
-                    .map(|u| u.completion_tokens)
-                    .unwrap_or(0),
-                total_tokens: parsed.usage.as_ref().map(|u| u.total_tokens).unwrap_or(0),
-                cache_read_tokens: None,
-                cache_write_tokens: None,
-            },
+            usage: parsed
+                .usage
+                .as_ref()
+                .map(Glm5Usage::to_usage)
+                .unwrap_or_default(),
             finish_reason,
         })
     }
@@ -574,13 +598,7 @@ impl Provider for Glm5Provider {
                                 && let Ok(parsed) = serde_json::from_str::<Glm5StreamResponse>(data)
                             {
                                 // Capture usage from the final chunk (stream_options)
-                                let usage = parsed.usage.as_ref().map(|u| Usage {
-                                    prompt_tokens: u.prompt_tokens,
-                                    completion_tokens: u.completion_tokens,
-                                    total_tokens: u.total_tokens,
-                                    cache_read_tokens: None,
-                                    cache_write_tokens: None,
-                                });
+                                let usage = parsed.usage.as_ref().map(Glm5Usage::to_usage);
 
                                 if let Some(choice) = parsed.choices.first() {
                                     if let Some(ref content) = choice.delta.content {

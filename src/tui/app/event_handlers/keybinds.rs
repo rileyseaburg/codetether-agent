@@ -16,7 +16,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tokio::sync::mpsc;
 
 use crate::provider::ProviderRegistry;
@@ -66,17 +66,45 @@ pub(super) async fn handle_unmodified_key(
         KeyCode::Right => nav::handle_right(app, key.modifiers),
         KeyCode::Delete => nav::handle_delete(app),
         KeyCode::Enter if symbols::symbol_search_active(app) => nav::handle_symbol_enter(app),
+        // Shift+Enter / Alt+Enter inserts a literal newline into the
+        // chat input instead of submitting. Must come BEFORE the bare
+        // `KeyCode::Enter` arm. Shift+Enter requires the terminal to
+        // report modifier bits on Enter (kitty keyboard protocol or
+        // xterm modifyOtherKeys — see `PushKeyboardEnhancementFlags`
+        // in run.rs); Alt+Enter is universally distinguishable.
+        KeyCode::Enter
+            if key.modifiers.contains(KeyModifiers::SHIFT)
+                || key.modifiers.contains(KeyModifiers::ALT) =>
+        {
+            app.state.insert_char('\n');
+        }
         KeyCode::Enter => {
-            input::handle_enter(
-                app,
-                cwd,
-                session,
-                registry,
-                worker_bridge,
-                event_tx,
-                result_tx,
-            )
-            .await;
+            // Paste-burst heuristic: if another key arrived in the
+            // last ~20 ms (faster than any human can physically type),
+            // the Enter is almost certainly part of a pasted block on
+            // a terminal that swallowed the bracketed-paste markers.
+            // Convert it to an in-buffer newline so the whole paste
+            // becomes a single chat message instead of N messages.
+            if app.state.view_mode == crate::tui::models::ViewMode::Chat
+                && app
+                    .state
+                    .last_key_at
+                    .map(|t| t.elapsed() < std::time::Duration::from_millis(20))
+                    .unwrap_or(false)
+            {
+                app.state.insert_char('\n');
+            } else {
+                input::handle_enter(
+                    app,
+                    cwd,
+                    session,
+                    registry,
+                    worker_bridge,
+                    event_tx,
+                    result_tx,
+                )
+                .await;
+            }
         }
         _ => handle_char_or_mode_key(app, session, key).await,
     }

@@ -10,6 +10,7 @@ use crate::agent::ToolUse;
 use crate::provenance::{ClaimProvenance, ExecutionProvenance};
 use crate::provider::{Message, Usage};
 
+use super::pages::{PageKind, classify, classify_all};
 use super::types::{Session, SessionMetadata};
 
 impl Session {
@@ -35,6 +36,9 @@ impl Session {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
         let provenance = Some(ExecutionProvenance::for_session(&id, "build"));
+        let history_sink = crate::session::history_sink::HistorySinkConfig::from_env()
+            .ok()
+            .flatten();
 
         Ok(Self {
             id,
@@ -42,12 +46,14 @@ impl Session {
             created_at: now,
             updated_at: now,
             messages: Vec::new(),
+            pages: Vec::new(),
             tool_uses: Vec::<ToolUse>::new(),
             usage: Usage::default(),
             agent: "build".to_string(),
             metadata: SessionMetadata {
                 directory: Some(std::env::current_dir()?),
                 provenance,
+                history_sink,
                 ..Default::default()
             },
             max_steps: None,
@@ -65,6 +71,21 @@ impl Session {
     pub(crate) fn attach_global_bus_if_missing(&mut self) {
         if self.bus.is_none() {
             self.bus = crate::bus::global();
+        }
+    }
+
+    /// Rebuild / hydrate runtime sidecars that legacy sessions do not
+    /// carry on disk.
+    pub(crate) fn normalize_sidecars(&mut self) {
+        self.attach_global_bus_if_missing();
+        if self.pages.len() != self.messages.len() {
+            self.pages = classify_all(&self.messages);
+        }
+        if self.metadata.history_sink.is_none() {
+            self.metadata.history_sink =
+                crate::session::history_sink::HistorySinkConfig::from_env()
+                    .ok()
+                    .flatten();
         }
     }
 
@@ -192,7 +213,49 @@ impl Session {
 
     /// Append a message to the transcript and bump `updated_at`.
     pub fn add_message(&mut self, message: Message) {
+        if self.pages.len() != self.messages.len() {
+            self.pages = classify_all(&self.messages);
+        }
+        self.pages.push(classify(&message));
         self.messages.push(message);
         self.updated_at = Utc::now();
+    }
+
+    /// Borrow the chat-history transcript as an immutable slice.
+    ///
+    /// Preferred read path now that [`Self::messages`] is scheduled for
+    /// visibility tightening — see the Phase A plan for details. Callers
+    /// who need mutable, append-only access should wrap the buffer in a
+    /// [`History`](super::history::History) handle obtained via
+    /// [`Self::history_mut`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// use codetether_agent::session::Session;
+    ///
+    /// let session = Session::new().await.unwrap();
+    /// assert!(session.history().is_empty());
+    /// # });
+    /// ```
+    pub fn history(&self) -> &[Message] {
+        &self.messages
+    }
+
+    /// Borrow the per-message page sidecar.
+    pub fn pages(&self) -> &[PageKind] {
+        &self.pages
+    }
+
+    /// Borrow the chat-history transcript as an append-only
+    /// [`History`](super::history::History) handle.
+    ///
+    /// The returned handle can only grow the buffer via
+    /// [`History::append`](super::history::History::append). Any mutation
+    /// that would violate the Phase A invariant (destructive in-place
+    /// rewrite) is not reachable through this API surface.
+    pub fn history_mut(&mut self) -> super::history::History<'_> {
+        super::history::History::with_pages(&mut self.messages, &mut self.pages)
     }
 }

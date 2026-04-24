@@ -101,7 +101,29 @@ pub struct RlmConfig {
     #[serde(default = "default_threshold")]
     pub threshold: f64,
 
-    /// Maximum iterations for RLM processing
+    /// Maximum iterations for RLM processing.
+    ///
+    /// # Semantics
+    ///
+    /// An "iteration" is one full router step: system prompt + tools →
+    /// LLM round-trip → tool calls → results → next LLM round-trip.
+    /// The loop terminates in one of four ways, mapped directly to
+    /// [`RlmOutcome`](crate::session::RlmOutcome) on the emitted
+    /// [`RlmComplete`](crate::session::SessionEvent::RlmComplete) event:
+    ///
+    /// | Termination condition                                 | Outcome       |
+    /// |-------------------------------------------------------|---------------|
+    /// | Model emitted a `FINAL:` marker                        | `Converged`   |
+    /// | `max_iterations` reached without `FINAL:`              | `Exhausted`   |
+    /// | Provider or tool raised an error                       | `Failed`      |
+    /// | The caller's `AbortHandle` fired                       | `Aborted`     |
+    ///
+    /// `Exhausted` is **not** an error — the partial result is still
+    /// returned and the caller decides whether to retry with a higher
+    /// limit, fall back to chunk compression, or surface the partial
+    /// answer to the user. Session-level context compaction (see
+    /// [`crate::session::helper::compression`]) treats `Exhausted` the
+    /// same as success and re-uses the summary it produced.
     #[serde(default = "default_max_iterations")]
     pub max_iterations: usize,
 
@@ -118,6 +140,15 @@ pub struct RlmConfig {
 
     /// Model reference for subcalls (provider:model)
     pub subcall_model: Option<String>,
+
+    /// Trigger RLM compaction once the stored session history reaches
+    /// this many messages, regardless of the token-budget estimate.
+    ///
+    /// This is a belt-and-braces trigger for cases where the token
+    /// estimator under-counts (e.g. large tool outputs, image parts,
+    /// or provider-specific protocol framing). Set to `0` to disable.
+    #[serde(default = "default_history_trigger_messages")]
+    pub history_trigger_messages: usize,
 }
 
 fn default_mode() -> String {
@@ -140,6 +171,12 @@ fn default_runtime() -> String {
     "rust".to_string()
 }
 
+/// Default number of stored messages that triggers RLM compaction
+/// independently of the token-budget check.
+fn default_history_trigger_messages() -> usize {
+    0
+}
+
 impl Default for RlmConfig {
     fn default() -> Self {
         Self {
@@ -150,6 +187,17 @@ impl Default for RlmConfig {
             runtime: default_runtime(),
             root_model: None,
             subcall_model: None,
+            history_trigger_messages: default_history_trigger_messages(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RlmConfig;
+
+    #[test]
+    fn default_history_trigger_is_disabled() {
+        assert_eq!(RlmConfig::default().history_trigger_messages, 0);
     }
 }

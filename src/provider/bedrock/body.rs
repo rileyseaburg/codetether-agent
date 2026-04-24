@@ -61,14 +61,36 @@ use serde_json::{Value, json};
 /// assert!(body["inferenceConfig"].get("temperature").is_none());
 /// ```
 pub fn build_converse_body(request: &CompletionRequest, model_id: &str) -> Value {
-    let (mut system_parts, messages) = convert_messages(&request.messages);
-    let tools = convert_tools(&request.tools);
+    let (mut system_parts, mut messages) = convert_messages(&request.messages);
+    let mut tools = convert_tools(&request.tools);
 
-    // Anthropic prompt caching: mark the system prompt with a cache point so
-    // subsequent requests with identical system text get a 90% input discount.
-    // Only meaningful when CODETETHER_BEDROCK_PROMPT_CACHE is not "0"/"false".
-    if prompt_cache_enabled() && supports_prompt_caching(model_id) && !system_parts.is_empty() {
+    // Anthropic prompt caching on Bedrock uses `cachePoint` content blocks.
+    // We place breakpoints at the three stable-prefix boundaries that
+    // matter for agent loops so repeated turns get the 90% input discount:
+    //
+    //   1. End of `system` — caches the (large, static) system prompt.
+    //   2. End of `toolConfig.tools` — caches the tool schemas, which
+    //      dominate the non-message prefix and virtually never change.
+    //   3. End of the last message's content — caches the entire
+    //      conversation prefix up through the prior turn (a sliding
+    //      window; every new turn extends the cached range).
+    //
+    // Bedrock/Anthropic allow up to 4 cache breakpoints per request;
+    // three is well under the limit. Disable with
+    // `CODETETHER_BEDROCK_PROMPT_CACHE=0`.
+    let caching = prompt_cache_enabled() && supports_prompt_caching(model_id);
+    if caching && !system_parts.is_empty() {
         system_parts.push(json!({"cachePoint": {"type": "default"}}));
+    }
+    if caching && !tools.is_empty() {
+        tools.push(json!({"cachePoint": {"type": "default"}}));
+    }
+    if caching
+        && let Some(last_msg) = messages.last_mut()
+        && let Some(arr) = last_msg.get_mut("content").and_then(|c| c.as_array_mut())
+        && !arr.is_empty()
+    {
+        arr.push(json!({"cachePoint": {"type": "default"}}));
     }
 
     let mut body = json!({"messages": messages});

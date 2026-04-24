@@ -1,7 +1,7 @@
 //! CodeTether Agent - A2A-native AI coding agent
 //!
-//! A Rust implementation of an AI coding agent with first-class support for the
-//! A2A (Agent-to-Agent) protocol and the CodeTether ecosystem.
+//! A Rust implementation of an AI coding agent with first-class support for
+//! the A2A (Agent-to-Agent) protocol and the CodeTether ecosystem.
 
 pub mod a2a;
 pub mod agent;
@@ -17,6 +17,7 @@ pub mod config;
 pub mod event_stream;
 pub mod forage;
 pub mod github_pr;
+pub mod image_clipboard;
 pub mod indexer;
 pub mod k8s;
 pub mod lsp;
@@ -27,6 +28,7 @@ pub mod provenance;
 pub mod provider;
 pub mod ralph;
 pub mod rlm;
+pub mod search;
 pub mod secrets;
 pub mod server;
 pub mod session;

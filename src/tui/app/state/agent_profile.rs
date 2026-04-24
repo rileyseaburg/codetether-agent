@@ -5,7 +5,7 @@
 
 use crate::session::Session;
 
-use super::profile_defs::{self, AgentProfile, *};
+use super::profile_defs::{AgentProfile, *};
 
 /// A spawned sub-agent with its own independent LLM session.
 #[allow(dead_code)]

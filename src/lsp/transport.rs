@@ -11,7 +11,7 @@ use super::types::{JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{RwLock, mpsc, oneshot};
@@ -37,6 +37,11 @@ pub struct LspTransport {
     command: String,
     /// Last diagnostics published by the language server, keyed by URI.
     diagnostics: Arc<RwLock<HashMap<String, Vec<lsp_types::Diagnostic>>>>,
+    /// Monotonic counter bumped every time the server publishes diagnostics
+    /// for any URI. Used by callers to detect fresh publications after a
+    /// `textDocument/didChange` so stale cached diagnostics don't leak into
+    /// post-edit validation.
+    diag_publish_seq: Arc<AtomicU64>,
 }
 
 impl LspTransport {
@@ -68,6 +73,7 @@ impl LspTransport {
             Arc::new(RwLock::new(HashMap::new()));
         let recent_stderr = Arc::new(RwLock::new(Vec::new()));
         let diagnostics = Arc::new(RwLock::new(HashMap::new()));
+        let diag_publish_seq = Arc::new(AtomicU64::new(0));
 
         // Writer task - sends messages with Content-Length framing
         let pending_clone = Arc::clone(&pending);
@@ -128,6 +134,7 @@ impl LspTransport {
         // Reader task - parses Content-Length framed responses and notifications.
         let pending_clone = Arc::clone(&pending);
         let diagnostics_clone = Arc::clone(&diagnostics);
+        let diag_publish_seq_clone = Arc::clone(&diag_publish_seq);
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout);
             let mut header_buf = String::new();
@@ -206,6 +213,7 @@ impl LspTransport {
                                                 .write()
                                                 .await
                                                 .insert(uri, diagnostics);
+                                            diag_publish_seq_clone.fetch_add(1, Ordering::SeqCst);
                                         }
                                     }
                                 } else {
@@ -238,6 +246,7 @@ impl LspTransport {
             recent_stderr,
             command: command.to_string(),
             diagnostics,
+            diag_publish_seq,
         })
     }
 
@@ -297,6 +306,40 @@ impl LspTransport {
     /// Return the last diagnostics published by the language server.
     pub async fn diagnostics_snapshot(&self) -> HashMap<String, Vec<lsp_types::Diagnostic>> {
         self.diagnostics.read().await.clone()
+    }
+
+    /// Current publish sequence counter. Increments every time the language
+    /// server publishes diagnostics for any URI. Callers can read this before
+    /// a `textDocument/didChange` and then wait via
+    /// [`Self::wait_for_publish_after`] for the server to republish.
+    pub fn diagnostics_publish_seq(&self) -> u64 {
+        self.diag_publish_seq.load(Ordering::SeqCst)
+    }
+
+    /// Remove any cached diagnostics for `uri`. Useful before a didChange so
+    /// stale entries can't be returned while the server recomputes.
+    pub async fn invalidate_diagnostics(&self, uri: &str) {
+        self.diagnostics.write().await.remove(uri);
+    }
+
+    /// Wait until the server publishes diagnostics with a sequence greater
+    /// than `baseline`, or the timeout elapses. Returns `true` if a new
+    /// publication arrived in time.
+    pub async fn wait_for_publish_after(
+        &self,
+        baseline: u64,
+        timeout: std::time::Duration,
+    ) -> bool {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            if self.diag_publish_seq.load(Ordering::SeqCst) > baseline {
+                return true;
+            }
+            if std::time::Instant::now() >= deadline {
+                return false;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
     }
 
     /// Check if the server is initialized

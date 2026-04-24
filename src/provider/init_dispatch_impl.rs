@@ -3,7 +3,6 @@
 //! Each function handles provider-specific secret schemas (service accounts,
 //! OAuth tokens, model paths, etc.) that don't fit the generic `api_key` pattern.
 
-use super::init_dispatch;
 use crate::provider::traits::Provider;
 use crate::secrets::ProviderSecrets;
 use std::sync::Arc;
@@ -37,7 +36,9 @@ pub(super) fn dispatch_bedrock(secrets: &ProviderSecrets) -> Option<Arc<dyn Prov
         bedrock::BedrockProvider::with_credentials(creds, region)
     } else if let Some(ref key) = secrets.api_key {
         bedrock::BedrockProvider::with_region(key.clone(), region)
-    } else if let Some(creds) = bedrock::AwsCredentials::from_environment() {
+    } else if !super::fallback_policy::env_fallback_disabled()
+        && let Some(creds) = bedrock::AwsCredentials::from_environment()
+    {
         bedrock::BedrockProvider::with_credentials(creds, region)
     } else {
         tracing::warn!("No AWS credentials or API key found for Bedrock");

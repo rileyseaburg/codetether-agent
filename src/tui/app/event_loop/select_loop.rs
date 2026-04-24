@@ -74,6 +74,13 @@ pub(super) async fn select_once(
         }
         _ = tick_timer.tick() => {
             super::autochat::drain_autochat(app);
+            if app.state.view_mode == crate::tui::models::ViewMode::Audit {
+                crate::tui::audit_view::refresh_audit_snapshot(&mut app.state.audit).await;
+            }
+            // Pull any pending Ralph events from a /ralph run that was
+            // launched from the slash-command handler. Cheap no-op when
+            // no receiver is attached.
+            app.state.ralph.drain_events();
         }
     }
     crate::tui::app::background::drain_background_updates(

@@ -3,8 +3,6 @@
 //! Methods for managing the A2A worker connection, registered agents,
 //! and the incoming-task queue.
 
-use std::collections::VecDeque;
-
 use crate::tui::worker_bridge::IncomingTask;
 
 impl super::AppState {

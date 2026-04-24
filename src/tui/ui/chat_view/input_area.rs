@@ -29,7 +29,7 @@ pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette
     } else if matches!(app.state.input_mode, InputMode::Command) {
         format!(" Command (/ for commands, Tab to autocomplete){suffix}")
     } else {
-        format!(" Message (Enter to send, Ctrl+V image){suffix}")
+        format!(" Message (Enter=send · Alt/Shift+Enter=newline · Ctrl+V=image){suffix}")
     };
     let border_color = if app.state.processing {
         Color::Yellow

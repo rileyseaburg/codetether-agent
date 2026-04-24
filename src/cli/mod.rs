@@ -1,10 +1,14 @@
 //! CLI command definitions and handlers
 
 pub mod auth;
+pub mod clipboard;
 pub mod config;
+pub mod context;
 pub mod go_ralph;
 pub mod oracle;
 pub mod run;
+pub mod search;
+pub mod search_render;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -66,6 +70,12 @@ pub enum Command {
     /// Manage configuration
     Config(ConfigArgs),
 
+    /// Convert clipboard images into terminal-pasteable CodeTether input
+    Clipboard(clipboard::ClipboardArgs),
+
+    /// Browse or reset the active session context
+    Context(ContextArgs),
+
     /// A2A worker mode (explicit - also the default)
     Worker(A2aArgs),
 
@@ -118,6 +128,9 @@ pub enum Command {
 
     /// OKR-governed autonomous opportunity scanner/executor
     Forage(ForageArgs),
+
+    /// LLM-routed search across grep/glob/web/memory/RLM backends
+    Search(SearchArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -458,6 +471,47 @@ pub struct ConfigArgs {
     /// Set a configuration value
     #[arg(long)]
     pub set: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextArgs {
+    #[command(subcommand)]
+    pub command: ContextCommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ContextCommand {
+    /// Emit a [CONTEXT RESET] marker into the latest session
+    Reset(ContextResetArgs),
+    /// Browse the latest session as virtual turn files
+    Browse(ContextBrowseArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextResetArgs {
+    /// Optional summary for the reset marker
+    #[arg(long)]
+    pub summary: Option<String>,
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextBrowseArgs {
+    #[command(subcommand)]
+    pub command: Option<ContextBrowseCommand>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ContextBrowseCommand {
+    /// List virtual paths for each turn in the latest session
+    List,
+    /// Show one turn as markdown-like text
+    ShowTurn(ContextShowTurnArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct ContextShowTurnArgs {
+    /// Zero-based turn index
+    pub turn: usize,
 }
 
 #[derive(Parser, Debug)]
@@ -995,6 +1049,29 @@ pub struct OkrArgs {
     /// Include evidence links in output
     #[arg(long)]
     pub evidence: bool,
+}
+
+#[derive(Parser, Debug)]
+#[command(
+    about = "LLM-routed search across grep/glob/web/memory/RLM backends",
+    long_about = "Uses the configured LLM router (default zai/glm-5.1) to pick the best search backend for your query, runs it, and returns normalized results.",
+    after_long_help = "Examples:\n  codetether search \"where is fn main\"\n  codetether search --json \"how to center a div\"\n  codetether search --top-n 3 --router-model zai/glm-5.1 \"latest rust async trait docs\""
+)]
+pub struct SearchArgs {
+    /// Natural-language search query
+    pub query: String,
+
+    /// Maximum number of backends to run
+    #[arg(long, default_value = "1")]
+    pub top_n: usize,
+
+    /// Override router model (default zai/glm-5.1 or CODETETHER_SEARCH_ROUTER_MODEL)
+    #[arg(long)]
+    pub router_model: Option<String>,
+
+    /// Emit structured JSON instead of human output
+    #[arg(long)]
+    pub json: bool,
 }
 
 #[derive(Parser, Debug)]

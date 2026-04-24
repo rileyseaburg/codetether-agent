@@ -96,10 +96,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn queued_steering_is_consumed_on_next_submit() {
+    async fn enter_while_processing_shows_hint_and_keeps_input() {
+        // While a turn is streaming, Enter no longer queues the input.
+        // It keeps the typed text and shows a hint pointing at /ask.
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
-        app.state.queue_steering("Be concise");
+        app.state.processing = true;
         app.state.input = "hello tui".to_string();
         app.state.input_cursor = app.state.input.chars().count();
 
@@ -109,19 +111,12 @@ mod tests {
         let (result_tx, _) = mpsc::channel(8);
 
         handle_enter(
-            &mut app,
-            cwd,
-            &mut session,
-            &None,
-            &None,
-            &event_tx,
-            &result_tx,
+            &mut app, cwd, &mut session, &None, &None, &event_tx, &result_tx,
         )
         .await;
 
-        assert_eq!(app.state.messages[0].content, "hello tui");
-        assert_eq!(app.state.steering_count(), 0);
-        assert!(app.state.status.contains("No providers") || app.state.status.contains("Submitting"));
+        assert_eq!(app.state.input, "hello tui");
+        assert!(app.state.status.contains("Ctrl+C") || app.state.status.contains("/ask"));
     }
 
     #[test]

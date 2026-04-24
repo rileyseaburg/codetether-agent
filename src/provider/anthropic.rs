@@ -65,7 +65,7 @@ impl AnthropicProvider {
         );
 
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
             base_url,
             provider_name,

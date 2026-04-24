@@ -1,6 +1,6 @@
 //! Unit tests for the Bedrock provider module.
 
-use super::{BedrockProvider, CompletionRequest};
+use super::{BedrockProvider, CompletionRequest, parse_converse_response};
 
 #[test]
 fn resolve_opus_46_alias_includes_profile_suffix() {
@@ -114,4 +114,16 @@ fn sigv4_sorts_and_encodes_query_parameters() {
         canonical.canonical_querystring,
         "maxResults=200&typeEquals=SYSTEM_DEFINED"
     );
+}
+
+#[test]
+fn parse_converse_response_handles_multibyte_error_prefix_without_panicking() {
+    let prefix = "a".repeat(299);
+    let body = format!("{prefix}\u{2014}{{");
+
+    let err = parse_converse_response(&body).unwrap_err();
+    let message = err.to_string();
+
+    assert!(message.contains("Failed to parse Bedrock response:"));
+    assert!(!message.contains("byte index 300 is not a char boundary"));
 }

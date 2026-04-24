@@ -9,4 +9,4 @@ pub use command::BrowserCommand;
 pub use error::BrowserError;
 pub use output::BrowserOutput;
 pub use service::browser_service;
-pub use session::BrowserSession;
+pub use session::{BrowserSession, detect_browser};

@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use crate::tui::audit_view::AuditViewState;
 use crate::tui::bus_log::BusLogState;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
@@ -23,6 +24,8 @@ impl Default for super::AppState {
             chat_last_max_scroll: 0,
             tool_preview_scroll: 0,
             tool_preview_last_max_scroll: 0,
+            protocol_selected: 0,
+            protocol_scroll: 0,
             status: "Ready — type a message and press Enter. Ctrl+C/Ctrl+Q quits.".to_string(),
             processing: false,
             session_id: None,
@@ -32,6 +35,7 @@ impl Default for super::AppState {
             cwd_display: String::new(),
             bus_log: BusLogState::new(),
             swarm: SwarmViewState::new(),
+            audit: AuditViewState::default(),
             ralph: RalphViewState::new(),
             symbol_search: SymbolSearchState::new(),
             slash_suggestions: vec![],
@@ -65,7 +69,7 @@ impl Default for super::AppState {
             last_tool_latency_ms: None,
             last_tool_success: None,
             pending_images: Vec::new(),
-            queued_steering: Vec::new(),
+            current_turn_cancel: None,
             auto_apply_edits: false,
             allow_network: false,
             slash_autocomplete: true,
@@ -105,6 +109,7 @@ impl Default for super::AppState {
             file_picker_active: false,
             workspace: crate::tui::models::WorkspaceSnapshot::default(),
             chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode::default(),
+            last_key_at: None,
         }
     }
 }

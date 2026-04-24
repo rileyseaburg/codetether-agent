@@ -23,6 +23,7 @@ use crate::tui::models::ViewMode;
 use super::alt_scroll::handle_alt_scroll;
 use super::clipboard::handle_clipboard_paste;
 use super::copy_reply::handle_copy_reply;
+use super::ctrl_c::handle_ctrl_c;
 
 /// Try to handle a Ctrl/Alt modified key press.
 ///
@@ -49,20 +50,23 @@ pub(super) fn handle_ctrl_key(
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
 
     match key.code {
-        KeyCode::Char('c') if ctrl => return Some(Ok(true)),
+        KeyCode::Char('c') if ctrl => return Some(Ok(handle_ctrl_c(app))),
         KeyCode::Char('q') if ctrl => return Some(Ok(true)),
         KeyCode::Char('t') if ctrl => {
             app.state.symbol_search.open();
             app.state.status = "Symbol search".to_string();
         }
         KeyCode::Char('w') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            // Ctrl+W now prefills /ask (ephemeral side question) so users
+            // can ask while the agent is streaming without polluting
+            // conversation history.
             if app.state.input.trim().is_empty() {
-                app.state.input = "/steer ".to_string();
-            } else if !app.state.input.starts_with("/steer") {
-                app.state.input = format!("/steer {}", app.state.input.trim());
+                app.state.input = "/ask ".to_string();
+            } else if !app.state.input.starts_with("/ask") {
+                app.state.input = format!("/ask {}", app.state.input.trim());
             }
             app.state.input_cursor = app.state.input.chars().count();
-            app.state.status = "Compose queued steering for the next turn".to_string();
+            app.state.status = "Compose a side question (/ask)".to_string();
             app.state.refresh_slash_suggestions();
         }
         KeyCode::Char('b') if ctrl && app.state.view_mode == ViewMode::Chat => {

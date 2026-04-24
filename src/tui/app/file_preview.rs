@@ -1,6 +1,6 @@
 //! File preview: reads the first N bytes/lines of a file for picker display.
 
-use std::io::{Read, Seek, SeekFrom};
+use std::io::Read;
 use std::path::Path;
 
 use crate::tui::utils::helpers::truncate_with_ellipsis;

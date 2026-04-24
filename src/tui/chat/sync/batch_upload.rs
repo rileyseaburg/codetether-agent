@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use minio::s3::builders::ObjectContent;
-use minio::s3::types::S3Api;
 
 use super::archive_reader::read_chat_archive_batch;
 use super::config_types::ChatSyncConfig;

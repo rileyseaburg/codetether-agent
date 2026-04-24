@@ -10,12 +10,18 @@ use crate::session::{ImageAttachment, Session, SessionEvent};
 use futures::FutureExt;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{Notify, mpsc};
 
 /// Run the provider inside a panic-catching wrapper.
 ///
 /// Delegates to [`run_prompt`] then handles worktree result
 /// and sends the outcome through `result_tx`.
+///
+/// `cancel` is a shared [`Notify`] that, when triggered (e.g. by the TUI
+/// when the user submits a steering message mid-stream), aborts the
+/// in-flight provider call so the partial assistant content already
+/// streamed via `event_tx` can be treated as a completed turn and the
+/// new user message dispatched immediately.
 pub(super) async fn run_spawned_task(
     mut session: Session,
     prompt: String,
@@ -26,17 +32,35 @@ pub(super) async fn run_spawned_task(
     result_tx: mpsc::Sender<anyhow::Result<Session>>,
     worktree: Option<WorktreeState>,
     prompt_for_pr: String,
+    cancel: Arc<Notify>,
 ) {
+    // Clone so we can restore `metadata.directory` on the cancel branch
+    // without racing with `run_prompt`, which also consumes `original_dir`.
+    let original_dir_for_cancel = original_dir.clone();
     let result = std::panic::AssertUnwindSafe(async {
-        run_prompt(
-            &mut session,
-            &prompt,
-            images,
-            event_tx,
-            registry,
-            original_dir,
-        )
-        .await
+        tokio::select! {
+            biased;
+            _ = cancel.notified() => {
+                tracing::info!("Provider turn interrupted by user steering");
+                // `run_prompt` mutates `session` in place as assistant
+                // tokens/tool calls stream in via SessionEvent, and it's
+                // also what appends the *user* message to `session.messages`
+                // at turn start. Return the live `session` so the partial
+                // turn (including the user prompt that triggered it) is
+                // preserved in history; returning a pre-turn snapshot here
+                // would silently drop the user's message.
+                session.metadata.directory = original_dir_for_cancel;
+                Ok(session.clone())
+            }
+            r = run_prompt(
+                &mut session,
+                &prompt,
+                images,
+                event_tx,
+                registry,
+                original_dir,
+            ) => r,
+        }
     })
     .catch_unwind()
     .await;

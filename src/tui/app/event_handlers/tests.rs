@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ctrl_s_prefills_steer_command_in_chat() {
+    async fn ctrl_w_prefills_ask_command_in_chat() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
 
@@ -159,6 +159,127 @@ mod tests {
         .expect("handle_event");
 
         assert!(!quit);
-        assert_eq!(app.state.input, "/steer ");
+        assert_eq!(app.state.input, "/ask ");
+    }
+
+    #[tokio::test]
+    async fn rapid_enter_after_chars_inserts_newline_not_submit() {
+        // Simulates a terminal that strips bracketed-paste markers:
+        // the pasted block arrives as a burst of Char events followed
+        // by Enter. The burst heuristic must convert the Enter to an
+        // in-buffer `\n` so the paste doesn't fan out into N separate
+        // chat messages.
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+
+        let cwd = std::path::Path::new(".");
+        let mut session = crate::session::Session::new().await.expect("session");
+        let (event_tx, _) = tokio::sync::mpsc::channel(8);
+        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+
+        // Feed 'a' 'b' — the second key stamps last_key_at just before
+        // the Enter arrives, so Enter.elapsed() will be ~microseconds.
+        for c in ['a', 'b'] {
+            handle_event(
+                &mut app,
+                cwd,
+                &mut session,
+                &None,
+                &None,
+                &event_tx,
+                &result_tx,
+                KeyEvent {
+                    code: KeyCode::Char(c),
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    state: crossterm::event::KeyEventState::NONE,
+                },
+            )
+            .await
+            .expect("char");
+        }
+        // Immediate Enter — should be swallowed into the buffer.
+        handle_event(
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
+            KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
+                kind: KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
+            },
+        )
+        .await
+        .expect("enter");
+
+        assert_eq!(
+            app.state.input, "ab\n",
+            "burst Enter should insert newline, not submit"
+        );
+        assert!(
+            app.state.messages.is_empty(),
+            "no user message should be emitted yet"
+        );
+    }
+
+    #[tokio::test]
+    async fn slow_enter_submits_as_normal() {
+        // Gap > 20ms between last char and Enter → real human submit.
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+
+        let cwd = std::path::Path::new(".");
+        let mut session = crate::session::Session::new().await.expect("session");
+        let (event_tx, _) = tokio::sync::mpsc::channel(8);
+        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+
+        handle_event(
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
+            KeyEvent {
+                code: KeyCode::Char('x'),
+                modifiers: KeyModifiers::NONE,
+                kind: KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
+            },
+        )
+        .await
+        .expect("char");
+
+        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+
+        handle_event(
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
+            KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
+                kind: KeyEventKind::Press,
+                state: crossterm::event::KeyEventState::NONE,
+            },
+        )
+        .await
+        .expect("enter");
+
+        assert!(
+            !app.state.messages.is_empty(),
+            "slow Enter should submit the message"
+        );
+        assert_eq!(app.state.messages[0].content, "x");
     }
 }

@@ -5,10 +5,10 @@ pub struct TabInfo {
     pub index: usize,
     pub url: String,
     pub title: String,
-    pub active: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TabList {
+    pub current: Option<usize>,
     pub tabs: Vec<TabInfo>,
 }

@@ -132,7 +132,7 @@ impl BedrockProvider {
             "Creating Bedrock provider"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             auth: BedrockAuth::BearerToken(api_key),
             region,
         })
@@ -156,7 +156,7 @@ impl BedrockProvider {
             "Creating Bedrock provider with AWS credentials"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             auth: BedrockAuth::SigV4(credentials),
             region,
         })

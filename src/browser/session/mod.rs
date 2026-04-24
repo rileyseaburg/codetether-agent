@@ -1,13 +1,22 @@
 mod access;
+mod device;
+mod dom;
+mod dom_extra;
 mod eval;
 mod health;
+mod humanize;
 mod lifecycle;
 mod navigation;
+mod net;
 mod runtime;
 mod runtime_state;
 mod screen;
 mod snapshot;
 mod state;
+mod tabs;
+mod upload;
+mod wait;
 
+pub use lifecycle::detect_browser;
 pub(super) use runtime_state::{SessionMode, SessionRuntime};
 pub use state::BrowserSession;

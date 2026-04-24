@@ -26,17 +26,14 @@ use crate::provider::{
     CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
 };
 use crate::rlm::router::AutoProcessContext;
-use crate::rlm::{RlmChunker, RlmConfig, RlmRouter, RoutingContext};
+use crate::rlm::{RlmConfig, RlmRouter, RoutingContext};
 use crate::tool::ToolRegistry;
 
 use super::super::{DEFAULT_MAX_STEPS, Session, SessionResult};
-use super::bootstrap::{
-    inject_tool_prompt, list_tools_bootstrap_definition, list_tools_bootstrap_output,
-};
+use super::bootstrap::list_tools_bootstrap_output;
 use super::build::{
     build_request_requires_tool, is_build_agent, should_force_build_tool_first_retry,
 };
-use super::compression::{compress_history_keep_last, enforce_context_window};
 use super::confirmation::{
     auto_apply_pending_confirmation, pending_confirmation_tool_result_content,
     tool_result_requires_confirmation,
@@ -52,19 +49,21 @@ use super::loop_constants::{
 };
 use super::markup::normalize_textual_tool_calls;
 use super::provider::{
-    prefers_temperature_one, resolve_provider_for_session_request,
-    should_retry_missing_native_tool_call, temperature_is_deprecated,
+    resolve_provider_for_session_request, should_retry_missing_native_tool_call,
 };
-use super::router::{build_proactive_lsp_context_message, choose_router_target};
+use super::request_state::build_provider_step_state;
+use super::router::{build_proactive_lsp_context_message, choose_router_target_bandit};
 use super::runtime::{
     enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
-    is_local_cuda_provider, local_cuda_light_system_prompt,
 };
 use super::text::extract_text_content;
 use super::token::{
     context_window_for_model, estimate_tokens_for_messages, session_completion_max_tokens,
 };
 use super::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
+use crate::session::{
+    bucket_for_messages, delegation_skills, derive_with_policy, effective_policy,
+};
 
 /// Execute a prompt against the session and return a [`SessionResult`].
 ///
@@ -84,12 +83,13 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
     let (provider_name, model_id) = parse_session_model_selector(session, &providers);
 
-    let selected_provider =
-        resolve_provider_for_session_request(providers.as_slice(), provider_name.as_deref())?;
+    let mut selected_provider =
+        resolve_provider_for_session_request(providers.as_slice(), provider_name.as_deref())?
+            .to_string();
 
-    let provider = registry
-        .get(selected_provider)
-        .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider))?;
+    let mut provider = registry
+        .get(&selected_provider)
+        .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selected_provider.clone()))?;
 
     session.add_message(Message {
         role: Role::User,
@@ -102,40 +102,10 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         session.generate_title().await?;
     }
 
-    let model = if !model_id.is_empty() {
+    let mut model = if !model_id.is_empty() {
         model_id
     } else {
-        default_model_for_provider(selected_provider)
-    };
-
-    compress_user_message_if_oversized(session, &provider, &model, message).await;
-
-    let tool_registry = ToolRegistry::with_provider_arc(Arc::clone(&provider), model.clone());
-    let tool_definitions: Vec<_> = tool_registry
-        .definitions()
-        .into_iter()
-        .filter(|tool| !is_interactive_tool(&tool.name))
-        .collect();
-
-    let temperature = if temperature_is_deprecated(&model) {
-        None
-    } else if prefers_temperature_one(&model) {
-        Some(1.0)
-    } else {
-        Some(0.7)
-    };
-
-    tracing::info!("Using model: {} via provider: {}", model, selected_provider);
-    tracing::info!("Available tools: {}", tool_definitions.len());
-
-    let model_supports_tools = !matches!(
-        selected_provider,
-        "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
-    );
-    let advertised_tool_definitions = if model_supports_tools {
-        tool_definitions.clone()
-    } else {
-        vec![list_tools_bootstrap_definition()]
+        default_model_for_provider(&selected_provider)
     };
 
     let cwd = session
@@ -143,16 +113,21 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         .directory
         .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-    let system_prompt = if is_local_cuda_provider(selected_provider) {
-        local_cuda_light_system_prompt()
-    } else {
-        crate::agent::builtin::build_system_prompt(&cwd)
-    };
-    let system_prompt = if !model_supports_tools && !advertised_tool_definitions.is_empty() {
-        inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
-    } else {
-        system_prompt
-    };
+    // Phase A: oversized-user-message compression now happens inside
+    // `derive_context` on a clone. Keeping the original text in
+    // `session.messages` means `session_recall` and the MinIO history
+    // sink can still see what the user actually typed.
+    let mut provider_state =
+        build_provider_step_state(Arc::clone(&provider), &selected_provider, &model, &cwd);
+    let mut tool_registry = provider_state.tool_registry.clone();
+    let mut tool_definitions = provider_state.tool_definitions.clone();
+    let mut temperature = provider_state.temperature;
+    let mut model_supports_tools = provider_state.model_supports_tools;
+    let mut advertised_tool_definitions = provider_state.advertised_tool_definitions.clone();
+    let mut system_prompt = provider_state.system_prompt.clone();
+
+    tracing::info!("Using model: {} via provider: {}", model, selected_provider);
+    tracing::info!("Available tools: {}", tool_definitions.len());
 
     let max_steps = session.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
     let mut final_output = String::new();
@@ -181,23 +156,35 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
     for step in 1..=max_steps {
         tracing::info!(step = step, "Agent step starting");
 
-        enforce_context_window(
+        super::cost_guard::enforce_cost_budget()?;
+
+        // Phase A: derive the per-step LLM context from a clone of
+        // `session.messages` rather than mutating history in place. The
+        // experimental strategies, RLM-powered context-window
+        // enforcement, and orphan-pair repair all run against the
+        // clone; the canonical transcript stays append-only.
+        let policy = effective_policy(session);
+        let mut derived = derive_with_policy(
             session,
             Arc::clone(&provider),
             &model,
             &system_prompt,
             &advertised_tool_definitions,
+            None,
+            policy,
+            None,
         )
         .await?;
 
-        let proactive_lsp_message = build_proactive_lsp_context_message(
-            selected_provider,
+        let mut proactive_lsp_message = build_proactive_lsp_context_message(
+            selected_provider.as_str(),
             step,
             &tool_registry,
             &session.messages,
             &cwd,
         )
         .await;
+        let bucket = bucket_for_messages(session.history());
 
         let mut attempt = 0;
         let mut upstream_retry_count: u8 = 0;
@@ -214,7 +201,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             if let Some(msg) = &proactive_lsp_message {
                 messages.push(msg.clone());
             }
-            messages.extend(session.messages.clone());
+            messages.extend(derived.messages.clone());
 
             let request = CompletionRequest {
                 messages,
@@ -227,16 +214,27 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             };
 
             match provider.complete(request).await {
-                Ok(r) => break r,
+                Ok(r) => {
+                    session.metadata.delegation.update(
+                        &selected_provider,
+                        delegation_skills::MODEL_CALL,
+                        bucket,
+                        true,
+                    );
+                    break r;
+                }
                 Err(e) => {
                     if attempt == 1 && is_prompt_too_long_error(&e) {
-                        tracing::warn!(error = %e, "Provider rejected prompt as too long; forcing extra compression and retrying");
-                        let _ = compress_history_keep_last(
+                        tracing::warn!(error = %e, "Provider rejected prompt as too long; re-deriving with force_keep_last=6 and retrying");
+                        derived = derive_with_policy(
                             session,
                             Arc::clone(&provider),
                             &model,
-                            6,
-                            "prompt_too_long_retry",
+                            &system_prompt,
+                            &advertised_tool_definitions,
+                            None,
+                            policy,
+                            Some(6),
                         )
                         .await?;
                         continue;
@@ -244,6 +242,12 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                     if upstream_retry_count < MAX_UPSTREAM_RETRIES
                         && is_retryable_upstream_error(&e)
                     {
+                        session.metadata.delegation.update(
+                            &selected_provider,
+                            delegation_skills::MODEL_CALL,
+                            bucket,
+                            false,
+                        );
                         upstream_retry_count += 1;
                         let backoff_secs = 1u64 << (upstream_retry_count - 1).min(2);
                         tracing::warn!(
@@ -254,16 +258,56 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                             "Retryable upstream provider error; sleeping and retrying"
                         );
                         tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
-                        if let Some((retry_provider, retry_model)) =
-                            choose_router_target(&registry, selected_provider, &model)
-                        {
+                        if let Some((retry_provider, retry_model)) = choose_router_target_bandit(
+                            &registry,
+                            &session.metadata.delegation,
+                            bucket,
+                            &selected_provider,
+                            &model,
+                        ) {
                             tracing::info!(
                                 to_provider = %retry_provider,
                                 to_model = %retry_model,
                                 "Failing over to alternate provider/model"
                             );
-                            session.metadata.model =
-                                Some(format!("{retry_provider}/{retry_model}"));
+                            selected_provider = retry_provider;
+                            provider = registry.get(&selected_provider).ok_or_else(|| {
+                                anyhow::anyhow!("Provider {} not found", selected_provider.clone())
+                            })?;
+                            model = retry_model;
+                            provider_state = build_provider_step_state(
+                                Arc::clone(&provider),
+                                &selected_provider,
+                                &model,
+                                &cwd,
+                            );
+                            tool_registry = provider_state.tool_registry.clone();
+                            tool_definitions = provider_state.tool_definitions.clone();
+                            temperature = provider_state.temperature;
+                            model_supports_tools = provider_state.model_supports_tools;
+                            advertised_tool_definitions =
+                                provider_state.advertised_tool_definitions.clone();
+                            system_prompt = provider_state.system_prompt.clone();
+                            derived = derive_with_policy(
+                                session,
+                                Arc::clone(&provider),
+                                &model,
+                                &system_prompt,
+                                &advertised_tool_definitions,
+                                None,
+                                policy,
+                                None,
+                            )
+                            .await?;
+                            proactive_lsp_message = build_proactive_lsp_context_message(
+                                selected_provider.as_str(),
+                                step,
+                                &tool_registry,
+                                &session.messages,
+                                &cwd,
+                            )
+                            .await;
+                            session.metadata.model = Some(format!("{selected_provider}/{model}"));
                             attempt = 0;
                         }
                         continue;
@@ -282,10 +326,12 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         };
         let response = normalize_textual_tool_calls(response, &tool_definitions);
 
-        crate::telemetry::TOKEN_USAGE.record_model_usage(
+        crate::telemetry::TOKEN_USAGE.record_model_usage_with_cache(
             &model,
             response.usage.prompt_tokens as u64,
             response.usage.completion_tokens as u64,
+            response.usage.cache_read_tokens.unwrap_or(0) as u64,
+            response.usage.cache_write_tokens.unwrap_or(0) as u64,
         );
 
         let mut truncated_tool_ids: Vec<(String, String)> = Vec::new();
@@ -348,7 +394,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
             continue;
         }
         if should_retry_missing_native_tool_call(
-            selected_provider,
+            selected_provider.as_str(),
             &model,
             native_tool_promise_retry_count,
             &tool_definitions,
@@ -774,71 +820,6 @@ fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Optio
     }
 }
 
-/// Apply RLM compression to the most recent user message when it blows past
-/// the context-window heuristic threshold.
-async fn compress_user_message_if_oversized(
-    session: &mut Session,
-    provider: &Arc<dyn crate::provider::Provider>,
-    model: &str,
-    message: &str,
-) {
-    let ctx_window = context_window_for_model(model);
-    let msg_tokens = RlmChunker::estimate_tokens(message);
-    let threshold = (ctx_window as f64 * 0.35) as usize;
-    if msg_tokens <= threshold {
-        return;
-    }
-
-    tracing::info!(
-        msg_tokens,
-        threshold,
-        ctx_window,
-        "RLM: User message exceeds context threshold, compressing"
-    );
-
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_context",
-        tool_args: serde_json::json!({}),
-        session_id: &session.id,
-        abort: None,
-        on_progress: None,
-        provider: Arc::clone(provider),
-        model: model.to_string(),
-        bus: None,
-        trace_id: None,
-        subcall_provider: session.metadata.subcall_provider.clone(),
-        subcall_model: session.metadata.subcall_model_name.clone(),
-    };
-    let rlm_config = session.metadata.rlm.clone();
-    match RlmRouter::auto_process(message, auto_ctx, &rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                "RLM: User message compressed"
-            );
-            if let Some(last) = session.messages.last_mut() {
-                last.content = vec![ContentPart::Text {
-                    text: format!(
-                        "[Original message: {} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
-                        msg_tokens,
-                        result.processed,
-                        message.chars().take(500).collect::<String>()
-                    ),
-                }];
-            }
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "RLM: Failed to compress user message, using truncation");
-            let max_chars = threshold * 4;
-            let truncated = RlmChunker::compress(message, max_chars / 4, None);
-            if let Some(last) = session.messages.last_mut() {
-                last.content = vec![ContentPart::Text { text: truncated }];
-            }
-        }
-    }
-}
-
 /// Execute a tool call and emit the corresponding audit entry.
 async fn execute_tool(
     tool_registry: &ToolRegistry,
@@ -1017,6 +998,7 @@ async fn maybe_route_through_rlm(
         subcall_provider: None,
         subcall_model: None,
     };
+    let original_bytes = rendered_content.len();
     match RlmRouter::auto_process(rendered_content, auto_ctx, &rlm_config).await {
         Ok(result) => {
             tracing::info!(
@@ -1025,7 +1007,11 @@ async fn maybe_route_through_rlm(
                 iterations = result.stats.iterations,
                 "RLM: Processing complete"
             );
-            result.processed
+            format!(
+                "[RLM-SUMMARY tool={tool_name} original_bytes={original_bytes} reason={reason}]\n{body}\n[END RLM-SUMMARY — the raw tool output was replaced by this model-generated summary; re-running the same call will produce a similar summary, not the original bytes]",
+                reason = routing.reason,
+                body = result.processed,
+            )
         }
         Err(e) => {
             tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");

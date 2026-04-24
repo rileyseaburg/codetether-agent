@@ -38,7 +38,7 @@ impl GoogleProvider {
             "Creating Google Gemini provider"
         );
         Ok(Self {
-            client: Client::new(),
+            client: crate::provider::shared_http::shared_client().clone(),
             api_key,
         })
     }
@@ -240,6 +240,31 @@ struct ApiUsage {
     completion_tokens: usize,
     #[serde(default)]
     total_tokens: usize,
+    /// Gemini `usageMetadata.cachedContentTokenCount` exposed via the
+    /// OpenAI-compat shim. Counted within `prompt_tokens`; we subtract
+    /// it when populating [`Usage`] so the cost estimator prices it at
+    /// the discounted rate (see [`crate::provider::pricing::cache_read_multiplier`]).
+    #[serde(default, rename = "cached_tokens")]
+    cached_tokens: Option<usize>,
+    #[serde(default, rename = "prompt_tokens_details")]
+    prompt_tokens_details: Option<PromptTokenDetails>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct PromptTokenDetails {
+    #[serde(default)]
+    cached_tokens: usize,
+}
+
+impl ApiUsage {
+    fn cached_input_tokens(&self) -> usize {
+        self.cached_tokens.unwrap_or_else(|| {
+            self.prompt_tokens_details
+                .as_ref()
+                .map(|d| d.cached_tokens)
+                .unwrap_or(0)
+        })
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -481,10 +506,12 @@ impl Provider for GoogleProvider {
                 content: content_parts,
             },
             usage: Usage {
-                prompt_tokens: usage.map(|u| u.prompt_tokens).unwrap_or(0),
+                prompt_tokens: usage
+                    .map(|u| u.prompt_tokens.saturating_sub(u.cached_input_tokens()))
+                    .unwrap_or(0),
                 completion_tokens: usage.map(|u| u.completion_tokens).unwrap_or(0),
                 total_tokens: usage.map(|u| u.total_tokens).unwrap_or(0),
-                cache_read_tokens: None,
+                cache_read_tokens: usage.map(ApiUsage::cached_input_tokens).filter(|&n| n > 0),
                 cache_write_tokens: None,
             },
             finish_reason,

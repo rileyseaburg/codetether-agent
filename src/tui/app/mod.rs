@@ -1,3 +1,4 @@
+pub mod ask;
 pub mod autochat;
 pub mod background;
 pub mod codex_sessions;

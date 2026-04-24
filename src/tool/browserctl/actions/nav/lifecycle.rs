@@ -30,9 +30,3 @@ pub(in crate::tool::browserctl) async fn snapshot(
 ) -> Result<BrowserOutput, BrowserError> {
     super::super::execute(input, BrowserCommand::Snapshot).await
 }
-
-pub(in crate::tool::browserctl) async fn console(
-    input: &BrowserCtlInput,
-) -> Result<BrowserOutput, BrowserError> {
-    super::super::execute(input, BrowserCommand::Console).await
-}

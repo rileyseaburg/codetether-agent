@@ -21,13 +21,16 @@
 
 pub mod anthropic;
 pub mod bedrock;
+pub mod body_cap;
 pub mod copilot;
+mod fallback_policy;
 pub mod gemini_web;
 pub mod glm5;
 pub mod google;
 pub mod limits;
 #[cfg(feature = "candle-cuda")]
 pub mod local_cuda;
+pub mod pricing;
 pub mod util;
 #[cfg(not(feature = "candle-cuda"))]
 #[allow(dead_code)]
@@ -132,6 +135,7 @@ pub mod openai;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod retry;
+pub mod shared_http;
 pub mod stepfun;
 pub mod vertex_anthropic;
 pub mod vertex_glm;

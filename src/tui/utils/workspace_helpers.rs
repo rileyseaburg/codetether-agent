@@ -10,38 +10,36 @@ pub fn should_skip_entry(name: &str) -> bool {
     )
 }
 
-pub fn detect_git_branch(root: &Path) -> Option<String> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if branch.is_empty() {
-        None
-    } else {
-        Some(branch)
-    }
-}
-
-pub fn detect_git_dirty_files(root: &Path) -> usize {
+/// Fetch branch and dirty-file count in a single `git` subprocess.
+///
+/// `git status --porcelain=v1 --branch` prints one header line
+/// (`## branch-name...tracking-info` or `## HEAD (no branch)`) followed
+/// by one line per dirty path. Parsing both from one spawn halves the
+/// subprocess cost of [`super::workspace::WorkspaceSnapshot::capture`].
+pub fn detect_git_status(root: &Path) -> (Option<String>, usize) {
     let Ok(output) = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["status", "--porcelain"])
+        .args(["status", "--porcelain=v1", "--branch"])
         .output()
     else {
-        return 0;
+        return (None, 0);
     };
     if !output.status.success() {
-        return 0;
+        return (None, 0);
     }
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .count()
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut branch = None;
+    let mut dirty = 0usize;
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("## ") {
+            let name = rest.split("...").next().unwrap_or(rest).trim().to_string();
+            if !name.is_empty() && name != "HEAD (no branch)" {
+                branch = Some(name);
+            }
+        } else if !line.trim().is_empty() {
+            dirty += 1;
+        }
+    }
+    (branch, dirty)
 }

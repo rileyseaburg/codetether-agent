@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
-A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, and a local FunctionGemma tool-call router that separates reasoning from formatting.
+A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, local FunctionGemma tool-call router, and **derived context per turn** — the canonical chat history stays append-only while the LLM sees a compressed, paired, and repaired ephemeral context every turn.
 
 ## Install
 
@@ -22,11 +22,11 @@ npx codetether run "explain this codebase"
 curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
 ```
 
-Downloads the binary and the FunctionGemma model (~292 MB) for local tool-call routing. No Rust toolchain required.
+Downloads the `codetether` binary. FunctionGemma is optional. No Rust toolchain required.
 
 ```bash
-# Skip FunctionGemma model download
-curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --no-functiongemma
+# Also install the FunctionGemma model (~292 MB)
+curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh -s -- --functiongemma
 ```
 
 ### Windows (PowerShell)
@@ -34,8 +34,9 @@ curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/
 ```powershell
 irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
 
-# Skip FunctionGemma model
-.\install.ps1 -NoFunctionGemma
+# To also install FunctionGemma, run the script with -FunctionGemma
+iwr https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 -OutFile install.ps1
+.\install.ps1 -FunctionGemma
 ```
 
 ### From crates.io
@@ -63,9 +64,11 @@ cargo build --release --no-default-features
 
 ## Quick Start
 
-### 1. Configure Vault
+### 1. Configure Provider Credentials
 
-All API keys live in HashiCorp Vault — never in config files or env vars.
+Provider API keys are loaded from HashiCorp Vault first. For local development,
+CodeTether also detects common env vars and local AWS credentials unless
+`CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 
 ```bash
 export VAULT_ADDR="https://vault.example.com:8200"
@@ -73,6 +76,9 @@ export VAULT_TOKEN="hvs.your-token"
 
 # Add a provider
 vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
+
+# Production / hardened mode: require Vault-configured providers only.
+export CODETETHER_DISABLE_ENV_FALLBACK=1
 ```
 
 ### 2. Launch the TUI
@@ -98,24 +104,54 @@ codetether swarm "complex task"          # Parallel sub-agent execution
 codetether swarm "complex task" --execution-mode k8s --k8s-pod-budget 4 --k8s-image <image>
 codetether ralph run --prd prd.json      # Autonomous PRD-driven development
 codetether ralph create-prd --feature X  # Generate a PRD template
+codetether ralph status --prd prd.json   # Inspect PRD/story progress
 codetether serve --port 4096             # HTTP server (A2A + cognition APIs)
 codetether worker --server URL           # A2A worker mode
 codetether spawn --name planner --peer http://localhost:4096/a2a  # Spawn A2A agent
 codetether forage --loop --execute       # Autonomous OKR-governed work loop
+codetether search "where is fn main"     # LLM-routed search across grep/web/RLM/memory
+codetether oracle validate --query "find fn main" --file src/main.rs --payload-file result.json
+codetether mcp list-tools                # List built-in MCP-exposed tools
 codetether auth codex                    # OAuth login for OpenAI Codex
 codetether auth copilot --client-id ID   # OAuth login for GitHub Copilot
 codetether index --path src --json       # Build codebase index (local embeddings)
+codetether moltbook profile              # Inspect your Moltbook profile
 codetether okr list                      # List OKRs
+codetether okr create --title "Ship feature X" --description "Customer-visible milestone" --target 100
 codetether okr report --id <uuid>        # Show OKR or run report
-codetether pr                            # Create/update pull requests
+codetether pr create --title "feat: add X"  # Create/update pull requests
 codetether models                        # List available models from all providers
 codetether stats                         # Telemetry & execution statistics
 codetether benchmark                     # Run model benchmark suite
 codetether cleanup                       # Clean orphaned worktrees
 codetether config --show                 # Show config
+codetether context reset                 # Emit a [CONTEXT RESET] marker in the session
+codetether context browse list           # List virtual session history paths
+codetether context browse show-turn N    # Show turn N as markdown
 ```
 
 `codetether index` always generates embeddings locally (no paid API required). Tune with `--embedding-model`, `--embedding-dimensions`, `--embedding-batch-size`, and `--embedding-input-chars`.
+
+### Additional Command Families
+
+```bash
+# Auth workflows
+codetether auth login --server https://api.codetether.run
+codetether auth register --server https://api.codetether.run
+codetether auth cookies --provider gemini-web --file cookies.txt
+
+# MCP client mode
+codetether mcp connect npx -y @modelcontextprotocol/server-filesystem .
+codetether mcp call --tool read --arguments '{"path":"README.md"}'
+
+# Oracle maintenance
+codetether oracle sync --json
+
+# Moltbook
+codetether moltbook register my-agent --description "Autonomous coding agent"
+codetether moltbook status
+codetether moltbook profile
+```
 
 ### Forage: Autonomous OKR-Governed Loop
 
@@ -164,6 +200,26 @@ CodeTether treats security as non-optional infrastructure, not a feature flag.
 | **K8s Self-Healing** | Reconciliation loop detects unhealthy pods and triggers rolling restarts. |
 
 ## Features
+
+### Derived Context: Append-Only History + Ephemeral LLM Context
+
+Every turn the agent **derives** a fresh `DerivedContext` from the canonical `session.messages` — the transcript stays append-only and the LLM gets a compressed, paired, and repaired view. This separation means:
+
+- **True history** — `session.messages` is never rewritten by compression, so `/undo`, `/fork`, and session recall see every original turn.
+- **Compression safety** — Context-window enforcement runs on a clone, not the source of truth.
+- **Tool-call pairing repair** — Orphaned tool calls get synthetic placeholders so the provider never sees dangling `assistant.tool_calls` without matching `tool` results.
+- **Policy-driven resets** — Lu et al. reset-to-(prompt, summary) when estimated tokens exceed a threshold, via the `DerivePolicy::Reset` policy.
+- **Mid-session recall** — The `session_recall` tool recovers details from the canonical history that the compressor may have dropped from the derived context.
+
+The derivation pipeline: clone → compress last oversized message → experimental pairing → adaptive budget cascade → orphan repair → `DerivedContext { messages, compressed, origin_len }`.
+
+```bash
+# Environment variables for history persistence (optional)
+export CODETETHER_HISTORY_S3_ENDPOINT="http://localhost:9000"
+export CODETETHER_HISTORY_S3_BUCKET="codetether-history"
+export CODETETHER_HISTORY_S3_ACCESS_KEY="minioadmin"
+export CODETETHER_HISTORY_S3_SECRET_KEY="minioadmin"
+```
 
 ### FunctionGemma Tool Router
 
@@ -262,12 +318,26 @@ OKRs naturally support long-running work with persistent state, cumulative KR pr
 
 ```bash
 codetether okr list                     # List all OKRs
+codetether okr create --title "Reduce p95 latency" --description "Execution latency initiative" --target 100
 codetether okr status --id <uuid>       # Detailed status
 codetether okr runs --id <uuid>         # List runs
 codetether okr report --id <uuid>       # Full report
 codetether okr export --id <uuid>       # Export as JSON
 codetether okr stats                    # Aggregate stats
 ```
+
+### Session Management
+
+The TUI provides first-class session lifecycle commands:
+
+| Command | Purpose |
+|---------|---------|
+| `/ask <question>` | Ask a one-off question without adding to session history |
+| `/undo [N]` | Remove last `N` user/assistant/tool turns from the session |
+| `/fork [N]` | Create a child session from the current state (optionally at turn `N`) |
+| `/audit` | Open the audit view to inspect action history |
+
+Sessions remain **append-only** — `/undo` and `/fork` operate on the canonical transcript, while the LLM always receives a freshly derived ephemeral context per turn.
 
 ### Swarm: Parallel Sub-Agent Execution
 
@@ -292,15 +362,37 @@ Give it a spec, watch it work story by story. Each iteration is a fresh agent wi
 ```bash
 codetether ralph create-prd --feature "User Auth" --project-name my-app
 codetether ralph run --prd prd.json --max-iterations 10
+codetether ralph status --prd prd.json
 ```
 
 Terminal outcomes: `Completed` (all stories passed), `MaxIterations` (partial), `QualityFailed` (no stories passed gates).
 
+### Oracle: Deterministic Validation Utilities
+
+Validate structured answers against source material and sync oracle traces to remote storage.
+
+```bash
+codetether oracle validate --query "find fn main" --file src/main.rs --payload-file result.json
+codetether oracle sync --json
+```
+
+### Moltbook
+
+Moltbook is the social network integration for agents. The CLI supports registration, claim status, profile management, posting, introductions, heartbeat/feed checks, comments, and search.
+
+```bash
+codetether moltbook register my-agent --description "Autonomous coding agent"
+codetether moltbook status
+codetether moltbook profile
+codetether moltbook post "Hello" --content "Shipping updates" --submolt general
+codetether moltbook search "codetether"
+```
+
 ### TUI
 
-Rich terminal UI with model selector, session picker, swarm view, Ralph view, and theme hot-reload.
+Rich terminal UI with model selector, session picker, swarm view, Ralph view, audit view, and theme hot-reload.
 
-**Slash Commands**: `/go`, `/autochat`, `/new`, `/model`, `/sessions`, `/swarm`, `/ralph`, `/rlm`, `/bus`, `/lsp`, `/latency`, `/symbols`, `/settings`, `/file`, `/image`, `/spawn`, `/kill`, `/agents`, `/undo`, `/autoapply`, `/network`, `/mcp connect|servers|tools|call`, `/import-codex`, `/keys`, `/help`
+**Slash Commands**: `/go`, `/autochat`, `/ask`, `/new`, `/model`, `/sessions`, `/swarm`, `/ralph`, `/rlm`, `/bus`, `/lsp`, `/latency`, `/symbols`, `/settings`, `/file`, `/image`, `/spawn`, `/kill`, `/agents`, `/undo`, `/fork`, `/audit`, `/autoapply`, `/network`, `/mcp connect|servers|tools|call`, `/import-codex`, `/keys`, `/help`
 
 **Keyboard**: `Ctrl+M` model selector, `Ctrl+B` toggle layout, `Ctrl+S`/`F2` swarm view, `Tab` switch agents, `Alt+j/k` scroll, `?` help
 
@@ -327,7 +419,7 @@ All keys stored in Vault at `secret/codetether/providers/<name>`.
 
 ## Tools
 
-47 built-in tools across file ops (`read`, `write`, `edit`, `multiedit`, `patch`, `glob`, `list`, `tree`, `file_info`, `head_tail`, `diff`), code intelligence (`lsp`, `grep`, `codesearch`, `advanced_edit`), execution (`bash`, `batch`, `task`), web (`webfetch`, `websearch`), media (`image`, `voice`, `podcast`, `youtube`, `avatar`), planning (`ralph`, `prd`, `okr`, `todo_read`, `todo_write`, `plan_enter`, `plan_exit`), agent orchestration (`agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm`), knowledge (`memory`, `skill`, `mcp_bridge`), and utilities (`undo`, `question`, `k8s_tool`, `confirm_edit`, `confirm_multiedit`).
+50+ built-in tools include file ops (`read`, `write`, `edit`, `multiedit`, `apply_patch`, `glob`, `list`, `tree`, `fileinfo`, `headtail`, `diff`), code intelligence (`lsp`, `grep`, `codesearch`, `advanced_edit`), execution (`bash`, `batch`, `task`), browser automation (`browserctl`), web (`webfetch`, `websearch`), media (`image`, `voice`, `podcast`, `youtube`, `avatar`), planning (`ralph`, `prd`, `okr`, `todoread`, `todowrite`, `plan_enter`, `plan_exit`), session and safety (`context_reset`, `context_browse`, `session_recall`, `session_task`, `undo`, `question`, `confirm_edit`, `confirm_multiedit`), agent orchestration (`agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm`), knowledge (`memory`, `skill`, `mcp`), and infrastructure (`kubernetes`). Provider-backed agent registries also expose the LLM-routed `search` tool. Compatibility aliases `patch`, `file_info`, `head_tail`, `todo_read`, `todo_write`, `mcp_bridge`, and `k8s_tool` remain accepted.
 
 ## MCP Server
 
@@ -394,21 +486,28 @@ args = ["mcp", "serve", "/absolute/workspace/path"]
 
 | Category | Tools |
 |----------|-------|
-| **File Ops** | `read`, `write`, `edit`, `multiedit`, `patch`, `glob`, `list`, `tree`, `file_info`, `head_tail`, `diff` |
+| **File Ops** | `read`, `write`, `edit`, `multiedit`, `apply_patch`, `glob`, `list`, `tree`, `fileinfo`, `headtail`, `diff` |
 | **Search** | `grep`, `codesearch`, `advanced_edit` |
 | **Execution** | `bash`, `batch`, `task` |
+| **Browser** | `browserctl` |
 | **Code Intelligence** | `lsp` (includes diagnostics from eslint, ruff, biome, stylelint) |
 | **Web** | `webfetch`, `websearch` |
+| **Media** | `image`, `voice`, `podcast`, `youtube`, `avatar` |
+| **Session & Safety** | `context_reset`, `context_browse`, `session_recall`, `session_task`, `undo`, `question`, `confirm_edit`, `confirm_multiedit` |
 | **Agent Orchestration** | `agent`, `swarm_execute`, `swarm_share`, `relay_autochat`, `go`, `rlm` |
 | **Planning** | `ralph`, `prd`, `okr`, `todoread`, `todowrite` |
 | **Knowledge** | `memory`, `skill`, `mcp` (bridge to other MCP servers) |
-| **Infrastructure** | `k8s_tool` |
+| **Infrastructure** | `kubernetes` |
+
+The MCP registry also accepts compatibility aliases `patch`, `file_info`, `head_tail`, `todo_read`, `todo_write`, `mcp_bridge`, and `k8s_tool`.
 
 ```bash
 codetether mcp list-tools          # List available MCP tools
 codetether mcp list-tools --json   # JSON output
 codetether mcp serve               # Start stdio MCP server
 codetether mcp serve --bus-url URL # With agent bus integration
+codetether mcp connect npx -y @modelcontextprotocol/server-filesystem .
+codetether mcp call --tool read --arguments '{"path":"README.md"}'
 ```
 
 ## A2A Protocol
@@ -486,10 +585,10 @@ When running `codetether serve`, perpetual persona swarms with SSE event stream:
 │   │   (broadcast pub/sub, topic routing, BusHandle)   │     │
 │   └──┬──────────┬──────────┬──────────┬───────────────┘     │
 │      │          │          │          │                      │
-│   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐              │
-│   │ A2A  │  │ Swarm│  │ Tool │  │  Provider │              │
-│   │Worker│  │ Exec │  │System│  │   Layer   │              │
-│   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘              │
+   ┌──┴───┐  ┌──┴───┐  ┌──┴───┐  ┌──┴────────┐  ┌────────┐ │
+   │ A2A  │  │ Swarm│  │ Tool │  │  Provider │  │Derived │ │
+   │Worker│  │ Exec │  │System│  │   Layer   │  │Context │ │
+   └──┬───┘  └──┬───┘  └──┬───┘  └──┬────────┘  └────────┘ │
 │      │         │         │         │                        │
 │   ┌──┴─────────┴─────────┴─────────┴──┐                     │
 │   │         Agent Registry            │                     │

@@ -153,7 +153,6 @@ impl LspClient {
     }
 
     /// Update a text document
-    #[allow(dead_code)]
     pub async fn change_document(&self, path: &Path, content: &str) -> Result<()> {
         let uri = path_to_uri(path);
         let mut open_docs = self.open_documents.write().await;
@@ -374,11 +373,39 @@ impl LspClient {
     }
 
     /// Return the most recent LSP diagnostics for a file after ensuring the document is open.
+    ///
+    /// This always syncs the current on-disk content to the server via a
+    /// `textDocument/didChange` (or `didOpen` the first time), then waits for
+    /// a fresh `publishDiagnostics` from the server. Without this, edits made
+    /// by file-writing tools would be invisible to the LSP's in-memory buffer
+    /// and callers would see stale pre-edit diagnostics.
     pub async fn diagnostics(&self, path: &Path) -> Result<LspActionResult> {
-        self.ensure_document_open(path).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-
         let uri = path_to_uri(path);
+
+        // Always re-read the file from disk and push it into the LSP session
+        // so diagnostics reflect the latest contents, not the version the
+        // server cached when the doc was first opened.
+        let disk_content = tokio::fs::read_to_string(path).await.unwrap_or_default();
+        let already_open = self.open_documents.read().await.contains_key(&uri);
+
+        let baseline_seq = self.transport.diagnostics_publish_seq();
+        self.transport.invalidate_diagnostics(&uri).await;
+
+        if already_open {
+            if let Err(e) = self.change_document(path, &disk_content).await {
+                debug!(path = %path.display(), error = %e, "didChange failed; falling back to cached snapshot");
+            }
+        } else if let Err(e) = self.open_document(path, &disk_content).await {
+            debug!(path = %path.display(), error = %e, "didOpen failed; falling back to cached snapshot");
+        }
+
+        // Wait up to ~1.5s for a fresh publication. rust-analyzer/eslint
+        // typically republish within a few hundred ms of didChange.
+        let _ = self
+            .transport
+            .wait_for_publish_after(baseline_seq, std::time::Duration::from_millis(1500))
+            .await;
+
         let snapshot = self.transport.diagnostics_snapshot().await;
         let diagnostics = snapshot
             .get(&uri)

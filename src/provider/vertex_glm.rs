@@ -354,6 +354,24 @@ struct ApiUsage {
     completion_tokens: usize,
     #[serde(default)]
     total_tokens: usize,
+    /// GLM-on-Vertex KV-cache hit count, subset of `prompt_tokens`.
+    #[serde(default)]
+    prompt_tokens_details: Option<VertexGlmPromptTokenDetails>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct VertexGlmPromptTokenDetails {
+    #[serde(default)]
+    cached_tokens: usize,
+}
+
+impl ApiUsage {
+    fn cached(&self) -> usize {
+        self.prompt_tokens_details
+            .as_ref()
+            .map(|d| d.cached_tokens)
+            .unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -584,7 +602,7 @@ impl Provider for VertexGlmProvider {
                     prompt_tokens: completion
                         .usage
                         .as_ref()
-                        .map(|u| u.prompt_tokens)
+                        .map(|u| u.prompt_tokens.saturating_sub(u.cached()))
                         .unwrap_or(0),
                     completion_tokens: completion
                         .usage
@@ -596,7 +614,11 @@ impl Provider for VertexGlmProvider {
                         .as_ref()
                         .map(|u| u.total_tokens)
                         .unwrap_or(0),
-                    cache_read_tokens: None,
+                    cache_read_tokens: completion
+                        .usage
+                        .as_ref()
+                        .map(ApiUsage::cached)
+                        .filter(|&n| n > 0),
                     cache_write_tokens: None,
                 },
                 finish_reason,

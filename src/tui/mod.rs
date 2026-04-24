@@ -9,6 +9,8 @@ pub mod latency;
 pub mod lsp;
 pub mod model_picker;
 pub mod models;
+#[path = "protocol_registry_view.rs"]
+pub mod protocol_registry_view;
 pub mod rlm;
 pub mod sessions;
 pub mod settings;
@@ -19,6 +21,7 @@ pub mod ui;
 pub mod utils;
 
 pub mod agent_identity;
+pub mod audit_view;
 pub mod bus_log;
 pub mod color_palette;
 pub mod message_formatter;

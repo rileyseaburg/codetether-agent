@@ -23,6 +23,8 @@ pub struct RemoteSubtaskPayload {
     pub max_steps: usize,
     pub timeout_secs: u64,
     pub working_dir: Option<String>,
+    #[serde(default)]
+    pub read_only: bool,
     #[serde(default = "default_probe_interval_secs")]
     pub probe_interval_secs: u64,
 }
@@ -89,12 +91,14 @@ mod tests {
             max_steps: 20,
             timeout_secs: 180,
             working_dir: Some("/workspace".to_string()),
+            read_only: true,
             probe_interval_secs: 5,
         };
         let encoded = encode_payload(&payload).expect("encode");
         let decoded = decode_payload(&encoded).expect("decode");
         assert_eq!(decoded.subtask_id, "subtask-1");
         assert_eq!(decoded.provider, "zai");
+        assert!(decoded.read_only);
     }
 
     #[test]

@@ -2,7 +2,7 @@
 
 [package]
 name = "codetether-agent"
-version = "4.5.1"
+version = "4.6.2"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -166,6 +166,8 @@ ignore = "0.4"
 walkdir = "2"
 which = "8.0.0"
 regex = "1"
+memchr = "2"
+memmap2 = "0.9"
 similar = "2"
 lsp-types = "0.97.0"
 syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-fancy"] }

@@ -16,6 +16,27 @@ use ratatui::{
 /// assert!(text.contains("CHAT"));
 /// ```
 pub fn header_spans(session_label: &str) -> Vec<Span<'static>> {
+    let mut spans = keybinding_spans();
+    spans.push(Span::raw(" | "));
+    spans.extend(session_label_spans(session_label));
+    spans.push(Span::raw(" | "));
+    spans
+}
+
+/// Keybinding hint spans without the trailing session badge.
+///
+/// Used when the status bar stacks across multiple rows so that
+/// session/badge info can live on its own line.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::tui::ui::chat_view::status_hints::keybinding_spans;
+/// let spans = keybinding_spans();
+/// let text: String = spans.iter().map(|s| s.content.as_ref()).collect();
+/// assert!(text.contains("Help"));
+/// ```
+pub fn keybinding_spans() -> Vec<Span<'static>> {
     vec![
         Span::styled(" CHAT ", Style::default().fg(Color::Black).bg(Color::Cyan)),
         Span::raw(" | "),
@@ -34,11 +55,25 @@ pub fn header_spans(session_label: &str) -> Vec<Span<'static>> {
         kb("Esc"),
         Span::raw(": Back | "),
         kb("Ctrl+C"),
-        Span::raw(": Quit | "),
+        Span::raw(": Quit"),
+    ]
+}
+
+/// Session label spans (`session: <label>`).
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::tui::ui::chat_view::status_hints::session_label_spans;
+/// let spans = session_label_spans("abc");
+/// let text: String = spans.iter().map(|s| s.content.as_ref()).collect();
+/// assert!(text.contains("abc"));
+/// ```
+pub fn session_label_spans(session_label: &str) -> Vec<Span<'static>> {
+    vec![
         Span::styled("session", Style::default().fg(Color::DarkGray)),
         Span::raw(": "),
         Span::styled(session_label.to_string(), Style::default().fg(Color::Cyan)),
-        Span::raw(" | "),
     ]
 }
 

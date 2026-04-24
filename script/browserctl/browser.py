@@ -22,4 +22,3 @@ class BrowserSession(
     BrowserSessionInput,
     BrowserSessionTabs,
 ):
-    pass
