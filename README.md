@@ -64,9 +64,11 @@ cargo build --release --no-default-features
 
 ## Quick Start
 
-### 1. Configure Vault
+### 1. Configure Provider Credentials
 
-All API keys live in HashiCorp Vault — never in config files or env vars.
+Provider API keys are loaded from HashiCorp Vault first. For local development,
+CodeTether also detects common env vars and local AWS credentials unless
+`CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 
 ```bash
 export VAULT_ADDR="https://vault.example.com:8200"
@@ -74,6 +76,9 @@ export VAULT_TOKEN="hvs.your-token"
 
 # Add a provider
 vault kv put secret/codetether/providers/openrouter api_key="sk-or-v1-..."
+
+# Production / hardened mode: require Vault-configured providers only.
+export CODETETHER_DISABLE_ENV_FALLBACK=1
 ```
 
 ### 2. Launch the TUI

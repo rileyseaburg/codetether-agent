@@ -6,8 +6,9 @@
 //! By default, runs as an A2A worker connecting to the CodeTether platform.
 //! Use the 'tui' subcommand for interactive terminal mode.
 //!
-//! SECURITY: All API keys and secrets are loaded exclusively from HashiCorp Vault.
-//! Environment variables are NOT used for secrets (only for Vault connection bootstrap).
+//! SECURITY: Provider credentials are loaded from HashiCorp Vault first.
+//! Local development may also use env/AWS fallback credentials unless
+//! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set for Vault-only mode.
 
 mod a2a;
 mod agent;

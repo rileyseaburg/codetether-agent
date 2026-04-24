@@ -2,6 +2,7 @@
 
 use super::anthropic;
 use super::bedrock;
+use super::fallback_policy;
 use super::google;
 use super::openai;
 use super::registry::ProviderRegistry;
@@ -82,14 +83,13 @@ impl ProviderRegistry {
         }
 
         // ---- Env-var fallback ----
-        let disable = std::env::var("CODETETHER_DISABLE_ENV_FALLBACK")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
+        let disable = fallback_policy::env_fallback_disabled();
         if !disable {
             super::init_env::register_env_fallbacks(&mut registry);
         } else {
             tracing::info!(
-                "Environment variable fallback disabled (CODETETHER_DISABLE_ENV_FALLBACK=1)"
+                env = fallback_policy::DISABLE_ENV_FALLBACK,
+                "Environment variable fallback disabled"
             );
         }
 
