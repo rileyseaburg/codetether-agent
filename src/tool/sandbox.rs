@@ -172,7 +172,7 @@ pub fn hash_bytes(data: &[u8]) -> String {
 }
 
 /// Plugin registry — tracks registered and verified plugins.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PluginRegistry {
     signing_key: SigningKey,
     /// Verified plugins: id -> manifest.
