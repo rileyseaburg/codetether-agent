@@ -7,7 +7,7 @@ use crate::session::ImageAttachment;
 
 /// Check if we're in an SSH or headless session without clipboard access.
 pub fn is_ssh_or_headless() -> bool {
-    super::clipboard_ssh::is_ssh_session()
+    super::clipboard_ssh::is_ssh_or_headless()
 }
 
 /// Extract an image from the system clipboard, returning `None` when

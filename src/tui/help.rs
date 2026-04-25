@@ -282,13 +282,15 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(separator());
     if crate::tui::clipboard::is_ssh_or_headless() {
         lines.push(Line::from(Span::styled(
-            "  SSH session detected — clipboard not forwarded",
+            "  SSH/headless session — clipboard unavailable",
             Style::default().fg(Color::Yellow),
         )));
         lines.push(blank());
-        lines.push(Line::from(Span::raw("  To paste an image over SSH:")));
         lines.push(Line::from(Span::raw(
-            "  1. Run `codetether clipboard image` on your LOCAL machine",
+            "  To paste an image without clipboard access:",
+        )));
+        lines.push(Line::from(Span::raw(
+            "  1. Run `codetether clipboard image` where clipboard works",
         )));
         lines.push(Line::from(Span::raw(
             "  2. It copies a data:image URL to your clipboard",
@@ -298,8 +300,9 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         )));
         lines.push(blank());
     }
-    lines.push(cmd_row("/image", "", "Attach image file from disk"));
-    lines.push(cmd_row("/file", "", "Attach file contents to composer"));
+    lines.push(Line::from(Span::raw(
+        "  Use /image and /file — see SLASH COMMANDS below.",
+    )));
     lines.push(blank());
 
     lines.push(heading("TEXT EDITING"));
