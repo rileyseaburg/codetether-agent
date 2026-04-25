@@ -66,9 +66,7 @@ fn project_root(project: Option<&PathBuf>) -> Option<&std::path::Path> {
 fn build_body(args: &CreatePrArgs, context: &RepoContext) -> Result<String> {
     let base = match (&args.body, &args.body_file) {
         (Some(body), _) => body.clone(),
-        (None, Some(path)) => {
-            std::fs::read_to_string(path)?
-        }
+        (None, Some(path)) => std::fs::read_to_string(path)?,
         (None, None) => String::new(),
     };
     Ok(merge_signature(&base, &context.signature))

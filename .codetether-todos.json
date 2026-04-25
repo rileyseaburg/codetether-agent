@@ -481,5 +481,68 @@
     "status": "done",
     "priority": "low",
     "created_at": "2026-04-14T01:45:37.622288327+00:00"
+  },
+  {
+    "id": "todo_1777090154419",
+    "content": "Improve Ctrl+V clipboard handler SSH fallback message with step-by-step instructions",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-04-25T04:09:14.419069904+00:00"
+  },
+  {
+    "id": "todo_1777090159040",
+    "content": "Add IMAGE section to help.rs documenting /image, Ctrl+V, and SSH paste workflow",
+    "status": "done",
+    "priority": "high",
+    "created_at": "2026-04-25T04:09:19.040008641+00:00"
+  },
+  {
+    "id": "todo_1777090164616",
+    "content": "Add SSH session detection helper to clipboard module",
+    "status": "done",
+    "priority": "medium",
+    "created_at": "2026-04-25T04:09:24.616945808+00:00"
+  },
+  {
+    "id": "todo_1777091444225",
+    "content": "Fix doctest: wrong module path + environment-dependent assertion",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-04-25T04:30:44.225223877+00:00"
+  },
+  {
+    "id": "todo_1777091450579",
+    "content": "Shorten clipboard status message — too long for single-line status bar",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-04-25T04:30:50.579732650+00:00"
+  },
+  {
+    "id": "todo_1777091455829",
+    "content": "Rename is_ssh_session to is_ssh_or_headless_session, split SSH vs headless logic",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-04-25T04:30:55.829056824+00:00"
+  },
+  {
+    "id": "todo_1777091462432",
+    "content": "Fix help IMAGES section: remove /file, remove duplicate /image, fix SSH banner wording",
+    "status": "pending",
+    "priority": "high",
+    "created_at": "2026-04-25T04:31:02.432043939+00:00"
+  },
+  {
+    "id": "todo_1777091467124",
+    "content": "Fix multiline string whitespace in clipboard_unavailable_message",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-04-25T04:31:07.124836096+00:00"
+  },
+  {
+    "id": "todo_1777091472178",
+    "content": "Tighten doc comment to match actual headless detection logic",
+    "status": "pending",
+    "priority": "medium",
+    "created_at": "2026-04-25T04:31:12.178337066+00:00"
   }
 ]

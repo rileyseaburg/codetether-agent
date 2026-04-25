@@ -31,12 +31,12 @@ use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
+use self::model_defaults::{default_model_for_provider, prefers_temperature_one};
+use self::model_preferences::choose_provider_for_tier;
 use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed};
 use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
 use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
 use clone_target::prepare_clone_target;
-use self::model_defaults::{default_model_for_provider, prefers_temperature_one};
-use self::model_preferences::choose_provider_for_tier;
 
 /// Worker status for heartbeat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
