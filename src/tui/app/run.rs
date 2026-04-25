@@ -14,6 +14,7 @@ use crate::session::{Session, SessionEvent};
 use crate::tui::app::event_loop::run_event_loop;
 use crate::tui::app::message_text::sync_messages_from_session;
 use crate::tui::app::panic_cleanup::install_panic_cleanup_hook;
+use crate::tui::app::resume_window::session_resume_window;
 use crate::tui::app::state::App;
 use crate::tui::app::terminal_state::{TerminalGuard, restore_terminal_state};
 use crate::tui::ui::main::ui;
@@ -37,31 +38,6 @@ enum SessionLoadOutcome {
     NewFallback {
         reason: String,
     },
-}
-
-/// Default number of trailing messages + tool uses kept when resuming a
-/// prior session. Older entries are dropped to bound startup memory; the
-/// user is notified in the status line when truncation occurs.
-const DEFAULT_SESSION_RESUME_WINDOW: usize = 1_000;
-const MAX_SESSION_RESUME_WINDOW: usize = 10_000;
-
-fn session_resume_window() -> usize {
-    let parsed = std::env::var("CODETETHER_SESSION_RESUME_WINDOW")
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .filter(|value| *value > 0);
-    match parsed {
-        Some(value) if value > MAX_SESSION_RESUME_WINDOW => {
-            tracing::warn!(
-                requested = value,
-                clamped = MAX_SESSION_RESUME_WINDOW,
-                "session resume window too large; clamping"
-            );
-            MAX_SESSION_RESUME_WINDOW
-        }
-        Some(value) => value,
-        None => DEFAULT_SESSION_RESUME_WINDOW,
-    }
 }
 
 async fn init_tui_secrets_manager() {
