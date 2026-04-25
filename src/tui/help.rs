@@ -272,9 +272,37 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(key_row("Ctrl+W", "Start a /ask side question in chat"));
     lines.push(key_row("Ctrl+Y", "Copy latest assistant reply"));
     lines.push(key_row("Ctrl+R", "Record voice input"));
-    lines.push(key_row("Ctrl+V", "Paste from clipboard"));
+    lines.push(key_row("Ctrl+V", "Paste from clipboard (or image)"));
     lines.push(key_row("Enter", "Send message or run slash command"));
     lines.push(key_row("Tab", "Accept slash autocomplete"));
+    lines.push(blank());
+
+    // ── Images ──
+    lines.push(heading("IMAGES"));
+    lines.push(separator());
+    if crate::tui::clipboard::is_ssh_or_headless() {
+        lines.push(Line::from(Span::styled(
+            "  SSH/headless session — clipboard unavailable",
+            Style::default().fg(Color::Yellow),
+        )));
+        lines.push(blank());
+        lines.push(Line::from(Span::raw(
+            "  To paste an image without clipboard access:",
+        )));
+        lines.push(Line::from(Span::raw(
+            "  1. Run `codetether clipboard image` where clipboard works",
+        )));
+        lines.push(Line::from(Span::raw(
+            "  2. It copies a data:image URL to your clipboard",
+        )));
+        lines.push(Line::from(Span::raw(
+            "  3. Paste it here with Ctrl+Shift+V or right-click paste",
+        )));
+        lines.push(blank());
+    }
+    lines.push(Line::from(Span::raw(
+        "  Use /image and /file — see SLASH COMMANDS below.",
+    )));
     lines.push(blank());
 
     lines.push(heading("TEXT EDITING"));
@@ -315,6 +343,11 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
     lines.push(cmd_row("/sessions", "/s", "Session picker"));
     lines.push(cmd_row("/model", "/m", "Model picker"));
     lines.push(cmd_row("/file", "", "Attach file contents to composer"));
+    lines.push(cmd_row(
+        "/image",
+        "",
+        "Attach image file (png, jpg, gif, webp, bmp, svg)",
+    ));
     lines.push(cmd_row(
         "/autoapply",
         "/aa",

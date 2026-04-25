@@ -6,14 +6,8 @@
 use crate::session::ImageAttachment;
 
 /// Check if we're in an SSH or headless session without clipboard access.
-fn is_ssh_or_headless() -> bool {
-    std::env::var("SSH_CONNECTION").is_ok()
-        || std::env::var("SSH_TTY").is_ok()
-        || (std::env::var("TERM")
-            .ok()
-            .map_or(false, |t| t.starts_with("xterm"))
-            && std::env::var("DISPLAY").is_err()
-            && std::env::var("WAYLAND_DISPLAY").is_err())
+pub fn is_ssh_or_headless() -> bool {
+    super::clipboard_ssh::is_ssh_or_headless()
 }
 
 /// Extract an image from the system clipboard, returning `None` when
