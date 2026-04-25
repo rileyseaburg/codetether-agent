@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Result, anyhow};
 use cpal::traits::{HostTrait, StreamTrait};
 
-use super::alsa_silence::silence_alsa;
+use super::stderr_guard::silence_alsa;
 use super::input_stream;
 
 /// Capture audio from the default microphone at 16kHz mono.
