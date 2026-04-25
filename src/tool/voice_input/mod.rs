@@ -5,6 +5,7 @@
 //! Voice API `/transcribe` endpoint for speech-to-text.
 
 mod actions;
+mod alsa_silence;
 mod client;
 pub(crate) mod encoder;
 mod input_config;
