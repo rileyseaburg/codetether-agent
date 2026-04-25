@@ -48,9 +48,7 @@ pub(super) fn handle_clipboard_paste(app: &mut App) {
             };
         }
         None => {
-            app.state.status =
-                "Clipboard unavailable; use /image <path> or `codetether clipboard image` locally."
-                    .into();
+            app.state.status = crate::tui::clipboard_ssh::clipboard_unavailable_message();
         }
     }
 }
