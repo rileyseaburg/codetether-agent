@@ -20,8 +20,6 @@ pub(super) async fn complete_step(
     if !supports_tools {
         return provider.complete(request).await;
     }
-    match provider.complete_stream(request).await {
-        Ok(stream) => collect_stream_completion_with_events(stream, event_tx).await,
-        Err(error) => Err(error),
-    }
+    let stream = provider.complete_stream(request).await?;
+    collect_stream_completion_with_events(stream, event_tx).await
 }

@@ -13,7 +13,8 @@ async fn streaming_context_errors_retry_with_forced_compaction() {
     let mut registry = ProviderRegistry::new();
     registry.register(provider.clone());
     let registry = Arc::new(registry);
-    let (tx, _rx) = mpsc::channel(16);
+    let (tx, mut rx) = mpsc::channel(64);
+    tokio::spawn(async move { while rx.recv().await.is_some() {} });
     let mut session = Session::new().await.expect("session");
     session.metadata.model = Some("mock/test".into());
     for _ in 0..7 {
