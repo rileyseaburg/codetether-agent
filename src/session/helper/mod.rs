@@ -19,6 +19,7 @@ pub mod experimental;
 pub mod loop_constants;
 pub mod markup;
 pub mod prompt;
+pub mod prompt_call;
 pub mod prompt_events;
 pub mod provider;
 pub mod request_state;
@@ -28,3 +29,8 @@ pub mod stream;
 pub mod text;
 pub mod token;
 pub mod validation;
+
+#[cfg(test)]
+mod prompt_events_test_provider;
+#[cfg(test)]
+mod prompt_events_tests;
