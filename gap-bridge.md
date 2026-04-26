@@ -277,7 +277,7 @@ Recommended initial actions:
 
 ### M6: Cross-platform expansion
 
-- Windows adapter using UI Automation and Windows Graphics Capture.
+- Windows support exists now as an initial `computer_use` implementation; remaining work is to harden it and move from the current PowerShell + SendKeys-style approach toward native UI Automation and Windows Graphics Capture.
 - Linux adapter only after deciding X11 vs Wayland support boundaries.
 
 ## Immediate recommendation

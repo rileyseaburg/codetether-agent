@@ -1,23 +1,19 @@
 //! Windows snapshot handling for computer use.
 
-pub fn handle_snapshot(
+pub async fn handle_snapshot(
     _input: &crate::tool::computer_use::input::ComputerUseInput,
 ) -> anyhow::Result<crate::tool::ToolResult> {
     let script = r#"
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
-$b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$b=[System.Windows.Forms.SystemInformation]::VirtualScreen
 $bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height
 $g=[System.Drawing.Graphics]::FromImage($bmp)
 $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size)
-$ms=New-Object System.IO.MemoryStream
-$bmp.Save($ms,[System.Drawing.Imaging.ImageFormat]::Png)
-[Convert]::ToBase64String($ms.ToArray())|ConvertTo-Json
+$path=Join-Path ([System.IO.Path]::GetTempPath()) ("codetether-snapshot-" + [System.Guid]::NewGuid().ToString() + ".png")
+$bmp.Save($path,[System.Drawing.Imaging.ImageFormat]::Png)
+$g.Dispose();$bmp.Dispose()
+[pscustomobject]@{captured=$true;mime_type="image/png";path=$path;width=$b.Width;height=$b.Height;left=$b.Left;top=$b.Top}|ConvertTo-Json -Compress
 "#;
-    let png_base64 = super::ps::run(script)?;
-    Ok(super::response::success_result(serde_json::json!({
-        "captured": true,
-        "mime_type": "image/png",
-        "encoding": "base64",
-        "image": png_base64
-    })))
+    let metadata = super::ps::run(script).await?;
+    Ok(super::response::success_result(metadata))
 }

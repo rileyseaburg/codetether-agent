@@ -13,32 +13,41 @@ pub(super) fn parameters_schema() -> Value {
             },
             "app": {
                 "type": "string",
-                "description": "Target app name for actions requiring app focus."
+                "description": "Target app name for request_app only; app-scoped control is not enforced yet."
             },
             "window_title_contains": {
                 "type": "string",
-                "description": "Filter windows by title containing this text."
+                "description": "Reserved for future app/window targeting; currently rejected for control actions."
             },
             "text": {
                 "type": "string",
-                "description": "Text to type for type_text action."
+                "description": "Text to type for type_text action. Also accepted by press_key for compatibility."
+            },
+            "key": {
+                "type": "string",
+                "description": "SendKeys expression for press_key, e.g. ENTER, ^c, %{TAB}."
+            },
+            "scroll_amount": {
+                "type": "integer",
+                "description": "Mouse-wheel delta for scroll; negative scrolls down."
             },
             "x": {
                 "type": "number",
-                "description": "X coordinate for click actions."
+                "description": "Finite X coordinate for click actions."
             },
             "y": {
                 "type": "number",
-                "description": "Y coordinate for click actions."
+                "description": "Finite Y coordinate for click actions."
             }
         },
         "required": ["action"],
         "examples": [
             {"action": "status"},
             {"action": "list_apps"},
-            {"action": "snapshot", "app": "Chrome"},
-            {"action": "click", "app": "Calculator", "x": 100, "y": 200},
-            {"action": "type_text", "app": "Notepad", "text": "Hello World"}
+            {"action": "snapshot"},
+            {"action": "click", "x": 100, "y": 200},
+            {"action": "press_key", "key": "^c"},
+            {"action": "scroll", "scroll_amount": -120}
         ]
     })
 }

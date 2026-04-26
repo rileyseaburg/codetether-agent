@@ -23,7 +23,7 @@ pub enum ComputerUseAction {
     Stop,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ComputerUseInput {
     pub action: ComputerUseAction,
@@ -33,6 +33,10 @@ pub struct ComputerUseInput {
     pub window_title_contains: Option<String>,
     #[serde(default)]
     pub text: Option<String>,
+    #[serde(default)]
+    pub key: Option<String>,
+    #[serde(default)]
+    pub scroll_amount: Option<i32>,
     #[serde(default)]
     pub x: Option<f64>,
     #[serde(default)]
