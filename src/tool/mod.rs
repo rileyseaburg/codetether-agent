@@ -15,6 +15,7 @@ mod bash_shell;
 pub mod batch;
 pub mod browserctl;
 pub mod codesearch;
+pub mod computer_use;
 pub mod confirm_edit;
 pub mod confirm_multiedit;
 pub mod context_browse;
@@ -230,8 +231,6 @@ impl std::fmt::Debug for ToolRegistry {
 
 impl ToolRegistry {
     pub fn new() -> Self {
-        let _ = std::any::TypeId::of::<McpToolManager>();
-        let _ = std::any::TypeId::of::<McpToolWrapper>();
         Self {
             tools: HashMap::new(),
             plugin_registry: PluginRegistry::from_env(),
@@ -260,6 +259,7 @@ impl ToolRegistry {
         self.register_compat_alias("todo_write", Arc::new(todo::TodoWriteTool::new()));
         self.register_compat_alias("mcp_bridge", Arc::new(mcp_bridge::McpBridgeTool::new()));
         self.register_compat_alias("k8s_tool", Arc::new(k8s_tool::K8sTool::new()));
+        self.register(Arc::new(computer_use::ComputerUseTool::new()));
     }
 
     /// Get a tool by ID
