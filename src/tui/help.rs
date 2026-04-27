@@ -300,9 +300,8 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         )));
         lines.push(blank());
     }
-    lines.push(Line::from(Span::raw(
-        "  Use /image and /file — see SLASH COMMANDS below.",
-    )));
+    lines.push(cmd_row("/image", "", "Attach image file from disk"));
+    lines.push(cmd_row("/file", "", "Attach file contents to composer"));
     lines.push(blank());
 
     lines.push(heading("TEXT EDITING"));

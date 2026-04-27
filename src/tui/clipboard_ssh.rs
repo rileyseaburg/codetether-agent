@@ -1,16 +1,11 @@
 //! Clipboard availability detection for SSH and headless sessions.
 
 /// Check if this is an SSH session (remote connection).
-///
-/// Returns `true` when `SSH_CONNECTION` or `SSH_TTY` are set.
 pub fn is_ssh_session() -> bool {
     std::env::var("SSH_CONNECTION").is_ok() || std::env::var("SSH_TTY").is_ok()
 }
 
 /// Check if the session is headless (no display server).
-///
-/// Returns `true` when `TERM` starts with `xterm` but neither `DISPLAY`
-/// nor `WAYLAND_DISPLAY` is set.
 pub fn is_headless_session() -> bool {
     std::env::var("TERM")
         .ok()
@@ -20,28 +15,18 @@ pub fn is_headless_session() -> bool {
 }
 
 /// Check if clipboard access is unavailable (SSH or headless).
-///
-/// Returns `true` when `SSH_CONNECTION` or `SSH_TTY` are set, or when
-/// `TERM` starts with `xterm` but neither `DISPLAY` nor
-/// `WAYLAND_DISPLAY` is set.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// let result = codetether_agent::tui::clipboard_ssh::is_ssh_or_headless();
-/// println!("Clipboard unavailable: {result}");
-/// ```
 pub fn is_ssh_or_headless() -> bool {
     is_ssh_session() || is_headless_session()
 }
 
-/// Build a short status message when clipboard paste is unavailable.
-///
-/// Returns SSH-specific guidance when connected over SSH, or a generic
-/// message for other headless environments.
+/// Build a status message when clipboard paste is unavailable.
 pub fn clipboard_unavailable_message() -> String {
     if is_ssh_session() {
-        "SSH detected — clipboard not forwarded. Type ? for instructions or /image <path>."
+        "SSH detected — clipboard not forwarded. To paste an image: \
+         (1) run `codetether clipboard image` on your LOCAL machine, \
+         (2) it copies a data URL to your clipboard, \
+         (3) paste it here with Ctrl+Shift+V or right-click paste. \
+         Or use /image <path> to attach a file from disk."
             .to_string()
     } else {
         "Clipboard unavailable; use /image <path> to attach an image file.".to_string()
