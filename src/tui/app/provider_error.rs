@@ -1,6 +1,6 @@
 //! User-facing provider error messages.
 
-const CONTEXT_OVERFLOW: &str = "The conversation was too large for the selected model, so CodeTether compacted context and retried. If this repeats, start a fresh session with /new.";
+const CONTEXT_OVERFLOW: &str = "The model context was too large, so CodeTether derived a smaller working context from preserved session history and retried. If this repeats, ask the agent to run context_reset with a summary.";
 
 /// Returns true when a provider error is a context-window overflow.
 pub fn is_context_overflow_error(message: &str) -> bool {
@@ -25,6 +25,6 @@ mod tests {
         let raw = "Your input exceeds the context window of this model.";
         let shown = user_facing_error(raw);
         assert!(!shown.contains("Your input exceeds"));
-        assert!(shown.contains("conversation was too large"));
+        assert!(shown.contains("preserved session history"));
     }
 }
