@@ -42,6 +42,6 @@ fn line(out: &mut String, text: &str) {
     out.push('\n');
 }
 
-fn mime(mime_type: &Option<String>) -> String {
-    mime_type.clone().unwrap_or_else(|| "unknown".to_string())
+fn mime(mime_type: &Option<String>) -> &str {
+    mime_type.as_deref().unwrap_or("unknown")
 }

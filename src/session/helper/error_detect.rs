@@ -12,12 +12,11 @@ pub fn is_prompt_too_long_message(message: &str) -> bool {
 
 /// Returns true when an upstream provider error can be retried or failed over.
 pub fn is_retryable_upstream_message(message: &str) -> bool {
-    retry_markers()
-        .iter()
-        .any(|needle| message.contains(needle))
+    let msg = message.to_ascii_lowercase();
+    retry_markers().iter().any(|needle| msg.contains(needle))
 }
 
-fn retry_markers() -> [&'static str; 21] {
+fn retry_markers() -> [&'static str; 20] {
     [
         " 500 ",
         " 504 ",
@@ -39,6 +38,5 @@ fn retry_markers() -> [&'static str; 21] {
         "timeout",
         "broken pipe",
         "unexpected eof",
-        "context window",
     ]
 }

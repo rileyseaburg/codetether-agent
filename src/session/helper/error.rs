@@ -10,5 +10,5 @@ pub fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
 
 /// Returns true when an upstream provider error can be retried or failed over.
 pub fn is_retryable_upstream_error(err: &anyhow::Error) -> bool {
-    is_retryable_upstream_message(&err.to_string().to_ascii_lowercase())
+    is_retryable_upstream_message(&err.to_string())
 }

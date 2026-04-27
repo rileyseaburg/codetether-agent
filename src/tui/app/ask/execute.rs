@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use super::extract;
 use crate::provider::{CompletionRequest, Provider};
+use crate::tui::app::provider_error::user_facing_error;
 use crate::tui::app::state::App;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
@@ -28,7 +29,8 @@ pub(super) async fn run(app: &mut App, provider: Arc<dyn Provider>, request: Com
             app.state.scroll_to_bottom();
         }
         Err(err) => {
-            app.state.status = format!("/ask failed: {err}");
+            let shown = user_facing_error(&err.to_string());
+            app.state.status = format!("/ask failed: {shown}");
         }
     }
 }

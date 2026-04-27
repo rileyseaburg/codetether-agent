@@ -1,14 +1,10 @@
 //! User-facing provider error messages.
 
-const CONTEXT_OVERFLOW: &str = "The conversation was too large for the selected model, so CodeTether compacted context and retried. If this repeats, start a fresh session or use /context_reset.";
+const CONTEXT_OVERFLOW: &str = "The conversation was too large for the selected model, so CodeTether compacted context and retried. If this repeats, start a fresh session with /new.";
 
 /// Returns true when a provider error is a context-window overflow.
 pub fn is_context_overflow_error(message: &str) -> bool {
-    let normalized = message.to_ascii_lowercase();
-    normalized.contains("context window")
-        || normalized.contains("context length")
-        || normalized.contains("maximum context")
-        || normalized.contains("prompt is too long")
+    crate::session::helper::error_detect::is_prompt_too_long_message(message)
 }
 
 /// Convert raw upstream errors into messages safe to show users.
