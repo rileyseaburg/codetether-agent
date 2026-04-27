@@ -9,6 +9,7 @@
 //! let response = agent.execute(&mut session, "fix it").await?;
 //! ```
 
+mod context;
 mod messages;
 mod request;
 mod run;

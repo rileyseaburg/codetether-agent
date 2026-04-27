@@ -11,7 +11,6 @@
 
 use crate::agent::Agent;
 use crate::provider::{ContentPart, Message};
-use crate::session::Session;
 
 /// Internal representation of a pending provider tool call.
 ///
@@ -23,34 +22,19 @@ use crate::session::Session;
 pub(super) type PendingToolCall = (String, String, String);
 
 impl Agent {
-    pub(super) fn build_messages(&self, session: &Session) -> Vec<Message> {
+    pub(super) fn build_messages(
+        &self,
+        system_prompt: String,
+        derived: Vec<Message>,
+    ) -> Vec<Message> {
         let mut messages = vec![Message {
             role: crate::provider::Role::System,
             content: vec![ContentPart::Text {
-                text: compose_system_prompt(&self.system_prompt, session),
+                text: system_prompt,
             }],
         }];
-        messages.extend(session.messages.clone());
+        messages.extend(derived);
         messages
-    }
-}
-
-/// Compose the system prompt by appending the session's goal-governance
-/// block (if any) to the agent's base persona prompt.
-///
-/// Reads `<sessions_dir>/<session-id>.tasks.jsonl` synchronously; the
-/// file is small (a few KB at most) and we want this to run inside the
-/// sync `build_messages` path without a tokio handle.
-fn compose_system_prompt(base: &str, session: &Session) -> String {
-    let log = match crate::session::tasks::TaskLog::for_session(&session.id) {
-        Ok(l) => l,
-        Err(_) => return base.to_string(),
-    };
-    let events = log.read_all_blocking().unwrap_or_default();
-    let state = crate::session::tasks::TaskState::from_log(&events);
-    match crate::session::tasks::governance_block(&state) {
-        Some(block) => format!("{base}\n\n{block}"),
-        None => base.to_string(),
     }
 }
 

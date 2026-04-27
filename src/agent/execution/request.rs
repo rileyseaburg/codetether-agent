@@ -11,12 +11,15 @@
 
 use crate::agent::Agent;
 use crate::provider::CompletionRequest;
-use crate::session::Session;
 
 impl Agent {
-    pub(super) fn build_completion_request(&self, session: &Session) -> CompletionRequest {
+    pub(super) fn build_completion_request(
+        &self,
+        system_prompt: String,
+        messages: Vec<crate::provider::Message>,
+    ) -> CompletionRequest {
         CompletionRequest {
-            messages: self.build_messages(session),
+            messages: self.build_messages(system_prompt, messages),
             tools: self.tools.definitions(),
             model: self.default_model(),
             temperature: self.info.temperature,
@@ -26,7 +29,7 @@ impl Agent {
         }
     }
 
-    fn default_model(&self) -> String {
+    pub(super) fn default_model(&self) -> String {
         self.info
             .model
             .clone()

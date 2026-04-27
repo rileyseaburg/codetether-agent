@@ -9,6 +9,7 @@
 //! let response = agent.execute(&mut session, "inspect").await?;
 //! ```
 
+use super::context::derive_agent_context;
 use super::messages::{collect_tool_calls, response_text};
 use crate::agent::{Agent, AgentResponse};
 use crate::provider::{ContentPart, Message, Role};
@@ -35,10 +36,9 @@ impl Agent {
         });
         let max_steps = self.info.max_steps.unwrap_or(100);
         for _step in 1..=max_steps {
-            let response = self
-                .provider
-                .complete(self.build_completion_request(session))
-                .await?;
+            let (system_prompt, derived) = derive_agent_context(self, session).await?;
+            let request = self.build_completion_request(system_prompt, derived);
+            let response = self.provider.complete(request).await?;
             session.add_message(response.message.clone());
             let tool_calls = collect_tool_calls(&response.message);
             if tool_calls.is_empty() {
