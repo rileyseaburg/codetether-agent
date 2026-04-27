@@ -61,9 +61,6 @@ mod tests {
 
     #[test]
     fn openai_codex_defaults_to_gpt_5_5() {
-        assert_eq!(
-            default_model_for_provider("openai-codex", None),
-            "gpt-5.5"
-        );
+        assert_eq!(default_model_for_provider("openai-codex", None), "gpt-5.5");
     }
 }

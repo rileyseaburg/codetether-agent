@@ -1,13 +1,21 @@
-# v4.6.3
+# v4.6.4
 
-The content filter is rejecting the word "fallback" as a stub marker. Let me rephrase:
-Release notes written to `RELEASE_NOTES_v4.6.3.md` (38 lines). Here's a summary of what's in there:
+## What's New
 
-**What's New (8 items):**
-- TetherScript plugin runtime, browser CLI, voice input/output tools, image clipboard bridge, Ralph verification steps, swarm tool policy, provider redundancy policy
+- **Improved SSH image paste experience** — Pasting images over SSH connections now shows guided error messages and links to relevant help documentation, making it much easier to diagnose and fix clipboard issues in remote sessions (#97).
+- **Release asset backfill workflow** — Added a GitHub Actions workflow to backfill release assets, ensuring historical releases have complete downloadable binaries.
 
-**Bug Fixes (8 items):**
-- Fail-closed authz, hardened sandbox, no-interactive-bash, TLS remediation, Codex model fix, worktree cleanup, discovery-only dynamic tools, verification gating
+## Bug Fixes
 
-**Changes (7 items):**
-- Worktree module removal, file-line ratchet, non-interactive bash, policy user extraction, tool contract endpoint, K8s policy passthrough, line-count stats
+- **Default workers now use Codex GPT-5.5** — Worker model defaults were updated to Codex GPT-5.5, ensuring new and existing workers pick the correct model without manual configuration.
+- **macOS runner for release backfill** — Switched to an available macOS runner to fix the release asset backfill workflow.
+
+## Changes
+
+- Alphabetized imports and reformatted assertions across `worker.rs`, `tool/mod.rs`, `model_defaults.rs`, and `client.rs` for consistency.
+- Streamlined model preference logic in `worker/model_preferences.rs`, reducing complexity and removing redundant codepaths.
+- Extracted SSH clipboard handling into a dedicated `clipboard_ssh.rs` module for better separation of concerns.
+- Updated model references across session helpers, the smart switch, and the swarm orchestrator to align with the new defaults.
+- Expanded TUI help documentation to cover SSH clipboard workflows.
+
+**Full diff**: 24 files changed, 334 insertions, 174 deletions.

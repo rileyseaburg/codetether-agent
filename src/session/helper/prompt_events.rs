@@ -55,7 +55,6 @@ use super::router::{build_proactive_lsp_context_message, choose_router_target_ba
 use super::runtime::{
     enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
 };
-use super::stream::collect_stream_completion_with_events;
 use super::text::extract_text_content;
 use super::token::{
     context_window_for_model, estimate_tokens_for_messages, session_completion_max_tokens,
@@ -235,12 +234,13 @@ pub(crate) async fn run_prompt_with_events(
                 max_tokens: Some(session_completion_max_tokens()),
                 stop: Vec::new(),
             };
-            let completion_result = if model_supports_tools {
-                let stream = provider.complete_stream(request.clone()).await?;
-                collect_stream_completion_with_events(stream, Some(&event_tx)).await
-            } else {
-                provider.complete(request.clone()).await
-            };
+            let completion_result = super::prompt_call::complete_step(
+                &provider,
+                request,
+                model_supports_tools,
+                Some(&event_tx),
+            )
+            .await;
 
             match completion_result {
                 Ok(r) => {

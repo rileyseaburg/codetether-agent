@@ -188,6 +188,23 @@ REMOTE
             }
         }
 
+        stage('Package PR Test Windows EXE') {
+            steps {
+                script {
+                    if (isReleaseRefBuild()) {
+                        echo "Skipping PR test Windows EXE for release ref: ${releaseRefName()}"
+                        return
+                    }
+                    sh '''
+                        mkdir -p dist
+                        cp dist/windows/${BINARY_NAME}.exe "dist/${BINARY_NAME}-pr-test-x86_64-pc-windows-gnu.exe"
+                        ls -lh "dist/${BINARY_NAME}-pr-test-x86_64-pc-windows-gnu.exe"
+                    '''
+                    archiveArtifacts artifacts: 'dist/*-pr-test-x86_64-pc-windows-gnu.exe', fingerprint: true
+                }
+            }
+        }
+
         stage('Package & Release') {
             steps {
                 script {
