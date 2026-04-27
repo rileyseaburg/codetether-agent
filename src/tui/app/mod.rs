@@ -19,6 +19,7 @@ pub mod model_picker;
 pub mod navigation;
 pub mod okr_gate;
 pub mod panic_cleanup;
+pub mod provider_error;
 pub mod resume_window;
 pub mod run;
 pub mod session_events;

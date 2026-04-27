@@ -1,32 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum MessageType {
-    User,
-    Assistant,
-    System,
-    Error,
-    ToolCall {
-        name: String,
-        arguments: String,
-    },
-    ToolResult {
-        name: String,
-        output: String,
-        success: bool,
-        #[serde(default)]
-        duration_ms: Option<u64>,
-    },
-    Thinking(String),
-    Image {
-        url: String,
-    },
-    File {
-        path: String,
-        #[serde(default)]
-        size: Option<u64>,
-    },
-}
+use crate::tui::app::provider_error::user_facing_error;
+
+pub use super::types::{ChatMessage, MessageType};
 
 /// Token usage attributed to a single chat message.
 ///
@@ -59,25 +35,22 @@ pub struct MessageUsage {
     pub duration_ms: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatMessage {
-    pub message_type: MessageType,
-    pub content: String,
-    pub timestamp: std::time::SystemTime,
-    /// Per-message token usage, populated after the provider returns.
-    /// `None` for messages that do not correspond to a provider call
-    /// (user input, system notices, tool results).
-    #[serde(default)]
-    pub usage: Option<MessageUsage>,
-}
-
 impl ChatMessage {
     pub fn new(message_type: MessageType, content: impl Into<String>) -> Self {
+        let content = normalized_content(&message_type, content.into());
         Self {
             message_type,
-            content: content.into(),
+            content,
             timestamp: std::time::SystemTime::now(),
             usage: None,
         }
+    }
+}
+
+fn normalized_content(message_type: &MessageType, content: String) -> String {
+    if matches!(message_type, MessageType::Error) {
+        user_facing_error(&content)
+    } else {
+        content
     }
 }
