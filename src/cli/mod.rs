@@ -250,8 +250,13 @@ pub struct TuiArgs {
     #[arg(long)]
     pub a2a_port: Option<u16>,
 
-    /// A2A bind hostname. 127.0.0.1 (default) is loopback-only; mDNS over
-    /// loopback still finds peers on the same host. Use 0.0.0.0 for LAN.
+    /// A2A bind hostname. 127.0.0.1 (default) is loopback-only and SAFE
+    /// (the peer is unreachable from outside the host) but mDNS multicast
+    /// does NOT traverse the Linux `lo` interface, so same-host peers
+    /// cannot find each other via mDNS at this binding. Use 0.0.0.0 to
+    /// make peers reachable on the LAN AND to enable mDNS auto-discovery
+    /// between same-host agents (multicast loops back through the real
+    /// interface).
     #[arg(long, default_value = "127.0.0.1")]
     pub a2a_hostname: String,
 
@@ -482,9 +487,12 @@ pub struct SpawnArgs {
     #[arg(short, long)]
     pub name: Option<String>,
 
-    /// Hostname to bind. 127.0.0.1 (default) is loopback-only — peers on
-    /// the same host still find each other via mDNS over loopback. Use
-    /// 0.0.0.0 to be reachable across the LAN.
+    /// Hostname to bind. 127.0.0.1 (default) is loopback-only and SAFE
+    /// (the peer is unreachable from outside the host) but mDNS multicast
+    /// does NOT traverse the Linux `lo` interface, so same-host peers
+    /// cannot find each other via mDNS at this binding. Use 0.0.0.0 to
+    /// be reachable on the LAN AND to enable mDNS auto-discovery between
+    /// same-host agents (multicast loops back through the real interface).
     #[arg(long, default_value = "127.0.0.1")]
     pub hostname: String,
 

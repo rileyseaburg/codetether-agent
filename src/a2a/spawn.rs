@@ -307,9 +307,24 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     ));
 
     // 6. mDNS announce + browse (true P2P, default on).
+    //
+    // Pass concrete bound addrs to mdns-sd that match what the HTTP server
+    // will actually accept — anything else risks advertising a URL no
+    // peer can reach. For a wildcard bind (`0.0.0.0`) we leave the addr
+    // list empty so mdns-sd's `enable_addr_auto` enumerates the real
+    // interface IPs; for a loopback bind we pass loopback so we don't
+    // advertise LAN addrs the server isn't bound to.
+    let mdns_bind_addrs: Vec<std::net::IpAddr> = match opts.hostname.as_str() {
+        "0.0.0.0" | "::" | "[::]" => vec![],
+        other => other
+            .parse::<std::net::IpAddr>()
+            .ok()
+            .into_iter()
+            .collect(),
+    };
     let (mdns_handle, mdns_intake_task) = if opts.mdns {
         let (peer_tx, peer_rx) = mpsc::channel::<DiscoveredPeer>(64);
-        match mdns::announce_and_browse(&agent_name, effective_port, vec![], peer_tx) {
+        match mdns::announce_and_browse(&agent_name, effective_port, mdns_bind_addrs, peer_tx) {
             Ok(handle) => {
                 let intake = tokio::spawn(mdns_intake_loop(
                     Arc::clone(&bus),
@@ -347,13 +362,23 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     })
 }
 
+/// Per-peer card-fetch deadline. mDNS may resolve a peer via several IPs
+/// (LAN, VPN, docker bridge, link-local v6); we want to fail fast on the
+/// unreachable ones rather than blocking the queue.
+const MDNS_PEER_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// Drain peers discovered over mDNS, fetch their cards, register them, and
 /// optionally send the same auto-intro the explicit-seed loop sends.
 ///
-/// Dedup is keyed by **agent name** (not by endpoint URL), so an agent that
-/// is reachable via multiple network interfaces — common when binding
-/// `0.0.0.0` on a host with several bridges — only triggers one discovery
-/// log line and one auto-intro across the lifetime of the process.
+/// Each discovered peer is processed on its own tokio task so a slow or
+/// unreachable peer cannot block the rest of the queue. Dedup is keyed
+/// by **agent name** (not by endpoint URL), so an agent reachable via
+/// multiple network interfaces — common when binding `0.0.0.0` on a
+/// multi-homed host — only triggers one discovery log line and one
+/// auto-intro across the lifetime of the process. The known-set is
+/// also pre-checked by mDNS instance name before any fetch is issued,
+/// which short-circuits the duplicate announcements that mdns-sd
+/// emits per interface.
 async fn mdns_intake_loop(
     bus: Arc<AgentBus>,
     mut peer_rx: mpsc::Receiver<DiscoveredPeer>,
@@ -361,17 +386,12 @@ async fn mdns_intake_loop(
     agent_name: String,
     auto_introduce: bool,
 ) {
-    let self_url = self_url.trim_end_matches('/').to_string();
+    let self_url = Arc::new(self_url.trim_end_matches('/').to_string());
     let known: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
 
     while let Some(peer) = peer_rx.recv().await {
-        if peer.url.trim_end_matches('/') == self_url {
-            continue;
-        }
-
-        // Skip on instance-name match before even probing — saves N-1
-        // wasteful card fetches when the same peer announces over many
-        // interfaces.
+        // Cheap pre-check by instance name to skip the per-interface
+        // duplicate announcements before we spawn anything.
         let already_known_by_instance = {
             let k = known.lock().await;
             k.contains(&peer.instance_name)
@@ -380,17 +400,45 @@ async fn mdns_intake_loop(
             continue;
         }
 
-        // Probe both base URL and `/a2a` variant the same way the explicit-
-        // seed loop does.
-        let candidates = peer_candidates(&peer.url);
-        let mut resolved = None;
-        for candidate in candidates {
-            match try_fetch_agent_card(&candidate).await {
-                Ok(card) => {
+        // Spawn one task per discovered peer so a slow/unreachable peer
+        // can't block the next event in the queue.
+        let bus = Arc::clone(&bus);
+        let known = Arc::clone(&known);
+        let self_url = Arc::clone(&self_url);
+        let agent_name = agent_name.clone();
+        tokio::spawn(async move {
+            handle_mdns_peer(bus, known, self_url, agent_name, peer, auto_introduce).await;
+        });
+    }
+}
+
+/// Try each URL the resolver gave us until one yields a valid agent card,
+/// then register and (optionally) intro. Each fetch attempt is bounded by
+/// `MDNS_PEER_PROBE_TIMEOUT`. Multi-homed peers commonly resolve to
+/// several addrs (LAN/VPN/docker); we cycle through them in order.
+async fn handle_mdns_peer(
+    bus: Arc<AgentBus>,
+    known: Arc<Mutex<HashSet<String>>>,
+    self_url: Arc<String>,
+    agent_name: String,
+    peer: DiscoveredPeer,
+    auto_introduce: bool,
+) {
+    let mut resolved: Option<(String, crate::a2a::types::AgentCard)> = None;
+
+    'urls: for url in &peer.urls {
+        if url.trim_end_matches('/') == self_url.as_str() {
+            continue;
+        }
+        for candidate in peer_candidates(url) {
+            match tokio::time::timeout(MDNS_PEER_PROBE_TIMEOUT, try_fetch_agent_card(&candidate))
+                .await
+            {
+                Ok(Ok(card)) => {
                     resolved = Some((candidate, card));
-                    break;
+                    break 'urls;
                 }
-                Err(error) => {
+                Ok(Err(error)) => {
                     tracing::debug!(
                         agent = %agent_name,
                         peer = %candidate,
@@ -398,42 +446,50 @@ async fn mdns_intake_loop(
                         "mDNS peer probe failed"
                     );
                 }
+                Err(_) => {
+                    tracing::debug!(
+                        agent = %agent_name,
+                        peer = %candidate,
+                        timeout_secs = MDNS_PEER_PROBE_TIMEOUT.as_secs(),
+                        "mDNS peer probe timed out"
+                    );
+                }
             }
         }
+    }
 
-        let Some((endpoint, card)) = resolved else {
-            continue;
-        };
+    let Some((endpoint, card)) = resolved else {
+        return;
+    };
 
-        let is_new = {
-            let mut k = known.lock().await;
-            // Insert both keys so future probes via either path short-circuit.
-            let inserted = k.insert(card.name.clone());
-            k.insert(peer.instance_name.clone());
-            inserted
-        };
+    let is_new = {
+        let mut k = known.lock().await;
+        // Insert both keys so future probes via either path short-circuit.
+        let inserted = k.insert(card.name.clone());
+        k.insert(peer.instance_name.clone());
+        inserted
+    };
 
-        bus.registry.register(card.clone());
+    bus.registry.register(card.clone());
 
-        if is_new {
-            tracing::info!(
+    if is_new {
+        tracing::info!(
+            agent = %agent_name,
+            peer_name = %card.name,
+            peer_url = %card.url,
+            endpoint = %endpoint,
+            via = "mdns",
+            "Discovered A2A peer"
+        );
+        if auto_introduce
+            && let Err(error) = send_intro(&endpoint, &agent_name, self_url.as_str()).await
+        {
+            tracing::warn!(
                 agent = %agent_name,
-                peer_name = %card.name,
-                peer_url = %card.url,
-                endpoint = %endpoint,
-                via = "mdns",
-                "Discovered A2A peer"
+                peer = %endpoint,
+                error = %error,
+                "Auto-intro message failed"
             );
-            if auto_introduce
-                && let Err(error) = send_intro(&endpoint, &agent_name, &self_url).await
-            {
-                tracing::warn!(
-                    agent = %agent_name,
-                    peer = %endpoint,
-                    error = %error,
-                    "Auto-intro message failed"
-                );
-            }
         }
     }
 }
