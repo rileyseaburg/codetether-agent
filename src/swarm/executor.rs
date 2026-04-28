@@ -956,7 +956,6 @@ impl SwarmExecutor {
             };
             let subtask_provider = providers
                 .get(&chosen_provider)
-                .cloned()
                 .unwrap_or_else(|| Arc::clone(&provider));
             let model = chosen_model;
             let _provider_name = chosen_provider;
