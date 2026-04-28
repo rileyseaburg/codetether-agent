@@ -9,6 +9,7 @@ use crate::provenance::{
     ExecutionOrigin, ExecutionProvenance, git_commit_with_provenance_blocking,
 };
 use crate::provider::{ContentPart, Message, Provider, ProviderRegistry, Role};
+use crate::session::delegation::DelegationState;
 use crate::session::{Session, SessionEvent};
 use crate::swarm::{executor::AgentLoopExit, run_agent_loop};
 use crate::tool::ToolRegistry;
@@ -33,6 +34,8 @@ pub struct RalphLoop {
     bus: Option<Arc<AgentBus>>,
     registry: Option<Arc<ProviderRegistry>>,
     store: Option<Arc<dyn RalphStateStore>>,
+    /// Optional CADMAS-CTX delegation state for LCB relay provider selection
+    delegation: Option<DelegationState>,
     run_id: String,
 }
 
@@ -87,6 +90,7 @@ impl RalphLoop {
             bus: None,
             registry: None,
             store: None,
+            delegation: None,
             run_id: uuid::Uuid::new_v4().to_string(),
         })
     }
@@ -106,6 +110,12 @@ impl RalphLoop {
     /// Attach a provider registry for relay team planning
     pub fn with_registry(mut self, registry: Arc<ProviderRegistry>) -> Self {
         self.registry = Some(registry);
+        self
+    }
+
+    /// Attach CADMAS-CTX delegation state for LCB relay provider selection.
+    pub fn with_delegation(mut self, state: DelegationState) -> Self {
+        self.delegation = Some(state);
         self
     }
 
@@ -863,6 +873,7 @@ impl RalphLoop {
                                         bus.clone(),
                                         relay_max_agents,
                                         relay_max_rounds,
+                                        delegation.as_ref(),
                                     )
                                     .await
                                 } else {
@@ -1727,6 +1738,7 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         bus: Option<Arc<AgentBus>>,
         max_agents: usize,
         max_rounds: usize,
+        delegation: Option<&DelegationState>,
     ) -> anyhow::Result<String> {
         let max_agents = max_agents.clamp(2, 8);
         let max_rounds = max_rounds.clamp(1, 5);
@@ -1742,8 +1754,18 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         let mut relay_profiles: Vec<RelayAgentProfile> = Vec::new();
 
         for (name, instructions, capabilities) in &profiles {
+            // LCB delegation: pick best provider for this relay role.
+            let default_provider = registry.list().first().copied().unwrap_or("openai");
+            let (role_provider, role_model) = match delegation {
+                Some(state) => super::delegation::choose_provider_for_role(
+                    registry, state, name, default_provider, model,
+                ),
+                None => (default_provider.to_string(), model.to_string()),
+            };
+            let role_model_str = role_model.clone();
+
             let mut session = Session::new().await?;
-            session.metadata.model = Some(model.to_string());
+            session.metadata.model = Some(role_model_str);
             session.set_agent_name(name.clone());
             session.bus = Some(relay_bus.clone());
             session.add_message(Message {

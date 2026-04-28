@@ -11,6 +11,7 @@
 
 pub mod cache;
 pub mod collapse_controller;
+pub mod delegation;
 pub mod executor;
 pub mod kubernetes_executor;
 pub mod orchestrator;

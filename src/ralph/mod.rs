@@ -12,7 +12,9 @@ pub mod store_http;
 pub mod store_memory;
 mod types;
 mod verification;
+mod delegation;
 
+pub use delegation::*;
 pub use ralph_loop::*;
 pub use state_store::{RalphRunState, RalphRunSummary, RalphStateStore, StoryResultEntry};
 pub use types::*;

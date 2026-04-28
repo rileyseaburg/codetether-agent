@@ -3,6 +3,7 @@
 pub mod model_rotation;
 pub mod shared_context;
 pub mod transport;
+pub mod delegation;
 
 pub const AUTOCHAT_MAX_AGENTS: usize = 8;
 pub const AUTOCHAT_DEFAULT_AGENTS: usize = 3;
