@@ -35,11 +35,18 @@ pub(crate) async fn run(client: &reqwest::Client, params: &Params) -> Result<Too
         )));
     }
 
-    super::audio_player::open(&job_id, &output_url)?;
+    let launch = super::audio_player::open(&job_id, &output_url)?;
+    let status = if launch.browser_opened {
+        format!("Playing job {job_id} in browser.")
+    } else {
+        format!("Player saved locally for job {job_id} (browser launch unavailable).")
+    };
 
     Ok(ToolResult::success(format!(
-        "Playing job {job_id} in browser.\nURL: {output_url}"
+        "{status}\nURL: {output_url}\nPlayer: {}",
+        launch.html_path.display()
     ))
     .with_metadata("job_id", json!(job_id))
-    .with_metadata("output_url", json!(output_url)))
+    .with_metadata("output_url", json!(output_url))
+    .with_metadata("player_path", json!(launch.html_path)))
 }
