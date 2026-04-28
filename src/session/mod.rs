@@ -74,6 +74,7 @@ pub mod index;
 pub mod index_produce;
 pub mod journal;
 pub mod listing;
+pub mod oracle_replay;
 mod listing_all;
 pub mod oracle;
 pub mod pages;

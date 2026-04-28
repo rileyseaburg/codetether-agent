@@ -64,7 +64,7 @@ pub fn effective_policy(session: &Session) -> DerivePolicy {
 fn resolve_reset_threshold(persisted: DerivePolicy) -> usize {
     let default_threshold = match persisted {
         DerivePolicy::Reset { threshold_tokens } => threshold_tokens,
-        DerivePolicy::Legacy | DerivePolicy::Incremental { .. } => DEFAULT_RESET_THRESHOLD_TOKENS,
+        DerivePolicy::Legacy | DerivePolicy::Incremental { .. } | DerivePolicy::OracleReplay { .. } => DEFAULT_RESET_THRESHOLD_TOKENS,
     };
     env::var("CODETETHER_CONTEXT_RESET_THRESHOLD_TOKENS")
         .ok()
@@ -155,6 +155,19 @@ pub async fn derive_with_policy(
                 budget_tokens
             };
             derive_incremental(session, provider, model, system_prompt, tools, budget).await
+        }
+        // OracleReplay is evaluation-only; at runtime fall back to Legacy.
+        DerivePolicy::OracleReplay { .. } => {
+            derive_context(
+                session,
+                provider,
+                model,
+                system_prompt,
+                tools,
+                event_tx,
+                force_keep_last,
+            )
+            .await
         }
     }
 }

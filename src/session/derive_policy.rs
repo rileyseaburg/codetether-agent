@@ -78,6 +78,15 @@ pub enum DerivePolicy {
         /// once the selected set would exceed this estimate.
         budget_tokens: usize,
     },
+    /// ClawVM replay oracle (Phase B step 22). Evaluation-only.
+    ///
+    /// Given a recorded trace, picks representations with `h`-turn
+    /// future-demand lookahead to minimise fault count. Not suitable
+    /// for production — only for benchmarking online vs oracle gap.
+    OracleReplay {
+        /// Lookahead horizon in turns. ClawVM uses h=3.
+        lookahead: usize,
+    },
 }
 
 impl DerivePolicy {
@@ -100,6 +109,7 @@ impl DerivePolicy {
             DerivePolicy::Legacy => "legacy",
             DerivePolicy::Reset { .. } => "reset",
             DerivePolicy::Incremental { .. } => "incremental",
+            DerivePolicy::OracleReplay { .. } => "oracle_replay",
         }
     }
 }
