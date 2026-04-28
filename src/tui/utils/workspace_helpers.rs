@@ -4,10 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 pub fn should_skip_entry(name: &str) -> bool {
-    matches!(
-        name,
-        ".git" | "node_modules" | "target" | ".next" | "__pycache__" | ".venv"
-    )
+    crate::workspace_scan::is_pruned_workspace_dir(name)
 }
 
 /// Fetch branch and dirty-file count in a single `git` subprocess.

@@ -3,6 +3,8 @@
 mod audio_player;
 mod play;
 mod speak_stream;
+mod tts_request;
+mod tts_result;
 
 use super::{Params, ToolResult};
 use anyhow::Result;

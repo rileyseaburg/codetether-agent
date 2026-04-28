@@ -1861,7 +1861,12 @@ async fn main() -> anyhow::Result<()> {
             // Default: launch TUI with auto-everything A2A peer enabled.
             // Same defaults as `codetether tui` with no flags.
             let project = cli.project;
-            tui::run(project, false, Some(crate::a2a::spawn::SpawnOptions::auto())).await
+            tui::run(
+                project,
+                false,
+                Some(crate::a2a::spawn::SpawnOptions::auto()),
+            )
+            .await
         }
     }
 }

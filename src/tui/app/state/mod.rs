@@ -101,6 +101,8 @@ pub struct AppState {
     pub worker_id: Option<String>,
     pub worker_name: Option<String>,
     pub a2a_connected: bool,
+    /// Local A2A peer endpoint bound; independent of `a2a_connected` (worker bridge).
+    pub peer_endpoint_ready: bool,
     pub recent_tasks: Vec<String>,
     pub worker_bridge_registered_agents: HashSet<String>,
     pub worker_bridge_processing_state: Option<bool>,

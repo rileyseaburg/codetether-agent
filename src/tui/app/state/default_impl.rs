@@ -45,6 +45,7 @@ impl Default for super::AppState {
             worker_id: None,
             worker_name: None,
             a2a_connected: false,
+            peer_endpoint_ready: false,
             recent_tasks: Vec::new(),
             worker_bridge_registered_agents: HashSet::new(),
             worker_bridge_processing_state: None,

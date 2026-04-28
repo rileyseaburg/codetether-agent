@@ -23,6 +23,7 @@ pub mod anthropic;
 pub mod bedrock;
 pub mod body_cap;
 pub mod copilot;
+pub mod deepseek;
 mod fallback_policy;
 pub mod gemini_web;
 pub mod glm5;

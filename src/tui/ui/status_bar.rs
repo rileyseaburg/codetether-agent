@@ -38,6 +38,8 @@ pub fn bus_status_label_and_color(app: &App) -> (String, Color) {
                 Color::Yellow
             },
         )
+    } else if app.state.peer_endpoint_ready {
+        ("BUS peer ready".to_string(), Color::Cyan)
     } else {
         ("BUS offline".to_string(), Color::DarkGray)
     }

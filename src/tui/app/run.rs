@@ -144,6 +144,7 @@ pub async fn run(
     // is the unused-name convention (the variable is read by Drop, not by
     // any code), NOT the `_` discard pattern — those have different drop
     // semantics. Do not change this to `let _ = ...`.
+    let mut peer_endpoint_ready = false;
     let _a2a_peer_lifetime_guard = if let Some(opts) = a2a_options {
         match crate::a2a::spawn::start_a2a_in_background(opts, bus.clone()).await {
             Ok(handle) => {
@@ -153,6 +154,7 @@ pub async fn run(
                     public_url = %handle.public_url,
                     "TUI A2A peer endpoint ready"
                 );
+                peer_endpoint_ready = true;
                 Some(handle)
             }
             Err(e) => {
@@ -168,6 +170,7 @@ pub async fn run(
     let mut app = App::default();
     app.state.cwd_display = cwd.display().to_string();
     app.state.allow_network = allow_network;
+    app.state.peer_endpoint_ready = peer_endpoint_ready;
     app.state.session_id = Some(session.id.clone());
     app.state.status = "Loading providers and workspace…".to_string();
     terminal.draw(|f| ui(f, &mut app, &session))?;
