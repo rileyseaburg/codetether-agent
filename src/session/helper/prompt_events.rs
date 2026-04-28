@@ -39,7 +39,7 @@ use super::confirmation::{
 };
 use super::defaults::default_model_for_provider;
 use super::edit::{detect_stub_in_tool_input, normalize_tool_call_for_execution};
-use super::error::{is_prompt_too_long_error, is_retryable_upstream_error};
+use super::error::is_retryable_upstream_error;
 use super::loop_constants::{
     BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE, CODESEARCH_THRASH_NUDGE,
     FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, MAX_CONSECUTIVE_SAME_TOOL,
@@ -253,8 +253,8 @@ pub(crate) async fn run_prompt_with_events(
                     break r;
                 }
                 Err(e) => {
-                    if attempt == 1 && is_prompt_too_long_error(&e) {
-                        tracing::warn!(error = %e, "Provider rejected prompt as too long; re-deriving with force_keep_last=6 and retrying");
+                    if let Some(keep_last) = super::prompt_too_long::keep_last(&e, attempt) {
+                        tracing::warn!(error = %e, keep_last, "Provider rejected prompt as too long; re-deriving with RLM-forced compaction and retrying");
                         derived = derive_with_policy(
                             session,
                             Arc::clone(&provider),
@@ -263,7 +263,7 @@ pub(crate) async fn run_prompt_with_events(
                             &advertised_tool_definitions,
                             Some(&event_tx),
                             policy,
-                            Some(6),
+                            Some(keep_last),
                         )
                         .await?;
                         continue;
@@ -728,7 +728,6 @@ pub(crate) async fn run_prompt_with_events(
                 continue;
             }
 
-            let exec_start = std::time::Instant::now();
             let exec_input = enrich_tool_input_with_runtime_context(
                 &tool_input,
                 &cwd,
@@ -737,6 +736,7 @@ pub(crate) async fn run_prompt_with_events(
                 &session.agent,
                 session.metadata.provenance.as_ref(),
             );
+            let exec_start = super::persist::before_tool(session).await;
             let (content, success, tool_metadata) = execute_tool(
                 &tool_registry,
                 &tool_name,

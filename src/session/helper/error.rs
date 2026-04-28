@@ -63,7 +63,7 @@ pub fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
     let msg = err.to_string().to_ascii_lowercase();
     msg.contains("prompt is too long")
         || msg.contains("context length")
-        || msg.contains("maximum context")
+        || (msg.contains("maximum context") || msg.contains("context window"))
         || (msg.contains("tokens") && msg.contains("maximum") && msg.contains("prompt"))
 }
 

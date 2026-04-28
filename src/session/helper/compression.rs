@@ -10,7 +10,7 @@
 //! 2. If it exceeds 90% of the model's usable budget, compress the prefix
 //!    of the conversation via [`RlmRouter::auto_process`], keeping the
 //!    most recent `keep_last` messages verbatim.
-//! 3. Progressively shrink `keep_last` (16 → 12 → 8 → 6) until the budget
+//! 3. Progressively shrink `keep_last` (16 → 12 → 8 → 6 → 3 → 1) until the budget
 //!    is met or nothing more can be compressed.
 //!
 //! The compressed prefix is replaced by a single synthetic assistant
@@ -55,7 +55,7 @@ use crate::session::event_compaction::{
 use crate::session::{Session, SessionEvent};
 
 /// Progressively smaller `keep_last` values tried by [`enforce_context_window`].
-const KEEP_LAST_CANDIDATES: [usize; 4] = [16, 12, 8, 6];
+const KEEP_LAST_CANDIDATES: [usize; 6] = [16, 12, 8, 6, 3, 1];
 
 /// Number of most-recent messages retained by the terminal truncation
 /// fallback when every RLM compaction attempt has failed to bring the
@@ -932,6 +932,7 @@ mod tests {
             agent: "test".to_string(),
             messages: Vec::new(),
             pages: Vec::new(),
+            summary_index: crate::session::index::SummaryIndex::new(),
             tool_uses: Vec::new(),
             usage: Default::default(),
             max_steps: None,

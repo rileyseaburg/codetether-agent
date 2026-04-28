@@ -47,6 +47,7 @@ impl Session {
             updated_at: now,
             messages: Vec::new(),
             pages: Vec::new(),
+            summary_index: super::index::SummaryIndex::new(),
             tool_uses: Vec::<ToolUse>::new(),
             usage: Usage::default(),
             agent: "build".to_string(),
@@ -217,7 +218,9 @@ impl Session {
             self.pages = classify_all(&self.messages);
         }
         self.pages.push(classify(&message));
+        let appended_idx = self.messages.len();
         self.messages.push(message);
+        self.summary_index.append(appended_idx);
         self.updated_at = Utc::now();
     }
 
