@@ -50,6 +50,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
+#[path = "context_reset_audit.rs"]
+mod audit;
+
 /// Marker prefix that identifies a `context_reset` tool output in the
 /// transcript. Phase B derivations search for this literal when
 /// deciding whether a user-visible summary has already landed.
@@ -126,7 +129,7 @@ impl Tool for ContextResetTool {
             }
         };
         let bytes = summary.len();
-        tracing::info!(bytes, "context_reset: agent-authored summary accepted");
+        audit::log(bytes).await;
         Ok(ToolResult::success(format_reset_marker(&summary, bytes)))
     }
 }
@@ -138,11 +141,10 @@ mod tests {
     #[tokio::test]
     async fn execute_requires_non_empty_summary() {
         let tool = ContextResetTool;
-        let result = tool.execute(json!({"summary": ""})).await.unwrap();
-        assert!(!result.success);
-
-        let result = tool.execute(json!({"summary": "   "})).await.unwrap();
-        assert!(!result.success);
+        for summary in ["", "   "] {
+            let result = tool.execute(json!({"summary": summary})).await.unwrap();
+            assert!(!result.success);
+        }
     }
 
     #[tokio::test]
@@ -160,14 +162,10 @@ mod tests {
     #[test]
     fn format_reset_marker_has_stable_prefix_and_body() {
         let body = format_reset_marker("hello", 5);
+        assert_eq!(RESET_MARKER_PREFIX, "[CONTEXT RESET]");
         assert!(body.starts_with(RESET_MARKER_PREFIX));
         assert!(body.contains("hello"));
         assert!(body.contains("bytes=5"));
         assert!(body.contains("session_recall"));
-    }
-
-    #[test]
-    fn marker_prefix_is_the_documented_constant() {
-        assert_eq!(RESET_MARKER_PREFIX, "[CONTEXT RESET]");
     }
 }

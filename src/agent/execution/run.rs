@@ -35,10 +35,7 @@ impl Agent {
         });
         let max_steps = self.info.max_steps.unwrap_or(100);
         for _step in 1..=max_steps {
-            let response = self
-                .provider
-                .complete(self.build_completion_request(session))
-                .await?;
+            let response = self.complete_with_context(session).await?;
             session.add_message(response.message.clone());
             let tool_calls = collect_tool_calls(&response.message);
             if tool_calls.is_empty() {

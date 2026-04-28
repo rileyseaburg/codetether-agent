@@ -17,8 +17,11 @@
 //!   and keeps only the most recent user turn. See
 //!   [`derive_with_policy`](super::context::derive_with_policy) for
 //!   the implementation.
-//! * [`DerivePolicy::Incremental`] *(reserved, Phase B)* — Liu et al.
-//!   scoring + hierarchical summary lookup.
+//! * [`DerivePolicy::Incremental`] — Liu et al. select-then-pack
+//!   relevance scoring against a per-(message) [`RelevanceMeta`]
+//!   sidecar. Step-18-driven hierarchical summary lookup is wired
+//!   in a later commit; until then the policy returns the selected
+//!   tail without summary fillers.
 //! * [`DerivePolicy::OracleReplay`] *(reserved, Phase B)* — ClawVM
 //!   replay oracle with `h`-turn future-demand lookahead.
 //!
@@ -62,6 +65,28 @@ pub enum DerivePolicy {
         /// the model's working context length.
         threshold_tokens: usize,
     },
+    /// Liu et al. (arXiv:2512.22087) incremental select-then-pack
+    /// derivation.
+    ///
+    /// Score every entry against the latest user turn's
+    /// [`RelevanceMeta`](crate::session::relevance::RelevanceMeta) and
+    /// greedy-pack the highest-scoring set into `budget_tokens`. The
+    /// recent window is always retained; older entries are kept only
+    /// when their relevance to the active task is high.
+    Incremental {
+        /// Per-call working-context budget. Older entries are dropped
+        /// once the selected set would exceed this estimate.
+        budget_tokens: usize,
+    },
+    /// ClawVM replay oracle (Phase B step 22). Evaluation-only.
+    ///
+    /// Given a recorded trace, picks representations with `h`-turn
+    /// future-demand lookahead to minimise fault count. Not suitable
+    /// for production — only for benchmarking online vs oracle gap.
+    OracleReplay {
+        /// Lookahead horizon in turns. ClawVM uses h=3.
+        lookahead: usize,
+    },
 }
 
 impl DerivePolicy {
@@ -83,6 +108,8 @@ impl DerivePolicy {
         match self {
             DerivePolicy::Legacy => "legacy",
             DerivePolicy::Reset { .. } => "reset",
+            DerivePolicy::Incremental { .. } => "incremental",
+            DerivePolicy::OracleReplay { .. } => "oracle_replay",
         }
     }
 }
@@ -124,6 +151,22 @@ mod tests {
             .kind(),
             "reset"
         );
+        assert_eq!(
+            DerivePolicy::Incremental { budget_tokens: 0 }.kind(),
+            "incremental"
+        );
+    }
+
+    #[test]
+    fn incremental_carries_budget() {
+        let p = DerivePolicy::Incremental {
+            budget_tokens: 16_384,
+        };
+        if let DerivePolicy::Incremental { budget_tokens } = p {
+            assert_eq!(budget_tokens, 16_384);
+        } else {
+            panic!("expected Incremental");
+        }
     }
 
     #[test]
