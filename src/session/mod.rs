@@ -71,6 +71,7 @@ pub mod helper;
 pub mod history;
 pub mod history_sink;
 pub mod index;
+pub mod index_produce;
 pub mod journal;
 pub mod listing;
 mod listing_all;

@@ -75,19 +75,26 @@ pub struct SummaryNode {
     pub generation: u64,
 }
 
+/// Upper bound on cached summaries before LRU eviction kicks in.
+/// Chosen so the index sidecar stays under ~1 MB for typical sessions.
+pub const MAX_CACHED_SUMMARIES: usize = 128;
+
 /// Hierarchical summary cache over the chat transcript.
 ///
-/// Step 14 is **scaffolding only** — no producer wired yet, no eviction.
-/// [`Self::get`] always returns `None` until step 18 lands.
+/// [`Self::get`] returns cached summaries for exact range matches.
+/// [`Self::summary_for`] is async and produces new summaries via
+/// a caller-supplied producer when the cache misses, then stores
+/// the result with LRU eviction.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SummaryIndex {
     #[serde(default)]
     tree: BTreeMap<SummaryRange, SummaryNode>,
     /// Monotonic counter bumped whenever the index is invalidated.
-    /// Producer compares against `SummaryNode::generation` to detect
-    /// stale entries.
     #[serde(default)]
     generation: u64,
+    /// LRU ordering: oldest entry at position 0, newest at the end.
+    #[serde(default)]
+    lru_order: Vec<SummaryRange>,
 }
 
 impl SummaryIndex {
@@ -111,43 +118,95 @@ impl SummaryIndex {
         self.tree.is_empty()
     }
 
-    /// Look up a cached summary by exact range match.
-    ///
-    /// Phase B step 18 will replace this with a fuzzier lookup that
-    /// can re-cover overlapping ranges from existing nodes.
+    /// Look up a cached summary by exact range match (immutable).
     pub fn get(&self, range: SummaryRange) -> Option<&SummaryNode> {
         self.tree.get(&range)
     }
 
-    /// Insert a new summary node. Caller is responsible for bumping
-    /// generation if the new node supersedes an invalidated one.
-    ///
-    /// Returns the previous node at the same range, if any.
+    /// Insert a new summary node. Maintains LRU ordering.
     pub fn insert(&mut self, range: SummaryRange, node: SummaryNode) -> Option<SummaryNode> {
-        self.tree.insert(range, node)
+        self.touch_lru(range);
+        let prev = self.tree.insert(range, node);
+        self.evict_if_over_budget();
+        prev
     }
 
     /// Hot-path hook for [`Session::add_message`].
     ///
     /// Drops every cached summary whose range covers `idx`; bumps the
-    /// generation counter whenever any drop occurs so consumers can
-    /// detect cache turnover. Untouched ranges keep their nodes — that
-    /// is the whole point of this structure.
+    /// generation counter whenever any drop occurs.
     pub fn append(&mut self, idx: usize) {
-        let before = self.tree.len();
-        self.tree.retain(|range, _| !range.contains(idx));
-        if self.tree.len() != before {
+        let to_drop: Vec<SummaryRange> = self
+            .tree
+            .keys()
+            .filter(|range| range.contains(idx))
+            .copied()
+            .collect();
+        for range in &to_drop {
+            self.tree.remove(range);
+        }
+        self.lru_order.retain(|r| !to_drop.contains(r));
+        if !to_drop.is_empty() {
             self.generation = self.generation.wrapping_add(1);
         }
     }
 
-    /// Drop every range whose `end > idx`. Used when the tail of the
-    /// transcript is rewritten (compaction, reset).
+    /// Drop every range whose `end > idx`. Used when the tail is
+    /// rewritten (compaction, reset).
     pub fn invalidate_after(&mut self, idx: usize) {
-        let before = self.tree.len();
-        self.tree.retain(|range, _| range.end <= idx);
-        if self.tree.len() != before {
+        let to_drop: Vec<SummaryRange> = self
+            .tree
+            .keys()
+            .filter(|range| range.end > idx)
+            .copied()
+            .collect();
+        for range in &to_drop {
+            self.tree.remove(range);
+        }
+        self.lru_order.retain(|r| !to_drop.contains(r));
+        if !to_drop.is_empty() {
             self.generation = self.generation.wrapping_add(1);
+        }
+    }
+
+    /// Async summary-for — the main read path for derivation policies.
+    ///
+    /// Cache hit: returns immediately. Cache miss: calls `producer`
+    /// which encapsulates the RLM summarisation, then caches the
+    /// result under the requested range with LRU eviction.
+    pub async fn summary_for<F, Fut>(
+        &mut self,
+        range: SummaryRange,
+        producer: F,
+    ) -> anyhow::Result<SummaryNode>
+    where
+        F: FnOnce(SummaryRange) -> Fut,
+        Fut: std::future::Future<Output = anyhow::Result<SummaryNode>>,
+    {
+        if let Some(node) = self.tree.get(&range).cloned() {
+            self.touch_lru(range);
+            return Ok(node);
+        }
+        let node = producer(range).await?;
+        self.insert(range, node.clone());
+        Ok(node)
+    }
+
+    /// Move `range` to the end of the LRU order (most recently used).
+    fn touch_lru(&mut self, range: SummaryRange) {
+        self.lru_order.retain(|r| *r != range);
+        self.lru_order.push(range);
+    }
+
+    /// Evict the oldest entries if the cache exceeds the budget.
+    fn evict_if_over_budget(&mut self) {
+        while self.tree.len() > MAX_CACHED_SUMMARIES {
+            if let Some(oldest) = self.lru_order.first().copied() {
+                self.tree.remove(&oldest);
+                self.lru_order.remove(0);
+            } else {
+                break;
+            }
         }
     }
 
@@ -172,9 +231,9 @@ mod tests {
 
     #[test]
     fn empty_index_returns_none_on_get() {
-        let idx = SummaryIndex::new();
+        let mut idx = SummaryIndex::new();
         assert!(idx.is_empty());
-        assert_eq!(idx.get(SummaryRange::new(0, 4).unwrap()), None);
+        assert!(idx.get(SummaryRange::new(0, 4).unwrap()).is_none());
     }
 
     #[test]
@@ -187,10 +246,9 @@ mod tests {
 
         idx.append(5);
 
-        // The middle range is dropped; the disjoint ones survive.
         assert_eq!(idx.len(), 2);
-        assert!(idx.get(SummaryRange::new(0, 4).unwrap()).is_some());
         assert!(idx.get(SummaryRange::new(4, 8).unwrap()).is_none());
+        assert!(idx.get(SummaryRange::new(0, 4).unwrap()).is_some());
         assert!(idx.get(SummaryRange::new(8, 12).unwrap()).is_some());
         assert_eq!(idx.generation(), 1);
     }
@@ -245,5 +303,58 @@ mod tests {
         assert_eq!(SummaryRange::new(5, 5), None);
         assert_eq!(SummaryRange::new(7, 5), None);
         assert!(SummaryRange::new(5, 6).is_some());
+    }
+
+    #[test]
+    fn lru_eviction_removes_oldest() {
+        let mut idx = SummaryIndex::new();
+        // Insert MAX+1 entries; the first should be evicted.
+        for i in 0..=MAX_CACHED_SUMMARIES {
+            let r = SummaryRange::new(i * 4, i * 4 + 4).unwrap();
+            idx.insert(r, node(&format!("entry-{i}")));
+        }
+        assert_eq!(idx.len(), MAX_CACHED_SUMMARIES);
+        // Range [0,4) was inserted first and should be evicted.
+        assert!(idx.get(SummaryRange::new(0, 4).unwrap()).is_none());
+        // Range [4,8) (second insert) should still be present.
+        assert!(idx.get(SummaryRange::new(4, 8).unwrap()).is_some());
+    }
+
+    #[tokio::test]
+    async fn summary_for_cache_hit_skips_producer() {
+        let mut idx = SummaryIndex::new();
+        let range = SummaryRange::new(0, 4).unwrap();
+        idx.insert(range, node("cached"));
+
+        let result = idx
+            .summary_for(range, |_r| async {
+                panic!("producer should not be called on cache hit");
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(result.content, "cached");
+    }
+
+    #[tokio::test]
+    async fn summary_for_cache_miss_calls_producer() {
+        let mut idx = SummaryIndex::new();
+        let range = SummaryRange::new(0, 4).unwrap();
+
+        let result = idx
+            .summary_for(range, |r| async move {
+                Ok(SummaryNode {
+                    content: format!("produced-for-{}-{}", r.start, r.end),
+                    target_tokens: 256,
+                    granularity: Granularity::Turn,
+                    generation: 0,
+                })
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(result.content, "produced-for-0-4");
+        // Now cached
+        assert_eq!(idx.len(), 1);
     }
 }
