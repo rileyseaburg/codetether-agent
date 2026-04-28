@@ -125,6 +125,13 @@ pub struct AppState {
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
     pub pending_images: Vec<ImageAttachment>,
+    /// Sidecar buffer for paste blocks that were too large to inline
+    /// into the input box. Each entry is rendered in the input as a
+    /// short placeholder like `[Pasted text #1: 42 lines, 1.2 KiB]`,
+    /// and the full content is expanded back into the prompt sent to
+    /// the agent at submit time. See
+    /// [`crate::tui::app::input::pasted_text`].
+    pub pending_text_pastes: Vec<crate::tui::app::input::pasted_text::PendingTextPaste>,
     pub auto_apply_edits: bool,
     pub allow_network: bool,
     pub slash_autocomplete: bool,
