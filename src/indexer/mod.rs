@@ -1308,33 +1308,11 @@ fn should_descend(entry: &DirEntry, root: &Path, include_hidden: bool) -> bool {
         return false;
     }
 
-    let skip_dirs = [
-        ".git",
-        ".hg",
-        ".svn",
-        "node_modules",
-        "target",
-        "dist",
-        "build",
-        ".next",
-        "vendor",
-        "__pycache__",
-        ".venv",
-        ".codetether-agent",
-    ];
-
-    !path
-        .components()
-        .any(|c| skip_dirs.contains(&c.as_os_str().to_str().unwrap_or("")))
+    !crate::workspace_scan::path_has_pruned_component(rel_path)
 }
 
 fn is_hidden_path(path: &Path) -> bool {
-    path.components().any(|c| {
-        c.as_os_str()
-            .to_str()
-            .map(|name| name.starts_with('.'))
-            .unwrap_or(false)
-    })
+    crate::workspace_scan::path_is_hidden(path)
 }
 
 fn is_probably_text_file(path: &Path) -> bool {

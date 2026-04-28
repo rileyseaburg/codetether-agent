@@ -40,4 +40,5 @@ pub mod tool;
 pub mod tui;
 pub mod util;
 pub mod worker_server;
+pub mod workspace_scan;
 pub mod worktree;

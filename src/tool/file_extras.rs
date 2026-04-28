@@ -1,6 +1,7 @@
 //! Additional file tools: tree, fileinfo, headtail, diff
 
 use super::{Tool, ToolResult};
+use crate::workspace_scan::is_pruned_workspace_dir;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -171,20 +172,8 @@ async fn build_tree(
                 }
 
                 // Skip common ignored directories
-                if respect_gitignore {
-                    let skip_dirs = [
-                        "node_modules",
-                        "target",
-                        ".git",
-                        "__pycache__",
-                        ".venv",
-                        "dist",
-                        ".next",
-                        "vendor",
-                    ];
-                    if skip_dirs.contains(&name.as_str()) {
-                        continue;
-                    }
+                if respect_gitignore && is_pruned_workspace_dir(&name) {
+                    continue;
                 }
 
                 let file_type = match entry.file_type().await {

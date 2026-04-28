@@ -1,6 +1,7 @@
 //! Code Search Tool - Search code in the workspace using ripgrep-style patterns.
 
 use super::{Tool, ToolResult};
+use crate::workspace_scan::path_has_pruned_component;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -34,18 +35,7 @@ impl CodeSearchTool {
     }
 
     fn should_skip(&self, path: &std::path::Path) -> bool {
-        let skip_dirs = [
-            ".git",
-            "node_modules",
-            "target",
-            "dist",
-            ".next",
-            "__pycache__",
-            ".venv",
-            "vendor",
-        ];
-        path.components()
-            .any(|c| skip_dirs.contains(&c.as_os_str().to_str().unwrap_or("")))
+        path_has_pruned_component(path)
     }
 
     fn is_text_file(&self, path: &std::path::Path) -> bool {
@@ -177,6 +167,7 @@ impl Tool for CodeSearchTool {
 
         for entry in WalkDir::new(&search_root)
             .into_iter()
+            .filter_entry(|entry| !self.should_skip(entry.path()))
             .filter_map(|e| e.ok())
         {
             let path = entry.path();

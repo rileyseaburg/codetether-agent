@@ -5,12 +5,12 @@
 //! Voice API `/transcribe` endpoint for speech-to-text.
 
 mod actions;
-pub(crate) mod client;
-pub(crate) mod encoder;
+mod client;
+pub mod encoder;
 mod input_config;
 mod input_stream;
 mod params;
-pub(crate) mod recorder;
+pub mod recorder;
 mod schema;
 pub(crate) mod stderr_guard;
 
