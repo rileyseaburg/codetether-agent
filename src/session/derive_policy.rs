@@ -183,5 +183,12 @@ mod tests {
                 threshold_tokens: 12_000
             }
         ));
+        let oracle = DerivePolicy::OracleReplay { lookahead: 3 };
+        let json = serde_json::to_string(&oracle).unwrap();
+        assert!(json.contains("\"policy\":\"oracle_replay\""));
+        assert!(matches!(
+            serde_json::from_str(&json).unwrap(),
+            DerivePolicy::OracleReplay { lookahead: 3 }
+        ));
     }
 }
