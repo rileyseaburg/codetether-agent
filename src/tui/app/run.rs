@@ -61,7 +61,11 @@ async fn init_tui_secrets_manager() {
     }
 }
 
-pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> anyhow::Result<()> {
+pub async fn run(
+    project: Option<std::path::PathBuf>,
+    allow_network: bool,
+    a2a_options: Option<crate::a2a::spawn::SpawnOptions>,
+) -> anyhow::Result<()> {
     if allow_network {
         unsafe {
             std::env::set_var("CODETETHER_SANDBOX_BASH_ALLOW_NETWORK", "1");
@@ -127,6 +131,39 @@ pub async fn run(project: Option<std::path::PathBuf>, allow_network: bool) -> an
     let bus = AgentBus::new().into_arc();
     crate::bus::set_global(bus.clone());
     spawn_bus_s3_sink(bus.clone());
+
+    // Optional: start an A2A peer endpoint inside the TUI process so other
+    // agents (TUIs, `codetether spawn` peers, plain curl) can reach this
+    // session over the A2A wire protocol. Inbound `message/send` requests
+    // are answered by a fresh background session — they do not appear in
+    // the user's interactive TUI conversation. See docs/a2a-spawn.md.
+    //
+    // LIFETIME: the binding below MUST live for the duration of the TUI
+    // event loop. `A2APeerHandle::Drop` aborts the background server and
+    // discovery tasks, so an early drop kills the peer. The leading `_`
+    // is the unused-name convention (the variable is read by Drop, not by
+    // any code), NOT the `_` discard pattern — those have different drop
+    // semantics. Do not change this to `let _ = ...`.
+    let _a2a_peer_lifetime_guard = if let Some(opts) = a2a_options {
+        match crate::a2a::spawn::start_a2a_in_background(opts, bus.clone()).await {
+            Ok(handle) => {
+                tracing::info!(
+                    agent = %handle.agent_name,
+                    bind_addr = %handle.bind_addr,
+                    public_url = %handle.public_url,
+                    "TUI A2A peer endpoint ready"
+                );
+                Some(handle)
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to start TUI A2A peer; continuing without it");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let mut session = Session::new().await?.with_bus(bus.clone());
     let mut app = App::default();
     app.state.cwd_display = cwd.display().to_string();

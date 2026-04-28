@@ -27,7 +27,64 @@ impl MessageFormatter {
         let mut code_block_language = String::new();
         let mut code_block_lines = Vec::new();
 
+        let mut in_math_block = false;
+        let mut math_delim: &str = "";
+        let mut math_block_lines: Vec<String> = Vec::new();
+
         for line in content.lines() {
+            let trimmed = line.trim();
+
+            // Math block handling takes priority outside code blocks.
+            if !in_code_block {
+                if in_math_block {
+                    let close = if math_delim == "\\[" { "\\]" } else { "$$" };
+                    if math_delim == "\\[" && trimmed.ends_with(close) {
+                        let before = trimmed.trim_end_matches(close);
+                        if !before.trim().is_empty() {
+                            math_block_lines.push(before.to_string());
+                        }
+                        lines.extend(self.render_math_block(&math_block_lines));
+                        math_block_lines.clear();
+                        in_math_block = false;
+                        continue;
+                    }
+                    if math_delim == "$$" && trimmed == "$$" {
+                        lines.extend(self.render_math_block(&math_block_lines));
+                        math_block_lines.clear();
+                        in_math_block = false;
+                        continue;
+                    }
+                    math_block_lines.push(line.to_string());
+                    continue;
+                }
+
+                if trimmed.starts_with("\\[") {
+                    let after = &trimmed[2..];
+                    // Same-line close: \[ x = 1 \]
+                    if let Some(idx) = after.rfind("\\]") {
+                        let inner = after[..idx].trim();
+                        if !inner.is_empty() {
+                            math_block_lines.push(inner.to_string());
+                        }
+                        lines.extend(self.render_math_block(&math_block_lines));
+                        math_block_lines.clear();
+                        continue;
+                    }
+                    in_math_block = true;
+                    math_delim = "\\[";
+                    if !after.trim().is_empty() {
+                        math_block_lines.push(after.to_string());
+                    }
+                    continue;
+                }
+
+                if trimmed == "$$" {
+                    in_math_block = true;
+                    math_delim = "$$";
+                    continue;
+                }
+            }
+
             // Detect code blocks
             if line.trim().starts_with("```") {
                 if in_code_block {
@@ -80,6 +137,11 @@ impl MessageFormatter {
         // Handle unclosed code blocks
         if !code_block_lines.is_empty() {
             lines.extend(self.render_code_block(&code_block_lines, &code_block_language));
+        }
+
+        // Handle unclosed math blocks (render what we have so the user still sees it)
+        if !math_block_lines.is_empty() {
+            lines.extend(self.render_math_block(&math_block_lines));
         }
 
         if lines.is_empty() {
@@ -160,6 +222,45 @@ impl MessageFormatter {
         lines.iter().map(|l| l.trim_end().to_string()).collect()
     }
 
+    /// Render a LaTeX/math display block with a boxed border.
+    ///
+    /// LaTeX cannot be typeset in a terminal, so we preserve the source
+    /// verbatim inside a magenta-bordered block to visually delimit it
+    /// from prose. Common symbols are passed through as Unicode where
+    /// available (`\sum` → Σ, `\delta` → δ, etc.).
+    fn render_math_block(&self, lines: &[String]) -> Vec<Line<'static>> {
+        let mut result = Vec::new();
+        let block_width = self.max_width.saturating_sub(4);
+
+        let header = "┌─ Math ─".to_string() + &"─".repeat(block_width.saturating_sub(9));
+        result.push(Line::from(Span::styled(
+            header,
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        )));
+
+        for line in lines {
+            let pretty = prettify_math(line);
+            let formatted = if pretty.trim().is_empty() {
+                "│".to_string()
+            } else {
+                format!("│ {}", pretty.trim_end())
+            };
+            result.push(Line::from(Span::styled(
+                formatted,
+                Style::default().fg(Color::Magenta),
+            )));
+        }
+
+        result.push(Line::from(Span::styled(
+            "└".to_string() + &"─".repeat(block_width.saturating_sub(1)),
+            Style::default().fg(Color::Magenta),
+        )));
+
+        result
+    }
+
     /// Format inline text with basic markdown-like formatting
     fn format_inline_text(&self, line: &str, role: &str) -> Vec<Span<'static>> {
         let mut spans = Vec::new();
@@ -221,6 +322,38 @@ impl MessageFormatter {
                         current.clear();
                     }
                     in_code = !in_code;
+                }
+                '\\' if chars.peek() == Some(&'(') => {
+                    chars.next(); // consume '('
+                    if !current.is_empty() {
+                        spans.push(Span::styled(
+                            current.clone(),
+                            Style::default().fg(role_color),
+                        ));
+                        current.clear();
+                    }
+                    let mut math = String::new();
+                    let mut closed = false;
+                    while let Some(mc) = chars.next() {
+                        if mc == '\\' && chars.peek() == Some(&')') {
+                            chars.next(); // consume ')'
+                            closed = true;
+                            break;
+                        }
+                        math.push(mc);
+                    }
+                    if closed {
+                        spans.push(Span::styled(
+                            prettify_math(&math),
+                            Style::default()
+                                .fg(Color::Magenta)
+                                .add_modifier(Modifier::ITALIC),
+                        ));
+                    } else {
+                        // Unclosed: render literally so the source is visible.
+                        current.push_str("\\(");
+                        current.push_str(&math);
+                    }
                 }
                 _ => {
                     current.push(c);
@@ -309,6 +442,134 @@ impl MessageFormatter {
         }
         out
     }
+}
+
+/// Replace common LaTeX commands with Unicode glyphs for terminal display.
+///
+/// This is best-effort: we substitute well-known math symbols and Greek
+/// letters so that math blocks read closer to typeset notation. Anything
+/// we don't recognize is passed through unchanged, so the original source
+/// remains visible.
+fn prettify_math(input: &str) -> String {
+    // Pairs are applied longest-first to avoid e.g. `\delta` matching `\d`.
+    const REPLACEMENTS: &[(&str, &str)] = &[
+        // Multi-char commands first
+        ("\\Rightarrow", "⇒"),
+        ("\\Leftarrow", "⇐"),
+        ("\\rightarrow", "→"),
+        ("\\leftarrow", "←"),
+        ("\\leftrightarrow", "↔"),
+        ("\\mapsto", "↦"),
+        ("\\mathbb{C}", "ℂ"),
+        ("\\mathbb{R}", "ℝ"),
+        ("\\mathbb{Z}", "ℤ"),
+        ("\\mathbb{N}", "ℕ"),
+        ("\\mathbb{Q}", "ℚ"),
+        ("\\mathbb C", "ℂ"),
+        ("\\mathbb R", "ℝ"),
+        ("\\mathbb Z", "ℤ"),
+        ("\\mathbb N", "ℕ"),
+        ("\\mathbb Q", "ℚ"),
+        ("\\otimes", "⊗"),
+        ("\\oplus", "⊕"),
+        ("\\times", "×"),
+        ("\\cdot", "·"),
+        ("\\cdots", "⋯"),
+        ("\\ldots", "…"),
+        ("\\dots", "…"),
+        ("\\vdots", "⋮"),
+        ("\\ddots", "⋱"),
+        ("\\sum", "Σ"),
+        ("\\prod", "∏"),
+        ("\\int", "∫"),
+        ("\\infty", "∞"),
+        ("\\partial", "∂"),
+        ("\\nabla", "∇"),
+        ("\\forall", "∀"),
+        ("\\exists", "∃"),
+        ("\\nexists", "∄"),
+        ("\\emptyset", "∅"),
+        ("\\subset", "⊂"),
+        ("\\subseteq", "⊆"),
+        ("\\supset", "⊃"),
+        ("\\supseteq", "⊇"),
+        ("\\cup", "∪"),
+        ("\\cap", "∩"),
+        ("\\wedge", "∧"),
+        ("\\vee", "∨"),
+        ("\\neg", "¬"),
+        ("\\lnot", "¬"),
+        ("\\equiv", "≡"),
+        ("\\approx", "≈"),
+        ("\\sim", "∼"),
+        ("\\simeq", "≃"),
+        ("\\cong", "≅"),
+        ("\\propto", "∝"),
+        ("\\leq", "≤"),
+        ("\\geq", "≥"),
+        ("\\neq", "≠"),
+        ("\\ne", "≠"),
+        ("\\pm", "±"),
+        ("\\mp", "∓"),
+        ("\\sqrt", "√"),
+        ("\\dim", "dim"),
+        ("\\det", "det"),
+        ("\\ker", "ker"),
+        ("\\to", "→"),
+        ("\\in", "∈"),
+        ("\\notin", "∉"),
+        ("\\ni", "∋"),
+        // Greek lowercase
+        ("\\alpha", "α"),
+        ("\\beta", "β"),
+        ("\\gamma", "γ"),
+        ("\\delta", "δ"),
+        ("\\epsilon", "ε"),
+        ("\\varepsilon", "ε"),
+        ("\\zeta", "ζ"),
+        ("\\eta", "η"),
+        ("\\theta", "θ"),
+        ("\\vartheta", "ϑ"),
+        ("\\iota", "ι"),
+        ("\\kappa", "κ"),
+        ("\\lambda", "λ"),
+        ("\\mu", "μ"),
+        ("\\nu", "ν"),
+        ("\\xi", "ξ"),
+        ("\\pi", "π"),
+        ("\\varpi", "ϖ"),
+        ("\\rho", "ρ"),
+        ("\\varrho", "ϱ"),
+        ("\\sigma", "σ"),
+        ("\\varsigma", "ς"),
+        ("\\tau", "τ"),
+        ("\\upsilon", "υ"),
+        ("\\phi", "φ"),
+        ("\\varphi", "ϕ"),
+        ("\\chi", "χ"),
+        ("\\psi", "ψ"),
+        ("\\omega", "ω"),
+        // Greek uppercase
+        ("\\Gamma", "Γ"),
+        ("\\Delta", "Δ"),
+        ("\\Theta", "Θ"),
+        ("\\Lambda", "Λ"),
+        ("\\Xi", "Ξ"),
+        ("\\Pi", "Π"),
+        ("\\Sigma", "Σ"),
+        ("\\Upsilon", "Υ"),
+        ("\\Phi", "Φ"),
+        ("\\Psi", "Ψ"),
+        ("\\Omega", "Ω"),
+    ];
+
+    let mut out = input.to_string();
+    for (from, to) in REPLACEMENTS {
+        if out.contains(from) {
+            out = out.replace(from, to);
+        }
+    }
+    out
 }
 
 /// Take the longest prefix of `text` whose display width fits in `width`.
@@ -442,5 +703,106 @@ mod tests {
         let spans = vec![Span::raw("anything")];
         let out = f.wrap_line(spans, 0);
         assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn math_display_block_is_boxed() {
+        let f = MessageFormatter::new(40);
+        let content = "Therefore:\n\\[\nP_sP_t=\\delta_{st}P_s\n\\]\nDone.";
+        let lines = f.format_content(content, "assistant");
+        let rendered: Vec<String> = lines
+            .iter()
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect();
+        // Header, body, footer present.
+        assert!(rendered.iter().any(|l| l.contains("Math")));
+        assert!(rendered.iter().any(|l| l.contains("δ")));
+        assert!(rendered.iter().any(|l| l.starts_with("└")));
+    }
+
+    #[test]
+    fn math_block_dollar_dollar_delimiters() {
+        let f = MessageFormatter::new(40);
+        let content = "$$\nx = y + 1\n$$";
+        let lines = f.format_content(content, "assistant");
+        let rendered: Vec<String> = lines
+            .iter()
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect();
+        assert!(rendered.iter().any(|l| l.contains("Math")));
+        assert!(rendered.iter().any(|l| l.contains("x = y + 1")));
+    }
+
+    #[test]
+    fn inline_math_styled_separately() {
+        let f = MessageFormatter::new(80);
+        let content = "Let \\(x \\in \\mathbb C\\) be a number.";
+        let lines = f.format_content(content, "assistant");
+        // Inline math should produce a magenta italic span containing prettified math.
+        let mut found = false;
+        for line in &lines {
+            for span in &line.spans {
+                if span.content.contains("ℂ")
+                    && span.style.fg == Some(Color::Magenta)
+                    && span.style.add_modifier.contains(Modifier::ITALIC)
+                {
+                    found = true;
+                }
+            }
+        }
+        assert!(found, "expected styled inline-math span with ℂ glyph");
+    }
+
+    #[test]
+    fn prettify_math_substitutes_known_symbols() {
+        assert_eq!(prettify_math("\\sum_{i=1}^n"), "Σ_{i=1}^n");
+        assert_eq!(prettify_math("\\delta_{st}"), "δ_{st}");
+        assert_eq!(
+            prettify_math("H_n=(\\mathbb C)^{\\otimes n}"),
+            "H_n=(ℂ)^{⊗ n}"
+        );
+        // Unknown commands pass through unchanged.
+        assert_eq!(prettify_math("\\unknownmacro x"), "\\unknownmacro x");
+    }
+
+    #[test]
+    fn unclosed_math_block_still_renders() {
+        let f = MessageFormatter::new(40);
+        let content = "\\[\nx = 1";
+        let lines = f.format_content(content, "assistant");
+        // Should not panic and should produce some output containing the content.
+        let rendered: String = lines
+            .iter()
+            .flat_map(|l| l.spans.iter().map(|s| s.content.as_ref()))
+            .collect();
+        assert!(rendered.contains("x = 1"));
+    }
+
+    #[test]
+    fn same_line_math_block() {
+        let f = MessageFormatter::new(40);
+        let content = "\\[ x = 1 \\]";
+        let lines = f.format_content(content, "assistant");
+        let rendered: Vec<String> = lines
+            .iter()
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect();
+        assert!(rendered.iter().any(|l| l.contains("Math")));
+        assert!(rendered.iter().any(|l| l.contains("x = 1")));
     }
 }

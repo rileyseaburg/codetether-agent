@@ -6,14 +6,6 @@
 
 mod build_context;
 mod call;
-
-use std::sync::Arc;
-
-use anyhow::{Context as _, Result};
-use tracing::info;
-
-use super::index::types::{Granularity, SummaryNode, SummaryRange};
-use crate::provider::{Message, Provider};
-use crate::rlm::RlmConfig;
+mod input;
 
 pub use call::produce_summary;

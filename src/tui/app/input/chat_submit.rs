@@ -22,6 +22,7 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 
 use super::chat_helpers::push_user_messages;
 use super::chat_submit_dispatch::dispatch_prompt;
+use super::pasted_text::expand_paste_placeholders;
 
 /// Submit the chat input to the provider.
 ///
@@ -57,10 +58,17 @@ pub(super) async fn handle_enter_chat(
         return;
     }
 
-    let pending_images = std::mem::take(&mut app.state.pending_images);
-    if prompt.is_empty() && pending_images.is_empty() {
+    if prompt.is_empty() && app.state.pending_images.is_empty() {
         return;
     }
+    let pending_images = std::mem::take(&mut app.state.pending_images);
+    let pending_text_pastes = std::mem::take(&mut app.state.pending_text_pastes);
+
+    // The user-facing chat history shows the compact placeholder so a
+    // 1-line summary stands in for what would otherwise be an
+    // 1000-line wall of text. The agent receives the expanded form
+    // with the full pasted content wrapped in delimiters.
+    let agent_prompt = expand_paste_placeholders(&prompt, &pending_text_pastes);
 
     push_user_messages(app, &prompt, &pending_images);
     dispatch_prompt(
@@ -69,7 +77,7 @@ pub(super) async fn handle_enter_chat(
         session,
         registry,
         worker_bridge,
-        &prompt,
+        &agent_prompt,
         pending_images,
         event_tx,
         result_tx,

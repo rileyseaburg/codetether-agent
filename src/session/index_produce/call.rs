@@ -5,8 +5,9 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result};
 use tracing::info;
 
-use super::build_context::{SummaryProduceParams, build_auto_context};
 use super::super::index::types::{Granularity, SummaryNode, SummaryRange};
+use super::build_context::{SummaryProduceParams, build_auto_context};
+use super::input::summary_input;
 use crate::provider::{Message, Provider};
 use crate::rlm::RlmConfig;
 
@@ -28,21 +29,21 @@ pub async fn produce_summary(
     subcall_provider: Option<Arc<dyn Provider>>,
     subcall_model: Option<String>,
 ) -> Result<SummaryNode> {
-    let slice = messages
-        .get(range.start..range.end)
-        .context("summary_for range out of bounds")?;
-    let context = crate::session::helper::error::messages_to_rlm_context(slice);
-    let input = format!(
-        "Summarise the following transcript window (~{} messages, target ≤ {} tokens). \
-         Preserve key decisions, file paths, error classes, and tool outcomes.\n\n{context}",
-        slice.len(), target_tokens,
+    let input = summary_input(messages, range, target_tokens)?;
+
+    info!(
+        start = range.start,
+        end = range.end,
+        target_tokens,
+        "Producing summary via RLM"
     );
 
-    info!(start = range.start, end = range.end, target_tokens, "Producing summary via RLM");
-
     let params = SummaryProduceParams {
-        range, target_tokens, session_id,
-        provider, model,
+        range,
+        target_tokens,
+        session_id,
+        provider,
+        model,
         subcall_provider,
         subcall_model: subcall_model.as_deref(),
     };
@@ -52,5 +53,10 @@ pub async fn produce_summary(
         .await
         .context("RLM summarisation for SummaryIndex::summary_for failed")?;
 
-    Ok(SummaryNode { content: result.processed, target_tokens, granularity, generation })
+    Ok(SummaryNode {
+        content: result.processed,
+        target_tokens,
+        granularity,
+        generation,
+    })
 }

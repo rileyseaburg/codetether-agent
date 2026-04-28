@@ -1,8 +1,8 @@
 //! Tool trait implementation for `context_pin`.
 
-use super::super::{Tool, ToolResult};
 use super::super::context_helpers::load_latest_session;
-use super::logic::apply_pin;
+use super::super::{Tool, ToolResult};
+use super::logic::{apply_pin, parse_turn_index};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -12,8 +12,12 @@ pub struct ContextPinTool;
 
 #[async_trait]
 impl Tool for ContextPinTool {
-    fn id(&self) -> &str { "context_pin" }
-    fn name(&self) -> &str { "ContextPin" }
+    fn id(&self) -> &str {
+        "context_pin"
+    }
+    fn name(&self) -> &str {
+        "ContextPin"
+    }
 
     fn description(&self) -> &str {
         "Pin or unpin a conversation turn so it is never dropped during \
@@ -37,9 +41,9 @@ impl Tool for ContextPinTool {
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let action = args["action"].as_str().unwrap_or("").to_lowercase();
-        let idx = match args["turn_index"].as_u64() {
-            Some(i) => i as usize,
-            None => return Ok(ToolResult::error("`turn_index` must be a non-negative integer.")),
+        let idx = match parse_turn_index(&args) {
+            Ok(i) => i,
+            Err(e) => return Ok(ToolResult::error(&e)),
         };
         let mut session = match load_latest_session().await {
             Ok(Some(s)) => s,
