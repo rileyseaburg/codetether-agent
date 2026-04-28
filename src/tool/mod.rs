@@ -55,6 +55,7 @@ pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
 pub mod task;
+#[cfg(feature = "tetherscript")]
 pub mod tetherscript;
 pub mod todo;
 pub mod undo;
@@ -379,6 +380,7 @@ impl ToolRegistry {
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
+        #[cfg(feature = "tetherscript")]
         registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
         registry.register_compat_aliases();
 
@@ -464,6 +466,7 @@ impl ToolRegistry {
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
+        #[cfg(feature = "tetherscript")]
         registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
         registry.register_compat_aliases();
 
