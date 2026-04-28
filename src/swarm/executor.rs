@@ -17,6 +17,7 @@ use super::{
     tool_policy,
 };
 use crate::bus::{AgentBus, BusMessage};
+use crate::session::delegation::DelegationState;
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
@@ -433,6 +434,8 @@ pub struct SwarmExecutor {
     result_store: Arc<ResultStore>,
     /// Optional agent bus for inter-agent communication
     bus: Option<Arc<AgentBus>>,
+    /// Optional CADMAS-CTX delegation state for LCB provider selection
+    delegation: Option<DelegationState>,
 }
 
 impl SwarmExecutor {
@@ -446,6 +449,7 @@ impl SwarmExecutor {
             cache: None,
             result_store: ResultStore::new_arc(),
             bus: None,
+            delegation: None,
         }
     }
 
@@ -460,6 +464,7 @@ impl SwarmExecutor {
             cache: Some(Arc::new(tokio::sync::Mutex::new(cache))),
             result_store: ResultStore::new_arc(),
             bus: None,
+            delegation: None,
         })
     }
 
@@ -472,6 +477,12 @@ impl SwarmExecutor {
     /// Set an agent bus for inter-agent communication
     pub fn with_bus(mut self, bus: Arc<AgentBus>) -> Self {
         self.bus = Some(bus);
+        self
+    }
+
+    /// Set CADMAS-CTX delegation state for LCB provider selection.
+    pub fn with_delegation(mut self, state: DelegationState) -> Self {
+        self.delegation = Some(state);
         self
     }
 
@@ -933,9 +944,23 @@ impl SwarmExecutor {
         }
 
         for (idx, subtask) in pending_subtasks.into_iter().enumerate() {
-            let model = model.clone();
-            let _provider_name = provider_name.clone();
-            let provider = Arc::clone(&provider);
+            // LCB delegation: pick best provider for this subtask's specialty.
+            let (chosen_provider, chosen_model) = if let Some(ref state) = self.delegation {
+                super::delegation::choose_provider_for_subtask(
+                    &providers, state,
+                    subtask.specialty.as_deref().unwrap_or("General"),
+                    &provider_name, &model,
+                )
+            } else {
+                (provider_name.clone(), model.clone())
+            };
+            let subtask_provider = providers
+                .get(&chosen_provider)
+                .cloned()
+                .unwrap_or_else(|| Arc::clone(&provider));
+            let model = chosen_model;
+            let _provider_name = chosen_provider;
+            let provider = subtask_provider;
 
             // Get context from dependencies
             let context = {
