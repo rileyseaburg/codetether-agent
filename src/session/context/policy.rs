@@ -64,7 +64,9 @@ pub fn effective_policy(session: &Session) -> DerivePolicy {
 fn resolve_reset_threshold(persisted: DerivePolicy) -> usize {
     let default_threshold = match persisted {
         DerivePolicy::Reset { threshold_tokens } => threshold_tokens,
-        DerivePolicy::Legacy | DerivePolicy::Incremental { .. } | DerivePolicy::OracleReplay { .. } => DEFAULT_RESET_THRESHOLD_TOKENS,
+        DerivePolicy::Legacy
+        | DerivePolicy::Incremental { .. }
+        | DerivePolicy::OracleReplay { .. } => DEFAULT_RESET_THRESHOLD_TOKENS,
     };
     env::var("CODETETHER_CONTEXT_RESET_THRESHOLD_TOKENS")
         .ok()

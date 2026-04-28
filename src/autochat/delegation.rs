@@ -15,11 +15,7 @@ pub const AUTOCHAT_MODEL_CALL: &str = "autochat_model_call";
 /// Each entry is `"provider/model"` — we extract the provider name,
 /// look up its score, and sort highest-first.  Entries with no
 /// posterior keep their relative input order (stable sort).
-pub fn sort_refs_by_lcb(
-    state: &DelegationState,
-    model_refs: &mut [String],
-    bucket: Bucket,
-) {
+pub fn sort_refs_by_lcb(state: &DelegationState, model_refs: &mut [String], bucket: Bucket) {
     if !state.enabled() || model_refs.len() <= 1 {
         return;
     }
@@ -39,9 +35,19 @@ fn score_ref(state: &DelegationState, model_ref: &str, bucket: Bucket) -> f64 {
 /// Build a Bucket for a conversation turn.
 pub fn bucket_for_turn(difficulty_hint: &str, uses_tools: bool) -> Bucket {
     let difficulty = match difficulty_hint {
-        "hard" => Difficulty::Hard, "medium" => Difficulty::Medium, _ => Difficulty::Easy,
+        "hard" => Difficulty::Hard,
+        "medium" => Difficulty::Medium,
+        _ => Difficulty::Easy,
     };
-    Bucket { difficulty, dependency: Dependency::Isolated, tool_use: if uses_tools { ToolUse::Yes } else { ToolUse::No } }
+    Bucket {
+        difficulty,
+        dependency: Dependency::Isolated,
+        tool_use: if uses_tools {
+            ToolUse::Yes
+        } else {
+            ToolUse::No
+        },
+    }
 }
 
 #[cfg(test)]

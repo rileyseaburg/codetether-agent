@@ -1,7 +1,7 @@
 //! Tests for the summary index.
 
 use super::cache::SummaryIndex;
-use super::types::{Granularity, SummaryNode, SummaryRange, MAX_CACHED_SUMMARIES};
+use super::types::{Granularity, MAX_CACHED_SUMMARIES, SummaryNode, SummaryRange};
 
 fn node(text: &str) -> SummaryNode {
     SummaryNode {

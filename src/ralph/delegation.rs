@@ -55,12 +55,19 @@ fn skill_for_role(role: &str) -> &'static str {
 }
 
 fn difficulty_for_role(role: &str) -> Difficulty {
-    if role.contains("planner") || role.contains("reviewer") { Difficulty::Medium }
-    else if role.contains("coder") { Difficulty::Hard }
-    else { Difficulty::Easy }
+    if role.contains("planner") || role.contains("reviewer") {
+        Difficulty::Medium
+    } else if role.contains("coder") {
+        Difficulty::Hard
+    } else {
+        Difficulty::Easy
+    }
 }
 
 fn tool_use_for_role(role: &str) -> ToolUse {
-    if role.contains("coder") || role.contains("tester") { ToolUse::Yes }
-    else { ToolUse::No }
+    if role.contains("coder") || role.contains("tester") {
+        ToolUse::Yes
+    } else {
+        ToolUse::No
+    }
 }

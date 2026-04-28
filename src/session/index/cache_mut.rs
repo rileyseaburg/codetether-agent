@@ -4,7 +4,7 @@
 //! modify the cache tree and maintain LRU ordering.
 
 use super::cache::SummaryIndex;
-use super::types::{SummaryNode, SummaryRange, MAX_CACHED_SUMMARIES};
+use super::types::{MAX_CACHED_SUMMARIES, SummaryNode, SummaryRange};
 
 impl SummaryIndex {
     /// Insert a node, maintaining LRU ordering and evicting if over budget.
@@ -20,21 +20,29 @@ impl SummaryIndex {
     /// Drops every cached summary whose range covers `idx`.
     pub fn append(&mut self, idx: usize) {
         let to_drop: Vec<SummaryRange> = self
-            .tree.keys().filter(|r| r.contains(idx)).copied().collect();
-        for r in &to_drop { self.tree.remove(r); }
-        self.lru_order.retain(|r| !to_drop.contains(r));
+            .tree
+            .keys()
+            .filter(|r| r.contains(idx))
+            .copied()
+            .collect();
         if !to_drop.is_empty() {
+            for r in &to_drop {
+                self.tree.remove(r);
+            }
+            self.lru_order.retain(|r| !to_drop.contains(r));
             self.generation = self.generation.wrapping_add(1);
         }
     }
 
     /// Drop ranges whose `end > idx` (compaction/reset).
     pub fn invalidate_after(&mut self, idx: usize) {
-        let to_drop: Vec<SummaryRange> = self
-            .tree.keys().filter(|r| r.end > idx).copied().collect();
-        for r in &to_drop { self.tree.remove(r); }
-        self.lru_order.retain(|r| !to_drop.contains(r));
+        let to_drop: Vec<SummaryRange> =
+            self.tree.keys().filter(|r| r.end > idx).copied().collect();
         if !to_drop.is_empty() {
+            for r in &to_drop {
+                self.tree.remove(r);
+            }
+            self.lru_order.retain(|r| !to_drop.contains(r));
             self.generation = self.generation.wrapping_add(1);
         }
     }
@@ -51,7 +59,9 @@ impl SummaryIndex {
             if let Some(oldest) = self.lru_order.first().copied() {
                 self.tree.remove(&oldest);
                 self.lru_order.remove(0);
-            } else { break; }
+            } else {
+                break;
+            }
         }
     }
 }

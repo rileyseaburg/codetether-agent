@@ -1758,7 +1758,11 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
             let default_provider = registry.list().first().copied().unwrap_or("openai");
             let (role_provider, role_model) = match delegation {
                 Some(state) => super::delegation::choose_provider_for_role(
-                    registry, state, name, default_provider, model,
+                    registry,
+                    state,
+                    name,
+                    default_provider,
+                    model,
                 ),
                 None => (default_provider.to_string(), model.to_string()),
             };
