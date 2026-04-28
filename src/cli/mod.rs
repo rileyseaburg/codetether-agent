@@ -238,24 +238,33 @@ pub struct TuiArgs {
     #[arg(long)]
     pub allow_network: bool,
 
-    /// Bind an A2A peer endpoint on this port alongside the TUI.
-    /// When set, the TUI process exposes /.well-known/agent.json and
-    /// JSON-RPC at http://<a2a-hostname>:<a2a-port>/ and runs peer
-    /// discovery against `--a2a-peer` seeds. Inbound `message/send`
-    /// requests are handled by a fresh background session — they do not
-    /// route into the TUI's interactive session. See docs/a2a-spawn.md.
+    /// Disable the built-in A2A peer endpoint. By default the TUI binds an
+    /// A2A peer with auto-port, auto-name, and mDNS-based peer discovery —
+    /// other CodeTether processes on the same host or LAN find each other
+    /// without flags. Pass `--no-a2a` for purely interactive mode.
+    #[arg(long = "no-a2a", action = clap::ArgAction::SetFalse, default_value_t = true)]
+    pub a2a: bool,
+
+    /// Override the auto-picked A2A port. By default the OS assigns one
+    /// (port 0). Specify a port for stable curl-able URLs.
     #[arg(long)]
     pub a2a_port: Option<u16>,
 
-    /// Hostname to bind the A2A peer endpoint. Use 0.0.0.0 for off-box.
+    /// A2A bind hostname. 127.0.0.1 (default) is loopback-only and SAFE
+    /// (the peer is unreachable from outside the host) but mDNS multicast
+    /// does NOT traverse the Linux `lo` interface, so same-host peers
+    /// cannot find each other via mDNS at this binding. Use 0.0.0.0 to
+    /// make peers reachable on the LAN AND to enable mDNS auto-discovery
+    /// between same-host agents (multicast loops back through the real
+    /// interface).
     #[arg(long, default_value = "127.0.0.1")]
     pub a2a_hostname: String,
 
-    /// Public URL published in the agent card (defaults to http://<hostname>:<port>).
+    /// Public URL published in the agent card.
     #[arg(long)]
     pub a2a_public_url: Option<String>,
 
-    /// Agent name for the A2A card. Defaults to "tui-agent-<pid>".
+    /// Override the auto-picked agent name (default: <host>-<repo>-<pid>).
     #[arg(long)]
     pub a2a_name: Option<String>,
 
@@ -263,17 +272,24 @@ pub struct TuiArgs {
     #[arg(long)]
     pub a2a_description: Option<String>,
 
-    /// Peer seed URLs (repeat or comma-separate).
+    /// Explicit peer seed URLs (in addition to mDNS-discovered peers).
+    /// Useful for cross-host setups where mDNS isn't routable.
     #[arg(long, value_delimiter = ',', env = "CODETETHER_A2A_PEERS")]
     pub a2a_peer: Vec<String>,
 
-    /// Discovery interval in seconds (clamped to ≥ 5).
+    /// Discovery interval for explicit --a2a-peer seeds, in seconds.
+    /// Clamped to ≥ 5. (mDNS is event-driven, not polled.)
     #[arg(long, default_value = "15")]
     pub a2a_discovery_interval_secs: u64,
 
     /// Disable auto-intro to newly discovered peers.
     #[arg(long = "a2a-no-auto-introduce", action = clap::ArgAction::SetFalse, default_value_t = true)]
     pub a2a_auto_introduce: bool,
+
+    /// Disable mDNS-based peer discovery. Without mDNS, only explicit
+    /// --a2a-peer seeds are discovered. mDNS is on by default for true P2P.
+    #[arg(long = "a2a-no-mdns", action = clap::ArgAction::SetFalse, default_value_t = true)]
+    pub a2a_mdns: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -467,19 +483,25 @@ pub struct GitCredentialHelperArgs {
 
 #[derive(Parser, Debug, Clone)]
 pub struct SpawnArgs {
-    /// Agent name
+    /// Agent name. Defaults to <host>-<repo>-<short-pid>.
     #[arg(short, long)]
     pub name: Option<String>,
 
-    /// Hostname to bind the spawned A2A agent
+    /// Hostname to bind. 127.0.0.1 (default) is loopback-only and SAFE
+    /// (the peer is unreachable from outside the host) but mDNS multicast
+    /// does NOT traverse the Linux `lo` interface, so same-host peers
+    /// cannot find each other via mDNS at this binding. Use 0.0.0.0 to
+    /// be reachable on the LAN AND to enable mDNS auto-discovery between
+    /// same-host agents (multicast loops back through the real interface).
     #[arg(long, default_value = "127.0.0.1")]
     pub hostname: String,
 
-    /// Port to bind the spawned A2A agent
-    #[arg(short, long, default_value = "4097")]
+    /// Port to bind. 0 (default) lets the OS pick an available port.
+    /// Specify a port if you need a stable URL for curl scripts.
+    #[arg(short, long, default_value = "0")]
     pub port: u16,
 
-    /// Public URL published in the agent card (defaults to http://<hostname>:<port>)
+    /// Public URL published in the agent card (defaults to http://<hostname>:<port>).
     #[arg(long)]
     pub public_url: Option<String>,
 
@@ -487,17 +509,24 @@ pub struct SpawnArgs {
     #[arg(short, long)]
     pub description: Option<String>,
 
-    /// Peer seed URLs to discover and talk to (repeat flag or comma-separated)
+    /// Explicit peer seed URLs (in addition to mDNS-discovered peers).
+    /// Useful for cross-host setups where mDNS isn't routable.
     #[arg(long, value_delimiter = ',', env = "CODETETHER_A2A_PEERS")]
     pub peer: Vec<String>,
 
-    /// Discovery interval in seconds
+    /// Discovery interval for explicit --peer seeds, in seconds. Clamped
+    /// to ≥ 5. (mDNS discovery is event-driven, not polled.)
     #[arg(long, default_value = "15")]
     pub discovery_interval_secs: u64,
 
     /// Disable sending an automatic intro message to newly discovered peers
     #[arg(long = "no-auto-introduce", action = clap::ArgAction::SetFalse, default_value_t = true)]
     pub auto_introduce: bool,
+
+    /// Disable mDNS announce + browse. Without mDNS, only explicit
+    /// --peer seeds are discovered. mDNS is on by default for true P2P.
+    #[arg(long = "no-mdns", action = clap::ArgAction::SetFalse, default_value_t = true)]
+    pub mdns: bool,
 }
 
 #[derive(Parser, Debug)]
