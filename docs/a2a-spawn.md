@@ -2,44 +2,76 @@
 
 Spawn an autonomous A2A agent runtime that:
 
-- stands up its **own A2A JSON-RPC API** on a port,
+- stands up its **own A2A JSON-RPC API** on an OS-assigned port (or a
+  port you specify),
+- auto-picks an **agent name** of the form `<host>-<repo>-<short-pid>`,
 - publishes an **agent card** at `/.well-known/agent.json`,
-- **discovers peers** on a polling loop and registers them in the local bus,
-- optionally **auto-introduces** itself to newly discovered peers,
+- **discovers peers** automatically over **mDNS / DNS-SD** on
+  `_codetether-a2a._tcp.local.` — no seed list required,
+- also accepts explicit `--peer` URLs for cross-host setups where mDNS
+  isn't routable,
+- **auto-introduces** itself to newly discovered peers (default on),
 - runs an LLM session per inbound `message/send` to actually *answer*.
 
-This is the mode to use when you want **two (or more) terminals running two agents in different repos that can talk to each other directly**, with no central broker.
+This is the mode to use when you want **two (or more) terminals running
+two agents in different repos that can talk to each other directly**,
+with no central broker, no flags, no seed list.
 
 ---
 
-## TL;DR — two terminals, two repos
+## TL;DR — zero-config, two terminals, two repos
 
-**Terminal 1** (Alice, repo A):
+**Terminal 1**:
 ```bash
 cd /path/to/repo-A
-codetether spawn \
-  --name alice \
-  --port 4097 \
-  --peer http://127.0.0.1:4098
+codetether spawn --hostname 0.0.0.0
 ```
 
-**Terminal 2** (Bob, repo B):
+**Terminal 2**:
 ```bash
 cd /path/to/repo-B
+codetether spawn --hostname 0.0.0.0
+```
+
+That's it. Each agent picks its own port, derives a name from
+`<hostname>-<repo>-<pid>`, announces itself on mDNS, and discovers the
+other within a couple of seconds. Logs show:
+
+```
+INFO codetether_agent::a2a::mdns:  Announced A2A peer over mDNS  instance=ubuntu-dev-repo-a-dcd8  port=39941
+INFO codetether_agent::a2a::spawn: Spawned A2A agent runtime       agent=ubuntu-dev-repo-a-dcd8  bind_addr=0.0.0.0:39941  public_url=http://192.168.50.101:39941  mdns=true
+INFO codetether_agent::a2a::spawn: Discovered A2A peer             agent=ubuntu-dev-repo-a-dcd8  peer_name=ubuntu-dev-repo-b-ddd0  peer_url=http://192.168.50.101:37195  endpoint=http://192.168.50.101:37195  via="mdns"
+INFO codetether_agent::a2a::spawn: Auto-intro message sent         peer=http://192.168.50.101:37195
+```
+
+After that, either side (or any third-party tool) can drive the other
+over plain HTTP JSON-RPC.
+
+> **Why `--hostname 0.0.0.0`?** mDNS multicast doesn't traverse the
+> Linux loopback interface (it lacks the `MULTICAST` flag by default),
+> so binding to `127.0.0.1` doesn't broadcast. `0.0.0.0` binds all
+> interfaces — peers on the same host see the announcement over the
+> LAN interface (multicast is looped back), and same-LAN hosts also
+> see it. The published `public_url` automatically substitutes the
+> first non-loopback IPv4 address for `0.0.0.0`, so the card
+> advertises a routable URL.
+
+---
+
+## Explicit overrides
+
+You can still pin any field if zero-config defaults don't fit:
+
+```bash
 codetether spawn \
-  --name bob \
-  --port 4098 \
-  --peer http://127.0.0.1:4097
+  --name alice \
+  --hostname 0.0.0.0 \
+  --port 4097 \
+  --peer http://10.0.0.42:4097      # explicit cross-host seed
 ```
 
-Within one discovery interval (default 15 s, override with `--discovery-interval-secs`) each side logs:
-
-```
-INFO codetether_agent::a2a::spawn: Discovered A2A peer  agent=alice  peer_name=bob  peer_url=http://127.0.0.1:4098
-INFO codetether_agent::a2a::spawn: Auto-intro message sent  peer=http://127.0.0.1:4098
-```
-
-After that, either side (or any third-party tool) can drive the other over plain HTTP JSON-RPC.
+`--peer` seeds are **additive** to mDNS-discovered peers — useful for
+cross-LAN/WAN deployments where multicast isn't routable.
 
 ---
 
@@ -59,42 +91,52 @@ If you want decentralized agents that find each other and chat, `spawn` (headles
 
 ## TUI + A2A: two interactive terminals that can message each other
 
-If you want each side to be a TUI you drive yourself, but still reachable as an A2A peer:
+The TUI binds an A2A peer endpoint **by default** with the same
+zero-config behaviour as `codetether spawn` — auto-port, auto-name,
+mDNS announce + browse. Pass `--no-a2a` to opt out.
 
-**Terminal 1** (TUI in repo A, peer is repo B's TUI on :4098):
+**Terminal 1** (TUI in repo A — no flags needed):
 ```bash
 cd /path/to/repo-A
-codetether tui \
-  --a2a-port 4097 \
-  --a2a-name alice \
-  --a2a-peer http://127.0.0.1:4098
+codetether tui --a2a-hostname 0.0.0.0
 ```
 
-**Terminal 2** (TUI in repo B, peer is repo A's TUI on :4097):
+**Terminal 2** (TUI in repo B — no flags needed):
 ```bash
 cd /path/to/repo-B
-codetether tui \
-  --a2a-port 4098 \
-  --a2a-name bob \
-  --a2a-peer http://127.0.0.1:4097
+codetether tui --a2a-hostname 0.0.0.0
 ```
 
-Each TUI starts as normal and *also* exposes `/.well-known/agent.json` and the JSON-RPC endpoint on its `--a2a-port`. From inside one TUI, you can use the `http` tool (or any normal session tool) to POST a `message/send` to the other side's port. From a third terminal you can curl either side.
+That's the whole setup. Each TUI starts as normal and *also* exposes
+`/.well-known/agent.json` and the JSON-RPC endpoint on an OS-assigned
+port. mDNS handles peer discovery within ~3 s. From inside one TUI,
+you can use the `http` tool (or any normal session tool) to POST a
+`message/send` to the other side's URL (look in the startup log for
+`A2A peer listening` to find the chosen port).
 
-**Important — inbound A2A and the TUI session do not share state.** When the peer (or curl) sends `message/send`, the request is handled by a fresh `Session` spun up by the A2A handler — exactly the same way `codetether spawn` answers. The reply goes back over A2A. **The exchange does not appear in your TUI's chat view, and your TUI session does not see it.** If you want the inbound message to show up in the TUI conversation, that's the routed-into-TUI variant, which is a separate feature (not in this build).
+**Important — inbound A2A and the TUI session do not share state.**
+When the peer (or curl) sends `message/send`, the request is handled
+by a fresh `Session` spun up by the A2A handler — exactly the same
+way `codetether spawn` answers. The reply goes back over A2A. **The
+exchange does not appear in your TUI's chat view, and your TUI
+session does not see it.** If you want the inbound message to show up
+in the TUI conversation, that's the routed-into-TUI variant, which is
+a separate feature (not in this build).
 
 ### TUI A2A flag reference
 
 | Flag | Default | Notes |
 |---|---|---|
-| `--a2a-port <PORT>` | (off) | When set, the TUI process binds an A2A endpoint on this port. Without this flag the TUI is purely interactive (no A2A surface). |
-| `--a2a-hostname <HOST>` | `127.0.0.1` | Use `0.0.0.0` for off-box. Pair with `--a2a-public-url`. |
-| `--a2a-public-url <URL>` | `http://<hostname>:<port>` | URL published in the agent card. |
-| `--a2a-name <NAME>` | `tui-agent-<pid>` | Card name (what peers see). |
+| `--no-a2a` | (A2A on) | Disable the A2A peer entirely. The TUI becomes purely interactive. |
+| `--a2a-port <PORT>` | `0` (OS-assigned) | Pin a specific port if you need a stable URL for curl scripts. |
+| `--a2a-hostname <HOST>` | `127.0.0.1` | Use `0.0.0.0` for LAN reachability and to enable mDNS discovery (loopback doesn't multicast on Linux). |
+| `--a2a-public-url <URL>` | derived from bind addr (substituting first LAN IPv4 for `0.0.0.0`) | URL published in the agent card. |
+| `--a2a-name <NAME>` | auto: `<host>-<repo>-<short-pid>` | Card name (what peers see). |
 | `--a2a-description <TEXT>` | (default) | Card description. |
-| `--a2a-peer <URL>` (repeatable, comma-separable) | `[]` | Peer seed URLs. Also reads `CODETETHER_A2A_PEERS`. |
-| `--a2a-discovery-interval-secs <N>` | `15` | Clamped to ≥ 5. |
+| `--a2a-peer <URL>` (repeatable, comma-separable) | `[]` | Explicit peer seed URLs (in addition to mDNS). Useful for cross-host setups. Also reads `CODETETHER_A2A_PEERS`. |
+| `--a2a-discovery-interval-secs <N>` | `15` | Clamped to ≥ 5. mDNS is event-driven, not polled. |
 | `--a2a-no-auto-introduce` | (intro on) | Disable the auto-intro `message/send` to newly discovered peers. |
+| `--a2a-no-mdns` | (mDNS on) | Disable mDNS announce + browse. Only explicit `--a2a-peer` seeds will be discovered. |
 
 These flags mirror the `codetether spawn` flags one-for-one (with an `a2a-` prefix to keep them out of the TUI's own option namespace).
 
@@ -108,17 +150,49 @@ codetether spawn [OPTIONS] [-- <PROJECT>]
 
 | Flag | Default | Env | Purpose |
 |---|---|---|---|
-| `-n`, `--name <NAME>` | `spawned-agent-<pid>` | — | Agent name (becomes `card.name` and bus registration id). |
-| `--hostname <HOST>` | `127.0.0.1` | — | Bind address. Set to `0.0.0.0` to accept off-box traffic. |
-| `-p`, `--port <PORT>` | `4097` | — | Bind port. Pick a unique port per agent. |
-| `--public-url <URL>` | `http://<hostname>:<port>` | — | URL published in the agent card. Set explicitly when binding `0.0.0.0` so peers know where to call back. |
+| `-n`, `--name <NAME>` | auto: `<host>-<repo>-<short-pid>` | — | Agent name (becomes `card.name` and bus registration id). |
+| `--hostname <HOST>` | `127.0.0.1` | — | Bind address. Use `0.0.0.0` for LAN reachability and to enable mDNS discovery (loopback doesn't multicast on Linux). |
+| `-p`, `--port <PORT>` | `0` (OS-assigned) | — | Bind port. `0` lets the OS pick an available port; specify a port if you need a stable URL for curl scripts. |
+| `--public-url <URL>` | derived from effective bind addr (substituting first LAN IPv4 for `0.0.0.0`) | — | URL published in the agent card. |
 | `-d`, `--description <TEXT>` | (default text) | — | Custom card description. |
-| `--peer <URL>` (repeatable, comma-separable) | `[]` | `CODETETHER_A2A_PEERS` | Peer seed URLs to probe for agent cards. |
-| `--discovery-interval-secs <N>` | `15` | — | How often to re-probe seeds. Minimum effective value is 5 s (clamped). |
-| `--no-auto-introduce` | (intro on by default) | — | Suppress the auto-intro `message/send` sent to newly discovered peers. |
+| `--peer <URL>` (repeatable, comma-separable) | `[]` | `CODETETHER_A2A_PEERS` | Explicit peer seed URLs (in addition to mDNS-discovered peers). Useful for cross-host setups where mDNS isn't routable. |
+| `--discovery-interval-secs <N>` | `15` | — | Polling interval for explicit `--peer` seeds (clamped to ≥ 5). mDNS discovery is event-driven, not polled. |
+| `--no-auto-introduce` | (intro on) | — | Suppress the auto-intro `message/send` sent to newly discovered peers. |
+| `--no-mdns` | (mDNS on) | — | Disable mDNS announce + browse. Without mDNS, only explicit `--peer` seeds are discovered. |
 | `[PROJECT]` | cwd | — | Project directory the spawned agent will operate in. |
 | `--print-logs` | off | — | Mirror tracing output to stderr (otherwise honors logfile config). |
 | `--log-level DEBUG\|INFO\|WARN\|ERROR` | `INFO` | — | Tracing level. |
+
+### Auto-name derivation
+
+When `--name` is not supplied, the agent name is derived as:
+
+```
+<short-hostname>-<cwd-basename>-<short-pid>
+```
+
+- `short-hostname` — the leftmost label of `gethostname()` (e.g.
+  `ubuntu-dev` rather than `ubuntu-dev.lan`).
+- `cwd-basename` — the basename of the current working directory.
+- `short-pid` — last 16 bits of the process ID, hex-formatted.
+
+The full name is lowercased and any non-`[a-z0-9-]` chars become `-`,
+so the result is always a valid mDNS instance name and DNS hostname.
+
+### mDNS service shape
+
+When `--mdns` is on (default), the agent announces:
+
+- **Service type**: `_codetether-a2a._tcp.local.`
+- **Instance name**: `<agent-name>` (the auto-derived or user-specified name)
+- **Port**: the effective bound port (after `--port 0` resolution)
+- **TXT records**: `name=<agent-name>`, `path=/`, `protocol=a2a-jsonrpc`, `version=<crate-version>`
+
+Other CodeTether peers on the LAN browse for the same service type and
+discover this agent within seconds. See
+[a2a-public-agents.md](a2a-public-agents.md) for how mDNS-based
+discovery composes with the Agent Provenance Framework for safe public
+deployments.
 
 ---
 
@@ -445,8 +519,9 @@ Enable verbose logs with `--log-level DEBUG --print-logs`. Peer probe failures a
 | File | Role |
 |---|---|
 | `src/cli/mod.rs` (`SpawnArgs`, `Command::Spawn`) | CLI surface |
-| `src/a2a/spawn.rs` | Entry point, lifecycle, discovery loop, intro sender, **`SpawnOptions` + `start_a2a_in_background`** (used by the TUI) |
-| `src/tui/app/run.rs` | TUI entry point. When `--a2a-port` is set, calls `start_a2a_in_background` with the TUI's bus before entering the event loop. |
+| `src/a2a/spawn.rs` | Entry point, lifecycle, explicit-seed discovery loop, intro sender, **`SpawnOptions` + `start_a2a_in_background`** (used by the TUI), **`SpawnOptions::auto()`**, **auto-name derivation**, **`first_lan_ipv4`** for `0.0.0.0` URL substitution, **mDNS intake loop with name-based dedup** |
+| `src/a2a/mdns.rs` | mDNS / DNS-SD announce + browse. Service type `_codetether-a2a._tcp.local.`. Forwards resolved peers to the spawn intake loop via an mpsc channel. |
+| `src/tui/app/run.rs` | TUI entry point. Calls `start_a2a_in_background` with the TUI's bus before entering the event loop unless `--no-a2a` was passed. |
 | `src/a2a/server.rs` | Axum router, JSON-RPC dispatch, message/task handlers, `default_card` |
 | `src/a2a/client.rs` | Outbound `A2AClient` used by discovery + intro |
 | `src/a2a/types.rs` | All wire types (`AgentCard`, `Message`, `Task`, `MessageSendParams`, JSON-RPC envelopes, error codes) |
