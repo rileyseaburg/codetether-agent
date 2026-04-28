@@ -1,8 +1,8 @@
 //! Prompt input builder for summary production.
 
 use super::super::index::types::SummaryRange;
-use anyhow::{Context as _, Result};
 use crate::provider::Message;
+use anyhow::{Context as _, Result};
 
 /// Build the RLM input for a transcript range.
 pub fn summary_input(messages: &[Message], range: SummaryRange, target: usize) -> Result<String> {
@@ -13,6 +13,7 @@ pub fn summary_input(messages: &[Message], range: SummaryRange, target: usize) -
     Ok(format!(
         "Summarise the following transcript window (~{} messages, target ≤ {} tokens). \
          Preserve key decisions, file paths, error classes, and tool outcomes.\n\n{context}",
-        slice.len(), target,
+        slice.len(),
+        target,
     ))
 }

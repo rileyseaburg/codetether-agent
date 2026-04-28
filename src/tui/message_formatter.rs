@@ -232,8 +232,7 @@ impl MessageFormatter {
         let mut result = Vec::new();
         let block_width = self.max_width.saturating_sub(4);
 
-        let header = "┌─ Math ─".to_string()
-            + &"─".repeat(block_width.saturating_sub(9));
+        let header = "┌─ Math ─".to_string() + &"─".repeat(block_width.saturating_sub(9));
         result.push(Line::from(Span::styled(
             header,
             Style::default()
@@ -768,7 +767,10 @@ mod tests {
     fn prettify_math_substitutes_known_symbols() {
         assert_eq!(prettify_math("\\sum_{i=1}^n"), "Σ_{i=1}^n");
         assert_eq!(prettify_math("\\delta_{st}"), "δ_{st}");
-        assert_eq!(prettify_math("H_n=(\\mathbb C)^{\\otimes n}"), "H_n=(ℂ)^{⊗ n}");
+        assert_eq!(
+            prettify_math("H_n=(\\mathbb C)^{\\otimes n}"),
+            "H_n=(ℂ)^{⊗ n}"
+        );
         // Unknown commands pass through unchanged.
         assert_eq!(prettify_math("\\unknownmacro x"), "\\unknownmacro x");
     }

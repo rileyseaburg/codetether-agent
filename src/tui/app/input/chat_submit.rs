@@ -58,11 +58,11 @@ pub(super) async fn handle_enter_chat(
         return;
     }
 
-    let pending_images = std::mem::take(&mut app.state.pending_images);
-    let pending_text_pastes = std::mem::take(&mut app.state.pending_text_pastes);
-    if prompt.is_empty() && pending_images.is_empty() {
+    if prompt.is_empty() && app.state.pending_images.is_empty() {
         return;
     }
+    let pending_images = std::mem::take(&mut app.state.pending_images);
+    let pending_text_pastes = std::mem::take(&mut app.state.pending_text_pastes);
 
     // The user-facing chat history shows the compact placeholder so a
     // 1-line summary stands in for what would otherwise be an
