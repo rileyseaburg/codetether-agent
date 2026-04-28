@@ -86,7 +86,7 @@ pub(super) async fn derive_incremental(
     let recent_start = clone.len() - recent_window;
 
     let header_cost = budget_tokens
-        .saturating_sub(estimate_request_tokens(system_prompt, &[], tools).max(0))
+        .saturating_sub(estimate_request_tokens(system_prompt, &[], tools))
         .max(1);
     // Token budget for the message slice itself, after system + tools.
     let mut budget_for_messages = header_cost;
@@ -127,16 +127,16 @@ pub(super) async fn derive_incremental(
 
     experimental::pairing::repair_orphans(&mut messages);
 
-    // Sanity-check post-pairing budget. If pairing repair pulled extra
-    // entries back in and busted the budget, fall through to the legacy
-    // size-only clamp (estimate_tokens_for_messages over the tail). Keeps
-    // this policy from ever overshooting the working window.
-    let post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
+    // entries back in and busted the budget, trim from the oldest side
+    // until the request fits. This covers both the case where pairing
+    // repair re-introduced entries and where the recent window itself
+    // exceeds the budget.
+    let mut post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
     let mut provenance = vec!["incremental".to_string()];
-    if post_pair_estimate > budget_tokens && messages.len() > recent_window {
-        let drop = messages.len() - recent_window;
-        messages.drain(..drop);
+    while post_pair_estimate > budget_tokens && messages.len() > 1 {
+        messages.remove(0);
         provenance.push("incremental_overflow_clamp".to_string());
+        post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
     }
 
     Ok(DerivedContext {
@@ -183,7 +183,8 @@ fn overlap_count(left: &[String], right: &[String]) -> usize {
     if left.is_empty() || right.is_empty() {
         return 0;
     }
-    left.iter().filter(|item| right.contains(item)).count()
+    let right_set: std::collections::HashSet<_> = right.iter().collect();
+    left.iter().filter(|item| right_set.contains(item)).count()
 }
 
 fn message_tokens(msg: &Message) -> usize {

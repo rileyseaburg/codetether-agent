@@ -18,7 +18,10 @@ pub(crate) fn local_to_actor(
     to: &str,
     message: &crate::a2a::types::Message,
 ) -> ActorEnvelope {
-    let payload = serde_json::to_value(message).unwrap_or(serde_json::Value::Null);
+    let payload = serde_json::to_value(message).unwrap_or_else(|e| {
+        tracing::error!("Failed to serialize a2a message to JSON: {e}");
+        serde_json::Value::Null
+    });
     ActorEnvelope::new(
         ActorId::from(from),
         ActorId::from(to),
@@ -28,7 +31,10 @@ pub(crate) fn local_to_actor(
 }
 
 pub(crate) fn actor_to_local(envelope: &ActorEnvelope) -> crate::a2a::types::Message {
-    serde_json::from_value(envelope.payload.clone()).unwrap_or_else(|_| empty_message(envelope))
+    serde_json::from_value(envelope.payload.clone()).unwrap_or_else(|e| {
+        tracing::warn!("Failed to deserialize actor payload to a2a message: {e}. Returning empty message.");
+        empty_message(envelope)
+    })
 }
 
 fn empty_message(envelope: &ActorEnvelope) -> crate::a2a::types::Message {

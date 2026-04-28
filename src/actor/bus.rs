@@ -7,7 +7,10 @@ pub fn publish_actor(handle: &BusHandle, envelope: &ActorEnvelope) -> usize {
         envelope.to.inbox_topic(),
         BusMessage::SharedResult {
             key: format!("actor/{}", envelope.id),
-            value: serde_json::to_value(envelope).unwrap_or(serde_json::Value::Null),
+            value: serde_json::to_value(envelope).unwrap_or_else(|e| {
+                tracing::error!("Failed to serialize actor envelope to JSON: {e}");
+                serde_json::Value::Null
+            }),
             tags: vec!["actor_message".to_string(), envelope.kind.clone()],
         },
     )
