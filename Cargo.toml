@@ -186,7 +186,7 @@ tree-sitter = "0.24"
 tree-sitter-rust = "0.23"
 streaming-iterator = "0.1.9"
 mdns-sd = "0.13"
-gethostname = "0.5"
+gethostname = "1"
 if-addrs = "0.13"
 
 [target.'cfg(unix)'.dependencies]

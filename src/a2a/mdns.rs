@@ -20,15 +20,27 @@
 //! # Why mDNS
 //!
 //! - **No central state.** No file, no broker, no seed list — true P2P.
-//! - **Zero-config.** Two `codetether tui` processes on one box, or two
-//!   on the same LAN, find each other on launch.
+//! - **Zero-config.** Peers on the same LAN find each other on launch
+//!   without any flags. Same-host setups also work *as long as the agents
+//!   bind a real network interface* (e.g. `--hostname 0.0.0.0`); see the
+//!   loopback note below.
 //! - **Standard.** Same protocol as Bonjour/Avahi/Chromecast/AirPlay.
 //!
-//! # Loopback
+//! # Loopback caveat
 //!
-//! `mdns-sd` enables the loopback interface by default in addition to all
-//! detected non-loopback interfaces, so two agents bound to `127.0.0.1`
-//! on the same host will discover each other.
+//! `mdns-sd` is willing to use the loopback interface, but on Linux the
+//! `lo` interface lacks the `MULTICAST` flag by default — multicast
+//! traffic does not traverse it, so two agents both bound to `127.0.0.1`
+//! will NOT find each other via mDNS even though they're on the same
+//! host. The reliable single-host pattern is to bind `0.0.0.0`: each
+//! agent advertises on the real LAN interface, and multicast loopback
+//! through that interface (controlled by `IP_MULTICAST_LOOP`, default on)
+//! delivers the announcement to other same-host listeners.
+//!
+//! Code in `spawn.rs` mirrors this by passing only the bound IPs that are
+//! actually reachable: loopback addrs alone when `--hostname 127.0.0.1`,
+//! and an empty list (which `enable_addr_auto` then expands to all
+//! detected interfaces) when `--hostname 0.0.0.0` is requested.
 
 use anyhow::{Context, Result};
 use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
@@ -64,12 +76,16 @@ impl Drop for MdnsHandle {
     }
 }
 
-/// A peer discovered over mDNS — just a URL, the existing A2A discovery
-/// flow takes it from there (fetches the agent card, registers, intros).
+/// A peer discovered over mDNS — every reachable URL the resolver saw,
+/// so the existing A2A discovery flow can try them in order.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DiscoveredPeer {
-    /// `http://<addr>:<port>` — base URL the agent card lives under.
-    pub url: String,
+    /// All `http://<addr>:<port>` URLs reported for this peer's service
+    /// record. In multi-homed environments mDNS may resolve several IPs
+    /// (LAN, VPN, docker bridge, etc.); the intake loop tries them in
+    /// order until one responds with a valid agent card. The first entry
+    /// is whichever address mdns-sd reported first (network-dependent).
+    pub urls: Vec<String>,
     /// Service instance name reported by mDNS (== card name).
     pub instance_name: String,
 }
@@ -100,17 +116,24 @@ pub fn announce_and_browse(
     // instance on the LAN. We derive it from the instance name.
     let mdns_hostname = format!("{}.local.", sanitize_hostname(instance_name));
 
-    let addrs: Vec<IpAddr> = if bound_addrs.is_empty() {
-        // No specific bind addrs given — let mdns-sd pick from interfaces.
-        // We must still pass at least one address; use loopback so the
-        // service registers, and rely on mdns-sd's interface enumeration
-        // for the actual broadcast.
+    // If the caller passed concrete bound addrs (e.g. for `--hostname
+    // 127.0.0.1` they pass loopback only) we use exactly those — that
+    // matches what the HTTP server will actually accept.
+    //
+    // If the caller passed an empty list (i.e. they bound `0.0.0.0` and
+    // genuinely want all interfaces advertised), we ask mdns-sd to
+    // auto-detect interface addrs via `enable_addr_auto`. We must still
+    // pass at least one address to ServiceInfo::new for it to construct,
+    // so use loopback as a placeholder — the auto-detect will replace
+    // it with real interface IPs.
+    let auto_detect = bound_addrs.is_empty();
+    let addrs: Vec<IpAddr> = if auto_detect {
         vec!["127.0.0.1".parse().unwrap()]
     } else {
         bound_addrs.clone()
     };
 
-    let service = ServiceInfo::new(
+    let mut service = ServiceInfo::new(
         SERVICE_TYPE,
         instance_name,
         &mdns_hostname,
@@ -118,8 +141,10 @@ pub fn announce_and_browse(
         bind_port,
         Some(props),
     )
-    .context("Failed to construct mDNS ServiceInfo")?
-    .enable_addr_auto();
+    .context("Failed to construct mDNS ServiceInfo")?;
+    if auto_detect {
+        service = service.enable_addr_auto();
+    }
 
     let fullname = service.get_fullname().to_string();
     daemon
@@ -162,21 +187,28 @@ pub fn announce_and_browse(
                         continue;
                     }
                     let port = info.get_port();
-                    let Some(addr) = info.get_addresses().iter().find(|a| a.is_ipv4()).copied()
-                    else {
-                        continue;
-                    };
-                    if port == self_port && addr.is_loopback() {
+                    // Collect every reachable IPv4 the resolver knows about.
+                    // The intake loop will try them in order — useful when
+                    // the same agent is reachable on a LAN IP, a VPN IP,
+                    // and a docker bridge IP, where the "right" one varies
+                    // by caller's network position.
+                    let urls: Vec<String> = info
+                        .get_addresses()
+                        .iter()
+                        .filter(|a| a.is_ipv4())
+                        .filter(|a| !(port == self_port && a.is_loopback()))
+                        .map(|a| format!("http://{a}:{port}"))
+                        .collect();
+                    if urls.is_empty() {
                         continue;
                     }
-                    let url = format!("http://{addr}:{port}");
                     let instance = info_fullname
                         .strip_suffix(SERVICE_TYPE)
                         .unwrap_or(&info_fullname)
                         .trim_end_matches('.')
                         .to_string();
                     let peer = DiscoveredPeer {
-                        url,
+                        urls,
                         instance_name: instance,
                     };
                     if peer_tx.blocking_send(peer).is_err() {
@@ -196,18 +228,33 @@ pub fn announce_and_browse(
     Ok(MdnsHandle { daemon, fullname })
 }
 
-/// Replace characters that aren't valid in DNS hostnames with `-`.
+/// Produce a valid DNS label: ascii alnum + `-` only, lowercase, no
+/// leading/trailing hyphen, ≤ 63 chars (RFC 1035 §2.3.1). An empty
+/// result falls back to "agent" so the caller never gets an invalid
+/// hostname (which would silently break `ServiceInfo::new`).
 fn sanitize_hostname(input: &str) -> String {
-    input
+    const MAX_LABEL: usize = 63;
+    let mut s: String = input
         .chars()
         .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else if c == '-' {
                 c
             } else {
                 '-'
             }
         })
-        .collect()
+        .collect();
+    if s.len() > MAX_LABEL {
+        s.truncate(MAX_LABEL);
+    }
+    let trimmed = s.trim_matches('-');
+    if trimmed.is_empty() {
+        "agent".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 #[cfg(test)]
@@ -222,5 +269,31 @@ mod tests {
     #[test]
     fn sanitize_hostname_replaces_dots_and_underscores() {
         assert_eq!(sanitize_hostname("my.host_name"), "my-host-name");
+    }
+
+    #[test]
+    fn sanitize_hostname_lowercases() {
+        assert_eq!(sanitize_hostname("Alice-Host"), "alice-host");
+    }
+
+    #[test]
+    fn sanitize_hostname_trims_leading_and_trailing_dashes() {
+        assert_eq!(sanitize_hostname(".alice."), "alice");
+        assert_eq!(sanitize_hostname("---bob---"), "bob");
+    }
+
+    #[test]
+    fn sanitize_hostname_truncates_to_63_chars() {
+        let long = "a".repeat(100);
+        let out = sanitize_hostname(&long);
+        assert_eq!(out.len(), 63);
+        assert!(out.chars().all(|c| c == 'a'));
+    }
+
+    #[test]
+    fn sanitize_hostname_falls_back_when_all_dashes() {
+        assert_eq!(sanitize_hostname("..."), "agent");
+        assert_eq!(sanitize_hostname(""), "agent");
+        assert_eq!(sanitize_hostname("---"), "agent");
     }
 }
