@@ -250,14 +250,10 @@ pub struct TuiArgs {
     #[arg(long)]
     pub a2a_port: Option<u16>,
 
-    /// A2A bind hostname. 127.0.0.1 (default) is loopback-only and SAFE
-    /// (the peer is unreachable from outside the host) but mDNS multicast
-    /// does NOT traverse the Linux `lo` interface, so same-host peers
-    /// cannot find each other via mDNS at this binding. Use 0.0.0.0 to
-    /// make peers reachable on the LAN AND to enable mDNS auto-discovery
-    /// between same-host agents (multicast loops back through the real
-    /// interface).
-    #[arg(long, default_value = "127.0.0.1")]
+    /// A2A bind hostname. The default (`0.0.0.0`) provides the intended
+    /// zero-config path: auto-port, auto-name, and mDNS discovery without
+    /// extra flags. Use `127.0.0.1` to make the peer loopback-only.
+    #[arg(long, default_value = "0.0.0.0")]
     pub a2a_hostname: String,
 
     /// Public URL published in the agent card.
