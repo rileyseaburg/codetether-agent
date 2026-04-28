@@ -237,6 +237,43 @@ pub struct TuiArgs {
     /// Allow network access in sandboxed commands
     #[arg(long)]
     pub allow_network: bool,
+
+    /// Bind an A2A peer endpoint on this port alongside the TUI.
+    /// When set, the TUI process exposes /.well-known/agent.json and
+    /// JSON-RPC at http://<a2a-hostname>:<a2a-port>/ and runs peer
+    /// discovery against `--a2a-peer` seeds. Inbound `message/send`
+    /// requests are handled by a fresh background session — they do not
+    /// route into the TUI's interactive session. See docs/a2a-spawn.md.
+    #[arg(long)]
+    pub a2a_port: Option<u16>,
+
+    /// Hostname to bind the A2A peer endpoint. Use 0.0.0.0 for off-box.
+    #[arg(long, default_value = "127.0.0.1")]
+    pub a2a_hostname: String,
+
+    /// Public URL published in the agent card (defaults to http://<hostname>:<port>).
+    #[arg(long)]
+    pub a2a_public_url: Option<String>,
+
+    /// Agent name for the A2A card. Defaults to "tui-agent-<pid>".
+    #[arg(long)]
+    pub a2a_name: Option<String>,
+
+    /// Optional description for the A2A card.
+    #[arg(long)]
+    pub a2a_description: Option<String>,
+
+    /// Peer seed URLs (repeat or comma-separate).
+    #[arg(long, value_delimiter = ',', env = "CODETETHER_A2A_PEERS")]
+    pub a2a_peer: Vec<String>,
+
+    /// Discovery interval in seconds (clamped to ≥ 5).
+    #[arg(long, default_value = "15")]
+    pub a2a_discovery_interval_secs: u64,
+
+    /// Disable auto-intro to newly discovered peers.
+    #[arg(long = "a2a-no-auto-introduce", action = clap::ArgAction::SetFalse, default_value_t = true)]
+    pub a2a_auto_introduce: bool,
 }
 
 #[derive(Parser, Debug)]
