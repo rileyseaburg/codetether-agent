@@ -1,13 +1,15 @@
 # Public A2A Agents via the Agent Provenance Framework
 
 How the zero-config peer-to-peer discovery design (mDNS-based, no central
-broker) composes with the **Agent Provenance Framework** (APF) RFC at
-`../rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt`
-to enable **public web agents that can talk to each other** safely.
+broker) composes with the **Agent Provenance Framework** (APF) RFC —
+[`Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt`](https://github.com/rileyseaburg/codetether/blob/main/rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt)
+in the upstream `rileyseaburg/codetether` repo — to enable **public web
+agents that can talk to each other** safely.
 
-This document describes how `codetether spawn` / `codetether tui --a2a`
-peers extend from "two TUIs on a LAN" to "agents on the open internet
-running tasks on each other's behalf, accountable end-to-end."
+This document describes how `codetether spawn` / `codetether tui
+--a2a-port <port>` peers extend from "two TUIs on a LAN" to "agents on
+the open internet running tasks on each other's behalf, accountable
+end-to-end."
 
 ---
 
@@ -24,22 +26,22 @@ running tasks on each other's behalf, accountable end-to-end."
 
 ---
 
-## The three orthogonal layers
+## The four orthogonal layers
 
-CodeTether's current peer-to-peer surface is a **discovery + transport**
-layer only. APF supplies the missing **identity + authorization** layers
-needed before any of this is safe to expose to the open internet.
+CodeTether's current peer-to-peer surface is a **transport + discovery**
+substrate only. APF supplies the missing **identity + authorization**
+layers needed before any of this is safe to expose to the open internet.
 
 | Layer | Question it answers | Local LAN today | Public web requirement |
 |---|---|---|---|
-| **Transport** | How is the message encoded? | A2A JSON-RPC over HTTP, agent card at `/.well-known/agent.json`. ✅ in `src/a2a/server.rs`. | Same. Add TLS by default and DPoP-bound tokens (`cnf` claim — RFC §5.7). |
-| **Discovery** | Where does the peer live? | mDNS-SD on `_codetether-a2a._tcp.local.` + explicit `--peer` seeds. (Sketched in [a2a-spawn.md](a2a-spawn.md); auto-pick + mDNS deferred.) | Wide-area DNS-SD (RFC 6763 §11) **or** a federation registry. mDNS alone does not cross routers. |
+| **Transport** | How is the message encoded? | A2A JSON-RPC over HTTP, agent card at `/.well-known/agent.json`. ✅ in `src/a2a/server.rs`. | Same. Add TLS by default and DPoP-sender-constrained tokens (`cnf` claim — RFC §5.7). |
+| **Discovery** | Where does the peer live? | Explicit `--peer` / `CODETETHER_A2A_PEERS` seeds today (see [`a2a-spawn.md`](a2a-spawn.md)). The mDNS-SD-on-`_codetether-a2a._tcp.local.` zero-config design is sketched in the same doc and being added in a follow-up PR. | Wide-area DNS-SD (RFC 6763 §11) **or** a federation registry. mDNS alone does not cross routers. |
 | **Identity** | Who is the peer? | Card name string (no trust signal). | `AgentCard.signatures[]` JWS-signed by the peer's authorization server, verifiable against published JWKS. |
 | **Authorization** | What is this caller authorized to cause here? | None — `handle_message_send` accepts any inbound. | Every `message/send` carries an APF-claim JWT with all five provenance dimensions verified per RFC §10. |
 
 Each layer is **independent** of the others. mDNS doesn't replace identity;
 identity doesn't replace authorization. The current implementation has
-transport and (proposed) discovery; APF supplies identity and
+transport and (planned) discovery; APF supplies identity and
 authorization.
 
 ---
@@ -59,7 +61,7 @@ verifiable claim about what they will do with messages they receive, and
 no statement of authorization for what they ask you to do.
 
 A naive auto-intro flow (the current `send_intro` at
-`src/a2a/spawn.rs:222`) sends a `message/send` to every newly-discovered
+`src/a2a/spawn.rs`) sends a `message/send` to every newly-discovered
 peer. On a public network this is:
 
 - A **spam vector** outbound.
@@ -82,7 +84,7 @@ end (B's resource server) verifies all five before invoking
 
 The mapping below assumes B is the **resource server / policy
 enforcement point** for itself; in production deployments B's PEP can
-be a sidecar (OPA reading the same Rego at `../policies/provenance.rego`).
+be a sidecar (OPA reading the same Rego at [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego)).
 
 ### 1. Origin — `ap_origin` (RFC §5.2)
 
@@ -110,8 +112,8 @@ If A previously fetched a web page, that taint marker
 (`urn:ap:taint:source:web-fetch`, "untrusted-external") sits in
 `ap_inputs`. When A asks B to send email, B's policy checks
 `taint_blocked_actions` (already implemented at
-`../policies/provenance.rego:33` and
-`../a2a_server/provenance.py:42`). `email:write` is blocked from
+[`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego) and
+[`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py)). `email:write` is blocked from
 `untrusted-external` taint. B refuses.
 
 **Relevance to public agents**: this is the LAN-equivalent of the
@@ -120,7 +122,7 @@ exfil). Without it, every A2A peer is a confused-deputy hop ready to
 launder a prompt-injection into a sanctioned-looking call.
 
 **Wire change required**: today the A2A `Message` type
-(`src/a2a/types.rs:66`) has a `metadata: HashMap<String, serde_json::Value>`.
+(`src/a2a/types.rs`) has a `metadata: HashMap<String, serde_json::Value>`.
 Provenance claims travel either:
 
 - in the `Authorization: DPoP <jwt>` header (preferred — keeps the
@@ -147,11 +149,11 @@ attenuating monotonically (RFC §7.2). When A calls B, B inspects:
 - the `spawn.max_depth` value — if A's chain has `max_depth: 0`, A
   cannot spawn further sub-agents on B's side either.
 
-The reference policy at `../policies/provenance.rego:70`-onwards already
-implements this: `_attenuation_failures` (Python at
-`../a2a_server/provenance.py:240`) walks adjacent pairs and checks
-operations are subsets, constraints monotonically tighten, budgets do
-not exceed parent.
+The reference policy in [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego)
+already implements this: `_attenuation_failures` (Python at
+[`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py))
+walks adjacent pairs and checks operations are subsets, constraints
+monotonically tighten, budgets do not exceed parent.
 
 **Relevance to public agents**: prevents A from calling B with a
 capability it never had — the classic "I'm a trusted agent, please
@@ -204,8 +206,8 @@ Concrete walk-through for a public-internet A2A call:
    `https://b.domain-b.example/`.
 2. **Card fetch**: A `GET /.well-known/agent.json` over TLS. The card's
    `signatures[]` field (currently empty in
-   `src/a2a/types.rs:172`) carries one or more JWS over the JCS
-   ({{RFC8785}})-canonicalized card body. A verifies against the
+   `src/a2a/types.rs`) carries one or more JWS over the JCS
+   (RFC 8785)-canonicalized card body. A verifies against the
    published JWKS at the issuer (typically
    `<issuer>/.well-known/jwks.json`).
 3. **Card-level policy check**: A's policy may reject based on
@@ -242,7 +244,7 @@ Concrete walk-through for a public-internet A2A call:
 8. **Decision log** (RFC §10.3): both A and B persist the verification
    result with all dimensions, supporting later audit reconstruction.
    The reference impl emits `ProvenanceDecision.as_dict()`
-   (`../a2a_server/provenance.py:76`).
+   ([`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py)).
 
 ---
 
@@ -294,8 +296,8 @@ not new transports.
 
 ### 1. AgentCard signatures populated
 
-Field already exists at `src/a2a/types.rs:172` (`AgentCardSignature`),
-but `default_card` (`src/a2a/server.rs:128`) sets it to `vec![]`. For
+Field already exists at `src/a2a/types.rs` (`AgentCardSignature`),
+but `default_card` (`src/a2a/server.rs`) sets it to `vec![]`. For
 public agents, every card MUST be JWS-signed by the AS that minted it.
 
 ```rust
@@ -309,7 +311,7 @@ signatures: vec![AgentCardSignature {
 
 ### 2. AgentCard security requirements explicit
 
-`AgentCard.security_schemes` and `security` (`src/a2a/types.rs:163-166`)
+`AgentCard.security_schemes` and `security` (`src/a2a/types.rs`)
 currently default to empty. For public agents:
 
 ```rust
@@ -329,7 +331,7 @@ A2A clients calling this card already know what to mint before sending.
 
 ### 3. JSON-RPC server: provenance verification gate
 
-`handle_message_send` at `src/a2a/server.rs:222` currently runs:
+`handle_message_send` at `src/a2a/server.rs` currently runs:
 
 ```
 extract prompt → Session::new() → session.prompt() → reply
@@ -349,8 +351,8 @@ extract prompt
 ```
 
 The verification function already exists in the Python sidecar at
-`../a2a_server/provenance.py:86` and Rego at
-`../policies/provenance.rego`. The Rust server can either:
+[`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py) and Rego at
+[`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego). The Rust server can either:
 
 - **A**: call out to OPA over HTTP for each inbound (deployment-friendly,
   policy hot-reloadable), or
@@ -361,7 +363,7 @@ For initial public-agent rollout, option A (OPA sidecar) is simpler.
 
 ### 4. Outbound: A2AClient stamps tokens before sending
 
-`src/a2a/client.rs:51` currently sends a JSON-RPC body with no auth
+`src/a2a/client.rs` currently sends a JSON-RPC body with no auth
 beyond an optional `CODETETHER_AUTH_TOKEN` bearer. For public peers it
 must:
 
@@ -374,11 +376,11 @@ must:
 `A2AClient::send_message` becomes a thin wrapper over a new
 `A2AClient::send_provenance_message` that takes a `ProvenanceContext`
 (session id, current taints, current attestation quote). The `with_token`
-method (`src/a2a/client.rs:26`) is repurposed for legacy peers only.
+method (`src/a2a/client.rs`) is repurposed for legacy peers only.
 
 ### 5. Auto-intro becomes provenance-aware
 
-The current `send_intro` (`src/a2a/spawn.rs:222`) blindly POSTs to every
+The current `send_intro` (`src/a2a/spawn.rs`) blindly POSTs to every
 newly-discovered peer. For public agents:
 
 - The intro carries an APF token like any other call.
@@ -395,9 +397,9 @@ newly-discovered peer. For public agents:
 | Concern | LAN (today) | Public web (with APF) |
 |---|---|---|
 | Identity | Trust the LAN. | Card JWS verified against AS JWKS. |
-| Tampering in transit | TLS optional. | TLS mandatory. DPoP `cnf` binds token to channel. |
+| Tampering in transit | TLS optional. | TLS mandatory. DPoP sender-constrains the token to a public key via `cnf` (RFC 7800); each request carries a DPoP proof signed by the corresponding private key. |
 | Replay | Not addressed. | DPoP `nonce` + APF attestation freshness window (RFC §8.4). |
-| Confused deputy / capability escalation | Trust the caller. | `ap_delegation` attenuation walk (RFC §7.2 + Rego at `../policies/provenance.rego`). |
+| Confused deputy / capability escalation | Trust the caller. | `ap_delegation` attenuation walk (RFC §7.2 + Rego at [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego)). |
 | Prompt injection laundering across peers | Caller is trusted; no taint propagated. | `ap_inputs` propagated cross-domain in CDPT (RFC §6.3, §9). |
 | Compromised orchestrator forging calls | Not addressed. | `ap_runtime` + `ap_output` (RFC §8). |
 | Fan-out DoS via auto-spawn | Local `--discovery-interval-secs` cap. | Per-token `spawn.max_depth` and `max_fanout` envelope (RFC §7.2). |
@@ -416,10 +418,10 @@ the *receiving* side of a public A2A call:
 
 | File | Role | Use as-is for public agents? |
 |---|---|---|
-| `../rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt` | Normative spec | ✅ |
-| `../a2a_server/provenance.py` | Per-action verifier (origin, inputs, delegation; runtime/output presence) | ✅ for receiving end. Needs Rust port if avoiding the OPA sidecar route. |
-| `../policies/provenance.rego` | OPA policy mirror of the Python verifier | ✅ |
-| `../a2a_server/policy.py` | Glue: combines provenance verifier with action authorization | ✅ |
+| [`rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt`](https://github.com/rileyseaburg/codetether/blob/main/rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt) | Normative spec | ✅ |
+| [`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py) | Per-action verifier (origin, inputs, delegation; runtime/output presence) | ✅ for receiving end. Needs Rust port if avoiding the OPA sidecar route. |
+| [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego) | OPA policy mirror of the Python verifier | ✅ |
+| [`a2a_server/policy.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/policy.py) | Glue: combines provenance verifier with action authorization | ✅ |
 | `src/a2a/server.rs` (this repo) | A2A inbound JSON-RPC handler | **Needs hook** to call the provenance verifier before `Session::new()`. |
 | `src/a2a/client.rs` (this repo) | A2A outbound caller | **Needs CDPT minting** and DPoP signing. |
 | `src/a2a/types.rs` (this repo) | AgentCard + JSON-RPC types | Schema is already APF-compatible (signatures, security_schemes, security). Just needs to be populated. |
@@ -467,7 +469,7 @@ Each step composes with the prior; nothing built today is wasted.
 - **Two CodeTether agents in different organizations** — needs APF
   end-to-end. Discovery via federation registry or wide-area DNS-SD;
   identity via signed cards; authorization via CDPTs verified against
-  the policy in `../policies/provenance.rego`. **This is where the
+  the policy in [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego). **This is where the
   framework earns its keep.**
 - **Public agent serving any caller** — same as the cross-org case
   plus stricter policy on `intent_classification`, attestation type,
@@ -493,13 +495,13 @@ Each step composes with the prior; nothing built today is wasted.
 
 ## References
 
-- **RFC**: `../rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt`
+- **RFC**: [`rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt`](https://github.com/rileyseaburg/codetether/blob/main/rfc/Agent-Provenance-Framework_for_Autonomous-Multi-Agent-Systems.txt)
   (`draft-seaburg-agent-provenance-00`).
-- **Reference verifier (Python)**: `../a2a_server/provenance.py`.
-- **Reference policy (OPA/Rego)**: `../policies/provenance.rego`.
-- **Glue**: `../a2a_server/policy.py`.
-- **A2A protocol**: `../specification/json/a2a.json` (upstream A2A spec
-  this repo's wire format tracks).
+- **Reference verifier (Python)**: [`a2a_server/provenance.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/provenance.py).
+- **Reference policy (OPA/Rego)**: [`policies/provenance.rego`](https://github.com/rileyseaburg/codetether/blob/main/policies/provenance.rego).
+- **Glue**: [`a2a_server/policy.py`](https://github.com/rileyseaburg/codetether/blob/main/a2a_server/policy.py).
+- **A2A protocol**: in-tree protobuf at `proto/a2a/v1/a2a.proto`; upstream
+  JSON spec [`specification/json/a2a.json`](https://github.com/rileyseaburg/codetether/blob/main/specification/json/a2a.json) is what this repo's wire format tracks.
 - **CodeTether A2A surfaces**:
   - [docs/a2a-spawn.md](a2a-spawn.md) — current peer transport + the
     deferred mDNS / auto-pick zero-config design.
