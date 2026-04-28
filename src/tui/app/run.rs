@@ -137,7 +137,14 @@ pub async fn run(
     // session over the A2A wire protocol. Inbound `message/send` requests
     // are answered by a fresh background session — they do not appear in
     // the user's interactive TUI conversation. See docs/a2a-spawn.md.
-    let _a2a_peer_handle = if let Some(opts) = a2a_options {
+    //
+    // LIFETIME: the binding below MUST live for the duration of the TUI
+    // event loop. `A2APeerHandle::Drop` aborts the background server and
+    // discovery tasks, so an early drop kills the peer. The leading `_`
+    // is the unused-name convention (the variable is read by Drop, not by
+    // any code), NOT the `_` discard pattern — those have different drop
+    // semantics. Do not change this to `let _ = ...`.
+    let _a2a_peer_lifetime_guard = if let Some(opts) = a2a_options {
         match crate::a2a::spawn::start_a2a_in_background(opts, bus.clone()).await {
             Ok(handle) => {
                 tracing::info!(

@@ -95,9 +95,11 @@ impl SpawnOptions {
 
 /// Handle to A2A peer background tasks (server + discovery loop).
 ///
-/// Returned by [`start_a2a_in_background`]. Drop the handle when the host
-/// process is shutting down to abort both tasks; otherwise tokio will reap
-/// them when the runtime exits.
+/// Returned by [`start_a2a_in_background`]. The handle MUST be kept alive
+/// (bound to a non-`_` variable, or stashed in app state) for the lifetime
+/// of the peer — dropping it aborts both background tasks via the `Drop`
+/// impl below. `JoinHandle::drop()` on its own only *detaches* tasks; the
+/// explicit `Drop` here is what actually stops them.
 pub struct A2APeerHandle {
     pub agent_name: String,
     pub bind_addr: String,
@@ -107,8 +109,15 @@ pub struct A2APeerHandle {
 }
 
 impl A2APeerHandle {
-    /// Abort the background server and discovery tasks.
+    /// Abort the background server and discovery tasks immediately.
     pub fn abort(self) {
+        self.server_task.abort();
+        self.discovery_task.abort();
+    }
+}
+
+impl Drop for A2APeerHandle {
+    fn drop(&mut self) {
         self.server_task.abort();
         self.discovery_task.abort();
     }
@@ -123,12 +132,21 @@ struct A2APreparation {
     public_url: String,
 }
 
-/// Shared setup: build card, register on bus, bind listener, spawn discovery.
-///
-/// The TCP bind is the only step that can fail synchronously, so the caller
-/// gets a clean error before any tokio task is spawned.
+/// Shared setup: bind listener first, then build card, register on bus, and
+/// spawn the discovery loop. Order matters: if the TCP bind fails we return
+/// an error before any tokio task is spawned and before the bus is told this
+/// agent exists, so the failure is clean — no leaked discovery task, no
+/// stale registry entry pointing at an address with no server behind it, no
+/// misleading peer-discovery traffic on the network.
 async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APreparation> {
     let bind_addr = format!("{}:{}", opts.hostname, opts.port);
+
+    // 1. Bind first. This is the only step that can fail synchronously.
+    let listener = tokio::net::TcpListener::bind(&bind_addr)
+        .await
+        .with_context(|| format!("Failed to bind A2A peer on {bind_addr}"))?;
+
+    // 2. Now derive identity and publish on the bus.
     let public_url = opts
         .public_url
         .clone()
@@ -161,6 +179,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
         );
     }
 
+    // 3. Only after a successful bind do we spawn the discovery loop.
     let discovery_task = tokio::spawn(discovery_loop(
         Arc::clone(&bus),
         peers,
@@ -171,9 +190,6 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     ));
 
     let router: Router = A2AServer::new(card).router();
-    let listener = tokio::net::TcpListener::bind(&bind_addr)
-        .await
-        .with_context(|| format!("Failed to bind A2A peer on {bind_addr}"))?;
 
     Ok(A2APreparation {
         listener,

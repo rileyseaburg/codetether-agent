@@ -428,7 +428,7 @@ let resp = client.send_message(MessageSendParams {
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `Failed to bind spawn agent on …: Address already in use` | Port in use (e.g., previous `spawn` still running) | Pick another `--port` or stop the prior process. |
+| `Failed to bind A2A peer on …: Address already in use` | Port in use (e.g., previous `spawn` still running) | Pick another `--port` or stop the prior process. |
 | Discovery never logs `Discovered A2A peer` | Peer not yet listening / wrong URL / firewall | Verify with `curl http://<peer>/.well-known/agent.json`. Lower `--discovery-interval-secs 5` for faster feedback. |
 | Inbound `message/send` returns `Failed to create session` | No providers configured | Check `Available providers: [...]` in the spawn log. Configure a provider via Vault or env. |
 | `message/send` returns `INVALID_PARAMS: No text content in message` | All parts were `file` / `data`, no `text` part | Include at least one `{"kind":"text","text":"..."}` part. |
