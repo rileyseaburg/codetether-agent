@@ -550,19 +550,25 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
-            let a2a_options = args.a2a_port.map(|port| crate::a2a::spawn::SpawnOptions {
-                name: args
-                    .a2a_name
-                    .clone()
-                    .unwrap_or_else(|| format!("tui-agent-{}", std::process::id())),
-                hostname: args.a2a_hostname.clone(),
-                port,
-                public_url: args.a2a_public_url.clone(),
-                description: args.a2a_description.clone(),
-                peer: args.a2a_peer.clone(),
-                discovery_interval_secs: args.a2a_discovery_interval_secs,
-                auto_introduce: args.a2a_auto_introduce,
-            });
+            // A2A peer is on by default. `--no-a2a` opts out entirely.
+            // When on, every field auto-picks a sensible default unless the
+            // user supplied an explicit override (--a2a-port / --a2a-name /
+            // --a2a-peer, etc.).
+            let a2a_options = if args.a2a {
+                Some(crate::a2a::spawn::SpawnOptions {
+                    name: args.a2a_name.clone(),
+                    hostname: args.a2a_hostname.clone(),
+                    port: args.a2a_port.unwrap_or(0),
+                    public_url: args.a2a_public_url.clone(),
+                    description: args.a2a_description.clone(),
+                    peer: args.a2a_peer.clone(),
+                    discovery_interval_secs: args.a2a_discovery_interval_secs,
+                    auto_introduce: args.a2a_auto_introduce,
+                    mdns: args.a2a_mdns,
+                })
+            } else {
+                None
+            };
             let project = args.project.or(cli.project);
             tui::run(project, allow_network, a2a_options).await
         }
@@ -1852,9 +1858,10 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         None => {
-            // Default: launch TUI without an A2A peer endpoint.
+            // Default: launch TUI with auto-everything A2A peer enabled.
+            // Same defaults as `codetether tui` with no flags.
             let project = cli.project;
-            tui::run(project, false, None).await
+            tui::run(project, false, Some(crate::a2a::spawn::SpawnOptions::auto())).await
         }
     }
 }
