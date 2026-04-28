@@ -20,6 +20,7 @@ pub(crate) mod image;
 mod image_data_paste;
 mod merge;
 mod paste;
+pub(crate) mod pasted_text;
 mod pr;
 mod pr_body;
 mod pr_command;
