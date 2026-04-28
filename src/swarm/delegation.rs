@@ -27,7 +27,8 @@ pub fn choose_provider_for_subtask(
         dependency: Dependency::Isolated,
         tool_use: tool_use_for_specialty(specialty),
     };
-    let picked = state.rank_candidates(&registry.list(), delegation_skills::SWARM_DISPATCH, bucket);
+    let providers = registry.list();
+    let picked = state.rank_candidates(&providers, delegation_skills::SWARM_DISPATCH, bucket);
     match picked {
         Some(p) => {
             tracing::info!(provider = %p, specialty = %specialty, "LCB selected provider");

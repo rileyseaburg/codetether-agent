@@ -35,7 +35,8 @@ pub fn choose_provider_for_role(
         dependency: Dependency::Isolated,
         tool_use: tool_use_for_role(role),
     };
-    let picked = state.rank_candidates(&registry.list(), skill, bucket);
+    let providers = registry.list();
+    let picked = state.rank_candidates(&providers, skill, bucket);
     match picked {
         Some(p) => {
             tracing::info!(provider = %p, role = %role, "LCB selected provider for relay role");
