@@ -2197,9 +2197,7 @@ async fn execute_session_with_policy(
     model_tier: Option<&str>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> Result<crate::session::SessionResult> {
-    use crate::provider::{
-        CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
-    };
+    use crate::provider::{ContentPart, Message, ProviderRegistry, Role, parse_model_string};
     use std::sync::Arc;
 
     // Load provider registry from Vault
@@ -2315,26 +2313,20 @@ async fn execute_session_with_policy(
     for step in 1..=max_steps {
         tracing::info!(step = step, "Agent step starting");
 
-        // Build messages with system prompt first
-        let mut messages = vec![Message {
-            role: Role::System,
-            content: vec![ContentPart::Text {
-                text: system_prompt.clone(),
-            }],
-        }];
-        messages.extend(session.messages.clone());
-
-        let request = CompletionRequest {
-            messages,
-            tools: tool_definitions.clone(),
-            model: model.clone(),
-            temperature,
-            top_p: None,
-            max_tokens: Some(8192),
-            stop: Vec::new(),
-        };
-
-        let response = provider.complete(request).await?;
+        let response = crate::session::context::complete_with_context(
+            Arc::clone(&provider),
+            session,
+            &model,
+            &system_prompt,
+            &tool_definitions,
+            crate::session::context::RequestOptions {
+                temperature,
+                top_p: None,
+                max_tokens: Some(8192),
+                force_keep_last: None,
+            },
+        )
+        .await?;
 
         crate::telemetry::TOKEN_USAGE.record_model_usage(
             &model,

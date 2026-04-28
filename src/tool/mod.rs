@@ -19,7 +19,11 @@ pub mod computer_use;
 pub mod confirm_edit;
 pub mod confirm_multiedit;
 pub mod context_browse;
+pub mod context_budget;
+pub(super) mod context_helpers;
+pub mod context_pin;
 pub mod context_reset;
+pub mod context_summarize;
 pub mod edit;
 pub mod file;
 pub mod file_extras;
@@ -55,6 +59,7 @@ pub mod skill;
 pub mod swarm_execute;
 pub mod swarm_share;
 pub mod task;
+#[cfg(feature = "tetherscript")]
 pub mod tetherscript;
 pub mod todo;
 pub mod undo;
@@ -343,6 +348,9 @@ impl ToolRegistry {
         registry.register(Arc::new(session_task::SessionTaskTool::new()));
         registry.register(Arc::new(context_reset::ContextResetTool));
         registry.register(Arc::new(context_browse::ContextBrowseTool));
+        registry.register(Arc::new(context_budget::ContextBudgetTool));
+        registry.register(Arc::new(context_pin::ContextPinTool));
+        registry.register(Arc::new(context_summarize::ContextSummarizeTool));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -379,6 +387,7 @@ impl ToolRegistry {
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
+        #[cfg(feature = "tetherscript")]
         registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
         registry.register_compat_aliases();
 
@@ -417,6 +426,9 @@ impl ToolRegistry {
         registry.register(Arc::new(session_task::SessionTaskTool::new()));
         registry.register(Arc::new(context_reset::ContextResetTool));
         registry.register(Arc::new(context_browse::ContextBrowseTool));
+        registry.register(Arc::new(context_budget::ContextBudgetTool));
+        registry.register(Arc::new(context_pin::ContextPinTool));
+        registry.register(Arc::new(context_summarize::ContextSummarizeTool));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -464,6 +476,7 @@ impl ToolRegistry {
         // Kubernetes management tool
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
+        #[cfg(feature = "tetherscript")]
         registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
         registry.register_compat_aliases();
 

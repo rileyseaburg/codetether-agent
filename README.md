@@ -211,7 +211,7 @@ Every turn the agent **derives** a fresh `DerivedContext` from the canonical `se
 - **Policy-driven resets** — Lu et al. reset-to-(prompt, summary) when estimated tokens exceed a threshold, via the `DerivePolicy::Reset` policy.
 - **Mid-session recall** — The `session_recall` tool recovers details from the canonical history that the compressor may have dropped from the derived context.
 
-The derivation pipeline: clone → compress last oversized message → experimental pairing → adaptive budget cascade → orphan repair → `DerivedContext { messages, compressed, origin_len }`.
+The derivation pipeline: clone → compress last oversized message → experimental context strategies → adaptive budget cascade → orphan repair → `DerivedContext { messages, compressed, origin_len }`.
 
 ```bash
 # Environment variables for history persistence (optional)
