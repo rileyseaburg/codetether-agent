@@ -69,9 +69,8 @@ use tokio::sync::mpsc;
 pub struct SpawnOptions {
     /// Agent name. `None` → auto-pick `<host>-<repo>-<short-pid>`.
     pub name: Option<String>,
-    /// Bind hostname. `127.0.0.1` is loopback-only (still works for
-    /// single-machine multi-agent via mDNS over loopback). Use `0.0.0.0`
-    /// to be reachable across the LAN.
+    /// Bind hostname. `0.0.0.0` is the zero-config default so mDNS can
+    /// announce real interfaces. Use `127.0.0.1` for loopback-only peers.
     pub hostname: String,
     /// Bind port. `0` → OS picks an available port.
     pub port: u16,
@@ -93,11 +92,11 @@ pub struct SpawnOptions {
 }
 
 impl SpawnOptions {
-    /// Zero-config defaults: auto port, auto name, mDNS on, auto-intro on.
+    /// Zero-config defaults: wildcard host, auto port/name, mDNS, intro on.
     pub fn auto() -> Self {
         Self {
             name: None,
-            hostname: "127.0.0.1".to_string(),
+            hostname: "0.0.0.0".to_string(),
             port: 0,
             public_url: None,
             description: None,
@@ -316,11 +315,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     // advertise LAN addrs the server isn't bound to.
     let mdns_bind_addrs: Vec<std::net::IpAddr> = match opts.hostname.as_str() {
         "0.0.0.0" | "::" | "[::]" => vec![],
-        other => other
-            .parse::<std::net::IpAddr>()
-            .ok()
-            .into_iter()
-            .collect(),
+        other => other.parse::<std::net::IpAddr>().ok().into_iter().collect(),
     };
     let (mdns_handle, mdns_intake_task) = if opts.mdns {
         let (peer_tx, peer_rx) = mpsc::channel::<DiscoveredPeer>(64);

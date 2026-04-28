@@ -1,13 +1,16 @@
 //! Pin/unpin logic for [`ContextPinTool`].
 
-use crate::session::pages::PageKind;
 use crate::session::Session;
+use crate::session::pages::PageKind;
 use anyhow::Result;
 
 /// Apply pin/unpin to session pages and persist.
 pub async fn apply_pin(session: &mut Session, idx: usize, action: &str) -> Result<String> {
     if idx >= session.pages.len() {
-        anyhow::bail!("turn_index={idx} out of range (len={})", session.pages.len());
+        anyhow::bail!(
+            "turn_index={idx} out of range (len={})",
+            session.pages.len()
+        );
     }
     match action {
         "pin" => session.pages[idx] = PageKind::Constraint,

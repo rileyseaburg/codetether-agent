@@ -19,7 +19,7 @@ pub mod state_mut;
 pub mod state_query;
 
 pub use beta::BetaPosterior;
-pub use config::{DelegationConfig, DEFAULT_DELTA, DEFAULT_GAMMA, DEFAULT_KAPPA, DEFAULT_LAMBDA};
+pub use config::{DEFAULT_DELTA, DEFAULT_GAMMA, DEFAULT_KAPPA, DEFAULT_LAMBDA, DelegationConfig};
 pub use state::DelegationState;
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! Summarize lookup logic for [`ContextSummarizeTool`].
 
-use crate::session::index::types::{SummaryNode, SummaryRange};
 use crate::session::Session;
+use crate::session::index::types::{SummaryNode, SummaryRange};
 use anyhow::Result;
 
 /// Look up a cached summary from the session index.

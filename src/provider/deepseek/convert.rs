@@ -30,7 +30,12 @@ fn assistant_msg(m: &Message) -> Value {
     let txt = collect_text(m);
     let reason = collect_thinking(m);
     let calls = collect_calls(m);
-    tracing::debug!(text_len = txt.len(), reason_len = reason.len(), tool_calls = calls.len(), "DeepSeek convert assistant msg");
+    tracing::debug!(
+        text_len = txt.len(),
+        reason_len = reason.len(),
+        tool_calls = calls.len(),
+        "DeepSeek convert assistant msg"
+    );
     if calls.is_empty() {
         json!({"role": "assistant", "content": txt})
     } else {

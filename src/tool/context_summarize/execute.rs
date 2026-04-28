@@ -1,7 +1,7 @@
 //! Tool trait implementation for `context_summarize`.
 
-use super::super::{Tool, ToolResult};
 use super::super::context_helpers::load_latest_session;
+use super::super::{Tool, ToolResult};
 use super::logic::{lookup_cached, not_cached_msg};
 use super::schema;
 use crate::session::index::types::SummaryRange;
@@ -14,8 +14,12 @@ pub struct ContextSummarizeTool;
 
 #[async_trait]
 impl Tool for ContextSummarizeTool {
-    fn id(&self) -> &str { "context_summarize" }
-    fn name(&self) -> &str { "ContextSummarize" }
+    fn id(&self) -> &str {
+        "context_summarize"
+    }
+    fn name(&self) -> &str {
+        "ContextSummarize"
+    }
 
     fn description(&self) -> &str {
         "Get a cached summary for a range of conversation turns. \
@@ -26,7 +30,9 @@ impl Tool for ContextSummarizeTool {
          to request a specific budget (default 512)."
     }
 
-    fn parameters(&self) -> Value { schema::parameters() }
+    fn parameters(&self) -> Value {
+        schema::parameters()
+    }
 
     async fn execute(&self, args: Value) -> Result<ToolResult> {
         let start = args["start"].as_u64().unwrap_or(0) as usize;
@@ -43,7 +49,8 @@ impl Tool for ContextSummarizeTool {
         };
         match lookup_cached(&session, range) {
             Some(node) => Ok(ToolResult::success(format!(
-                "Cached summary (tokens≈{}):\n{}", node.target_tokens, node.content,
+                "Cached summary (tokens≈{}):\n{}",
+                node.target_tokens, node.content,
             ))),
             None => Ok(ToolResult::success(not_cached_msg(start, end, target))),
         }

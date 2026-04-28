@@ -4,8 +4,8 @@
 //! and the session's bucket projection. No provider call needed —
 //! pure read from the session's summary index and page sidecar.
 
-use super::{Tool, ToolResult};
 use super::context_helpers::load_latest_session;
+use super::{Tool, ToolResult};
 use crate::session::pages::PageKind;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -16,8 +16,12 @@ pub struct ContextBudgetTool;
 
 #[async_trait]
 impl Tool for ContextBudgetTool {
-    fn id(&self) -> &str { "context_budget" }
-    fn name(&self) -> &str { "ContextBudget" }
+    fn id(&self) -> &str {
+        "context_budget"
+    }
+    fn name(&self) -> &str {
+        "ContextBudget"
+    }
 
     fn description(&self) -> &str {
         "Report the current context window budget: messages count, \
@@ -39,7 +43,9 @@ impl Tool for ContextBudgetTool {
         };
         let total = session.messages.len();
         let cached = session.summary_index.len();
-        let pinned = session.pages.iter()
+        let pinned = session
+            .pages
+            .iter()
             .filter(|p| matches!(p, PageKind::Constraint | PageKind::Bootstrap))
             .count();
         let output = format!(

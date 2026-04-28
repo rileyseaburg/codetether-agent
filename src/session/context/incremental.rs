@@ -98,7 +98,12 @@ pub(super) async fn derive_incremental(
 
     // Always-include set: the recent-window entries.
     let mut keep = vec![false; clone.len()];
-    for (i, slot) in keep.iter_mut().enumerate().take(clone.len()).skip(recent_start) {
+    for (i, slot) in keep
+        .iter_mut()
+        .enumerate()
+        .take(clone.len())
+        .skip(recent_start)
+    {
         *slot = true;
         budget_for_messages = budget_for_messages.saturating_sub(per_msg[i]);
     }

@@ -1,7 +1,7 @@
 //! Tool trait implementation for `context_pin`.
 
-use super::super::{Tool, ToolResult};
 use super::super::context_helpers::load_latest_session;
+use super::super::{Tool, ToolResult};
 use super::logic::apply_pin;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -12,8 +12,12 @@ pub struct ContextPinTool;
 
 #[async_trait]
 impl Tool for ContextPinTool {
-    fn id(&self) -> &str { "context_pin" }
-    fn name(&self) -> &str { "ContextPin" }
+    fn id(&self) -> &str {
+        "context_pin"
+    }
+    fn name(&self) -> &str {
+        "ContextPin"
+    }
 
     fn description(&self) -> &str {
         "Pin or unpin a conversation turn so it is never dropped during \
@@ -39,7 +43,11 @@ impl Tool for ContextPinTool {
         let action = args["action"].as_str().unwrap_or("").to_lowercase();
         let idx = match args["turn_index"].as_u64() {
             Some(i) => i as usize,
-            None => return Ok(ToolResult::error("`turn_index` must be a non-negative integer.")),
+            None => {
+                return Ok(ToolResult::error(
+                    "`turn_index` must be a non-negative integer.",
+                ));
+            }
         };
         let mut session = match load_latest_session().await {
             Ok(Some(s)) => s,

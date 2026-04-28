@@ -22,11 +22,16 @@ pub struct DelegationState {
 impl DelegationState {
     /// Create a fresh state seeded with the supplied config.
     pub fn with_config(config: DelegationConfig) -> Self {
-        Self { beliefs: BTreeMap::new(), config }
+        Self {
+            beliefs: BTreeMap::new(),
+            config,
+        }
     }
 
     /// Whether CADMAS-CTX routing is active.
-    pub fn enabled(&self) -> bool { env_enabled_override().unwrap_or(self.config.enabled) }
+    pub fn enabled(&self) -> bool {
+        env_enabled_override().unwrap_or(self.config.enabled)
+    }
 
     /// Encode `(agent, skill, bucket)` as a flat string key.
     pub fn key(agent: &str, skill: &str, bucket: Bucket) -> String {

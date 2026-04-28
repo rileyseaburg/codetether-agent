@@ -5,8 +5,8 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result};
 use tracing::info;
 
-use super::build_context::{SummaryProduceParams, build_auto_context};
 use super::super::index::types::{Granularity, SummaryNode, SummaryRange};
+use super::build_context::{SummaryProduceParams, build_auto_context};
 use crate::provider::{Message, Provider};
 use crate::rlm::RlmConfig;
 
@@ -35,14 +35,23 @@ pub async fn produce_summary(
     let input = format!(
         "Summarise the following transcript window (~{} messages, target ≤ {} tokens). \
          Preserve key decisions, file paths, error classes, and tool outcomes.\n\n{context}",
-        slice.len(), target_tokens,
+        slice.len(),
+        target_tokens,
     );
 
-    info!(start = range.start, end = range.end, target_tokens, "Producing summary via RLM");
+    info!(
+        start = range.start,
+        end = range.end,
+        target_tokens,
+        "Producing summary via RLM"
+    );
 
     let params = SummaryProduceParams {
-        range, target_tokens, session_id,
-        provider, model,
+        range,
+        target_tokens,
+        session_id,
+        provider,
+        model,
         subcall_provider,
         subcall_model: subcall_model.as_deref(),
     };
@@ -52,5 +61,10 @@ pub async fn produce_summary(
         .await
         .context("RLM summarisation for SummaryIndex::summary_for failed")?;
 
-    Ok(SummaryNode { content: result.processed, target_tokens, granularity, generation })
+    Ok(SummaryNode {
+        content: result.processed,
+        target_tokens,
+        granularity,
+        generation,
+    })
 }

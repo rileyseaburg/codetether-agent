@@ -795,6 +795,7 @@ impl RalphLoop {
                 let rate_limit_base_delay_ms = self.config.rate_limit_base_delay_ms;
                 let quality_checks_enabled = self.config.quality_checks_enabled;
                 let quality_checks = self.state.prd.quality_checks.clone();
+                let delegation = self.delegation.clone();
 
                 let handle: tokio::task::JoinHandle<(
                     crate::ralph::types::UserStory,
@@ -1756,9 +1757,13 @@ Do NOT keep iterating indefinitely. Stop when done or blocked.
         for (name, instructions, capabilities) in &profiles {
             // LCB delegation: pick best provider for this relay role.
             let default_provider = registry.list().first().copied().unwrap_or("openai");
-            let (role_provider, role_model) = match delegation {
+            let (_role_provider, role_model) = match delegation {
                 Some(state) => super::delegation::choose_provider_for_role(
-                    registry, state, name, default_provider, model,
+                    registry,
+                    state,
+                    name,
+                    default_provider,
+                    model,
                 ),
                 None => (default_provider.to_string(), model.to_string()),
             };

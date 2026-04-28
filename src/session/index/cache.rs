@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::types::{SummaryNode, SummaryRange, MAX_CACHED_SUMMARIES};
+use super::types::{MAX_CACHED_SUMMARIES, SummaryNode, SummaryRange};
 
 /// Hierarchical summary cache over the chat transcript.
 ///
@@ -26,16 +26,24 @@ pub struct SummaryIndex {
 // Construction, accessors, and iteration.
 impl SummaryIndex {
     /// Empty index.
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Current generation counter.
-    pub fn generation(&self) -> u64 { self.generation }
+    pub fn generation(&self) -> u64 {
+        self.generation
+    }
 
     /// Number of cached summaries.
-    pub fn len(&self) -> usize { self.tree.len() }
+    pub fn len(&self) -> usize {
+        self.tree.len()
+    }
 
     /// Whether the cache is empty.
-    pub fn is_empty(&self) -> bool { self.tree.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.tree.is_empty()
+    }
 
     /// Exact range lookup.
     pub fn get(&self, range: SummaryRange) -> Option<&SummaryNode> {

@@ -17,8 +17,8 @@ use super::{
     tool_policy,
 };
 use crate::bus::{AgentBus, BusMessage};
-use crate::session::delegation::DelegationState;
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
+use crate::session::delegation::DelegationState;
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
 
 // Re-export swarm types for convenience
@@ -947,16 +947,17 @@ impl SwarmExecutor {
             // LCB delegation: pick best provider for this subtask's specialty.
             let (chosen_provider, chosen_model) = if let Some(ref state) = self.delegation {
                 super::delegation::choose_provider_for_subtask(
-                    &providers, state,
+                    &providers,
+                    state,
                     subtask.specialty.as_deref().unwrap_or("General"),
-                    &provider_name, &model,
+                    &provider_name,
+                    &model,
                 )
             } else {
                 (provider_name.clone(), model.clone())
             };
             let subtask_provider = providers
                 .get(&chosen_provider)
-                .cloned()
                 .unwrap_or_else(|| Arc::clone(&provider));
             let model = chosen_model;
             let _provider_name = chosen_provider;
