@@ -98,7 +98,12 @@ pub(super) async fn derive_incremental(
 
     // Always-include set: the recent-window entries.
     let mut keep = vec![false; clone.len()];
-    for (i, slot) in keep.iter_mut().enumerate().take(clone.len()).skip(recent_start) {
+    for (i, slot) in keep
+        .iter_mut()
+        .enumerate()
+        .take(clone.len())
+        .skip(recent_start)
+    {
         *slot = true;
         budget_for_messages = budget_for_messages.saturating_sub(per_msg[i]);
     }
@@ -133,10 +138,13 @@ pub(super) async fn derive_incremental(
     // exceeds the budget.
     let mut post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
     let mut provenance = vec!["incremental".to_string()];
-    while post_pair_estimate > budget_tokens && messages.len() > 1 {
-        messages.remove(0);
+    if post_pair_estimate > budget_tokens {
         provenance.push("incremental_overflow_clamp".to_string());
-        post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
+    }
+    while post_pair_estimate > budget_tokens && messages.len() > 1 {
+        let first_cost = message_tokens(&messages[0]);
+        messages.drain(..1);
+        post_pair_estimate = post_pair_estimate.saturating_sub(first_cost);
     }
 
     Ok(DerivedContext {

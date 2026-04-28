@@ -18,10 +18,14 @@ pub struct SummaryProduceParams<'a> {
 
 /// Construct the [`AutoProcessContext`] for the RLM call.
 pub fn build_auto_context(params: SummaryProduceParams<'_>) -> AutoProcessContext<'_> {
-    use super::super::index::types::SummaryRange;
     let SummaryProduceParams {
-        range, target_tokens, session_id,
-        provider, model, subcall_provider, subcall_model,
+        range,
+        target_tokens,
+        session_id,
+        provider,
+        model,
+        subcall_provider,
+        subcall_model,
     } = params;
     AutoProcessContext {
         tool_id: "summary_index",
