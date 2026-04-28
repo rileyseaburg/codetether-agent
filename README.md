@@ -516,7 +516,7 @@ Dual-transport Agent-to-Agent communication with a shared in-process bus:
 
 - **Worker mode** — Connect to the CodeTether platform and process tasks.
 - **Server mode** — Accept tasks via JSON-RPC (Axum, `:4096`) and gRPC (Tonic, `:50051`) simultaneously.
-- **Spawn mode** — Launch a standalone A2A peer that auto-registers and discovers other peers.
+- **Spawn mode** — Launch a standalone A2A peer that auto-registers and discovers other peers. See [`docs/a2a-spawn.md`](docs/a2a-spawn.md) for the full two-terminal / multi-repo walkthrough, JSON-RPC reference, and discovery internals.
 - **Bus mode** — In-process pub/sub for zero-latency local agent communication.
 
 ### Transports

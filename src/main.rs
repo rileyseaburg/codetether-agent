@@ -550,8 +550,21 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Tui(args)) => {
             let allow_network = args.allow_network;
+            let a2a_options = args.a2a_port.map(|port| crate::a2a::spawn::SpawnOptions {
+                name: args
+                    .a2a_name
+                    .clone()
+                    .unwrap_or_else(|| format!("tui-agent-{}", std::process::id())),
+                hostname: args.a2a_hostname.clone(),
+                port,
+                public_url: args.a2a_public_url.clone(),
+                description: args.a2a_description.clone(),
+                peer: args.a2a_peer.clone(),
+                discovery_interval_secs: args.a2a_discovery_interval_secs,
+                auto_introduce: args.a2a_auto_introduce,
+            });
             let project = args.project.or(cli.project);
-            tui::run(project, allow_network).await
+            tui::run(project, allow_network, a2a_options).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,
         Some(Command::Run(args)) => cli::run::execute(args).await,
@@ -1839,9 +1852,9 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         None => {
-            // Default: launch TUI
+            // Default: launch TUI without an A2A peer endpoint.
             let project = cli.project;
-            tui::run(project, false).await
+            tui::run(project, false, None).await
         }
     }
 }

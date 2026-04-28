@@ -1,4 +1,48 @@
 //! Spawn an autonomous A2A agent runtime with auto peer discovery.
+//!
+//! Stands up an [`A2AServer`] (Axum) on a configurable host:port, publishes an
+//! agent card at `/.well-known/agent.json`, and runs a background discovery
+//! loop that polls each `--peer` seed for its agent card. New peers are
+//! registered in the local bus and (unless `--no-auto-introduce` is set) sent
+//! a one-shot non-blocking `message/send` introduction.
+//!
+//! Each spawned process is a self-contained A2A node: there is no central
+//! broker. Two `codetether spawn` instances pointing at each other form the
+//! minimal mesh; `n` instances form a fully-connected mesh as long as the
+//! seed graph is connected.
+//!
+//! # Lifecycle
+//!
+//! 1. Resolve identity (`--name`, bind addr, public URL).
+//! 2. Build the default [`AgentCard`](crate::a2a::types::AgentCard) and let
+//!    `--description` override the default text.
+//! 3. Initialize [`AgentBus`], start the best-effort training-record S3 sink,
+//!    register self in the registry, and announce-ready with the card's skill
+//!    ids as capabilities.
+//! 4. Spawn [`discovery_loop`] for `--peer` seeds.
+//! 5. Bind the [`A2AServer::router`] and serve until SIGINT.
+//! 6. On shutdown: abort discovery and exit cleanly.
+//!
+//! # Discovery
+//!
+//! Every `discovery_interval_secs` (clamped to ≥ 5):
+//! - For each seed, build candidates via [`peer_candidates`] (tries `seed`
+//!   and `seed/a2a` unless the seed already ends in `/a2a`).
+//! - First successful agent-card fetch wins; the card is registered in
+//!   `bus.registry`.
+//! - On *first* sighting of a given `endpoint::card.name` pair: emit
+//!   `Discovered A2A peer` and (if `auto_introduce`) call
+//!   [`send_intro`] over the A2A client.
+//! - Re-sightings re-register the card (refresh) but do not re-introduce.
+//!
+//! Outbound discovery and intro calls attach `CODETETHER_AUTH_TOKEN` as a
+//! bearer if set.
+//!
+//! # See also
+//!
+//! Full prose documentation lives at `docs/a2a-spawn.md` (CLI reference,
+//! HTTP/JSON-RPC API, curl recipes, cross-host setup, troubleshooting,
+//! source map).
 
 use crate::a2a::client::A2AClient;
 use crate::a2a::server::A2AServer;
@@ -13,77 +57,191 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
-/// Run the spawn command.
-pub async fn run(args: SpawnArgs) -> Result<()> {
-    let bind_addr = format!("{}:{}", args.hostname, args.port);
-    let public_url = args
+/// Inputs for starting an A2A peer runtime.
+///
+/// Used both by `codetether spawn` (one-shot CLI) and by `codetether tui`
+/// when its `--a2a-port` flag is set (background peer alongside the TUI).
+#[derive(Debug, Clone)]
+pub struct SpawnOptions {
+    pub name: String,
+    pub hostname: String,
+    pub port: u16,
+    pub public_url: Option<String>,
+    pub description: Option<String>,
+    pub peer: Vec<String>,
+    pub discovery_interval_secs: u64,
+    pub auto_introduce: bool,
+}
+
+impl SpawnOptions {
+    /// Materialize options from the `codetether spawn` CLI args, applying the
+    /// same default-name policy (`spawned-agent-<pid>`).
+    pub fn from_spawn_args(args: &SpawnArgs) -> Self {
+        Self {
+            name: args
+                .name
+                .clone()
+                .unwrap_or_else(|| format!("spawned-agent-{}", std::process::id())),
+            hostname: args.hostname.clone(),
+            port: args.port,
+            public_url: args.public_url.clone(),
+            description: args.description.clone(),
+            peer: args.peer.clone(),
+            discovery_interval_secs: args.discovery_interval_secs,
+            auto_introduce: args.auto_introduce,
+        }
+    }
+}
+
+/// Handle to A2A peer background tasks (server + discovery loop).
+///
+/// Returned by [`start_a2a_in_background`]. Drop the handle when the host
+/// process is shutting down to abort both tasks; otherwise tokio will reap
+/// them when the runtime exits.
+pub struct A2APeerHandle {
+    pub agent_name: String,
+    pub bind_addr: String,
+    pub public_url: String,
+    server_task: tokio::task::JoinHandle<()>,
+    discovery_task: tokio::task::JoinHandle<()>,
+}
+
+impl A2APeerHandle {
+    /// Abort the background server and discovery tasks.
+    pub fn abort(self) {
+        self.server_task.abort();
+        self.discovery_task.abort();
+    }
+}
+
+struct A2APreparation {
+    listener: tokio::net::TcpListener,
+    router: Router,
+    discovery_task: tokio::task::JoinHandle<()>,
+    agent_name: String,
+    bind_addr: String,
+    public_url: String,
+}
+
+/// Shared setup: build card, register on bus, bind listener, spawn discovery.
+///
+/// The TCP bind is the only step that can fail synchronously, so the caller
+/// gets a clean error before any tokio task is spawned.
+async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APreparation> {
+    let bind_addr = format!("{}:{}", opts.hostname, opts.port);
+    let public_url = opts
         .public_url
         .clone()
         .unwrap_or_else(|| format!("http://{bind_addr}"));
     let public_url = normalize_base_url(&public_url)?;
 
-    let agent_name = args
-        .name
-        .clone()
-        .unwrap_or_else(|| format!("spawned-agent-{}", std::process::id()));
-
+    let agent_name = opts.name.clone();
     let mut card = A2AServer::default_card(&public_url);
     card.name = agent_name.clone();
-    if let Some(description) = args.description.clone() {
+    if let Some(description) = opts.description.clone() {
         card.description = description;
     }
 
-    let bus = AgentBus::new().into_arc();
-
-    // Auto-start S3 sink if MinIO is configured
-    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
     bus.registry.register(card.clone());
-    let handle = bus.handle(&agent_name);
+    let bus_handle = bus.handle(&agent_name);
     let capabilities = card.skills.iter().map(|skill| skill.id.clone()).collect();
-    handle.announce_ready(capabilities);
+    bus_handle.announce_ready(capabilities);
 
-    let peers = collect_peers(&args.peer, &public_url);
+    let peers = collect_peers(&opts.peer, &public_url);
     if peers.is_empty() {
         tracing::info!(
             agent = %agent_name,
-            "Spawned without peer seeds; pass --peer or CODETETHER_A2A_PEERS for discovery"
+            "A2A peer started without peer seeds; pass --peer or CODETETHER_A2A_PEERS for discovery"
         );
     } else {
         tracing::info!(
             agent = %agent_name,
             peer_count = peers.len(),
-            "Spawned with peer discovery seeds"
+            "A2A peer started with peer discovery seeds"
         );
     }
 
     let discovery_task = tokio::spawn(discovery_loop(
         Arc::clone(&bus),
         peers,
-        normalize_base_url(&public_url)?,
+        public_url.clone(),
         agent_name.clone(),
-        args.discovery_interval_secs.max(5),
-        args.auto_introduce,
+        opts.discovery_interval_secs.max(5),
+        opts.auto_introduce,
     ));
 
     let router: Router = A2AServer::new(card).router();
     let listener = tokio::net::TcpListener::bind(&bind_addr)
         .await
-        .with_context(|| format!("Failed to bind spawn agent on {bind_addr}"))?;
+        .with_context(|| format!("Failed to bind A2A peer on {bind_addr}"))?;
+
+    Ok(A2APreparation {
+        listener,
+        router,
+        discovery_task,
+        agent_name,
+        bind_addr,
+        public_url,
+    })
+}
+
+/// Start an A2A peer runtime in the background, attached to the given bus.
+///
+/// Caller is responsible for keeping the returned [`A2APeerHandle`] alive
+/// for as long as the peer should keep serving. Drop or call `abort()` on
+/// shutdown. Used by the TUI when `--a2a-port` is set.
+pub async fn start_a2a_in_background(
+    opts: SpawnOptions,
+    bus: Arc<AgentBus>,
+) -> Result<A2APeerHandle> {
+    let prep = prepare_a2a(opts, bus).await?;
+    tracing::info!(
+        agent = %prep.agent_name,
+        bind_addr = %prep.bind_addr,
+        public_url = %prep.public_url,
+        "A2A peer listening (background mode)"
+    );
+    let agent_name = prep.agent_name.clone();
+    let bind_addr = prep.bind_addr.clone();
+    let public_url = prep.public_url.clone();
+    let server_task = tokio::spawn(async move {
+        if let Err(e) = axum::serve(prep.listener, prep.router).await {
+            tracing::error!(error = %e, "A2A peer server task exited with error");
+        }
+    });
+    Ok(A2APeerHandle {
+        agent_name,
+        bind_addr,
+        public_url,
+        server_task,
+        discovery_task: prep.discovery_task,
+    })
+}
+
+/// Run the `codetether spawn` command. Owns its own bus and S3 sink, blocks
+/// on ctrl_c with graceful shutdown.
+pub async fn run(args: SpawnArgs) -> Result<()> {
+    let bus = AgentBus::new().into_arc();
+
+    // Auto-start S3 sink if MinIO is configured
+    crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
+
+    let prep = prepare_a2a(SpawnOptions::from_spawn_args(&args), bus).await?;
 
     tracing::info!(
-        agent = %agent_name,
-        bind_addr = %bind_addr,
-        public_url = %public_url,
+        agent = %prep.agent_name,
+        bind_addr = %prep.bind_addr,
+        public_url = %prep.public_url,
         "Spawned A2A agent runtime"
     );
 
-    axum::serve(listener, router)
+    axum::serve(prep.listener, prep.router)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("Spawned A2A server failed")?;
 
-    discovery_task.abort();
-    tracing::info!(agent = %agent_name, "Spawned A2A agent shut down");
+    prep.discovery_task.abort();
+    tracing::info!(agent = %prep.agent_name, "Spawned A2A agent shut down");
     Ok(())
 }
 
