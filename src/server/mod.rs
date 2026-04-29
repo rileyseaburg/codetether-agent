@@ -1829,6 +1829,7 @@ async fn openai_chat_completions(
     let openai_model = make_openai_model_id(&selected_provider, &model_id);
 
     if is_stream {
+        #[allow(unused_mut, unused_variables)]
         let mut provider_stream =
             provider
                 .complete_stream(completion_request)
@@ -1843,8 +1844,6 @@ async fn openai_chat_completions(
                     openai_internal_error(error.to_string())
                 })?;
 
-        let stream_id = chat_id.clone();
-        let stream_model = openai_model.clone();
         let event_stream = async_stream::stream! {
             let mut tool_call_indices: HashMap<String, usize> = HashMap::new();
             let mut next_tool_call_index = 0usize;
@@ -1852,9 +1851,9 @@ async fn openai_chat_completions(
             let mut saw_tool_calls = false;
 
             let role_chunk = openai_stream_chunk(
-                &stream_id,
+                &chat_id,
                 now,
-                &stream_model,
+                &openai_model,
                 serde_json::json!({ "role": "assistant" }),
                 None,
             );
@@ -1868,9 +1867,9 @@ async fn openai_chat_completions(
                         }
                         saw_text = true;
                         let content_chunk = openai_stream_chunk(
-                            &stream_id,
+                            &chat_id,
                             now,
-                            &stream_model,
+                            &openai_model,
                             serde_json::json!({ "content": text }),
                             None,
                         );
@@ -1884,9 +1883,9 @@ async fn openai_chat_completions(
                             value
                         });
                         let tool_chunk = openai_stream_chunk(
-                            &stream_id,
+                            &chat_id,
                             now,
-                            &stream_model,
+                            &openai_model,
                             serde_json::json!({
                                 "tool_calls": [{
                                     "index": index,
@@ -1913,9 +1912,9 @@ async fn openai_chat_completions(
                             value
                         });
                         let tool_delta_chunk = openai_stream_chunk(
-                            &stream_id,
+                            &chat_id,
                             now,
-                            &stream_model,
+                            &openai_model,
                             serde_json::json!({
                                 "tool_calls": [{
                                     "index": index,
@@ -1931,12 +1930,13 @@ async fn openai_chat_completions(
                         yield Ok(openai_stream_event(&tool_delta_chunk));
                     }
                     crate::provider::StreamChunk::ToolCallEnd { .. } => {}
+                    crate::provider::StreamChunk::Thinking(_) => {}
                     crate::provider::StreamChunk::Done { .. } => {}
                     crate::provider::StreamChunk::Error(error) => {
                         let error_chunk = openai_stream_chunk(
-                            &stream_id,
+                            &chat_id,
                             now,
-                            &stream_model,
+                            &openai_model,
                             serde_json::json!({ "content": error }),
                             Some("error"),
                         );
@@ -1947,15 +1947,11 @@ async fn openai_chat_completions(
                 }
             }
 
-            let finish_reason = if saw_tool_calls && !saw_text {
-                "tool_calls"
-            } else {
-                "stop"
-            };
+            let finish_reason = if saw_tool_calls && !saw_text { "tool_calls" } else { "stop" };
             let final_chunk = openai_stream_chunk(
-                &stream_id,
+                &chat_id,
                 now,
-                &stream_model,
+                &openai_model,
                 serde_json::json!({}),
                 Some(finish_reason),
             );

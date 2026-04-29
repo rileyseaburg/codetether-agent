@@ -2,7 +2,6 @@
 
 use crate::session::Session;
 use crate::session::index::types::{SummaryNode, SummaryRange};
-use anyhow::Result;
 
 /// Look up a cached summary from the session index.
 pub fn lookup_cached(session: &Session, range: SummaryRange) -> Option<&SummaryNode> {
