@@ -24,6 +24,7 @@ pub mod prompt_call;
 pub mod prompt_events;
 pub(crate) mod prompt_too_long;
 pub mod provider;
+pub mod recall_context;
 pub mod request_state;
 pub mod router;
 pub mod runtime;

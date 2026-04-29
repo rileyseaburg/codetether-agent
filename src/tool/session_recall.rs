@@ -5,9 +5,9 @@
 //! workspace (an earlier prompt, a tool result, a decision), it can
 //! call this tool with a natural-language query. The tool loads
 //! one-or-more recent sessions for the current workspace, flattens
-//! their messages through [`messages_to_rlm_context`], and runs
-//! [`RlmRouter::auto_process`] against the flattened transcript to
-//! produce a focused answer.
+//! their messages through budget-aware recall context rendering, and
+//! runs [`RlmRouter::auto_process`] against the flattened transcript
+//! to produce a focused answer.
 //!
 //! This is distinct from the automatic compaction in
 //! [`crate::session::helper::compression`]: that compresses the
@@ -21,7 +21,7 @@ use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmConfig, RlmRouter};
 use crate::session::Fault;
 use crate::session::Session;
-use crate::session::helper::error::messages_to_rlm_context;
+use crate::session::helper::recall_context::messages_to_recall_context;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -31,6 +31,10 @@ use std::sync::Arc;
 /// supplied. Higher values produce more complete recall at the cost of
 /// a larger RLM input (which the router will still chunk + summarise).
 const DEFAULT_SESSION_LIMIT: usize = 3;
+
+/// Hard upper bound on the number of sessions loaded at once.
+/// Prevents OOM when the agent passes an unreasonably high `limit`.
+const MAX_SESSION_LIMIT: usize = 5;
 
 /// RLM-backed recall tool over persisted session history.
 pub struct SessionRecallTool {
@@ -112,7 +116,7 @@ impl Tool for SessionRecallTool {
             .as_u64()
             .map(|n| n as usize)
             .unwrap_or(DEFAULT_SESSION_LIMIT)
-            .max(1);
+            .clamp(1, MAX_SESSION_LIMIT);
 
         let (context, sources) = match build_recall_context(session_id, limit).await {
             Ok(ok) => ok,
@@ -164,8 +168,11 @@ fn fault_result(fault: Fault, output: impl Into<String>) -> ToolResult {
 
 /// Load session transcripts and flatten them into an RLM-ready string.
 ///
-/// Returns the concatenated context plus a vector of human-readable
-/// source labels (id + title) for the final tool output.
+/// Uses budget-aware flattening via [`messages_to_recall_context`] which
+/// skips thinking blocks and truncates large tool results to prevent OOM.
+///
+/// Returns the concatenated context, source labels, and whether any
+/// session was truncated.
 async fn build_recall_context(
     session_id: Option<String>,
     limit: usize,
@@ -184,7 +191,8 @@ async fn build_recall_context(
             "\n===== SESSION {label} — updated {} =====\n",
             s.updated_at
         ));
-        ctx.push_str(&messages_to_rlm_context(&s.messages));
+        let (flat, _truncated) = messages_to_recall_context(&s.messages);
+        ctx.push_str(&flat);
     }
     Ok((ctx, sources))
 }
