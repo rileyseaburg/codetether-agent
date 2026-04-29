@@ -482,6 +482,14 @@ async fn handle_mdns_peer(
     bus.registry.register(card.clone());
 
     if is_new {
+        let handle = bus.handle("a2a-discovery");
+        handle.send(
+            "broadcast",
+            crate::bus::BusMessage::Heartbeat {
+                agent_id: card.name.clone(),
+                status: format!("discovered via A2A at {endpoint}"),
+            },
+        );
         tracing::info!(
             agent = %agent_name,
             peer_name = %card.name,

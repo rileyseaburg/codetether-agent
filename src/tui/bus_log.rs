@@ -80,7 +80,12 @@ impl BusLogEntry {
                     if a2a { "A2A/mDNS peer" } else { "local bus" },
                     parts.len()
                 );
-                (kind.to_string(), format!("{from} → {to}: {preview}"), detail, Color::Cyan)
+                (
+                    kind.to_string(),
+                    format!("{from} → {to}: {preview}"),
+                    detail,
+                    Color::Cyan,
+                )
             }
             BusMessage::TaskUpdate {
                 task_id,
@@ -148,12 +153,15 @@ impl BusLogEntry {
                     if *success { Color::Green } else { Color::Red },
                 )
             }
-            BusMessage::Heartbeat { agent_id, status } => (
-                "BEAT".to_string(),
-                format!("{agent_id} [{status}]"),
-                format!("Agent: {agent_id}\nStatus: {status}"),
-                Color::DarkGray,
-            ),
+            BusMessage::Heartbeat { agent_id, status } => {
+                let is_a2a = status.starts_with("discovered via A2A");
+                (
+                    if is_a2a { "A2A•PEER" } else { "BEAT" }.to_string(),
+                    format!("{agent_id} [{status}]"),
+                    format!("Agent: {agent_id}\nStatus: {status}"),
+                    if is_a2a { Color::LightCyan } else { Color::DarkGray },
+                )
+            }
             BusMessage::RalphLearning {
                 prd_id,
                 story_id,
@@ -460,8 +468,16 @@ pub fn render_bus_log_with_summary(
         };
         let worker_id = summary.worker_id.as_deref().unwrap_or("n/a");
         let worker_name = summary.worker_name.as_deref().unwrap_or("n/a");
-        let peer_label = if summary.peer_endpoint_ready { "ready" } else { "off" };
-        let peer_color = if summary.peer_endpoint_ready { Color::Cyan } else { Color::DarkGray };
+        let peer_label = if summary.peer_endpoint_ready {
+            "ready"
+        } else {
+            "off"
+        };
+        let peer_color = if summary.peer_endpoint_ready {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        };
         let a2a_count = state.a2a_message_count();
         let recent_task = summary
             .recent_task
