@@ -21,7 +21,13 @@ fn summary_text(bullets: &str) -> String {
 }
 
 fn fenced(text: &str) -> String {
-    format!("```text\n{}\n```", text.trim())
+    let fence = fence_for(text);
+    format!("{fence}text\n{text}\n{fence}")
+}
+
+fn fence_for(text: &str) -> String {
+    let ticks = text.split('`').map(str::len).max().unwrap_or(0);
+    "`".repeat(ticks.max(2) + 1)
 }
 
 #[cfg(test)]
@@ -32,6 +38,12 @@ mod tests {
     fn body_wraps_prompt_in_fence() {
         let body = build_body(Some("fix login"), "- abc fix");
         assert!(body.contains("## Original request\n\n```text\nfix login\n```"));
+    }
+
+    #[test]
+    fn body_uses_longer_fence_for_backticks() {
+        let body = build_body(Some("contains ``` fence"), "");
+        assert!(body.contains("````text\ncontains ``` fence\n````"));
     }
 
     #[test]
