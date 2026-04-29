@@ -600,8 +600,12 @@ mod tests {
     async fn bash_with_default_cwd_runs_there() {
         let dir = tempfile::tempdir().unwrap();
         let tool = BashTool::with_cwd(dir.path().to_path_buf());
-        let result = tool.execute(json!({ "command": "pwd" })).await.unwrap();
-        assert!(result.output.contains(&dir.path().display().to_string()));
+        let result = tool.execute(json!({ "command": "pwd -P" })).await.unwrap();
+        let expected = std::fs::canonicalize(dir.path()).unwrap();
+        assert_eq!(
+            std::path::Path::new(result.output.trim()),
+            expected.as_path()
+        );
     }
 
     #[tokio::test]

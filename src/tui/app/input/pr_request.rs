@@ -12,7 +12,20 @@ const PR_PHRASES: [&str; 6] = [
 /// Return true when the prompt explicitly asks to publish a PR.
 pub(super) fn wants_pr(prompt: &str) -> bool {
     let lower = prompt.to_ascii_lowercase();
-    PR_PHRASES.iter().any(|phrase| lower.contains(phrase))
+    PR_PHRASES
+        .iter()
+        .any(|phrase| contains_phrase(&lower, phrase))
+}
+
+fn contains_phrase(text: &str, phrase: &str) -> bool {
+    text.match_indices(phrase)
+        .any(|(idx, _)| has_boundaries(text, phrase, idx))
+}
+
+fn has_boundaries(text: &str, phrase: &str, idx: usize) -> bool {
+    let before = text[..idx].chars().next_back();
+    let after = text[idx + phrase.len()..].chars().next();
+    !before.is_some_and(char::is_alphanumeric) && !after.is_some_and(char::is_alphanumeric)
 }
 
 #[cfg(test)]
@@ -25,7 +38,8 @@ mod tests {
     }
 
     #[test]
-    fn ignores_regular_work_request() {
-        assert!(!wants_pr("fix the failing tests"));
+    fn rejects_substring_matches() {
+        assert!(!wants_pr("create a program"));
+        assert!(!wants_pr("open product notes"));
     }
 }

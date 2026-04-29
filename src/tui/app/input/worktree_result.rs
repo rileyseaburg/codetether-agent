@@ -34,10 +34,10 @@ pub(super) async fn run_prompt(
         })
 }
 
-/// Handle worktree merge/PR and cleanup after prompt.
+/// Handle worktree publishing or local merge after a prompt.
 ///
-/// Pushes a PR on success, recovers with local merge on PR
-/// failure, and always cleans up the worktree.
+/// Creates a PR only when the prompt explicitly asks for one;
+/// otherwise merges the successful worktree locally and cleans up.
 pub(super) async fn handle_worktree_result(
     result: &anyhow::Result<Session>,
     worktree: Option<WorktreeState>,
