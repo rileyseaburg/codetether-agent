@@ -24,6 +24,7 @@ pub struct ProtocolSummary {
     pub registered_agents: Vec<String>,
     pub queued_tasks: usize,
     pub recent_task: Option<String>,
+    pub peer_endpoint_ready: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -72,15 +73,14 @@ impl BusLogEntry {
                     .collect::<Vec<_>>()
                     .join(" ");
                 let preview = truncate(&text_preview, 80);
-                (
-                    "MSG".to_string(),
-                    format!("{from} → {to}: {preview}"),
-                    format!(
-                        "From: {from}\nTo: {to}\nParts ({}):\n{text_preview}",
-                        parts.len()
-                    ),
-                    Color::Cyan,
-                )
+                let a2a = from == "remote-a2a" || to == "remote-a2a";
+                let kind = if a2a { "A2A•MSG" } else { "MSG" };
+                let detail = format!(
+                    "From: {from}\nTo: {to}\nTransport: {}\nParts ({}):\n{text_preview}",
+                    if a2a { "A2A/mDNS peer" } else { "local bus" },
+                    parts.len()
+                );
+                (kind.to_string(), format!("{from} → {to}: {preview}"), detail, Color::Cyan)
             }
             BusMessage::TaskUpdate {
                 task_id,
@@ -387,6 +387,13 @@ impl BusLogState {
         self.filtered_entries().get(self.selected_index).copied()
     }
 
+    pub fn a2a_message_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|entry| entry.kind == "A2A•MSG")
+            .count()
+    }
+
     pub fn enter_filter_mode(&mut self) {
         self.filter_input_mode = true;
     }
@@ -453,6 +460,9 @@ pub fn render_bus_log_with_summary(
         };
         let worker_id = summary.worker_id.as_deref().unwrap_or("n/a");
         let worker_name = summary.worker_name.as_deref().unwrap_or("n/a");
+        let peer_label = if summary.peer_endpoint_ready { "ready" } else { "off" };
+        let peer_color = if summary.peer_endpoint_ready { Color::Cyan } else { Color::DarkGray };
+        let a2a_count = state.a2a_message_count();
         let recent_task = summary
             .recent_task
             .unwrap_or_else(|| "No recent A2A tasks".to_string());
@@ -469,6 +479,12 @@ pub fn render_bus_log_with_summary(
                 Span::raw(worker_name).cyan(),
                 "  •  ".dim(),
                 Span::raw(worker_id).dim(),
+            ]),
+            Line::from(vec![
+                "A2A peer: ".dim(),
+                Span::styled(peer_label, Style::default().fg(peer_color).bold()),
+                "  •  ".dim(),
+                Span::raw(format!("{a2a_count} visible A2A msg(s)")),
             ]),
             Line::from(vec![
                 "Heartbeat: ".dim(),
