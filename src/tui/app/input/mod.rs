@@ -24,6 +24,7 @@ pub(crate) mod pasted_text;
 mod pr;
 mod pr_body;
 mod pr_command;
+mod pr_command_tests;
 mod pr_description;
 mod pr_helpers;
 mod pr_title;
