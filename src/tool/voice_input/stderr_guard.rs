@@ -1,22 +1,21 @@
 //! RAII guard for temporarily redirecting stderr to `/dev/null` on Linux.
 
-use std::os::fd::RawFd;
-
 /// Guard that restores the original stderr file descriptor on drop.
 ///
 /// On creation, duplicates the current stderr fd, then redirects stderr
 /// to `/dev/null`. When dropped (including during unwinding), the original
 /// stderr is restored and the backup fd is closed.
+#[cfg(target_os = "linux")]
 pub(crate) struct StderrRedirectGuard {
-    saved_stderr: RawFd,
+    saved_stderr: std::os::fd::RawFd,
 }
 
+#[cfg(target_os = "linux")]
 impl StderrRedirectGuard {
     /// Create a new guard that silences stderr until dropped.
     ///
     /// Returns `None` if either `dup` or `dup2` fails, in which case
     /// stderr is left unchanged.
-    #[cfg(target_os = "linux")]
     pub(crate) fn new() -> Option<Self> {
         use std::fs::OpenOptions;
         use std::os::fd::AsRawFd;
@@ -36,6 +35,7 @@ impl StderrRedirectGuard {
     }
 }
 
+#[cfg(target_os = "linux")]
 impl Drop for StderrRedirectGuard {
     fn drop(&mut self) {
         unsafe {
