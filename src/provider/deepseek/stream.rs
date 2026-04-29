@@ -23,7 +23,12 @@ pub(crate) async fn exec(
             ContentPart::Text { text } => {
                 chunks.push(StreamChunk::Text(text.clone()));
             }
-            ContentPart::ToolCall { id, name, arguments, .. } => {
+            ContentPart::ToolCall {
+                id,
+                name,
+                arguments,
+                ..
+            } => {
                 chunks.push(StreamChunk::ToolCallStart {
                     id: id.clone(),
                     name: name.clone(),
