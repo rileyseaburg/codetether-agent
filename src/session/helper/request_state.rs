@@ -7,6 +7,7 @@ use crate::tool::ToolRegistry;
 use super::bootstrap::{inject_tool_prompt, list_tools_bootstrap_definition};
 use super::provider::{prefers_temperature_one, temperature_is_deprecated};
 use super::runtime::{is_interactive_tool, is_local_cuda_provider, local_cuda_light_system_prompt};
+use super::workspace_tools::registry_for_cwd;
 
 pub(crate) struct ProviderStepState {
     pub tool_registry: Arc<ToolRegistry>,
@@ -23,7 +24,7 @@ pub(crate) fn build_provider_step_state(
     model: &str,
     cwd: &Path,
 ) -> ProviderStepState {
-    let tool_registry = ToolRegistry::with_provider_arc(provider, model.to_string());
+    let tool_registry = registry_for_cwd(provider, model, cwd);
     let tool_definitions: Vec<_> = tool_registry
         .definitions()
         .into_iter()
