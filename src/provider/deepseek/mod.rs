@@ -8,6 +8,7 @@
 mod body;
 mod complete;
 mod convert;
+mod convert_helpers;
 mod convert_tools;
 mod error;
 mod models;

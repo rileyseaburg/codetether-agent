@@ -51,8 +51,7 @@ pub(super) fn default_model_for_provider(provider: &str, model_tier: Option<&str
 /// assert!(prefers_temperature_one("zai/glm-5.1"));
 /// ```
 pub(super) fn prefers_temperature_one(model: &str) -> bool {
-    let normalized = model.to_ascii_lowercase();
-    normalized.contains("kimi-k2") || normalized.contains("glm-") || normalized.contains("minimax")
+    crate::session::helper::provider::prefers_temperature_one(model)
 }
 
 #[cfg(test)]

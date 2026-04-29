@@ -1,7 +1,7 @@
 //! Tests for budget-aware message flattening.
 
-use super::*;
-use crate::provider::{ContentPart, Role};
+use crate::provider::{ContentPart, Message, Role};
+use super::flatten::flatten_messages_with_budget;
 
 #[test]
 fn respects_token_budget() {
@@ -13,7 +13,7 @@ fn respects_token_budget() {
             }],
         })
         .collect();
-    let (ctx, truncated) = flatten::flatten_messages_with_budget(&msgs, 100);
+    let (ctx, truncated) = flatten_messages_with_budget(&msgs, 100);
     assert!(truncated);
     assert!(ctx.contains("message number 0"));
 }
@@ -31,7 +31,7 @@ fn skips_thinking_blocks() {
             },
         ],
     }];
-    let (ctx, truncated) = flatten::flatten_messages_with_budget(&messages, 10_000);
+    let (ctx, truncated) = flatten_messages_with_budget(&messages, 10_000);
     assert!(!truncated);
     assert!(!ctx.contains("[Thinking]"));
     assert!(ctx.contains("visible answer"));
