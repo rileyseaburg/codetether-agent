@@ -50,7 +50,9 @@ pub fn context_window_for_model(model: &str) -> usize {
         256_000
     } else if m.contains("qwen") || m.contains("qwq") {
         131_072
-    } else if m.contains("deepseek-r1") || m.contains("deepseek-v3") {
+    } else if m.contains("deepseek-v4") {
+        1_048_576
+    } else if m.contains("deepseek-r1") || m.contains("deepseek-v3") || m.contains("deepseek-chat") || m.contains("deepseek-reasoner") {
         128_000
     } else if m.contains("llama-4") || m.contains("llama4") {
         256_000
@@ -91,6 +93,10 @@ mod tests {
         assert_eq!(context_window_for_model("gemini-1.5-pro"), 1_000_000);
         assert_eq!(context_window_for_model("minimax-m2.5"), 256_000);
         assert_eq!(context_window_for_model("qwen-2.5-coder"), 131_072);
+        assert_eq!(context_window_for_model("deepseek-v4-flash"), 1_048_576);
+        assert_eq!(context_window_for_model("deepseek-chat"), 128_000);
+        assert_eq!(context_window_for_model("deepseek-reasoner"), 128_000);
+        assert_eq!(context_window_for_model("deepseek-r1"), 128_000);
     }
 
     #[test]
