@@ -11,7 +11,8 @@ use tokio::sync::mpsc;
 use crate::provider::ProviderRegistry;
 use crate::session::{ImageAttachment, Session, SessionEvent};
 
-use super::merge::push_or_merge;
+use super::merge::{merge_locally, push_or_merge};
+use super::pr_request::wants_pr;
 use super::worktree::WorktreeState;
 
 /// Run the prompt against the provider and restore the
@@ -33,10 +34,10 @@ pub(super) async fn run_prompt(
         })
 }
 
-/// Handle worktree merge/PR and cleanup after prompt.
+/// Handle worktree publishing or local merge after a prompt.
 ///
-/// Pushes a PR on success, recovers with local merge on PR
-/// failure, and always cleans up the worktree.
+/// Creates a PR only when the prompt explicitly asks for one;
+/// otherwise merges the successful worktree locally and cleans up.
 pub(super) async fn handle_worktree_result(
     result: &anyhow::Result<Session>,
     worktree: Option<WorktreeState>,
@@ -46,7 +47,10 @@ pub(super) async fn handle_worktree_result(
         return;
     };
     if result.is_ok() {
-        push_or_merge(&mgr, &wt, base_branch.as_deref(), prompt).await;
+        match prompt.filter(|p| wants_pr(p)) {
+            Some(p) => push_or_merge(&mgr, &wt, base_branch.as_deref(), Some(p)).await,
+            None => merge_locally(&mgr, &wt).await,
+        }
     }
     if let Err(e) = mgr.cleanup(&wt.name).await {
         tracing::warn!(error = %e, "Failed to cleanup TUI worktree");

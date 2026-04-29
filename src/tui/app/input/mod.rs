@@ -27,6 +27,7 @@ mod pr_command;
 mod pr_command_tests;
 mod pr_description;
 mod pr_helpers;
+mod pr_request;
 mod pr_title;
 mod sessions;
 mod tests_enter;
