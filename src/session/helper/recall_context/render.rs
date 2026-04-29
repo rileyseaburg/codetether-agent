@@ -40,7 +40,11 @@ pub fn render_part(part: &ContentPart) -> String {
 /// Truncate to `max_len` bytes, respecting char boundaries.
 pub(crate) fn truncate_bytes(s: &str, max_len: usize) -> &str {
     if s.len() <= max_len { return s; }
-    &s[..s.floor_char_boundary(max_len)]
+    let mut end = max_len;
+    while !s.is_char_boundary(end) && end > 0 {
+        end -= 1;
+    }
+    &s[..end]
 }
 
 #[cfg(test)]
