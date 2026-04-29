@@ -93,6 +93,10 @@ mod tests {
         assert_eq!(context_window_for_model("gemini-1.5-pro"), 1_000_000);
         assert_eq!(context_window_for_model("minimax-m2.5"), 256_000);
         assert_eq!(context_window_for_model("qwen-2.5-coder"), 131_072);
+        assert_eq!(context_window_for_model("deepseek-v4-flash"), 1_048_576);
+        assert_eq!(context_window_for_model("deepseek-chat"), 128_000);
+        assert_eq!(context_window_for_model("deepseek-reasoner"), 128_000);
+        assert_eq!(context_window_for_model("deepseek-r1"), 128_000);
     }
 
     #[test]

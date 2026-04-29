@@ -11,7 +11,7 @@ use super::convert_tools;
 
 /// Whether the given model ID is a DeepSeek V4 model.
 fn is_v4(model: &str) -> bool {
-    model.contains("v4")
+    model.to_ascii_lowercase().contains("deepseek-v4")
 }
 
 pub(super) fn build(req: &CompletionRequest) -> Value {

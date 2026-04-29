@@ -23,6 +23,9 @@ pub(crate) async fn exec(
             ContentPart::Text { text } => {
                 chunks.push(StreamChunk::Text(text.clone()));
             }
+            ContentPart::Thinking { text } => {
+                chunks.push(StreamChunk::Thinking(text.clone()));
+            }
             ContentPart::ToolCall { id, name, arguments, .. } => {
                 chunks.push(StreamChunk::ToolCallStart {
                     id: id.clone(),
@@ -34,13 +37,15 @@ pub(crate) async fn exec(
                 });
                 chunks.push(StreamChunk::ToolCallEnd { id: id.clone() });
             }
-            _ => {}
         }
     }
 
     if chunks.is_empty() {
         chunks.push(StreamChunk::Text(String::new()));
     }
+    chunks.push(StreamChunk::Done {
+        usage: Some(response.usage),
+    });
 
     Ok(Box::pin(futures::stream::iter(chunks)))
 }
