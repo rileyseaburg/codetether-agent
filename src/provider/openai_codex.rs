@@ -1654,7 +1654,7 @@ impl OpenAiCodexProvider {
 
         while let Some(chunk) = stream.next().await {
             match chunk {
-                StreamChunk::Text(delta) => text.push_str(&delta),
+                StreamChunk::Text(delta) | StreamChunk::Thinking(delta) => text.push_str(&delta),
                 StreamChunk::ToolCallStart { id, name } => {
                     let next_idx = tools.len();
                     let idx = *tool_index_by_id.entry(id.clone()).or_insert(next_idx);

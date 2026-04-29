@@ -1862,7 +1862,8 @@ async fn openai_chat_completions(
 
             while let Some(chunk) = provider_stream.next().await {
                 match chunk {
-                    crate::provider::StreamChunk::Text(text) => {
+                    crate::provider::StreamChunk::Text(text)
+                    | crate::provider::StreamChunk::Thinking(text) => {
                         if text.is_empty() {
                             continue;
                         }

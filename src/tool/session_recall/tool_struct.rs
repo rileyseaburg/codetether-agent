@@ -27,16 +27,28 @@ pub struct SessionRecallTool {
 
 impl SessionRecallTool {
     pub fn new(provider: Arc<dyn Provider>, model: String, config: RlmConfig) -> Self {
-        Self { provider, model, config }
+        Self {
+            provider,
+            model,
+            config,
+        }
     }
 }
 
 #[async_trait]
 impl Tool for SessionRecallTool {
-    fn id(&self) -> &str { "session_recall" }
-    fn name(&self) -> &str { "SessionRecall" }
-    fn description(&self) -> &str { DESCRIPTION }
-    fn parameters(&self) -> serde_json::Value { super::schema::parameters() }
+    fn id(&self) -> &str {
+        "session_recall"
+    }
+    fn name(&self) -> &str {
+        "SessionRecall"
+    }
+    fn description(&self) -> &str {
+        DESCRIPTION
+    }
+    fn parameters(&self) -> serde_json::Value {
+        super::schema::parameters()
+    }
 
     async fn execute(&self, args: serde_json::Value) -> Result<ToolResult> {
         let query = match args["query"].as_str() {
@@ -44,17 +56,35 @@ impl Tool for SessionRecallTool {
             _ => return Ok(ToolResult::error("query is required")),
         };
         let sid = args["session_id"].as_str().map(str::to_string);
-        let limit = args["limit"].as_u64().map(|n| n as usize)
-            .unwrap_or(DEFAULT_SESSION_LIMIT).clamp(1, MAX_SESSION_LIMIT);
+        let limit = args["limit"]
+            .as_u64()
+            .map(|n| n as usize)
+            .unwrap_or(DEFAULT_SESSION_LIMIT)
+            .clamp(1, MAX_SESSION_LIMIT);
 
         let (ctx, sources) = match super::context::build_recall_context(sid, limit).await {
             Ok(ok) => ok,
-            Err(e) => return Ok(super::faults::fault_result(
-                super::faults::fault_from_error(&e), format!("recall load failed: {e}"))),
+            Err(e) => {
+                return Ok(super::faults::fault_result(
+                    super::faults::fault_from_error(&e),
+                    format!("recall load failed: {e}"),
+                ));
+            }
         };
-        if ctx.trim().is_empty() { return Ok(super::faults::fault_result(
-            crate::session::Fault::NoMatch, "No prior session history found.")); }
-        super::rlm_run::run_recall(&ctx, &sources, &query,
-            Arc::clone(&self.provider), &self.model, &self.config).await
+        if ctx.trim().is_empty() {
+            return Ok(super::faults::fault_result(
+                crate::session::Fault::NoMatch,
+                "No prior session history found.",
+            ));
+        }
+        super::rlm_run::run_recall(
+            &ctx,
+            &sources,
+            &query,
+            Arc::clone(&self.provider),
+            &self.model,
+            &self.config,
+        )
+        .await
     }
 }

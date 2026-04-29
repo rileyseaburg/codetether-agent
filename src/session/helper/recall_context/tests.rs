@@ -1,7 +1,7 @@
 //! Tests for budget-aware message flattening.
 
-use crate::provider::{ContentPart, Message, Role};
 use super::flatten::flatten_messages_with_budget;
+use crate::provider::{ContentPart, Message, Role};
 
 #[test]
 fn respects_token_budget() {
