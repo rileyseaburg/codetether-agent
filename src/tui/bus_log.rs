@@ -159,7 +159,11 @@ impl BusLogEntry {
                     if is_a2a { "A2A•PEER" } else { "BEAT" }.to_string(),
                     format!("{agent_id} [{status}]"),
                     format!("Agent: {agent_id}\nStatus: {status}"),
-                    if is_a2a { Color::LightCyan } else { Color::DarkGray },
+                    if is_a2a {
+                        Color::LightCyan
+                    } else {
+                        Color::DarkGray
+                    },
                 )
             }
             BusMessage::RalphLearning {
