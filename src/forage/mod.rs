@@ -8,6 +8,7 @@ use crate::okr::{
 };
 use crate::provider::ProviderRegistry;
 use crate::swarm::{DecompositionStrategy, ExecutionMode, SwarmConfig, SwarmExecutor};
+mod tetherscript_score;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -1214,7 +1215,13 @@ fn collect_opportunities_with_rubric(
             } else {
                 (moonshot_alignment * 0.5).min(0.5)
             };
-            let score = (remaining * status_weight) + urgency_bonus + moonshot_bonus;
+            let score = tetherscript_score::apply(
+                okr,
+                kr,
+                (remaining * status_weight) + urgency_bonus + moonshot_bonus,
+                remaining,
+                moonshot_alignment,
+            );
             let prompt = build_execution_prompt(okr, kr, moonshots, moonshot_alignment);
 
             items.push(ForageOpportunity {

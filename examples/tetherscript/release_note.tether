@@ -1,0 +1,6 @@
+fn summarize(version, changes) {
+    println("Release " + version)
+    println("----------")
+
+    return Ok("Changes: " + changes)
+}

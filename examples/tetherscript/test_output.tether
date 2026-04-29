@@ -1,0 +1,23 @@
+fn cargo_status(output) {
+    if output.contains("test result: ok") {
+        return Ok("passed")
+    }
+
+    if output.contains("FAILED") {
+        return Ok("failed")
+    }
+
+    if output.contains("error[E") {
+        return Ok("compile-error")
+    }
+
+    return Ok("unknown")
+}
+
+fn next_action(status) {
+    if status == "passed" {
+        return Ok("summarize changes")
+    }
+
+    return Ok("inspect failing output")
+}
