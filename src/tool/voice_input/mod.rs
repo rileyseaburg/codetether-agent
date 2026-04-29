@@ -6,7 +6,7 @@
 
 mod actions;
 pub(crate) mod client;
-pub(crate) mod encoder;
+pub mod encoder;
 mod input_config;
 mod input_stream;
 mod params;
