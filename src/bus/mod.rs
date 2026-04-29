@@ -34,6 +34,61 @@ use uuid::Uuid;
 
 // ─── Envelope & Messages ─────────────────────────────────────────────────
 
+/// LLM model provenance attached to bus envelopes for training attribution.
+///
+/// Populated by the provider/session layer when an LLM call completes, so
+/// every downstream consumer (S3 sink, dashboards) knows which model produced
+/// the output without joining against external logs.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::bus::ModelInfo;
+///
+/// let info = ModelInfo {
+///     model: "gpt-5.5-fast".into(),
+///     provider: "openai-codex".into(),
+///     model_backend: Some("chatgpt-codex-responses-ws".into()),
+/// };
+/// assert_eq!(info.model, "gpt-5.5-fast");
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ModelInfo {
+    /// Model identifier (e.g. `gpt-5.5-fast`, `claude-sonnet-4`)
+    pub model: String,
+    /// Provider name (e.g. `openai-codex`, `anthropic`)
+    pub provider: String,
+    /// Optional backend transport (e.g. `chatgpt-codex-responses-ws`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_backend: Option<String>,
+}
+
+/// Token usage and latency metrics for a single LLM turn.
+///
+/// Only present on assistant-role envelopes where the provider reports usage.
+///
+/// # Examples
+///
+/// ```rust
+/// use codetether_agent::bus::UsageInfo;
+///
+/// let usage = UsageInfo {
+///     input_tokens: 47975,
+///     output_tokens: 257,
+///     latency_ms: 8094,
+/// };
+/// assert_eq!(usage.input_tokens, 47975);
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UsageInfo {
+    /// Prompt tokens consumed
+    pub input_tokens: u64,
+    /// Completion tokens produced
+    pub output_tokens: u64,
+    /// Wall-clock latency of the LLM call in milliseconds
+    pub latency_ms: u64,
+}
+
 /// Metadata wrapper for every message that travels through the bus.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BusEnvelope {
@@ -49,6 +104,12 @@ pub struct BusEnvelope {
     pub timestamp: DateTime<Utc>,
     /// The payload
     pub message: BusMessage,
+    /// LLM model provenance — set by the provider layer for assistant turns
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_info: Option<ModelInfo>,
+    /// Token usage metrics — set for assistant turns when available
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<UsageInfo>,
 }
 
 /// The set of messages the bus can carry.
@@ -302,6 +363,8 @@ impl BusHandle {
             correlation_id,
             timestamp: Utc::now(),
             message,
+            model_info: None,
+            usage: None,
         };
         self.bus.publish(envelope)
     }
@@ -657,6 +720,8 @@ mod tests {
                 agent_id: "nobody".into(),
                 status: "ok".into(),
             },
+            model_info: None,
+            usage: None,
         };
         let count = bus.publish(env);
         assert_eq!(count, 0);

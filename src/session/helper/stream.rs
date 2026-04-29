@@ -85,7 +85,7 @@ pub async fn collect_stream_completion_with_events(
     mut stream: BoxStream<'static, StreamChunk>,
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<crate::provider::CompletionResponse> {
-    let mut text = String::new();
+    let (mut thinking, mut text) = (String::new(), String::new());
     let mut tools = Vec::<ToolAccumulator>::new();
     let mut tool_index_by_id = HashMap::<String, usize>::new();
     let mut usage = Usage::default();
@@ -110,6 +110,7 @@ pub async fn collect_stream_completion_with_events(
                     let _ = tx.send(SessionEvent::TextChunk(to_send)).await;
                 }
             }
+            StreamChunk::Thinking(delta) => thinking.push_str(&delta),
             StreamChunk::ToolCallStart { id, name } => {
                 let next_idx = tools.len();
                 let idx = *tool_index_by_id.entry(id.clone()).or_insert(next_idx);
@@ -150,9 +151,14 @@ pub async fn collect_stream_completion_with_events(
     }
 
     let mut content = Vec::new();
+    if !thinking.is_empty() {
+        content.push(ContentPart::Thinking { text: thinking });
+    }
     if !text.is_empty() {
         content.push(ContentPart::Text { text });
     }
+    use FinishReason::{Stop, ToolCalls};
+    let finish_reason = if tools.is_empty() { Stop } else { ToolCalls };
     for tool in tools {
         content.push(ContentPart::ToolCall {
             id: tool.id,
@@ -161,15 +167,6 @@ pub async fn collect_stream_completion_with_events(
             thought_signature: None,
         });
     }
-
-    let finish_reason = if content
-        .iter()
-        .any(|part| matches!(part, ContentPart::ToolCall { .. }))
-    {
-        FinishReason::ToolCalls
-    } else {
-        FinishReason::Stop
-    };
 
     Ok(crate::provider::CompletionResponse {
         message: Message {

@@ -73,6 +73,13 @@ pub struct BusS3SinkConfig {
     /// Whether to ignore certificate errors (for self-signed certs)
     #[serde(default)]
     pub ignore_cert: bool,
+    /// Whether to include `agent_thinking` records in training output.
+    ///
+    /// Defaults to `true` so reasoning distillation works out of the box.
+    /// Set to `false` for sensitive workloads where chain-of-thought
+    /// must not be persisted.
+    #[serde(default = "default_include_thinking")]
+    pub include_thinking: bool,
 }
 
 fn default_prefix() -> String {
@@ -85,6 +92,10 @@ fn default_batch_size() -> usize {
 
 fn default_flush_interval_secs() -> u64 {
     30
+}
+
+fn default_include_thinking() -> bool {
+    true
 }
 
 impl BusS3SinkConfig {
@@ -135,6 +146,10 @@ impl BusS3SinkConfig {
                 .ok()
                 .map(|s| s.to_lowercase() == "true")
                 .unwrap_or(false),
+            include_thinking: std::env::var("CODETETHER_BUS_S3_INCLUDE_THINKING")
+                .ok()
+                .map(|s| s.to_lowercase() != "false")
+                .unwrap_or(true),
         })
     }
 
@@ -170,6 +185,7 @@ impl BusS3SinkConfig {
                 flush_interval_secs: 30,
                 secure: false,
                 ignore_cert: false,
+                include_thinking: true,
             });
         }
 
@@ -206,6 +222,7 @@ impl BusS3SinkConfig {
                     flush_interval_secs: 30,
                     secure: false,
                     ignore_cert: false,
+                    include_thinking: true,
                 });
             }
         }
@@ -281,9 +298,17 @@ struct TrainingFunction {
     arguments: String,
 }
 
+/// Schema version emitted in every training record's metadata.
+///
+/// Increment this when the record shape changes so consumers can
+/// robustly handle mixed-schema batches.
+const TRAINING_SCHEMA_VERSION: &str = "v2.1";
+
 /// Provenance metadata attached to every training record.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TrainingMetadata {
+    /// Schema version — `v2.1` for records with model/usage attribution
+    schema_version: String,
     /// Original BusMessage variant name (snake_case)
     bus_kind: String,
     /// Envelope id
@@ -300,6 +325,26 @@ struct TrainingMetadata {
     /// Agent loop step number when available
     #[serde(skip_serializing_if = "Option::is_none")]
     step: Option<usize>,
+    /// Model identifier (e.g. `gpt-5.5-fast`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    model: Option<String>,
+    /// Provider name (e.g. `openai-codex`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provider: Option<String>,
+    /// Optional backend transport (e.g. `chatgpt-codex-responses-ws`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    model_backend: Option<String>,
+    /// Token usage and latency for assistant turns
+    #[serde(skip_serializing_if = "Option::is_none")]
+    usage: Option<TrainingUsage>,
+}
+
+/// Token usage metrics included in training record metadata.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TrainingUsage {
+    input_tokens: u64,
+    output_tokens: u64,
+    latency_ms: u64,
 }
 
 /// Convert a `BusEnvelope` into a `TrainingRecord`.
@@ -331,7 +376,13 @@ fn envelope_step(message: &BusMessage) -> Option<usize> {
 }
 
 fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
+    let usage = env.usage.as_ref().map(|u| TrainingUsage {
+        input_tokens: u.input_tokens,
+        output_tokens: u.output_tokens,
+        latency_ms: u.latency_ms,
+    });
     let meta = TrainingMetadata {
+        schema_version: TRAINING_SCHEMA_VERSION.to_string(),
         bus_kind: bus_message_kind(&env.message),
         envelope_id: env.id.clone(),
         timestamp: env.timestamp.to_rfc3339(),
@@ -339,6 +390,10 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
         sender_id: env.sender_id.clone(),
         correlation_id: env.correlation_id.clone(),
         step: envelope_step(&env.message),
+        model: env.model_info.as_ref().map(|m| m.model.clone()),
+        provider: env.model_info.as_ref().map(|m| m.provider.clone()),
+        model_backend: env.model_info.as_ref().and_then(|m| m.model_backend.clone()),
+        usage,
     };
 
     match &env.message {
@@ -632,12 +687,15 @@ fn envelope_to_training_record(env: &BusEnvelope) -> TrainingRecord {
 
 type ToolGroupKey = (String, usize, Option<String>);
 
-fn collect_training_records(envelopes: &[BusEnvelope]) -> Vec<TrainingRecord> {
+fn collect_training_records(envelopes: &[BusEnvelope], include_thinking: bool) -> Vec<TrainingRecord> {
     let mut grouped_records: BTreeMap<ToolGroupKey, Vec<TrainingRecord>> = BTreeMap::new();
     let mut passthrough_records = Vec::new();
 
     for env in envelopes {
         if matches!(env.message, BusMessage::Heartbeat { .. }) {
+            continue;
+        }
+        if !include_thinking && matches!(env.message, BusMessage::AgentThinking { .. }) {
             continue;
         }
         let record = envelope_to_training_record(env);
@@ -801,6 +859,7 @@ impl BusS3Sink {
             flush_interval_secs: 30,
             secure: endpoint.starts_with("https"),
             ignore_cert: false,
+            include_thinking: true,
         };
 
         Self::from_config(bus, config).await
@@ -821,11 +880,14 @@ impl BusS3Sink {
 
         let rx = bus.tx.subscribe();
 
+        let include_thinking = config.include_thinking;
+
         Ok(Self {
             bus,
             client,
             config,
             rx,
+            include_thinking,
         })
     }
 
@@ -950,7 +1012,7 @@ impl BusS3Sink {
         // correlation id so separate turns do not merge when a sender reuses
         // the same step number. Legacy producers with `None` correlation ids
         // still group together compatibly.
-        let records = collect_training_records(&envelopes);
+        let records = collect_training_records(&envelopes, self.include_thinking);
         let lines = serialize_training_records(&records);
         if lines.is_empty() {
             return Ok(());
@@ -1086,6 +1148,7 @@ mod tests {
             flush_interval_secs: default_flush_interval_secs(),
             secure: false,
             ignore_cert: false,
+            include_thinking: true,
         };
 
         assert_eq!(config.prefix, "training/");
@@ -1108,6 +1171,8 @@ mod tests {
                 arguments: serde_json::json!({"path": "/src/main.rs"}),
                 step: 1,
             },
+            model_info: None,
+            usage: None,
         };
 
         let record = envelope_to_training_record(&env);
@@ -1136,6 +1201,8 @@ mod tests {
                 success: true,
                 step: 1,
             },
+            model_info: None,
+            usage: None,
         };
 
         let record = envelope_to_training_record(&env);
@@ -1161,6 +1228,8 @@ mod tests {
                     text: "I fixed the bug".into(),
                 }],
             },
+            model_info: None,
+            usage: None,
         };
 
         let record = envelope_to_training_record(&env);
@@ -1193,6 +1262,8 @@ mod tests {
                 agent_id: "agent-0".into(),
                 status: "ok".into(),
             },
+            model_info: None,
+            usage: None,
         };
 
         let record = envelope_to_training_record(&env);
@@ -1210,7 +1281,7 @@ mod tests {
             tool_response_envelope("env-4", "req-2", Some("turn-2")),
         ];
 
-        let records = collect_training_records(&envelopes);
+        let records = collect_training_records(&envelopes, true);
         let assistant_batches: Vec<_> = records
             .iter()
             .filter(|record| record.metadata.bus_kind == "tool_request_batch")
@@ -1239,7 +1310,7 @@ mod tests {
             tool_response_envelope("env-4", "req-2", None),
         ];
 
-        let records = collect_training_records(&envelopes);
+        let records = collect_training_records(&envelopes, true);
         let assistant_batches: Vec<_> = records
             .iter()
             .filter(|record| record.metadata.bus_kind == "tool_request_batch")
@@ -1269,6 +1340,8 @@ mod tests {
                 arguments: Value::Null,
                 step: 1,
             },
+            model_info: None,
+            usage: None,
         }
     }
 
@@ -1291,6 +1364,8 @@ mod tests {
                 success: true,
                 step: 1,
             },
+            model_info: None,
+            usage: None,
         }
     }
 }
