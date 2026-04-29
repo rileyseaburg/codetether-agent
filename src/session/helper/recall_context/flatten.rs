@@ -1,8 +1,8 @@
 //! Budget-aware session flattening for recall.
 
+use super::render::render_part;
 use crate::provider::Message;
 use crate::rlm::RlmChunker;
-use super::render::render_part;
 
 /// Maximum estimated tokens per session for recall.
 const RECALL_TOKEN_BUDGET: usize = 30_000;
@@ -13,10 +13,7 @@ pub fn flatten_messages(messages: &[Message]) -> (String, bool) {
 }
 
 /// Budget-aware flattening with a running token count (O(N), not O(N²)).
-pub fn flatten_messages_with_budget(
-    messages: &[Message],
-    budget: usize,
-) -> (String, bool) {
+pub fn flatten_messages_with_budget(messages: &[Message], budget: usize) -> (String, bool) {
     let mut out = String::with_capacity(budget * 4);
     let mut tokens = 0usize;
     let mut truncated = false;
@@ -30,7 +27,10 @@ pub fn flatten_messages_with_budget(
         let hdr = format!("[{idx} {role}]\n");
         let hdr_tok = RlmChunker::estimate_tokens(&hdr);
 
-        if tokens + hdr_tok > budget { truncated = true; break; }
+        if tokens + hdr_tok > budget {
+            truncated = true;
+            break;
+        }
         out.push_str(&hdr);
         tokens += hdr_tok;
 
@@ -38,7 +38,10 @@ pub fn flatten_messages_with_budget(
             let seg = render_part(part);
             let seg_tok = RlmChunker::estimate_tokens(&seg);
             if tokens + seg_tok > budget {
-                if tokens + marker_tok <= budget { out.push_str(marker); tokens += marker_tok; }
+                if tokens + marker_tok <= budget {
+                    out.push_str(marker);
+                    tokens += marker_tok;
+                }
                 truncated = true;
                 break;
             }
@@ -46,7 +49,10 @@ pub fn flatten_messages_with_budget(
             tokens += seg_tok;
         }
 
-        if tokens + sep_tok > budget { truncated = true; break; }
+        if tokens + sep_tok > budget {
+            truncated = true;
+            break;
+        }
         out.push_str(sep);
         tokens += sep_tok;
     }

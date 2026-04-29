@@ -13,7 +13,10 @@ pub fn render_part(part: &ContentPart) -> String {
         ContentPart::Text { text } => format!("{text}\n"),
         ContentPart::Thinking { .. } => String::new(),
         ContentPart::ToolCall {
-            id, name, arguments, ..
+            id,
+            name,
+            arguments,
+            ..
         } => {
             let args = truncate_bytes(arguments, MAX_FIELD_BYTES);
             format!("[ToolCall id={id} name={name}]\nargs: {args}\n")
@@ -23,7 +26,11 @@ pub fn render_part(part: &ContentPart) -> String {
             content,
         } => {
             let preview = truncate_bytes(content, MAX_FIELD_BYTES);
-            let tail = if content.len() > MAX_FIELD_BYTES { " [...truncated]" } else { "" };
+            let tail = if content.len() > MAX_FIELD_BYTES {
+                " [...truncated]"
+            } else {
+                ""
+            };
             format!("[ToolResult id={tool_call_id}]\n{preview}{tail}\n")
         }
         ContentPart::Image { mime_type, url } => {
@@ -39,7 +46,9 @@ pub fn render_part(part: &ContentPart) -> String {
 
 /// Truncate to `max_len` bytes, respecting char boundaries.
 pub(crate) fn truncate_bytes(s: &str, max_len: usize) -> &str {
-    if s.len() <= max_len { return s; }
+    if s.len() <= max_len {
+        return s;
+    }
     let mut end = max_len;
     while !s.is_char_boundary(end) && end > 0 {
         end -= 1;

@@ -137,13 +137,24 @@ async fn get_agent_card(State(server): State<A2AServer>) -> Json<AgentCard> {
     Json(server.agent_card.clone())
 }
 
-
 fn emit_a2a_inbound(server: &A2AServer, task_id: &str, message: &Message) {
-    emit_a2a_message(server, task_id, "remote-a2a", &server.agent_card.name, message);
+    emit_a2a_message(
+        server,
+        task_id,
+        "remote-a2a",
+        &server.agent_card.name,
+        message,
+    );
 }
 
 fn emit_a2a_outbound(server: &A2AServer, task_id: &str, message: &Message) {
-    emit_a2a_message(server, task_id, &server.agent_card.name, "remote-a2a", message);
+    emit_a2a_message(
+        server,
+        task_id,
+        &server.agent_card.name,
+        "remote-a2a",
+        message,
+    );
 }
 
 fn emit_a2a_message(server: &A2AServer, task_id: &str, from: &str, to: &str, message: &Message) {
