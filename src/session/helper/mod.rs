@@ -32,6 +32,7 @@ pub mod stream;
 pub mod text;
 pub mod token;
 pub mod validation;
+mod workspace_tools;
 
 #[cfg(test)]
 mod prompt_events_test_provider;
