@@ -14,6 +14,8 @@ use axum::{
 use dashmap::DashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use crate::bus::BusMessage;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -135,6 +137,31 @@ async fn get_agent_card(State(server): State<A2AServer>) -> Json<AgentCard> {
     Json(server.agent_card.clone())
 }
 
+
+fn emit_a2a_inbound(server: &A2AServer, task_id: &str, message: &Message) {
+    emit_a2a_message(server, task_id, "remote-a2a", &server.agent_card.name, message);
+}
+
+fn emit_a2a_outbound(server: &A2AServer, task_id: &str, message: &Message) {
+    emit_a2a_message(server, task_id, &server.agent_card.name, "remote-a2a", message);
+}
+
+fn emit_a2a_message(server: &A2AServer, task_id: &str, from: &str, to: &str, message: &Message) {
+    let Some(bus) = server.bus.as_ref() else {
+        return;
+    };
+    let handle = bus.handle("a2a");
+    handle.send_with_correlation(
+        format!("task.{task_id}"),
+        BusMessage::AgentMessage {
+            from: from.to_string(),
+            to: to.to_string(),
+            parts: message.parts.clone(),
+        },
+        Some(task_id.to_string()),
+    );
+}
+
 async fn configure_a2a_session(session: &mut Session) {
     let configured_model = std::env::var("CODETETHER_DEFAULT_MODEL")
         .ok()
@@ -247,6 +274,7 @@ async fn handle_message_send(
     };
 
     server.tasks.insert(task_id.clone(), task.clone());
+    emit_a2a_inbound(server, &task_id, &params.message);
 
     // Extract prompt text from message parts
     let prompt: String = params
@@ -310,6 +338,8 @@ async fn handle_message_send(
                     extensions: vec![],
                 };
 
+                emit_a2a_outbound(server, &task_id, &response_message);
+
                 if let Some(mut t) = server.tasks.get_mut(&task_id) {
                     t.status.state = TaskState::Completed;
                     t.status.message = Some(response_message.clone());
@@ -363,6 +393,8 @@ async fn handle_message_send(
                     metadata: std::collections::HashMap::new(),
                     extensions: vec![],
                 };
+
+                emit_a2a_outbound(server, &task_id, &error_message);
 
                 if let Some(mut t) = server.tasks.get_mut(&task_id) {
                     t.status.state = TaskState::Failed;
@@ -521,6 +553,7 @@ async fn handle_message_stream(
     };
 
     server.tasks.insert(task_id.clone(), task.clone());
+    emit_a2a_inbound(server, &task_id, &params.message);
 
     // Extract prompt
     let prompt: String = params

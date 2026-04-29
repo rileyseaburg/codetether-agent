@@ -343,7 +343,7 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
         (None, None)
     };
 
-    let router: Router = A2AServer::new(card).router();
+    let router: Router = A2AServer::with_bus(card, Arc::clone(&bus)).router();
 
     Ok(A2APreparation {
         listener,
