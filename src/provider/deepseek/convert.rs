@@ -1,10 +1,13 @@
 //! Convert internal [`Message`] to DeepSeek JSON format.
 //!
-//! Assistant messages with tool calls **must** include `reasoning_content`
-//! (even if empty) or the DeepSeek V4 API returns HTTP 400.
+//! Assistant messages with tool calls **must** include
+//! `reasoning_content` (per DeepSeek V4 docs) or the API returns
+//! HTTP 400. We send `null` for empty fields to match the spec.
 
 use crate::provider::{ContentPart, Message, Role};
 use serde_json::{Value, json};
+
+use super::convert_helpers;
 
 pub(crate) fn messages(msgs: &[Message]) -> Vec<Value> {
     msgs.iter()
@@ -27,19 +30,22 @@ fn tool_msg(m: &Message) -> Value {
 }
 
 fn assistant_msg(m: &Message) -> Value {
-    let txt = collect_text(m);
-    let reason = collect_thinking(m);
-    let calls = collect_calls(m);
+    let txt = convert_helpers::collect_text(m);
+    let calls = convert_helpers::collect_calls(m);
+    let reason = convert_helpers::collect_thinking(m);
     tracing::debug!(
-        text_len = txt.len(),
-        reason_len = reason.len(),
         tool_calls = calls.len(),
         "DeepSeek convert assistant msg"
     );
     if calls.is_empty() {
         json!({"role": "assistant", "content": txt})
     } else {
-        json!({"role": "assistant", "content": txt, "reasoning_content": reason, "tool_calls": calls})
+        json!({
+            "role": "assistant",
+            "content": if txt.is_empty() { Value::Null } else { json!(txt) },
+            "reasoning_content": if reason.is_empty() { Value::Null } else { json!(reason) },
+            "tool_calls": calls
+        })
     }
 }
 
@@ -48,31 +54,5 @@ fn text_msg(m: &Message) -> Value {
         Role::System => "system",
         _ => "user",
     };
-    json!({"role": role, "content": collect_text(m)})
-}
-
-fn collect_text(m: &Message) -> String {
-    m.content
-        .iter()
-        .filter_map(|p| match p {
-            ContentPart::Text { text } => Some(text.clone()),
-            _ => None,
-        })
-        .collect()
-}
-fn collect_thinking(m: &Message) -> String {
-    m.content
-        .iter()
-        .filter_map(|p| match p {
-            ContentPart::Thinking { text } => Some(text.clone()),
-            _ => None,
-        })
-        .collect()
-}
-fn collect_calls(m: &Message) -> Vec<Value> {
-    m.content.iter().filter_map(|p| match p {
-        ContentPart::ToolCall { id, name, arguments, .. } =>
-            Some(json!({"id": id, "type": "function", "function": {"name": name, "arguments": arguments}})),
-        _ => None,
-    }).collect()
+    json!({"role": role, "content": convert_helpers::collect_text(m)})
 }
