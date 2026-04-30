@@ -32,7 +32,6 @@ pub fn parse_send_keys(expr: &str) -> Vec<u16> {
     let key = resolve_vk(rest);
     let mut result = mods.clone();
     result.push(key);
-    // Modifiers released in reverse order
-    result.extend(mods.iter().rev());
+    // Caller (send_chord) handles modifier release automatically
     result
 }

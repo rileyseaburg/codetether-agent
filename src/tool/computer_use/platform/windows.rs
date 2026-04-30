@@ -2,7 +2,6 @@
 
 mod apps;
 mod input;
-mod ps;
 mod request;
 mod snapshot;
 mod status;

@@ -1,19 +1,29 @@
-//! Windows apps listing for computer use.
+//! Native window enumeration via Win32.
 
+use crate::platform::windows::computer_use::list_windows;
+
+/// List visible windows.
+///
+/// Maintains backward-compatible `apps` field in the response schema
+/// while also providing the richer `windows` detail.
 pub async fn handle_list_apps() -> anyhow::Result<crate::tool::ToolResult> {
-    let script = r#"
-$p=Get-Process|Where-Object {$_.MainWindowHandle -ne 0 -and $_.MainWindowTitle}
-$p|Select-Object @{n='app';e={$_.ProcessName}},@{n='pid';e={$_.Id}},@{n='window_title';e={$_.MainWindowTitle}},@{n='hwnd';e={$_.MainWindowHandle.ToInt64()}}|ConvertTo-Json -Compress -Depth 3
-"#;
-    let value = super::ps::run(script).await?;
-    let apps = match value {
-        serde_json::Value::Array(items) => items,
-        serde_json::Value::Null => Vec::new(),
-        other => vec![other],
-    };
+    let windows = list_windows()?;
+    let apps: Vec<serde_json::Value> = windows
+        .iter()
+        .filter(|w| w.get("title").and_then(|t| t.as_str()).map_or(false, |s| !s.is_empty()))
+        .map(|w| {
+            serde_json::json!({
+                "app": w.get("title").and_then(|t| t.as_str()).unwrap_or(""),
+                "pid": w.get("pid").unwrap_or(&serde_json::json!(0)),
+                "window_title": w.get("title").and_then(|t| t.as_str()).unwrap_or(""),
+                "hwnd": w.get("hwnd").unwrap_or(&serde_json::json!(0))
+            })
+        })
+        .collect();
     Ok(super::response::success_result(serde_json::json!({
         "platform": "Windows",
         "count": apps.len(),
-        "apps": apps
+        "apps": apps,
+        "windows": windows
     })))
 }
