@@ -188,6 +188,7 @@ streaming-iterator = "0.1.9"
 mdns-sd = "0.13"
 gethostname = "1"
 if-addrs = "0.13"
+windows = "0.62.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.181"
@@ -213,3 +214,7 @@ codegen-units = 16
 
 [patch.crates-io]
 candle-kernels = { path = "vendor/candle-kernels" }
+chromiumoxide = { path = "vendor/chromiumoxide" }
+chromiumoxide_types = { path = "vendor/chromiumoxide_types" }
+chromiumoxide_cdp = { path = "vendor/chromiumoxide_cdp" }
+chromiumoxide_pdl = { path = "vendor/chromiumoxide_pdl" }

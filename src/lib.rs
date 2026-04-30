@@ -25,6 +25,7 @@ pub mod lsp;
 pub mod mcp;
 pub mod moltbook;
 pub mod okr;
+pub mod platform;
 pub mod provenance;
 pub mod provider;
 pub mod ralph;
