@@ -59,10 +59,12 @@ where
     loop {
         attempt += 1;
         match f().await {
-            Ok((text, status)) if status.is_success() && !is_retryable_message(&text) => {
+            Ok((text, status)) if status.is_success() => {
                 return Ok((text, status));
             }
-            Ok((text, status)) if is_retryable_status(status) || is_retryable_message(&text) => {
+            Ok((text, status)) if is_retryable_status(status)
+                || is_retryable_message(&text) =>
+            {
                 let delay = backoff_delay(attempt);
                 tracing::warn!(
                     attempt, %status,

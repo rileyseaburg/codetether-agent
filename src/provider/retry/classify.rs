@@ -23,7 +23,13 @@ pub(super) fn is_retryable_status(status: reqwest::StatusCode) -> bool {
 /// Check whether an error message string indicates a transient failure.
 ///
 /// Catches provider-specific messages like Z.AI's "temporarily overloaded"
-/// that may arrive in a 200-status JSON error body or a network-level error.
+/// that may arrive in a non-2xx JSON error body or a network-level error.
+///
+/// **Important**: This function must only be called on **non-success**
+/// response bodies or error strings. Applying it to a 200 OK body risks
+/// false positives when legitimate content contains phrases like
+/// "operation failed" or "internal server error" in tool results or
+/// conversation history.
 ///
 /// # Arguments
 ///
@@ -31,14 +37,9 @@ pub(super) fn is_retryable_status(status: reqwest::StatusCode) -> bool {
 pub(super) fn is_retryable_message(msg: &str) -> bool {
     let lower = msg.to_lowercase();
     lower.contains("temporarily overloaded")
-        || lower.contains("network error")
         || lower.contains("rate limit")
-        || lower.contains("timed out")
         || lower.contains("connection reset")
         || lower.contains("connection closed")
-        // Z.AI GLM occasionally returns 500 with this body mid-stream
-        || lower.contains("operation failed")
-        || lower.contains("internal server error")
         || lower.contains("service unavailable")
         || lower.contains("bad gateway")
 }
