@@ -1,15 +1,29 @@
-//! Native window/process enumeration via Win32.
+//! Native window enumeration via Win32.
 
-use crate::platform::windows::computer_use::{list_processes, list_windows};
+use crate::platform::windows::computer_use::list_windows;
 
-/// List visible windows and running processes using native Win32 APIs.
+/// List visible windows.
+///
+/// Maintains backward-compatible `apps` field in the response schema
+/// while also providing the richer `windows` detail.
 pub async fn handle_list_apps() -> anyhow::Result<crate::tool::ToolResult> {
     let windows = list_windows()?;
-    let procs = list_processes()?;
+    let apps: Vec<serde_json::Value> = windows
+        .iter()
+        .filter(|w| w.get("title").and_then(|t| t.as_str()).map_or(false, |s| !s.is_empty()))
+        .map(|w| {
+            serde_json::json!({
+                "app": w.get("title").and_then(|t| t.as_str()).unwrap_or(""),
+                "pid": w.get("pid").unwrap_or(&serde_json::json!(0)),
+                "window_title": w.get("title").and_then(|t| t.as_str()).unwrap_or(""),
+                "hwnd": w.get("hwnd").unwrap_or(&serde_json::json!(0))
+            })
+        })
+        .collect();
     Ok(super::response::success_result(serde_json::json!({
         "platform": "Windows",
-        "windows": windows,
-        "processes": procs,
-        "count": windows.len()
+        "count": apps.len(),
+        "apps": apps,
+        "windows": windows
     })))
 }

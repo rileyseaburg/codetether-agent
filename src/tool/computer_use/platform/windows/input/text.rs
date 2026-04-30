@@ -8,6 +8,6 @@ pub async fn handle_type_text(input: &ComputerUseInput) -> anyhow::Result<crate:
     let text = input.text.as_deref().unwrap_or_default();
     send_text(text)?;
     Ok(super::super::response::success_result(serde_json::json!({
-        "typed": true, "length": text.len()
+        "typed": true, "chars": text.chars().count()
     })))
 }
