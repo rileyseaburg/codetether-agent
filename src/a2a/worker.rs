@@ -4,6 +4,7 @@ mod clone_location;
 mod clone_target;
 mod model_defaults;
 mod model_preferences;
+pub(crate) mod task_timeline;
 
 use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
@@ -178,6 +179,8 @@ struct WorkerTaskRuntime {
     max_concurrent_tasks: usize,
     auto_approve: AutoApprove,
     bus: Arc<AgentBus>,
+    /// Shared progress state for the currently active task (read by heartbeat).
+    task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
 }
 
 // Run the A2A worker
@@ -240,6 +243,9 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         handle.announce_ready(worker_capabilities());
     }
 
+    let task_progress: Arc<Mutex<task_timeline::TaskProgressState>> =
+        Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
+
     let task_runtime = WorkerTaskRuntime {
         client: client.clone(),
         server: server.to_string(),
@@ -249,6 +255,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         max_concurrent_tasks,
         auto_approve,
         bus: bus.clone(),
+        task_progress: task_progress.clone(),
     };
 
     // Register worker
@@ -314,6 +321,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
             heartbeat_state.clone(),
             processing.clone(),
             cognition_heartbeat.clone(),
+            task_progress.clone(),
         );
 
         match connect_stream(&task_runtime, &name, &codebases, None).await {
@@ -406,6 +414,9 @@ pub async fn run_with_state(
         handle.announce_ready(worker_capabilities());
     }
 
+    let task_progress_ws: Arc<Mutex<task_timeline::TaskProgressState>> =
+        Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
+
     let task_runtime = WorkerTaskRuntime {
         client: client.clone(),
         server: server.to_string(),
@@ -415,6 +426,7 @@ pub async fn run_with_state(
         max_concurrent_tasks,
         auto_approve,
         bus: bus.clone(),
+        task_progress: task_progress_ws.clone(),
     };
 
     // Register worker
@@ -493,6 +505,7 @@ pub async fn run_with_state(
             heartbeat_state.clone(),
             processing.clone(),
             cognition_heartbeat.clone(),
+            task_progress_ws.clone(),
         );
 
         match connect_stream(&task_runtime, &name, &codebases, Some(task_notify_rx)).await {
@@ -630,6 +643,16 @@ fn worker_capabilities() -> Vec<String> {
     }
 
     capabilities
+}
+
+/// Copy timeline progress into the runtime's shared progress state for heartbeat.
+async fn sync_timeline_to_runtime(
+    timeline: &task_timeline::TaskTimeline,
+    runtime: &WorkerTaskRuntime,
+) {
+    timeline.sync_progress().await;
+    let state = timeline.progress_handle().lock().await.clone();
+    *runtime.task_progress.lock().await = state;
 }
 
 fn task_value<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
@@ -1409,9 +1432,22 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     let task_id = task_str(task, "id").ok_or_else(|| anyhow::anyhow!("No task ID"))?;
     let title = task_str(task, "title").unwrap_or("Untitled");
 
-    tracing::info!("Handling task: {} ({})", title, task_id);
+    // Determine task timeout from metadata or default to 1200s (Knative default).
+    let metadata = task_metadata(task);
+    let timeout_secs = metadata_u64(&metadata, &["timeout_secs", "timeout"])
+        .unwrap_or(1200)
+        .clamp(60, 3600);
+
+    let mut timeline = task_timeline::TaskTimeline::new(task_id, timeout_secs);
+    timeline.checkpoint(task_timeline::TaskCheckpoint::TaskReceived);
+    tracing::info!("Handling task: {} ({}) [timeout={}s]", title, task_id, timeout_secs);
+
+    // Wire the timeline's progress state into the runtime so the heartbeat picks it up.
+    // We'll sync after each checkpoint.
+    sync_timeline_to_runtime(&timeline, runtime).await;
 
     // Claim the task
+    timeline.checkpoint(task_timeline::TaskCheckpoint::ClaimRequested);
     let mut req = runtime
         .client
         .post(format!("{}/v1/worker/tasks/claim", runtime.server))
@@ -1438,6 +1474,11 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
 
     let claim = res.json::<TaskClaimResponse>().await?;
     let claim_provenance = claim.into_provenance();
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::Claimed,
+        Some(format!("run_id={:?} attempt_id={:?}",
+            claim_provenance.run_id, claim_provenance.attempt_id)),
+    );
     tracing::info!(
         task_id,
         run_id = ?claim_provenance.run_id,
@@ -1447,7 +1488,7 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
 
     // --- All post-claim work is wrapped so we always release the task ---
     let inner_result: Result<(&str, Option<String>, Option<String>, Option<String>)> =
-        execute_claimed_task(runtime, task, task_id, title, &claim_provenance).await;
+        execute_claimed_task(runtime, task, task_id, title, &claim_provenance, &mut timeline).await;
 
     let (status, result, error, session_id) = match inner_result {
         Ok(tuple) => tuple,
@@ -1456,6 +1497,10 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
                 task_id,
                 error = %e,
                 "Task failed after claim (releasing as failed)"
+            );
+            timeline.checkpoint_with_detail(
+                task_timeline::TaskCheckpoint::Failed,
+                Some(format!("{}", e)),
             );
             (
                 "failed",
@@ -1466,6 +1511,11 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         }
     };
 
+    // Emit final diagnostics before releasing
+    timeline.emit_diagnostics();
+    let diagnostics_json = timeline.diagnostics_json();
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::Releasing);
     release_task_result(
         &runtime.client,
         &runtime.server,
@@ -1476,8 +1526,14 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         result,
         error,
         session_id,
+        Some(diagnostics_json),
     )
     .await?;
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::Released);
+
+    // Clear task progress so heartbeat stops reporting stale state
+    runtime.task_progress.lock().await.clear();
 
     tracing::info!("Task released: {} with status: {}", task_id, status);
     Ok(())
@@ -1492,8 +1548,10 @@ async fn execute_claimed_task<'a>(
     task_id: &'a str,
     title: &'a str,
     claim_provenance: &ClaimProvenance,
+    timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
     let metadata = task_metadata(task);
+    timeline.checkpoint(task_timeline::TaskCheckpoint::MetadataParsed);
     let resume_session_id = metadata
         .get("resume_session_id")
         .and_then(|v| v.as_str())
@@ -1582,6 +1640,10 @@ async fn execute_claimed_task<'a>(
     } else {
         Session::new().await?
     };
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::SessionReady,
+        Some(format!("session_id={}", session.id)),
+    );
 
     if !is_virtual_task {
         if let Some(workspace_path) = resolve_task_workspace_dir(
@@ -1594,6 +1656,10 @@ async fn execute_claimed_task<'a>(
         {
             session.metadata.directory = Some(workspace_path);
         }
+        timeline.checkpoint_with_detail(
+            task_timeline::TaskCheckpoint::WorkspaceReady,
+            session.metadata.directory.as_deref().map(|d| d.display().to_string()),
+        );
     }
 
     // For virtual/global tasks, clear the workspace directory so tools don't
@@ -1633,13 +1699,23 @@ async fn execute_claimed_task<'a>(
         {
             tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
         }
+        timeline.checkpoint(task_timeline::TaskCheckpoint::GitHookInstalled);
     }
 
     if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
     }
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::ModelSelected,
+        session.metadata.model.clone(),
+    );
 
     tracing::info!(task_id, agent_type, "Executing prompt: {}", prompt);
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::AgentStarting,
+        Some(format!("agent={} model={:?}", agent_type, session.metadata.model)),
+    );
+    sync_timeline_to_runtime(&timeline, runtime).await;
 
     // Set up output streaming to forward progress to the server and bus
     let stream_client = runtime.client.clone();
@@ -1748,6 +1824,27 @@ async fn execute_claimed_task<'a>(
             }
         }
     };
+
+    // Record agent completion checkpoint
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::AgentDone,
+        Some(format!("status={}", status)),
+    );
+    sync_timeline_to_runtime(&timeline, runtime).await;
+
+    // Check deadline before proceeding to commit/release phase
+    if timeline.is_near_deadline() {
+        tracing::warn!(
+            task_id,
+            elapsed_secs = format!("{:.1}", timeline.elapsed_secs()),
+            budget_pct = format!("{:.1}%", timeline.budget_pct_used()),
+            "Near deadline after agent completion — will attempt graceful shutdown"
+        );
+        timeline.checkpoint(task_timeline::TaskCheckpoint::GracefulShutdown);
+    }
+
+    // Sync progress state for heartbeat reporting
+    timeline.sync_progress().await;
 
     Ok((
         status,
@@ -2009,6 +2106,7 @@ async fn release_task_result(
     result: Option<String>,
     error: Option<String>,
     session_id: Option<String>,
+    diagnostics: Option<serde_json::Value>,
 ) -> Result<()> {
     let mut req = client
         .post(format!("{}/v1/worker/tasks/release", server))
@@ -2017,16 +2115,23 @@ async fn release_task_result(
         req = req.bearer_auth(token);
     }
 
-    req.json(&serde_json::json!({
+    let mut payload = serde_json::json!({
         "task_id": task_id,
         "status": status,
         "result": result,
         "error": error,
         "session_id": session_id,
-    }))
-    .send()
-    .await
-    .context("Failed to release task result")?;
+    });
+    if let Some(diagnostics) = diagnostics {
+        if let Some(obj) = payload.as_object_mut() {
+            obj.insert("diagnostics".to_string(), diagnostics);
+        }
+    }
+
+    req.json(&payload)
+        .send()
+        .await
+        .context("Failed to release task result")?;
 
     Ok(())
 }
@@ -2466,6 +2571,7 @@ pub fn start_heartbeat(
     heartbeat_state: HeartbeatState,
     processing: Arc<Mutex<HashSet<String>>>,
     cognition_config: CognitionHeartbeatConfig,
+    task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut consecutive_failures = 0u32;
@@ -2506,6 +2612,23 @@ pub fn start_heartbeat(
 
             let status_str = heartbeat_state.status.lock().await.as_str().to_string();
             let sub_agents = heartbeat_state.sub_agents_snapshot().await;
+
+            // Include task pipeline progress in heartbeat
+            let progress_snapshot = task_progress.lock().await.clone();
+            let task_progress_payload = if progress_snapshot.task_id.is_some() {
+                Some(serde_json::json!({
+                    "task_id": progress_snapshot.task_id,
+                    "current_checkpoint": progress_snapshot.current_checkpoint,
+                    "elapsed_secs": format!("{:.1}", progress_snapshot.elapsed_secs),
+                    "remaining_secs": format!("{:.1}", progress_snapshot.remaining_secs),
+                    "budget_pct_used": format!("{:.1}%", progress_snapshot.budget_pct_used),
+                    "checkpoints_reached": progress_snapshot.checkpoints_reached.len(),
+                    "last_detail": progress_snapshot.last_detail,
+                }))
+            } else {
+                None
+            };
+
             let base_payload = serde_json::json!({
                 "worker_id": &heartbeat_state.worker_id,
                 "agent_name": &heartbeat_state.agent_name,
@@ -2527,6 +2650,13 @@ pub fn start_heartbeat(
             {
                 obj.insert("cognition".to_string(), cognition_payload);
                 included_cognition_payload = true;
+            }
+
+            // Include task pipeline progress if a task is active
+            if let Some(progress_json) = task_progress_payload {
+                if let Some(obj) = payload.as_object_mut() {
+                    obj.insert("task_progress".to_string(), progress_json);
+                }
             }
 
             match req.json(&payload).send().await {
