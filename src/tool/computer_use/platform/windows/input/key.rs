@@ -1,16 +1,16 @@
+//! Native key press via Win32 SendInput.
+
+use crate::platform::windows::computer_use::{parse_send_keys, send_key};
 use crate::tool::computer_use::input::ComputerUseInput;
 
+/// Press a key using native Win32 SendInput.
 pub async fn handle_press_key(input: &ComputerUseInput) -> anyhow::Result<crate::tool::ToolResult> {
-    let key = input
-        .key
-        .as_deref()
-        .or(input.text.as_deref())
-        .unwrap_or("ENTER");
-    let key = super::super::ps::escape(key);
-    let script = format!(
-        "Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.SendKeys]::SendWait('{key}');@{{pressed='{key}'}}|ConvertTo-Json -Compress"
-    );
-    Ok(super::super::response::success_result(
-        super::super::ps::run(&script).await?,
-    ))
+    let key = input.key.as_deref().or(input.text.as_deref()).unwrap_or("ENTER");
+    let vks = parse_send_keys(key);
+    for &vk in &vks {
+        send_key(vk)?;
+    }
+    Ok(super::super::response::success_result(serde_json::json!({
+        "pressed": key
+    })))
 }

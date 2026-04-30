@@ -1,19 +1,15 @@
-//! Windows apps listing for computer use.
+//! Native window/process enumeration via Win32.
 
+use crate::platform::windows::computer_use::{list_processes, list_windows};
+
+/// List visible windows and running processes using native Win32 APIs.
 pub async fn handle_list_apps() -> anyhow::Result<crate::tool::ToolResult> {
-    let script = r#"
-$p=Get-Process|Where-Object {$_.MainWindowHandle -ne 0 -and $_.MainWindowTitle}
-$p|Select-Object @{n='app';e={$_.ProcessName}},@{n='pid';e={$_.Id}},@{n='window_title';e={$_.MainWindowTitle}},@{n='hwnd';e={$_.MainWindowHandle.ToInt64()}}|ConvertTo-Json -Compress -Depth 3
-"#;
-    let value = super::ps::run(script).await?;
-    let apps = match value {
-        serde_json::Value::Array(items) => items,
-        serde_json::Value::Null => Vec::new(),
-        other => vec![other],
-    };
+    let windows = list_windows()?;
+    let procs = list_processes()?;
     Ok(super::response::success_result(serde_json::json!({
         "platform": "Windows",
-        "count": apps.len(),
-        "apps": apps
+        "windows": windows,
+        "processes": procs,
+        "count": windows.len()
     })))
 }
