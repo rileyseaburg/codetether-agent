@@ -12,15 +12,17 @@ use crate::session::helper::token::estimate_request_tokens;
 
 use super::derive::derive_context;
 use super::helpers::DerivedContext;
-use super::reset_helpers::{last_user_index, latest_reset_marker_index};
 use super::reset_rebuild::rebuild_with_summary;
+use super::{active_tail::active_user_tail_start, reset_helpers::latest_reset_marker_index};
 
 /// [`DerivePolicy::Reset`](crate::session::derive_policy::DerivePolicy::Reset) implementation.
 ///
 /// When the token estimate exceeds `threshold_tokens`, summarise
-/// everything older than the last user turn via the RLM router and
-/// return `[summary_message, last_user_turn]`. Under threshold, return
-/// the full clone verbatim.
+/// everything older than the active task tail via the RLM router and
+/// return `[summary_message, active_task_tail...]`. The tail starts at
+/// the latest substantive user turn, so short follow-ups like "continue"
+/// and "status?" do not orphan the real task request. Under threshold,
+/// return the full clone verbatim.
 pub(super) async fn derive_reset(
     session: &Session,
     provider: Arc<dyn crate::provider::Provider>,
@@ -68,7 +70,7 @@ pub(super) async fn derive_reset(
         }
     }
 
-    let Some(split_idx) = last_user_index(&messages) else {
+    let Some(split_idx) = active_user_tail_start(&messages, 8) else {
         if !provenance.is_empty() {
             experimental::pairing::repair_orphans(&mut messages);
             return Ok(DerivedContext {

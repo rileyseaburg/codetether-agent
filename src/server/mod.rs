@@ -1843,8 +1843,7 @@ async fn openai_chat_completions(
                     openai_internal_error(error.to_string())
                 })?;
 
-        let stream_id = chat_id.clone();
-        let stream_model = openai_model.clone();
+        let (stream_id, stream_model) = (chat_id.clone(), openai_model.clone());
         let event_stream = async_stream::stream! {
             let mut tool_call_indices: HashMap<String, usize> = HashMap::new();
             let mut next_tool_call_index = 0usize;
@@ -1931,7 +1930,8 @@ async fn openai_chat_completions(
                         yield Ok(openai_stream_event(&tool_delta_chunk));
                     }
                     crate::provider::StreamChunk::ToolCallEnd { .. } => {}
-                    crate::provider::StreamChunk::Done { .. } => {}
+                    crate::provider::StreamChunk::Done { .. }
+                    | crate::provider::StreamChunk::Thinking(_) => {}
                     crate::provider::StreamChunk::Error(error) => {
                         let error_chunk = openai_stream_chunk(
                             &stream_id,

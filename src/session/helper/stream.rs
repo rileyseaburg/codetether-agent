@@ -139,7 +139,7 @@ pub async fn collect_stream_completion_with_events(
                     });
                 }
             }
-            StreamChunk::ToolCallEnd { .. } => {}
+            StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
             StreamChunk::Done { usage: done_usage } => {
                 if let Some(done_usage) = done_usage {
                     usage = done_usage;

@@ -284,7 +284,7 @@ pub(crate) async fn compress_messages_keep_last(
         return Ok(false);
     }
 
-    let split_idx = messages.len().saturating_sub(keep_last);
+    let split_idx = crate::session::context::active_tail::active_tail_start(messages, keep_last);
     let tail = messages.split_off(split_idx);
     let prefix = std::mem::take(messages);
 
@@ -838,7 +838,7 @@ pub(crate) fn terminal_truncate_messages(
     }
 
     let before = estimate_request_tokens(system_prompt, messages, tools);
-    let split_idx = messages.len().saturating_sub(keep_last);
+    let split_idx = crate::session::context::active_tail::active_tail_start(messages, keep_last);
     let tail = messages.split_off(split_idx);
 
     let marker = Message {

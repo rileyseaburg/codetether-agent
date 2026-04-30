@@ -2,6 +2,7 @@
 //!
 //! See [`derive_context`] and [`derive_with_policy`] for entry points.
 
+pub(crate) mod active_tail;
 mod complete;
 mod compress_step;
 mod derive;
@@ -14,6 +15,9 @@ mod reset;
 mod reset_helpers;
 mod reset_rebuild;
 mod reset_summary;
+
+#[cfg(test)]
+mod active_tail_tests;
 
 pub use self::complete::complete_with_context;
 pub use self::derive::derive_context;

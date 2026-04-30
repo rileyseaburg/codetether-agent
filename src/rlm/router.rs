@@ -827,7 +827,7 @@ impl RlmRouter {
     }
 
     fn build_rlm_system_prompt(input_tokens: usize, tool_id: &str, query: &str) -> String {
-        let context_type = if tool_id == "session_context" {
+        let context_type = if matches!(tool_id, "session_context" | "context_reset") {
             "conversation history"
         } else {
             "tool output"
@@ -887,7 +887,7 @@ Be SPECIFIC - include actual file paths, function names, error messages. Generic
             "batch" => {
                 "Summarize the batch tool output. Group by sub-call, highlight failures/errors first, then key results. Keep actionable details: URLs, file paths, command outputs, and next steps.".to_string()
             }
-            "session_context" => {
+            "session_context" | "context_reset" => {
                 r#"You are a CONTEXT MEMORY SYSTEM. Create a BRIEFING for an AI assistant to continue this conversation.
 
 CRITICAL: The assistant will ONLY see your briefing - it has NO memory of the conversation.

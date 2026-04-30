@@ -26,7 +26,12 @@ fn fenced(text: &str) -> String {
 }
 
 fn fence_for(text: &str) -> String {
-    let ticks = text.split('`').map(str::len).max().unwrap_or(0);
+    let mut ticks = 0;
+    let mut run = 0;
+    for ch in text.chars() {
+        run = if ch == '`' { run + 1 } else { 0 };
+        ticks = ticks.max(run);
+    }
     "`".repeat(ticks.max(2) + 1)
 }
 
