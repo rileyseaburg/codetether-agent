@@ -32,7 +32,7 @@ unsafe fn key_inner(vk: u16) -> anyhow::Result<()> {
         INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: up } },
     ];
 
-    let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+    let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
     anyhow::ensure!(sent == 2, "SendInput sent {sent}, expected 2");
     Ok(())
 }

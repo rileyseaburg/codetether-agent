@@ -26,13 +26,13 @@ unsafe fn capture_inner() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
     let hdc = GetDC(None);
     anyhow::ensure!(!hdc.is_invalid(), "GetDC failed");
 
-    let mem = CreateCompatibleDC(hdc);
+    let mem = CreateCompatibleDC(Some(hdc));
     let bm = CreateCompatibleBitmap(hdc, width, height);
-    let old_bm = SelectObject(mem, bm);
-    let ok = BitBlt(mem, 0, 0, width, height, hdc, x, y, SRCCOPY);
-    if !ok.as_bool() {
+    let old_bm = SelectObject(mem, bm.into());
+    let ok = BitBlt(mem, 0, 0, width, height, Some(hdc), x, y, SRCCOPY);
+    if ok.is_err() {
         let _ = SelectObject(mem, old_bm);
-        let _ = DeleteObject(bm);
+        let _ = DeleteObject(bm.into());
         let _ = DeleteDC(mem);
         let _ = ReleaseDC(None, hdc);
         anyhow::bail!("BitBlt failed");
@@ -51,7 +51,7 @@ unsafe fn capture_inner() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
 
     // Always restore and clean up GDI resources
     let _ = SelectObject(mem, old_bm);
-    let _ = DeleteObject(bm);
+    let _ = DeleteObject(bm.into());
     let _ = DeleteDC(mem);
     let _ = ReleaseDC(None, hdc);
 

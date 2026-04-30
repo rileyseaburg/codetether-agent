@@ -25,8 +25,8 @@ unsafe fn chord_inner(vks: & [u16]) -> anyhow::Result<()> {
     let mut inputs: Vec<INPUT> = Vec::with_capacity(vks.len() * 2);
     for &vk in vks {
         let is_mod = MODIFIERS.contains(&vk);
-        let down = make_kb_input(vk, false);
-        let up = make_kb_input(vk, true);
+        let down = unsafe { make_kb_input(vk, false) };
+        let up = unsafe { make_kb_input(vk, true) };
         if is_mod {
             inputs.push(down);
         } else {
@@ -38,10 +38,10 @@ unsafe fn chord_inner(vks: & [u16]) -> anyhow::Result<()> {
     // Release all held modifiers in reverse
     for &vk in vks.iter().rev() {
         if MODIFIERS.contains(&vk) {
-            inputs.push(make_kb_input(vk, true));
+            inputs.push(unsafe { make_kb_input(vk, true) });
         }
     }
-    let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+    let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
     anyhow::ensure!(sent as usize == inputs.len(), "SendInput sent {sent}");
     Ok(())
 }
@@ -49,7 +49,7 @@ unsafe fn chord_inner(vks: & [u16]) -> anyhow::Result<()> {
 unsafe fn make_kb_input(vk: u16, up: bool) -> INPUT {
     INPUT {
         r#type: INPUT_TYPE(1),
-        Anonymous: INPUT_1 {
+        Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
                 wVk: VIRTUAL_KEY(vk),
                 wScan: 0,

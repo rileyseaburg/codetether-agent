@@ -28,7 +28,7 @@ unsafe fn scroll_inner(amount: i32) -> anyhow::Result<()> {
         Anonymous: INPUT_0 { mi: scroll },
     }];
 
-    let sent = SendInput(&input, std::mem::size_of::<INPUT>() as i32);
+    let sent = unsafe { SendInput(&input, std::mem::size_of::<INPUT>() as i32) };
     anyhow::ensure!(sent == 1, "SendInput sent {sent}, expected 1");
     Ok(())
 }

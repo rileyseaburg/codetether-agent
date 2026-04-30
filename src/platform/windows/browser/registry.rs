@@ -3,8 +3,7 @@
 //! Probes the Windows registry `App Paths` keys for Chromium-family browsers,
 //! eliminating the need to shell out to `where.exe`.
 
-mod query;
-
+use super::query;
 use std::path::PathBuf;
 
 /// Executable names to look up under
@@ -31,11 +30,11 @@ unsafe fn probe_app_paths() -> Option<PathBuf> {
 
     for name in APP_PATHS {
         let key_path = format!("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\{name}");
-        let key_path_w: Vec<u16> = key_path.encode().chain(std::iter::once(0)).collect();
+        let key_path_w: Vec<u16> = key_path.encode_utf16().chain(std::iter::once(0)).collect();
 
         let mut hkey = Default::default();
-        if RegOpenKeyExW(HKEY_LOCAL_MACHINE, PCWSTR(key_path_w.as_ptr()), 0, KEY_READ, &mut hkey).is_err()
-            && RegOpenKeyExW(HKEY_CURRENT_USER, PCWSTR(key_path_w.as_ptr()), 0, KEY_READ, &mut hkey).is_err()
+        if RegOpenKeyExW(HKEY_LOCAL_MACHINE, PCWSTR(key_path_w.as_ptr()), Some(0), KEY_READ, &mut hkey).is_err()
+            && RegOpenKeyExW(HKEY_CURRENT_USER, PCWSTR(key_path_w.as_ptr()), Some(0), KEY_READ, &mut hkey).is_err()
         {
             continue;
         }

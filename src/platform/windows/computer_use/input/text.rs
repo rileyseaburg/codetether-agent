@@ -1,5 +1,7 @@
 //! Text input via Win32 SendInput — replaces PowerShell SendKeys.
 
+use windows::Win32::UI::Input::KeyboardAndMouse::*;
+
 /// Type a string by sending each character as a Unicode key event.
 ///
 /// Uses `KEYEVENTF_UNICODE` so special chars like `+`, `^`, `%` need no
@@ -22,7 +24,6 @@ pub fn send_text(text: &str) -> anyhow::Result<()> {
 }
 
 fn send_unicode_unit(ch: u16) -> anyhow::Result<()> {
-    use windows::Win32::UI::Input::KeyboardAndMouse::*;
     unsafe {
         let down = unicode_event(ch, false);
         let up = unicode_event(ch, true);
@@ -33,7 +34,6 @@ fn send_unicode_unit(ch: u16) -> anyhow::Result<()> {
 }
 
 unsafe fn unicode_event(ch: u16, up: bool) -> INPUT {
-    use windows::Win32::UI::Input::KeyboardAndMouse::*;
     INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 {

@@ -7,6 +7,7 @@
 
 mod discover;
 mod process;
+mod query;
 mod registry;
 
 pub use discover::find_browser;

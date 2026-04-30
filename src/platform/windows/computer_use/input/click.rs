@@ -1,7 +1,7 @@
 //! Mouse click via Win32 SendInput — replaces PowerShell mouse_event.
 
-use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
+use windows::Win32::UI::WindowsAndMessaging::SetCursorPos;
 
 /// Move cursor to (x, y) and perform a left click.
 ///
