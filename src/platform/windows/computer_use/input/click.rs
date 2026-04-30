@@ -21,7 +21,7 @@ unsafe fn click_inner(x: i32, y: i32) -> anyhow::Result<()> {
         dx: 0,
         dy: 0,
         mouseData: 0,
-        dwFlags: MOUSE_EVENTFlags(0x0002), // MOUSEEVENTF_LEFTDOWN
+        dwFlags: MOUSEEVENTF_LEFTDOWN,
         time: 0,
         dwExtraInfo: 0,
     };
@@ -29,14 +29,14 @@ unsafe fn click_inner(x: i32, y: i32) -> anyhow::Result<()> {
         dx: 0,
         dy: 0,
         mouseData: 0,
-        dwFlags: MOUSE_EVENTFlags(0x0004), // MOUSEEVENTF_LEFTUP
+        dwFlags: MOUSEEVENTF_LEFTUP,
         time: 0,
         dwExtraInfo: 0,
     };
 
     let inputs = [
-        INPUT { r#type: INPUT_TYPE(0), Anonymous: INPUT_0 { mi: down } },
-        INPUT { r#type: INPUT_TYPE(0), Anonymous: INPUT_0 { mi: up } },
+        INPUT { r#type: INPUT_MOUSE, Anonymous: INPUT_0 { mi: down } },
+        INPUT { r#type: INPUT_MOUSE, Anonymous: INPUT_0 { mi: up } },
     ];
 
     let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);

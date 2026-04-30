@@ -15,7 +15,7 @@ unsafe fn key_inner(vk: u16) -> anyhow::Result<()> {
     let down = KEYBDINPUT {
         wVk: VIRTUAL_KEY(vk),
         wScan: 0,
-        dwFlags: KEYBD_EVENTFlags(0),
+        dwFlags: KEYBD_EVENT_FLAGS(0),
         time: 0,
         dwExtraInfo: 0,
     };
@@ -28,8 +28,8 @@ unsafe fn key_inner(vk: u16) -> anyhow::Result<()> {
     };
 
     let inputs = [
-        INPUT { r#type: INPUT_TYPE(1), Anonymous: INPUT_1 { ki: down } },
-        INPUT { r#type: INPUT_TYPE(1), Anonymous: INPUT_1 { ki: up } },
+        INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: down } },
+        INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: up } },
     ];
 
     let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);

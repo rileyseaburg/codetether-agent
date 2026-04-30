@@ -12,6 +12,6 @@ pub mod snapshot;
 pub mod windows;
 
 pub use snapshot::capture_screenshot;
-pub use input::{send_click, send_key, send_scroll, send_text};
+pub use input::{parse_send_keys, send_click, send_key, send_scroll, send_text};
 pub use windows::list_windows;
 pub use process::list_processes;

@@ -4,8 +4,6 @@
 //! their command lines for `--remote-debugging-port` to identify which
 //! port to connect to — no port probing or `where.exe` needed.
 
-use serde_json::json;
-
 /// Information about a running browser with debug port open.
 #[derive(Debug)]
 pub struct DebugBrowser {

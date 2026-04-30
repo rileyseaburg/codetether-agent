@@ -18,13 +18,13 @@ unsafe fn scroll_inner(amount: i32) -> anyhow::Result<()> {
         dx: 0,
         dy: 0,
         mouseData: amount as u32,
-        dwFlags: MOUSE_EVENTFlags(0x0800), // MOUSEEVENTF_WHEEL
+        dwFlags: MOUSEEVENTF_WHEEL,
         time: 0,
         dwExtraInfo: 0,
     };
 
     let input = [INPUT {
-        r#type: INPUT_TYPE(0),
+        r#type: INPUT_MOUSE,
         Anonymous: INPUT_0 { mi: scroll },
     }];
 

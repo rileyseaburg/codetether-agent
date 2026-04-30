@@ -29,8 +29,8 @@ fn send_unicode_char(ch: char) -> anyhow::Result<()> {
 unsafe fn unicode_event(ch: u16, up: bool) -> INPUT {
     use windows::Win32::UI::Input::KeyboardAndMouse::*;
     INPUT {
-        r#type: INPUT_TYPE(1),
-        Anonymous: INPUT_1 {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
                 wVk: VIRTUAL_KEY(0),
                 wScan: ch,

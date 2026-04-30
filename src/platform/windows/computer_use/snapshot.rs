@@ -2,7 +2,7 @@
 
 use super::encode::bgra_to_png;
 use windows::Win32::Graphics::Gdi::*;
-use windows::Win32::UI::HiDpi::*;
+use windows::Win32::UI::WindowsAndMessaging::*;
 
 /// Captures the full virtual screen as PNG bytes.
 ///
