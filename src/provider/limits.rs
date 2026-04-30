@@ -52,7 +52,11 @@ pub fn context_window_for_model(model: &str) -> usize {
         131_072
     } else if m.contains("deepseek-v4") {
         1_048_576
-    } else if m.contains("deepseek-r1") || m.contains("deepseek-v3") || m.contains("deepseek-chat") || m.contains("deepseek-reasoner") {
+    } else if m.contains("deepseek-r1")
+        || m.contains("deepseek-v3")
+        || m.contains("deepseek-chat")
+        || m.contains("deepseek-reasoner")
+    {
         128_000
     } else if m.contains("llama-4") || m.contains("llama4") {
         256_000

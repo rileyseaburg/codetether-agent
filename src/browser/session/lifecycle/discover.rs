@@ -93,33 +93,12 @@ fn candidate_paths() -> Vec<PathBuf> {
     ]
 }
 
-/// Platform-specific fallback lookup using the shell's own search facility.
-/// Called only when the static candidate list comes up empty.
+/// Platform-specific fallback lookup using native Win32 APIs.
+/// Uses registry probing + PATH lookup via the `platform` module,
+/// eliminating the `where.exe` subprocess.
 #[cfg(target_os = "windows")]
 fn platform_lookup() -> Option<PathBuf> {
-    use std::process::Command;
-    for name in [
-        "chrome.exe",
-        "msedge.exe",
-        "brave.exe",
-        "vivaldi.exe",
-        "chromium.exe",
-    ] {
-        let Ok(output) = Command::new("where.exe").arg(name).output() else {
-            continue;
-        };
-        if !output.status.success() {
-            continue;
-        }
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        if let Some(line) = stdout.lines().map(str::trim).find(|l| !l.is_empty()) {
-            let path = PathBuf::from(line);
-            if path.is_file() {
-                return Some(path);
-            }
-        }
-    }
-    None
+    crate::platform::windows::browser::find_browser()
 }
 
 #[cfg(not(target_os = "windows"))]
