@@ -1,6 +1,6 @@
 //! Window enumeration via EnumWindows — replaces PowerShell Get-Process.
 
-use serde_json::{Value, json};
+use serde_json::Value;
 use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
 use windows::Win32::UI::WindowsAndMessaging::*;
 

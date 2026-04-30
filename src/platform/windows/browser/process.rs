@@ -1,10 +1,10 @@
-//! Find a running browser with DevTools Protocol exposed.
+//! Find running Chromium-family browser processes.
 //!
-//! Scans running processes for Chromium-family executables and checks
-//! their command lines for `--remote-debugging-port` to identify which
-//! port to connect to — no port probing or `where.exe` needed.
+//! Scans running processes for Chromium-family executables via ToolHelp32.
+//! Note: command-line inspection (for `--remote-debugging-port`) requires
+//! additional OS APIs not available through ToolHelp32 alone.
 
-/// Information about a running browser with debug port open.
+/// Information about a running browser process.
 #[derive(Debug)]
 pub struct DebugBrowser {
     pub pid: u32,
@@ -12,9 +12,10 @@ pub struct DebugBrowser {
     pub debug_port: Option<u16>,
 }
 
-/// Find all running Chromium-family processes that have `--remote-debugging-port`.
+/// Find all running Chromium-family processes.
 ///
-/// Replaces the pure TCP-port-probing approach with actual process inspection.
+/// Uses ToolHelp32 to enumerate processes by name. Command-line arguments
+/// (including `--remote-debugging-port`) are not accessible via this API.
 ///
 /// # Errors
 ///
@@ -56,10 +57,13 @@ unsafe fn scan_processes() -> anyhow::Result<Vec<DebugBrowser>> {
 }
 
 fn is_chromium_process(name: &str) -> bool {
-    name.ends_with("chrome.exe")
-        || name.ends_with("msedge.exe")
-        || name.ends_with("brave.exe")
-        || name.ends_with("vivaldi.exe")
-        || name.ends_with("chromium.exe")
-        || name.ends_with("opera.exe")
+    const BROWSERS: &[&str] = &[
+        "chrome.exe",
+        "msedge.exe",
+        "brave.exe",
+        "vivaldi.exe",
+        "chromium.exe",
+        "opera.exe",
+    ];
+    BROWSERS.iter().any(|browser| name.ends_with(browser))
 }

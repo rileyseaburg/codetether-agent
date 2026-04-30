@@ -28,11 +28,16 @@ unsafe fn capture_inner() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
 
     let mem = CreateCompatibleDC(hdc);
     let bm = CreateCompatibleBitmap(hdc, width, height);
-    let _old = SelectObject(mem, bm);
+    let old_bm = SelectObject(mem, bm);
     let ok = BitBlt(mem, 0, 0, width, height, hdc, x, y, SRCCOPY);
-    anyhow::ensure!(ok.as_bool(), "BitBlt failed");
+    if !ok.as_bool() {
+        let _ = SelectObject(mem, old_bm);
+        let _ = DeleteObject(bm);
+        let _ = DeleteDC(mem);
+        let _ = ReleaseDC(None, hdc);
+        anyhow::bail!("BitBlt failed");
+    }
 
-    // Extract as 32-bit BGRA
     let mut bmi = BITMAPINFO::default();
     bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
     bmi.bmiHeader.biWidth = width;
@@ -40,14 +45,17 @@ unsafe fn capture_inner() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
 
-    let mut px = vec![0u8; (width as usize * 4) * height as usize];
-    let ok = GetDIBits(mem, bm, 0, height as u32, Some(px.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS);
-    anyhow::ensure!(ok != 0, "GetDIBits failed");
+    let px_len = (width as usize * 4) * height as usize;
+    let mut px = vec![0u8; px_len];
+    let dib_ok = GetDIBits(mem, bm, 0, height as u32, Some(px.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS);
 
+    // Always restore and clean up GDI resources
+    let _ = SelectObject(mem, old_bm);
     let _ = DeleteObject(bm);
     let _ = DeleteDC(mem);
     let _ = ReleaseDC(None, hdc);
 
-    let png = bgra_to_png(width as u32, height as u32, &mut px)?;
+    anyhow::ensure!(dib_ok != 0, "GetDIBits failed");
+    let png = bgra_to_png(width as u32, height as u32, px)?;
     Ok((png, width as u32, height as u32, x, y))
 }

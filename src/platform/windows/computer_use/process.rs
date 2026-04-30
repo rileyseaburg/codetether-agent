@@ -1,10 +1,13 @@
 //! Process enumeration via ToolHelp32 — replaces PowerShell Get-Process.
 
 use serde_json::{Value, json};
-use windows::Win32::Foundation::{CloseHandle, HANDLE};
+use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::System::Diagnostics::ToolHelp::*;
 
-/// List running processes with window titles.
+/// List running processes.
+///
+/// Each returned object contains the process ID, parent process ID,
+/// executable name, and thread count.
 ///
 /// # Errors
 ///
