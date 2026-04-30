@@ -13,7 +13,9 @@ pub fn fault_from_error(err: &anyhow::Error) -> Fault {
     {
         Fault::NoMatch
     } else {
-        Fault::BackendError { reason: err.to_string() }
+        Fault::BackendError {
+            reason: err.to_string(),
+        }
     }
 }
 

@@ -276,7 +276,7 @@ mod tests {
         .await
         .expect("char");
 
-        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
 
         handle_event(
             &mut app,

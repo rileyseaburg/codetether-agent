@@ -90,6 +90,14 @@ pub(super) fn handle_ctrl_key(
         KeyCode::Char('v') if ctrl && app.state.view_mode == ViewMode::Chat => {
             handle_clipboard_paste(app);
         }
+        KeyCode::Insert
+            if key.modifiers.contains(KeyModifiers::SHIFT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            // Shift+Insert is the standard paste shortcut on Windows
+            // and many Linux terminal emulators.
+            handle_clipboard_paste(app);
+        }
         KeyCode::Char('Y') if ctrl && app.state.view_mode == ViewMode::Chat => {
             // Kitty keyboard protocol: Ctrl+Shift+Y arrives as 'Y' + CONTROL.
             handle_copy_transcript(app);

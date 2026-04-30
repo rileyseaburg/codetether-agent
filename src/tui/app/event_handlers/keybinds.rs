@@ -80,16 +80,18 @@ pub(super) async fn handle_unmodified_key(
         }
         KeyCode::Enter => {
             // Paste-burst heuristic: if another key arrived in the
-            // last ~20 ms (faster than any human can physically type),
+            // last ~80 ms (faster than any human can physically type),
             // the Enter is almost certainly part of a pasted block on
             // a terminal that swallowed the bracketed-paste markers.
+            // 80 ms accommodates Windows Terminal / PowerShell which
+            // inject pasted characters more slowly than Linux terminals.
             // Convert it to an in-buffer newline so the whole paste
             // becomes a single chat message instead of N messages.
             if app.state.view_mode == crate::tui::models::ViewMode::Chat
                 && app
                     .state
                     .last_key_at
-                    .map(|t| t.elapsed() < std::time::Duration::from_millis(20))
+                    .map(|t| t.elapsed() < std::time::Duration::from_millis(80))
                     .unwrap_or(false)
             {
                 app.state.insert_char('\n');
