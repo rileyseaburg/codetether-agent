@@ -1,3 +1,4 @@
+pub use super::retry_error::is_retryable_upstream_error;
 use super::text::role_label;
 use crate::provider::{ContentPart, Message};
 
@@ -65,32 +66,4 @@ pub fn is_prompt_too_long_error(err: &anyhow::Error) -> bool {
         || msg.contains("context length")
         || (msg.contains("maximum context") || msg.contains("context window"))
         || (msg.contains("tokens") && msg.contains("maximum") && msg.contains("prompt"))
-}
-
-pub fn is_retryable_upstream_error(err: &anyhow::Error) -> bool {
-    let msg = err.to_string().to_ascii_lowercase();
-    [
-        " 500 ",
-        " 504 ",
-        " 502 ",
-        " 429 ",
-        "status code 500",
-        "status code 504",
-        "status code 502",
-        "status code 429",
-        "internal server error",
-        "gateway timeout",
-        "upstream request timeout",
-        "server error: 500",
-        "server error: 504",
-        "network error",
-        "connection reset",
-        "connection refused",
-        "timed out",
-        "timeout",
-        "broken pipe",
-        "unexpected eof",
-    ]
-    .iter()
-    .any(|needle| msg.contains(needle))
 }

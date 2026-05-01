@@ -42,6 +42,11 @@ pub(super) fn is_retryable_message(msg: &str) -> bool {
         || lower.contains("connection closed")
         || lower.contains("service unavailable")
         || lower.contains("bad gateway")
+        || lower.contains("token_quota_exceeded")
+        || lower.contains("too many tokens")
+        || lower.contains("limit exceeded")
+        || lower.contains("quota exceeded")
+        || lower.contains("too many requests")
 }
 
 /// Compute exponential backoff delay for a given retry attempt.

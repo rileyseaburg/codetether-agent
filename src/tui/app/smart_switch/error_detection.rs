@@ -27,6 +27,8 @@ pub fn is_retryable_provider_error(err: &str) -> bool {
         "rate limit",
         "too many requests",
         "quota exceeded",
+        "token_quota_exceeded",
+        "too many tokens",
         "service unavailable",
         "temporarily unavailable",
         "bad gateway",
