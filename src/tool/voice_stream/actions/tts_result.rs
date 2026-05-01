@@ -4,6 +4,7 @@ use crate::tool::ToolResult;
 use anyhow::Result;
 use serde_json::json;
 
+#[allow(dead_code)]
 pub(super) fn missing_text() -> ToolResult {
     ToolResult::structured_error(
         "MISSING_PARAM",
@@ -14,6 +15,7 @@ pub(super) fn missing_text() -> ToolResult {
     )
 }
 
+#[allow(dead_code)]
 pub(super) fn success(job_id: &str, output_url: &str) -> Result<ToolResult> {
     let launch = super::audio_player::open(job_id, output_url)?;
     let status = if launch.browser_opened {

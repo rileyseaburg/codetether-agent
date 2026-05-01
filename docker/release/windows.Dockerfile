@@ -19,7 +19,6 @@ COPY src ./src
 COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
-COPY examples ./examples
 
 RUN cargo build --release --target x86_64-pc-windows-gnu --bin codetether
 

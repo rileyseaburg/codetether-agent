@@ -4,6 +4,7 @@ use super::super::Params;
 use anyhow::Result;
 use serde_json::json;
 
+#[allow(dead_code)]
 pub(super) async fn send(
     client: &reqwest::Client,
     params: &Params,

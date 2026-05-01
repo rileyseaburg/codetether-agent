@@ -211,6 +211,7 @@ impl TaskTimeline {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn clear_progress(&self) { self.progress.lock().await.clear(); }
 
     pub fn is_expired(&self) -> bool { self.elapsed_secs() >= self.timeout_secs as f64 }
@@ -223,6 +224,7 @@ impl TaskTimeline {
         if self.timeout_secs == 0 { return 100.0; }
         (self.elapsed_secs() / self.timeout_secs as f64) * 100.0
     }
+    #[allow(dead_code)]
     pub fn current(&self) -> Option<TaskCheckpoint> { self.current }
     pub fn reached(&self, cp: TaskCheckpoint) -> bool {
         self.checkpoints.iter().any(|e| e.checkpoint == cp)
