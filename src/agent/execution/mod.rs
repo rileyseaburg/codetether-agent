@@ -9,7 +9,9 @@
 //! let response = agent.execute(&mut session, "fix it").await?;
 //! ```
 
+mod image_inject;
 mod messages;
 mod request;
 mod run;
 mod tool_calls;
+mod tool_result_record;

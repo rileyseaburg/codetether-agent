@@ -1,10 +1,10 @@
 use crate::tool::computer_use::input::ComputerUseInput;
 
 pub fn coords(input: &ComputerUseInput) -> anyhow::Result<(i32, i32)> {
-    Ok((validate_coord(input.x, "x")?, validate_coord(input.y, "y")?))
+    Ok((coord(input.x, "x")?, coord(input.y, "y")?))
 }
 
-fn validate_coord(value: Option<f64>, name: &str) -> anyhow::Result<i32> {
+pub fn coord(value: Option<f64>, name: &str) -> anyhow::Result<i32> {
     let value = value.ok_or_else(|| anyhow::anyhow!("{name} is required"))?;
     anyhow::ensure!(value.is_finite(), "{name} must be finite");
     anyhow::ensure!(

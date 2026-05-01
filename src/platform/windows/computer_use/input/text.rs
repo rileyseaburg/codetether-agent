@@ -12,13 +12,9 @@ use windows::Win32::UI::Input::KeyboardAndMouse::*;
 ///
 /// Returns an error if any `SendInput` call fails.
 pub fn send_text(text: &str) -> anyhow::Result<()> {
-    let mut utf16 = Vec::new();
-    for ch in text.chars() {
-        utf16.clear();
-        ch.encode_utf16(&mut utf16);
-        for &unit in &utf16 {
-            send_unicode_unit(unit)?;
-        }
+    let utf16: Vec<u16> = text.encode_utf16().collect();
+    for &unit in &utf16 {
+        send_unicode_unit(unit)?;
     }
     Ok(())
 }

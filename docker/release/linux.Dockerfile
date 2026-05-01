@@ -15,6 +15,7 @@ COPY src ./src
 COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
+COPY examples ./examples
 
 RUN cargo build --release --bin codetether
 

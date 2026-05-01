@@ -363,20 +363,24 @@ impl RlmRouter {
         let mut trace = ContextTrace::new(trace_budget);
         let mut aborted = false;
 
-        // Initialise FunctionGemma router if available
+        let summary_mode = matches!(ctx.tool_id, "session_context" | "context_reset")
+            || ctx.tool_id == "summary_index";
 
-        let tool_router: Option<ToolCallRouter> = {
-            let cfg = ToolRouterConfig::from_env();
-            ToolCallRouter::from_config(&cfg)
-                .inspect_err(|e| {
-                    tracing::debug!(error = %e, "FunctionGemma router unavailable for RLM router");
-                })
-                .ok()
-                .flatten()
-        };
+        let tool_router = (!summary_mode)
+            .then(|| {
+                ToolCallRouter::from_config(&ToolRouterConfig::from_env())
+                    .inspect_err(|e| {
+                        tracing::debug!(error = %e, "FunctionGemma router unavailable for RLM router");
+                    })
+                    .ok()
+                    .flatten()
+            })
+            .flatten();
 
         // Prepare RLM tool definitions
-        let tools = rlm_tool_definitions();
+        let tools = (!summary_mode)
+            .then(rlm_tool_definitions)
+            .unwrap_or_default();
 
         // Detect content type for smarter processing
         let content_type = RlmChunker::detect_content_type(output);
@@ -539,7 +543,7 @@ impl RlmRouter {
                 })
                 .collect();
 
-            if !tool_calls.is_empty() {
+            if !summary_mode && !tool_calls.is_empty() {
                 info!(
                     count = tool_calls.len(),
                     iteration = iterations,
@@ -638,6 +642,10 @@ impl RlmRouter {
             // Check for FINAL answer
             if let Some(answer) = Self::extract_final(&response_text) {
                 final_answer = Some(answer);
+                break;
+            }
+            if summary_mode && !response_text.trim().is_empty() {
+                final_answer = Some(response_text.clone());
                 break;
             }
 
@@ -764,31 +772,15 @@ impl RlmRouter {
     }
 
     fn extract_final(text: &str) -> Option<String> {
-        // Look for FINAL("...") or FINAL('...') or FINAL!(...)
-        let patterns = [r#"FINAL\s*\(\s*["'`]"#, r#"FINAL!\s*\(\s*["'`]?"#];
-
-        for _pattern_start in patterns {
-            if let Some(start_idx) = text.find("FINAL") {
-                let after = &text[start_idx..];
-
-                // Find the opening quote/paren
-                if let Some(open_idx) = after.find(['"', '\'', '`']) {
-                    let quote_char = after.chars().nth(open_idx)?;
-                    let content_start = start_idx + open_idx + 1;
-
-                    // Find matching close
-                    let content = &text[content_start..];
-                    if let Some(close_idx) = content.find(quote_char) {
-                        let answer = &content[..close_idx];
-                        if !answer.is_empty() {
-                            return Some(answer.to_string());
-                        }
-                    }
-                }
-            }
-        }
-
-        None
+        let start_idx = text.find("FINAL")?;
+        let after = &text[start_idx..];
+        let open_idx = after.find(['"', '\'', '`'])?;
+        let quote_char = after[open_idx..].chars().next()?;
+        let content_start = start_idx + open_idx + quote_char.len_utf8();
+        let content = &text[content_start..];
+        let close_idx = content.find(quote_char)?;
+        let answer = &content[..close_idx];
+        (!answer.is_empty()).then(|| answer.to_string())
     }
 
     fn build_exploration_summary(content: &str, input_tokens: usize) -> String {

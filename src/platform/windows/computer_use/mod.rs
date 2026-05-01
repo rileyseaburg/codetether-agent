@@ -8,10 +8,18 @@
 pub mod encode;
 pub mod input;
 pub mod process;
+mod screen_capture;
+mod screen_gdi;
+mod screen_metrics;
 pub mod snapshot;
+pub mod window;
 pub mod windows;
 
-pub use snapshot::capture_screenshot;
-pub use input::{parse_send_keys, send_chord, send_click, send_key, send_scroll, send_text};
-pub use windows::list_windows;
+pub use input::{
+    parse_send_keys, send_chord, send_click, send_double_click, send_drag, send_key,
+    send_right_click, send_scroll, send_text,
+};
 pub use process::list_processes;
+pub use snapshot::{capture_screenshot, capture_screenshot_jpeg};
+pub use window::{bring_to_front, capture_window_jpeg};
+pub use windows::list_windows;

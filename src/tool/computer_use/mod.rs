@@ -39,7 +39,7 @@ impl Tool for ComputerUseTool {
     }
 
     fn description(&self) -> &str {
-        "OS-level GUI automation for Windows. Control desktop apps, capture screens, and simulate input."
+        "Native Windows desktop automation. ALWAYS prefer this over bash/powershell for screenshots, clicking, typing, and window management. Actions: snapshot (saves JPEG to temp file), window_snapshot (specific window), list_apps, bring_to_front, click, right_click, double_click, drag, type_text, press_key, scroll, wait_ms."
     }
 
     fn parameters(&self) -> Value {

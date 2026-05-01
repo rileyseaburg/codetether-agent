@@ -21,6 +21,7 @@ pub mod okr_gate;
 pub mod panic_cleanup;
 pub mod resume_window;
 pub mod run;
+pub mod safe_draw;
 pub mod session_events;
 pub mod session_fork;
 pub mod session_load_status;

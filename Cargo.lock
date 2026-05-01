@@ -856,8 +856,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "codetether-agent"
-version = "4.7.0"
+name = "codetether-alpha-001"
+version = "4.7.0-a-001"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2880,6 +2880,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -5979,8 +5981,9 @@ dependencies = [
 
 [[package]]
 name = "tetherscript"
-version = "0.1.0-alpha.2"
-source = "git+https://github.com/kiln-rs/kiln.git?rev=d95f638e80a6131a62b8324f5dd42619ff2cb86e#d95f638e80a6131a62b8324f5dd42619ff2cb86e"
+version = "0.0.1-alpha-0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff8519a128420c2065b6250c97ba0a2101ccaf9f99d4ac6631b19efa854f851e"
 
 [[package]]
 name = "thiserror"

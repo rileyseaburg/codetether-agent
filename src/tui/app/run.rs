@@ -17,7 +17,6 @@ use crate::tui::app::panic_cleanup::install_panic_cleanup_hook;
 use crate::tui::app::resume_window::session_resume_window;
 use crate::tui::app::state::App;
 use crate::tui::app::terminal_state::{TerminalGuard, restore_terminal_state};
-use crate::tui::ui::main::ui;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 /// Outcome of trying to resume the most recent workspace session at startup.
@@ -173,7 +172,7 @@ pub async fn run(
     app.state.peer_endpoint_ready = peer_endpoint_ready;
     app.state.session_id = Some(session.id.clone());
     app.state.status = "Loading providers and workspace…".to_string();
-    terminal.draw(|f| ui(f, &mut app, &session))?;
+    crate::tui::app::safe_draw::draw_ui(&mut terminal, &mut app, &session)?;
 
     let registry_task = async {
         init_tui_secrets_manager().await;
