@@ -138,6 +138,7 @@ pub mod openrouter;
 pub mod retry;
 pub mod shared_http;
 pub mod stepfun;
+pub mod tetherscript_provider;
 pub mod vertex_anthropic;
 pub mod vertex_glm;
 pub mod zai;

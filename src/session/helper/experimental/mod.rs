@@ -65,6 +65,7 @@ pub mod snippet;
 #[allow(dead_code)]
 pub mod streaming_llm;
 pub mod thinking_prune;
+pub mod tetherscript_repair;
 #[allow(dead_code)]
 pub mod tool_call_dedup;
 
@@ -113,6 +114,9 @@ impl ExperimentalStats {
 pub fn apply_all(messages: &mut Vec<Message>) -> ExperimentalStats {
     let mut stats = ExperimentalStats::default();
     stats.merge(thinking_prune::prune_thinking(messages));
+    // Repair: ensure pruned reasoning_content is non-null for
+    // DeepSeek V4 (runs via bundled tetherscript hook).
+    stats.merge(tetherscript_repair::repair_reasoning(messages));
     stats.merge(dedup::dedup_tool_outputs(messages));
     stats.merge(lingua::prune_low_entropy(messages));
     // Correctness pass: repair any orphaned tool_call/tool_result

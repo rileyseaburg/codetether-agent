@@ -1,6 +1,6 @@
 //! TetherScript-backed plugin tool.
 
-mod convert;
+pub mod convert;
 mod errors;
 mod execute;
 mod input;

@@ -26,6 +26,7 @@ pub(crate) mod prompt_too_long;
 pub mod provider;
 pub mod recall_context;
 pub mod request_state;
+mod retry_error;
 pub mod router;
 pub mod runtime;
 pub mod stream;

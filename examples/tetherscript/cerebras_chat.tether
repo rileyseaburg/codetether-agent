@@ -1,0 +1,29 @@
+fn name() {
+    return "cerebras"
+}
+
+fn models() {
+    return ["llama3.1-8b", "llama-3.3-70b", "qwen-3.5-32b", "gpt-oss-120b", "glm-4.7"]
+}
+
+fn list_models() {
+    let a = model_info("llama3.1-8b", "Llama 3.1 8B", 131072, true)
+    let b = model_info("llama-3.3-70b", "Llama 3.3 70B", 131072, true)
+    let c = model_info("qwen-3.5-32b", "Qwen 3.5 32B", 131072, true)
+    let d = model_info("gpt-oss-120b", "GPT-OSS 120B", 131072, true)
+    let e = model_info("glm-4.7", "GLM 4.7", 131072, true)
+    return [a, b, c, d, e]
+}
+
+fn complete(messages, opts) {
+    return provider.chat_json(messages, opts)
+}
+
+fn model_info(id, name, ctx, tools) {
+    let m = map()
+    m["id"] = id
+    m["name"] = name
+    m["context_window"] = ctx
+    m["supports_tools"] = tools
+    return m
+}

@@ -1,6 +1,8 @@
 #[cfg(feature = "tetherscript")]
 mod conversion;
 #[cfg(feature = "tetherscript")]
+mod deepseek_repair;
+#[cfg(feature = "tetherscript")]
 mod file_source;
 #[cfg(feature = "tetherscript")]
 mod inline_failure;

@@ -1,8 +1,8 @@
 [workspace]
 
 [package]
-name = "codetether-agent"
-version = "4.7.0"
+name = "codetether-alpha-001"
+version = "4.7.0-a-001"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -132,14 +132,14 @@ k8s-openapi = { version = "0.27.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
 # See docs/tetherscript_dependency.md for the build requirement.
-tetherscript = { git = "https://github.com/kiln-rs/kiln.git", rev = "d95f638e80a6131a62b8324f5dd42619ff2cb86e", optional = true }
+tetherscript = { version = "0.0.1-alpha-0.5", optional = true }
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"
 
 # Image encoding
 base64 = "0.22"
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
 # JWT token minting
 jsonwebtoken = "9"
