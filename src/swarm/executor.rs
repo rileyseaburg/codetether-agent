@@ -20,6 +20,7 @@ use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
 use crate::session::delegation::DelegationState;
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
+use std::sync::Mutex as StdMutex;
 
 // Re-export swarm types for convenience
 pub use super::SwarmMessage;
@@ -434,8 +435,12 @@ pub struct SwarmExecutor {
     result_store: Arc<ResultStore>,
     /// Optional agent bus for inter-agent communication
     bus: Option<Arc<AgentBus>>,
-    /// Optional CADMAS-CTX delegation state for LCB provider selection
-    delegation: Option<DelegationState>,
+    /// Optional CADMAS-CTX delegation state for LCB provider selection.
+    ///
+    /// Wrapped in `Arc<Mutex<...>>` so subtask outcome updates (Phase C
+    /// step 28) can flow back into the same posterior the next dispatch
+    /// reads from, even when the caller only owns `&self`.
+    delegation: Option<Arc<StdMutex<DelegationState>>>,
 }
 
 impl SwarmExecutor {
@@ -482,7 +487,7 @@ impl SwarmExecutor {
 
     /// Set CADMAS-CTX delegation state for LCB provider selection.
     pub fn with_delegation(mut self, state: DelegationState) -> Self {
-        self.delegation = Some(state);
+        self.delegation = Some(Arc::new(StdMutex::new(state)));
         self
     }
 
@@ -832,6 +837,9 @@ impl SwarmExecutor {
         let mut all_worktrees: HashMap<String, WorktreeInfo> = HashMap::new();
         let mut cached_results: Vec<SubTaskResult> = Vec::new();
         let mut completed_entries: Vec<(SubTaskResult, Option<WorktreeInfo>)> = Vec::new();
+        // Phase C step 28: per-subtask LCB dispatch records so the
+        // posterior gets the outcome update on completion.
+        let mut subtask_assignments: HashMap<String, (String, String)> = HashMap::new();
         let mut kill_reasons: HashMap<String, String> = HashMap::new();
         let mut promoted_subtask_id: Option<String> = None;
 
@@ -946,9 +954,10 @@ impl SwarmExecutor {
         for (idx, subtask) in pending_subtasks.into_iter().enumerate() {
             // LCB delegation: pick best provider for this subtask's specialty.
             let (chosen_provider, chosen_model) = if let Some(ref state) = self.delegation {
+                let guard = state.lock().expect("delegation state mutex poisoned");
                 super::delegation::choose_provider_for_subtask(
                     &providers,
-                    state,
+                    &guard,
                     subtask.specialty.as_deref().unwrap_or("General"),
                     &provider_name,
                     &model,
@@ -960,6 +969,16 @@ impl SwarmExecutor {
                 .get(&chosen_provider)
                 .unwrap_or_else(|| Arc::clone(&provider));
             let model = chosen_model;
+            subtask_assignments.insert(
+                subtask.id.clone(),
+                (
+                    chosen_provider.clone(),
+                    subtask
+                        .specialty
+                        .clone()
+                        .unwrap_or_else(|| "General".into()),
+                ),
+            );
             let _provider_name = chosen_provider;
             let provider = subtask_provider;
 
@@ -1331,12 +1350,29 @@ impl SwarmExecutor {
                         Ok((subtask_id, Ok(result))) => {
                             abort_handles.remove(&subtask_id);
                             let wt = active_worktrees.remove(&subtask_id).or_else(|| all_worktrees.get(&subtask_id).cloned());
+                            if let (Some(state), Some((prov, spec))) =
+                                (self.delegation.as_ref(), subtask_assignments.get(&subtask_id))
+                            {
+                                super::delegation_outcome::record_subtask_outcome(
+                                    state,
+                                    prov,
+                                    spec,
+                                    result.success,
+                                );
+                            }
                             completed_entries.push((result, wt));
                         }
                         Ok((subtask_id, Err(e))) => {
                             abort_handles.remove(&subtask_id);
                             active_worktrees.remove(&subtask_id);
                             let wt = all_worktrees.get(&subtask_id).cloned();
+                            if let (Some(state), Some((prov, spec))) =
+                                (self.delegation.as_ref(), subtask_assignments.get(&subtask_id))
+                            {
+                                super::delegation_outcome::record_subtask_outcome(
+                                    state, prov, spec, false,
+                                );
+                            }
                             completed_entries.push((
                                 SubTaskResult {
                                     subtask_id: subtask_id.clone(),
@@ -1360,6 +1396,13 @@ impl SwarmExecutor {
                             abort_handles.remove(&subtask_id);
                             active_worktrees.remove(&subtask_id);
                             let wt = all_worktrees.get(&subtask_id).cloned();
+                            if let (Some(state), Some((prov, spec))) =
+                                (self.delegation.as_ref(), subtask_assignments.get(&subtask_id))
+                            {
+                                super::delegation_outcome::record_subtask_outcome(
+                                    state, prov, spec, false,
+                                );
+                            }
                             completed_entries.push((
                                 SubTaskResult {
                                     subtask_id: subtask_id.clone(),

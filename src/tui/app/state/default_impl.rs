@@ -69,6 +69,7 @@ impl Default for super::AppState {
             last_tool_name: None,
             last_tool_latency_ms: None,
             last_tool_success: None,
+            chat_latency: Default::default(),
             pending_images: Vec::new(),
             pending_text_pastes: Vec::new(),
             current_turn_cancel: None,

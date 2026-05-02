@@ -154,7 +154,9 @@ impl TuiWorkerBridge {
                     heartbeat_state.clone(),
                     processing.clone(),
                     cognition_config,
-                    Arc::new(Mutex::new(crate::a2a::worker::task_timeline::TaskProgressState::new())),
+                    Arc::new(Mutex::new(
+                        crate::a2a::worker::task_timeline::TaskProgressState::new(),
+                    )),
                 );
 
                 // Background task: connect to SSE stream for incoming tasks

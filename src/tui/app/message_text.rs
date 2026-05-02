@@ -37,6 +37,7 @@ pub fn sync_messages_from_session(app: &mut App, session: &Session) {
     app.state.last_tool_name = None;
     app.state.last_tool_latency_ms = None;
     app.state.last_tool_success = None;
+    app.state.chat_latency.clear();
     app.state.reset_tool_preview_scroll();
     app.state.set_tool_preview_max_scroll(0);
     app.state.scroll_to_bottom();

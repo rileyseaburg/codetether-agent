@@ -8,20 +8,24 @@ use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 use windows::Win32::Foundation::{HANDLE, HGLOBAL};
 use windows::Win32::System::DataExchange::*;
-use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE};
+use windows::Win32::System::Memory::{
+    GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock,
+};
 
 const CF_UNICODETEXT: u32 = 13;
 
 struct ClipboardGuard;
 impl ClipboardGuard {
     fn open() -> Option<Self> {
-        (0..5).find_map(|_| {
-            unsafe { OpenClipboard(None) }.ok().map(|_| Self)
-        })
+        (0..5).find_map(|_| unsafe { OpenClipboard(None) }.ok().map(|_| Self))
     }
 }
 impl Drop for ClipboardGuard {
-    fn drop(&mut self) { unsafe { let _ = CloseClipboard(); } }
+    fn drop(&mut self) {
+        unsafe {
+            let _ = CloseClipboard();
+        }
+    }
 }
 
 /// Read plain text from the Windows clipboard.
@@ -31,11 +35,18 @@ pub fn get_clipboard_text() -> Option<String> {
     let handle = unsafe { GetClipboardData(CF_UNICODETEXT) }.ok()?;
     let hg = HGLOBAL(handle.0);
     let ptr = unsafe { GlobalLock(hg) };
-    if ptr.is_null() { return None; }
+    if ptr.is_null() {
+        return None;
+    }
     let len = unsafe { GlobalSize(hg) } / std::mem::size_of::<u16>();
     let slice = unsafe { std::slice::from_raw_parts(ptr as *const u16, len) };
-    let text = OsString::from_wide(slice).to_string_lossy().trim_end_matches('\0').to_string();
-    unsafe { let _ = GlobalUnlock(hg); }
+    let text = OsString::from_wide(slice)
+        .to_string_lossy()
+        .trim_end_matches('\0')
+        .to_string();
+    unsafe {
+        let _ = GlobalUnlock(hg);
+    }
     if text.is_empty() { None } else { Some(text) }
 }
 
@@ -48,7 +59,9 @@ pub fn set_clipboard_text(text: &str) -> Option<()> {
     let hg = unsafe {
         let h = GlobalAlloc(GMEM_MOVEABLE, byte_len).ok()?;
         let ptr = GlobalLock(h);
-        if ptr.is_null() { return None; }
+        if ptr.is_null() {
+            return None;
+        }
         std::ptr::copy_nonoverlapping(wide.as_ptr() as *const u8, ptr as *mut u8, byte_len);
         let _ = GlobalUnlock(h);
         h

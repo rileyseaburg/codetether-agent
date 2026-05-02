@@ -145,7 +145,7 @@ pub async fn handle_session_event(
         SessionEvent::Done => {
             handle_processing_stopped(app, worker_bridge).await;
             app.state.streaming_text.clear();
-            app.state.complete_request_timing();
+            app.state.complete_turn_timing();
             app.state.status = "Ready".to_string();
         }
         SessionEvent::Error(err) => {

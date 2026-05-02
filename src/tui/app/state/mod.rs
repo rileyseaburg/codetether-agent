@@ -18,9 +18,9 @@
 //! - `settings_nav` — settings selection and view-mode switching
 //! - `message_cache` — render-line cache for performance
 
-#![allow(dead_code)]
-
 pub mod agent_profile;
+#[path = "latency/chat.rs"]
+pub mod chat_latency;
 pub mod default_impl;
 pub mod history;
 pub mod input_cursor;
@@ -126,6 +126,7 @@ pub struct AppState {
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
+    pub chat_latency: chat_latency::ChatLatencyStats,
     pub pending_images: Vec<ImageAttachment>,
     /// Sidecar buffer for paste blocks that were too large to inline
     /// into the input box. Each entry is rendered in the input as a
