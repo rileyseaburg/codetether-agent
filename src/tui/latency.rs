@@ -164,7 +164,7 @@ pub fn render_latency(f: &mut Frame, area: Rect, app: &App) {
             )));
         }
     }
-
+    crate::tui::latency_chat_turn::push_chat_turn_latency(&mut lines, app);
     lines.push(Line::from(""));
     lines.push(section_heading("Recent Timed Tools"));
     let recent = recent_tool_latencies(app, 8);
@@ -203,7 +203,8 @@ pub fn render_latency(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(footer, chunks[1]);
 }
 
-fn section_heading(title: &str) -> Line<'static> {
+#[allow(dead_code)]
+pub(crate) fn section_heading(title: &str) -> Line<'static> {
     Line::from(vec![Span::styled(
         format!("  {title}"),
         Style::default()
@@ -269,7 +270,8 @@ fn recent_tool_latencies(app: &App, limit: usize) -> Vec<String> {
         .collect()
 }
 
-fn format_duration(ms: u64) -> String {
+#[allow(dead_code)]
+pub(crate) fn format_duration(ms: u64) -> String {
     match ms {
         0..=999 => format!("{ms}ms"),
         1_000..=9_999 => format!("{:.2}s", ms as f64 / 1_000.0),

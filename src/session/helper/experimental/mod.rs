@@ -64,8 +64,8 @@ pub mod pairing;
 pub mod snippet;
 #[allow(dead_code)]
 pub mod streaming_llm;
-pub mod thinking_prune;
 pub mod tetherscript_repair;
+pub mod thinking_prune;
 #[allow(dead_code)]
 pub mod tool_call_dedup;
 

@@ -14,7 +14,9 @@ pub fn is_ssh_or_headless() -> bool {
 #[cfg(not(windows))]
 /// Extract an image from the system clipboard.
 pub fn get_clipboard_image() -> Option<ImageAttachment> {
-    if is_ssh_or_headless() { return None; }
+    if is_ssh_or_headless() {
+        return None;
+    }
     crate::image_clipboard::capture_image().ok()
 }
 
@@ -25,14 +27,18 @@ pub fn get_clipboard_image() -> Option<ImageAttachment> {
 /// implemented for the Windows raw-dylib path. Returns `None` so the
 /// TUI falls through to the "clipboard unavailable" status message.
 pub fn get_clipboard_image() -> Option<ImageAttachment> {
-    if is_ssh_or_headless() { return None; }
+    if is_ssh_or_headless() {
+        return None;
+    }
     None
 }
 
 #[cfg(not(windows))]
 /// Extract plain text from the system clipboard.
 pub fn get_clipboard_text() -> Option<String> {
-    if is_ssh_or_headless() { return None; }
+    if is_ssh_or_headless() {
+        return None;
+    }
     let mut clipboard = arboard::Clipboard::new().ok()?;
     clipboard.get_text().ok().filter(|t| !t.is_empty())
 }
@@ -40,6 +46,8 @@ pub fn get_clipboard_text() -> Option<String> {
 #[cfg(windows)]
 /// Extract plain text from the system clipboard (Windows via raw-dylib).
 pub fn get_clipboard_text() -> Option<String> {
-    if is_ssh_or_headless() { return None; }
+    if is_ssh_or_headless() {
+        return None;
+    }
     super::clipboard_winapi::get_clipboard_text()
 }

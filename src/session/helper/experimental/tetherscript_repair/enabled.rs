@@ -8,9 +8,8 @@ use crate::provider::{ContentPart, Message, Role};
 use crate::tool::tetherscript::convert::{json_to_tetherscript, tetherscript_to_json};
 use tetherscript::plugin::{PluginHost, TetherScriptAuthority};
 
-const REPAIR_SOURCE: &str = include_str!(
-    "../../../../../examples/tetherscript/deepseek_repair.tether"
-);
+const REPAIR_SOURCE: &str =
+    include_str!("../../../../../examples/tetherscript/deepseek_repair.tether");
 
 pub fn repair_reasoning(messages: &mut Vec<Message>) -> ExperimentalStats {
     let stats = ExperimentalStats::default();

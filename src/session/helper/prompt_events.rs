@@ -59,6 +59,7 @@ use super::text::extract_text_content;
 use super::token::{
     context_window_for_model, estimate_tokens_for_messages, session_completion_max_tokens,
 };
+use super::tool_audit_detail::{tool_failure_detail, tool_success_detail};
 use super::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
 use crate::session::{
     bucket_for_messages, delegation_skills, derive_with_policy, effective_policy,
@@ -962,10 +963,7 @@ async fn execute_tool(
                                 AuditOutcome::Failure
                             },
                             None,
-                            Some(json!({
-                                "duration_ms": duration_ms,
-                                "output_len": result.output.len()
-                            })),
+                            Some(tool_success_detail(duration_ms, &result)),
                             None,
                             None,
                             None,
@@ -985,7 +983,7 @@ async fn execute_tool(
                             format!("tool:{}", tool_name),
                             AuditOutcome::Failure,
                             None,
-                            Some(json!({ "duration_ms": duration_ms, "error": e.to_string() })),
+                            Some(tool_failure_detail(duration_ms, &e.to_string())),
                             None,
                             None,
                             None,

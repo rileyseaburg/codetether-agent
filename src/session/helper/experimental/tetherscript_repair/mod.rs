@@ -8,10 +8,10 @@
 //! Calls the bundled `deepseek_repair.tether` hook per-message.
 
 mod convert;
-#[cfg(feature = "tetherscript")]
-mod enabled;
 #[cfg(not(feature = "tetherscript"))]
 mod disabled;
+#[cfg(feature = "tetherscript")]
+mod enabled;
 
 use super::ExperimentalStats;
 use crate::provider::Message;

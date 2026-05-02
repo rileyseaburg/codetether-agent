@@ -8,7 +8,9 @@ pub mod clipboard_winapi;
 pub mod constants;
 pub mod help;
 pub mod input;
+#[path = "latency.rs"]
 pub mod latency;
+pub mod latency_chat_turn;
 pub mod lsp;
 pub mod model_picker;
 pub mod models;

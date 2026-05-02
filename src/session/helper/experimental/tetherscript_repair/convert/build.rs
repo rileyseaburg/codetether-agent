@@ -21,20 +21,52 @@ fn role_str(role: Role) -> &'static str {
 }
 
 fn collect_text(msg: &Message) -> String {
-    msg.content.iter().filter_map(|p| match p { ContentPart::Text { text } => Some(text.as_str()), _ => None }).collect::<Vec<_>>().join("\n")
+    msg.content
+        .iter()
+        .filter_map(|p| match p {
+            ContentPart::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn collect_reasoning(msg: &Message) -> Value {
-    let s: String = msg.content.iter().filter_map(|p| match p { ContentPart::Thinking { text } => Some(text.as_str()), _ => None }).collect::<Vec<_>>().join("");
-    if s.is_empty() { Value::Null } else { serde_json::json!(s) }
+    let s: String = msg
+        .content
+        .iter()
+        .filter_map(|p| match p {
+            ContentPart::Thinking { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    if s.is_empty() {
+        Value::Null
+    } else {
+        serde_json::json!(s)
+    }
 }
 
 fn collect_tool_calls(msg: &Message) -> Value {
-    let calls: Vec<Value> = msg.content.iter().filter_map(|p| match p {
-        ContentPart::ToolCall { id, name, arguments, .. } => Some(serde_json::json!({
-            "id": id, "type": "function", "function": { "name": name, "arguments": arguments }
-        })),
-        _ => None,
-    }).collect();
-    if calls.is_empty() { Value::Null } else { Value::Array(calls) }
+    let calls: Vec<Value> = msg
+        .content
+        .iter()
+        .filter_map(|p| match p {
+            ContentPart::ToolCall {
+                id,
+                name,
+                arguments,
+                ..
+            } => Some(serde_json::json!({
+                "id": id, "type": "function", "function": { "name": name, "arguments": arguments }
+            })),
+            _ => None,
+        })
+        .collect();
+    if calls.is_empty() {
+        Value::Null
+    } else {
+        Value::Array(calls)
+    }
 }

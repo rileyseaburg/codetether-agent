@@ -22,6 +22,7 @@ mod persist;
 pub mod prompt;
 pub mod prompt_call;
 pub mod prompt_events;
+#[path = "prompt_too_long/mod.rs"]
 pub(crate) mod prompt_too_long;
 pub mod provider;
 pub mod recall_context;
@@ -32,6 +33,7 @@ pub mod runtime;
 pub mod stream;
 pub mod text;
 pub mod token;
+pub mod tool_audit_detail;
 pub mod validation;
 mod workspace_tools;
 
