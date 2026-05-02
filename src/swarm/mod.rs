@@ -19,7 +19,7 @@ pub mod orchestrator;
 pub mod rate_limiter;
 pub mod remote_subtask;
 pub mod result_store;
-pub mod subtask;
+pub mod subtask; pub mod validation;
 mod tool_policy;
 
 pub use cache::{CacheConfig, CacheStats, SwarmCache};
