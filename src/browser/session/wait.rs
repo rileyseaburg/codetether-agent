@@ -1,6 +1,5 @@
-use super::{BrowserSession, access};
+use super::{BrowserSession, access, shadow};
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::WaitRequest};
-use chromiumoxide::error::CdpError;
 use chromiumoxide::page::Page;
 use std::time::Duration;
 use tokio::time::Instant;
@@ -83,9 +82,9 @@ async fn wait_selector(
     let want_visible = state == "visible" || state == "hidden";
     let invert_visible = state == "hidden" || state == "detached";
     loop {
-        let result = page.find_element(selector).await;
-        let satisfied = match (&result, want_present) {
-            (Ok(_element), true) => {
+        let present = is_attached(page, selector).await?;
+        let satisfied = match (present, want_present) {
+            (true, true) => {
                 if want_visible {
                     let visible = is_visible(page, selector).await.unwrap_or(false);
                     if invert_visible { !visible } else { visible }
@@ -93,9 +92,9 @@ async fn wait_selector(
                     true
                 }
             }
-            (Err(CdpError::NotFound), false) => true,
-            (Err(CdpError::NotFound), true) => false,
-            (Ok(_), false) => {
+            (false, false) => true,
+            (false, true) => false,
+            (true, false) => {
                 if want_visible {
                     let visible = is_visible(page, selector).await.unwrap_or(false);
                     !visible
@@ -103,7 +102,6 @@ async fn wait_selector(
                     false
                 }
             }
-            (Err(error), _) => return Err(clone_cdp_error(error).into()),
         };
         if satisfied {
             return Ok(BrowserOutput::Ack(Ack { ok: true }));
@@ -118,11 +116,20 @@ async fn wait_selector(
     }
 }
 
-/// `CdpError` is not `Clone`; this preserves the most useful diagnostic
-/// (the message) when we need to surface a non-`NotFound` error from inside
-/// the polling loop.
-fn clone_cdp_error(error: &CdpError) -> CdpError {
-    CdpError::msg(error.to_string())
+/// Shadow-aware presence probe. Returns `Ok(true)` when the selector
+/// resolves anywhere in the page, including inside shadow roots and via
+/// the `>>>` combinator; `Ok(false)` when nothing matches; an error only
+/// when the page eval itself fails. Does not check visibility — pair
+/// with [`is_visible`] when the caller cares.
+async fn is_attached(page: &Page, selector: &str) -> Result<bool, BrowserError> {
+    let lit = serde_json::to_string(selector)?;
+    let dq = shadow::dq_call(&lit);
+    let script = format!("(() => Boolean({dq}))()");
+    Ok(page
+        .evaluate(script)
+        .await?
+        .into_value::<bool>()
+        .unwrap_or(false))
 }
 
 /// Probe element visibility via JS so we account for `display:none`,
@@ -130,9 +137,10 @@ fn clone_cdp_error(error: &CdpError) -> CdpError {
 /// `find_element` only checks attachment, not visibility.
 async fn is_visible(page: &Page, selector: &str) -> Result<bool, BrowserError> {
     let lit = serde_json::to_string(selector)?;
+    let dq = shadow::dq_call(&lit);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({lit});
+            const el = {dq};
             if (!el) return false;
             const r = el.getBoundingClientRect();
             if (r.width === 0 || r.height === 0) return false;
@@ -167,12 +175,14 @@ async fn wait_text(
     //
     // The sentinel is idempotent and per-needle, so repeated waits on the
     // same page don't cross-contaminate each other.
+    let dq_install = shadow::DEEP_QUERY_INSTALL;
     if want_present {
         let install = format!(
             "(() => {{
+                const dq = ({dq_install});
                 window.__codetether_seen_text = window.__codetether_seen_text || {{}};
                 if (window.__codetether_seen_text[{needle_lit}]) return true;
-                const root = {scope_lit} ? document.querySelector({scope_lit}) : document.body;
+                const root = {scope_lit} ? dq({scope_lit}) : document.body;
                 if (!root) return false;
                 // Already visible in the DOM right now?
                 const current = (root.innerText || root.textContent || '');
@@ -185,7 +195,7 @@ async fn wait_text(
                 if (!window[key]) {{
                     const obs = new MutationObserver(() => {{
                         try {{
-                            const r = {scope_lit} ? document.querySelector({scope_lit}) : document.body;
+                            const r = {scope_lit} ? dq({scope_lit}) : document.body;
                             if (!r) return;
                             const t = (r.innerText || r.textContent || '');
                             if (t.includes({needle_lit})) {{
@@ -203,9 +213,10 @@ async fn wait_text(
     }
     let probe = format!(
         "(() => {{
+            const dq = ({dq_install});
             const seen = (window.__codetether_seen_text || {{}})[{needle_lit}] === true;
             if (seen) return true;
-            const root = {scope_lit} ? document.querySelector({scope_lit}) : document.body;
+            const root = {scope_lit} ? dq({scope_lit}) : document.body;
             if (!root) return false;
             const t = (root.innerText || root.textContent || '');
             return t.includes({needle_lit});

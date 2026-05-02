@@ -1,4 +1,4 @@
-use super::{BrowserSession, access, device, humanize};
+use super::{BrowserSession, access, device, humanize, shadow};
 use crate::browser::{
     BrowserError, BrowserOutput,
     output::{Ack, HtmlContent, TextContent},
@@ -37,8 +37,8 @@ pub(super) async fn click(
     // scroll is cheap and removes a whole class of spurious failures.
     let _ = page
         .evaluate(format!(
-            "(() => {{ const el = document.querySelector({lit}); if (el) el.scrollIntoView({{block:'center', inline:'center'}}); return true; }})()",
-            lit = serde_json::to_string(&request.selector)?
+            "(() => {{ const el = {dq}; if (el) el.scrollIntoView({{block:'center', inline:'center'}}); return true; }})()",
+            dq = shadow::dq_call(&serde_json::to_string(&request.selector)?)
         ))
         .await;
     // Humanized click path: compute the element's viewport bounding box,
@@ -82,9 +82,10 @@ pub(super) async fn click(
 /// layout (zero-sized, display:none, detached).
 async fn click_point_for(page: &Page, selector: &str) -> Result<Option<ClickPoint>, BrowserError> {
     let selector_lit = serde_json::to_string(selector)?;
+    let dq = shadow::dq_call(&selector_lit);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({selector_lit});
+            const el = {dq};
             if (!el) return null;
             const r = el.getBoundingClientRect();
             if (!r || r.width === 0 || r.height === 0) return null;
@@ -119,13 +120,30 @@ pub(super) async fn fill(
     ensure_page_scope(request.frame_selector.as_deref())?;
     let page = access::current_page(session).await?;
     ensure_fillable(&page, &request.selector).await?;
-    let element = resolve_element(&page, &request.selector).await?;
+    // CDP `DOM.querySelector` (the backend behind `find_element`) does
+    // not pierce shadow roots and rejects the `>>>` combinator outright,
+    // but `ensure_fillable` does pierce — so a shadow-rooted input passes
+    // the gate and then trips here. When that happens we resolve the
+    // node via the shadow-aware JS helper and bridge the resulting object
+    // back to a real CDP `Element` through `find_element_by_js`, so the
+    // keystroke loop below uses the same humanized typing path as the
+    // flat-DOM case (real `Input.dispatchKeyEvent` events, IME-friendly
+    // composition) instead of synthetic JS events.
+    let element = match resolve_element(&page, &request.selector).await {
+        Ok(element) => element,
+        Err(_) => {
+            let dq = shadow::dq_call(&serde_json::to_string(&request.selector)?);
+            page.find_element_by_js(dq)
+                .await
+                .map_err(|_| BrowserError::ElementNotFound(request.selector.clone()))?
+        }
+    };
     clear_value(&element).await?;
     element.focus().await?;
     humanize::settle_delay().await;
     // Type character-by-character with human-plausible pacing so per-key
-    // handlers (validation, autocomplete, fraud detection) see the input as
-    // keystrokes rather than a single burst.
+    // handlers (validation, autocomplete, fraud detection) see the input
+    // as keystrokes rather than a single burst.
     for ch in request.value.chars() {
         element.type_str(ch.to_string()).await?;
         humanize::keystroke_delay().await;
@@ -139,9 +157,10 @@ pub(super) async fn fill(
     // running any onKeyDown handlers a pure-setter approach would bypass.
     let selector_lit = serde_json::to_string(&request.selector)?;
     let value_lit = serde_json::to_string(&request.value)?;
+    let dq = shadow::dq_call(&selector_lit);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({selector_lit});
+            const el = {dq};
             if (!el) return false;
             const proto = Object.getPrototypeOf(el);
             const setter = Object.getOwnPropertyDescriptor(proto, 'value');
@@ -255,7 +274,8 @@ fn stale_node(error: &CdpError) -> bool {
 
 async fn ensure_present(page: &Page, selector: &str) -> Result<(), BrowserError> {
     let encoded = serde_json::to_string(selector)?;
-    let script = format!("(() => Boolean(document.querySelector({encoded})))()");
+    let dq = shadow::dq_call(&encoded);
+    let script = format!("(() => Boolean({dq}))()");
     let found: bool = page.evaluate_expression(script).await?.into_value()?;
     if found {
         return Ok(());
@@ -265,9 +285,10 @@ async fn ensure_present(page: &Page, selector: &str) -> Result<(), BrowserError>
 
 async fn inspect_fill_target(page: &Page, selector: &str) -> Result<FillTarget, BrowserError> {
     let selector = serde_json::to_string(selector)?;
+    let dq = shadow::dq_call(&selector);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({selector});
+            const el = {dq};
             if (!el) {{
                 return {{ found: false, tag: '', input_type: null, fillable: false }};
             }}

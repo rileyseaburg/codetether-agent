@@ -7,7 +7,7 @@
 //! then drive it through chromiumoxide's high-level helpers (`click()`,
 //! `type_str()`, `press_key()`).
 
-use super::{BrowserSession, access, humanize};
+use super::{BrowserSession, access, humanize, shadow};
 use crate::browser::{
     BrowserError, BrowserOutput,
     output::Ack,
@@ -28,13 +28,21 @@ pub(super) async fn type_text(
     request: TypeRequest,
 ) -> Result<BrowserOutput, BrowserError> {
     let page = access::current_page(session).await?;
-    let element = page.find_element(&request.selector).await?;
+    let element = match page.find_element(&request.selector).await {
+        Ok(element) => element,
+        Err(_) => {
+            let dq = shadow::dq_call(&serde_json::to_string(&request.selector)?);
+            page.find_element_by_js(dq)
+                .await
+                .map_err(|_| BrowserError::ElementNotFound(request.selector.clone()))?
+        }
+    };
     element.focus().await?;
     humanize::settle_delay().await;
     // Type one character at a time so per-keystroke JS handlers fire in
     // order, with a human-plausible delay between keys. If the caller
-    // specified an explicit `delay_ms`, that takes precedence; otherwise we
-    // use a randomized human-like cadence.
+    // specified an explicit `delay_ms`, that takes precedence; otherwise
+    // we use a randomized human-like cadence.
     for ch in request.text.chars() {
         element.type_str(ch.to_string()).await?;
         if request.delay_ms == 0 {
@@ -54,7 +62,15 @@ pub(super) async fn press(
     request: KeyPressRequest,
 ) -> Result<BrowserOutput, BrowserError> {
     let page = access::current_page(session).await?;
-    let element = page.find_element(&request.selector).await?;
+    let element = match page.find_element(&request.selector).await {
+        Ok(element) => element,
+        Err(_) => {
+            let dq = shadow::dq_call(&serde_json::to_string(&request.selector)?);
+            page.find_element_by_js(dq)
+                .await
+                .map_err(|_| BrowserError::ElementNotFound(request.selector.clone()))?
+        }
+    };
     element.focus().await?.press_key(&request.key).await?;
     Ok(BrowserOutput::Ack(Ack { ok: true }))
 }
@@ -98,9 +114,10 @@ pub(super) async fn toggle(
     let _ = request.timeout_ms;
     let page = access::current_page(session).await?;
     let selector_lit = serde_json::to_string(&request.selector)?;
+    let dq = shadow::dq_call(&selector_lit);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({selector_lit});
+            const el = {dq};
             if (!el) return false;
             if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {{
                 el.checked = !el.checked;
@@ -130,9 +147,10 @@ pub(super) async fn fill_native(
     let page = access::current_page(session).await?;
     let selector_lit = serde_json::to_string(&request.selector)?;
     let value_lit = serde_json::to_string(&request.value)?;
+    let dq = shadow::dq_call(&selector_lit);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({selector_lit});
+            const el = {dq};
             if (!el) return false;
             const proto = Object.getPrototypeOf(el);
             const setter = Object.getOwnPropertyDescriptor(proto, 'value');
@@ -165,9 +183,11 @@ async fn locate_text(page: &Page, req: &ClickTextRequest) -> Result<bool, Browse
     let text_lit = serde_json::to_string(&req.text)?;
     let exact = req.exact;
     let index = req.index;
+    let install = shadow::DEEP_QUERY_INSTALL;
     let script = format!(
         "(() => {{
-            const scope = {scope_lit} ? document.querySelector({scope_lit}) : document;
+            const dq = ({install});
+            const scope = {scope_lit} ? dq({scope_lit}) : document;
             if (!scope) return false;
             const want = {text_lit};
             const exact = {exact};

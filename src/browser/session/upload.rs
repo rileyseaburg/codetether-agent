@@ -1,4 +1,4 @@
-use super::{SessionMode, access};
+use super::{SessionMode, access, shadow};
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::UploadRequest};
 use chromiumoxide::{
     cdp::browser_protocol::dom::SetFileInputFilesParams, element::Element, page::Page,
@@ -108,10 +108,11 @@ async fn resolve_element(page: &Page, selector: &str) -> Result<Element, Browser
 }
 
 async fn inspect_target(page: &Page, selector: &str) -> Result<UploadTarget, BrowserError> {
-    let selector = serde_json::to_string(selector)?;
+    let selector_lit = serde_json::to_string(selector)?;
+    let dq = shadow::dq_call(&selector_lit);
     let script = format!(
         "(() => {{
-            const el = document.querySelector({selector});
+            const el = {dq};
             if (!el) {{
                 return {{ found: false, tag: '', input_type: null, multiple: false }};
             }}

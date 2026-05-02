@@ -500,6 +500,54 @@ impl Page {
         Element::new(Arc::clone(&self.inner), node_id).await
     }
 
+    /// Resolves a JS expression that evaluates to an `Element`-typed value
+    /// into a chromiumoxide [`Element`] handle.
+    ///
+    /// `DOM.querySelector` (the backend behind [`Page::find_element`]) can
+    /// only address nodes reachable through the document tree without
+    /// crossing shadow boundaries — that excludes the entire ecosystem of
+    /// web components (Lit, Material Web, Colab, modern Chromium UIs).
+    /// `find_element_by_js` lets callers run any in-page JS — typically a
+    /// shadow-piercing helper, an XPath result, or a saved global — and
+    /// hand the resulting node back to chromiumoxide as a real `Element`,
+    /// so [`Element::click`], [`Element::focus`], `type_str`, and the
+    /// rest of the input pipeline work on shadow-rooted nodes.
+    ///
+    /// `expression` is evaluated as-is via `Runtime.evaluate` with
+    /// `returnByValue: false`, so the result must be an object reference,
+    /// not a serialized value. The returned object is then passed to
+    /// `DOM.requestNode` to obtain a `NodeId` and finally wrapped in an
+    /// `Element`.
+    ///
+    /// Returns [`CdpError::NotFound`] when the expression resolves to
+    /// `null`/`undefined` or to a non-`Node` value.
+    pub async fn find_element_by_js(&self, expression: impl Into<String>) -> Result<Element> {
+        let params = EvaluateParams::builder()
+            .expression(expression.into())
+            .return_by_value(false)
+            .build()
+            .map_err(CdpError::msg)?;
+        let result = self.evaluate_expression(params).await?;
+        if matches!(result.object().r#type, RemoteObjectType::Undefined) {
+            return Err(CdpError::NotFound);
+        }
+        // `null` comes back as `RemoteObjectType::Object` with no
+        // `object_id`; treat that the same as a missing element so callers
+        // get a clean `NotFound` instead of a panic on `unwrap`.
+        let object_id = result
+            .object()
+            .object_id
+            .clone()
+            .ok_or(CdpError::NotFound)?;
+        let node_id = self
+            .inner
+            .execute(RequestNodeParams::new(object_id))
+            .await?
+            .result
+            .node_id;
+        Element::new(Arc::clone(&self.inner), node_id).await
+    }
+
     /// Return all `Element`s in the document that match the given selector
     pub async fn find_elements(&self, selector: impl Into<String>) -> Result<Vec<Element>> {
         let root = self.get_document().await?.node_id;

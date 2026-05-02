@@ -11,6 +11,7 @@ mod net;
 mod runtime;
 mod runtime_state;
 mod screen;
+mod shadow;
 mod snapshot;
 mod state;
 mod tabs;

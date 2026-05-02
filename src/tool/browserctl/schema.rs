@@ -13,7 +13,7 @@ pub(super) fn parameters_schema() -> Value {
             "ws_url": {"type": "string", "description": "For start in connect mode: DevTools websocket URL for an existing browser"},
             "url": {"type": "string", "description": "For goto or tabs_new: target URL"},
             "wait_until": {"type": "string", "enum": ["commit","domcontentloaded","load"], "description": "For goto: wait strategy. `commit` = return as soon as the URL is committed (fastest). `domcontentloaded` = wait until the DOM is parsed (default, good for most scraping). `load` = wait for the full load event incl. all subresources (slowest, most like a real user waiting)."},
-            "selector": {"type": "string", "description": "CSS selector for selector-based actions"},
+            "selector": {"type": "string", "description": "CSS selector for selector-based actions. Pierces shadow DOM automatically; use the `>>>` combinator to drill through specific shadow boundaries (e.g. `colab-composer-rich-text-field >>> .inputarea`)."},
             "frame_selector": {"type": "string", "description": "Optional iframe selector for frame-scoped actions"},
             "value": {"type": "string", "description": "Text value for fill/fill_native"},
             "text": {"type": "string", "description": "Visible text or typed text depending on action"},
