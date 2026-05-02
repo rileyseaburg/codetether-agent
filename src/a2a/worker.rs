@@ -1440,7 +1440,12 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
 
     let mut timeline = task_timeline::TaskTimeline::new(task_id, timeout_secs);
     timeline.checkpoint(task_timeline::TaskCheckpoint::TaskReceived);
-    tracing::info!("Handling task: {} ({}) [timeout={}s]", title, task_id, timeout_secs);
+    tracing::info!(
+        "Handling task: {} ({}) [timeout={}s]",
+        title,
+        task_id,
+        timeout_secs
+    );
 
     // Wire the timeline's progress state into the runtime so the heartbeat picks it up.
     // We'll sync after each checkpoint.
@@ -1476,8 +1481,10 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     let claim_provenance = claim.into_provenance();
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::Claimed,
-        Some(format!("run_id={:?} attempt_id={:?}",
-            claim_provenance.run_id, claim_provenance.attempt_id)),
+        Some(format!(
+            "run_id={:?} attempt_id={:?}",
+            claim_provenance.run_id, claim_provenance.attempt_id
+        )),
     );
     tracing::info!(
         task_id,
@@ -1488,7 +1495,15 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
 
     // --- All post-claim work is wrapped so we always release the task ---
     let inner_result: Result<(&str, Option<String>, Option<String>, Option<String>)> =
-        execute_claimed_task(runtime, task, task_id, title, &claim_provenance, &mut timeline).await;
+        execute_claimed_task(
+            runtime,
+            task,
+            task_id,
+            title,
+            &claim_provenance,
+            &mut timeline,
+        )
+        .await;
 
     let (status, result, error, session_id) = match inner_result {
         Ok(tuple) => tuple,
@@ -1658,7 +1673,11 @@ async fn execute_claimed_task<'a>(
         }
         timeline.checkpoint_with_detail(
             task_timeline::TaskCheckpoint::WorkspaceReady,
-            session.metadata.directory.as_deref().map(|d| d.display().to_string()),
+            session
+                .metadata
+                .directory
+                .as_deref()
+                .map(|d| d.display().to_string()),
         );
     }
 
@@ -1713,7 +1732,10 @@ async fn execute_claimed_task<'a>(
     tracing::info!(task_id, agent_type, "Executing prompt: {}", prompt);
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::AgentStarting,
-        Some(format!("agent={} model={:?}", agent_type, session.metadata.model)),
+        Some(format!(
+            "agent={} model={:?}",
+            agent_type, session.metadata.model
+        )),
     );
     sync_timeline_to_runtime(&timeline, runtime).await;
 

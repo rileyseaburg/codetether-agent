@@ -36,7 +36,12 @@ unsafe fn scan_processes() -> anyhow::Result<Vec<DebugBrowser>> {
     if unsafe { Process32FirstW(snap, &mut entry) }.is_ok() {
         loop {
             let name = String::from_utf16_lossy(
-                &entry.szExeFile.iter().take_while(|&&c| c != 0).copied().collect::<Vec<u16>>(),
+                &entry
+                    .szExeFile
+                    .iter()
+                    .take_while(|&&c| c != 0)
+                    .copied()
+                    .collect::<Vec<u16>>(),
             );
             let lower = name.to_lowercase();
             if is_chromium_process(&lower) {

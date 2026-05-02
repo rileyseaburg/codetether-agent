@@ -17,7 +17,7 @@ pub fn send_chord(vks: &[u16]) -> anyhow::Result<()> {
 
 const MODIFIERS: &[u16] = &[0x10, 0x11, 0x12]; // SHIFT, CTRL, ALT
 
-unsafe fn chord_inner(vks: & [u16]) -> anyhow::Result<()> {
+unsafe fn chord_inner(vks: &[u16]) -> anyhow::Result<()> {
     if vks.is_empty() {
         return Ok(());
     }
@@ -53,7 +53,11 @@ unsafe fn make_kb_input(vk: u16, up: bool) -> INPUT {
             ki: KEYBDINPUT {
                 wVk: VIRTUAL_KEY(vk),
                 wScan: 0,
-                dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
+                dwFlags: if up {
+                    KEYEVENTF_KEYUP
+                } else {
+                    KEYBD_EVENT_FLAGS(0)
+                },
                 time: 0,
                 dwExtraInfo: 0,
             },

@@ -93,7 +93,10 @@ mod tests {
         // `window.__codetether_dq` so a second eval is a no-op. Without
         // this guard, every call re-installs the helper and observers
         // attached to the previous instance go stale.
-        assert!(DEEP_QUERY_INSTALL.contains("if (window.__codetether_dq) return window.__codetether_dq"));
+        assert!(
+            DEEP_QUERY_INSTALL
+                .contains("if (window.__codetether_dq) return window.__codetether_dq")
+        );
     }
 
     #[test]

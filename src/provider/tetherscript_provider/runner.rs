@@ -26,12 +26,12 @@ impl Clone for TetherScriptProvider {
 }
 
 impl TetherScriptProvider {
-    pub fn new(
-        source: &str, api_key: &str, base_url: &str, name: &str,
-    ) -> Result<Self> {
+    pub fn new(source: &str, api_key: &str, base_url: &str, name: &str) -> Result<Self> {
         Ok(Self {
-            name: name.into(), source: source.into(),
-            api_key: api_key.into(), base_url: base_url.into(),
+            name: name.into(),
+            source: source.into(),
+            api_key: api_key.into(),
+            base_url: base_url.into(),
         })
     }
 
@@ -42,18 +42,20 @@ impl TetherScriptProvider {
         h.grant("tetherscript", TetherScriptAuthority::new());
         let pa = ProviderAuthority::new(&self.base_url);
         let pa = ProviderAuthority::with_bound_header(
-            pa, "Authorization", &format!("Bearer {}", self.api_key),
+            pa,
+            "Authorization",
+            &format!("Bearer {}", self.api_key),
         );
         h.grant("provider", pa);
         h.load_source("p.tether", &self.source).context("load")
     }
 
-    pub(crate) fn name_str(&self) -> &str { &self.name }
+    pub(crate) fn name_str(&self) -> &str {
+        &self.name
+    }
 
     pub(crate) fn call_list_models(&self) -> Result<Vec<ModelInfo>> {
         self.call_sync("list_models")
             .and_then(|v| serde_json::from_value(v).map_err(Into::into))
     }
 }
-
-

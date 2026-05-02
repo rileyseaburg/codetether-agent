@@ -5,9 +5,7 @@ use async_trait::async_trait;
 use futures::stream::BoxStream;
 
 use super::runner::TetherScriptProvider;
-use crate::provider::{
-    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
-};
+use crate::provider::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
 
 #[async_trait]
 impl Provider for TetherScriptProvider {

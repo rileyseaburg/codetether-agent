@@ -4,7 +4,10 @@
 ///
 /// Handles `{ENTER}`, `TAB`, bare letters, etc.
 pub fn resolve_vk(name: &str) -> u16 {
-    let upper = name.trim_start_matches('{').trim_end_matches('}').to_uppercase();
+    let upper = name
+        .trim_start_matches('{')
+        .trim_end_matches('}')
+        .to_uppercase();
     match upper.as_str() {
         "ENTER" | "RETURN" | "~" => 0x0D,
         "TAB" => 0x09,

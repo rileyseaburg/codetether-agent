@@ -35,12 +35,7 @@ unsafe fn record_inner(duration_secs: u32) -> anyhow::Result<Vec<u8>> {
     Ok(wav)
 }
 
-fn build_wav_header(
-    rate: u32,
-    channels: u16,
-    bits: u16,
-    data: &[u8],
-) -> anyhow::Result<Vec<u8>> {
+fn build_wav_header(rate: u32, channels: u16, bits: u16, data: &[u8]) -> anyhow::Result<Vec<u8>> {
     let byte_rate = rate * (bits / 8) as u32 * channels as u32;
     let block_align = (bits / 8) * channels;
     let data_size = data.len() as u32;

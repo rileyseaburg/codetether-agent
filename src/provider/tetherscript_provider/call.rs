@@ -10,7 +10,8 @@ impl TetherScriptProvider {
         let f = crate::tool::tetherscript::convert::tetherscript_to_json;
         let h = hook.to_string();
         self.make_plugin()?
-            .call(hook, &[]).with_context(|| h)
+            .call(hook, &[])
+            .with_context(|| h)
             .map(|r| f(&r.value))
     }
 
@@ -19,7 +20,8 @@ impl TetherScriptProvider {
         let g = crate::tool::tetherscript::convert::json_to_tetherscript;
         let h = hook.to_string();
         self.make_plugin()?
-            .call(hook, &[g(arg)]).with_context(|| h)
+            .call(hook, &[g(arg)])
+            .with_context(|| h)
             .map(|r| f(&r.value))
     }
 }

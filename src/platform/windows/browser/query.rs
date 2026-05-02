@@ -6,14 +6,21 @@ use std::path::PathBuf;
 ///
 /// Queries the required buffer size first to avoid truncation,
 /// then verifies the value is `REG_SZ` before reading.
-pub unsafe fn read_path_value(
-    hkey: windows::Win32::System::Registry::HKEY,
-) -> Option<PathBuf> {
+pub unsafe fn read_path_value(hkey: windows::Win32::System::Registry::HKEY) -> Option<PathBuf> {
     use windows::Win32::System::Registry::*;
 
     let mut len = 0u32;
     let mut ty = REG_NONE;
-    if RegQueryValueExW(hkey, windows::core::PCWSTR::null(), None, Some(&mut ty), None, Some(&mut len)).is_err() {
+    if RegQueryValueExW(
+        hkey,
+        windows::core::PCWSTR::null(),
+        None,
+        Some(&mut ty),
+        None,
+        Some(&mut len),
+    )
+    .is_err()
+    {
         return None;
     }
     if ty != REG_SZ {
@@ -22,9 +29,15 @@ pub unsafe fn read_path_value(
 
     let mut buf: Vec<u16> = vec![0; len as usize / std::mem::size_of::<u16>()];
     if RegQueryValueExW(
-        hkey, windows::core::PCWSTR::null(), None, Some(&mut ty),
-        Some(buf.as_mut_ptr() as *mut _), Some(&mut len),
-    ).is_err() {
+        hkey,
+        windows::core::PCWSTR::null(),
+        None,
+        Some(&mut ty),
+        Some(buf.as_mut_ptr() as *mut _),
+        Some(&mut len),
+    )
+    .is_err()
+    {
         return None;
     }
 

@@ -28,8 +28,14 @@ unsafe fn key_inner(vk: u16) -> anyhow::Result<()> {
     };
 
     let inputs = [
-        INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: down } },
-        INPUT { r#type: INPUT_KEYBOARD, Anonymous: INPUT_0 { ki: up } },
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 { ki: down },
+        },
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 { ki: up },
+        },
     ];
 
     let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };

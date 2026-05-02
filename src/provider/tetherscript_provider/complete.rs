@@ -4,8 +4,7 @@ use anyhow::Result;
 
 use super::runner::TetherScriptProvider;
 use crate::provider::{
-    CompletionRequest, CompletionResponse, ContentPart, FinishReason,
-    Message, Role, Usage,
+    CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, Role, Usage,
 };
 
 /// Run the tetherscript `complete` hook and build a response.

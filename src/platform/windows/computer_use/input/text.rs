@@ -36,8 +36,11 @@ unsafe fn unicode_event(ch: u16, up: bool) -> INPUT {
             ki: KEYBDINPUT {
                 wVk: VIRTUAL_KEY(0),
                 wScan: ch,
-                dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) }
-                    | KEYEVENTF_UNICODE,
+                dwFlags: if up {
+                    KEYEVENTF_KEYUP
+                } else {
+                    KEYBD_EVENT_FLAGS(0)
+                } | KEYEVENTF_UNICODE,
                 time: 0,
                 dwExtraInfo: 0,
             },

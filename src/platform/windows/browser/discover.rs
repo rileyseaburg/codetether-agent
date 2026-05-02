@@ -27,10 +27,15 @@ fn candidate_paths() -> Option<PathBuf> {
         r"Chromium\Application\chrome.exe",
     ];
 
-    let bases: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "LocalAppData", "ProgramW6432"]
-        .iter()
-        .filter_map(|v| std::env::var_os(v).map(PathBuf::from))
-        .collect();
+    let bases: Vec<PathBuf> = [
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "LocalAppData",
+        "ProgramW6432",
+    ]
+    .iter()
+    .filter_map(|v| std::env::var_os(v).map(PathBuf::from))
+    .collect();
 
     for base in &bases {
         for rel in RELATIVE {
@@ -44,7 +49,13 @@ fn candidate_paths() -> Option<PathBuf> {
 }
 
 fn path_lookup() -> Option<PathBuf> {
-    ["chrome.exe", "msedge.exe", "brave.exe", "vivaldi.exe", "chromium.exe"]
-        .iter()
-        .find_map(|name| which::which(name).ok())
+    [
+        "chrome.exe",
+        "msedge.exe",
+        "brave.exe",
+        "vivaldi.exe",
+        "chromium.exe",
+    ]
+    .iter()
+    .find_map(|name| which::which(name).ok())
 }
