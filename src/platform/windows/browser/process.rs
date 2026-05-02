@@ -27,13 +27,13 @@ pub fn find_debug_browser() -> anyhow::Result<Vec<DebugBrowser>> {
 unsafe fn scan_processes() -> anyhow::Result<Vec<DebugBrowser>> {
     use windows::Win32::System::Diagnostics::ToolHelp::*;
 
-    let snap = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }?;
+    let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)?;
     let mut entry = PROCESSENTRY32W::default();
     entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
 
     let mut found = Vec::new();
 
-    if unsafe { Process32FirstW(snap, &mut entry) }.is_ok() {
+    if Process32FirstW(snap, &mut entry).is_ok() {
         loop {
             let name = String::from_utf16_lossy(
                 &entry
@@ -51,13 +51,13 @@ unsafe fn scan_processes() -> anyhow::Result<Vec<DebugBrowser>> {
                     debug_port: None, // CMD line not accessible via ToolHelp32
                 });
             }
-            if unsafe { Process32NextW(snap, &mut entry) }.is_err() {
+            if Process32NextW(snap, &mut entry).is_err() {
                 break;
             }
         }
     }
 
-    let _ = unsafe { windows::Win32::Foundation::CloseHandle(snap) };
+    let _ = windows::Win32::Foundation::CloseHandle(snap);
     Ok(found)
 }
 

@@ -963,7 +963,9 @@ impl SwarmExecutor {
                         &model,
                     ),
                     Err(_) => {
-                        tracing::warn!("delegation state mutex poisoned; falling back to default provider");
+                        tracing::warn!(
+                            "delegation state mutex poisoned; falling back to default provider"
+                        );
                         (provider_name.clone(), model.clone())
                     }
                 }

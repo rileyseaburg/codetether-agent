@@ -656,10 +656,9 @@ Recovery steps:\n\
         Ok(count)
     }
 
-    /// Inject workspace stub for Cargo workspace isolation
-    pub fn inject_workspace_stub(&self, _worktree_path: &Path) -> Result<()> {
-        // Placeholder: In a real implementation, this would prepend [workspace] to Cargo.toml
-        Ok(())
+    /// Inject workspace stub for Cargo workspace isolation.
+    pub fn inject_workspace_stub(&self, worktree_path: &Path) -> Result<()> {
+        crate::worktree_stub::inject(worktree_path)
     }
 
     /// Delete a local branch and optionally its remote tracking ref (best-effort).

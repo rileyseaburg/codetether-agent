@@ -31,6 +31,11 @@ fn apply(cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
 }
 
 #[cfg(not(unix))]
-fn apply(_cmd: &mut tokio::process::Command, _max_bytes: u64) -> Vec<String> {
+fn apply(_cmd: &mut tokio::process::Command, max_bytes: u64) -> Vec<String> {
+    tracing::warn!(
+        max_bytes,
+        "Sandbox memory limit cannot be enforced on this platform; \
+         caller will see 'memory_limit_unenforced' in unsafe_fallbacks"
+    );
     vec!["memory_limit_unenforced".to_string()]
 }

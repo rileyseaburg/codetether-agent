@@ -1,8 +1,8 @@
 [workspace]
 
 [package]
-name = "codetether-alpha-001"
-version = "4.7.0-a-001"
+name = "codetether-agent"
+version = "4.7.0"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -79,8 +79,8 @@ unicode-width = "0.2"
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.28.0", features = ["rustls-tls-native-roots"] }
 
- # Clipboard support (non-Windows; Windows uses the `windows` crate directly
- # to avoid a raw-dylib / dylib linking conflict with clipboard-win).
+# Clipboard support
+arboard = "3.4"
 
 # CLI
 clap = { version = "4.5.58", features = ["derive", "env"] }
@@ -132,14 +132,14 @@ k8s-openapi = { version = "0.27.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
 # See docs/tetherscript_dependency.md for the build requirement.
-tetherscript = { version = "0.1.0-alpha.7", optional = true }
+tetherscript = { git = "https://github.com/kiln-rs/kiln.git", rev = "d95f638e80a6131a62b8324f5dd42619ff2cb86e", optional = true }
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"
 
 # Image encoding
 base64 = "0.22"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 # JWT token minting
 jsonwebtoken = "9"
@@ -193,17 +193,11 @@ windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_System_Com",
-    "Win32_System_DataExchange",
     "Win32_System_Diagnostics_ToolHelp",
-    "Win32_System_Memory",
     "Win32_System_Registry",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
 ] }
-
-# Clipboard support for non-Windows platforms.
-[target.'cfg(not(windows))'.dependencies]
-arboard = "3.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.181"

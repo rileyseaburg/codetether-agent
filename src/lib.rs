@@ -43,3 +43,4 @@ pub mod util;
 pub mod worker_server;
 pub mod workspace_scan;
 pub mod worktree;
+pub mod worktree_stub;

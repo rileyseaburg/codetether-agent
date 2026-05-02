@@ -102,11 +102,14 @@ impl PolicyRunResult {
 pub fn pareto_frontier(results: &[PolicyRunResult]) -> Vec<&PolicyRunResult> {
     results
         .iter()
-        .filter(|candidate| {
+        .enumerate()
+        .filter(|(i, candidate)| {
             !results
                 .iter()
-                .any(|other| !std::ptr::eq(candidate, other) && candidate.is_dominated_by(other))
+                .enumerate()
+                .any(|(j, other)| *i != j && candidate.is_dominated_by(other))
         })
+        .map(|(_, r)| r)
         .collect()
 }
 
