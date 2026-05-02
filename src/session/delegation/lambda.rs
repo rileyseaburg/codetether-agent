@@ -12,7 +12,7 @@ pub const LAMBDA_MIN: f64 = 0.9;
 /// Upper bound (exclusive): `1.0` would mean "never forget" — handled by
 /// the caller, not by this clamp. We saturate at the largest representable
 /// value strictly below `1.0`.
-pub const LAMBDA_MAX_EXCLUSIVE: f64 = 1.0;
+pub const LAMBDA_MAX_INCLUSIVE: f64 = 1.0;
 
 /// Read `CODETETHER_DELEGATION_LAMBDA` and clamp into `[0.9, 1.0)`.
 ///
@@ -36,7 +36,7 @@ pub fn clamp_lambda(raw: f64) -> f64 {
     if !raw.is_finite() {
         return DEFAULT_LAMBDA;
     }
-    if raw <= 0.0 || raw > LAMBDA_MAX_EXCLUSIVE {
+    if raw <= 0.0 || raw > LAMBDA_MAX_INCLUSIVE {
         return DEFAULT_LAMBDA;
     }
     if raw < LAMBDA_MIN {

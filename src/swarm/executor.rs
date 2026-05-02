@@ -954,14 +954,19 @@ impl SwarmExecutor {
         for (idx, subtask) in pending_subtasks.into_iter().enumerate() {
             // LCB delegation: pick best provider for this subtask's specialty.
             let (chosen_provider, chosen_model) = if let Some(ref state) = self.delegation {
-                let guard = state.lock().expect("delegation state mutex poisoned");
-                super::delegation::choose_provider_for_subtask(
-                    &providers,
-                    &guard,
-                    subtask.specialty.as_deref().unwrap_or("General"),
-                    &provider_name,
-                    &model,
-                )
+                match state.lock() {
+                    Ok(guard) => super::delegation::choose_provider_for_subtask(
+                        &providers,
+                        &guard,
+                        subtask.specialty.as_deref().unwrap_or("General"),
+                        &provider_name,
+                        &model,
+                    ),
+                    Err(_) => {
+                        tracing::warn!("delegation state mutex poisoned; falling back to default provider");
+                        (provider_name.clone(), model.clone())
+                    }
+                }
             } else {
                 (provider_name.clone(), model.clone())
             };
