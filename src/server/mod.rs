@@ -6,6 +6,10 @@ pub mod auth;
 pub mod policy;
 mod policy_user;
 mod tool_contract;
+mod worker_stream;
+mod worker_task_claim;
+mod worker_task_release;
+mod worker_task_stream;
 
 use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
@@ -448,7 +452,7 @@ const POLICY_RULES: &[PolicyRule] = &[
     // Worker connectivity
     PolicyRule {
         pattern: "/v1/worker/",
-        methods: Some(&["GET"]),
+        methods: None,
         permission: "agent:read",
     },
     PolicyRule {
@@ -810,6 +814,19 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         // Worker connectivity (dashboard polls this)
         .route("/v1/worker/connected", get(list_connected_workers))
         .route("/v1/agent/workers", get(list_connected_workers))
+        // Worker task lifecycle (what the Rust worker calls)
+        .route(
+            "/v1/worker/tasks/stream",
+            get(worker_task_stream::worker_task_stream),
+        )
+        .route(
+            "/v1/worker/tasks/claim",
+            post(worker_task_claim::worker_task_claim),
+        )
+        .route(
+            "/v1/worker/tasks/release",
+            post(worker_task_release::worker_task_release),
+        )
         // Task dispatch (Knative-backed)
         .route("/v1/tasks/dispatch", post(dispatch_task))
         // Voice REST bridge (dashboard expects REST, server has gRPC)
