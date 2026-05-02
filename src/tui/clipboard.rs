@@ -1,7 +1,8 @@
-//! Clipboard image paste support for TUI.
+//! Clipboard image and text access for TUI.
 //!
-//! Reads image data from the system clipboard and converts it to an
-//! `ImageAttachment` suitable for sending with a chat message.
+//! On Windows, uses the `windows` crate directly (raw-dylib linking) to
+//! avoid a linker conflict with `clipboard-win`. On other platforms,
+//! delegates to `arboard`.
 
 use crate::session::ImageAttachment;
 
@@ -10,21 +11,35 @@ pub fn is_ssh_or_headless() -> bool {
     super::clipboard_ssh::is_ssh_or_headless()
 }
 
-/// Extract an image from the system clipboard, returning `None` when
-/// unavailable (SSH/headless, no clipboard, or no image content).
+#[cfg(not(windows))]
+/// Extract an image from the system clipboard.
 pub fn get_clipboard_image() -> Option<ImageAttachment> {
-    if is_ssh_or_headless() {
-        return None;
-    }
+    if is_ssh_or_headless() { return None; }
     crate::image_clipboard::capture_image().ok()
 }
 
-/// Extract plain text from the system clipboard, returning `None` when
-/// unavailable (SSH/headless, no clipboard, or no text content).
+#[cfg(windows)]
+/// Extract an image from the system clipboard (Windows).
+///
+/// Image clipboard requires BITMAPV5HEADER parsing which is not yet
+/// implemented for the Windows raw-dylib path. Returns `None` so the
+/// TUI falls through to the "clipboard unavailable" status message.
+pub fn get_clipboard_image() -> Option<ImageAttachment> {
+    if is_ssh_or_headless() { return None; }
+    None
+}
+
+#[cfg(not(windows))]
+/// Extract plain text from the system clipboard.
 pub fn get_clipboard_text() -> Option<String> {
-    if is_ssh_or_headless() {
-        return None;
-    }
+    if is_ssh_or_headless() { return None; }
     let mut clipboard = arboard::Clipboard::new().ok()?;
     clipboard.get_text().ok().filter(|t| !t.is_empty())
+}
+
+#[cfg(windows)]
+/// Extract plain text from the system clipboard (Windows via raw-dylib).
+pub fn get_clipboard_text() -> Option<String> {
+    if is_ssh_or_headless() { return None; }
+    super::clipboard_winapi::get_clipboard_text()
 }

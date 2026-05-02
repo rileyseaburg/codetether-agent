@@ -5981,9 +5981,9 @@ dependencies = [
 
 [[package]]
 name = "tetherscript"
-version = "0.0.1-alpha-0.5"
+version = "0.1.0-alpha.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff8519a128420c2065b6250c97ba0a2101ccaf9f99d4ac6631b19efa854f851e"
+checksum = "ae9d37ef94b2cfa2e7ce21dc1d8da377b6a007c35412f98a3d04b66a6d5870b4"
 
 [[package]]
 name = "thiserror"
