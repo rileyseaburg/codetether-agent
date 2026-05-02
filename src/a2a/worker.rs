@@ -5,6 +5,7 @@ mod clone_target;
 mod model_defaults;
 mod model_preferences;
 pub(crate) mod task_timeline;
+pub(super) mod workspace_resolve;
 
 use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
@@ -655,6 +656,40 @@ async fn sync_timeline_to_runtime(
     *runtime.task_progress.lock().await = state;
 }
 
+/// Resolve workspace IDs for the configured workspace roots and log diagnostics.
+async fn resolve_and_log_workspace_ids(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    workspace_roots: &[String],
+) -> Vec<String> {
+    match workspace_resolve::resolve_workspace_ids(client, server, token, workspace_roots).await {
+        Ok(resolved) => {
+            if resolved.is_empty() {
+                tracing::warn!(
+                    roots = ?workspace_roots,
+                    "No server-side workspace IDs resolved for configured roots \
+                     — the server may not route tasks to this worker. \
+                     Ensure workspaces are registered with the control plane \
+                     and that their paths fall under the configured roots."
+                );
+            } else {
+                let ids: Vec<String> = resolved.iter().map(|ws| ws.id.clone()).collect();
+                tracing::info!(
+                    workspace_ids = ?ids,
+                    count = resolved.len(),
+                    "Resolved server-side workspace IDs for configured roots"
+                );
+            }
+            resolved.iter().map(|ws| ws.id.clone()).collect()
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to resolve workspace IDs from server");
+            Vec::new()
+        }
+    }
+}
+
 fn task_value<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
     task.get("task")
         .and_then(|t| t.get(key))
@@ -1123,6 +1158,10 @@ pub async fn register_worker(
         })
         .collect();
 
+    // Resolve workspace IDs that correspond to our configured paths.
+    let workspace_ids =
+        resolve_and_log_workspace_ids(client, server, token, codebases).await;
+
     let res = req
         .json(&serde_json::json!({
             "worker_id": worker_id,
@@ -1132,6 +1171,7 @@ pub async fn register_worker(
             "k8s_node_name": k8s_node_name,
             "models": models_array,
             "workspaces": codebases,
+            "workspace_ids": workspace_ids,
             "interfaces": advertised_interfaces(public_url),
             "agents": agent_defs,
         }))
