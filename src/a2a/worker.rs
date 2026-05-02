@@ -176,6 +176,7 @@ struct WorkerTaskRuntime {
     server: String,
     token: Option<String>,
     worker_id: String,
+    agent_name: String,
     processing: Arc<Mutex<HashSet<String>>>,
     max_concurrent_tasks: usize,
     auto_approve: AutoApprove,
@@ -252,6 +253,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         server: server.to_string(),
         token: args.token.clone(),
         worker_id: worker_id.clone(),
+        agent_name: name.clone(),
         processing: processing.clone(),
         max_concurrent_tasks,
         auto_approve,
@@ -423,6 +425,7 @@ pub async fn run_with_state(
         server: server.to_string(),
         token: args.token.clone(),
         worker_id: worker_id.clone(),
+        agent_name: name.clone(),
         processing: processing.clone(),
         max_concurrent_tasks,
         auto_approve,
@@ -1462,6 +1465,21 @@ async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     }
 
     for task in &tasks {
+        // Skip tasks targeted at a different agent
+        let target_agent = task_metadata(task)
+            .get("target_agent_name")
+            .and_then(|v| v.as_str())
+            .or_else(|| task_str(task, "target_agent_name"));
+        if let Some(target) = target_agent {
+            if !target.is_empty() && target != runtime.agent_name {
+                tracing::debug!(
+                    task_id = task_str(task, "id").unwrap_or("?"),
+                    target_agent = target,
+                    "Skipping poll task targeted at different agent"
+                );
+                continue;
+            }
+        }
         spawn_task_handler(task, runtime).await;
     }
 
