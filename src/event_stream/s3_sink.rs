@@ -294,7 +294,9 @@ impl S3Sink {
         let path = format!("/{}", s3_key);
 
         // Generate AWS Signature V4 headers
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
         let date = chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
             .map(|dt| dt.format("%Y%m%dT%H%M%SZ").to_string())
             .unwrap_or_default();
