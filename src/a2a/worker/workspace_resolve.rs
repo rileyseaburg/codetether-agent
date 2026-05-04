@@ -10,6 +10,7 @@ use reqwest::Client;
 
 /// A resolved workspace linking a server-side ID to a local path.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ResolvedWorkspace {
     /// Server-side workspace ID (e.g. "spotlessbinco").
     pub id: String,

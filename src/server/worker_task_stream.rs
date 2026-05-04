@@ -11,6 +11,7 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub(crate) struct StreamQuery {
     pub agent_name: Option<String>,
     pub worker_id: Option<String>,

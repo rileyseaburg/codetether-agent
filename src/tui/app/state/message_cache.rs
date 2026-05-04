@@ -25,6 +25,7 @@ impl super::AppState {
     }
 
     /// Take ownership of the cached lines, clearing the cache.
+    #[allow(dead_code)]
     pub(crate) fn take_cached_message_lines(&mut self) -> Vec<Line<'static>> {
         self.cached_message_lines.drain(..).collect()
     }

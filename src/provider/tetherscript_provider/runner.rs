@@ -5,7 +5,6 @@
 
 use super::super::ModelInfo;
 use anyhow::{Context, Result};
-use serde_json::Value;
 
 pub struct TetherScriptProvider {
     name: String,

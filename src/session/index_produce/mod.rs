@@ -7,12 +7,4 @@
 mod build_context;
 mod call;
 
-use std::sync::Arc;
-
-use anyhow::Result;
-use tracing::info;
-
-use super::index::types::{Granularity, SummaryNode, SummaryRange};
-use crate::provider::Message;
-
 pub use call::produce_summary;

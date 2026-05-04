@@ -1,7 +1,7 @@
-//! Tests for [`super::persona_pick`].
+//! Tests for [`super::rank_chain`] and [`super::relay_bucket`].
 
-use super::persona::default_chain;
-use super::persona_pick::{rank_chain, relay_bucket};
+use super::super::persona::default_chain;
+use super::{rank_chain, relay_bucket};
 use crate::session::delegation::{DelegationConfig, DelegationState};
 use crate::session::delegation_skills::AUTOCHAT_PERSONA;
 

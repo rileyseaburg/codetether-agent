@@ -7,6 +7,7 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub(crate) struct ReleaseRequest {
     pub task_id: String,
     pub status: String,

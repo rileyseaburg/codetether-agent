@@ -4,6 +4,8 @@
 //! Auto-stops after `CODETETHER_VOICE_INPUT_MAX_SECS` (default 60).
 //! The tick loop polls [`voice_drain::drain_voice_transcription`].
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
