@@ -975,6 +975,9 @@ pub async fn handle_slash_command(
             }
             app.state.status = "Project memory palace".to_string();
         }
+        "/plugin" => {
+            push_system_message(app, "Usage: /plugin <install|list|remove> <name>");
+        }
         "/keys" => {
             app.state.status =
                 "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"

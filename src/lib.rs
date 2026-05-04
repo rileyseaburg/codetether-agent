@@ -31,6 +31,7 @@ pub mod mesh;
 pub mod moltbook;
 pub mod okr;
 pub mod platform;
+pub mod plugin_marketplace;
 pub mod provenance;
 pub mod provider;
 pub mod ralph;
