@@ -1,51 +1,45 @@
-# v4.7.0
+# v4.7.1
+
+Here are the release notes for **v4.7.1**:
+
+---
 
 ## What's New
 
-**Zero-Config A2A Peer Discovery** — Agents on the same LAN now discover each other automatically via mDNS. Peer discovery is enabled by default in the TUI and surfaces discovered peers in the bus log. (#115, #111)
-
-**Windows Computer Use Tool** — Full desktop automation for Windows: screen capture, mouse/keyboard simulation, app control, and snapshot inspection via a persistent PowerShell session. Includes structured input validation and response types.
-
-**DeepSeek Provider** — Native support for DeepSeek models with streaming, tool calling, and response parsing. SRP-split into 12 focused modules.
-
-**Context Management Tools** — Three new tools for context window control:
-- `context_summarize` — request cached summaries for arbitrary turn ranges
-- `context_pin` — pin conversation turns so they survive context compression
-- `context_budget` — inspect remaining context window capacity
-
-**Incremental & Oracle-Replay Derivation Policies** — `DerivePolicy` gains `Incremental` (builds summary index progressively) and `OracleReplay` (replays from a saved oracle trace). A new `SummaryIndex` with LRU eviction backs the incremental path.
-
-**Actor System** — New `src/actor/` module with mailbox, envelope, receipt, runtime, and dead-letter handling. Foundation for future agent bus improvements.
-
-**TetherScript Plugin Examples** — Six example `.tether` scripts (guardrails, PR summary, release notes, task scoring, triage, test output) ship under `examples/tetherscript/`. Forage opportunity ranking now optionally scores via TetherScript.
-
-**Autochat Persona Model Selection** — The autochat LCB persona now selects models automatically via `DelegationState`, wired into both swarm and ralph execution paths.
-
-**TUI Enhancements**
-- LaTeX block and inline math rendering in chat view
-- Copy shortcuts for replies and full transcript (including SSH environments)
-- Large paste summarisation via sidecar buffer
-- A2A message stream visible in the TUI bus log
-- Session tail-loading for large conversation histories (#98)
-- Stream context errors now retry with automatic compaction
-
-**Voice Tooling** — Voice input encoder module exposed as public. ALSA diagnostics silenced and panic-safe via RAII guard. SSH image paste UX improved with guided error messages.
+- **Windows native desktop automation** — The `computer_use` tool now uses Win32 APIs directly via the `windows` crate for screen capture (GDI), input simulation (click, drag, scroll, key chords, text entry), window management, and process discovery, replacing the previous PowerShell-based approach with significantly faster, more reliable desktop interaction.
+- **Tetherscript-backed Cerebras provider** — New LLM provider integration using Tetherscript plugins, enabling Cerebras inference through the standard provider interface with streaming support.
+- **DeepSeek repair pipeline** — Automated repair flow for DeepSeek provider responses, including fixes for tool-calling body construction, conversion, streaming, and model limits.
+- **Worker task lifecycle endpoints** — Three new server endpoints for A2A worker task management: `POST /worker/task/stream` (assign tasks), `POST /worker/task/claim` (claim pending tasks), and `POST /worker/task/release` (release task ownership), enabling more flexible distributed task routing.
+- **TUI UX enhancements** — Eight improvements including tool panel auto-follow (tracks latest tool execution), inline diff display in the tool panel, latency badges per chat turn, smarter slash-command suggestions, and improved PR title/body generation from worktrees.
+- **Shadow DOM support** — Browser automation (`browserctl`) now pierces shadow boundaries for element queries, uploads, and interactions using the `>>>` combinator.
+- **RLM router improvements** — The Recursive Language Model router now supports richer query classification and delegation across search backends.
+- **Audit worktree isolation and sandboxing** — New audit logging for worktree creation, sandbox policy enforcement, and isolation gating to ensure swarm sub-agents operate within their designated boundaries.
+- **Session recall budget awareness** — `session_recall` now uses budget-aware context flattening to prevent OOM conditions when reconstructing large conversation histories.
+- **Vendored Chromiumoxide for Windows** — Bundled `chromiumoxide` crates under `vendor/` for reliable Windows `computer_use` browser automation without external dependency resolution.
 
 ## Bug Fixes
 
-- **TUI mDNS discovery** — Now enabled by default; previously required manual opt-in (#106)
-- **ALSA stderr suppression** — Replaced with RAII guard to prevent panics on voice input cleanup
-- **K8s tool descriptions** — Clarified namespace and deployment parameter descriptions
-- **PowerShell session reuse** — Persistent session now correctly reuses the same process across computer_use calls
-- **TUI stream errors** — Context-length errors during streaming now trigger compaction and retry instead of failing
-- **Large session loading** — Sessions are now tail-loaded to avoid UI stalls (#98)
-- **A2A mDNS robustness** — Sanitized hostnames and fixed bind ordering for reliable LAN discovery
+- **Worker task routing** — Workspace IDs are now correctly resolved during worker registration, fixing server-side task routing that previously mismatched workers to codebases.
+- **Worker poll filtering** — `poll_pending_tasks` now skips tasks targeted at a different agent, preventing cross-agent task stealing in multi-agent deployments.
+- **Cerebras rate-limit retry** — Cerebras HTTP 429 responses are now classified as retryable errors, enabling automatic backoff and retry.
+- **False-positive retries** — HTTP 200 OK responses are no longer incorrectly retried; the retry classifier now checks status codes before inspecting error bodies.
+- **Tetherscript streaming fallback** — When Tetherscript streaming fails, the provider emits a single-chunk stream containing the full response instead of returning a hard error.
+- **Context compaction task preservation** — Active tasks are now preserved across context compaction events, preventing task loss during long sessions.
+- **`floor_char_boundary` stability** — Replaced the unstable `floor_char_boundary` API with a stable char-boundary loop for broader Rust version compatibility.
+- **Docker build fixes** — Added system protobuf include paths for Linux Docker builds, corrected `COPY` directives in the Windows Dockerfile, and removed `examples` from `.dockerignore` to ensure example files are included in build context.
+- **Unix-only `stderr_guard`** — `stderr_guard.rs` now gates Unix-specific APIs behind `cfg(target_os = "linux")`, fixing compilation on Windows targets.
+- **Windows crate 0.62 migration** — Updated all Windows platform code for API changes in the `windows` crate 0.62 release.
+- **Tetherscript version** — Pinned `tetherscript` dependency to crates.io `0.1.0-alpha.7` for stable builds.
+- **Clipboard on Windows** — New WinAPI-backed clipboard implementation replaces previous approach, resolving encoding and reliability issues.
 
 ## Changes
 
-- **SRP refactor of `delegation.rs`** — Split from 576 lines into 10 focused files, all under the 50-line effective limit
-- **SRP refactor of `index` and `index_produce`** modules — Split into cache, types, tests, and build_context submodules
-- **Voice input module** — Encoder submodule made public; stderr guard extracted for reuse
-- **CI** — Jenkins pipeline now builds PR Windows executables as artifacts
-- **Documentation** — New A2A peer discovery RFC and public agents guide (`docs/a2a-public-agents.md`, `docs/a2a-spawn.md`); PR #112 review corrections applied
-- **212 files changed**, +8,527 / −1,019 lines across 42 commits
+- **Swarm validation refactored** — The monolithic `swarm/validation.rs` (734 lines) decomposed into 26 focused modules under `src/swarm/validation/`, each under 50 lines, following SRP and modular cohesion guidelines.
+- **Tool panel SRP refactor** — `src/tui/ui/tool_panel.rs` (403 lines) split into 18 dedicated modules covering panel chrome, diff rendering, item builders, previews, and formatting.
+- **Session helper modularization** — `prompt_too_long.rs`, `session_recall`, `recall_context`, and `tetherscript_repair` each refactored into focused submodules for testability and readability.
+- **Image tool overhaul** — `src/tool/image.rs` rewritten with proper MIME detection, base64 encoding, and URL handling for vision model integration.
+- **Worker registration refactored** — A2A worker split into dedicated modules: `task_timeline.rs` for instrumentation, `workspace_resolve.rs` for ID resolution, and streamlined `worker.rs` core.
+- **Delegation lambda** — New `session/delegation/lambda.rs` for lightweight, one-shot task delegation with outcome tracking.
+- **Eval module restructured** — `session/eval.rs` promoted to `session/eval/mod.rs` with `eval_default_flip.rs` extracted as a focused sub-module.
+- **Active tail tracking** — New `session/context/active_tail.rs` for monitoring the tail of active conversation context, with dedicated tests.
+- **449 files changed** across platform abstractions, providers, TUI, swarm orchestration, and tooling — **151,709 insertions**, **2,384 deletions**.
