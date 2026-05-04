@@ -204,12 +204,7 @@ impl MoltbookClient {
 
         // Persist the key in Vault automatically
         if let Err(e) = Self::save_key_to_vault(&parsed.agent.api_key).await {
-            tracing::warn!("Could not auto-save key to Vault: {e}");
-            eprintln!(
-                "\n⚠️  Could not save API key to Vault. Store it manually:\n   \
-                 MOLTBOOK_API_KEY={}\n",
-                parsed.agent.api_key
-            );
+            tracing::error!("Could not auto-save API key to Vault: {e}. Run `codetether config vault` to check Vault connectivity and store the key manually.");
         }
 
         Ok(parsed)
