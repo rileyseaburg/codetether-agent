@@ -881,6 +881,8 @@ async fn execute_opportunity_with_run(
         file: Vec::new(),
         codex_session: None,
         max_steps: None,
+        branches: 1,
+        strategies: Vec::new(),
     };
     let timeout_secs = args.run_timeout_secs.clamp(30, 86_400);
     match tokio::time::timeout(
