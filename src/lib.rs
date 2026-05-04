@@ -23,6 +23,7 @@ pub mod indexer;
 pub mod k8s;
 pub mod lsp;
 pub mod mcp;
+pub mod memory;
 pub mod moltbook;
 pub mod okr;
 pub mod platform;

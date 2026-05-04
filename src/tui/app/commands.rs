@@ -951,6 +951,30 @@ pub async fn handle_slash_command(
                 }
             }
         }
+        "/recall" => {
+            let beliefs = crate::memory::palace::load_project_beliefs(Path::new(
+                &app.state.cwd_display,
+            ));
+            if beliefs.is_empty() {
+                push_system_message(
+                    app,
+                    "No project memories found. Memories accumulate as you work.",
+                );
+            } else {
+                let active: Vec<&crate::cognition::beliefs::Belief> =
+                    beliefs.iter().filter(|b| b.confidence >= 0.5).take(30).collect();
+                let mut lines = vec![format!(
+                    "🏰 Project Memory Palace ({} beliefs, {} active)",
+                    beliefs.len(),
+                    active.len()
+                )];
+                for b in &active {
+                    lines.push(format!("  • {} [conf: {:.2}]", b.claim, b.confidence));
+                }
+                push_system_message(app, lines.join("\n"));
+            }
+            app.state.status = "Project memory palace".to_string();
+        }
         "/keys" => {
             app.state.status =
                 "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
@@ -1020,6 +1044,7 @@ pub async fn handle_slash_command(
             | "/autochat"
             | "/protocols"
             | "/registry"
+            | "/recall"
     ) {
         app.state.status = format!("Unknown command: {normalized}");
     }

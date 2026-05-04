@@ -857,6 +857,15 @@ pub async fn execute(args: RunArgs) -> Result<()> {
         session.metadata.model = Some(model);
     }
 
+    // Load project memory palace
+    let beliefs = crate::memory::palace::load_project_beliefs(&workspace_dir);
+    if !beliefs.is_empty() {
+        let ctx = crate::memory::palace::belief_context(&beliefs);
+        if !ctx.is_empty() {
+            tracing::info!(beliefs = beliefs.len(), "Loaded project memory palace");
+        }
+    }
+
     session.metadata.knowledge_snapshot = knowledge_snapshot;
     if let Some(0) = args.max_steps {
         anyhow::bail!("--max-steps must be at least 1");

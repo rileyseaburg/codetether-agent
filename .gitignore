@@ -40,6 +40,7 @@ target-jammy/
 
 # Agent runtime artifacts (sessions, chat logs)
 .codetether-agent/
+.codetether/
 tp_*/
 .codetether-worktrees/
 
