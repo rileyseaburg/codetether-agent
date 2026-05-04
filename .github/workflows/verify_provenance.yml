@@ -1,0 +1,15 @@
+name: Verify Provenance
+on:
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify provenance trailers
+        run: |
+          chmod +x script/verify_pr.sh
+          ./script/verify_pr.sh origin/${{ github.base_ref }}..HEAD

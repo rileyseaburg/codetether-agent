@@ -1,6 +1,7 @@
 mod body;
 mod client;
 mod context;
+pub mod provenance_block;
 
 use crate::cli::{PrArgs, PrCommand};
 
