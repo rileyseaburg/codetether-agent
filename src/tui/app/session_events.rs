@@ -15,10 +15,11 @@ pub async fn handle_session_event(
 ) {
     // Update watchdog timestamp on every session event
     app.state.main_last_event_at = Some(std::time::Instant::now());
-    // Auto-follow latest output on every event (matches legacy TUI behavior).
-    // Without this, scroll stays pinned to wherever the user last left it and
-    // new streaming text / tool activity is rendered off-screen.
-    app.state.scroll_to_bottom();
+    // Auto-follow latest output unless the user has scrolled up — sticky
+    // scrollback lets them read prior turns while streaming continues.
+    if app.state.chat_auto_follow {
+        app.state.scroll_to_bottom();
+    }
 
     match evt {
         SessionEvent::Thinking => {
@@ -26,12 +27,18 @@ pub async fn handle_session_event(
             if app.state.processing_started_at.is_none() {
                 app.state.begin_request_timing();
             }
+            if app.state.streaming_start.is_none() {
+                app.state.begin_streaming();
+            }
             app.state.status = "Thinking…".to_string();
         }
         SessionEvent::ToolCallStart { name, arguments } => {
             handle_processing_started(app, worker_bridge).await;
             if app.state.processing_started_at.is_none() {
                 app.state.begin_request_timing();
+            }
+            if app.state.streaming_start.is_none() {
+                app.state.begin_streaming();
             }
             // Flush any in-flight streaming text into a real assistant message
             // before showing the tool call. Otherwise the streamed reply is
@@ -76,8 +83,11 @@ pub async fn handle_session_event(
             app.state.scroll_to_bottom();
         }
         SessionEvent::TextChunk(chunk) => {
-            app.state.scroll_to_bottom();
+            if app.state.chat_auto_follow {
+                app.state.scroll_to_bottom();
+            }
             app.state.note_text_token();
+            let chunk_len = chunk.len();
             app.state.streaming_text =
                 if chunk.len() > crate::tui::constants::MAX_STREAMING_TEXT_BYTES {
                     let mut t = crate::util::truncate_bytes_safe(
@@ -90,6 +100,7 @@ pub async fn handle_session_event(
                 } else {
                     chunk
                 };
+            app.state.record_streaming_chars(chunk_len);
         }
         SessionEvent::TextComplete(text) => {
             app.state.note_text_token();
@@ -98,7 +109,9 @@ pub async fn handle_session_event(
                 .messages
                 .push(ChatMessage::new(MessageType::Assistant, text));
             app.state.status = "Assistant replied".to_string();
-            app.state.scroll_to_bottom();
+            if app.state.chat_auto_follow {
+                app.state.scroll_to_bottom();
+            }
         }
         SessionEvent::ThinkingComplete(text) => {
             if !text.is_empty() {
@@ -107,7 +120,9 @@ pub async fn handle_session_event(
                     MessageType::Thinking(text.clone()),
                     truncate_preview(&text, 600),
                 ));
-                app.state.scroll_to_bottom();
+                if app.state.chat_auto_follow {
+                    app.state.scroll_to_bottom();
+                }
             }
         }
         SessionEvent::UsageReport {
@@ -146,6 +161,7 @@ pub async fn handle_session_event(
             handle_processing_stopped(app, worker_bridge).await;
             app.state.streaming_text.clear();
             app.state.complete_turn_timing();
+            app.state.streaming_start = None;
             app.state.status = "Ready".to_string();
         }
         SessionEvent::Error(err) => {
@@ -192,12 +208,39 @@ pub async fn handle_session_event(
                 .messages
                 .push(ChatMessage::new(MessageType::Error, err.clone()));
             app.state.status = "Error".to_string();
-            app.state.scroll_to_bottom();
+            if app.state.chat_auto_follow {
+                app.state.scroll_to_bottom();
+            }
         }
-        // New non-exhaustive variants (TokenEstimate, TokenUsage,
-        // RlmProgress, RlmComplete, Compaction*, ContextTruncated) are
-        // consumed by dedicated SessionBus subscribers, not this legacy
-        // mpsc handler. Intentionally ignored here.
+        SessionEvent::TokenEstimate(est) => {
+            app.state.context_used = Some(est.request_tokens);
+            app.state.context_budget = Some(est.budget);
+        }
+        SessionEvent::ContextTruncated(t) => {
+            app.state.messages.push(ChatMessage::new(
+                MessageType::System,
+                format!("⚠ Context truncated — dropped {} tokens", t.dropped_tokens),
+            ));
+        }
+        SessionEvent::CompactionStarted(_) => {
+            app.state.status = "Compacting context…".to_string();
+        }
+        SessionEvent::CompactionCompleted(o) => {
+            app.state.context_used = Some(o.after_tokens);
+            app.state.messages.push(ChatMessage::new(
+                MessageType::System,
+                format!(
+                    "Context compacted ({}): {} → {} tokens",
+                    o.strategy.as_str(),
+                    o.before_tokens,
+                    o.after_tokens
+                ),
+            ));
+            app.state.status = "Ready".to_string();
+        }
+        // Other non-exhaustive variants (TokenUsage, RlmProgress,
+        // RlmComplete, CompactionFailed, RlmSubcallFallback) are consumed
+        // by dedicated SessionBus subscribers, not this legacy mpsc handler.
         _ => {}
     }
 }

@@ -18,6 +18,9 @@ impl super::AppState {
     }
 
     pub fn set_view_mode(&mut self, view_mode: ViewMode) {
+        if self.view_mode == ViewMode::Chat && view_mode != ViewMode::Chat {
+            self.save_scroll_state();
+        }
         self.view_mode = view_mode;
     }
 }

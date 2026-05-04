@@ -11,7 +11,7 @@ use ratatui::text::{Line, Span};
 use super::badges::badge_spans;
 use super::status_hints::keybinding_spans;
 use super::status_text::status_text_span;
-use super::token_spans::push_token_spans;
+use super::token_spans::{push_context_budget_span, push_throughput_span, push_token_spans};
 use crate::tui::app::state::App;
 
 /// Width below which the status bar stacks across multiple rows.
@@ -76,6 +76,8 @@ pub fn build_status_spans(app: &App, session_label: &str) -> Vec<Span<'static>> 
 fn metric_spans(app: &App) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     push_token_spans(&mut spans);
+    push_context_budget_span(&mut spans, app);
+    push_throughput_span(&mut spans, app);
     spans.push(Span::raw(" | "));
     spans.push(status_text_span(app));
     spans

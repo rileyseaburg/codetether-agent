@@ -10,6 +10,9 @@ pub const TOOL_PREVIEW_FOLLOW: usize = 1_000_000;
 
 impl super::AppState {
     pub fn scroll_up(&mut self, amount: usize) {
+        // Manual scroll-up disengages auto-follow so streaming output
+        // stops yanking the user back to the bottom of the chat.
+        self.chat_auto_follow = false;
         let base = if self.chat_scroll >= 1_000_000 { self.chat_last_max_scroll } else { self.chat_scroll };
         self.chat_scroll = base.saturating_sub(amount);
     }
@@ -21,7 +24,12 @@ impl super::AppState {
     }
 
     /// Set sentinel value — clamped to actual content height at render time.
-    pub fn scroll_to_bottom(&mut self) { self.chat_scroll = 1_000_000; }
+    /// Re-engages [`AppState::chat_auto_follow`] so subsequent session events
+    /// keep the user pinned to the latest output.
+    pub fn scroll_to_bottom(&mut self) {
+        self.chat_scroll = 1_000_000;
+        self.chat_auto_follow = true;
+    }
 
     pub fn scroll_to_top(&mut self) { self.chat_scroll = 0; }
 

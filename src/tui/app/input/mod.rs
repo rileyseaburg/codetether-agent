@@ -18,6 +18,7 @@ mod chat_submit_dispatch;
 mod enter;
 pub(crate) mod image;
 mod image_data_paste;
+mod mention_route;
 mod merge;
 mod paste;
 pub(crate) mod pasted_text;

@@ -52,7 +52,7 @@ pub(super) async fn handle_unmodified_key(
 ) -> anyhow::Result<bool> {
     match key.code {
         KeyCode::Esc => handle_esc(app),
-        KeyCode::Tab if app.state.slash_suggestions_visible() => nav::handle_tab(app),
+        KeyCode::Tab if app.state.slash_suggestions_navigable() => nav::handle_tab(app),
         KeyCode::Char('?') if app.state.view_mode != crate::tui::models::ViewMode::Chat => {
             nav::toggle_help(app)
         }

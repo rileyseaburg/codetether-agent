@@ -81,6 +81,27 @@ pub(super) fn handle_ctrl_key(
             };
             app.state.status = format!("Layout: {label}");
         }
+        KeyCode::Char('l') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Bus;
+            app.state.status = "Bus log".to_string();
+        }
+        KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Swarm;
+            app.state.status = "Swarm".to_string();
+        }
+        KeyCode::Char('p') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Protocol;
+            app.state.status = "Protocol registry".to_string();
+        }
         KeyCode::Char('o') if ctrl && app.state.view_mode == ViewMode::Chat => {
             crate::tui::app::file_picker::open_file_picker(app, cwd);
         }

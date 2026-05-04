@@ -44,7 +44,7 @@ pub(super) fn scroll_overlay_up(app: &mut App, amount: usize) -> bool {
         }
         return true;
     }
-    if app.state.slash_suggestions_visible() {
+    if app.state.slash_suggestions_navigable() {
         for _ in 0..amount {
             app.state.select_prev_slash_suggestion();
         }
@@ -81,7 +81,7 @@ pub(super) fn scroll_overlay_down(app: &mut App, amount: usize) -> bool {
         }
         return true;
     }
-    if app.state.slash_suggestions_visible() {
+    if app.state.slash_suggestions_navigable() {
         for _ in 0..amount {
             app.state.select_next_slash_suggestion();
         }

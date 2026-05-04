@@ -34,8 +34,10 @@ pub mod scroll;
 pub mod session_nav;
 pub mod settings_nav;
 pub mod slash_commands;
+pub mod slash_hints;
 pub mod slash_suggest;
 pub mod timing;
+pub mod view_save;
 pub mod worker_bridge;
 
 #[cfg(test)]
@@ -73,6 +75,11 @@ pub struct AppState {
     pub input_scroll: usize,
     pub chat_scroll: usize,
     pub chat_last_max_scroll: usize,
+    /// When true, every session event scrolls chat to the bottom. Set to
+    /// `false` by [`AppState::scroll_up`] so the user's manual scrollback
+    /// position survives streaming output. Re-enabled by
+    /// [`AppState::scroll_to_bottom`] (e.g. End / G keypress).
+    pub chat_auto_follow: bool,
     pub tool_preview_scroll: usize,
     pub tool_preview_last_max_scroll: usize,
     /// Selected index in the protocol/agent registry view (left pane list).
@@ -120,6 +127,12 @@ pub struct AppState {
     pub last_completion_latency_ms: Option<u64>,
     pub last_completion_prompt_tokens: Option<usize>,
     pub last_completion_output_tokens: Option<usize>,
+    /// Most recent pre-flight token estimate (request side). Surfaced as a
+    /// percentage badge in the chat title bar so users see context pressure
+    /// build up turn-over-turn instead of being surprised by a compaction.
+    pub context_used: Option<usize>,
+    /// Usable token budget paired with [`AppState::context_used`].
+    pub context_budget: Option<usize>,
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
@@ -190,4 +203,13 @@ pub struct AppState {
     /// Shared slot for the background voice thread to deliver transcribed text.
     /// The tick loop polls this and injects into [`AppState::input`].
     pub pending_voice_text: Option<Arc<std::sync::Mutex<Option<String>>>>,
+    /// Saved chat scroll state captured when leaving Chat for another view,
+    /// so streaming output that arrives while the user is in `/bus` etc.
+    /// doesn't lose their scrollback position when they return.
+    pub saved_chat_scroll: usize,
+    pub saved_chat_auto_follow: bool,
+    pub saved_tool_preview_scroll: usize,
+    /// Live throughput tracking for the status-line tok/s badge.
+    pub streaming_start: Option<Instant>,
+    pub streaming_chars: usize,
 }
