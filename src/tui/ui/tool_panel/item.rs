@@ -16,7 +16,7 @@ pub(super) fn render_tool_activity_item(
     let timestamp = format_timestamp(message.timestamp);
     match &message.message_type {
         MessageType::ToolCall { name, arguments } => {
-            render_tool_call(body_lines, &timestamp, name, arguments)
+            render_tool_call(body_lines, &timestamp, name, arguments, preview_width)
         }
         MessageType::ToolResult {
             name,

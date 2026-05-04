@@ -2,6 +2,7 @@
 
 pub mod arg_preview;
 mod arg_preview_helpers;
+mod diff_render;
 mod entry_builder;
 mod format_meta;
 mod formatted;
@@ -25,7 +26,7 @@ pub use render_chat::render_chat_message;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
 /// Max visible lines inside the compact tool panel.
-pub const TOOL_PANEL_VISIBLE_LINES: usize = 6;
+pub const TOOL_PANEL_VISIBLE_LINES: usize = 12;
 
 #[derive(Default)]
 pub struct RenderEntry<'a> {

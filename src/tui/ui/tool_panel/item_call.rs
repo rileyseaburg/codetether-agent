@@ -6,6 +6,7 @@ use ratatui::{
 };
 
 use super::arg_preview::smart_arg_preview;
+use super::diff_render::{push_create_preview, push_edit_diff};
 use super::icons::tool_icon_and_color;
 
 pub(super) fn render_tool_call(
@@ -13,6 +14,7 @@ pub(super) fn render_tool_call(
     timestamp: &str,
     name: &str,
     arguments: &str,
+    preview_width: usize,
 ) {
     let (icon, color) = tool_icon_and_color(name);
     body_lines.push(Line::from(vec![
@@ -34,4 +36,14 @@ pub(super) fn render_tool_call(
         Span::styled("│   ", Style::default().fg(Color::DarkGray).dim()),
         Span::styled(body, Style::default().fg(Color::DarkGray).dim()),
     ]));
+
+    match name {
+        "replace_string_in_file" | "edit_file" => {
+            push_edit_diff(body_lines, arguments, preview_width)
+        }
+        "create_file" | "write_file" => {
+            push_create_preview(body_lines, arguments, preview_width)
+        }
+        _ => {}
+    }
 }
