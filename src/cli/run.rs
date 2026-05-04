@@ -561,6 +561,28 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
     tracing::info!("Running with message: {}", message);
 
+    if args.branches > 1 {
+        let runner = crate::swarm::speculative::SpeculativeRunner::new(
+            args.branches,
+            args.strategies.clone(),
+        );
+        let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let specs = runner.build_branches(&cwd, message)?;
+        tracing::info!(branches = %runner.branch_count, "Many-worlds speculative mode enabled");
+        for spec in &specs {
+            tracing::info!(
+                branch = %spec.branch_name,
+                strategy = %spec.strategy_prompt,
+                "Speculative branch assigned"
+            );
+        }
+        println!(
+            "[speculative] {} parallel branches queued (collapse controller will race + prune)",
+            runner.branch_count
+        );
+        // TODO: wire through SwarmExecutor when parallel dispatch is ready
+    }
+
     // Load configuration
     let config = Config::load().await.unwrap_or_default();
     let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));

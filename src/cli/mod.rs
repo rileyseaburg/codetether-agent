@@ -339,6 +339,16 @@ pub struct RunArgs {
     /// Maximum agentic loop steps (default: 250, minimum: 1)
     #[arg(long)]
     pub max_steps: Option<usize>,
+
+    /// Number of parallel speculative branches to race (1-8, default: 1).
+    /// When > 1, enables many-worlds speculative dev via the collapse controller.
+    #[arg(long, default_value = "1")]
+    pub branches: usize,
+
+    /// Optional comma-separated strategy prompts for speculative branches
+    /// (e.g. "planner,testfirst,minimal,refactor"). Defaults to built-in rotation.
+    #[arg(long, value_delimiter = ',')]
+    pub strategies: Vec<String>,
 }
 
 #[derive(Parser, Debug)]

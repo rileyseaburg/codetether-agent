@@ -19,6 +19,7 @@ pub mod orchestrator;
 pub mod rate_limiter;
 pub mod remote_subtask;
 pub mod result_store;
+pub mod speculative;
 pub mod subtask;
 mod tool_policy;
 pub mod validation;
