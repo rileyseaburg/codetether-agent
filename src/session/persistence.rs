@@ -55,8 +55,12 @@ impl Session {
         window: usize,
     ) -> Result<TailLoad> {
         let sessions_dir = Self::sessions_dir()?;
-        let canonical_workspace =
-            workspace.map(|w| w.canonicalize().unwrap_or_else(|_| w.to_path_buf()));
+        let canonical_workspace = workspace.map(|w| {
+            w.canonicalize().unwrap_or_else(|e| {
+                tracing::warn!(path = %w.display(), error = %e, "canonicalize failed; using raw path");
+                w.to_path_buf()
+            })
+        });
         tokio::task::spawn_blocking(move || {
             scan_with_index(&sessions_dir, canonical_workspace, window)
         })
@@ -192,10 +196,11 @@ impl Session {
     /// Delete a session file by ID. No-op if the file does not exist.
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
-        if path.exists() {
-            tokio::fs::remove_file(&path).await?;
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e.into()),
         }
-        Ok(())
     }
 
     /// Resolve the sessions directory (`<data_dir>/sessions`).
@@ -220,6 +225,9 @@ impl Session {
 
     /// Resolve the on-disk path for a session file.
     pub(crate) fn session_path(id: &str) -> Result<PathBuf> {
+        if id.is_empty() || id.len() > 128 || id.contains(|c: char| !c.is_alphanumeric() && c != '-' && c != '_') {
+            anyhow::bail!("Invalid session ID:rejecting path traversal risk");
+        }
         Ok(Self::sessions_dir()?.join(format!("{}.json", id)))
     }
 }
@@ -510,6 +518,11 @@ fn file_contains_finder(path: &Path, finder: &memchr::memmem::Finder<'_>) -> Res
     let meta = file.metadata()?;
     let len = meta.len();
     if (len as usize) < needle_len {
+        return Ok(false);
+    }
+    const MAX_MMAP_SIZE: u64 = 64 * 1024 * 1024; // 64 MB
+    if len > MAX_MMAP_SIZE {
+        tracing::warn!(path = %path.display(), size = len, "Skipping oversized session file");
         return Ok(false);
     }
     // SAFETY: We only read the mapping, we do not mutate it. The

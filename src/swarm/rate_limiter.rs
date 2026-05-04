@@ -140,6 +140,7 @@ pub struct RateLimitStats {
 }
 
 /// Adaptive rate limiter that adjusts based on provider responses
+// TODO: fold backoff/current_rpm into stats struct for single-lock atomicity
 #[derive(Debug, Clone)]
 pub struct AdaptiveRateLimiter {
     /// Base delay between requests

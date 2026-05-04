@@ -12,7 +12,7 @@ pub fn select_peer(cards: &[CostCard], requires_gpu: bool) -> Option<&CostCard> 
         })
         .collect();
     eligible.into_iter().min_by(|a, b| {
-        a.scheduling_score().partial_cmp(&b.scheduling_score()).unwrap()
+        a.scheduling_score().partial_cmp(&b.scheduling_score()).unwrap_or(std::cmp::Ordering::Equal)
     })
 }
 

@@ -36,7 +36,14 @@ pub struct TrainResult {
 
 /// Launch a LoRA fine-tuning run (stub — wires to Candle when LoRA support lands).
 pub fn train_lora(config: &TrainConfig, records_path: &Path) -> Result<TrainResult> {
-    let version = std::fs::read_dir(&config.output_dir).map(|d| d.count()).unwrap_or(0) + 1;
+    let version = std::fs::read_dir(&config.output_dir)
+        .map(|entries| {
+            entries.filter_map(|e| e.ok())
+                .filter_map(|e| e.file_name().to_str()?.strip_prefix('v')?.parse::<usize>().ok())
+                .max()
+                .unwrap_or(0) + 1
+        })
+        .unwrap_or(1);
     let adapter_path = format!("{}/v{}", config.output_dir, version);
     tracing::info!(
         version, records_path = %records_path.display(), base_model = %config.base_model_path,

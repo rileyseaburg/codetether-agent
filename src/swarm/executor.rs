@@ -428,7 +428,7 @@ pub struct SwarmExecutor {
     /// Optional event channel for TUI real-time updates
     event_tx: Option<mpsc::Sender<SwarmEvent>>,
     /// Telemetry collector for swarm execution metrics
-    telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>,
+    telemetry: Arc<SwarmTelemetryCollector>,
     /// Cache for avoiding duplicate subtask execution
     cache: Option<Arc<tokio::sync::Mutex<SwarmCache>>>,
     /// Shared result store for sub-agent result sharing
@@ -450,7 +450,7 @@ impl SwarmExecutor {
             config,
             coordinator_agent: None,
             event_tx: None,
-            telemetry: Arc::new(tokio::sync::Mutex::new(SwarmTelemetryCollector::default())),
+            telemetry: Arc::new(SwarmTelemetryCollector::default()),
             cache: None,
             result_store: ResultStore::new_arc(),
             bus: None,
@@ -465,7 +465,7 @@ impl SwarmExecutor {
             config,
             coordinator_agent: None,
             event_tx: None,
-            telemetry: Arc::new(tokio::sync::Mutex::new(SwarmTelemetryCollector::default())),
+            telemetry: Arc::new(SwarmTelemetryCollector::default()),
             cache: Some(Arc::new(tokio::sync::Mutex::new(cache))),
             result_store: ResultStore::new_arc(),
             bus: None,
@@ -512,14 +512,14 @@ impl SwarmExecutor {
     /// Set a telemetry collector for swarm execution metrics
     pub fn with_telemetry(
         mut self,
-        telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>,
+        telemetry: Arc<SwarmTelemetryCollector>,
     ) -> Self {
         self.telemetry = telemetry;
         self
     }
 
     /// Get the telemetry collector as an Arc
-    pub fn telemetry_arc(&self) -> Arc<tokio::sync::Mutex<SwarmTelemetryCollector>> {
+    pub fn telemetry_arc(&self) -> Arc<SwarmTelemetryCollector> {
         Arc::clone(&self.telemetry)
     }
     /// Get the coordinator agent if set
@@ -668,8 +668,6 @@ impl SwarmExecutor {
         let swarm_id = uuid::Uuid::new_v4().to_string();
         let strategy_str = format!("{:?}", strategy);
         self.telemetry
-            .lock()
-            .await
             .start_swarm(&swarm_id, subtasks.len(), &strategy_str)
             .await;
 
@@ -772,8 +770,6 @@ impl SwarmExecutor {
 
         // Record overall execution latency
         self.telemetry
-            .lock()
-            .await
             .record_swarm_latency("total_execution", start_time.elapsed())
             .await;
 
@@ -787,8 +783,8 @@ impl SwarmExecutor {
         // Aggregate results
         let success = all_results.iter().all(|r| r.success);
 
-        // Complete telemetry collection
-        let _telemetry_metrics = self.telemetry.lock().await.complete_swarm(success).await;
+        // Complete telemetry collection (interior-mutable, no outer lock to hold)
+        let _telemetry_metrics = self.telemetry.complete_swarm(success).await;
         let result = self.aggregate_results(&all_results).await?;
 
         tracing::info!(
@@ -962,11 +958,16 @@ impl SwarmExecutor {
                         &provider_name,
                         &model,
                     ),
-                    Err(_) => {
-                        tracing::warn!(
-                            "delegation state mutex poisoned; falling back to default provider"
-                        );
-                        (provider_name.clone(), model.clone())
+                    Err(e) => {
+                        tracing::warn!("delegation state mutex poisoned; recovering");
+                        let guard = e.into_inner();
+                        super::delegation::choose_provider_for_subtask(
+                            &providers,
+                            &guard,
+                            subtask.specialty.as_deref().unwrap_or("General"),
+                            &provider_name,
+                            &model,
+                        )
                     }
                 }
             } else {

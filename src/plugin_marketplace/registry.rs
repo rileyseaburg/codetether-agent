@@ -35,6 +35,6 @@ pub fn by_popularity(plugins: &mut [&PluginEntry]) {
     plugins.sort_by(|a, b| {
         let score_a = a.downloads as f32 * a.rating;
         let score_b = b.downloads as f32 * b.rating;
-        score_b.partial_cmp(&score_a).unwrap()
+        score_b.total_cmp(&score_a)
     });
 }
