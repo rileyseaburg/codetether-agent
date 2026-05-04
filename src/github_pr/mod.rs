@@ -1,4 +1,6 @@
+pub mod autopilot;
 mod body;
+pub mod ci_watcher;
 mod client;
 mod context;
 pub mod provenance_block;
