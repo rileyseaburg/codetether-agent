@@ -6,6 +6,7 @@
 pub mod attachment;
 pub mod auto_apply;
 pub mod badges;
+mod build_uncached;
 pub mod cursor;
 pub mod elapsed_badge;
 pub mod empty;

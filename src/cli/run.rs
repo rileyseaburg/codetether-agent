@@ -807,12 +807,13 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 );
                 s
             }
-            Err(_) => {
+            Err(err) => {
                 let s = Session::new().await?;
-                tracing::info!(
+                tracing::warn!(
+                    error = %err,
                     session_id = %s.id,
                     workspace = %workspace_dir.display(),
-                    "No workspace session found; created new session"
+                    "Session lookup failed; created new session"
                 );
                 s
             }

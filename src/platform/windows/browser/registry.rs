@@ -33,28 +33,32 @@ unsafe fn probe_app_paths() -> Option<PathBuf> {
         let key_path_w: Vec<u16> = key_path.encode_utf16().chain(std::iter::once(0)).collect();
 
         let mut hkey = Default::default();
-        if RegOpenKeyExW(
-            HKEY_LOCAL_MACHINE,
-            PCWSTR(key_path_w.as_ptr()),
-            Some(0),
-            KEY_READ,
-            &mut hkey,
-        )
-        .is_err()
-            && RegOpenKeyExW(
-                HKEY_CURRENT_USER,
+        if unsafe {
+            RegOpenKeyExW(
+                HKEY_LOCAL_MACHINE,
                 PCWSTR(key_path_w.as_ptr()),
                 Some(0),
                 KEY_READ,
                 &mut hkey,
             )
+        }
+        .is_err()
+            && unsafe {
+                RegOpenKeyExW(
+                    HKEY_CURRENT_USER,
+                    PCWSTR(key_path_w.as_ptr()),
+                    Some(0),
+                    KEY_READ,
+                    &mut hkey,
+                )
+            }
             .is_err()
         {
             continue;
         }
 
-        let path = query::read_path_value(hkey);
-        let _ = RegCloseKey(hkey);
+        let path = unsafe { query::read_path_value(hkey) };
+        let _ = unsafe { RegCloseKey(hkey) };
         if path.is_some() {
             return path;
         }

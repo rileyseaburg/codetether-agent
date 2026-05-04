@@ -27,37 +27,35 @@ pub fn find_debug_browser() -> anyhow::Result<Vec<DebugBrowser>> {
 unsafe fn scan_processes() -> anyhow::Result<Vec<DebugBrowser>> {
     use windows::Win32::System::Diagnostics::ToolHelp::*;
 
-    let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)?;
+    let snap = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }?;
     let mut entry = PROCESSENTRY32W::default();
     entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
 
     let mut found = Vec::new();
 
-    if Process32FirstW(snap, &mut entry).is_ok() {
+    if unsafe { Process32FirstW(snap, &mut entry) }.is_ok() {
         loop {
-            let name = String::from_utf16_lossy(
-                &entry
-                    .szExeFile
-                    .iter()
-                    .take_while(|&&c| c != 0)
-                    .copied()
-                    .collect::<Vec<u16>>(),
-            );
+            let pos = entry
+                .szExeFile
+                .iter()
+                .position(|&c| c == 0)
+                .unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..pos]);
             let lower = name.to_lowercase();
             if is_chromium_process(&lower) {
                 found.push(DebugBrowser {
                     pid: entry.th32ProcessID,
                     name,
-                    debug_port: None, // CMD line not accessible via ToolHelp32
+                    debug_port: None,
                 });
             }
-            if Process32NextW(snap, &mut entry).is_err() {
+            if unsafe { Process32NextW(snap, &mut entry) }.is_err() {
                 break;
             }
         }
     }
 
-    let _ = windows::Win32::Foundation::CloseHandle(snap);
+    let _ = unsafe { windows::Win32::Foundation::CloseHandle(snap) };
     Ok(found)
 }
 

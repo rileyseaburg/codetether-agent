@@ -62,3 +62,5 @@ cargo_check_errors.txt
 benchmark_results.json
 validation_report.*
 state_v5.py
+.claude-session-fix-prompt.md
+.claude-tool-panel-prompt.md

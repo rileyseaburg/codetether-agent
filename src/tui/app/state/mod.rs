@@ -28,6 +28,7 @@ pub mod input_edit;
 pub mod message_cache;
 pub mod model_picker;
 pub mod model_picker_nav;
+pub mod pending_tool;
 pub mod profile_defs;
 pub mod scroll;
 pub mod session_nav;
@@ -50,15 +51,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::session::{ImageAttachment, SessionSummary};
-use crate::tui::audit_view::AuditViewState;
-use crate::tui::bus_log::BusLogState;
-use crate::tui::chat::message::ChatMessage;
-use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
-use crate::tui::ralph_view::RalphViewState;
-use crate::tui::swarm_view::SwarmViewState;
-use crate::tui::symbol_search::SymbolSearchState;
-use crate::tui::worker_bridge::IncomingTask;
+use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
+use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
+use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
+use crate::tui::{symbol_search::SymbolSearchState, worker_bridge::IncomingTask};
 
 pub use crate::session::SessionEvent;
 
@@ -126,6 +123,8 @@ pub struct AppState {
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
+    pub pending_tool_name: Option<String>,
+    pub pending_tool_started_at: Option<Instant>,
     pub chat_latency: chat_latency::ChatLatencyStats,
     pub pending_images: Vec<ImageAttachment>,
     /// Sidecar buffer for paste blocks that were too large to inline

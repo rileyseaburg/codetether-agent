@@ -20,6 +20,13 @@ pub use input::{
     send_right_click, send_scroll, send_text,
 };
 pub use process::list_processes;
-pub use snapshot::{capture_screenshot, capture_screenshot_jpeg};
+pub use snapshot::capture_screenshot;
 pub use window::{bring_to_front, capture_window_jpeg};
 pub use windows::list_windows;
+
+/// Capture the full virtual screen as JPEG bytes.
+///
+/// Returns `(jpeg_bytes, width, height, virtual_x, virtual_y)`.
+pub fn capture_screenshot_jpeg() -> anyhow::Result<(Vec<u8>, u32, u32, i32, i32)> {
+    screen_capture::capture(image::ImageFormat::Jpeg)
+}

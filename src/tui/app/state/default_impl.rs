@@ -3,8 +3,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::tui::audit_view::AuditViewState;
-use crate::tui::bus_log::BusLogState;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::ralph_view::RalphViewState;
@@ -33,9 +31,9 @@ impl Default for super::AppState {
             selected_session: 0,
             session_filter: String::new(),
             cwd_display: String::new(),
-            bus_log: BusLogState::new(),
+            bus_log: crate::tui::bus_log::BusLogState::new(),
             swarm: SwarmViewState::new(),
-            audit: AuditViewState::default(),
+            audit: crate::tui::audit_view::AuditViewState::default(),
             ralph: RalphViewState::new(),
             symbol_search: SymbolSearchState::new(),
             slash_suggestions: vec![],
@@ -69,6 +67,8 @@ impl Default for super::AppState {
             last_tool_name: None,
             last_tool_latency_ms: None,
             last_tool_success: None,
+            pending_tool_name: None,
+            pending_tool_started_at: None,
             chat_latency: Default::default(),
             pending_images: Vec::new(),
             pending_text_pastes: Vec::new(),

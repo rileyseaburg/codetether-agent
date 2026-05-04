@@ -1,8 +1,9 @@
 //! Window enumeration via EnumWindows — replaces PowerShell Get-Process.
 
 use serde_json::Value;
-use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM};
 use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::core::BOOL;
 
 /// List all top-level windows with their titles and positions.
 ///
@@ -18,7 +19,9 @@ pub fn list_windows() -> anyhow::Result<Vec<Value>> {
 unsafe fn enum_inner() -> anyhow::Result<Vec<Value>> {
     let mut results: Vec<Value> = Vec::new();
     let ptr = &mut results as *mut Vec<Value> as isize;
-    EnumWindows(Some(enum_callback), LPARAM(ptr)).ok()?;
+    unsafe { EnumWindows(Some(enum_callback), LPARAM(ptr)) }
+        .ok()
+        .ok_or_else(|| anyhow::anyhow!("EnumWindows failed"))?;
     Ok(results)
 }
 

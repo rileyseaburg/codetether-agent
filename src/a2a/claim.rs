@@ -1,7 +1,7 @@
 use crate::provenance::ClaimProvenance;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TaskClaimResponse {
     pub task_id: String,
     pub worker_id: String,

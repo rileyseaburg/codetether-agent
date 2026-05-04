@@ -1,17 +1,15 @@
 //! Cached chat-line buffer builder.
 //!
 //! [`build_chat_lines`] returns a width-keyed cached vector of [`Line`]s,
-//! delegating to [`append_entries`] and [`push_streaming_preview`].
+//! delegating to [`build_uncached`] for cold-cache rebuilds.
 
 use ratatui::text::Line;
 
 use crate::tui::app::state::App;
 use crate::tui::color_palette::ColorPalette;
 use crate::tui::message_formatter::MessageFormatter;
-use crate::tui::ui::tool_panel::build_render_entries;
 
-use super::empty::push_empty_placeholder;
-use super::entries::append_entries;
+use super::build_uncached::build_uncached;
 use super::streaming::push_streaming_preview;
 
 /// Build (or return cached) chat lines for the current width.
@@ -37,8 +35,6 @@ pub fn build_chat_lines(
     let separator_width = content_width.saturating_sub(2).min(60);
     let panel_width = content_width.saturating_sub(4);
 
-    // Fast path: messages / width / processing unchanged — only streaming_text
-    // differs. Reuse the frozen prefix and rebuild just the streaming suffix.
     if let Some(mut lines) = app.state.clone_frozen_prefix(max_width) {
         let frozen_len = lines.len();
         push_streaming_preview(&mut lines, &app.state, separator_width, formatter);
@@ -47,24 +43,7 @@ pub fn build_chat_lines(
         return lines;
     }
 
-    let mut lines = Vec::new();
-    let entries = build_render_entries(&app.state.messages);
-    if entries.is_empty() {
-        push_empty_placeholder(&mut lines);
-        app.state.set_tool_preview_max_scroll(0);
-    } else {
-        let result = append_entries(
-            &mut lines,
-            &entries,
-            separator_width,
-            panel_width,
-            app.state.tool_preview_scroll,
-            formatter,
-            palette,
-        );
-        app.state
-            .set_tool_preview_max_scroll(result.tool_preview_max_scroll);
-    }
+    let mut lines = build_uncached(app, separator_width, panel_width, formatter, palette);
     let frozen_len = lines.len();
     push_streaming_preview(&mut lines, &app.state, separator_width, formatter);
     app.state

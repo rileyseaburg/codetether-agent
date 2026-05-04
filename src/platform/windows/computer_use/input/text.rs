@@ -1,5 +1,7 @@
 //! Text input via Win32 SendInput — replaces PowerShell SendKeys.
 
+use windows::Win32::UI::Input::KeyboardAndMouse::*;
+
 /// Type a string by sending each character as a Unicode key event.
 ///
 /// Uses `KEYEVENTF_UNICODE` so special chars like `+`, `^`, `%` need no

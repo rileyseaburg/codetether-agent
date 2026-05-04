@@ -11,14 +11,16 @@ pub unsafe fn read_path_value(hkey: windows::Win32::System::Registry::HKEY) -> O
 
     let mut len = 0u32;
     let mut ty = REG_NONE;
-    if RegQueryValueExW(
-        hkey,
-        windows::core::PCWSTR::null(),
-        None,
-        Some(&mut ty),
-        None,
-        Some(&mut len),
-    )
+    if unsafe {
+        RegQueryValueExW(
+            hkey,
+            windows::core::PCWSTR::null(),
+            None,
+            Some(&mut ty),
+            None,
+            Some(&mut len),
+        )
+    }
     .is_err()
     {
         return None;
@@ -28,14 +30,16 @@ pub unsafe fn read_path_value(hkey: windows::Win32::System::Registry::HKEY) -> O
     }
 
     let mut buf: Vec<u16> = vec![0; len as usize / std::mem::size_of::<u16>()];
-    if RegQueryValueExW(
-        hkey,
-        windows::core::PCWSTR::null(),
-        None,
-        Some(&mut ty),
-        Some(buf.as_mut_ptr() as *mut _),
-        Some(&mut len),
-    )
+    if unsafe {
+        RegQueryValueExW(
+            hkey,
+            windows::core::PCWSTR::null(),
+            None,
+            Some(&mut ty),
+            Some(buf.as_mut_ptr() as *mut _),
+            Some(&mut len),
+        )
+    }
     .is_err()
     {
         return None;

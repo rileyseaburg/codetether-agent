@@ -237,24 +237,36 @@ fn scan_with_index(
         let index = super::workspace_index::WorkspaceIndex::load_sync();
         if let Some(id) = index.get(ws) {
             let candidate = sessions_dir.join(format!("{id}.json"));
-            if candidate.exists()
-                && let Ok(load) = tail_load_sync(&candidate, window)
-            {
-                // Confirm it still belongs to this workspace — the user
-                // could have edited the session's metadata.directory
-                // manually or moved a file.
-                let dir_ok = load
-                    .session
-                    .metadata
-                    .directory
-                    .as_ref()
-                    .map(|d| {
-                        let canonical = d.canonicalize().unwrap_or_else(|_| d.clone());
-                        &canonical == ws
-                    })
-                    .unwrap_or(false);
-                if dir_ok {
-                    return Ok(load);
+            if candidate.exists() {
+                if let Ok(load) = tail_load_sync(&candidate, window) {
+                    // Confirm it still belongs to this workspace — the user
+                    // could have edited the session's metadata.directory
+                    // manually or moved a file.
+                    let dir_ok = load
+                        .session
+                        .metadata
+                        .directory
+                        .as_ref()
+                        .map(|d| {
+                            let canonical = d.canonicalize().unwrap_or_else(|_| d.clone());
+                            &canonical == ws
+                        })
+                        .unwrap_or(false);
+                    if dir_ok {
+                        return Ok(load);
+                    }
+                    tracing::warn!(
+                        session_id = %id,
+                        stored_dir = ?load.session.metadata.directory,
+                        expected_dir = ?ws,
+                        "Index hit but directory mismatch; falling back to scan"
+                    );
+                } else {
+                    tracing::warn!(
+                        session_id = %id,
+                        path = %candidate.display(),
+                        "Index hit but session file failed to parse; falling back to scan"
+                    );
                 }
             }
         }
@@ -315,7 +327,10 @@ fn scan_sync(
     for entry in fs::read_dir(sessions_dir)? {
         let entry = match entry {
             Ok(e) => e,
-            Err(_) => continue,
+            Err(err) => {
+                tracing::warn!(error = %err, "skipping unreadable directory entry");
+                continue;
+            }
         };
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("json") {

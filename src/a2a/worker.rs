@@ -1162,8 +1162,7 @@ pub async fn register_worker(
         .collect();
 
     // Resolve workspace IDs that correspond to our configured paths.
-    let workspace_ids =
-        resolve_and_log_workspace_ids(client, server, token, codebases).await;
+    let workspace_ids = resolve_and_log_workspace_ids(client, server, token, codebases).await;
 
     let res = req
         .json(&serde_json::json!({
@@ -1466,7 +1465,8 @@ async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
 
     for task in &tasks {
         // Skip tasks targeted at a different agent
-        let target_agent = task_metadata(task)
+        let metadata = task_metadata(task);
+        let target_agent = metadata
             .get("target_agent_name")
             .and_then(|v| v.as_str())
             .or_else(|| task_str(task, "target_agent_name"));

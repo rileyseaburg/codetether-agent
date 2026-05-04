@@ -43,6 +43,7 @@ pub async fn handle_session_event(
                     .push(ChatMessage::new(MessageType::Assistant, text));
             }
             app.state.reset_tool_preview_scroll();
+            app.state.start_pending_tool(name.clone());
             app.state.status = format!("Running tool: {name}");
             app.state.messages.push(ChatMessage::new(
                 MessageType::ToolCall {
@@ -69,9 +70,8 @@ pub async fn handle_session_event(
                 },
                 format!("{name}: {}", truncate_preview(&output, 600)),
             ));
-            app.state.last_tool_name = Some(name.clone());
-            app.state.last_tool_latency_ms = Some(duration_ms);
-            app.state.last_tool_success = Some(success);
+            app.state
+                .note_tool_completed(name.clone(), duration_ms, success);
             app.state.status = format!("Tool finished: {name}");
             app.state.scroll_to_bottom();
         }
