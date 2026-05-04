@@ -28,10 +28,11 @@ pub fn resolve_auction(auction: &mut KrAuction) -> Option<String> {
     if auction.bids.is_empty() {
         return None;
     }
-    let winner = auction
-        .bids
-        .iter()
-        .max_by(|a, b| a.expected_value().partial_cmp(&b.expected_value()).unwrap())?;
+    let winner = auction.bids.iter().max_by(|a, b| {
+        a.expected_value()
+            .partial_cmp(&b.expected_value())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    })?;
     auction.status = AuctionStatus::Awarded;
     Some(winner.agent_id.clone())
 }
