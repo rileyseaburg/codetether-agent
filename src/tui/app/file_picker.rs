@@ -94,13 +94,11 @@ fn scan_directory(dir: &Path) -> Vec<FilePickerEntry> {
 
     // Add parent directory entry (..) if not at root
     if let Some(parent) = dir.parent() {
-        if parent != dir {
-            entries.push(FilePickerEntry {
-                path: parent.to_path_buf(),
-                is_dir: true,
-                name: "../".to_string(),
-            });
-        }
+        entries.push(FilePickerEntry {
+            path: parent.to_path_buf(),
+            is_dir: true,
+            name: "../".to_string(),
+        });
     }
 
     let Ok(read_dir) = std::fs::read_dir(dir) else {
