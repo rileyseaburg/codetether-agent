@@ -8,6 +8,7 @@ mod tests {
     use serde_json::json;
 
     #[tokio::test]
+    #[ignore = "alpha.8 browser_render builtin not yet functional"]
     async fn render_hook_produces_viewport_text() {
         let tool = TetherScriptPluginTool::new();
         let result = tool

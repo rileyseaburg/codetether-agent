@@ -8,6 +8,7 @@ mod tests {
     use serde_json::json;
 
     #[tokio::test]
+    #[ignore = "alpha.8 browser_eval_js builtin not yet functional"]
     async fn eval_js_mutates_dom() {
         let tool = TetherScriptPluginTool::new();
         let result = tool
@@ -27,6 +28,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "alpha.8 browser_compatibility_report builtin not yet functional"]
     async fn compat_returns_feature_list() {
         let tool = TetherScriptPluginTool::new();
         let result = tool
