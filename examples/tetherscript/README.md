@@ -88,3 +88,109 @@ Scan text for obvious secrets:
   "args": ["1.2.3", "Added TetherScript examples"]
 }
 ```
+
+## JavaScript evaluation (alpha.8)
+
+Run JavaScript through the built-in zero-dependency interpreter:
+
+```json
+{
+  "path": "examples/tetherscript/js_eval.tether",
+  "hook": "eval",
+  "args": ["1 + 2 * 3"]
+}
+```
+
+```json
+{
+  "path": "examples/tetherscript/js_eval.tether",
+  "hook": "eval_json",
+  "args": ["({ name: 'test', count: 42 })"]
+}
+```
+
+## Headless browser
+
+Render HTML to text, take snapshots, and compute layout — all without a real browser:
+
+```json
+{
+  "path": "examples/tetherscript/browser_render.tether",
+  "hook": "render",
+  "args": ["<h1>Hello</h1><p>World</p>"]
+}
+```
+
+```json
+{
+  "path": "examples/tetherscript/browser_render.tether",
+  "hook": "render_with_css",
+  "args": ["<h1>Hello</h1>", "h1 { color: red }"]
+}
+```
+
+```json
+{
+  "path": "examples/tetherscript/browser_render.tether",
+  "hook": "snapshot",
+  "args": ["<div><p>text</p></div>"]
+}
+```
+
+## DOM querying
+
+Extract text and elements from HTML using CSS selectors:
+
+```json
+{
+  "path": "examples/tetherscript/browser_dom.tether",
+  "hook": "extract_text",
+  "args": ["<h1>Title</h1><p>Body text</p>"]
+}
+```
+
+```json
+{
+  "path": "examples/tetherscript/browser_dom.tether",
+  "hook": "query",
+  "args": ["<div class='x'>hi</div>", ".x"]
+}
+```
+
+## Browser JavaScript runtime
+
+Execute JS with a full DOM (document, window, localStorage, timers):
+
+```json
+{
+  "path": "examples/tetherscript/browser_js.tether",
+  "hook": "eval_js",
+  "args": ["<div id='app'></div>", "document.getElementById('app').textContent = 'hello'"]
+}
+```
+
+```json
+{
+  "path": "examples/tetherscript/browser_js.tether",
+  "hook": "run_scripts",
+  "args": ["<script>console.log('hi')</script><p>done</p>"]
+}
+```
+
+```json
+{
+  "path": "examples/tetherscript/browser_js.tether",
+  "hook": "compat",
+  "args": []
+}
+```
+
+### Interactive page with JS + rendered output
+
+```json
+{
+  "path": "examples/tetherscript/browser_js.tether",
+  "hook": "interactive",
+  "args": ["<div id='out'></div>", "document.getElementById('out').textContent = Date.now()"]
+}
+```

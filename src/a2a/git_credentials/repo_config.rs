@@ -32,7 +32,13 @@ pub fn configure_repo_git_auth(repo_path: &Path, workspace_id: &str) -> Result<P
         .ok_or_else(|| anyhow!("Helper path is not valid UTF-8"))?;
     run_git_command(
         repo_path,
-        &["config", "--local", "credential.helper", helper_path_str],
+        &[
+            "config",
+            "--local",
+            "--replace-all",
+            "credential.helper",
+            helper_path_str,
+        ],
     )?;
     run_git_command(
         repo_path,

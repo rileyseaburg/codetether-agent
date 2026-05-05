@@ -1536,6 +1536,7 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     }
 
     let claim = res.json::<TaskClaimResponse>().await?;
+    let provider_keys = claim.provider_keys.clone();
     let claim_provenance = claim.into_provenance();
     timeline.checkpoint_with_detail(
         task_timeline::TaskCheckpoint::Claimed,
@@ -1559,6 +1560,7 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
             task_id,
             title,
             &claim_provenance,
+            provider_keys,
             &mut timeline,
         )
         .await;
@@ -1621,6 +1623,7 @@ async fn execute_claimed_task<'a>(
     task_id: &'a str,
     title: &'a str,
     claim_provenance: &ClaimProvenance,
+    provider_keys: Option<serde_json::Value>,
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
     let metadata = task_metadata(task);
@@ -1768,6 +1771,7 @@ async fn execute_claimed_task<'a>(
     };
     session.set_agent_name(agent_type.to_string());
     session.attach_claim_provenance(claim_provenance);
+    session.metadata.provider_keys = provider_keys;
 
     // Skip git hook installation for virtual tasks (no workspace directory).
     if !is_virtual_task {
@@ -2385,10 +2389,39 @@ async fn execute_session_with_policy(
     use crate::provider::{ContentPart, Message, ProviderRegistry, Role, parse_model_string};
     use std::sync::Arc;
 
-    // Load provider registry from Vault
-    let registry = ProviderRegistry::from_vault()
-        .await
-        .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?;
+    let per_task_keys = session
+        .metadata
+        .provider_keys
+        .as_ref()
+        .and_then(|value| match crate::provider::PerTaskProviderKeys::from_value(value) {
+            Ok(keys) => keys,
+            Err(err) => {
+                tracing::warn!(error = %err, "Invalid per-task provider key payload; falling back to platform registry");
+                None
+            }
+        });
+
+    // Load provider registry from claim-injected tenant keys, falling back to Vault/env platform keys.
+    let registry = if let Some(ref keys) = per_task_keys {
+        let registry = keys.build_registry();
+        if registry.list().is_empty() {
+            tracing::warn!("Per-task provider key payload produced no providers; falling back to platform registry");
+            ProviderRegistry::from_vault()
+                .await
+                .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?
+        } else {
+            tracing::info!(
+                source = keys.source(),
+                providers = ?keys.provider_names(),
+                "Using tenant-scoped per-task provider registry"
+            );
+            registry
+        }
+    } else {
+        ProviderRegistry::from_vault()
+            .await
+            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?
+    };
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
 

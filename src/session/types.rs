@@ -145,6 +145,9 @@ pub struct SessionMetadata {
     /// session JSON would persist secrets to disk.
     #[serde(skip)]
     pub history_sink: Option<HistorySinkConfig>,
+    /// Claim-scoped provider key payload. Not serialized so BYOK secrets are not written to disk.
+    #[serde(skip)]
+    pub provider_keys: Option<serde_json::Value>,
     /// Pre-resolved subcall provider from
     /// [`RlmConfig::subcall_model`](crate::rlm::RlmConfig::subcall_model).
     ///
@@ -182,6 +185,7 @@ impl std::fmt::Debug for SessionMetadata {
                     .as_ref()
                     .map(|cfg| (&cfg.endpoint, &cfg.bucket, &cfg.prefix)),
             )
+            .field("provider_keys", &self.provider_keys.as_ref().map(|_| "<redacted>"))
             .field(
                 "subcall_provider",
                 &self.subcall_provider.as_ref().map(|_| "<provider>"),

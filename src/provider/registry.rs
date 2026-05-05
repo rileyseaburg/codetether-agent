@@ -14,6 +14,7 @@
 
 use super::parse::parse_model_string;
 use super::traits::Provider;
+use crate::secrets::ProviderSecrets;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -63,6 +64,17 @@ impl ProviderRegistry {
         let name = provider.name().to_string();
         let wrapped = super::metrics::MetricsProvider::wrap(provider);
         self.providers.insert(name, wrapped);
+    }
+
+    /// Build a registry directly from provider secret records.
+    pub fn from_provider_secrets_map(secrets: &HashMap<String, ProviderSecrets>) -> Self {
+        let mut registry = Self::new();
+        for (provider_id, provider_secrets) in secrets {
+            if let Some(provider) = super::init_dispatch::dispatch(provider_id, provider_secrets) {
+                registry.register(provider);
+            }
+        }
+        registry
     }
 
     /// Get a provider by name.

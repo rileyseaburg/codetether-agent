@@ -1,4 +1,12 @@
 #[cfg(feature = "tetherscript")]
+mod alpha8_browser_dom;
+#[cfg(feature = "tetherscript")]
+mod alpha8_browser_js;
+#[cfg(feature = "tetherscript")]
+mod alpha8_browser_render;
+#[cfg(feature = "tetherscript")]
+mod alpha8_js_eval;
+#[cfg(feature = "tetherscript")]
 mod conversion;
 #[cfg(feature = "tetherscript")]
 mod deepseek_repair;

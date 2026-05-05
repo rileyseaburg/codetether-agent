@@ -1,0 +1,32 @@
+// Full browser runtime - execute JS in a DOM environment.
+// Uses browser_eval_js and browser_run_scripts (new in 0.1.0-alpha.8).
+
+fn eval_js(html, script) {
+    let result = browser_eval_js(html, script)
+    let m = map()
+    m["value"] = str(result)
+    m["html"] = html
+    return json_encode(m)
+}
+
+fn run_scripts(html) {
+    let result = browser_run_scripts(html)
+    let m = map()
+    m["value"] = str(result)
+    m["html"] = html
+    return json_encode(m)
+}
+
+fn compat() {
+    let report = browser_compatibility_report()
+    return json_encode(report)
+}
+
+fn interactive(html, script) {
+    let result = browser_eval_js(html, script)
+    let rendered = browser_render(html)
+    let m = map()
+    m["js_result"] = str(result)
+    m["page_text"] = rendered
+    return json_encode(m)
+}

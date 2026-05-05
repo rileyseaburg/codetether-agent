@@ -141,6 +141,52 @@ impl Tool for YourTool {
    - Add `pub mod your_tool;`
    - Add to `ToolRegistry::new()` or `ToolRegistry::with_provider_arc()`
 
+## Adding a TetherScript Plugin (No Rust Needed)
+
+Before creating a Rust tool, check if a TetherScript plugin can do the job.
+Plugins live in `examples/tetherscript/*.tether`, run through the existing
+`tetherscript_plugin` tool, and require zero Rust changes or rebuilds.
+
+1. Create `examples/tetherscript/your_plugin.tether`:
+
+```tetherscript
+fn your_hook(arg) {
+    let m = map()
+    m["ok"] = true
+    m["result"] = str(arg)
+    return json_encode(m)
+}
+```
+
+2. The agent calls it:
+
+```json
+{
+  "path": "examples/tetherscript/your_plugin.tether",
+  "hook": "your_hook",
+  "args": ["input"]
+}
+```
+
+3. Test it through the tool runtime (not just `tetherscript check`):
+
+```rust
+#[tokio::test]
+async fn test_your_plugin_via_runtime() {
+    let tool = TetherScriptPluginTool::new();
+    let result = tool.execute(json!({
+        "path": "examples/tetherscript/your_plugin.tether",
+        "hook": "your_hook",
+        "args": ["test input"]
+    })).await.unwrap();
+    assert!(result.success);
+}
+```
+
+See `docs/plugin_pattern.md` for the full contract and testing patterns.
+Available builtins: `js_eval`, `browser_render`, `browser_eval_js`,
+`json_parse`, `json_encode`, `http_get`, `fs_read`, `sha256_hex`, etc.
+
 ## Adding a New Provider
 
 1. Create `src/provider/your_provider.rs` implementing `Provider` trait:
