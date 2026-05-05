@@ -24,15 +24,22 @@ pub enum AuctionStatus {
 }
 
 /// Resolve an auction — pick the best bid by expected value.
+///
+/// Bids with NaN expected values are excluded to prevent nondeterministic
+/// winner selection via `partial_cmp` returning `None`.
 pub fn resolve_auction(auction: &mut KrAuction) -> Option<String> {
     if auction.bids.is_empty() {
         return None;
     }
-    let winner = auction.bids.iter().max_by(|a, b| {
-        a.expected_value()
-            .partial_cmp(&b.expected_value())
-            .unwrap_or(std::cmp::Ordering::Equal)
-    })?;
+    let winner = auction
+        .bids
+        .iter()
+        .filter(|b| !b.expected_value().is_nan())
+        .max_by(|a, b| {
+            a.expected_value()
+                .partial_cmp(&b.expected_value())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })?;
     auction.status = AuctionStatus::Awarded;
     Some(winner.agent_id.clone())
 }
