@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Release](https://img.shields.io/github/v/release/rileyseaburg/codetether-agent)](https://github.com/rileyseaburg/codetether-agent/releases)
 
-A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, local FunctionGemma tool-call router, and **derived context per turn** — the canonical chat history stays append-only while the LLM sees a compressed, paired, and repaired ephemeral context every turn.
+A high-performance AI coding agent written in Rust. A2A (Agent-to-Agent) protocol support with dual JSON-RPC + gRPC transports, in-process agent message bus, rich terminal UI, parallel swarm execution, autonomous PRD-driven development, local FunctionGemma tool-call router, **derived context per turn**, and a **TetherScript plugin platform** — extend the agent with zero Rust and zero rebuilds by dropping a `.tether` script file.
 
 ## Install
 
@@ -200,6 +200,73 @@ CodeTether treats security as non-optional infrastructure, not a feature flag.
 | **K8s Self-Healing** | Reconciliation loop detects unhealthy pods and triggers rolling restarts. |
 
 ## Features
+
+### TetherScript: Zero-Rust Plugin Platform
+
+TetherScript is CodeTether's scriptable extension layer. Third parties can add new providers, enforce custom policies, and build automation workflows **without writing Rust, without recompiling, and without restarting the agent**. Drop a `.tether` file anywhere, call it through the `tetherscript_plugin` tool, and the running agent executes it immediately.
+
+#### Why it's different
+
+| Approach | Requires Rust? | Requires rebuild? | Hot-reloadable? |
+|---|---|---|---|
+| Built-in Rust tool | Yes | Yes | No |
+| MCP external server | No | No | Yes |
+| **TetherScript plugin** | **No** | **No** | **Yes** |
+
+TetherScript plugins run inside the agent process with access to the full built-in surface: HTTP, filesystem, JSON, JavaScript evaluation, and live browser rendering — no sandbox limitations by default.
+
+#### Quick example — call a local LM Studio model without touching Rust
+
+```json
+{
+  "path": "examples/tetherscript/lmstudio_gemma.tether",
+  "hook": "chat",
+  "args": ["explain this codebase", "gemma"]
+}
+```
+
+The plugin (`lmstudio_gemma.tether`) uses `http_request` to call `http://localhost:1234/v1/chat/completions` — wiring an entirely new LLM backend with ~55 lines of script.
+
+#### Inline scripts — the agent can write and run its own tools dynamically
+
+```json
+{
+  "source": "fn validate(x) { return Ok(x > 0) }",
+  "hook": "validate",
+  "args": [42]
+}
+```
+
+The `source` field lets the LLM generate and execute logic in-band — a **self-extending agent** pattern.
+
+#### Built-in plugins
+
+| File | Hooks | Purpose |
+|------|-------|---------|
+| `guardrails.tether` | `allow_path`, `scan_text` | Custom security policies |
+| `task_score.tether` | `score`, `classify` | Task prioritization |
+| `test_output.tether` | `cargo_status`, `next_action` | Test result routing |
+| `pr_summary.tether` | `title`, `checklist` | PR description helpers |
+| `release_note.tether` | `summarize` | Release note generation |
+| `deepseek_repair.tether` | `repair_msg` | Fix null reasoning content |
+| `cerebras_chat.tether` | `complete`, `models` | Cerebras LLM provider |
+| `lmstudio_gemma.tether` | `chat`, `chat_at`, `complete`, `models` | LM Studio / Gemma provider |
+| `browser_render.tether` | `render`, `snapshot`, `layout` | HTML/CSS rendering |
+| `browser_dom.tether` | `text`, `query`, `extract_links` | DOM querying |
+| `browser_js.tether` | `eval_js`, `run_scripts`, `compat` | Browser JS runtime |
+| `js_eval.tether` | `eval`, `eval_json` | JavaScript evaluation |
+
+#### Built-in TetherScript functions
+
+- **HTTP**: `http_get`, `http_post`, `http_request`
+- **Filesystem**: `fs_read`, `fs_write`, `fs_exists`, `fs_list`
+- **JSON**: `json_parse`, `json_encode`, `json_encode_pretty`
+- **JS / Browser**: `js_eval`, `browser_render`, `browser_eval_js`, `browser_snapshot`, `browser_query_selector`
+- **Strings**: `.contains()`, `.split()`, `.replace()`, `.upper()`, `.lower()`
+
+See [`docs/plugin_pattern.md`](docs/plugin_pattern.md) for the full contract, return value conventions, and testing patterns.
+
+---
 
 ### Derived Context: Append-Only History + Ephemeral LLM Context
 
