@@ -288,19 +288,12 @@ impl S3Sink {
             return Ok(url);
         }
 
-        use std::time::{SystemTime, UNIX_EPOCH};
-
         let endpoint = self.endpoint_url();
         let path = format!("/{}", s3_key);
 
         // Generate AWS Signature V4 headers
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default();
-        let date = chrono::DateTime::from_timestamp(now.as_secs() as i64, 0)
-            .map(|dt| dt.format("%Y%m%dT%H%M%SZ").to_string())
-            .unwrap_or_default();
-        let _date_only = &date[..8];
+        let now = chrono::Utc::now();
+        let date = now.format("%Y%m%dT%H%M%SZ").to_string();
 
         let content_hash = sha256_hex_bytes(data);
 
