@@ -22,6 +22,7 @@ pub mod agent_profile;
 #[path = "latency/chat.rs"]
 pub mod chat_latency;
 pub mod default_impl;
+pub mod git_state;
 pub mod history;
 pub mod input_cursor;
 pub mod input_edit;
@@ -96,6 +97,7 @@ pub struct AppState {
     pub bus_log: BusLogState,
     pub swarm: SwarmViewState,
     pub audit: AuditViewState,
+    pub git: git_state::GitViewState,
     pub ralph: RalphViewState,
     pub symbol_search: SymbolSearchState,
     pub slash_suggestions: Vec<String>,

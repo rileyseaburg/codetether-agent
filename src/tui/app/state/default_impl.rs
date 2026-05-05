@@ -35,6 +35,7 @@ impl Default for super::AppState {
             bus_log: crate::tui::bus_log::BusLogState::new(),
             swarm: SwarmViewState::new(),
             audit: crate::tui::audit_view::AuditViewState::default(),
+            git: super::git_state::GitViewState::default(),
             ralph: RalphViewState::new(),
             symbol_search: SymbolSearchState::new(),
             slash_suggestions: vec![],

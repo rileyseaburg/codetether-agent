@@ -64,6 +64,12 @@ fn dispatch_view(f: &mut Frame, app: &mut App, session: &crate::session::Session
         ViewMode::FilePicker => crate::tui::app::file_picker::render_file_picker(f, f.area(), app),
         ViewMode::Inspector => super::inspector::render_inspector_view(f, app),
         ViewMode::Audit => render_audit_view(f, &mut app.state.audit, f.area()),
+        ViewMode::Git => crate::tui::git_view::render_git_view(
+            f,
+            f.area(),
+            &app.state.git,
+            &app.state.status,
+        ),
     }
 }
 

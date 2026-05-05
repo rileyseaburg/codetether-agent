@@ -892,6 +892,13 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Audit);
             app.state.status = "Audit — subagent activity".to_string();
         }
+        "/git" => {
+            let cwd = std::path::PathBuf::from(&app.state.cwd_display);
+            app.state.git =
+                crate::tui::git_capture::capture_git_state(&cwd);
+            app.state.set_view_mode(ViewMode::Git);
+            app.state.status = "Git status".to_string();
+        }
         "/chat" | "/home" | "/main" => return_to_chat(app),
         "/webview" => {
             app.state.chat_layout_mode =
@@ -980,7 +987,7 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
+                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent /audit /git\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
                     .to_string();
         }
         _ => {}
@@ -1026,6 +1033,7 @@ pub async fn handle_slash_command(
             | "/rlm"
             | "/latency"
             | "/audit"
+            | "/git"
             | "/chat"
             | "/home"
             | "/main"

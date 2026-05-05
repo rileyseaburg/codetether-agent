@@ -44,4 +44,6 @@ pub const SLASH_COMMANDS: &[&str] = &[
     "/autochat",
     "/recall",
     "/plugin",
+    "/audit",
+    "/git",
 ];
