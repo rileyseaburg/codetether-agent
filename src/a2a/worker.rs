@@ -35,6 +35,7 @@ use tokio::time::Instant;
 
 use self::model_defaults::{default_model_for_provider, prefers_temperature_one};
 use self::model_preferences::choose_provider_for_tier;
+use crate::a2a::task_scope::check_task_scope;
 use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed};
 use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
 use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
@@ -183,6 +184,8 @@ struct WorkerTaskRuntime {
     bus: Arc<AgentBus>,
     /// Shared progress state for the currently active task (read by heartbeat).
     task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
+    /// Server-side workspace IDs this worker is scoped to (empty = accept all).
+    workspace_ids: Vec<String>,
 }
 
 // Run the A2A worker
@@ -259,6 +262,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         auto_approve,
         bus: bus.clone(),
         task_progress: task_progress.clone(),
+        workspace_ids: Vec::new(),
     };
 
     // Register worker
@@ -431,6 +435,7 @@ pub async fn run_with_state(
         auto_approve,
         bus: bus.clone(),
         task_progress: task_progress_ws.clone(),
+        workspace_ids: Vec::new(),
     };
 
     // Register worker
@@ -1279,6 +1284,16 @@ async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
 
     for task in tasks {
         if let Some(id) = task["id"].as_str() {
+            // Scope gate: reject tasks not targeted at this worker
+            if let Err(reason) = check_task_scope(&task, &runtime.worker_id, &runtime.agent_name, &runtime.workspace_ids) {
+                tracing::debug!(
+                    task_id = id,
+                    reason = %reason,
+                    "Pending task skipped — out of scope"
+                );
+                continue;
+            }
+
             match reserve_task_slot(&runtime.processing, id, runtime.max_concurrent_tasks).await {
                 TaskReservation::Reserved => {
                     let task_id = id.to_string();
@@ -1414,6 +1429,16 @@ async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntim
         .and_then(|t| t["id"].as_str())
         .or_else(|| task["id"].as_str())
     {
+        // Scope gate: reject tasks not targeted at this worker
+        if let Err(reason) = check_task_scope(task, &runtime.worker_id, &runtime.agent_name, &runtime.workspace_ids) {
+            tracing::debug!(
+                task_id = id,
+                reason = %reason,
+                "SSE task skipped — out of scope"
+            );
+            return;
+        }
+
         match reserve_task_slot(&runtime.processing, id, runtime.max_concurrent_tasks).await {
             TaskReservation::Reserved => {
                 let task_id = id.to_string();
@@ -1464,21 +1489,15 @@ async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     }
 
     for task in &tasks {
-        // Skip tasks targeted at a different agent
-        let metadata = task_metadata(task);
-        let target_agent = metadata
-            .get("target_agent_name")
-            .and_then(|v| v.as_str())
-            .or_else(|| task_str(task, "target_agent_name"));
-        if let Some(target) = target_agent {
-            if !target.is_empty() && target != runtime.agent_name {
-                tracing::debug!(
-                    task_id = task_str(task, "id").unwrap_or("?"),
-                    target_agent = target,
-                    "Skipping poll task targeted at different agent"
-                );
-                continue;
-            }
+        // Scope gate: reject tasks not targeted at this worker
+        let task_id_str = task_str(task, "id").unwrap_or("?");
+        if let Err(reason) = check_task_scope(task, &runtime.worker_id, &runtime.agent_name, &runtime.workspace_ids) {
+            tracing::debug!(
+                task_id = task_id_str,
+                reason = %reason,
+                "Poll task skipped — out of scope"
+            );
+            continue;
         }
         spawn_task_handler(task, runtime).await;
     }
@@ -2405,10 +2424,12 @@ async fn execute_session_with_policy(
     let registry = if let Some(ref keys) = per_task_keys {
         let registry = keys.build_registry();
         if registry.list().is_empty() {
-            tracing::warn!("Per-task provider key payload produced no providers; falling back to platform registry");
-            ProviderRegistry::from_vault()
-                .await
-                .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?
+            tracing::warn!(
+                "Per-task provider key payload produced no providers; falling back to platform registry"
+            );
+            ProviderRegistry::from_vault().await.context(
+                "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
+            )?
         } else {
             tracing::info!(
                 source = keys.source(),
