@@ -1,6 +1,9 @@
 pub mod ask;
 pub mod autochat;
 pub mod background;
+pub mod bus_agent_track;
+pub mod bus_ingest;
+pub mod bus_reply;
 pub mod codex_sessions;
 pub mod commands;
 #[path = "event_handlers/mod.rs"]
@@ -11,6 +14,7 @@ pub mod file_picker;
 pub mod file_preview;
 pub mod file_share;
 pub mod impl_app;
+pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
 pub mod mcp;
@@ -22,10 +26,12 @@ pub mod panic_cleanup;
 pub mod resume_window;
 pub mod run;
 pub mod safe_draw;
+pub mod session_event_drain;
 pub mod session_events;
 pub mod session_fork;
 pub mod session_load_status;
 pub mod session_loader;
+pub mod session_result;
 pub mod session_sync;
 pub mod settings;
 pub mod signal_shutdown;
@@ -35,13 +41,9 @@ pub mod smart_switch;
 pub mod state;
 pub mod symbols;
 pub mod terminal_state;
+#[cfg(test)]
+mod test_modules;
 pub mod text;
 pub mod watchdog;
 pub mod worker_bridge;
-
-#[cfg(test)]
-mod session_loader_real_tests;
-#[cfg(test)]
-mod session_loader_tests;
-#[cfg(test)]
-mod tests;
+pub mod worker_tasks;

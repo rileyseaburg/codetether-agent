@@ -113,6 +113,9 @@ pub struct AppState {
     pub worker_bridge_registered_agents: HashSet<String>,
     pub worker_bridge_processing_state: Option<bool>,
     pub worker_task_queue: VecDeque<IncomingTask>,
+    /// Tracks the currently executing remote task so a bus reply can
+    /// be sent to `from_agent` upon completion.
+    pub active_remote_task: Option<IncomingTask>,
     pub help_scroll: HelpScrollState,
     pub show_help: bool,
     pub available_models: Vec<String>,

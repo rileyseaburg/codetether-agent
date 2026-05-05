@@ -50,6 +50,7 @@ impl Default for super::AppState {
             worker_bridge_registered_agents: HashSet::new(),
             worker_bridge_processing_state: None,
             worker_task_queue: VecDeque::new(),
+            active_remote_task: None,
             help_scroll: HelpScrollState::default(),
             show_help: false,
             available_models: Vec::new(),
