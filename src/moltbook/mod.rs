@@ -25,6 +25,9 @@ const VAULT_PROVIDER_ID: &str = "moltbook";
 pub struct RegisterResponse {
     pub agent: RegisteredAgent,
     pub important: Option<String>,
+    /// Whether the API key was persisted to HashiCorp Vault.
+    #[serde(default)]
+    pub vault_saved: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,11 +206,24 @@ impl MoltbookClient {
             serde_json::from_str(&body).context("Failed to parse registration response")?;
 
         // Persist the key in Vault automatically
-        if let Err(e) = Self::save_key_to_vault(&parsed.agent.api_key).await {
-            tracing::error!("Could not auto-save API key to Vault: {e}. Run `codetether config vault` to check Vault connectivity and store the key manually.");
-        }
+        let vault_saved = match Self::save_key_to_vault(&parsed.agent.api_key).await {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    "Could not auto-save API key to Vault. \
+                     Set VAULT_ADDR and VAULT_TOKEN, then store the key manually \
+                     at codetether/moltbook."
+                );
+                false
+            }
+        };
 
-        Ok(parsed)
+        Ok(RegisterResponse {
+            agent: parsed.agent,
+            important: parsed.important,
+            vault_saved,
+        })
     }
 
     // ------- profile --------------------------------------------------------

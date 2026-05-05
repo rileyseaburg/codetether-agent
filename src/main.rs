@@ -1398,11 +1398,14 @@ async fn main() -> anyhow::Result<()> {
 
                     println!("✅ Registered successfully!\n");
                     println!("   Agent:             {}", reg.name);
-                    println!("   API Key:           {}", result.agent.api_key);
                     println!("   Claim URL:         {}", result.agent.claim_url);
                     println!("   Verification Code: {}", result.agent.verification_code);
                     println!("\n🔗 Send the claim URL to your human to verify ownership.");
-                    println!("🔐 API key has been saved to Vault (codetether/moltbook).");
+                    if result.vault_saved {
+                        println!("🔐 API key has been saved to Vault (codetether/moltbook).");
+                    } else {
+                        println!("⚠️  Could not save API key to Vault. Check VAULT_ADDR/VAULT_TOKEN and save it manually.");
+                    }
                     Ok(())
                 }
                 MoltbookCommand::Status => {
