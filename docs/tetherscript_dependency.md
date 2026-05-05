@@ -2,16 +2,25 @@
 
 CodeTether uses TetherScript's scripting VM for the `tetherscript_plugin` tool.
 
-The VM API used by this tool is pinned to a Git revision because the scripting
-crate is not currently available from crates.io as a compatible release. Build
-and CI environments therefore need `git` and network access to fetch:
+The crate is published on crates.io as `tetherscript`. As of v0.1.0-alpha.10 it
+includes a live browser capability (`browser_cap::BrowserAuthority`) that posts
+JSON commands to a CodeTether/browserctl-compatible HTTP bridge.
 
-```text
-https://github.com/kiln-rs/kiln.git
-```
+## Version
 
-The repository has not been renamed yet, but the package, library, and binary
-at this revision are `tetherscript`.
+- **Crate**: `tetherscript` v0.1.0-alpha.10
+- **Source**: <https://crates.io/crates/tetherscript>
+- **Repository**: <https://github.com/CodeTether/TetherScript>
 
-The revision is locked in both `Cargo.toml` and `Cargo.lock` to keep builds
-reproducible once the dependency has been fetched.
+## Capabilities available
+
+| Capability module | Authority type | Purpose |
+|---|---|---|
+| `tetherscript::plugin::TetherScriptAuthority` | Base scripting builtins |
+| `tetherscript::provider_cap::ProviderAuthority` | HTTP provider calls |
+| `tetherscript::browser_cap::BrowserAuthority` | Live browser control via CDP bridge |
+| `tetherscript::fs_cap::FsAuthority` | Filesystem access |
+| `tetherscript::rpc_cap::RpcAuthority` | RPC calls |
+
+The version is locked in both `Cargo.toml` and `Cargo.lock` to keep builds
+reproducible.

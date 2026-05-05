@@ -37,6 +37,9 @@ The agent sends a JSON tool call with these fields:
 | `hook`       | `string` | **yes**  | Top-level function name to call |
 | `args`       | `array`  | no       | JSON arguments converted to TetherScript values |
 | `timeout_secs` | `int`  | no       | Wall-clock timeout (capped at 60s, default 10s) |
+| `grant_browser` | `string` | no    | Browser bridge endpoint to grant live browser capability |
+| `browser_origin` | `array` | no    | Allowed origins for browser capability |
+| `browser_scope` | `array` | no     | Allowed scopes for browser capability |
 
 ### File-based invocation (preferred)
 
@@ -213,7 +216,9 @@ async fn test_isolated_plugin() {
 | `release_note.tether` | `summarize` | Release note generation |
 | `deepseek_repair.tether` | `repair_msg` | Fix null reasoning content |
 | `cerebras_chat.tether` | `complete`, `models` | Cerebras LLM provider |
+| `lmstudio_gemma.tether` | `chat`, `chat_at`, `complete`, `models`, `models_at` | LM Studio Gemma helper |
 | `js_eval.tether` | `eval`, `eval_json` | JavaScript evaluation |
 | `browser_render.tether` | `render`, `render_with_css`, `layout`, `display_list`, `snapshot`, `snapshot_wide` | HTML/CSS rendering |
 | `browser_dom.tether` | `text`, `query`, `styles`, `extract_links`, `extract_text` | DOM querying |
 | `browser_js.tether` | `eval_js`, `run_scripts`, `compat`, `interactive` | Browser JS runtime |
+| `browser_agentic_debug.tether` | `verify_checkout`, `main` | Live browser agentic debugging (alpha.10) |

@@ -1,3 +1,5 @@
+//! TetherScript plugin tool integration tests.
+
 #[cfg(feature = "tetherscript")]
 mod alpha8_browser_dom;
 #[cfg(feature = "tetherscript")]
@@ -6,6 +8,8 @@ mod alpha8_browser_js;
 mod alpha8_browser_render;
 #[cfg(feature = "tetherscript")]
 mod alpha8_js_eval;
+#[cfg(feature = "tetherscript")]
+mod browser_grant;
 #[cfg(feature = "tetherscript")]
 mod conversion;
 #[cfg(feature = "tetherscript")]

@@ -89,6 +89,30 @@ Scan text for obvious secrets:
 }
 ```
 
+## LM Studio Gemma helper
+
+Call a local LM Studio Gemma model without changing Rust code:
+
+```json
+{
+  "path": "examples/tetherscript/lmstudio_gemma.tether",
+  "hook": "chat",
+  "args": ["hello", "gemma"]
+}
+```
+
+For a LAN-hosted LM Studio server, call `chat_at` with the base URL:
+
+```json
+{
+  "path": "examples/tetherscript/lmstudio_gemma.tether",
+  "hook": "chat_at",
+  "args": ["hello", "gemma", "http://192.168.50.x:1234"]
+}
+```
+
+This is a TetherScript plugin helper, not a `ProviderRegistry` entry.
+
 ## JavaScript evaluation (alpha.8)
 
 Run JavaScript through the built-in zero-dependency interpreter:
@@ -194,3 +218,21 @@ Execute JS with a full DOM (document, window, localStorage, timers):
   "args": ["<div id='out'></div>", "document.getElementById('out').textContent = Date.now()"]
 }
 ```
+
+## Live browser (alpha.10)
+
+Drive a real browser through CodeTether's browserctl bridge. Requires
+`grant_browser` with an active browser session endpoint:
+
+```json
+{
+  "path": "examples/tetherscript/browser_agentic_debug.tether",
+  "hook": "verify_checkout",
+  "args": ["http://localhost:5173"],
+  "grant_browser": "http://127.0.0.1:41707/browser",
+  "browser_origin": ["http://localhost:5173"],
+  "browser_scope": ["browser.navigate", "browser.interact"]
+}
+```
+
+See `docs/browser-capability-api.md` for the full method reference.
