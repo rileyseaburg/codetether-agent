@@ -1260,9 +1260,11 @@ async fn fallback_registry() -> Result<ProviderRegistry> {
 async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
-    let mut req = runtime
-        .client
-        .get(format!("{}/v1/agent/tasks?status=pending", runtime.server));
+    let mut url = format!("{}/v1/agent/tasks?status=pending", runtime.server);
+    if !runtime.agent_name.is_empty() {
+        url = format!("{}&agent_name={}", url, urlencoding::encode(&runtime.agent_name));
+    }
+    let mut req = runtime.client.get(&url);
     if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
@@ -1465,9 +1467,11 @@ async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntim
 }
 
 async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
-    let mut req = runtime
-        .client
-        .get(format!("{}/v1/agent/tasks?status=pending", runtime.server));
+    let mut url = format!("{}/v1/agent/tasks?status=pending", runtime.server);
+    if !runtime.agent_name.is_empty() {
+        url = format!("{}&agent_name={}", url, urlencoding::encode(&runtime.agent_name));
+    }
+    let mut req = runtime.client.get(&url);
     if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
