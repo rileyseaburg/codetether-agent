@@ -99,7 +99,7 @@ fn chat_messages_from_provider_message(
                 chat_messages.push(ChatMessage::new(
                     MessageType::ToolCall {
                         name: name.clone(),
-                        arguments: arguments.clone(),
+                        arguments: crate::tui::chat::payload::tool_arguments(arguments),
                     },
                     format!("{name}: {}", truncate_preview(arguments, 240)),
                 ));
@@ -117,7 +117,7 @@ fn chat_messages_from_provider_message(
                 chat_messages.push(ChatMessage::new(
                     MessageType::ToolResult {
                         name: name.clone(),
-                        output: content.clone(),
+                        output: crate::tui::chat::payload::tool_output(content),
                         success,
                         duration_ms: None,
                     },

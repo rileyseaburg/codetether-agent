@@ -24,14 +24,12 @@ pub(super) async fn run_prompt(
     event_tx: mpsc::Sender<SessionEvent>,
     registry: Arc<ProviderRegistry>,
     original_dir: Option<PathBuf>,
-) -> anyhow::Result<Session> {
+) -> anyhow::Result<()> {
     session
         .prompt_with_events_and_images(prompt, images, event_tx, registry)
-        .await
-        .map(|_| {
-            session.metadata.directory = original_dir;
-            session.clone()
-        })
+        .await?;
+    session.metadata.directory = original_dir;
+    Ok(())
 }
 
 /// Handle worktree publishing or local merge after a prompt.

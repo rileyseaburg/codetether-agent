@@ -15,6 +15,7 @@ pub mod cost_guard;
 pub mod defaults;
 pub mod edit;
 pub mod error;
+pub mod event_payload;
 pub mod experimental;
 pub mod loop_constants;
 pub mod markup;

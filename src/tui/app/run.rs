@@ -262,8 +262,8 @@ pub async fn run(
         session.apply_config(&cfg, registry.as_deref());
     }
 
-    let (event_tx, event_rx) = mpsc::channel::<SessionEvent>(256);
-    let (result_tx, result_rx) = mpsc::channel::<anyhow::Result<Session>>(8);
+    let (event_tx, event_rx) = mpsc::channel::<SessionEvent>(64);
+    let (result_tx, result_rx) = mpsc::channel::<anyhow::Result<Session>>(1);
 
     app.state.workspace = workspace_snapshot.unwrap_or_else(|err| {
         tracing::warn!(error = %err, "Workspace snapshot task failed");

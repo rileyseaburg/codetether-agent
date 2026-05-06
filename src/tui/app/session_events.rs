@@ -55,7 +55,7 @@ pub async fn handle_session_event(
             app.state.messages.push(ChatMessage::new(
                 MessageType::ToolCall {
                     name: name.clone(),
-                    arguments: arguments.clone(),
+                    arguments: crate::tui::chat::payload::tool_arguments(&arguments),
                 },
                 format!("{name}: {}", truncate_preview(&arguments, 240)),
             ));
@@ -71,7 +71,7 @@ pub async fn handle_session_event(
             app.state.messages.push(ChatMessage::new(
                 MessageType::ToolResult {
                     name: name.clone(),
-                    output: output.clone(),
+                    output: crate::tui::chat::payload::tool_output(&output),
                     success,
                     duration_ms: Some(duration_ms),
                 },

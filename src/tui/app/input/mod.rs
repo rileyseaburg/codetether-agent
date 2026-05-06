@@ -11,7 +11,7 @@ mod chat_helpers;
 mod chat_spawn;
 mod chat_spawn_task;
 mod chat_submit;
-mod chat_submit_dispatch;
+pub(crate) mod chat_submit_dispatch;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.

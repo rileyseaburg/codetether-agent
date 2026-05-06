@@ -643,7 +643,7 @@ pub(crate) async fn run_prompt_with_events(
             let _ = event_tx
                 .send(SessionEvent::ToolCallStart {
                     name: tool_name.clone(),
-                    arguments: args_str,
+                    arguments: super::event_payload::bounded_tool_arguments(&args_str),
                 })
                 .await;
 
@@ -843,7 +843,7 @@ pub(crate) async fn run_prompt_with_events(
             let _ = event_tx
                 .send(SessionEvent::ToolCallComplete {
                     name: tool_name.clone(),
-                    output: rendered_content.clone(),
+                    output: super::event_payload::bounded_tool_output(&rendered_content),
                     success,
                     duration_ms,
                 })
@@ -905,9 +905,6 @@ pub(crate) async fn run_prompt_with_events(
     super::archive::archive_event_stream_to_s3(&session.id, super::archive::event_stream_path())
         .await;
 
-    let _ = event_tx
-        .send(SessionEvent::SessionSync(Box::new(session.clone())))
-        .await;
     let _ = event_tx.send(SessionEvent::Done).await;
 
     Ok(SessionResult {
