@@ -211,7 +211,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     // Wrap in shared mutex so background workspace-sync can add new local paths
     let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
 
-    let client = Client::new();
+    let client = build_worker_http_client()?;
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
     let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
     if cognition_heartbeat.enabled {
@@ -332,8 +332,11 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         );
 
         match connect_stream(&task_runtime, &name, &codebases, None).await {
-            Ok(()) => {
+            Ok(StreamDisconnectReason::Ended) => {
                 tracing::warn!("Stream ended, reconnecting...");
+            }
+            Ok(StreamDisconnectReason::ReadError(error)) => {
+                tracing::warn!(error = %error, "Stream read failed, reconnecting...");
             }
             Err(e) => {
                 tracing::error!("Stream error: {}, reconnecting...", e);
@@ -378,7 +381,7 @@ pub async fn run_with_state(
     // Wrap in shared mutex so background workspace-sync can add new local paths
     let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
 
-    let client = Client::new();
+    let client = build_worker_http_client()?;
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
     let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
     if cognition_heartbeat.enabled {
@@ -518,8 +521,11 @@ pub async fn run_with_state(
         );
 
         match connect_stream(&task_runtime, &name, &codebases, Some(task_notify_rx)).await {
-            Ok(()) => {
+            Ok(StreamDisconnectReason::Ended) => {
                 tracing::warn!("Stream ended, reconnecting...");
+            }
+            Ok(StreamDisconnectReason::ReadError(error)) => {
+                tracing::warn!(error = %error, "Stream read failed, reconnecting...");
             }
             Err(e) => {
                 tracing::error!("Stream error: {}, reconnecting...", e);
@@ -545,6 +551,16 @@ pub fn generate_worker_id() -> String {
     )
 }
 
+fn build_worker_http_client() -> Result<Client> {
+    Client::builder()
+        .no_gzip()
+        .no_brotli()
+        .no_zstd()
+        .no_deflate()
+        .build()
+        .context("Failed to build worker HTTP client")
+}
+
 fn resolve_worker_id() -> String {
     for key in ["CODETETHER_WORKER_ID", "A2A_WORKER_ID"] {
         if let Ok(value) = std::env::var(key) {
@@ -559,6 +575,25 @@ fn resolve_worker_id() -> String {
 
 fn normalize_max_concurrent_tasks(max_concurrent_tasks: usize) -> usize {
     max_concurrent_tasks.max(1)
+}
+
+fn persistent_worker_enabled() -> bool {
+    std::env::var("PERSISTENT_WORKER_ENABLED")
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn persistent_worker_lease_seconds() -> u64 {
+    std::env::var("PERSISTENT_WORKER_LEASE_SECONDS")
+        .ok()
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(3600)
 }
 
 async fn reserve_task_slot(
@@ -708,11 +743,45 @@ fn task_str<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a str> {
     task_value(task, key).and_then(|v| v.as_str())
 }
 
+fn task_u64(task: &serde_json::Value, key: &str) -> Option<u64> {
+    let value = task_value(task, key)?;
+    if let Some(v) = value.as_u64() {
+        return Some(v);
+    }
+    if let Some(v) = value.as_i64()
+        && v >= 0
+    {
+        return Some(v as u64);
+    }
+    if let Some(v) = value.as_str()
+        && let Ok(parsed) = v.trim().parse::<u64>()
+    {
+        return Some(parsed);
+    }
+    None
+}
+
 fn task_metadata(task: &serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
     task_value(task, "metadata")
         .and_then(|m| m.as_object())
         .cloned()
         .unwrap_or_default()
+}
+
+fn task_timeout_secs(
+    task: &serde_json::Value,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> u64 {
+    task_u64(task, "task_timeout_seconds")
+        .or_else(|| task_u64(task, "timeout_secs"))
+        .or_else(|| {
+            metadata_u64(
+                metadata,
+                &["task_timeout_seconds", "timeout_secs", "timeout"],
+            )
+        })
+        .unwrap_or(1200)
+        .clamp(60, 604800)
 }
 
 fn model_ref_to_provider_model(model: &str) -> String {
@@ -1262,7 +1331,11 @@ async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
 
     let mut url = format!("{}/v1/agent/tasks?status=pending", runtime.server);
     if !runtime.agent_name.is_empty() {
-        url = format!("{}&agent_name={}", url, urlencoding::encode(&runtime.agent_name));
+        url = format!(
+            "{}&agent_name={}",
+            url,
+            urlencoding::encode(&runtime.agent_name)
+        );
     }
     let mut req = runtime.client.get(&url);
     if let Some(t) = &runtime.token {
@@ -1287,7 +1360,12 @@ async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     for task in tasks {
         if let Some(id) = task["id"].as_str() {
             // Scope gate: reject tasks not targeted at this worker
-            if let Err(reason) = check_task_scope(&task, &runtime.worker_id, &runtime.agent_name, &runtime.workspace_ids) {
+            if let Err(reason) = check_task_scope(
+                &task,
+                &runtime.worker_id,
+                &runtime.agent_name,
+                &runtime.workspace_ids,
+            ) {
                 tracing::debug!(
                     task_id = id,
                     reason = %reason,
@@ -1323,12 +1401,18 @@ async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum StreamDisconnectReason {
+    Ended,
+    ReadError(String),
+}
+
 async fn connect_stream(
     runtime: &WorkerTaskRuntime,
     name: &str,
     codebases: &[String],
     task_notify_rx: Option<mpsc::Receiver<String>>,
-) -> Result<()> {
+) -> Result<StreamDisconnectReason> {
     let url = format!(
         "{}/v1/worker/tasks/stream?agent_name={}&worker_id={}",
         runtime.server,
@@ -1340,6 +1424,8 @@ async fn connect_stream(
         .client
         .get(&url)
         .header("Accept", "text/event-stream")
+        .header("Accept-Encoding", "identity")
+        .header("Cache-Control", "no-cache, no-transform")
         .header("X-Worker-ID", &runtime.worker_id)
         .header("X-Agent-Name", name)
         .header("X-Codebases", codebases.join(","))
@@ -1407,11 +1493,11 @@ async fn connect_stream(
                         }
                     }
                     Some(Err(e)) => {
-                        return Err(e.into());
+                        return Ok(StreamDisconnectReason::ReadError(e.to_string()));
                     }
                     None => {
                         // Stream ended
-                        return Ok(());
+                        return Ok(StreamDisconnectReason::Ended);
                     }
                 }
             }
@@ -1432,7 +1518,12 @@ async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntim
         .or_else(|| task["id"].as_str())
     {
         // Scope gate: reject tasks not targeted at this worker
-        if let Err(reason) = check_task_scope(task, &runtime.worker_id, &runtime.agent_name, &runtime.workspace_ids) {
+        if let Err(reason) = check_task_scope(
+            task,
+            &runtime.worker_id,
+            &runtime.agent_name,
+            &runtime.workspace_ids,
+        ) {
             tracing::debug!(
                 task_id = id,
                 reason = %reason,
@@ -1469,7 +1560,11 @@ async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntim
 async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     let mut url = format!("{}/v1/agent/tasks?status=pending", runtime.server);
     if !runtime.agent_name.is_empty() {
-        url = format!("{}&agent_name={}", url, urlencoding::encode(&runtime.agent_name));
+        url = format!(
+            "{}&agent_name={}",
+            url,
+            urlencoding::encode(&runtime.agent_name)
+        );
     }
     let mut req = runtime.client.get(&url);
     if let Some(t) = &runtime.token {
@@ -1495,7 +1590,12 @@ async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     for task in &tasks {
         // Scope gate: reject tasks not targeted at this worker
         let task_id_str = task_str(task, "id").unwrap_or("?");
-        if let Err(reason) = check_task_scope(task, &runtime.worker_id, &runtime.agent_name, &runtime.workspace_ids) {
+        if let Err(reason) = check_task_scope(
+            task,
+            &runtime.worker_id,
+            &runtime.agent_name,
+            &runtime.workspace_ids,
+        ) {
             tracing::debug!(
                 task_id = task_id_str,
                 reason = %reason,
@@ -1513,11 +1613,9 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     let task_id = task_str(task, "id").ok_or_else(|| anyhow::anyhow!("No task ID"))?;
     let title = task_str(task, "title").unwrap_or("Untitled");
 
-    // Determine task timeout from metadata or default to 1200s (Knative default).
+    // Determine task timeout from the task payload/metadata or default to 1200s.
     let metadata = task_metadata(task);
-    let timeout_secs = metadata_u64(&metadata, &["timeout_secs", "timeout"])
-        .unwrap_or(1200)
-        .clamp(60, 3600);
+    let timeout_secs = task_timeout_secs(task, &metadata);
 
     let mut timeline = task_timeline::TaskTimeline::new(task_id, timeout_secs);
     timeline.checkpoint(task_timeline::TaskCheckpoint::TaskReceived);
@@ -1559,6 +1657,12 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     }
 
     let claim = res.json::<TaskClaimResponse>().await?;
+    if let Some(claim_timeout_secs) = claim
+        .task_timeout_seconds
+        .map(|timeout_secs| timeout_secs.clamp(60, 604800))
+    {
+        timeline.update_timeout_secs(claim_timeout_secs);
+    }
     let provider_keys = claim.provider_keys.clone();
     let claim_provenance = claim.into_provenance();
     timeline.checkpoint_with_detail(
@@ -2717,6 +2821,8 @@ pub fn start_heartbeat(
         const HEARTBEAT_INTERVAL_SECS: u64 = 30;
         const COGNITION_RETRY_COOLDOWN_SECS: u64 = 300;
         let mut cognition_payload_disabled_until: Option<Instant> = None;
+        let persistent_heartbeat_enabled = persistent_worker_enabled();
+        let persistent_lease_seconds = persistent_worker_lease_seconds();
 
         let mut interval =
             tokio::time::interval(tokio::time::Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
@@ -2791,7 +2897,7 @@ pub fn start_heartbeat(
             }
 
             // Include task pipeline progress if a task is active
-            if let Some(progress_json) = task_progress_payload {
+            if let Some(progress_json) = task_progress_payload.clone() {
                 if let Some(obj) = payload.as_object_mut() {
                     obj.insert("task_progress".to_string(), progress_json);
                 }
@@ -2872,6 +2978,25 @@ pub fn start_heartbeat(
                 }
             }
 
+            if persistent_heartbeat_enabled
+                && let Some(progress_json) = task_progress_payload
+                && let Err(e) = send_extended_task_heartbeat(
+                    &client,
+                    &server,
+                    &token,
+                    &heartbeat_state.worker_id,
+                    progress_json,
+                    persistent_lease_seconds,
+                )
+                .await
+            {
+                tracing::warn!(
+                    worker_id = %heartbeat_state.worker_id,
+                    error = %e,
+                    "Extended task heartbeat failed"
+                );
+            }
+
             // Log error after 3 consecutive failures but do not terminate
             if consecutive_failures >= MAX_FAILURES {
                 tracing::error!(
@@ -2885,6 +3010,72 @@ pub fn start_heartbeat(
             }
         }
     })
+}
+
+async fn send_extended_task_heartbeat(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    progress: serde_json::Value,
+    lease_seconds: u64,
+) -> Result<()> {
+    let task_id = progress
+        .get("task_id")
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.is_empty())
+        .context("active task progress missing task_id")?
+        .to_string();
+    let checkpoint_seq = progress
+        .get("checkpoints_reached")
+        .and_then(|value| value.as_u64())
+        .unwrap_or(1)
+        .max(1);
+    let status_message = progress
+        .get("current_checkpoint")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+
+    let mut req = client.post(format!("{}/v1/worker/tasks/heartbeat-extended", server));
+    if let Some(token) = token {
+        req = req.bearer_auth(token);
+    }
+
+    let response = req
+        .json(&serde_json::json!({
+            "task_id": &task_id,
+            "worker_id": worker_id,
+            "status_message": status_message,
+            "checkpoint": progress,
+            "checkpoint_seq": checkpoint_seq,
+            "lease_extension_seconds": lease_seconds,
+        }))
+        .send()
+        .await?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!("extended heartbeat rejected with {}: {}", status, body);
+    }
+
+    let body = response
+        .json::<serde_json::Value>()
+        .await
+        .unwrap_or_default();
+    if body.get("success").and_then(|value| value.as_bool()) == Some(false) {
+        tracing::debug!(
+            task_id = %task_id,
+            message = body
+                .get("message")
+                .and_then(|value| value.as_str())
+                .unwrap_or("no active run"),
+            "Extended task heartbeat skipped"
+        );
+        return Ok(());
+    }
+
+    Ok(())
 }
 
 async fn fetch_cognition_heartbeat_payload(
@@ -3274,6 +3465,22 @@ mod tests {
     fn advertised_interfaces_omit_empty_public_url() {
         assert_eq!(advertised_interfaces(None), serde_json::json!({}));
         assert_eq!(advertised_interfaces(Some("   ")), serde_json::json!({}));
+    }
+
+    #[test]
+    fn worker_http_client_builds_with_stream_decoders_disabled() {
+        assert!(build_worker_http_client().is_ok());
+    }
+
+    #[test]
+    fn task_timeout_prefers_fire_and_forget_payload_timeout() {
+        let task = json!({
+            "id": "task-1",
+            "task_timeout_seconds": 604800,
+            "metadata": {"timeout_secs": 1200}
+        });
+        let metadata = task_metadata(&task);
+        assert_eq!(task_timeout_secs(&task, &metadata), 604800);
     }
 
     #[tokio::test]

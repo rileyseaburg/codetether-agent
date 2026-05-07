@@ -479,7 +479,7 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    // Check if we're running TUI - if so, redirect logs to file instead of stderr
+    // Check if we're running TUI - if so, redirect logs to file instead of stdout
     // TUI is the default when no subcommand is given
     let is_tui = matches!(&cli.command, Some(Command::Tui(_)) | None);
 
@@ -505,7 +505,7 @@ async fn main() -> anyhow::Result<()> {
     } else {
         tracing_subscriber::registry()
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
             .init();
     }
 

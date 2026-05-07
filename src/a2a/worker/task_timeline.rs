@@ -224,6 +224,10 @@ impl TaskTimeline {
         Arc::clone(&self.progress)
     }
 
+    pub fn update_timeout_secs(&mut self, timeout_secs: u64) {
+        self.timeout_secs = timeout_secs;
+    }
+
     pub async fn sync_progress(&self) {
         let mut state = self.progress.lock().await;
         state.current_checkpoint = self.current.map(|c| c.as_str().to_string());

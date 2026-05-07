@@ -49,6 +49,7 @@ pub async fn worker_task_claim(
         tenant_id: None,
         user_id: None,
         agent_identity_id: None,
+        task_timeout_seconds: None,
         provider_keys: None,
         provider_key_source: None,
     }))
