@@ -480,8 +480,9 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Check if we're running TUI - if so, redirect logs to file instead of stdout
-    // TUI is the default when no subcommand is given
+    // TUI is the default when no subcommand is given.
     let is_tui = matches!(&cli.command, Some(Command::Tui(_)) | None);
+    let is_git_credential_helper = matches!(&cli.command, Some(Command::GitCredentialHelper(_)));
 
     // Initialize tracing
     if is_tui {
@@ -502,6 +503,9 @@ async fn main() -> anyhow::Result<()> {
                 .init();
         }
         // If file creation fails, just don't log
+    } else if is_git_credential_helper {
+        // Git parses credential-helper stdout as a key=value protocol. Do not
+        // install stdout tracing here, or normal startup logs become credentials.
     } else {
         tracing_subscriber::registry()
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
@@ -524,7 +528,9 @@ async fn main() -> anyhow::Result<()> {
     let app_config = crash::maybe_prompt_for_consent(&app_config, allow_crash_prompt).await;
     crash::initialize(&app_config).await;
 
-    let needs_vault = !is_tui && !matches!(&cli.command, Some(Command::Clipboard(_)));
+    let needs_vault = !is_tui
+        && !is_git_credential_helper
+        && !matches!(&cli.command, Some(Command::Clipboard(_)));
 
     if needs_vault {
         // Initialize HashiCorp Vault connection for secrets
