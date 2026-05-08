@@ -1900,8 +1900,15 @@ async fn execute_claimed_task<'a>(
     session.attach_claim_provenance(claim_provenance);
     session.metadata.provider_keys = provider_keys;
 
-    // Skip git hook installation for virtual tasks (no workspace directory).
+    // Skip repository-local Git setup for virtual tasks (no workspace directory).
     if !is_virtual_task {
+        if let (Some(directory), Some(workspace_id)) =
+            (session.metadata.directory.as_deref(), workspace_id)
+            && directory.join(".git").exists()
+            && let Err(err) = configure_repo_git_auth(directory, workspace_id)
+        {
+            tracing::warn!(task_id, error = %err, "Failed to configure Git credential helper");
+        }
         if let Some(directory) = session.metadata.directory.as_deref()
             && let Err(err) = install_commit_msg_hook(directory)
         {
