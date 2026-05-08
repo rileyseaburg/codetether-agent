@@ -9,8 +9,9 @@ use super::{
     SwarmResult,
     kubernetes_executor::{
         RemoteSubtaskPayload, SWARM_SUBTASK_PAYLOAD_ENV, encode_payload, latest_probe_from_logs,
-        probe_changed_files_set, result_from_logs,
+        probe_changed_files_set,
     },
+    k8s_result,
     orchestrator::Orchestrator,
     result_store::ResultStore,
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
@@ -276,8 +277,6 @@ const SIMPLE_TRUNCATE_CHARS: usize = 6000;
 
 /// Collapse controller sampling interval for branch health.
 const COLLAPSE_SAMPLE_SECS: u64 = 5;
-const SWARM_FALLBACK_PROMPT_ENV: &str = "CODETETHER_SWARM_FALLBACK_PROMPT";
-const SWARM_FALLBACK_MODEL_ENV: &str = "CODETETHER_SWARM_FALLBACK_MODEL";
 const K8S_PASSTHROUGH_ENV_VARS: &[&str] = &[
     "VAULT_ADDR",
     "VAULT_TOKEN",
@@ -1759,22 +1758,6 @@ impl SwarmExecutor {
                         env_vars.insert((*key).to_string(), value);
                     }
                 }
-                let fallback_prompt = if context.trim().is_empty() {
-                    format!(
-                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
-Return only the final subtask answer.",
-                        subtask.id, subtask.instruction
-                    )
-                } else {
-                    format!(
-                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
-Dependency context:\n{}\n\nReturn only the final subtask answer.",
-                        subtask.id, subtask.instruction, context
-                    )
-                };
-                env_vars.insert(SWARM_FALLBACK_PROMPT_ENV.to_string(), fallback_prompt);
-                env_vars.insert(SWARM_FALLBACK_MODEL_ENV.to_string(), model.clone());
-
                 let mut labels = HashMap::new();
                 labels.insert("codetether.run/swarm-id".to_string(), swarm_id.to_string());
                 labels.insert(
@@ -1787,19 +1770,10 @@ Dependency context:\n{}\n\nReturn only the final subtask answer.",
                     env_vars,
                     labels,
                     command: Some(vec!["sh".to_string(), "-lc".to_string()]),
-                    args: Some(vec![
-                        format!(
-                            "if codetether help swarm-subagent >/dev/null 2>&1; then \
-exec codetether swarm-subagent --payload-env {payload_env}; \
-else \
-exec codetether run \"$${fallback_prompt_env}\" --model \"$${fallback_model_env}\"; \
-fi",
-                            payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
-                            fallback_prompt_env = SWARM_FALLBACK_PROMPT_ENV,
-                            fallback_model_env = SWARM_FALLBACK_MODEL_ENV,
-                        )
-                        .replace("$$", "$"),
-                    ]),
+                    args: Some(vec![format!(
+                        "exec codetether swarm-subagent --payload-env {payload_env}",
+                        payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
+                    )]),
                 };
 
                 if let Err(error) = k8s.spawn_subagent_pod_with_spec(&subtask.id, spec).await {
@@ -1944,27 +1918,14 @@ fi",
                     .subagent_logs(&subtask_id, 10_000)
                     .await
                     .unwrap_or_default();
-                let mut result = result_from_logs(&logs).unwrap_or_else(|| SubTaskResult {
-                    subtask_id: subtask_id.clone(),
-                    subagent_id: format!("agent-{subtask_id}"),
-                    success: pod_state.exit_code.unwrap_or(1) == 0,
-                    result: logs,
-                    steps: 0,
-                    tool_calls: 0,
-                    execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
-                    error: if pod_state.exit_code.unwrap_or(1) == 0 {
-                        None
-                    } else {
-                        Some(
-                            pod_state
-                                .reason
-                                .clone()
-                                .unwrap_or_else(|| "Remote sub-agent failed".to_string()),
-                        )
-                    },
-                    artifacts: Vec::new(),
-                    retry_count: 0,
-                });
+                let elapsed_ms = active_state.started_at.elapsed().as_millis() as u64;
+                let mut result = k8s_result::final_result(
+                    &subtask_id,
+                    elapsed_ms,
+                    pod_state.exit_code,
+                    pod_state.reason.as_deref(),
+                    &logs,
+                );
 
                 if let Some(reason) = kill_reasons.get(&subtask_id) {
                     result.success = false;
