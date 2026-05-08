@@ -31,9 +31,13 @@ pub(super) async fn handle_spawn(params: &Params) -> Result<ToolResult> {
     if let Err(result) = spawn_validation::validate_spawn_request(&request).await {
         return Ok(result);
     }
-    let session =
-        session_factory::create_agent_session(request.name, request.instructions, request.model)
-            .await?;
+    let session = session_factory::create_agent_session(
+        request.name,
+        request.instructions,
+        request.model,
+        request.parent_workspace.clone(),
+    )
+    .await?;
     spawn_store::persist_spawned_agent(request.name, request.instructions, session).await;
     tracing::info!(agent = %request.name, model = %request.model, "Sub-agent spawned");
     Ok(ToolResult::success(success_message(&request)))
