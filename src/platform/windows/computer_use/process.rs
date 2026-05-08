@@ -25,14 +25,12 @@ unsafe fn proc_inner() -> anyhow::Result<Vec<Value>> {
 
     if unsafe { Process32FirstW(snap, &mut entry) }.is_ok() {
         loop {
-            let name = String::from_utf16_lossy(
-                &entry
-                    .szExeFile
-                    .iter()
-                    .take_while(|&&c| c != 0)
-                    .copied()
-                    .collect::<Vec<u16>>(),
-            );
+            let pos = entry
+                .szExeFile
+                .iter()
+                .position(|&c| c == 0)
+                .unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..pos]);
             procs.push(json!({
                 "pid": entry.th32ProcessID,
                 "ppid": entry.th32ParentProcessID,

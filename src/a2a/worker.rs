@@ -34,6 +34,7 @@ use tokio::time::Instant;
 
 use self::model_defaults::{default_model_for_provider, prefers_temperature_one};
 use self::model_preferences::choose_provider_for_tier;
+use super::task_execution_result::TaskExecutionResult;
 use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed};
 use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
 use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
@@ -1494,19 +1495,18 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     );
 
     // --- All post-claim work is wrapped so we always release the task ---
-    let inner_result: Result<(&str, Option<String>, Option<String>, Option<String>)> =
-        execute_claimed_task(
-            runtime,
-            task,
-            task_id,
-            title,
-            &claim_provenance,
-            &mut timeline,
-        )
-        .await;
+    let inner_result = execute_claimed_task(
+        runtime,
+        task,
+        task_id,
+        title,
+        &claim_provenance,
+        &mut timeline,
+    )
+    .await;
 
-    let (status, result, error, session_id) = match inner_result {
-        Ok(tuple) => tuple,
+    let task_result = match inner_result {
+        Ok(result) => result,
         Err(e) => {
             tracing::error!(
                 task_id,
@@ -1517,12 +1517,7 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
                 task_timeline::TaskCheckpoint::Failed,
                 Some(format!("{}", e)),
             );
-            (
-                "failed",
-                None,
-                Some(format!("Worker error after claim: {}", e)),
-                None,
-            )
+            TaskExecutionResult::failed(format!("Worker error after claim: {}", e))
         }
     };
 
@@ -1537,10 +1532,10 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         &runtime.token,
         &runtime.worker_id,
         task_id,
-        status,
-        result,
-        error,
-        session_id,
+        task_result.status,
+        task_result.output,
+        task_result.error_message,
+        task_result.session_id,
         Some(diagnostics_json),
     )
     .await?;
@@ -1550,11 +1545,15 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     // Clear task progress so heartbeat stops reporting stale state
     runtime.task_progress.lock().await.clear();
 
-    tracing::info!("Task released: {} with status: {}", task_id, status);
+    tracing::info!(
+        "Task released: {} with status: {}",
+        task_id,
+        task_result.status
+    );
     Ok(())
 }
 
-/// Inner logic for a claimed task. Returns (status, result, error, session_id).
+/// Inner logic for a claimed task.
 /// Extracted so that `handle_task` can catch any error and always release.
 #[allow(clippy::too_many_lines)]
 async fn execute_claimed_task<'a>(
@@ -1564,7 +1563,7 @@ async fn execute_claimed_task<'a>(
     title: &'a str,
     claim_provenance: &ClaimProvenance,
     timeline: &mut task_timeline::TaskTimeline,
-) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
+) -> Result<TaskExecutionResult> {
     let metadata = task_metadata(task);
     timeline.checkpoint(task_timeline::TaskCheckpoint::MetadataParsed);
     let resume_session_id = metadata
@@ -1617,20 +1616,20 @@ async fn execute_claimed_task<'a>(
         )
         .await
         {
-            Ok(message) => Ok(("completed", Some(message), None, None)),
+            Ok(message) => Ok(TaskExecutionResult::completed(message)),
             Err(err) => {
                 tracing::error!(task_id, error = %err, "Clone task failed");
-                Ok(("failed", None, Some(format!("Error: {}", err)), None))
+                Ok(TaskExecutionResult::failed(format!("Error: {}", err)))
             }
         };
     }
 
     if is_forage_agent(raw_agent) {
         return match handle_forage_task(title, prompt, &metadata, selected_model.clone()).await {
-            Ok(message) => Ok(("completed", Some(message), None, None)),
+            Ok(message) => Ok(TaskExecutionResult::completed(message)),
             Err(err) => {
                 tracing::error!(task_id, error = %err, "Forage task failed");
-                Ok(("failed", None, Some(format!("Error: {}", err)), None))
+                Ok(TaskExecutionResult::failed(format!("Error: {}", err)))
             }
         };
     }
@@ -1868,12 +1867,8 @@ async fn execute_claimed_task<'a>(
     // Sync progress state for heartbeat reporting
     timeline.sync_progress().await;
 
-    Ok((
-        status,
-        result,
-        error,
-        Some(session_id.unwrap_or_else(|| session.id.clone())),
-    ))
+    Ok(TaskExecutionResult::new(status, result, error, None)
+        .with_session_id(session_id.unwrap_or_else(|| session.id.clone())))
 }
 
 async fn handle_forage_task(

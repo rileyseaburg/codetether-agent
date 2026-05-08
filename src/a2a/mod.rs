@@ -17,6 +17,7 @@ pub mod lan;
 pub mod mdns;
 pub mod server;
 pub mod spawn;
+mod task_execution_result;
 pub mod types;
 pub mod voice_grpc;
 pub mod worker;
