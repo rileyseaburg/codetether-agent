@@ -13,6 +13,9 @@
 
 mod actions;
 mod event_loop;
+mod execution_state;
+#[cfg(test)]
+mod execution_state_tests;
 mod handlers;
 mod helpers;
 mod message;
