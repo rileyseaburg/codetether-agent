@@ -1094,7 +1094,7 @@ async fn resolve_swarm_model(
         return Some(model);
     }
 
-    let registry = ProviderRegistry::from_vault().await.ok()?;
+    let registry = ProviderRegistry::shared_from_vault().await.ok()?;
     let providers = registry.list();
     if providers.is_empty() {
         return None;
@@ -1284,10 +1284,10 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
 async fn load_provider_models_uncached() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>>
 {
     // Try Vault first
-    let registry = match ProviderRegistry::from_vault().await {
+    let registry = match ProviderRegistry::shared_from_vault().await {
         Ok(r) if !r.list().is_empty() => {
             tracing::info!("Loaded {} providers from Vault", r.list().len());
-            r
+            (*r).clone()
         }
         Ok(_) => {
             tracing::warn!("Vault returned 0 providers, falling back to config/env vars");
@@ -2542,9 +2542,10 @@ async fn execute_session_with_policy(
             tracing::warn!(
                 "Per-task provider key payload produced no providers; falling back to platform registry"
             );
-            ProviderRegistry::from_vault().await.context(
+            (*ProviderRegistry::shared_from_vault().await.context(
                 "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
-            )?
+            )?)
+            .clone()
         } else {
             tracing::info!(
                 source = keys.source(),
@@ -2554,9 +2555,10 @@ async fn execute_session_with_policy(
             registry
         }
     } else {
-        ProviderRegistry::from_vault()
+        (*ProviderRegistry::shared_from_vault()
             .await
-            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?
+            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?)
+        .clone()
     };
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
