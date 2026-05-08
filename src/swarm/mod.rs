@@ -14,6 +14,7 @@ pub mod collapse_controller;
 pub mod delegation;
 pub mod delegation_outcome;
 pub mod executor;
+pub mod k8s_result;
 pub mod kubernetes_executor;
 pub mod orchestrator;
 pub mod rate_limiter;
