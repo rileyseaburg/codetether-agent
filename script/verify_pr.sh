@@ -12,8 +12,17 @@ COMMITS=$(git log --format="%H" "$RANGE")
 TOTAL=0
 SIGNED=0
 UNSIGNED=0
+SKIPPED=0
 
 for COMMIT in $COMMITS; do
+    PARENT_COUNT=$(git show -s --format="%P" "$COMMIT" | wc -w | tr -d '[:space:]')
+    SUBJECT=$(git log -1 --format="%s" "$COMMIT")
+    if [ "$PARENT_COUNT" -gt 1 ] && echo "$SUBJECT" | grep -Eq '^Merge [0-9a-f]{40} into [0-9a-f]{40}$'; then
+        SKIPPED=$((SKIPPED + 1))
+        echo "  ⏭️  $COMMIT — skipping GitHub synthetic PR merge commit"
+        continue
+    fi
+
     TOTAL=$((TOTAL + 1))
     BODY=$(git log -1 --format="%b" "$COMMIT")
     if echo "$BODY" | grep -qi "^CodeTether-Provenance-ID:"; then
@@ -27,7 +36,7 @@ for COMMIT in $COMMITS; do
 done
 
 echo ""
-echo "Results: $SIGNED/$TOTAL signed, $UNSIGNED unsigned"
+echo "Results: $SIGNED/$TOTAL signed, $UNSIGNED unsigned, $SKIPPED skipped"
 
 if [ "$UNSIGNED" -gt 0 ]; then
     echo "❌ FAIL: $UNSIGNED commits missing provenance"
