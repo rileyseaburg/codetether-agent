@@ -13,8 +13,9 @@
 
 use super::params::Params;
 use anyhow::{Context, Result};
+use std::path::PathBuf;
 
-/// Borrowed spawn request fields extracted from tool params.
+/// Borrowed spawn request fields plus the runtime-owned parent workspace.
 ///
 /// This avoids cloning large strings while spawn validation and session
 /// creation run.
@@ -28,6 +29,7 @@ pub(super) struct SpawnRequest<'a> {
     pub name: &'a str,
     pub instructions: &'a str,
     pub model: &'a str,
+    pub parent_workspace: Option<PathBuf>,
 }
 
 impl<'a> SpawnRequest<'a> {
@@ -49,6 +51,7 @@ impl<'a> SpawnRequest<'a> {
                 .model
                 .as_deref()
                 .context("model required for spawn")?,
+            parent_workspace: params.parent_workspace.clone(),
         })
     }
 }

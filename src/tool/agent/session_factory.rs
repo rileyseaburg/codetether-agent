@@ -27,21 +27,24 @@
 use crate::provider::{ContentPart, Message, Role};
 use crate::session::Session;
 use anyhow::{Context, Result};
+use std::path::PathBuf;
 
 /// Create a fresh [`Session`] for a spawned sub-agent.
 ///
 /// The session is initialized with:
 /// - `agent_name` set to `name` (used by the TUI / bus for message routing),
 /// - `metadata.model` set to `model` (independent of the parent's model),
+/// - `metadata.directory` set to the parent's workspace/worktree when provided,
 /// - a single system message built by [`build_system_message`] that embeds the
-///   parent process's current working directory plus explicit guidance not to
-///   spend turns on workspace discovery.
+///   same workspace plus explicit guidance not to spend turns on workspace
+///   discovery.
 ///
 /// # Arguments
 ///
 /// * `name` — Sub-agent identifier, e.g. `"reviewer"`. Referenced by users as `@reviewer`.
 /// * `instructions` — Free-form task description merged into the system prompt.
 /// * `model` — Provider model id, e.g. `"zai/glm-5.1"`.
+/// * `parent_workspace` — Workspace/worktree inherited from the parent session.
 ///
 /// # Returns
 ///
@@ -64,6 +67,7 @@ use anyhow::{Context, Result};
 /// //     "tui-cache-fix",
 /// //     "Apply the cache-clone fix in src/tui/app/state.rs and verify cargo check.",
 /// //     "zai/glm-5.1",
+/// //     Some(std::path::PathBuf::from("/workspace/project")),
 /// // ).await?;
 /// // assert_eq!(session.metadata.model.as_deref(), Some("zai/glm-5.1"));
 /// # Ok(()) }
@@ -73,15 +77,18 @@ pub(super) async fn create_agent_session(
     name: &str,
     instructions: &str,
     model: &str,
+    parent_workspace: Option<PathBuf>,
 ) -> Result<Session> {
     let mut session = Session::new().await.context("Failed to create session")?;
+    let workspace = parent_workspace.or_else(|| session.metadata.directory.clone());
     session.set_agent_name(name.to_string());
     session.metadata.model = Some(model.to_string());
+    session.metadata.directory = workspace.clone();
     session.bus = crate::bus::global();
     session.add_message(Message {
         role: Role::System,
         content: vec![ContentPart::Text {
-            text: build_system_message(name, instructions),
+            text: build_system_message(name, instructions, workspace),
         }],
     });
     Ok(session)
@@ -89,27 +96,29 @@ pub(super) async fn create_agent_session(
 
 /// Build the system prompt injected into every spawned sub-agent.
 ///
-/// The prompt embeds the *parent* process's current working directory so the
-/// sub-agent can resolve relative paths immediately, and includes explicit
+/// The prompt embeds the same workspace stored on the spawned child session so
+/// the sub-agent can resolve relative paths immediately, and includes explicit
 /// directives to avoid workspace-discovery tool calls (`pwd`, `ls`, `glob`)
 /// that were observed burning 4–6 turns before any real edit.
 ///
-/// The directory is read from [`std::env::current_dir`] at spawn time and
-/// falls back to the literal string `"<unknown>"` on failure (e.g. the cwd
-/// was deleted). This never panics.
+/// If no workspace was passed from the parent, the directory falls back to
+/// [`std::env::current_dir`] and then the literal string `"<unknown>"`. This
+/// never panics.
 ///
 /// # Arguments
 ///
 /// * `name` — Sub-agent identifier injected as `@{name}`.
 /// * `instructions` — Task description appended to the role preamble.
+/// * `workspace` — Resolved parent workspace/worktree.
 ///
 /// # Returns
 ///
 /// A multi-line system prompt string.
-fn build_system_message(name: &str, instructions: &str) -> String {
-    let cwd = std::env::current_dir()
+fn build_system_message(name: &str, instructions: &str, workspace: Option<PathBuf>) -> String {
+    let cwd = workspace
+        .or_else(|| std::env::current_dir().ok())
         .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| "<unknown>".to_string());
+        .unwrap_or_else(|| "<unknown>".to_string());
     format!(
         "You are @{name}, a specialized sub-agent. {instructions}\n\n\
          Workspace cwd: {cwd}\n\
@@ -121,30 +130,4 @@ fn build_system_message(name: &str, instructions: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::build_system_message;
-
-    #[test]
-    fn includes_agent_name_and_instructions() {
-        let msg = build_system_message("reviewer", "Audit the PR");
-        assert!(msg.contains("@reviewer"));
-        assert!(msg.contains("Audit the PR"));
-    }
-
-    #[test]
-    fn embeds_current_working_directory() {
-        let msg = build_system_message("x", "do the thing");
-        let cwd = std::env::current_dir().unwrap().display().to_string();
-        assert!(
-            msg.contains(&cwd),
-            "system prompt should embed cwd: {cwd}\nmsg: {msg}"
-        );
-    }
-
-    #[test]
-    fn warns_against_discovery_tool_calls() {
-        let msg = build_system_message("x", "y");
-        assert!(msg.contains("Do NOT waste turns discovering the workspace"));
-        assert!(msg.contains("no pwd/ls/glob"));
-    }
-}
+mod tests;
