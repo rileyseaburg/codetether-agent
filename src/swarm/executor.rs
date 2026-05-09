@@ -9,8 +9,9 @@ use super::{
     SwarmResult,
     kubernetes_executor::{
         RemoteSubtaskPayload, SWARM_SUBTASK_PAYLOAD_ENV, encode_payload, latest_probe_from_logs,
-        probe_changed_files_set, result_from_logs,
+        probe_changed_files_set,
     },
+    k8s_result,
     orchestrator::Orchestrator,
     result_store::ResultStore,
     subtask::{SubTask, SubTaskResult, SubTaskStatus},
@@ -43,6 +44,8 @@ use std::time::Instant;
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::AbortHandle;
 use tokio::time::{Duration, MissedTickBehavior, timeout};
+#[path = "path_guard/mod.rs"]
+mod path_guard;
 
 /// Default context limit (256k tokens - conservative for most models)
 const DEFAULT_CONTEXT_LIMIT: usize = 256_000;
@@ -276,8 +279,6 @@ const SIMPLE_TRUNCATE_CHARS: usize = 6000;
 
 /// Collapse controller sampling interval for branch health.
 const COLLAPSE_SAMPLE_SECS: u64 = 5;
-const SWARM_FALLBACK_PROMPT_ENV: &str = "CODETETHER_SWARM_FALLBACK_PROMPT";
-const SWARM_FALLBACK_MODEL_ENV: &str = "CODETETHER_SWARM_FALLBACK_MODEL";
 const K8S_PASSTHROUGH_ENV_VARS: &[&str] = &[
     "VAULT_ADDR",
     "VAULT_TOKEN",
@@ -510,10 +511,7 @@ impl SwarmExecutor {
     }
 
     /// Set a telemetry collector for swarm execution metrics
-    pub fn with_telemetry(
-        mut self,
-        telemetry: Arc<SwarmTelemetryCollector>,
-    ) -> Self {
+    pub fn with_telemetry(mut self, telemetry: Arc<SwarmTelemetryCollector>) -> Self {
         self.telemetry = telemetry;
         self
     }
@@ -1759,22 +1757,6 @@ impl SwarmExecutor {
                         env_vars.insert((*key).to_string(), value);
                     }
                 }
-                let fallback_prompt = if context.trim().is_empty() {
-                    format!(
-                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
-Return only the final subtask answer.",
-                        subtask.id, subtask.instruction
-                    )
-                } else {
-                    format!(
-                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
-Dependency context:\n{}\n\nReturn only the final subtask answer.",
-                        subtask.id, subtask.instruction, context
-                    )
-                };
-                env_vars.insert(SWARM_FALLBACK_PROMPT_ENV.to_string(), fallback_prompt);
-                env_vars.insert(SWARM_FALLBACK_MODEL_ENV.to_string(), model.clone());
-
                 let mut labels = HashMap::new();
                 labels.insert("codetether.run/swarm-id".to_string(), swarm_id.to_string());
                 labels.insert(
@@ -1787,19 +1769,10 @@ Dependency context:\n{}\n\nReturn only the final subtask answer.",
                     env_vars,
                     labels,
                     command: Some(vec!["sh".to_string(), "-lc".to_string()]),
-                    args: Some(vec![
-                        format!(
-                            "if codetether help swarm-subagent >/dev/null 2>&1; then \
-exec codetether swarm-subagent --payload-env {payload_env}; \
-else \
-exec codetether run \"$${fallback_prompt_env}\" --model \"$${fallback_model_env}\"; \
-fi",
-                            payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
-                            fallback_prompt_env = SWARM_FALLBACK_PROMPT_ENV,
-                            fallback_model_env = SWARM_FALLBACK_MODEL_ENV,
-                        )
-                        .replace("$$", "$"),
-                    ]),
+                    args: Some(vec![format!(
+                        "exec codetether swarm-subagent --payload-env {payload_env}",
+                        payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
+                    )]),
                 };
 
                 if let Err(error) = k8s.spawn_subagent_pod_with_spec(&subtask.id, spec).await {
@@ -1944,27 +1917,14 @@ fi",
                     .subagent_logs(&subtask_id, 10_000)
                     .await
                     .unwrap_or_default();
-                let mut result = result_from_logs(&logs).unwrap_or_else(|| SubTaskResult {
-                    subtask_id: subtask_id.clone(),
-                    subagent_id: format!("agent-{subtask_id}"),
-                    success: pod_state.exit_code.unwrap_or(1) == 0,
-                    result: logs,
-                    steps: 0,
-                    tool_calls: 0,
-                    execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
-                    error: if pod_state.exit_code.unwrap_or(1) == 0 {
-                        None
-                    } else {
-                        Some(
-                            pod_state
-                                .reason
-                                .clone()
-                                .unwrap_or_else(|| "Remote sub-agent failed".to_string()),
-                        )
-                    },
-                    artifacts: Vec::new(),
-                    retry_count: 0,
-                });
+                let elapsed_ms = active_state.started_at.elapsed().as_millis() as u64;
+                let mut result = k8s_result::final_result(
+                    &subtask_id,
+                    elapsed_ms,
+                    pod_state.exit_code,
+                    pod_state.reason.as_deref(),
+                    &logs,
+                );
 
                 if let Some(reason) = kill_reasons.get(&subtask_id) {
                     result.success = false;
@@ -2366,74 +2326,6 @@ async fn precreate_worktrees(
 /// Run the agentic loop for a sub-agent with tool execution
 #[allow(clippy::too_many_arguments)]
 /// Run an agentic loop with tools - reusable for Ralph and swarm sub-agents
-/// Resolve relative file paths in tool call arguments to use the given working directory.
-///
-/// When sub-agents run in worktrees, the file tools (read, write, edit, etc.) resolve
-/// relative paths from the process CWD (the main repo), not the worktree. This function
-/// rewrites relative paths to absolute paths within the worktree before tool execution.
-fn resolve_tool_paths(
-    tool_name: &str,
-    args: &mut serde_json::Value,
-    working_dir: &std::path::Path,
-) {
-    match tool_name {
-        "read" | "write" | "list" | "grep" | "codesearch" => {
-            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["path"] = serde_json::json!(working_dir.join(&path).display().to_string());
-            }
-        }
-        "edit" => {
-            if let Some(path) = args
-                .get("filePath")
-                .and_then(|v| v.as_str())
-                .map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["filePath"] = serde_json::json!(working_dir.join(&path).display().to_string());
-            }
-        }
-        "glob" => {
-            if let Some(pattern) = args
-                .get("pattern")
-                .and_then(|v| v.as_str())
-                .map(String::from)
-                && !std::path::Path::new(&pattern).is_absolute()
-                && !pattern.starts_with("*")
-            {
-                args["pattern"] =
-                    serde_json::json!(working_dir.join(&pattern).display().to_string());
-            }
-        }
-        "multiedit" => {
-            if let Some(edits) = args.get_mut("edits").and_then(|v| v.as_array_mut()) {
-                for edit in edits.iter_mut() {
-                    if let Some(file) = edit.get("file").and_then(|v| v.as_str()).map(String::from)
-                        && !std::path::Path::new(&file).is_absolute()
-                    {
-                        edit["file"] =
-                            serde_json::json!(working_dir.join(&file).display().to_string());
-                    }
-                }
-            }
-        }
-        "patch" => {
-            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["file"] = serde_json::json!(working_dir.join(&path).display().to_string());
-            }
-        }
-        "bash" => {
-            // If bash has no cwd, set it to the working directory
-            if args.get("cwd").and_then(|v| v.as_str()).is_none() {
-                args["cwd"] = serde_json::json!(working_dir.display().to_string());
-            }
-        }
-        _ => {}
-    }
-}
 
 pub async fn run_agent_loop(
     provider: Arc<dyn Provider>,
@@ -2659,52 +2551,58 @@ pub async fn run_agent_loop(
                         serde_json::json!({})
                     });
 
-                // Resolve relative file paths to the working directory (critical for worktree isolation)
-                if let Some(ref wd) = working_dir {
-                    resolve_tool_paths(&tool_name, &mut args, wd);
-                }
-                let agent_name = format!("agent-{subtask_id}");
-                let provenance =
-                    ExecutionProvenance::for_operation(&agent_name, ExecutionOrigin::Swarm);
-                args = enrich_tool_input_with_runtime_context(
-                    &args,
-                    working_dir
-                        .as_deref()
-                        .unwrap_or_else(|| std::path::Path::new(".")),
-                    Some(model),
-                    &subtask_id,
-                    &agent_name,
-                    Some(&provenance),
-                );
+                // Normalize and enforce worktree filesystem paths before tool execution.
+                let path_denial = working_dir.as_ref().and_then(|wd| {
+                    path_guard::normalize_tool_args(&tool_name, &mut args, wd).err()
+                });
+                if let Some(e) = path_denial {
+                    tool_success = false;
+                    tracing::warn!(tool = %tool_name, error = %e, "Tool path policy denied");
+                    format!("Tool path policy denied: {e}")
+                } else {
+                    let agent_name = format!("agent-{subtask_id}");
+                    let provenance =
+                        ExecutionProvenance::for_operation(&agent_name, ExecutionOrigin::Swarm);
+                    args = enrich_tool_input_with_runtime_context(
+                        &args,
+                        working_dir
+                            .as_deref()
+                            .unwrap_or_else(|| std::path::Path::new(".")),
+                        Some(model),
+                        &subtask_id,
+                        &agent_name,
+                        Some(&provenance),
+                    );
 
-                match tool.execute(args).await {
-                    Ok(r) => {
-                        if r.success {
-                            tracing::info!(
-                                tool = %tool_name,
-                                duration_ms = tool_start.elapsed().as_millis() as u64,
-                                success = true,
-                                "Tool execution completed"
-                            );
-                            r.output
-                        } else {
-                            tool_success = false;
-                            tracing::warn!(
-                                tool = %tool_name,
-                                error = %r.output,
-                                "Tool returned error"
-                            );
-                            format!("Tool error: {}", r.output)
+                    match tool.execute(args).await {
+                        Ok(r) => {
+                            if r.success {
+                                tracing::info!(
+                                    tool = %tool_name,
+                                    duration_ms = tool_start.elapsed().as_millis() as u64,
+                                    success = true,
+                                    "Tool execution completed"
+                                );
+                                r.output
+                            } else {
+                                tool_success = false;
+                                tracing::warn!(
+                                    tool = %tool_name,
+                                    error = %r.output,
+                                    "Tool returned error"
+                                );
+                                format!("Tool error: {}", r.output)
+                            }
                         }
-                    }
-                    Err(e) => {
-                        tool_success = false;
-                        tracing::error!(
-                            tool = %tool_name,
-                            error = %e,
-                            "Tool execution failed"
-                        );
-                        format!("Tool execution failed: {}", e)
+                        Err(e) => {
+                            tool_success = false;
+                            tracing::error!(
+                                tool = %tool_name,
+                                error = %e,
+                                "Tool execution failed"
+                            );
+                            format!("Tool execution failed: {}", e)
+                        }
                     }
                 }
             } else {

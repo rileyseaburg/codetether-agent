@@ -1094,7 +1094,7 @@ async fn resolve_swarm_model(
         return Some(model);
     }
 
-    let registry = ProviderRegistry::from_vault().await.ok()?;
+    let registry = ProviderRegistry::shared_from_vault().await.ok()?;
     let providers = registry.list();
     if providers.is_empty() {
         return None;
@@ -1284,10 +1284,10 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
 async fn load_provider_models_uncached() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>>
 {
     // Try Vault first
-    let registry = match ProviderRegistry::from_vault().await {
+    let registry = match ProviderRegistry::shared_from_vault().await {
         Ok(r) if !r.list().is_empty() => {
             tracing::info!("Loaded {} providers from Vault", r.list().len());
-            r
+            (*r).clone()
         }
         Ok(_) => {
             tracing::warn!("Vault returned 0 providers, falling back to config/env vars");
@@ -1900,8 +1900,15 @@ async fn execute_claimed_task<'a>(
     session.attach_claim_provenance(claim_provenance);
     session.metadata.provider_keys = provider_keys;
 
-    // Skip git hook installation for virtual tasks (no workspace directory).
+    // Skip repository-local Git setup for virtual tasks (no workspace directory).
     if !is_virtual_task {
+        if let (Some(directory), Some(workspace_id)) =
+            (session.metadata.directory.as_deref(), workspace_id)
+            && directory.join(".git").exists()
+            && let Err(err) = configure_repo_git_auth(directory, workspace_id)
+        {
+            tracing::warn!(task_id, error = %err, "Failed to configure Git credential helper");
+        }
         if let Some(directory) = session.metadata.directory.as_deref()
             && let Err(err) = install_commit_msg_hook(directory)
         {
@@ -2228,6 +2235,10 @@ async fn enqueue_post_clone_task(
     workspace_id: &str,
     metadata: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<()> {
+    if !worker_should_enqueue_post_clone_task(metadata) {
+        return Ok(());
+    }
+
     let Some(post_clone_task) = metadata.get("post_clone_task") else {
         return Ok(());
     };
@@ -2283,6 +2294,19 @@ async fn enqueue_post_clone_task(
         anyhow::bail!("Failed to enqueue post-clone task ({}): {}", status, body);
     }
     Ok(())
+}
+
+fn worker_should_enqueue_post_clone_task(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> bool {
+    if metadata.get("source").and_then(|value| value.as_str()) == Some("github-app") {
+        return false;
+    }
+
+    metadata
+        .get("post_clone_task")
+        .and_then(|value| value.as_object())
+        .is_some()
 }
 
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
@@ -2535,9 +2559,10 @@ async fn execute_session_with_policy(
             tracing::warn!(
                 "Per-task provider key payload produced no providers; falling back to platform registry"
             );
-            ProviderRegistry::from_vault().await.context(
+            (*ProviderRegistry::shared_from_vault().await.context(
                 "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
-            )?
+            )?)
+            .clone()
         } else {
             tracing::info!(
                 source = keys.source(),
@@ -2547,9 +2572,10 @@ async fn execute_session_with_policy(
             registry
         }
     } else {
-        ProviderRegistry::from_vault()
+        (*ProviderRegistry::shared_from_vault()
             .await
-            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?
+            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?)
+        .clone()
     };
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
@@ -3427,6 +3453,37 @@ mod tests {
         assert_eq!(args.swarm_max_subagents, 4);
         assert_eq!(args.swarm_max_steps, 42);
         assert_eq!(args.swarm_subagent_timeout_secs, 180);
+    }
+
+    #[test]
+    fn worker_skips_github_app_post_clone_followups() {
+        let metadata = json!({
+            "source": "github-app",
+            "post_clone_task": {
+                "title": "Work issue #76",
+                "prompt": "fix it"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(!worker_should_enqueue_post_clone_task(&metadata));
+    }
+
+    #[test]
+    fn worker_allows_legacy_post_clone_followups() {
+        let metadata = json!({
+            "post_clone_task": {
+                "title": "Continue after clone",
+                "prompt": "run build"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(worker_should_enqueue_post_clone_task(&metadata));
     }
 
     #[test]

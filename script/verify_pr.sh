@@ -14,12 +14,21 @@ SIGNED=0
 UNSIGNED=0
 SKIPPED=0
 
+is_github_pr_merge_commit() {
+    local commit="$1"
+    local parent_count
+    parent_count=$(git show -s --format="%P" "$commit" | wc -w | tr -d ' ')
+    [ "$parent_count" = "2" ] || return 1
+
+    local subject
+    subject=$(git log -1 --format="%s" "$commit")
+    echo "$subject" | grep -Eq '^Merge [0-9a-f]{40} into [0-9a-f]{40}$'
+}
+
 for COMMIT in $COMMITS; do
-    PARENT_COUNT=$(git show -s --format="%P" "$COMMIT" | wc -w | tr -d '[:space:]')
-    SUBJECT=$(git log -1 --format="%s" "$COMMIT")
-    if [ "$PARENT_COUNT" -gt 1 ] && echo "$SUBJECT" | grep -Eq '^Merge [0-9a-f]{40} into [0-9a-f]{40}$'; then
+    if is_github_pr_merge_commit "$COMMIT"; then
         SKIPPED=$((SKIPPED + 1))
-        echo "  ⏭️  $COMMIT — skipping GitHub synthetic PR merge commit"
+        echo "  ⏭️  $COMMIT — skipping GitHub pull-request merge commit"
         continue
     fi
 
