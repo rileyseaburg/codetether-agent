@@ -2235,6 +2235,10 @@ async fn enqueue_post_clone_task(
     workspace_id: &str,
     metadata: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<()> {
+    if !worker_should_enqueue_post_clone_task(metadata) {
+        return Ok(());
+    }
+
     let Some(post_clone_task) = metadata.get("post_clone_task") else {
         return Ok(());
     };
@@ -2290,6 +2294,19 @@ async fn enqueue_post_clone_task(
         anyhow::bail!("Failed to enqueue post-clone task ({}): {}", status, body);
     }
     Ok(())
+}
+
+fn worker_should_enqueue_post_clone_task(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> bool {
+    if metadata.get("source").and_then(|value| value.as_str()) == Some("github-app") {
+        return false;
+    }
+
+    metadata
+        .get("post_clone_task")
+        .and_then(|value| value.as_object())
+        .is_some()
 }
 
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
@@ -3436,6 +3453,37 @@ mod tests {
         assert_eq!(args.swarm_max_subagents, 4);
         assert_eq!(args.swarm_max_steps, 42);
         assert_eq!(args.swarm_subagent_timeout_secs, 180);
+    }
+
+    #[test]
+    fn worker_skips_github_app_post_clone_followups() {
+        let metadata = json!({
+            "source": "github-app",
+            "post_clone_task": {
+                "title": "Work issue #76",
+                "prompt": "fix it"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(!worker_should_enqueue_post_clone_task(&metadata));
+    }
+
+    #[test]
+    fn worker_allows_legacy_post_clone_followups() {
+        let metadata = json!({
+            "post_clone_task": {
+                "title": "Continue after clone",
+                "prompt": "run build"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(worker_should_enqueue_post_clone_task(&metadata));
     }
 
     #[test]
