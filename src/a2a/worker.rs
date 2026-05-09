@@ -2686,18 +2686,13 @@ async fn execute_session_with_policy(
     for step in 1..=max_steps {
         tracing::info!(step = step, "Agent step starting");
 
-        let response = crate::session::context::complete_with_context(
+        let response = complete_worker_step_with_context_fallback(
             Arc::clone(&provider),
             session,
             &model,
             &system_prompt,
             &tool_definitions,
-            crate::session::context::RequestOptions {
-                temperature,
-                top_p: None,
-                max_tokens: Some(8192),
-                force_keep_last: None,
-            },
+            temperature,
         )
         .await?;
 
@@ -2828,6 +2823,103 @@ async fn execute_session_with_policy(
         text: final_output.trim().to_string(),
         session_id: session.id.clone(),
     })
+}
+
+async fn complete_worker_step_with_context_fallback(
+    provider: Arc<dyn crate::provider::Provider>,
+    session: &Session,
+    model: &str,
+    system_prompt: &str,
+    tool_definitions: &[crate::provider::ToolDefinition],
+    temperature: Option<f32>,
+) -> Result<crate::provider::CompletionResponse> {
+    let options = crate::session::context::RequestOptions {
+        temperature,
+        top_p: None,
+        max_tokens: Some(8192),
+        force_keep_last: None,
+    };
+
+    match crate::session::context::complete_with_context(
+        Arc::clone(&provider),
+        session,
+        model,
+        system_prompt,
+        tool_definitions,
+        options,
+    )
+    .await
+    {
+        Ok(response) => Ok(response),
+        Err(error) if crate::session::helper::error::is_prompt_too_long_error(&error) => {
+            let compact_tools = compact_worker_tool_definitions(tool_definitions);
+            tracing::warn!(
+                error = %error,
+                tool_count = tool_definitions.len(),
+                original_tool_schema_bytes = tool_schema_bytes(tool_definitions),
+                compact_tool_schema_bytes = tool_schema_bytes(&compact_tools),
+                "Provider rejected prompt after context compaction; retrying with compact tool schemas"
+            );
+            crate::session::context::complete_with_context(
+                provider,
+                session,
+                model,
+                system_prompt,
+                &compact_tools,
+                options,
+            )
+            .await
+            .map_err(|retry_error| {
+                if crate::session::helper::error::is_prompt_too_long_error(&retry_error) {
+                    retry_error.context(
+                        "provider rejected prompt as too long after RLM compaction and compact tool-schema fallback",
+                    )
+                } else {
+                    retry_error
+                }
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn compact_worker_tool_definitions(
+    tools: &[crate::provider::ToolDefinition],
+) -> Vec<crate::provider::ToolDefinition> {
+    tools
+        .iter()
+        .map(|tool| crate::provider::ToolDefinition {
+            name: tool.name.clone(),
+            description: tool.description.clone(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "additionalProperties": true
+            }),
+        })
+        .collect()
+}
+
+fn tool_schema_bytes(tools: &[crate::provider::ToolDefinition]) -> usize {
+    let mut writer = CountingWriter::default();
+    serde_json::to_writer(&mut writer, tools)
+        .map(|_| writer.bytes)
+        .unwrap_or(0)
+}
+
+#[derive(Default)]
+struct CountingWriter {
+    bytes: usize,
+}
+
+impl std::io::Write for CountingWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.bytes += buf.len();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// Start the heartbeat background task
@@ -3374,7 +3466,74 @@ async fn sync_workspaces_from_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::{
+        CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo,
+        Provider, Role, StreamChunk, ToolDefinition, Usage,
+    };
+    use futures::stream::{self, BoxStream};
     use serde_json::json;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    struct ContextErrorUntilCompactProvider {
+        calls: AtomicUsize,
+        saw_compact_schema: AtomicBool,
+    }
+
+    impl ContextErrorUntilCompactProvider {
+        fn new() -> Self {
+            Self {
+                calls: AtomicUsize::new(0),
+                saw_compact_schema: AtomicBool::new(false),
+            }
+        }
+
+        fn calls(&self) -> usize {
+            self.calls.load(Ordering::SeqCst)
+        }
+
+        fn saw_compact_schema(&self) -> bool {
+            self.saw_compact_schema.load(Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl Provider for ContextErrorUntilCompactProvider {
+        fn name(&self) -> &str {
+            "mock"
+        }
+
+        async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+            Ok(Vec::new())
+        }
+
+        async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            let compact = request.tools.iter().all(|tool| {
+                tool.parameters.get("additionalProperties") == Some(&serde_json::Value::Bool(true))
+            });
+            if compact {
+                self.saw_compact_schema.store(true, Ordering::SeqCst);
+                return Ok(CompletionResponse {
+                    message: Message {
+                        role: Role::Assistant,
+                        content: vec![ContentPart::Text { text: "ok".into() }],
+                    },
+                    usage: Usage::default(),
+                    finish_reason: FinishReason::Stop,
+                });
+            }
+            anyhow::bail!(
+                "Your input exceeds the context window of this model. Please adjust your input and try again."
+            )
+        }
+
+        async fn complete_stream(
+            &self,
+            _request: CompletionRequest,
+        ) -> Result<BoxStream<'static, StreamChunk>> {
+            Ok(Box::pin(stream::empty()))
+        }
+    }
 
     #[test]
     fn metadata_lookup_reads_nested_forage_keys() {
@@ -3409,6 +3568,85 @@ mod tests {
         assert!(args.no_s3);
         assert_eq!(args.model.as_deref(), Some("openrouter/z-ai/glm-5"));
         assert_eq!(args.execution_engine, "run");
+    }
+
+    #[test]
+    fn compact_worker_tool_definitions_preserve_tool_identity() {
+        let tools = vec![ToolDefinition {
+            name: "large_tool".to_string(),
+            description: "Large tool schema".to_string(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "string",
+                        "description": "x".repeat(20_000)
+                    }
+                }
+            }),
+        }];
+
+        let compact = compact_worker_tool_definitions(&tools);
+
+        assert_eq!(compact[0].name, tools[0].name);
+        assert_eq!(compact[0].description, tools[0].description);
+        assert_eq!(
+            compact[0].parameters.get("additionalProperties"),
+            Some(&serde_json::Value::Bool(true))
+        );
+        assert!(tool_schema_bytes(&compact) < tool_schema_bytes(&tools) / 10);
+    }
+
+    #[tokio::test]
+    async fn worker_retries_context_window_error_with_compact_tool_schema() {
+        let provider = Arc::new(ContextErrorUntilCompactProvider::new());
+        let provider_dyn: Arc<dyn Provider> = provider.clone();
+        let mut session = Session::new().await.expect("session");
+        session.add_message(Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "Run cronjob \"rule:Retry Failed Conversion Forwards\".".to_string(),
+            }],
+        });
+        let tools = vec![ToolDefinition {
+            name: "large_tool".to_string(),
+            description: "Large tool schema".to_string(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "string",
+                        "description": "x".repeat(20_000)
+                    }
+                }
+            }),
+        }];
+
+        let response = complete_worker_step_with_context_fallback(
+            provider_dyn,
+            &session,
+            "mock-model",
+            "system",
+            &tools,
+            Some(0.7),
+        )
+        .await
+        .expect("compact tool-schema retry should recover");
+
+        assert_eq!(
+            response
+                .message
+                .content
+                .iter()
+                .filter_map(|part| match part {
+                    ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<String>(),
+            "ok"
+        );
+        assert_eq!(provider.calls(), 5);
+        assert!(provider.saw_compact_schema());
     }
 
     #[test]
