@@ -2572,9 +2572,9 @@ async fn execute_session_with_policy(
             registry
         }
     } else {
-        (*ProviderRegistry::shared_from_vault()
-            .await
-            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?)
+        (*ProviderRegistry::shared_from_vault().await.context(
+            "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
+        )?)
         .clone()
     };
     let providers = registry.list();
@@ -2778,8 +2778,25 @@ async fn execute_session_with_policy(
             }
 
             let content = if let Some(tool) = tool_registry.get(&tool_name) {
-                let exec_result: Result<crate::tool::ToolResult> =
-                    tool.execute(tool_input.clone()).await;
+                let tool_timeout_secs =
+                    env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
+                let exec_result: Result<crate::tool::ToolResult> = match tokio::time::timeout(
+                    Duration::from_secs(tool_timeout_secs),
+                    tool.execute(tool_input.clone()),
+                )
+                .await
+                {
+                    Ok(result) => result,
+                    Err(_) => Ok(crate::tool::ToolResult::structured_error(
+                        "TOOL_TIMEOUT",
+                        &tool_name,
+                        &format!("tool timed out after {tool_timeout_secs}s"),
+                        None,
+                        Some(serde_json::json!({
+                            "hint": "Narrow the request, set a more specific path/include filter, or retry with smaller scope."
+                        })),
+                    )),
+                };
                 match exec_result {
                     Ok(result) => {
                         tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
