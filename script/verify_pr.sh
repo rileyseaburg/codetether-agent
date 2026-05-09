@@ -12,6 +12,7 @@ COMMITS=$(git log --format="%H" "$RANGE")
 TOTAL=0
 SIGNED=0
 UNSIGNED=0
+SKIPPED=0
 
 is_github_pr_merge_commit() {
     local commit="$1"
@@ -26,6 +27,7 @@ is_github_pr_merge_commit() {
 
 for COMMIT in $COMMITS; do
     if is_github_pr_merge_commit "$COMMIT"; then
+        SKIPPED=$((SKIPPED + 1))
         echo "  ⏭️  $COMMIT — skipping GitHub pull-request merge commit"
         continue
     fi
@@ -43,7 +45,7 @@ for COMMIT in $COMMITS; do
 done
 
 echo ""
-echo "Results: $SIGNED/$TOTAL signed, $UNSIGNED unsigned"
+echo "Results: $SIGNED/$TOTAL signed, $UNSIGNED unsigned, $SKIPPED skipped"
 
 if [ "$UNSIGNED" -gt 0 ]; then
     echo "❌ FAIL: $UNSIGNED commits missing provenance"
