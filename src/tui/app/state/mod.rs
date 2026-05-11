@@ -21,6 +21,7 @@
 pub mod agent_profile;
 #[path = "latency/chat.rs"]
 pub mod chat_latency;
+pub mod context_health;
 pub mod default_impl;
 pub mod git_state;
 pub mod history;
@@ -138,6 +139,7 @@ pub struct AppState {
     pub context_used: Option<usize>,
     /// Usable token budget paired with [`AppState::context_used`].
     pub context_budget: Option<usize>,
+    pub context_health: context_health::ContextHealthState,
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
