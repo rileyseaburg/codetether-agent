@@ -236,6 +236,8 @@ pub(crate) struct CompressContext {
     pub delegation: crate::session::delegation::DelegationState,
     /// Context bucket for the current transcript projection.
     pub bucket: crate::session::relevance::Bucket,
+    /// RLM observability: bus + trace id. See `compression_bus`.
+    pub observability: super::compression_bus::Observability,
 }
 
 impl CompressContext {
@@ -248,6 +250,7 @@ impl CompressContext {
             subcall_model: session.metadata.subcall_model_name.clone(),
             delegation: session.metadata.delegation.clone(),
             bucket: crate::session::relevance::bucket_for_messages(&session.messages),
+            observability: super::compression_bus::Observability::default(),
         }
     }
 }
@@ -352,45 +355,19 @@ pub(crate) async fn compress_messages_keep_last(
         on_progress: None,
         provider: rlm_provider,
         model: rlm_model.clone(),
-        bus: None,
-        trace_id: None,
+        bus: ctx.observability.bus.clone(),
+        trace_id: ctx.observability.trace_id,
         subcall_provider: ctx.subcall_provider.clone(),
         subcall_model: ctx.subcall_model.clone(),
     };
 
-    let summary = match RlmRouter::auto_process(&context, auto_ctx, &ctx.rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                reason,
-                rlm_model = %rlm_model,
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                compression_ratio = result.stats.compression_ratio,
-                "RLM: Compressed session history"
-            );
-            // Attribute RLM token spend against the RLM model so the
-            // TUI cost badge reflects it instead of silently inflating
-            // the caller's main model's reported usage.
-            crate::telemetry::TOKEN_USAGE.record_model_usage(
-                &rlm_model,
-                result.stats.input_tokens as u64,
-                result.stats.output_tokens as u64,
-            );
-            result.processed
-        }
-        Err(e) => {
-            tracing::warn!(
-                reason,
-                error = %e,
-                "RLM: Failed to compress session history; falling back to chunk compression"
-            );
-            RlmChunker::compress(
-                &context,
-                (ctx_window as f64 * FALLBACK_CHUNK_RATIO) as usize,
-                None,
-            )
-        }
-    };
+    let summary = super::compression_gate::run_keep_last(
+        RlmRouter::auto_process(&context, auto_ctx, &ctx.rlm_config).await,
+        (ctx_window as f64 * FALLBACK_CHUNK_RATIO) as usize,
+        &context,
+        reason,
+        &rlm_model,
+    );
 
     let summary_msg = Message {
         role: Role::Assistant,
@@ -505,8 +482,8 @@ pub(crate) async fn compress_last_message_if_oversized(
         on_progress: None,
         provider: Arc::clone(&provider),
         model: model.to_string(),
-        bus: None,
-        trace_id: None,
+        bus: ctx.observability.bus.clone(),
+        trace_id: ctx.observability.trace_id,
         subcall_provider: ctx.subcall_provider.clone(),
         subcall_model: ctx.subcall_model.clone(),
     };
@@ -518,19 +495,17 @@ pub(crate) async fn compress_last_message_if_oversized(
                 output_tokens = result.stats.output_tokens,
                 "RLM: Last message compressed"
             );
-            format!(
-                "[Original message: {msg_tokens} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
-                result.processed,
-                original
-                    .chars()
-                    .take(OVERSIZED_LAST_MESSAGE_PREFIX_CHARS)
-                    .collect::<String>()
+            super::compression_last_message::wrap_or_chunk(
+                result,
+                threshold,
+                &original,
+                msg_tokens,
+                OVERSIZED_LAST_MESSAGE_PREFIX_CHARS,
             )
         }
         Err(e) => {
-            tracing::warn!(error = %e, "RLM: Failed to compress last message, using truncation");
-            let max_chars = threshold * 4;
-            RlmChunker::compress(&original, max_chars / 4, None)
+            tracing::warn!(error = %e, "RLM: Failed to compress last message, falling back to chunker");
+            RlmChunker::compress(&original, threshold, None)
         }
     };
 
@@ -658,6 +633,8 @@ pub(crate) async fn enforce_on_messages(
     )
     .await;
 
+    let rlm_ctx = super::compression_bus::observability_ctx(ctx, event_tx, trace_id);
+
     for keep_last in KEEP_LAST_CANDIDATES {
         let est = estimate_request_tokens(system_prompt, messages, tools);
         let still_long =
@@ -687,7 +664,7 @@ pub(crate) async fn enforce_on_messages(
 
         let did = compress_messages_keep_last(
             messages,
-            ctx,
+            &rlm_ctx,
             Arc::clone(&provider),
             model,
             keep_last,

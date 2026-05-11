@@ -7,6 +7,7 @@ use tracing::info;
 
 use super::super::index::types::{Granularity, SummaryNode, SummaryRange};
 use super::build_context::{SummaryProduceParams, build_auto_context};
+use super::observability::SummaryObservability;
 use crate::provider::{Message, Provider};
 use crate::rlm::RlmConfig;
 
@@ -15,6 +16,7 @@ use crate::rlm::RlmConfig;
 /// # Errors
 ///
 /// Returns [`anyhow::Error`] if the RLM router fails.
+#[allow(clippy::too_many_arguments)]
 pub async fn produce_summary(
     messages: &[Message],
     range: SummaryRange,
@@ -27,6 +29,7 @@ pub async fn produce_summary(
     session_id: &str,
     subcall_provider: Option<Arc<dyn Provider>>,
     subcall_model: Option<String>,
+    observability: SummaryObservability,
 ) -> Result<SummaryNode> {
     let slice = messages
         .get(range.start..range.end)
@@ -38,13 +41,7 @@ pub async fn produce_summary(
         slice.len(),
         target_tokens,
     );
-
-    info!(
-        start = range.start,
-        end = range.end,
-        target_tokens,
-        "Producing summary via RLM"
-    );
+    info!(start = range.start, end = range.end, target_tokens, "Producing summary via RLM");
 
     let params = SummaryProduceParams {
         range,
@@ -54,13 +51,13 @@ pub async fn produce_summary(
         model,
         subcall_provider,
         subcall_model: subcall_model.as_deref(),
+        bus: observability.bus,
+        trace_id: observability.trace_id,
     };
     let auto_ctx = build_auto_context(params);
-
     let result = crate::rlm::RlmRouter::auto_process(&input, auto_ctx, rlm_config)
         .await
         .context("RLM summarisation for SummaryIndex::summary_for failed")?;
-
     Ok(SummaryNode {
         content: super::summary_text::bounded_summary(result, target_tokens)?,
         target_tokens,

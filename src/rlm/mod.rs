@@ -7,6 +7,7 @@
 //!
 //! Based on "Recursive Language Models" (Zhang et al. 2025)
 
+pub mod capability;
 pub mod chunker;
 pub mod context_trace;
 pub mod oracle;
@@ -15,7 +16,6 @@ pub mod router;
 pub mod tools;
 
 pub use chunker::{Chunk, ChunkOptions, ContentType, RlmChunker};
-pub use context_trace::{ContextEvent, ContextTrace};
 pub use oracle::{
     AstPayload, AstResult, FinalPayload, GeneratedQuery, GrepMatch, GrepOracle, GrepPayload,
     GrepVerification, OracleResult, OracleTracePersistResult, OracleTraceRecord,

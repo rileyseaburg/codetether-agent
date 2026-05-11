@@ -1,4 +1,9 @@
 //! Post-processing for RLM-produced context summaries.
+//!
+//! The quality gate ([`try_bounded_summary`]) lives in
+//! [`super::summary_gate`].
+//!
+//! [`try_bounded_summary`]: super::summary_gate::try_bounded_summary
 
 use anyhow::{Result, bail};
 
@@ -13,7 +18,11 @@ pub fn bounded_summary(result: RlmResult, target_tokens: usize) -> Result<String
         );
     }
     let clean = strip_stats_header(&result.processed);
-    Ok(clamp_tokens(clean.trim(), target_tokens))
+    let trimmed = clean.trim();
+    if trimmed.is_empty() {
+        bail!("RLM summary produced empty body");
+    }
+    Ok(clamp_tokens(trimmed, target_tokens))
 }
 
 /// Remove the router stats banner from memory summaries.
@@ -37,19 +46,4 @@ pub fn clamp_tokens(text: &str, target_tokens: usize) -> String {
         .find(|index| text.is_char_boundary(*index))
         .unwrap_or(0);
     format!("{}{}", text[..end].trim_end(), marker)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn strips_router_banner() {
-        assert_eq!(strip_stats_header("[RLM: x]\n\nbody"), "body");
-    }
-
-    #[test]
-    fn clamps_long_text() {
-        assert!(clamp_tokens(&"a".repeat(1000), 10).len() < 1000);
-    }
 }

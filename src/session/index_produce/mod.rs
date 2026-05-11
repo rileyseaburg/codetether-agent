@@ -6,6 +6,14 @@
 
 mod build_context;
 mod call;
+mod observability;
+pub mod summary_gate;
 pub mod summary_text;
 
+#[cfg(test)]
+mod summary_gate_tests;
+#[cfg(test)]
+mod summary_text_tests;
+
 pub use call::produce_summary;
+pub use observability::SummaryObservability;

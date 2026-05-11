@@ -7,7 +7,7 @@ use anyhow::Result;
 use crate::provider::Provider;
 use crate::session::Session;
 use crate::session::index::{Granularity, SummaryNode, SummaryRange};
-use crate::session::index_produce::produce_summary;
+use crate::session::index_produce::{SummaryObservability, produce_summary};
 
 /// Generate, cache, and persist a missing summary.
 pub async fn produce_cached(
@@ -38,6 +38,7 @@ pub async fn produce_cached(
                 &session_id,
                 sub_provider,
                 sub_model,
+                SummaryObservability::default(),
             )
         })
         .await?;
