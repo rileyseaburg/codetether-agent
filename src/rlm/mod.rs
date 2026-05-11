@@ -24,7 +24,7 @@ pub use oracle::{
     VerificationMethod,
 };
 pub use repl::{ReplRuntime, RlmAnalysisResult, RlmExecutor, RlmRepl, SubQuery};
-pub use router::{RlmRouter, RoutingContext, RoutingResult};
+pub use router::{OutputCapability, RlmRouter, RoutingContext, RoutingResult, output_capability};
 pub use tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
 
 use serde::{Deserialize, Serialize};

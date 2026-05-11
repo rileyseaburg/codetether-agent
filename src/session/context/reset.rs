@@ -3,10 +3,12 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tokio::sync::mpsc;
 
 use crate::provider::ToolDefinition;
 use crate::session::ResidencyLevel;
 use crate::session::Session;
+use crate::session::SessionEvent;
 use crate::session::helper::experimental;
 use crate::session::helper::token::estimate_request_tokens;
 
@@ -23,6 +25,7 @@ use super::{active_tail::active_user_tail_start, reset_helpers::latest_reset_mar
 /// the latest substantive user turn, so short follow-ups like "continue"
 /// and "status?" do not orphan the real task request. Under threshold,
 /// return the full clone verbatim.
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn derive_reset(
     session: &Session,
     provider: Arc<dyn crate::provider::Provider>,
@@ -30,6 +33,7 @@ pub(super) async fn derive_reset(
     system_prompt: &str,
     tools: &[ToolDefinition],
     threshold_tokens: usize,
+    event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
     let mut messages = session.messages.clone();
@@ -82,7 +86,7 @@ pub(super) async fn derive_reset(
                 compressed: true,
             });
         }
-        return derive_context(session, provider, model, system_prompt, tools, None, None).await;
+        return derive_context(session, provider, model, system_prompt, tools, event_tx, None).await;
     };
 
     let tail = messages.split_off(split_idx);
@@ -106,7 +110,8 @@ pub(super) async fn derive_reset(
 
     let prefix_len = prefix.len();
     let mut derived =
-        rebuild_with_summary(session, &prefix, &tail, provider, model, origin_len).await?;
+        rebuild_with_summary(session, &prefix, &tail, provider, model, origin_len, event_tx)
+            .await?;
     dropped_ranges.push((base_index, base_index + prefix_len));
     if !provenance.is_empty() {
         provenance.extend(derived.provenance);

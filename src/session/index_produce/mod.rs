@@ -8,4 +8,4 @@ mod build_context;
 mod call;
 pub mod summary_text;
 
-pub use call::produce_summary;
+pub use call::{SummaryObservability, produce_summary};

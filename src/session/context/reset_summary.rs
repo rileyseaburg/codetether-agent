@@ -3,19 +3,29 @@
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
+use tokio::sync::mpsc;
+use uuid::Uuid;
 
 use crate::provider::Message;
 use crate::rlm::RlmRouter;
 use crate::rlm::router::AutoProcessContext;
+use crate::session::SessionEvent;
 use crate::session::helper::error::messages_to_rlm_context;
 use crate::session::index_produce::summary_text::bounded_summary;
+
+/// Broadcast capacity for the throwaway [`SessionBus`](crate::session::SessionBus)
+/// that bridges `event_tx` into the RLM router. A single reset emits
+/// a handful of progress/completion events; 16 is plenty of headroom.
+const RESET_BUS_CAPACITY: usize = 16;
 
 /// RLM-summarise the prefix dropped by
 /// [`derive_reset`](super::reset::derive_reset).
 ///
-/// Extracted so the surrounding control flow stays scannable and the
-/// summary prompt can be swapped for an agent-authored one in a future
-/// commit.
+/// When `event_tx` is provided, an ephemeral [`SessionBus`](crate::session::SessionBus)
+/// is bridged onto it so the RLM router's `RlmProgress`/`RlmComplete`
+/// events surface in the TUI alongside the surrounding compaction
+/// trace.
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn summarise_prefix_for_reset(
     prefix: &[Message],
     session_id: &str,
@@ -24,8 +34,13 @@ pub(super) async fn summarise_prefix_for_reset(
     rlm_config: &crate::rlm::RlmConfig,
     subcall_provider: Option<Arc<dyn crate::provider::Provider>>,
     subcall_model: Option<String>,
+    event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<String> {
     let context = messages_to_rlm_context(prefix);
+    let bus = event_tx.cloned().map(|tx| {
+        crate::session::SessionBus::new(RESET_BUS_CAPACITY).with_legacy_mpsc(tx)
+    });
+    let trace_id = Uuid::new_v4();
     let auto_ctx = AutoProcessContext {
         tool_id: "context_reset",
         tool_args: serde_json::json!({"policy": "reset"}),
@@ -34,8 +49,8 @@ pub(super) async fn summarise_prefix_for_reset(
         on_progress: None,
         provider,
         model: model.to_string(),
-        bus: None,
-        trace_id: None,
+        bus,
+        trace_id: Some(trace_id),
         subcall_provider,
         subcall_model,
     };

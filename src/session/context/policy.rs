@@ -147,6 +147,7 @@ pub async fn derive_with_policy(
                 system_prompt,
                 tools,
                 threshold_tokens,
+                event_tx,
             )
             .await
         }
@@ -156,7 +157,16 @@ pub async fn derive_with_policy(
             } else {
                 budget_tokens
             };
-            derive_incremental(session, provider, model, system_prompt, tools, budget).await
+            derive_incremental(
+                session,
+                provider,
+                model,
+                system_prompt,
+                tools,
+                budget,
+                event_tx,
+            )
+            .await
         }
         // OracleReplay is evaluation-only; at runtime fall back to Legacy.
         DerivePolicy::OracleReplay { .. } => {

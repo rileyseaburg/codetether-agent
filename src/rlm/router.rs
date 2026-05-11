@@ -44,6 +44,67 @@ fn rlm_eligible_tools() -> HashSet<&'static str> {
     .collect()
 }
 
+/// Capability flag describing what RLM is allowed to do with a tool's
+/// output (issue #231 item 6).
+///
+/// The router consults this *before* deciding to route a large output
+/// through destructive summarization. Tools whose bytes carry exact
+/// information the agent may need to act on (file reads, grep results,
+/// shell output) must never be summarized — the agent has no way to
+/// recover the originals and re-running the tool produces the same
+/// summary, creating a spin loop. Unknown tools default to
+/// [`OutputCapability::Unknown`] which is treated as
+/// [`OutputCapability::ExactContent`] for safety; making them
+/// summarizable requires an explicit allowlist entry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputCapability {
+    /// Bulk web/aggregate output where a prose summary is an
+    /// acceptable lossy projection (webfetch, websearch, batch).
+    BulkSummarizable,
+    /// Content-carrying output whose exact bytes may be needed by the
+    /// agent later. Never route through RLM summarization — instead
+    /// fall back to truncation with a re-query hint, or rely on the
+    /// session compression pass for context pressure.
+    ExactContent,
+    /// Unknown tool with no declared capability. Treated as
+    /// [`OutputCapability::ExactContent`] for safety.
+    Unknown,
+}
+
+/// Tools whose output is content-carrying and must not be destructively
+/// summarized regardless of size. These all expose bounded re-query
+/// surfaces (offset/limit, line ranges, head/tail) so the agent can
+/// recover from oversized output without RLM.
+fn rlm_exact_content_tools() -> HashSet<&'static str> {
+    [
+        "read", "grep", "bash", "glob", "ls", "edit", "write",
+        // session_recall returns specific message excerpts; summarizing
+        // a recall result loses the exact bytes the caller asked for.
+        "session_recall",
+        // notebook tools surface cell content/output verbatim.
+        "notebook_read", "notebook_edit",
+    ]
+    .iter()
+    .copied()
+    .collect()
+}
+
+/// Classify a tool's output capability for the router.
+///
+/// `session_context` is a pseudo-tool used by the compression pass and
+/// is intentionally treated as [`OutputCapability::BulkSummarizable`] —
+/// the compression pipeline is the *one* legitimate caller that wants
+/// a summary of session history.
+pub fn output_capability(tool_id: &str) -> OutputCapability {
+    if tool_id == "session_context" || rlm_eligible_tools().contains(tool_id) {
+        return OutputCapability::BulkSummarizable;
+    }
+    if rlm_exact_content_tools().contains(tool_id) {
+        return OutputCapability::ExactContent;
+    }
+    OutputCapability::Unknown
+}
+
 /// Context for routing decisions
 #[derive(Debug, Clone)]
 pub struct RoutingContext {
@@ -140,7 +201,14 @@ pub struct ProcessProgress {
 pub struct RlmRouter;
 
 impl RlmRouter {
-    /// Check if a tool output should be routed through RLM
+    /// Check if a tool output should be routed through RLM.
+    ///
+    /// Gated on [`output_capability`] (issue #231 item 6): only tools
+    /// declared [`OutputCapability::BulkSummarizable`] are ever routed
+    /// through destructive RLM summarization. `ExactContent` and
+    /// `Unknown` tools fail closed — the agent gets either the raw
+    /// output or the in-router smart-truncation, never a prose
+    /// summary that loses the original bytes.
     pub fn should_route(output: &str, ctx: &RoutingContext, config: &RlmConfig) -> RoutingResult {
         let estimated_tokens = RlmChunker::estimate_tokens(output);
 
@@ -153,15 +221,30 @@ impl RlmRouter {
             };
         }
 
+        let capability = output_capability(ctx.tool_id.as_str());
+
+        // Capability gate. Tools that carry exact bytes (read, grep,
+        // bash, …) and tools with no declared capability are never
+        // routed through destructive summarization — the agent cannot
+        // recover the originals and a re-call would just re-summarize
+        // the same content.
+        if !matches!(capability, OutputCapability::BulkSummarizable) {
+            let reason = match capability {
+                OutputCapability::ExactContent => "tool_exact_content_no_route",
+                OutputCapability::Unknown => "tool_unknown_capability_no_route",
+                // Unreachable per the `if !matches!` guard above, but
+                // kept explicit so future variants force a decision.
+                OutputCapability::BulkSummarizable => "tool_eligible",
+            };
+            return RoutingResult {
+                should_route: false,
+                reason: reason.to_string(),
+                estimated_tokens,
+            };
+        }
+
         // Mode: always - always route for eligible tools
         if config.mode == "always" {
-            if !rlm_eligible_tools().contains(ctx.tool_id.as_str()) {
-                return RoutingResult {
-                    should_route: false,
-                    reason: "tool_not_eligible".to_string(),
-                    estimated_tokens,
-                };
-            }
             return RoutingResult {
                 should_route: true,
                 reason: "rlm_mode_always".to_string(),
@@ -170,19 +253,11 @@ impl RlmRouter {
         }
 
         // Mode: auto - route based on threshold
-        let eligible = rlm_eligible_tools().contains(ctx.tool_id.as_str())
-            || ctx.tool_id.as_str() == "session_context";
-
-        // Check if output exceeds threshold relative to context window
         let threshold_tokens = (ctx.model_context_limit as f64 * config.threshold) as usize;
         if estimated_tokens > threshold_tokens {
             return RoutingResult {
                 should_route: true,
-                reason: if eligible {
-                    "exceeds_threshold".to_string()
-                } else {
-                    "exceeds_threshold_ineligible_tool".to_string()
-                },
+                reason: "exceeds_threshold".to_string(),
                 estimated_tokens,
             };
         }
@@ -192,16 +267,13 @@ impl RlmRouter {
         // Historically this branch also fired based on `current_context_tokens`
         // alone, which silently replaced small, content-carrying tool outputs
         // (e.g. a 2 KB `read`) with an RLM prose summary whenever the prior
-        // conversation happened to be large. The agent had no way to
-        // distinguish the summary from the file's bytes and would re-read the
-        // same path, hitting the same branch, producing the same summary —
-        // an unbreakable spin loop. Context-window pressure is the
-        // compression pass's responsibility, not the tool-output router's.
+        // conversation happened to be large. That regression is now blocked
+        // by the capability gate above; this branch still exists so that
+        // oversized bulk-summarizable output (a single multi-MB webfetch on
+        // top of a large session) gets routed.
         //
-        // We now only route on "would overflow" when the *new output itself*
-        // is responsible for a large share of the projected total. This
-        // preserves protection against a single oversized blob while leaving
-        // normal-sized tool results verbatim.
+        // We only route on "would overflow" when the *new output itself*
+        // is responsible for a large share of the projected total.
         if let Some(current) = ctx.current_context_tokens {
             let projected_total = current + estimated_tokens;
             let overflow_limit = (ctx.model_context_limit as f64 * 0.8) as usize;
@@ -211,25 +283,10 @@ impl RlmRouter {
             if projected_total > overflow_limit && output_dominates {
                 return RoutingResult {
                     should_route: true,
-                    reason: if eligible {
-                        "would_overflow".to_string()
-                    } else {
-                        "would_overflow_ineligible_tool".to_string()
-                    },
+                    reason: "would_overflow".to_string(),
                     estimated_tokens,
                 };
             }
-        }
-
-        // If the tool isn't in the preferred set, we normally avoid routing to
-        // reduce extra model calls. However, we *must* protect the main session
-        // context window from oversized blobs (e.g. raw HTML from web tools).
-        if !eligible {
-            return RoutingResult {
-                should_route: false,
-                reason: "tool_not_eligible".to_string(),
-                estimated_tokens,
-            };
         }
 
         RoutingResult {
@@ -1054,7 +1111,11 @@ mod tests {
     }
 
     #[test]
-    fn should_route_large_output_for_unknown_tool_to_protect_context() {
+    fn unknown_tools_are_never_routed_even_when_oversized() {
+        // Issue #231 item 6: oversized unknown-capability tools must
+        // not be destructively summarized. The agent has no way to
+        // recover the original bytes, and re-calling the tool would
+        // hit the same summary again (spin loop).
         let output = "a".repeat(200_000);
         let ctx = RoutingContext {
             tool_id: "some_new_tool".to_string(),
@@ -1065,7 +1126,33 @@ mod tests {
         };
         let cfg = RlmConfig::default();
         let result = RlmRouter::should_route(&output, &ctx, &cfg);
-        assert!(result.should_route);
-        assert!(result.reason.contains("ineligible") || result.reason.contains("threshold"));
+        assert!(!result.should_route);
+        assert_eq!(result.reason, "tool_unknown_capability_no_route");
+    }
+
+    #[test]
+    fn exact_content_tools_are_never_routed_even_when_oversized() {
+        let output = "a".repeat(500_000);
+        let ctx = RoutingContext {
+            tool_id: "read".to_string(),
+            session_id: "s".to_string(),
+            call_id: None,
+            model_context_limit: 200_000,
+            current_context_tokens: Some(1000),
+        };
+        let cfg = RlmConfig::default();
+        let result = RlmRouter::should_route(&output, &ctx, &cfg);
+        assert!(!result.should_route);
+        assert_eq!(result.reason, "tool_exact_content_no_route");
+    }
+
+    #[test]
+    fn output_capability_classifies_known_tools() {
+        assert_eq!(output_capability("webfetch"), OutputCapability::BulkSummarizable);
+        assert_eq!(output_capability("session_context"), OutputCapability::BulkSummarizable);
+        assert_eq!(output_capability("read"), OutputCapability::ExactContent);
+        assert_eq!(output_capability("bash"), OutputCapability::ExactContent);
+        assert_eq!(output_capability("session_recall"), OutputCapability::ExactContent);
+        assert_eq!(output_capability("brand_new_tool"), OutputCapability::Unknown);
     }
 }

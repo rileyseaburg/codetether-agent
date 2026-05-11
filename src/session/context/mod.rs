@@ -9,6 +9,7 @@ mod derive;
 mod helpers;
 mod incremental;
 mod incremental_insert;
+mod incremental_repair;
 mod incremental_types;
 mod options;
 mod policy;

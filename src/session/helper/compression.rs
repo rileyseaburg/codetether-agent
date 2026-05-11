@@ -87,6 +87,12 @@ const RESERVE_OVERHEAD_TOKENS: usize = 2048;
 /// Fallback chunk-compression target size as a fraction of the ctx window.
 const FALLBACK_CHUNK_RATIO: f64 = 0.25;
 
+/// Broadcast capacity for the throwaway [`SessionBus`] that bridges
+/// `event_tx` into the RLM router. A single compaction emits a handful
+/// of `RlmProgress`/`RlmComplete` events; 16 is more than enough head
+/// room without retaining slow-consumer backlogs.
+const RLM_BUS_CAPACITY: usize = 16;
+
 /// Default cheap model used for RLM context compression when neither
 /// [`crate::rlm::RlmConfig::root_model`] nor the
 /// `CODETETHER_RLM_MODEL` environment variable is set.
@@ -236,6 +242,18 @@ pub(crate) struct CompressContext {
     pub delegation: crate::session::delegation::DelegationState,
     /// Context bucket for the current transcript projection.
     pub bucket: crate::session::relevance::Bucket,
+    /// Optional [`SessionBus`] for RLM progress/completion events.
+    /// When `Some`, the bus is forwarded into
+    /// [`AutoProcessContext::bus`](crate::rlm::router::AutoProcessContext::bus)
+    /// so [`SessionEvent::RlmProgress`] and [`SessionEvent::RlmComplete`]
+    /// are emitted alongside the [`SessionEvent::CompactionStarted`] /
+    /// [`SessionEvent::CompactionCompleted`] pair the caller already
+    /// publishes.
+    pub bus: Option<crate::session::SessionBus>,
+    /// Optional caller-supplied trace id so the RLM events correlate
+    /// with the surrounding compaction events. When `None`, the RLM
+    /// router generates its own id.
+    pub trace_id: Option<Uuid>,
 }
 
 impl CompressContext {
@@ -248,7 +266,21 @@ impl CompressContext {
             subcall_model: session.metadata.subcall_model_name.clone(),
             delegation: session.metadata.delegation.clone(),
             bucket: crate::session::relevance::bucket_for_messages(&session.messages),
+            bus: None,
+            trace_id: None,
         }
+    }
+
+    /// Attach a [`SessionBus`] and a trace id so RLM observability lines
+    /// up with the surrounding compaction events.
+    pub(crate) fn with_bus(
+        mut self,
+        bus: Option<crate::session::SessionBus>,
+        trace_id: Option<Uuid>,
+    ) -> Self {
+        self.bus = bus;
+        self.trace_id = trace_id;
+        self
     }
 }
 
@@ -352,12 +384,13 @@ pub(crate) async fn compress_messages_keep_last(
         on_progress: None,
         provider: rlm_provider,
         model: rlm_model.clone(),
-        bus: None,
-        trace_id: None,
+        bus: ctx.bus.clone(),
+        trace_id: ctx.trace_id,
         subcall_provider: ctx.subcall_provider.clone(),
         subcall_model: ctx.subcall_model.clone(),
     };
 
+    let summary_target_tokens = (ctx_window as f64 * FALLBACK_CHUNK_RATIO) as usize;
     let summary = match RlmRouter::auto_process(&context, auto_ctx, &ctx.rlm_config).await {
         Ok(result) => {
             tracing::info!(
@@ -376,7 +409,22 @@ pub(crate) async fn compress_messages_keep_last(
                 result.stats.input_tokens as u64,
                 result.stats.output_tokens as u64,
             );
-            result.processed
+            match crate::session::index_produce::summary_text::try_bounded_summary(
+                &result,
+                summary_target_tokens,
+            ) {
+                Some(text) => text,
+                None => {
+                    tracing::warn!(
+                        reason,
+                        rlm_model = %rlm_model,
+                        input_tokens = result.stats.input_tokens,
+                        output_tokens = result.stats.output_tokens,
+                        "RLM: Compaction output degraded (empty/short/failed); using chunker fallback"
+                    );
+                    RlmChunker::compress(&context, summary_target_tokens, None)
+                }
+            }
         }
         Err(e) => {
             tracing::warn!(
@@ -384,11 +432,7 @@ pub(crate) async fn compress_messages_keep_last(
                 error = %e,
                 "RLM: Failed to compress session history; falling back to chunk compression"
             );
-            RlmChunker::compress(
-                &context,
-                (ctx_window as f64 * FALLBACK_CHUNK_RATIO) as usize,
-                None,
-            )
+            RlmChunker::compress(&context, summary_target_tokens, None)
         }
     };
 
@@ -505,8 +549,8 @@ pub(crate) async fn compress_last_message_if_oversized(
         on_progress: None,
         provider: Arc::clone(&provider),
         model: model.to_string(),
-        bus: None,
-        trace_id: None,
+        bus: ctx.bus.clone(),
+        trace_id: ctx.trace_id,
         subcall_provider: ctx.subcall_provider.clone(),
         subcall_model: ctx.subcall_model.clone(),
     };
@@ -518,19 +562,29 @@ pub(crate) async fn compress_last_message_if_oversized(
                 output_tokens = result.stats.output_tokens,
                 "RLM: Last message compressed"
             );
-            format!(
-                "[Original message: {msg_tokens} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
-                result.processed,
-                original
-                    .chars()
-                    .take(OVERSIZED_LAST_MESSAGE_PREFIX_CHARS)
-                    .collect::<String>()
-            )
+            match crate::session::index_produce::summary_text::try_bounded_summary(
+                &result, threshold,
+            ) {
+                Some(body) => format!(
+                    "[Original message: {msg_tokens} tokens, compressed via RLM]\n\n{body}\n\n---\nOriginal request prefix:\n{}",
+                    original
+                        .chars()
+                        .take(OVERSIZED_LAST_MESSAGE_PREFIX_CHARS)
+                        .collect::<String>()
+                ),
+                None => {
+                    tracing::warn!(
+                        input_tokens = result.stats.input_tokens,
+                        output_tokens = result.stats.output_tokens,
+                        "RLM: Last-message output degraded (empty/short/failed); using chunker fallback"
+                    );
+                    RlmChunker::compress(&original, threshold, None)
+                }
+            }
         }
         Err(e) => {
             tracing::warn!(error = %e, "RLM: Failed to compress last message, using truncation");
-            let max_chars = threshold * 4;
-            RlmChunker::compress(&original, max_chars / 4, None)
+            RlmChunker::compress(&original, threshold, None)
         }
     };
 
@@ -658,6 +712,17 @@ pub(crate) async fn enforce_on_messages(
     )
     .await;
 
+    // Bridge the legacy mpsc into a SessionBus so RLM events ride the
+    // same trace as the surrounding CompactionStarted/Completed pair.
+    // Cloned per call so the channel forwarder lifetime stays bounded
+    // by this function.
+    let rlm_ctx = ctx.clone().with_bus(
+        event_tx.cloned().map(|tx| {
+            crate::session::SessionBus::new(RLM_BUS_CAPACITY).with_legacy_mpsc(tx)
+        }),
+        Some(trace_id),
+    );
+
     for keep_last in KEEP_LAST_CANDIDATES {
         let est = estimate_request_tokens(system_prompt, messages, tools);
         let still_long =
@@ -687,7 +752,7 @@ pub(crate) async fn enforce_on_messages(
 
         let did = compress_messages_keep_last(
             messages,
-            ctx,
+            &rlm_ctx,
             Arc::clone(&provider),
             model,
             keep_last,

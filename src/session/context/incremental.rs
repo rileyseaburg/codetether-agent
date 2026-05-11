@@ -28,19 +28,23 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tokio::sync::mpsc;
+use uuid::Uuid;
 
 use crate::provider::{Message, Role, ToolDefinition};
 use crate::session::ResidencyLevel;
 use crate::session::Session;
+use crate::session::SessionEvent;
 use crate::session::helper::experimental;
 use crate::session::helper::token::{estimate_request_tokens, estimate_tokens_for_messages};
 use crate::session::index::Granularity;
-use crate::session::index_produce::produce_summary;
+use crate::session::index_produce::{SummaryObservability, produce_summary};
 use crate::session::relevance::{RelevanceMeta, extract};
 
 use super::helpers::DerivedContext;
 use super::incremental_insert::{interleave, range_from_tuple};
-use super::incremental_types::SummaryGap;
+use super::incremental_repair::repair_with_origins;
+use super::incremental_types::{SummaryGap, uncovered_ranges};
 
 /// Default recent-window size — last N entries always retained.
 const DEFAULT_RECENT_WINDOW: usize = 8;
@@ -66,6 +70,7 @@ pub(super) async fn derive_incremental(
     system_prompt: &str,
     tools: &[ToolDefinition],
     budget_tokens: usize,
+    event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
     let mut clone = session.messages.clone();
@@ -131,6 +136,17 @@ pub(super) async fn derive_incremental(
     let mut gaps = Vec::new();
     let rlm_config = session.metadata.rlm.clone();
     let mut summary_index = session.summary_index.clone();
+
+    // One trace id covers every summary range produced for this
+    // derivation, so TUI / audit consumers can correlate them.
+    let trace_id = Uuid::new_v4();
+    let observability_template = || SummaryObservability {
+        bus: event_tx.cloned().map(|tx| {
+            crate::session::SessionBus::new(INCREMENTAL_BUS_CAPACITY).with_legacy_mpsc(tx)
+        }),
+        trace_id: Some(trace_id),
+    };
+
     for tuple in &dropped_ranges {
         let Some(range) = range_from_tuple(*tuple) else {
             continue;
@@ -149,6 +165,7 @@ pub(super) async fn derive_incremental(
                     &session.id,
                     session.metadata.subcall_provider.clone(),
                     session.metadata.subcall_model_name.clone(),
+                    observability_template(),
                 )
             })
             .await?;
@@ -157,29 +174,44 @@ pub(super) async fn derive_incremental(
             content: node.content,
         });
     }
-    let (mut messages, mut resolutions) = interleave(&clone, &keep, &gaps);
+    let (mut messages, mut resolutions, mut origins) = interleave(&clone, &keep, &gaps);
 
-    experimental::pairing::repair_orphans(&mut messages);
+    repair_with_origins(&mut messages, &mut origins);
     if resolutions.len() != messages.len() {
         resolutions = messages.iter().map(residency_for_message).collect();
     }
 
-    // entries back in and busted the budget, trim from the oldest side
-    // until the request fits. This covers both the case where pairing
-    // repair re-introduced entries and where the recent window itself
-    // exceeds the budget.
+    // After pairing repair re-introduced entries / dropped orphans the
+    // request may still exceed the budget. Trim from the oldest side
+    // until it fits, keeping `origins` in lock-step so provenance can
+    // be recomputed below.
     let mut post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
     let mut provenance = vec!["incremental".to_string()];
+    let mut overflow_clamped = false;
     while post_pair_estimate > budget_tokens && messages.len() > 1 {
         messages.remove(0);
         resolutions.remove(0);
-        provenance.push("incremental_overflow_clamp".to_string());
+        origins.remove(0);
+        overflow_clamped = true;
         post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
+    }
+    if overflow_clamped {
+        provenance.push("incremental_overflow_clamp".to_string());
+    }
+
+    // Recompute dropped_ranges from the *final* origins so the
+    // provenance reflects what is actually missing from the LLM's view
+    // (issue #231 item 5). Pre-repair `dropped_ranges` could lie when
+    // pairing repair dropped extra tool messages or overflow clamping
+    // removed kept entries from the front.
+    let final_dropped_ranges = uncovered_ranges(&origins, clone.len());
+    if final_dropped_ranges != dropped_ranges {
+        provenance.push("incremental_dropped_recomputed".to_string());
     }
 
     Ok(DerivedContext {
         resolutions,
-        dropped_ranges,
+        dropped_ranges: final_dropped_ranges,
         provenance,
         messages,
         origin_len,
@@ -265,6 +297,10 @@ fn collect_dropped_ranges(keep: &[bool]) -> Vec<(usize, usize)> {
 
 /// Default per-policy budget when the variant carries `budget_tokens: 0`.
 pub(super) const DEFAULT_INCREMENTAL_BUDGET: usize = 16_000;
+
+/// Broadcast capacity for the throwaway [`SessionBus`] that bridges the
+/// caller's `event_tx` into the RLM router for summary production.
+const INCREMENTAL_BUS_CAPACITY: usize = 16;
 
 #[cfg(test)]
 mod tests {
