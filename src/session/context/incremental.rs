@@ -161,7 +161,7 @@ pub(super) async fn derive_incremental(
 
     experimental::pairing::repair_orphans(&mut messages);
     if resolutions.len() != messages.len() {
-        resolutions = vec![ResidencyLevel::Full; messages.len()];
+        resolutions = messages.iter().map(residency_for_message).collect();
     }
 
     // entries back in and busted the budget, trim from the oldest side
@@ -172,9 +172,7 @@ pub(super) async fn derive_incremental(
     let mut provenance = vec!["incremental".to_string()];
     while post_pair_estimate > budget_tokens && messages.len() > 1 {
         messages.remove(0);
-        if !resolutions.is_empty() {
-            resolutions.remove(0);
-        }
+        resolutions.remove(0);
         provenance.push("incremental_overflow_clamp".to_string());
         post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
     }
@@ -229,6 +227,23 @@ fn overlap_count(left: &[String], right: &[String]) -> usize {
 
 fn message_tokens(msg: &Message) -> usize {
     estimate_tokens_for_messages(std::slice::from_ref(msg))
+}
+
+fn residency_for_message(msg: &Message) -> ResidencyLevel {
+    let text = msg
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .next()
+        .unwrap_or_default();
+    if text.starts_with("[SUMMARY of turns ") {
+        ResidencyLevel::Compressed
+    } else {
+        ResidencyLevel::Full
+    }
 }
 
 fn collect_dropped_ranges(keep: &[bool]) -> Vec<(usize, usize)> {
