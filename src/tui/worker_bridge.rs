@@ -164,7 +164,7 @@ impl TuiWorkerBridge {
                     let server = server.clone();
                     let token = token.clone();
                     let worker_id = worker_id.clone();
-                    let worker_name = worker_name.clone();
+                    let worker_name = worker_name.clone(); let client = client.clone();
                     async move {
                         loop {
                             let url = format!(
@@ -174,7 +174,7 @@ impl TuiWorkerBridge {
                                 urlencoding::encode(&worker_id)
                             );
 
-                            let req = Client::new()
+                            let req = client
                                 .get(&url)
                                 .header("Accept", "text/event-stream")
                                 .header("X-Worker-ID", &worker_id)
