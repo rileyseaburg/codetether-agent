@@ -207,18 +207,6 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
 /// - `/goal done [reason]` — clear the goal.
 /// - `/goal reaffirm <note>` — record progress.
 /// - `/goal show` (or bare `/goal`) — print goal + open tasks.
-
-fn handle_context_command(app: &mut App, rest: &str) {
-    match rest.trim() {
-        "" | "status" => {
-            let body = crate::tui::app::context_status::render(&app.state);
-            push_system_message(app, body);
-            app.state.status = "Context status".to_string();
-        }
-        _ => app.state.status = "Usage: /context [status]".to_string(),
-    }
-}
-
 async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
     use crate::session::tasks::{TaskEvent, TaskLog, TaskState, governance_block};
     use chrono::Utc;
@@ -300,6 +288,18 @@ async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
         Err(e) => {
             app.state.status = format!("/goal write failed: {e}");
         }
+    }
+}
+
+/// Dispatch a `/context ...` command for context/RLM health status.
+fn handle_context_command(app: &mut App, rest: &str) {
+    match rest.trim() {
+        "" | "status" => {
+            let body = crate::tui::app::context_status::render(&app.state);
+            push_system_message(app, body);
+            app.state.status = "Context status".to_string();
+        }
+        _ => app.state.status = "Usage: /context [status]".to_string(),
     }
 }
 

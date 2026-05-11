@@ -267,6 +267,7 @@ pub async fn handle_session_event(
         }
         SessionEvent::RlmComplete(done) => {
             app.state.context_health.note_rlm_complete(&done);
+            app.state.status = format!("RLM complete: {:?}", done.outcome);
             app.state.messages.push(ChatMessage::new(
                 MessageType::System,
                 format!(

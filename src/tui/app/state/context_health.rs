@@ -12,7 +12,7 @@ pub struct ContextHealthState {
 impl ContextHealthState {
     pub fn note_compaction(&mut self, event: &CompactionOutcome) {
         self.last_compaction = Some(format!(
-            "{}: {} → {} tokens ({:.0}% reduction, kept {} msgs)",
+            "{}: {} → {} tokens ({:.0}% reduction, kept {} messages)",
             event.strategy.as_str(),
             event.before_tokens,
             event.after_tokens,
@@ -33,7 +33,7 @@ impl ContextHealthState {
 
     pub fn note_rlm_complete(&mut self, event: &RlmCompletion) {
         self.last_rlm = Some(format!(
-            "{:?}: {} → {} tokens, {} iter, {} ms",
+            "{:?}: {} → {} tokens, {} iterations, {} ms",
             event.outcome,
             event.input_tokens,
             event.output_tokens,
@@ -44,7 +44,7 @@ impl ContextHealthState {
 
     pub fn note_truncation(&mut self, event: &ContextTruncation) {
         self.last_truncation = Some(format!(
-            "dropped {} tokens, kept {} msgs",
+            "dropped {} tokens, kept {} messages",
             event.dropped_tokens, event.kept_messages
         ));
     }
