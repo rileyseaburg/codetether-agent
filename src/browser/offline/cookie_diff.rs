@@ -1,9 +1,10 @@
-//! Diff two JSON cookie jars (lists of CookieRecord) and emit added/removed/changed.
+//! Diff two JSON cookie jars. Keyed on (name, domain, path) via cookie_diff_index.
+//! Any record-level difference counts as `changed`, not just value.
 
 use anyhow::{Context, Result};
-use std::collections::HashMap;
 use std::path::Path;
 
+use super::cookie_diff_index::index;
 use super::cookie_parse::CookieRecord;
 
 #[derive(Debug, serde::Serialize)]
@@ -11,39 +12,37 @@ pub struct CookieDelta {
     pub added: Vec<CookieRecord>,
     pub removed: Vec<CookieRecord>,
     pub changed: Vec<Changed>,
+    /// Cookie keys (name|domain|path) that appeared more than once in either input.
+    pub duplicates: Vec<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
 pub struct Changed {
-    pub name: String,
-    pub before: String,
-    pub after: String,
+    pub key: String,
+    pub before: CookieRecord,
+    pub after: CookieRecord,
 }
 
 pub fn run(before_path: &Path, after_path: &Path) -> Result<String> {
     let before = load(before_path).with_context(|| format!("read {}", before_path.display()))?;
     let after = load(after_path).with_context(|| format!("read {}", after_path.display()))?;
-    let delta = diff(&before, &after);
-    Ok(serde_json::to_string_pretty(&delta)?)
+    Ok(serde_json::to_string_pretty(&diff(&before, &after))?)
 }
 
 fn load(path: &Path) -> Result<Vec<CookieRecord>> {
-    let text = std::fs::read_to_string(path)?;
-    Ok(serde_json::from_str(&text)?)
+    Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
 }
 
 pub fn diff(before: &[CookieRecord], after: &[CookieRecord]) -> CookieDelta {
-    let bmap: HashMap<&str, &CookieRecord> = before.iter().map(|c| (c.name.as_str(), c)).collect();
-    let amap: HashMap<&str, &CookieRecord> = after.iter().map(|c| (c.name.as_str(), c)).collect();
-    let added = after.iter().filter(|c| !bmap.contains_key(c.name.as_str())).cloned().collect();
-    let removed = before.iter().filter(|c| !amap.contains_key(c.name.as_str())).cloned().collect();
-    let changed = before
-        .iter()
-        .filter_map(|b| amap.get(b.name.as_str()).and_then(|a| (a.value != b.value).then(|| Changed {
-            name: b.name.clone(),
-            before: b.value.clone(),
-            after: a.value.clone(),
-        })))
+    let (bmap, mut duplicates) = index(before);
+    let (amap, adup) = index(after);
+    duplicates.extend(adup);
+    duplicates.sort();
+    duplicates.dedup();
+    let added = amap.iter().filter(|(k, _)| !bmap.contains_key(*k)).map(|(_, c)| (*c).clone()).collect();
+    let removed = bmap.iter().filter(|(k, _)| !amap.contains_key(*k)).map(|(_, c)| (*c).clone()).collect();
+    let changed = bmap.iter()
+        .filter_map(|(k, b)| amap.get(k).and_then(|a| (a != b).then(|| Changed { key: k.clone(), before: (*b).clone(), after: (*a).clone() })))
         .collect();
-    CookieDelta { added, removed, changed }
+    CookieDelta { added, removed, changed, duplicates }
 }

@@ -44,6 +44,8 @@ pub fn command(args: &BrowserCtlArgs) -> Value {
             "path": path,
             "full_page": full_page,
         }),
-        BrowserCtlCommand::Offline { .. } => json!({}),
+        BrowserCtlCommand::Offline { .. } => unreachable!(
+            "Offline commands are dispatched via offline::execute and never reach the BrowserCtlTool action layer"
+        ),
     }
 }

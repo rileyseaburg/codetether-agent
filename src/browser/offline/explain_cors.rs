@@ -4,12 +4,15 @@ use anyhow::Result;
 use reqwest::blocking::Client;
 use std::collections::BTreeMap;
 
+use super::explain_cors_analyse::header_reasons;
+
 #[derive(Debug, serde::Serialize)]
 pub struct CorsExplanation {
     pub allowed: bool,
     pub target: String,
     pub origin: String,
     pub method: String,
+    pub preflight_status: u16,
     pub reasons: Vec<String>,
     pub response_headers: BTreeMap<String, String>,
 }
@@ -21,32 +24,22 @@ pub fn run(url: &str, origin: &str, method: &str) -> Result<String> {
         .header("origin", origin)
         .header("access-control-request-method", method)
         .send()?;
-    let headers: BTreeMap<String, String> = resp
-        .headers()
-        .iter()
-        .map(|(k, v)| (k.as_str().to_ascii_lowercase(), v.to_str().unwrap_or("").to_string()))
+    let preflight_status = resp.status().as_u16();
+    let headers: BTreeMap<String, String> = resp.headers().iter()
+        .map(|(k, v)| (k.as_str().to_ascii_lowercase(), String::from_utf8_lossy(v.as_bytes()).to_string()))
         .collect();
-    let reasons = analyse(&headers, origin, method);
-    let explanation = CorsExplanation {
+    let mut reasons = Vec::new();
+    if !(200..300).contains(&preflight_status) {
+        reasons.push(format!("preflight returned non-2xx status {preflight_status}"));
+    }
+    reasons.extend(header_reasons(&headers, origin, method));
+    Ok(serde_json::to_string_pretty(&CorsExplanation {
         allowed: reasons.is_empty(),
         target: url.into(),
         origin: origin.into(),
         method: method.into(),
+        preflight_status,
         reasons,
         response_headers: headers,
-    };
-    Ok(serde_json::to_string_pretty(&explanation)?)
-}
-
-fn analyse(headers: &BTreeMap<String, String>, origin: &str, method: &str) -> Vec<String> {
-    let mut reasons = Vec::new();
-    let allow_origin = headers.get("access-control-allow-origin").map(String::as_str).unwrap_or("");
-    if allow_origin != "*" && allow_origin != origin {
-        reasons.push(format!("Access-Control-Allow-Origin = '{allow_origin}', does not match '{origin}'"));
-    }
-    let allow_methods = headers.get("access-control-allow-methods").map(String::as_str).unwrap_or("");
-    if !allow_methods.split(',').any(|m| m.trim().eq_ignore_ascii_case(method)) {
-        reasons.push(format!("method {method} not in Access-Control-Allow-Methods = '{allow_methods}'"));
-    }
-    reasons
+    })?)
 }
