@@ -213,7 +213,7 @@ async fn authenticate_register(args: RegisterAuthArgs) -> Result<()> {
 
     println!("Registering with {}...", server_url);
 
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
     let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
 
     let resp = client
@@ -306,7 +306,7 @@ async fn authenticate_login(args: LoginAuthArgs) -> Result<()> {
 
     println!("Authenticating with {}...", server_url);
 
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
 
     let login = login_with_password(&client, &server_url, &email, &password).await?;
     let cred_path = write_saved_credentials(&server_url, &email, &login)?;
@@ -592,7 +592,7 @@ fn is_expected_codex_id_token_exchange_fallback(error: &anyhow::Error) -> bool {
 }
 
 async fn authenticate_codex_device_code() -> Result<OAuthCredentials> {
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
     let issuer = OpenAiCodexProvider::oauth_issuer().trim_end_matches('/');
     let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
     let device_code = request_codex_device_code(&client, issuer, &user_agent).await?;
@@ -1097,7 +1097,7 @@ async fn authenticate_copilot(args: CopilotAuthArgs) -> Result<()> {
         None => ("github-copilot", DEFAULT_GITHUB_DOMAIN.to_string(), None),
     };
 
-    let client = Client::new();
+    let client = crate::provider::shared_http::shared_client().clone();
     let client_id = resolve_client_id(args.client_id)?;
     let user_agent = format!("codetether-agent/{}", env!("CARGO_PKG_VERSION"));
     let device = request_device_code(&client, &domain, &user_agent, &client_id).await?;
