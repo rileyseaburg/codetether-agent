@@ -13,8 +13,6 @@ use crate::session::derive_policy::DerivePolicy;
 
 use super::derive::derive_context;
 use super::helpers::DerivedContext;
-use super::incremental::{DEFAULT_INCREMENTAL_BUDGET, derive_incremental};
-use super::reset::derive_reset;
 use super::reset_helpers::latest_reset_marker_index;
 
 const DEFAULT_RESET_THRESHOLD_TOKENS: usize = 32_000;
@@ -77,7 +75,7 @@ fn resolve_reset_threshold(persisted: DerivePolicy) -> usize {
 fn resolve_incremental_budget(persisted: DerivePolicy) -> usize {
     let default_budget = match persisted {
         DerivePolicy::Incremental { budget_tokens } if budget_tokens > 0 => budget_tokens,
-        _ => DEFAULT_INCREMENTAL_BUDGET,
+        _ => super::incremental::DEFAULT_INCREMENTAL_BUDGET,
     };
     env::var("CODETETHER_CONTEXT_INCREMENTAL_BUDGET_TOKENS")
         .ok()
@@ -139,32 +137,13 @@ pub async fn derive_with_policy(
             )
             .await
         }
-        DerivePolicy::Reset { threshold_tokens } => {
-            derive_reset(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                threshold_tokens,
-                event_tx,
-            )
-            .await
-        }
+        DerivePolicy::Reset { threshold_tokens } => super::policy_dispatch::dispatch_reset(
+            session, provider, model, system_prompt, tools, threshold_tokens, event_tx,
+        )
+        .await,
         DerivePolicy::Incremental { budget_tokens } => {
-            let budget = if budget_tokens == 0 {
-                DEFAULT_INCREMENTAL_BUDGET
-            } else {
-                budget_tokens
-            };
-            derive_incremental(
-                session,
-                provider,
-                model,
-                system_prompt,
-                tools,
-                budget,
-                event_tx,
+            super::policy_dispatch::dispatch_incremental(
+                session, provider, model, system_prompt, tools, budget_tokens, event_tx,
             )
             .await
         }

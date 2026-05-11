@@ -23,8 +23,10 @@ const RESET_BUS_CAPACITY: usize = 16;
 ///
 /// When `event_tx` is provided, an ephemeral [`SessionBus`](crate::session::SessionBus)
 /// is bridged onto it so the RLM router's `RlmProgress`/`RlmComplete`
-/// events surface in the TUI alongside the surrounding compaction
-/// trace.
+/// events surface in the TUI. The Reset policy does not emit
+/// `CompactionStarted`/`Completed`, so a fresh `trace_id` is minted
+/// here purely to correlate this run's own progress + completion
+/// events with each other — not with any parent compaction trace.
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn summarise_prefix_for_reset(
     prefix: &[Message],

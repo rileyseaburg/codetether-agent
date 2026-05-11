@@ -7,13 +7,13 @@
 //! definitions alongside the analysis prompt so FunctionGemma can convert
 //! text-only LLM responses into structured tool calls.
 
+use super::capability::{OutputCapability, output_capability};
 use super::{RlmChunker, RlmConfig, RlmResult, RlmStats};
 use crate::provider::{CompletionRequest, ContentPart, Message, Provider, Role};
 use crate::rlm::context_trace::{ContextEvent, ContextTrace};
 use crate::session::{RlmCompletion, RlmOutcome, RlmProgressEvent, SessionBus, SessionEvent};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 use tracing::{info, warn};
@@ -22,102 +22,6 @@ use uuid::Uuid;
 use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 use super::tools::rlm_tool_definitions;
-
-/// Tools eligible for RLM routing.
-///
-/// Only tools whose output is genuinely unpredictable in size AND that
-/// the agent cannot easily re-query in smaller chunks belong here.
-/// Routing replaces raw bytes with an RLM-generated prose summary,
-/// which is destructive for content-carrying tools like
-/// `read`/`grep`/`bash` — the agent has no way to get the original
-/// bytes back and re-reads produce the same summary, causing spin
-/// loops. Those tools already expose bounded slicing (offset/limit,
-/// line ranges, head/tail).
-fn rlm_eligible_tools() -> &'static HashSet<&'static str> {
-    static TOOLS: std::sync::OnceLock<HashSet<&'static str>> = std::sync::OnceLock::new();
-    TOOLS.get_or_init(|| {
-        [
-            // Web tools commonly return megabytes of HTML/JS with no slicing API.
-            "webfetch",
-            "websearch",
-            // Batch aggregates many outputs and can exceed the window in one shot.
-            "batch",
-        ]
-        .into_iter()
-        .collect()
-    })
-}
-
-/// Capability flag describing what RLM is allowed to do with a tool's
-/// output (issue #231 item 6).
-///
-/// The router consults this *before* deciding to route a large output
-/// through destructive summarization. Tools whose bytes carry exact
-/// information the agent may need to act on (file reads, grep results,
-/// shell output) must never be summarized — the agent has no way to
-/// recover the originals and re-running the tool produces the same
-/// summary, creating a spin loop. Unknown tools default to
-/// [`OutputCapability::Unknown`] which is treated as
-/// [`OutputCapability::ExactContent`] for safety; making them
-/// summarizable requires an explicit allowlist entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OutputCapability {
-    /// Bulk web/aggregate output where a prose summary is an
-    /// acceptable lossy projection (webfetch, websearch, batch).
-    BulkSummarizable,
-    /// Content-carrying output whose exact bytes may be needed by the
-    /// agent later. Never route through RLM summarization — instead
-    /// fall back to truncation with a re-query hint, or rely on the
-    /// session compression pass for context pressure.
-    ExactContent,
-    /// Unknown tool with no declared capability. Treated as
-    /// [`OutputCapability::ExactContent`] for safety.
-    Unknown,
-}
-
-/// Tools whose output is content-carrying and must not be destructively
-/// summarized regardless of size. These all expose bounded re-query
-/// surfaces (offset/limit, line ranges, head/tail) so the agent can
-/// recover from oversized output without RLM.
-fn rlm_exact_content_tools() -> &'static HashSet<&'static str> {
-    static TOOLS: std::sync::OnceLock<HashSet<&'static str>> = std::sync::OnceLock::new();
-    TOOLS.get_or_init(|| {
-        [
-            "read",
-            "grep",
-            "bash",
-            "glob",
-            "ls",
-            "edit",
-            "write",
-            // session_recall returns specific message excerpts;
-            // summarizing a recall result loses the exact bytes the
-            // caller asked for.
-            "session_recall",
-            // notebook tools surface cell content/output verbatim.
-            "notebook_read",
-            "notebook_edit",
-        ]
-        .into_iter()
-        .collect()
-    })
-}
-
-/// Classify a tool's output capability for the router.
-///
-/// `session_context` is a pseudo-tool used by the compression pass and
-/// is intentionally treated as [`OutputCapability::BulkSummarizable`] —
-/// the compression pipeline is the *one* legitimate caller that wants
-/// a summary of session history.
-pub fn output_capability(tool_id: &str) -> OutputCapability {
-    if tool_id == "session_context" || rlm_eligible_tools().contains(tool_id) {
-        return OutputCapability::BulkSummarizable;
-    }
-    if rlm_exact_content_tools().contains(tool_id) {
-        return OutputCapability::ExactContent;
-    }
-    OutputCapability::Unknown
-}
 
 /// Context for routing decisions
 #[derive(Debug, Clone)]
@@ -1160,13 +1064,4 @@ mod tests {
         assert_eq!(result.reason, "tool_exact_content_no_route");
     }
 
-    #[test]
-    fn output_capability_classifies_known_tools() {
-        assert_eq!(output_capability("webfetch"), OutputCapability::BulkSummarizable);
-        assert_eq!(output_capability("session_context"), OutputCapability::BulkSummarizable);
-        assert_eq!(output_capability("read"), OutputCapability::ExactContent);
-        assert_eq!(output_capability("bash"), OutputCapability::ExactContent);
-        assert_eq!(output_capability("session_recall"), OutputCapability::ExactContent);
-        assert_eq!(output_capability("brand_new_tool"), OutputCapability::Unknown);
-    }
 }

@@ -12,7 +12,6 @@ use crate::session::SessionEvent;
 use crate::session::helper::experimental;
 use crate::session::helper::token::estimate_request_tokens;
 
-use super::derive::derive_context;
 use super::helpers::DerivedContext;
 use super::reset_rebuild::rebuild_with_summary;
 use super::{active_tail::active_user_tail_start, reset_helpers::latest_reset_marker_index};
@@ -75,18 +74,11 @@ pub(super) async fn derive_reset(
     }
 
     let Some(split_idx) = active_user_tail_start(&messages, 8) else {
-        if !provenance.is_empty() {
-            experimental::pairing::repair_orphans(&mut messages);
-            return Ok(DerivedContext {
-                resolutions: vec![ResidencyLevel::Full; messages.len()],
-                dropped_ranges,
-                provenance,
-                messages,
-                origin_len,
-                compressed: true,
-            });
-        }
-        return derive_context(session, provider, model, system_prompt, tools, event_tx, None).await;
+        return super::reset_fallback::no_active_tail_fallback(
+            session, provider, model, system_prompt, tools, event_tx,
+            messages, dropped_ranges, provenance, origin_len,
+        )
+        .await;
     };
 
     let tail = messages.split_off(split_idx);

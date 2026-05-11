@@ -8,13 +8,26 @@ mod compress_step;
 mod derive;
 mod helpers;
 mod incremental;
+mod incremental_below_budget;
+mod incremental_clamp;
+mod incremental_coverage;
 mod incremental_insert;
+mod incremental_observability;
 mod incremental_repair;
+mod incremental_repair_drop;
+mod incremental_repair_inject;
 mod incremental_types;
+
+#[cfg(test)]
+mod incremental_coverage_tests;
+#[cfg(test)]
+mod incremental_repair_tests;
 mod options;
 mod policy;
+mod policy_dispatch;
 mod request;
 mod reset;
+mod reset_fallback;
 mod reset_helpers;
 mod reset_rebuild;
 mod reset_summary;
