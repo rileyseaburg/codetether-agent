@@ -64,6 +64,19 @@ const KEEP_LAST_CANDIDATES: [usize; 6] = [16, 12, 8, 6, 3, 1];
 /// coherent.
 const TRUNCATE_KEEP_LAST: usize = 4;
 
+/// Byte ceilings used by terminal truncation when the retained tail still
+/// exceeds the provider context budget. The cascade preserves generous
+/// head/tail snippets first, then gets progressively stricter.
+const TERMINAL_PAYLOAD_CAPS: [usize; 8] = [
+    262_144, 131_072, 65_536, 32_768, 16_384, 8_192, 4_096, 2_048,
+];
+
+/// Final emergency ceiling if the normal cascade still cannot bring the
+/// prompt under budget. This should only affect pathological single-turn
+/// tool dumps; the newest user instruction is already protected by the
+/// oversized-message compressor before this fallback runs.
+const TERMINAL_EMERGENCY_CAP_BYTES: usize = 1_024;
+
 /// Fraction of the usable budget we target after compression.
 const SAFETY_BUDGET_RATIO: f64 = 0.90;
 
@@ -706,8 +719,13 @@ pub(crate) async fn enforce_on_messages(
 
     // Every RLM / chunk attempt still leaves us over budget.
     // Apply terminal truncation as the last-resort fallback.
-    let dropped_tokens =
-        terminal_truncate_messages(messages, system_prompt, tools, TRUNCATE_KEEP_LAST);
+    let dropped_tokens = terminal_truncate_messages(
+        messages,
+        system_prompt,
+        tools,
+        TRUNCATE_KEEP_LAST,
+        safety_budget,
+    );
     let after_tokens = estimate_request_tokens(system_prompt, messages, tools);
 
     tracing::warn!(
@@ -826,28 +844,45 @@ pub async fn enforce_context_window(
 /// # Returns
 ///
 /// An approximate count of tokens removed (saturating subtraction).
-/// Returns `0` when `messages.len() <= keep_last` and no work is done.
+/// Returns `0` when `messages.len() <= keep_last`, the request already fits
+/// `target_tokens`, and no work is done.
 pub(crate) fn terminal_truncate_messages(
     messages: &mut Vec<Message>,
     system_prompt: &str,
     tools: &[ToolDefinition],
     keep_last: usize,
+    target_tokens: usize,
 ) -> usize {
-    if messages.len() <= keep_last {
+    let before = estimate_request_tokens(system_prompt, messages, tools);
+    if messages.len() <= keep_last && before <= target_tokens {
         return 0;
     }
 
-    let before = estimate_request_tokens(system_prompt, messages, tools);
-    let split_idx = crate::session::context::active_tail::active_tail_start(messages, keep_last);
-    let tail = messages.split_off(split_idx);
+    let split_idx = if messages.len() > keep_last {
+        crate::session::context::active_tail::active_tail_start(messages, keep_last)
+    } else {
+        0
+    };
+    let dropped_prefix = split_idx > 0;
+    let tail = if dropped_prefix {
+        messages.split_off(split_idx)
+    } else {
+        std::mem::take(messages)
+    };
 
     let marker = Message {
         role: Role::Assistant,
         content: vec![ContentPart::Text {
-            text: "[CONTEXT TRUNCATED]\nOlder conversation was dropped to keep the request \
-                   under the model's context window. Ask for details to recall anything \
-                   specific."
-                .to_string(),
+            text: if dropped_prefix {
+                "[CONTEXT TRUNCATED]\nOlder conversation was dropped to keep the request \
+                 under the model's context window. Some retained tool output may also be \
+                 shortened with head/tail snippets."
+                    .to_string()
+            } else {
+                "[CONTEXT TRUNCATED]\nRecent tool output was too large for the model's \
+                 context window and was shortened with head/tail snippets."
+                    .to_string()
+            },
         }],
     };
 
@@ -856,8 +891,130 @@ pub(crate) fn terminal_truncate_messages(
     new_messages.extend(tail);
     *messages = new_messages;
 
+    let shrunk_parts =
+        shrink_retained_payloads_to_budget(messages, system_prompt, tools, target_tokens);
+    if shrunk_parts > 0 {
+        tracing::warn!(
+            shrunk_parts,
+            target_tokens,
+            after_tokens = estimate_request_tokens(system_prompt, messages, tools),
+            "Terminal truncation shortened retained message payloads"
+        );
+    }
+
     let after = estimate_request_tokens(system_prompt, messages, tools);
     before.saturating_sub(after)
+}
+
+fn shrink_retained_payloads_to_budget(
+    messages: &mut [Message],
+    system_prompt: &str,
+    tools: &[ToolDefinition],
+    target_tokens: usize,
+) -> usize {
+    if target_tokens == usize::MAX
+        || estimate_request_tokens(system_prompt, messages, tools) <= target_tokens
+    {
+        return 0;
+    }
+
+    let mut changed_parts = 0;
+    for cap in TERMINAL_PAYLOAD_CAPS {
+        changed_parts += shrink_payloads_over_cap(messages, cap, false);
+        if estimate_request_tokens(system_prompt, messages, tools) <= target_tokens {
+            return changed_parts;
+        }
+    }
+
+    changed_parts += shrink_payloads_over_cap(messages, TERMINAL_EMERGENCY_CAP_BYTES, true);
+    changed_parts
+}
+
+fn shrink_payloads_over_cap(
+    messages: &mut [Message],
+    cap_bytes: usize,
+    include_latest_user: bool,
+) -> usize {
+    let message_count = messages.len();
+    let mut changed = 0;
+    for (msg_idx, msg) in messages.iter_mut().enumerate() {
+        let role = msg.role;
+        let is_latest_user = matches!(role, Role::User) && msg_idx + 1 == message_count;
+        for part in &mut msg.content {
+            let cap = match part {
+                ContentPart::ToolResult { .. } | ContentPart::Thinking { .. } => cap_bytes,
+                ContentPart::ToolCall { .. } => cap_bytes,
+                ContentPart::Text { text } => {
+                    if msg_idx == 0 && text.starts_with("[CONTEXT TRUNCATED]") {
+                        continue;
+                    }
+                    if is_latest_user && !include_latest_user {
+                        cap_bytes.max(16_384)
+                    } else {
+                        cap_bytes
+                    }
+                }
+                ContentPart::Image { .. } | ContentPart::File { .. } => continue,
+            };
+            if shrink_content_part(part, cap) {
+                changed += 1;
+            }
+        }
+    }
+    changed
+}
+
+fn shrink_content_part(part: &mut ContentPart, cap_bytes: usize) -> bool {
+    match part {
+        ContentPart::Text { text } => shrink_string_payload(text, cap_bytes, "text"),
+        ContentPart::ToolResult { content, .. } => {
+            shrink_string_payload(content, cap_bytes, "tool_result")
+        }
+        ContentPart::ToolCall { arguments, .. } => {
+            shrink_string_payload(arguments, cap_bytes, "tool_call_arguments")
+        }
+        ContentPart::Thinking { text } => shrink_string_payload(text, cap_bytes, "thinking"),
+        ContentPart::Image { .. } | ContentPart::File { .. } => false,
+    }
+}
+
+fn shrink_string_payload(value: &mut String, cap_bytes: usize, label: &str) -> bool {
+    if value.len() <= cap_bytes {
+        return false;
+    }
+    *value = terminal_head_tail(value, cap_bytes, label);
+    true
+}
+
+fn terminal_head_tail(value: &str, cap_bytes: usize, label: &str) -> String {
+    let marker = format!(
+        "\n\n[terminal context fallback truncated {label}; original_bytes={}]\n\n",
+        value.len()
+    );
+    if cap_bytes <= marker.len() + 32 {
+        return format!(
+            "[terminal context fallback truncated {label}; original_bytes={}]",
+            value.len()
+        );
+    }
+
+    let available = cap_bytes - marker.len();
+    let head_budget = available / 2;
+    let tail_budget = available - head_budget;
+    let head = crate::util::truncate_bytes_safe(value, head_budget);
+    let tail = suffix_bytes_safe(value, tail_budget);
+    format!("{head}{marker}{tail}")
+}
+
+fn suffix_bytes_safe(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut start = s.len().saturating_sub(max_bytes);
+    while start < s.len() && !s.is_char_boundary(start) {
+        start += 1;
+    }
+    &s[start..]
 }
 
 async fn emit(event_tx: Option<&mpsc::Sender<SessionEvent>>, ev: SessionEvent) {
@@ -879,11 +1036,21 @@ mod tests {
         }
     }
 
+    fn tool_result(content: String) -> Message {
+        Message {
+            role: Role::Tool,
+            content: vec![ContentPart::ToolResult {
+                tool_call_id: "call_1".to_string(),
+                content,
+            }],
+        }
+    }
+
     #[test]
     fn terminal_truncate_noop_when_short_enough() {
         let mut messages = vec![user("a"), user("b")];
         let before_len = messages.len();
-        let dropped = terminal_truncate_messages(&mut messages, "", &[], 4);
+        let dropped = terminal_truncate_messages(&mut messages, "", &[], 4, usize::MAX);
         assert_eq!(dropped, 0);
         assert_eq!(messages.len(), before_len);
     }
@@ -891,7 +1058,7 @@ mod tests {
     #[test]
     fn terminal_truncate_drops_prefix_and_prepends_marker() {
         let mut messages: Vec<Message> = (0..10).map(|i| user(&format!("msg-{i}"))).collect();
-        let _ = terminal_truncate_messages(&mut messages, "", &[], 3);
+        let _ = terminal_truncate_messages(&mut messages, "", &[], 3, usize::MAX);
 
         // 1 synthetic marker + 3 most-recent messages.
         assert_eq!(messages.len(), 4);
@@ -914,6 +1081,29 @@ mod tests {
             })
             .collect();
         assert_eq!(kept_texts, vec!["msg-7", "msg-8", "msg-9"]);
+    }
+
+    #[test]
+    fn terminal_truncate_shrinks_oversized_tail_when_message_count_is_short() {
+        let huge_output = format!("head\n{}\ntail", "x".repeat(200_000));
+        let mut messages = vec![user("inspect the logs"), tool_result(huge_output)];
+        let before = estimate_request_tokens("", &messages, &[]);
+
+        let dropped = terminal_truncate_messages(&mut messages, "", &[], 4, 6_000);
+        let after = estimate_request_tokens("", &messages, &[]);
+
+        assert!(dropped > 0);
+        assert!(after < before);
+        assert!(after <= 6_000, "after={after}");
+        assert_eq!(messages.len(), 3);
+        assert!(matches!(messages[0].role, Role::Assistant));
+
+        let ContentPart::ToolResult { content, .. } = &messages[2].content[0] else {
+            panic!("expected tool result");
+        };
+        assert!(content.contains("terminal context fallback truncated tool_result"));
+        assert!(content.contains("head"));
+        assert!(content.contains("tail"));
     }
 
     #[test]

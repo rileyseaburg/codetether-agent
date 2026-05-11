@@ -1,1 +1,1 @@
-//! Test-only module aggregator for TUI app tests.
+//! Test-only module namespace.

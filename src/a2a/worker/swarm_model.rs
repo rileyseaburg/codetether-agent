@@ -32,7 +32,7 @@ pub(super) async fn resolve_swarm_model(
     if let Some(model) = explicit_model.filter(|value| !value.trim().is_empty()) {
         return Some(model);
     }
-    let registry = ProviderRegistry::from_vault().await.ok()?;
+    let registry = ProviderRegistry::shared_from_vault().await.ok()?;
     let providers = registry.list();
     if providers.is_empty() {
         return None;

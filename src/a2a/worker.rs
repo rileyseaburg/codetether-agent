@@ -1094,7 +1094,7 @@ async fn resolve_swarm_model(
         return Some(model);
     }
 
-    let registry = ProviderRegistry::from_vault().await.ok()?;
+    let registry = ProviderRegistry::shared_from_vault().await.ok()?;
     let providers = registry.list();
     if providers.is_empty() {
         return None;
@@ -1284,10 +1284,10 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
 async fn load_provider_models_uncached() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>>
 {
     // Try Vault first
-    let registry = match ProviderRegistry::from_vault().await {
+    let registry = match ProviderRegistry::shared_from_vault().await {
         Ok(r) if !r.list().is_empty() => {
             tracing::info!("Loaded {} providers from Vault", r.list().len());
-            r
+            (*r).clone()
         }
         Ok(_) => {
             tracing::warn!("Vault returned 0 providers, falling back to config/env vars");
@@ -2235,6 +2235,10 @@ async fn enqueue_post_clone_task(
     workspace_id: &str,
     metadata: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<()> {
+    if !worker_should_enqueue_post_clone_task(metadata) {
+        return Ok(());
+    }
+
     let Some(post_clone_task) = metadata.get("post_clone_task") else {
         return Ok(());
     };
@@ -2290,6 +2294,19 @@ async fn enqueue_post_clone_task(
         anyhow::bail!("Failed to enqueue post-clone task ({}): {}", status, body);
     }
     Ok(())
+}
+
+fn worker_should_enqueue_post_clone_task(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> bool {
+    if metadata.get("source").and_then(|value| value.as_str()) == Some("github-app") {
+        return false;
+    }
+
+    metadata
+        .get("post_clone_task")
+        .and_then(|value| value.as_object())
+        .is_some()
 }
 
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
@@ -2542,9 +2559,10 @@ async fn execute_session_with_policy(
             tracing::warn!(
                 "Per-task provider key payload produced no providers; falling back to platform registry"
             );
-            ProviderRegistry::from_vault().await.context(
+            (*ProviderRegistry::shared_from_vault().await.context(
                 "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
-            )?
+            )?)
+            .clone()
         } else {
             tracing::info!(
                 source = keys.source(),
@@ -2554,9 +2572,10 @@ async fn execute_session_with_policy(
             registry
         }
     } else {
-        ProviderRegistry::from_vault()
-            .await
-            .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?
+        (*ProviderRegistry::shared_from_vault().await.context(
+            "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
+        )?)
+        .clone()
     };
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
@@ -2667,18 +2686,13 @@ async fn execute_session_with_policy(
     for step in 1..=max_steps {
         tracing::info!(step = step, "Agent step starting");
 
-        let response = crate::session::context::complete_with_context(
+        let response = complete_worker_step_with_context_fallback(
             Arc::clone(&provider),
             session,
             &model,
             &system_prompt,
             &tool_definitions,
-            crate::session::context::RequestOptions {
-                temperature,
-                top_p: None,
-                max_tokens: Some(8192),
-                force_keep_last: None,
-            },
+            temperature,
         )
         .await?;
 
@@ -2764,8 +2778,25 @@ async fn execute_session_with_policy(
             }
 
             let content = if let Some(tool) = tool_registry.get(&tool_name) {
-                let exec_result: Result<crate::tool::ToolResult> =
-                    tool.execute(tool_input.clone()).await;
+                let tool_timeout_secs =
+                    env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
+                let exec_result: Result<crate::tool::ToolResult> = match tokio::time::timeout(
+                    Duration::from_secs(tool_timeout_secs),
+                    tool.execute(tool_input.clone()),
+                )
+                .await
+                {
+                    Ok(result) => result,
+                    Err(_) => Ok(crate::tool::ToolResult::structured_error(
+                        "TOOL_TIMEOUT",
+                        &tool_name,
+                        &format!("tool timed out after {tool_timeout_secs}s"),
+                        None,
+                        Some(serde_json::json!({
+                            "hint": "Narrow the request, set a more specific path/include filter, or retry with smaller scope."
+                        })),
+                    )),
+                };
                 match exec_result {
                     Ok(result) => {
                         tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -2809,6 +2840,103 @@ async fn execute_session_with_policy(
         text: final_output.trim().to_string(),
         session_id: session.id.clone(),
     })
+}
+
+async fn complete_worker_step_with_context_fallback(
+    provider: Arc<dyn crate::provider::Provider>,
+    session: &Session,
+    model: &str,
+    system_prompt: &str,
+    tool_definitions: &[crate::provider::ToolDefinition],
+    temperature: Option<f32>,
+) -> Result<crate::provider::CompletionResponse> {
+    let options = crate::session::context::RequestOptions {
+        temperature,
+        top_p: None,
+        max_tokens: Some(8192),
+        force_keep_last: None,
+    };
+
+    match crate::session::context::complete_with_context(
+        Arc::clone(&provider),
+        session,
+        model,
+        system_prompt,
+        tool_definitions,
+        options,
+    )
+    .await
+    {
+        Ok(response) => Ok(response),
+        Err(error) if crate::session::helper::error::is_prompt_too_long_error(&error) => {
+            let compact_tools = compact_worker_tool_definitions(tool_definitions);
+            tracing::warn!(
+                error = %error,
+                tool_count = tool_definitions.len(),
+                original_tool_schema_bytes = tool_schema_bytes(tool_definitions),
+                compact_tool_schema_bytes = tool_schema_bytes(&compact_tools),
+                "Provider rejected prompt after context compaction; retrying with compact tool schemas"
+            );
+            crate::session::context::complete_with_context(
+                provider,
+                session,
+                model,
+                system_prompt,
+                &compact_tools,
+                options,
+            )
+            .await
+            .map_err(|retry_error| {
+                if crate::session::helper::error::is_prompt_too_long_error(&retry_error) {
+                    retry_error.context(
+                        "provider rejected prompt as too long after RLM compaction and compact tool-schema fallback",
+                    )
+                } else {
+                    retry_error
+                }
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn compact_worker_tool_definitions(
+    tools: &[crate::provider::ToolDefinition],
+) -> Vec<crate::provider::ToolDefinition> {
+    tools
+        .iter()
+        .map(|tool| crate::provider::ToolDefinition {
+            name: tool.name.clone(),
+            description: tool.description.clone(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "additionalProperties": true
+            }),
+        })
+        .collect()
+}
+
+fn tool_schema_bytes(tools: &[crate::provider::ToolDefinition]) -> usize {
+    let mut writer = CountingWriter::default();
+    serde_json::to_writer(&mut writer, tools)
+        .map(|_| writer.bytes)
+        .unwrap_or(0)
+}
+
+#[derive(Default)]
+struct CountingWriter {
+    bytes: usize,
+}
+
+impl std::io::Write for CountingWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.bytes += buf.len();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// Start the heartbeat background task
@@ -3355,7 +3483,74 @@ async fn sync_workspaces_from_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::{
+        CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo,
+        Provider, Role, StreamChunk, ToolDefinition, Usage,
+    };
+    use futures::stream::{self, BoxStream};
     use serde_json::json;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    struct ContextErrorUntilCompactProvider {
+        calls: AtomicUsize,
+        saw_compact_schema: AtomicBool,
+    }
+
+    impl ContextErrorUntilCompactProvider {
+        fn new() -> Self {
+            Self {
+                calls: AtomicUsize::new(0),
+                saw_compact_schema: AtomicBool::new(false),
+            }
+        }
+
+        fn calls(&self) -> usize {
+            self.calls.load(Ordering::SeqCst)
+        }
+
+        fn saw_compact_schema(&self) -> bool {
+            self.saw_compact_schema.load(Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl Provider for ContextErrorUntilCompactProvider {
+        fn name(&self) -> &str {
+            "mock"
+        }
+
+        async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+            Ok(Vec::new())
+        }
+
+        async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            let compact = request.tools.iter().all(|tool| {
+                tool.parameters.get("additionalProperties") == Some(&serde_json::Value::Bool(true))
+            });
+            if compact {
+                self.saw_compact_schema.store(true, Ordering::SeqCst);
+                return Ok(CompletionResponse {
+                    message: Message {
+                        role: Role::Assistant,
+                        content: vec![ContentPart::Text { text: "ok".into() }],
+                    },
+                    usage: Usage::default(),
+                    finish_reason: FinishReason::Stop,
+                });
+            }
+            anyhow::bail!(
+                "Your input exceeds the context window of this model. Please adjust your input and try again."
+            )
+        }
+
+        async fn complete_stream(
+            &self,
+            _request: CompletionRequest,
+        ) -> Result<BoxStream<'static, StreamChunk>> {
+            Ok(Box::pin(stream::empty()))
+        }
+    }
 
     #[test]
     fn metadata_lookup_reads_nested_forage_keys() {
@@ -3390,6 +3585,85 @@ mod tests {
         assert!(args.no_s3);
         assert_eq!(args.model.as_deref(), Some("openrouter/z-ai/glm-5"));
         assert_eq!(args.execution_engine, "run");
+    }
+
+    #[test]
+    fn compact_worker_tool_definitions_preserve_tool_identity() {
+        let tools = vec![ToolDefinition {
+            name: "large_tool".to_string(),
+            description: "Large tool schema".to_string(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "string",
+                        "description": "x".repeat(20_000)
+                    }
+                }
+            }),
+        }];
+
+        let compact = compact_worker_tool_definitions(&tools);
+
+        assert_eq!(compact[0].name, tools[0].name);
+        assert_eq!(compact[0].description, tools[0].description);
+        assert_eq!(
+            compact[0].parameters.get("additionalProperties"),
+            Some(&serde_json::Value::Bool(true))
+        );
+        assert!(tool_schema_bytes(&compact) < tool_schema_bytes(&tools) / 10);
+    }
+
+    #[tokio::test]
+    async fn worker_retries_context_window_error_with_compact_tool_schema() {
+        let provider = Arc::new(ContextErrorUntilCompactProvider::new());
+        let provider_dyn: Arc<dyn Provider> = provider.clone();
+        let mut session = Session::new().await.expect("session");
+        session.add_message(Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "Run cronjob \"rule:Retry Failed Conversion Forwards\".".to_string(),
+            }],
+        });
+        let tools = vec![ToolDefinition {
+            name: "large_tool".to_string(),
+            description: "Large tool schema".to_string(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "string",
+                        "description": "x".repeat(20_000)
+                    }
+                }
+            }),
+        }];
+
+        let response = complete_worker_step_with_context_fallback(
+            provider_dyn,
+            &session,
+            "mock-model",
+            "system",
+            &tools,
+            Some(0.7),
+        )
+        .await
+        .expect("compact tool-schema retry should recover");
+
+        assert_eq!(
+            response
+                .message
+                .content
+                .iter()
+                .filter_map(|part| match part {
+                    ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<String>(),
+            "ok"
+        );
+        assert_eq!(provider.calls(), 5);
+        assert!(provider.saw_compact_schema());
     }
 
     #[test]
@@ -3434,6 +3708,37 @@ mod tests {
         assert_eq!(args.swarm_max_subagents, 4);
         assert_eq!(args.swarm_max_steps, 42);
         assert_eq!(args.swarm_subagent_timeout_secs, 180);
+    }
+
+    #[test]
+    fn worker_skips_github_app_post_clone_followups() {
+        let metadata = json!({
+            "source": "github-app",
+            "post_clone_task": {
+                "title": "Work issue #76",
+                "prompt": "fix it"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(!worker_should_enqueue_post_clone_task(&metadata));
+    }
+
+    #[test]
+    fn worker_allows_legacy_post_clone_followups() {
+        let metadata = json!({
+            "post_clone_task": {
+                "title": "Continue after clone",
+                "prompt": "run build"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(worker_should_enqueue_post_clone_task(&metadata));
     }
 
     #[test]

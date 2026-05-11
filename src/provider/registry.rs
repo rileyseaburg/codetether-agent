@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Registry of available providers.
+#[derive(Clone)]
 pub struct ProviderRegistry {
     pub(crate) providers: HashMap<String, Arc<dyn Provider>>,
 }

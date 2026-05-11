@@ -12,6 +12,7 @@
 //! ```
 
 use serde::Deserialize;
+use std::path::PathBuf;
 
 /// Parsed input payload for the sub-agent management tool.
 ///
@@ -34,6 +35,10 @@ pub(super) struct Params {
     pub message: Option<String>,
     #[serde(default)]
     pub model: Option<String>,
+    #[serde(default)]
+    pub ephemeral: bool,
     #[serde(default, rename = "__ct_current_model")]
     pub _current_model: Option<String>,
+    #[serde(default, rename = "__ct_parent_workspace")]
+    pub parent_workspace: Option<PathBuf>,
 }
