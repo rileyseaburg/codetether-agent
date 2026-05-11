@@ -207,6 +207,18 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
 /// - `/goal done [reason]` — clear the goal.
 /// - `/goal reaffirm <note>` — record progress.
 /// - `/goal show` (or bare `/goal`) — print goal + open tasks.
+
+fn handle_context_command(app: &mut App, rest: &str) {
+    match rest.trim() {
+        "" | "status" => {
+            let body = crate::tui::app::context_status::render(&app.state);
+            push_system_message(app, body);
+            app.state.status = "Context status".to_string();
+        }
+        _ => app.state.status = "Usage: /context [status]".to_string(),
+    }
+}
+
 async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
     use crate::session::tasks::{TaskEvent, TaskLog, TaskState, governance_block};
     use chrono::Utc;
@@ -819,6 +831,11 @@ pub async fn handle_slash_command(
         return;
     }
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/context") {
+        handle_context_command(app, rest);
+        return;
+    }
+
     if let Some(rest) = command_with_optional_args(&normalized, "/mcp") {
         handle_mcp_command(app, rest).await;
         return;
@@ -894,8 +911,7 @@ pub async fn handle_slash_command(
         }
         "/git" => {
             let cwd = std::path::PathBuf::from(&app.state.cwd_display);
-            app.state.git =
-                crate::tui::git_capture::capture_git_state(&cwd);
+            app.state.git = crate::tui::git_capture::capture_git_state(&cwd);
             app.state.set_view_mode(ViewMode::Git);
             app.state.status = "Git status".to_string();
         }
@@ -959,17 +975,19 @@ pub async fn handle_slash_command(
             }
         }
         "/recall" => {
-            let beliefs = crate::memory::palace::load_project_beliefs(Path::new(
-                &app.state.cwd_display,
-            ));
+            let beliefs =
+                crate::memory::palace::load_project_beliefs(Path::new(&app.state.cwd_display));
             if beliefs.is_empty() {
                 push_system_message(
                     app,
                     "No project memories found. Memories accumulate as you work.",
                 );
             } else {
-                let active: Vec<&crate::cognition::beliefs::Belief> =
-                    beliefs.iter().filter(|b| b.confidence >= 0.5).take(30).collect();
+                let active: Vec<&crate::cognition::beliefs::Belief> = beliefs
+                    .iter()
+                    .filter(|b| b.confidence >= 0.5)
+                    .take(30)
+                    .collect();
                 let mut lines = vec![format!(
                     "🏰 Project Memory Palace ({} beliefs, {} active)",
                     beliefs.len(),
@@ -987,7 +1005,7 @@ pub async fn handle_slash_command(
         }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent /audit /git\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
+                "Protocol-first commands: /protocol /bus /context /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent /audit /git\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
                     .to_string();
         }
         _ => {}
@@ -1048,6 +1066,7 @@ pub async fn handle_slash_command(
             | "/network"
             | "/autocomplete"
             | "/mcp"
+            | "/context"
             | "/spawn"
             | "/kill"
             | "/agents"
