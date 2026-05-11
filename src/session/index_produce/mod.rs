@@ -6,5 +6,6 @@
 
 mod build_context;
 mod call;
+pub mod summary_text;
 
 pub use call::produce_summary;

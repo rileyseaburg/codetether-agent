@@ -5,6 +5,9 @@ pub mod clipboard_ssh;
 pub mod clipboard_text;
 #[cfg(windows)]
 pub mod clipboard_winapi;
+#[cfg(not(windows))]
+#[path = "clipboard_winapi_unix.rs"]
+pub mod clipboard_winapi;
 pub mod constants;
 pub mod help;
 pub mod input;

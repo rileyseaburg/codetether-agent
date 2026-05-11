@@ -8,6 +8,8 @@ mod compress_step;
 mod derive;
 mod helpers;
 mod incremental;
+mod incremental_insert;
+mod incremental_types;
 mod options;
 mod policy;
 mod request;
