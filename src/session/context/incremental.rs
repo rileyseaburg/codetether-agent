@@ -34,9 +34,13 @@ use crate::session::ResidencyLevel;
 use crate::session::Session;
 use crate::session::helper::experimental;
 use crate::session::helper::token::{estimate_request_tokens, estimate_tokens_for_messages};
+use crate::session::index::Granularity;
+use crate::session::index_produce::produce_summary;
 use crate::session::relevance::{RelevanceMeta, extract};
 
 use super::helpers::DerivedContext;
+use super::incremental_insert::{interleave, range_from_tuple};
+use super::incremental_types::SummaryGap;
 
 /// Default recent-window size — last N entries always retained.
 const DEFAULT_RECENT_WINDOW: usize = 8;
@@ -57,8 +61,8 @@ const RECENCY_DECAY_WEIGHT: f64 = 0.05;
 /// implementation.
 pub(super) async fn derive_incremental(
     session: &Session,
-    _provider: Arc<dyn crate::provider::Provider>,
-    _model: &str,
+    provider: Arc<dyn crate::provider::Provider>,
+    model: &str,
     system_prompt: &str,
     tools: &[ToolDefinition],
     budget_tokens: usize,
@@ -124,13 +128,41 @@ pub(super) async fn derive_incremental(
     }
 
     let dropped_ranges = collect_dropped_ranges(&keep);
-    let mut messages: Vec<Message> = clone
-        .into_iter()
-        .zip(keep.iter().copied())
-        .filter_map(|(m, k)| if k { Some(m) } else { None })
-        .collect();
+    let mut gaps = Vec::new();
+    let rlm_config = session.metadata.rlm.clone();
+    let mut summary_index = session.summary_index.clone();
+    for tuple in &dropped_ranges {
+        let Some(range) = range_from_tuple(*tuple) else {
+            continue;
+        };
+        let node = summary_index
+            .summary_for(range, |r| {
+                produce_summary(
+                    &clone,
+                    r,
+                    512,
+                    Granularity::Phase,
+                    session.summary_index.generation(),
+                    Arc::clone(&provider),
+                    model,
+                    &rlm_config,
+                    &session.id,
+                    session.metadata.subcall_provider.clone(),
+                    session.metadata.subcall_model_name.clone(),
+                )
+            })
+            .await?;
+        gaps.push(SummaryGap {
+            range,
+            content: node.content,
+        });
+    }
+    let (mut messages, mut resolutions) = interleave(&clone, &keep, &gaps);
 
     experimental::pairing::repair_orphans(&mut messages);
+    if resolutions.len() != messages.len() {
+        resolutions = messages.iter().map(residency_for_message).collect();
+    }
 
     // entries back in and busted the budget, trim from the oldest side
     // until the request fits. This covers both the case where pairing
@@ -140,12 +172,13 @@ pub(super) async fn derive_incremental(
     let mut provenance = vec!["incremental".to_string()];
     while post_pair_estimate > budget_tokens && messages.len() > 1 {
         messages.remove(0);
+        resolutions.remove(0);
         provenance.push("incremental_overflow_clamp".to_string());
         post_pair_estimate = estimate_request_tokens(system_prompt, &messages, tools);
     }
 
     Ok(DerivedContext {
-        resolutions: vec![ResidencyLevel::Full; messages.len()],
+        resolutions,
         dropped_ranges,
         provenance,
         messages,
@@ -194,6 +227,23 @@ fn overlap_count(left: &[String], right: &[String]) -> usize {
 
 fn message_tokens(msg: &Message) -> usize {
     estimate_tokens_for_messages(std::slice::from_ref(msg))
+}
+
+fn residency_for_message(msg: &Message) -> ResidencyLevel {
+    let text = msg
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            crate::provider::ContentPart::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .next()
+        .unwrap_or_default();
+    if text.starts_with("[SUMMARY of turns ") {
+        ResidencyLevel::Compressed
+    } else {
+        ResidencyLevel::Full
+    }
 }
 
 fn collect_dropped_ranges(keep: &[bool]) -> Vec<(usize, usize)> {

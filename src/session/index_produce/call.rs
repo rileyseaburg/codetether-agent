@@ -62,7 +62,7 @@ pub async fn produce_summary(
         .context("RLM summarisation for SummaryIndex::summary_for failed")?;
 
     Ok(SummaryNode {
-        content: result.processed,
+        content: super::summary_text::bounded_summary(result, target_tokens)?,
         target_tokens,
         granularity,
         generation,

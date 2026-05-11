@@ -8,6 +8,7 @@ use crate::provider::Message;
 use crate::rlm::RlmRouter;
 use crate::rlm::router::AutoProcessContext;
 use crate::session::helper::error::messages_to_rlm_context;
+use crate::session::index_produce::summary_text::bounded_summary;
 
 /// RLM-summarise the prefix dropped by
 /// [`derive_reset`](super::reset::derive_reset).
@@ -41,5 +42,5 @@ pub(super) async fn summarise_prefix_for_reset(
     let result = RlmRouter::auto_process(&context, auto_ctx, rlm_config)
         .await
         .context("RLM summarisation for DerivePolicy::Reset failed")?;
-    Ok(result.processed)
+    bounded_summary(result, 512)
 }

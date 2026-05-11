@@ -350,7 +350,9 @@ impl ToolRegistry {
         registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(context_budget::ContextBudgetTool));
         registry.register(Arc::new(context_pin::ContextPinTool));
-        registry.register(Arc::new(context_summarize::ContextSummarizeTool));
+        registry.register(Arc::new(
+            context_summarize::ContextSummarizeTool::cached_only(),
+        ));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -428,7 +430,10 @@ impl ToolRegistry {
         registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(context_budget::ContextBudgetTool));
         registry.register(Arc::new(context_pin::ContextPinTool));
-        registry.register(Arc::new(context_summarize::ContextSummarizeTool));
+        registry.register(Arc::new(context_summarize::ContextSummarizeTool::new(
+            Arc::clone(&provider),
+            model.clone(),
+        )));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
