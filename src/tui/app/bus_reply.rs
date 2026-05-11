@@ -1,6 +1,5 @@
 //! Emit a bus reply to `from_agent` after a remote task completes.
 
-use crate::bus::BusMessage;
 use crate::tui::app::state::App;
 
 pub fn emit(app: &mut App, status: &str, error: Option<String>) {

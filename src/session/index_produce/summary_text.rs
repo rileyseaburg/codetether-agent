@@ -32,7 +32,10 @@ pub fn clamp_tokens(text: &str, target_tokens: usize) -> String {
     }
     let marker = "\n[summary clamped to requested token budget]";
     let keep = limit.saturating_sub(marker.len());
-    let end = text.floor_char_boundary(keep);
+    let end = (0..=keep)
+        .rev()
+        .find(|index| text.is_char_boundary(*index))
+        .unwrap_or(0);
     format!("{}{}", text[..end].trim_end(), marker)
 }
 
