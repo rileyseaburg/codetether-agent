@@ -23,25 +23,29 @@ use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 
 use super::tools::rlm_tool_definitions;
 
-/// Tools eligible for RLM routing
-fn rlm_eligible_tools() -> HashSet<&'static str> {
-    // Only tools whose output is genuinely unpredictable in size AND that the
-    // agent cannot easily re-query in smaller chunks belong here. Routing
-    // replaces raw bytes with an RLM-generated prose summary, which is
-    // destructive for content-carrying tools like `read`/`grep`/`bash` — the
-    // agent has no way to get the original bytes back and re-reads produce
-    // the same summary, causing spin loops. Those tools already expose
-    // bounded slicing (offset/limit, line ranges, head/tail).
-    [
-        // Web tools commonly return megabytes of HTML/JS with no slicing API.
-        "webfetch",
-        "websearch",
-        // Batch aggregates many outputs and can exceed the window in one shot.
-        "batch",
-    ]
-    .iter()
-    .copied()
-    .collect()
+/// Tools eligible for RLM routing.
+///
+/// Only tools whose output is genuinely unpredictable in size AND that
+/// the agent cannot easily re-query in smaller chunks belong here.
+/// Routing replaces raw bytes with an RLM-generated prose summary,
+/// which is destructive for content-carrying tools like
+/// `read`/`grep`/`bash` — the agent has no way to get the original
+/// bytes back and re-reads produce the same summary, causing spin
+/// loops. Those tools already expose bounded slicing (offset/limit,
+/// line ranges, head/tail).
+fn rlm_eligible_tools() -> &'static HashSet<&'static str> {
+    static TOOLS: std::sync::OnceLock<HashSet<&'static str>> = std::sync::OnceLock::new();
+    TOOLS.get_or_init(|| {
+        [
+            // Web tools commonly return megabytes of HTML/JS with no slicing API.
+            "webfetch",
+            "websearch",
+            // Batch aggregates many outputs and can exceed the window in one shot.
+            "batch",
+        ]
+        .into_iter()
+        .collect()
+    })
 }
 
 /// Capability flag describing what RLM is allowed to do with a tool's
@@ -75,18 +79,28 @@ pub enum OutputCapability {
 /// summarized regardless of size. These all expose bounded re-query
 /// surfaces (offset/limit, line ranges, head/tail) so the agent can
 /// recover from oversized output without RLM.
-fn rlm_exact_content_tools() -> HashSet<&'static str> {
-    [
-        "read", "grep", "bash", "glob", "ls", "edit", "write",
-        // session_recall returns specific message excerpts; summarizing
-        // a recall result loses the exact bytes the caller asked for.
-        "session_recall",
-        // notebook tools surface cell content/output verbatim.
-        "notebook_read", "notebook_edit",
-    ]
-    .iter()
-    .copied()
-    .collect()
+fn rlm_exact_content_tools() -> &'static HashSet<&'static str> {
+    static TOOLS: std::sync::OnceLock<HashSet<&'static str>> = std::sync::OnceLock::new();
+    TOOLS.get_or_init(|| {
+        [
+            "read",
+            "grep",
+            "bash",
+            "glob",
+            "ls",
+            "edit",
+            "write",
+            // session_recall returns specific message excerpts;
+            // summarizing a recall result loses the exact bytes the
+            // caller asked for.
+            "session_recall",
+            // notebook tools surface cell content/output verbatim.
+            "notebook_read",
+            "notebook_edit",
+        ]
+        .into_iter()
+        .collect()
+    })
 }
 
 /// Classify a tool's output capability for the router.

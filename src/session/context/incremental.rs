@@ -137,13 +137,16 @@ pub(super) async fn derive_incremental(
     let rlm_config = session.metadata.rlm.clone();
     let mut summary_index = session.summary_index.clone();
 
-    // One trace id covers every summary range produced for this
-    // derivation, so TUI / audit consumers can correlate them.
+    // One trace id and one SessionBus cover every summary range
+    // produced for this derivation, so TUI / audit consumers can
+    // correlate them. Built once outside the loop so we don't churn
+    // forwarder tasks per-range.
     let trace_id = Uuid::new_v4();
+    let derivation_bus = event_tx.cloned().map(|tx| {
+        crate::session::SessionBus::new(INCREMENTAL_BUS_CAPACITY).with_legacy_mpsc(tx)
+    });
     let observability_template = || SummaryObservability {
-        bus: event_tx.cloned().map(|tx| {
-            crate::session::SessionBus::new(INCREMENTAL_BUS_CAPACITY).with_legacy_mpsc(tx)
-        }),
+        bus: derivation_bus.clone(),
         trace_id: Some(trace_id),
     };
 

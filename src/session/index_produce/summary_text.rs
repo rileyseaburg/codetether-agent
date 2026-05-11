@@ -42,12 +42,20 @@ pub fn try_bounded_summary(result: &RlmResult, target_tokens: usize) -> Option<S
 /// Minimum plausible output-token count for an input of `input_tokens`.
 ///
 /// Below ~256 input tokens any non-empty summary is acceptable. For
-/// larger inputs we require at least 50 output tokens — short of that
-/// the model has almost certainly fallen back to a generic acknowledge
-/// ("I cannot help with that", "Here is a summary:") rather than an
-/// actual condensation of the input.
+/// larger inputs we require **the greater of** 50 output tokens and
+/// `input_tokens / 1000` (≈ 0.1 %).
+///
+/// The 0.1 % floor is what catches the production failure mode that
+/// motivated the gate: a 770 k token input with a 180 token "summary"
+/// would slip past a flat 50-token floor but is rejected by the
+/// ratio (180 < 770). A real summary of 770 k input tokens should
+/// land in the 1–4 k token range, so 770 is a comfortably loose lower
+/// bound that still admits genuinely dense compressions.
 fn degraded_floor(input_tokens: usize) -> usize {
-    if input_tokens < 256 { 1 } else { 50 }
+    if input_tokens < 256 {
+        return 1;
+    }
+    (input_tokens / 1000).max(50)
 }
 
 /// Remove the router stats banner from memory summaries.
@@ -110,8 +118,17 @@ mod tests {
 
     #[test]
     fn try_bounded_rejects_tiny_output_for_large_input() {
-        // 770k → 12 tokens — the degraded mode the production log caught.
+        // 770k → 12 tokens — degraded compression by any standard.
         let r = rlm_result(true, "summary", 770_000, 12);
+        assert!(try_bounded_summary(&r, 512).is_none());
+    }
+
+    #[test]
+    fn try_bounded_rejects_production_770k_to_180_case() {
+        // The exact failure mode from the production log that motivated
+        // this gate. A flat 50-token floor would let this slip through;
+        // the 0.1 % ratio floor rejects it (180 < 770).
+        let r = rlm_result(true, "this body is irrelevant for the count", 770_000, 180);
         assert!(try_bounded_summary(&r, 512).is_none());
     }
 
