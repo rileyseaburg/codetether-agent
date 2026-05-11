@@ -217,29 +217,69 @@ pub async fn handle_session_event(
             app.state.context_budget = Some(est.budget);
         }
         SessionEvent::ContextTruncated(t) => {
-            app.state.messages.push(ChatMessage::new(
-                MessageType::System,
-                format!("⚠ Context truncated — dropped {} tokens", t.dropped_tokens),
-            ));
-        }
-        SessionEvent::CompactionStarted(_) => {
-            app.state.status = "Compacting context…".to_string();
-        }
-        SessionEvent::CompactionCompleted(o) => {
-            app.state.context_used = Some(o.after_tokens);
+            app.state.context_health.note_truncation(&t);
             app.state.messages.push(ChatMessage::new(
                 MessageType::System,
                 format!(
-                    "Context compacted ({}): {} → {} tokens",
-                    o.strategy.as_str(),
-                    o.before_tokens,
-                    o.after_tokens
+                    "⚠ Context truncated — dropped {} tokens, kept {} messages",
+                    t.dropped_tokens, t.kept_messages
+                ),
+            ));
+        }
+        SessionEvent::CompactionStarted(start) => {
+            app.state.status = format!(
+                "Compacting context… {} tokens over {} budget",
+                start.before_tokens, start.budget
+            );
+        }
+        SessionEvent::CompactionCompleted(outcome) => {
+            app.state.context_used = Some(outcome.after_tokens);
+            app.state.context_health.note_compaction(&outcome);
+            app.state.messages.push(ChatMessage::new(
+                MessageType::System,
+                format!(
+                    "Context compacted ({}): {} → {} tokens ({:.0}% reduction, kept {} messages)",
+                    outcome.strategy.as_str(),
+                    outcome.before_tokens,
+                    outcome.after_tokens,
+                    outcome.reduction() * 100.0,
+                    outcome.kept_messages
                 ),
             ));
             app.state.status = "Ready".to_string();
         }
-        // Other non-exhaustive variants (TokenUsage, RlmProgress,
-        // RlmComplete, CompactionFailed, RlmSubcallFallback) are consumed
+        SessionEvent::CompactionFailed(failure) => {
+            app.state.status = "Context compaction failed".to_string();
+            app.state.messages.push(ChatMessage::new(
+                MessageType::Error,
+                format!(
+                    "Context compaction failed: {} ({} / {} tokens)",
+                    failure.reason, failure.after_tokens, failure.budget
+                ),
+            ));
+        }
+        SessionEvent::RlmProgress(progress) => {
+            app.state.context_health.note_rlm_progress(&progress);
+            app.state.status = format!(
+                "RLM {} {}/{}",
+                progress.status, progress.iteration, progress.max_iterations
+            );
+        }
+        SessionEvent::RlmComplete(done) => {
+            app.state.context_health.note_rlm_complete(&done);
+            app.state.messages.push(ChatMessage::new(
+                MessageType::System,
+                format!(
+                    "RLM {:?}: {} → {} tokens, {} iterations, {} ms",
+                    done.outcome,
+                    done.input_tokens,
+                    done.output_tokens,
+                    done.iterations,
+                    done.elapsed_ms
+                ),
+            ));
+        }
+        // Other non-exhaustive variants (TokenUsage, RlmSubcallFallback) are consumed
         // by dedicated SessionBus subscribers, not this legacy mpsc handler.
         _ => {}
     }

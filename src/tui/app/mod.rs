@@ -6,6 +6,9 @@ pub mod bus_ingest;
 pub mod bus_reply;
 pub mod codex_sessions;
 pub mod commands;
+pub mod context_status;
+#[cfg(test)]
+mod context_status_tests;
 #[path = "event_handlers/mod.rs"]
 pub mod event_handlers;
 #[path = "event_loop/mod.rs"]

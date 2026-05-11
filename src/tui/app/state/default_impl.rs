@@ -69,6 +69,7 @@ impl Default for super::AppState {
             last_completion_output_tokens: None,
             context_used: None,
             context_budget: None,
+            context_health: Default::default(),
             last_tool_name: None,
             last_tool_latency_ms: None,
             last_tool_success: None,
