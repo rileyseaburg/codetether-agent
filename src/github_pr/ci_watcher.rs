@@ -21,14 +21,20 @@ impl CiCheckResult {
             .flat_map(|arr| arr.iter())
             .filter_map(|v| v.get("state").and_then(|s| s.as_str()))
             .collect();
-        let failed: Vec<String> = all_results.iter()
+        let failed: Vec<String> = all_results
+            .iter()
             .filter(|&&s| s == "failure" || s == "error")
             .map(|s| s.to_string())
             .collect();
-        let pending: Vec<String> = all_results.iter()
+        let pending: Vec<String> = all_results
+            .iter()
             .filter(|&&s| s == "pending" || s == "in_progress")
             .map(|s| s.to_string())
             .collect();
-        Self { all_green: failed.is_empty() && pending.is_empty() && !all_results.is_empty(), failed_jobs: failed, pending_jobs: pending }
+        Self {
+            all_green: failed.is_empty() && pending.is_empty() && !all_results.is_empty(),
+            failed_jobs: failed,
+            pending_jobs: pending,
+        }
     }
 }

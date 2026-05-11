@@ -23,7 +23,10 @@ fn injects_synthetic_for_orphan_tool_call() {
     let mut origins = vec![MessageOrigin::Clone(7)];
     repair_with_origins(&mut messages, &mut origins);
     assert_eq!(messages.len(), 2);
-    assert_eq!(origins, vec![MessageOrigin::Clone(7), MessageOrigin::Synthetic]);
+    assert_eq!(
+        origins,
+        vec![MessageOrigin::Clone(7), MessageOrigin::Synthetic]
+    );
 }
 
 #[test]

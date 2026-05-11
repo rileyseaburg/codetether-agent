@@ -162,6 +162,42 @@ mod tests {
         assert_eq!(app.state.input, "/ask ");
     }
 
+    #[tokio::test]
+    async fn ctrl_m_opens_model_picker() {
+        let mut app = App::default();
+        app.state.view_mode = ViewMode::Chat;
+
+        let cwd = std::path::Path::new(".");
+        let mut session = crate::session::Session::new().await.expect("session");
+        let (event_tx, _) = tokio::sync::mpsc::channel(8);
+        let (result_tx, _) = tokio::sync::mpsc::channel(8);
+
+        let key = KeyEvent {
+            code: KeyCode::Char('m'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+
+        let quit = handle_event(
+            &mut app,
+            cwd,
+            &mut session,
+            &None,
+            &None,
+            &event_tx,
+            &result_tx,
+            key,
+        )
+        .await
+        .expect("handle_event");
+
+        assert!(!quit);
+        assert_eq!(app.state.view_mode, ViewMode::Model);
+        assert!(app.state.model_picker_active);
+        assert_eq!(app.state.status, "No models available");
+    }
+
     #[test]
     fn ctrl_r_dispatches_voice_shortcut() {
         let mut app = App::default();

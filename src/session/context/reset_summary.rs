@@ -39,9 +39,9 @@ pub(super) async fn summarise_prefix_for_reset(
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<String> {
     let context = messages_to_rlm_context(prefix);
-    let bus = event_tx.cloned().map(|tx| {
-        crate::session::SessionBus::new(RESET_BUS_CAPACITY).with_legacy_mpsc(tx)
-    });
+    let bus = event_tx
+        .cloned()
+        .map(|tx| crate::session::SessionBus::new(RESET_BUS_CAPACITY).with_legacy_mpsc(tx));
     let trace_id = Uuid::new_v4();
     let auto_ctx = AutoProcessContext {
         tool_id: "context_reset",

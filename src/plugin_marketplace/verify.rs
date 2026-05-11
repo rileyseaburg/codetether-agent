@@ -4,13 +4,17 @@ use anyhow::Result;
 
 /// Verify a plugin's SHA-256 hash.
 pub fn verify_hash(data: &[u8], expected_hex: &str) -> bool {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(data);
     let result = hasher.finalize();
-    let Ok(expected) = hex::decode(expected_hex) else { return false };
+    let Ok(expected) = hex::decode(expected_hex) else {
+        return false;
+    };
     let mut diff = 0u8;
-    for (a, b) in result.as_slice().iter().zip(expected.iter()) { diff |= a ^ b; }
+    for (a, b) in result.as_slice().iter().zip(expected.iter()) {
+        diff |= a ^ b;
+    }
     diff == 0 && result.as_slice().len() == expected.len()
 }
 
@@ -25,7 +29,12 @@ pub fn verify_signature(_data: &[u8], _signature_hex: &str, public_key: &[u8]) -
 }
 
 /// Full verification pipeline for a downloaded plugin.
-pub fn verify_plugin(data: &[u8], expected_hash: &str, signature: &str, key: &[u8]) -> Result<bool> {
+pub fn verify_plugin(
+    data: &[u8],
+    expected_hash: &str,
+    signature: &str,
+    key: &[u8],
+) -> Result<bool> {
     if !verify_hash(data, expected_hash) {
         anyhow::bail!("SHA-256 hash mismatch — plugin may be tampered");
     }

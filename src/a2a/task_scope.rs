@@ -32,7 +32,11 @@ pub fn check_task_scope(
         .get("target_agent_name")
         .and_then(|v| v.as_str())
         .or_else(|| task.get("target_agent_name").and_then(|v| v.as_str()))
-        .or_else(|| task.get("task").and_then(|t| t.get("target_agent_name")).and_then(|v| v.as_str()));
+        .or_else(|| {
+            task.get("task")
+                .and_then(|t| t.get("target_agent_name"))
+                .and_then(|v| v.as_str())
+        });
     if let Some(target) = target_agent {
         if !target.is_empty() && target != agent_name {
             return Err(format!("target_agent_name={target} ≠ agent={agent_name}"));

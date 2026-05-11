@@ -40,7 +40,12 @@ pub fn render_model_picker(f: &mut Frame, area: Rect, app: &mut App, session: &S
 
     let models = app.state.filtered_models();
     let items: Vec<ListItem<'static>> = if models.is_empty() {
-        vec![ListItem::new("No models available")]
+        let empty_label = if app.state.model_refresh_in_flight {
+            "Loading models..."
+        } else {
+            "No models available"
+        };
+        vec![ListItem::new(empty_label)]
     } else {
         models
             .iter()

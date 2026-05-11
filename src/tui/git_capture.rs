@@ -6,8 +6,7 @@ use crate::tui::app::state::git_state::GitViewState;
 
 /// Run git commands to populate a [`GitViewState`] snapshot.
 pub fn capture_git_state(cwd: &Path) -> GitViewState {
-    let (branch, dirty_files) =
-        crate::tui::utils::workspace_helpers::detect_git_status(cwd);
+    let (branch, dirty_files) = crate::tui::utils::workspace_helpers::detect_git_status(cwd);
     let log_lines = super::git_log::capture_log(cwd);
     let diff_stat = super::git_diff::capture_diff_stat(cwd);
     let branches = super::git_branch::capture_branches(cwd);

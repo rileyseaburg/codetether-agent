@@ -41,7 +41,12 @@ pub async fn produce_summary(
         slice.len(),
         target_tokens,
     );
-    info!(start = range.start, end = range.end, target_tokens, "Producing summary via RLM");
+    info!(
+        start = range.start,
+        end = range.end,
+        target_tokens,
+        "Producing summary via RLM"
+    );
 
     let params = SummaryProduceParams {
         range,

@@ -7,10 +7,7 @@ use crate::provider::{ContentPart, Message, Role};
 
 use super::incremental_types::MessageOrigin;
 
-pub(super) fn drop_orphan_results(
-    messages: &mut Vec<Message>,
-    origins: &mut Vec<MessageOrigin>,
-) {
+pub(super) fn drop_orphan_results(messages: &mut Vec<Message>, origins: &mut Vec<MessageOrigin>) {
     let mut known: HashSet<String> = HashSet::new();
     let mut drops: Vec<usize> = Vec::new();
     for (idx, msg) in messages.iter().enumerate() {

@@ -123,6 +123,10 @@ pub struct AppState {
     pub selected_model_index: usize,
     pub model_picker_active: bool,
     pub model_filter: String,
+    pub model_refresh_in_flight: bool,
+    pub model_refresh_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<model_picker::ModelRefreshEvent>>,
+    pub model_picker_target_model: Option<String>,
     pub streaming_text: String,
     pub processing_started_at: Option<Instant>,
     pub current_request_first_token_ms: Option<u64>,

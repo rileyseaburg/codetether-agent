@@ -122,8 +122,7 @@ pub async fn run(
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
 
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
     terminal.clear()?;
 
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -204,6 +203,7 @@ pub async fn run(
     );
 
     let loaded_session = match session_timeout_result {
+        _ if std::env::var_os("CODETETHER_TUI_NEW_SESSION").is_some() => Err(anyhow::anyhow!("requested fresh session")),
         Ok(inner) => inner,
         Err(_) => {
             tracing::warn!(

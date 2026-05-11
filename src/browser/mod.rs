@@ -1,5 +1,6 @@
 pub mod command;
 pub mod error;
+pub mod offline;
 pub mod output;
 pub mod request;
 pub mod service;

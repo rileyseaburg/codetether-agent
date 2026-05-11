@@ -1,9 +1,12 @@
-use super::{BrowserCtlArgs, request};
+use super::{BrowserCtlArgs, BrowserCtlCommand, offline, request};
 use crate::tool::{Tool, browserctl::BrowserCtlTool};
 use anyhow::{Result, bail};
 use serde_json::Value;
 
 pub async fn execute(args: BrowserCtlArgs) -> Result<()> {
+    if let BrowserCtlCommand::Offline { cmd } = &args.command {
+        return offline::execute(cmd, args.json);
+    }
     let tool = BrowserCtlTool::new();
     if request::needs_attach(&args.command) {
         call(&tool, request::attach(&args)).await?;

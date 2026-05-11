@@ -36,6 +36,10 @@ impl RecoveryAdvice {
                 report.changed_files.len()
             )
         };
-        Self { can_resume, suggested_splits, completed_summary }
+        Self {
+            can_resume,
+            suggested_splits,
+            completed_summary,
+        }
     }
 }

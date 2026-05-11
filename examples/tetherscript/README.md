@@ -236,3 +236,28 @@ Drive a real browser through CodeTether's browserctl bridge. Requires
 ```
 
 See `docs/browser-capability-api.md` for the full method reference.
+
+## Podcast upload path
+
+When the public podcast site/API is down, publish a pre-generated episode by
+writing podcast metadata and RSS directly through TetherScript:
+
+```json
+{
+  "path": "examples/tetherscript/podcast_upload_path.tether",
+  "hook": "stage_episode",
+  "args": [
+    "/path/to/podcast",
+    "episode-id",
+    "Episode Title",
+    "Episode description",
+    "https://example.com/episode.mp3",
+    1785.504,
+    "29:45",
+    35710605,
+    6,
+    1,
+    "episodes/codetether-radio/script.md"
+  ]
+}
+```

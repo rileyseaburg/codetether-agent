@@ -33,6 +33,9 @@ pub(super) fn observability_ctx(
         .cloned()
         .map(|tx| SessionBus::new(BUS_CAPACITY).with_legacy_mpsc(tx));
     let mut out = base.clone();
-    out.observability = Observability { bus, trace_id: Some(trace_id) };
+    out.observability = Observability {
+        bus,
+        trace_id: Some(trace_id),
+    };
     out
 }

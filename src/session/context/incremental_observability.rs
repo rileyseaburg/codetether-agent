@@ -3,9 +3,9 @@
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
+use crate::session::SessionBus;
 use crate::session::SessionEvent;
 use crate::session::index_produce::SummaryObservability;
-use crate::session::{SessionBus};
 
 const BUS_CAPACITY: usize = 16;
 
@@ -23,11 +23,17 @@ impl DerivationObservability {
         let bus = event_tx
             .cloned()
             .map(|tx| SessionBus::new(BUS_CAPACITY).with_legacy_mpsc(tx));
-        Self { bus, trace_id: Uuid::new_v4() }
+        Self {
+            bus,
+            trace_id: Uuid::new_v4(),
+        }
     }
 
     /// Fresh [`SummaryObservability`] for one call site.
     pub(super) fn template(&self) -> SummaryObservability {
-        SummaryObservability { bus: self.bus.clone(), trace_id: Some(self.trace_id) }
+        SummaryObservability {
+            bus: self.bus.clone(),
+            trace_id: Some(self.trace_id),
+        }
     }
 }
