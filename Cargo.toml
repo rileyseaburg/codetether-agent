@@ -132,7 +132,7 @@ k8s-openapi = { version = "0.27.0", features = ["latest"] }
 
 # Plugin signing & sandboxing
 # See docs/tetherscript_dependency.md for the build requirement.
-tetherscript = { version = "0.1.0-alpha.7", optional = true }
+tetherscript = { version = "0.1.0-alpha.12", optional = true }
 sha2 = "0.10"
 hmac = "0.12"
 hex = "0.4"
