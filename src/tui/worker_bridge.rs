@@ -164,7 +164,7 @@ impl TuiWorkerBridge {
                     let server = server.clone();
                     let token = token.clone();
                     let worker_id = worker_id.clone();
-                    let worker_name = worker_name.clone(); let client = client.clone();
+                    let (worker_name, client) = (worker_name.clone(), client.clone());
                     async move {
                         loop {
                             let url = format!(
