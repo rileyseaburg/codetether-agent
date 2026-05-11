@@ -29,8 +29,16 @@ fn rlm_exact_content_tools() -> &'static HashSet<&'static str> {
     static TOOLS: std::sync::OnceLock<HashSet<&'static str>> = std::sync::OnceLock::new();
     TOOLS.get_or_init(|| {
         [
-            "read", "grep", "bash", "glob", "ls", "edit", "write",
-            "session_recall", "notebook_read", "notebook_edit",
+            "read",
+            "grep",
+            "bash",
+            "glob",
+            "ls",
+            "edit",
+            "write",
+            "session_recall",
+            "notebook_read",
+            "notebook_edit",
         ]
         .into_iter()
         .collect()
@@ -55,11 +63,23 @@ mod tests {
 
     #[test]
     fn classifies_known_tools() {
-        assert_eq!(output_capability("webfetch"), OutputCapability::BulkSummarizable);
-        assert_eq!(output_capability("session_context"), OutputCapability::BulkSummarizable);
+        assert_eq!(
+            output_capability("webfetch"),
+            OutputCapability::BulkSummarizable
+        );
+        assert_eq!(
+            output_capability("session_context"),
+            OutputCapability::BulkSummarizable
+        );
         assert_eq!(output_capability("read"), OutputCapability::ExactContent);
         assert_eq!(output_capability("bash"), OutputCapability::ExactContent);
-        assert_eq!(output_capability("session_recall"), OutputCapability::ExactContent);
-        assert_eq!(output_capability("brand_new_tool"), OutputCapability::Unknown);
+        assert_eq!(
+            output_capability("session_recall"),
+            OutputCapability::ExactContent
+        );
+        assert_eq!(
+            output_capability("brand_new_tool"),
+            OutputCapability::Unknown
+        );
     }
 }

@@ -75,8 +75,16 @@ pub(super) async fn derive_reset(
 
     let Some(split_idx) = active_user_tail_start(&messages, 8) else {
         return super::reset_fallback::no_active_tail_fallback(
-            session, provider, model, system_prompt, tools, event_tx,
-            messages, dropped_ranges, provenance, origin_len,
+            session,
+            provider,
+            model,
+            system_prompt,
+            tools,
+            event_tx,
+            messages,
+            dropped_ranges,
+            provenance,
+            origin_len,
         )
         .await;
     };
@@ -101,9 +109,10 @@ pub(super) async fn derive_reset(
     }
 
     let prefix_len = prefix.len();
-    let mut derived =
-        rebuild_with_summary(session, &prefix, &tail, provider, model, origin_len, event_tx)
-            .await?;
+    let mut derived = rebuild_with_summary(
+        session, &prefix, &tail, provider, model, origin_len, event_tx,
+    )
+    .await?;
     dropped_ranges.push((base_index, base_index + prefix_len));
     if !provenance.is_empty() {
         provenance.extend(derived.provenance);

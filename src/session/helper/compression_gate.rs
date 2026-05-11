@@ -49,7 +49,12 @@ pub(super) fn run_keep_last(
                 result.stats.input_tokens as u64,
                 result.stats.output_tokens as u64,
             );
-            gated_summary_or_chunk(result, target_tokens, fallback_input, "compress_messages_keep_last")
+            gated_summary_or_chunk(
+                result,
+                target_tokens,
+                fallback_input,
+                "compress_messages_keep_last",
+            )
         }
         Err(e) => {
             tracing::warn!(reason, error = %e, "RLM: Failed to compress session history; falling back to chunker");

@@ -6,9 +6,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum PrLifecycle {
-    Draft, CiRunning, CiFailed, Fixing, CiGreen,
-    AwaitingReview, ReviewCommentsReceived, AddressingComments,
-    ReadyToMerge, Merged, Failedterminal,
+    Draft,
+    CiRunning,
+    CiFailed,
+    Fixing,
+    CiGreen,
+    AwaitingReview,
+    ReviewCommentsReceived,
+    AddressingComments,
+    ReadyToMerge,
+    Merged,
+    Failedterminal,
 }
 
 /// Configuration for a PR auto-pilot run.
@@ -34,7 +42,11 @@ impl Default for AutopilotConfig {
 }
 
 /// One tick of the auto-pilot state machine.
-pub fn advance_lifecycle(current: &PrLifecycle, ci_green: bool, has_review_comments: bool) -> PrLifecycle {
+pub fn advance_lifecycle(
+    current: &PrLifecycle,
+    ci_green: bool,
+    has_review_comments: bool,
+) -> PrLifecycle {
     match current {
         PrLifecycle::Draft => PrLifecycle::CiRunning,
         PrLifecycle::CiRunning if ci_green => PrLifecycle::CiGreen,

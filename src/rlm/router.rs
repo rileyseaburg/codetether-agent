@@ -1063,5 +1063,4 @@ mod tests {
         assert!(!result.should_route);
         assert_eq!(result.reason, "tool_exact_content_no_route");
     }
-
 }

@@ -26,7 +26,16 @@ pub(super) async fn dispatch_reset(
     threshold_tokens: usize,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
-    derive_reset(session, provider, model, system_prompt, tools, threshold_tokens, event_tx).await
+    derive_reset(
+        session,
+        provider,
+        model,
+        system_prompt,
+        tools,
+        threshold_tokens,
+        event_tx,
+    )
+    .await
 }
 
 /// Run the [`DerivePolicy::Incremental`] arm.
@@ -40,6 +49,19 @@ pub(super) async fn dispatch_incremental(
     budget_tokens: usize,
     event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
-    let budget = if budget_tokens == 0 { DEFAULT_INCREMENTAL_BUDGET } else { budget_tokens };
-    derive_incremental(session, provider, model, system_prompt, tools, budget, event_tx).await
+    let budget = if budget_tokens == 0 {
+        DEFAULT_INCREMENTAL_BUDGET
+    } else {
+        budget_tokens
+    };
+    derive_incremental(
+        session,
+        provider,
+        model,
+        system_prompt,
+        tools,
+        budget,
+        event_tx,
+    )
+    .await
 }

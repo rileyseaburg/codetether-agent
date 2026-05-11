@@ -575,7 +575,9 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 None
             };
-            let project = args.project.or(cli.project);
+            let start_new = args.project.as_deref() == Some(std::path::Path::new("new"));
+            let project = if start_new { cli.project } else { args.project.or(cli.project) };
+            if start_new { unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") } };
             tui::run(project, allow_network, a2a_options).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,

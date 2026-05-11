@@ -40,5 +40,14 @@ pub(super) async fn no_active_tail_fallback(
             compressed: true,
         });
     }
-    derive_context(session, provider, model, system_prompt, tools, event_tx, None).await
+    derive_context(
+        session,
+        provider,
+        model,
+        system_prompt,
+        tools,
+        event_tx,
+        None,
+    )
+    .await
 }

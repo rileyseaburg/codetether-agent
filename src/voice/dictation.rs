@@ -44,7 +44,11 @@ pub fn parse_voice_command(transcript: &str) -> VoiceCommand {
     } else {
         (VoiceIntent::Dictation, vec![transcript.to_string()])
     };
-    VoiceCommand { intent, raw_transcript: transcript.to_string(), parameters: params }
+    VoiceCommand {
+        intent,
+        raw_transcript: transcript.to_string(),
+        parameters: params,
+    }
 }
 
 fn extract_params(text: &str, prefix: &str) -> Vec<String> {

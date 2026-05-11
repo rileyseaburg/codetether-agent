@@ -1,8 +1,8 @@
 //! Hot-load MCP plugin servers at runtime.
 
+use anyhow::Result;
 use std::path::Path;
 use std::process::Command;
-use anyhow::Result;
 
 /// A hot-loaded plugin instance.
 #[derive(Debug)]
@@ -39,7 +39,11 @@ pub fn stop_plugin(plugin: &LoadedPlugin) -> Result<()> {
         }
         let ret = unsafe { libc::kill(plugin.pid as i32, libc::SIGTERM) };
         if ret != 0 {
-            anyhow::bail!("Failed to send SIGTERM to plugin {}: errno {}", plugin.name, ret);
+            anyhow::bail!(
+                "Failed to send SIGTERM to plugin {}: errno {}",
+                plugin.name,
+                ret
+            );
         }
     }
     Ok(())

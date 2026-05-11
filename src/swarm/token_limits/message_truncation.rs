@@ -4,10 +4,7 @@ use super::summary::summarize_removed_messages;
 use super::truncation::truncate_large_tool_results;
 use crate::provider::{ContentPart, Message, Role};
 
-pub fn truncate_messages_to_fit(
-    messages: &mut Vec<Message>,
-    context_limit: usize,
-) -> usize {
+pub fn truncate_messages_to_fit(messages: &mut Vec<Message>, context_limit: usize) -> usize {
     let target_tokens =
         ((context_limit as f64) * TRUNCATION_THRESHOLD) as usize - RESPONSE_RESERVE_TOKENS;
     if estimate_total_tokens(messages) <= target_tokens {
@@ -27,8 +24,9 @@ fn remove_middle_messages(messages: &mut Vec<Message>) -> usize {
     if removable_count == 0 {
         return 0;
     }
-    let removed: Vec<_> =
-        messages.drain(keep_start..keep_start + removable_count).collect();
+    let removed: Vec<_> = messages
+        .drain(keep_start..keep_start + removable_count)
+        .collect();
     let summary = summarize_removed_messages(&removed);
     messages.insert(keep_start, summary_message(removed.len(), summary));
     removed.len()

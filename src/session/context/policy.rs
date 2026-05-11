@@ -137,13 +137,27 @@ pub async fn derive_with_policy(
             )
             .await
         }
-        DerivePolicy::Reset { threshold_tokens } => super::policy_dispatch::dispatch_reset(
-            session, provider, model, system_prompt, tools, threshold_tokens, event_tx,
-        )
-        .await,
+        DerivePolicy::Reset { threshold_tokens } => {
+            super::policy_dispatch::dispatch_reset(
+                session,
+                provider,
+                model,
+                system_prompt,
+                tools,
+                threshold_tokens,
+                event_tx,
+            )
+            .await
+        }
         DerivePolicy::Incremental { budget_tokens } => {
             super::policy_dispatch::dispatch_incremental(
-                session, provider, model, system_prompt, tools, budget_tokens, event_tx,
+                session,
+                provider,
+                model,
+                system_prompt,
+                tools,
+                budget_tokens,
+                event_tx,
             )
             .await
         }

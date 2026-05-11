@@ -20,6 +20,7 @@ pub async fn drain_background_updates(
     event_rx: &mut mpsc::Receiver<SessionEvent>,
     result_rx: &mut mpsc::Receiver<anyhow::Result<Session>>,
 ) {
+    app.state.drain_model_refresh();
     ingest_bus_messages(app, bus_handle);
     queue_worker_tasks(app, worker_bridge);
     display_next_worker_task(app);

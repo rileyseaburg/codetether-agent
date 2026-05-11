@@ -37,7 +37,11 @@ pub fn build_tool_activity_panel(
     let visible_lines = super::TOOL_PANEL_VISIBLE_LINES.min(body_lines.len()).max(1);
     let max_scroll = body_lines.len().saturating_sub(visible_lines);
     // Sentinel ≥ 1_000_000 means "auto-follow latest"; else clamp to max_scroll.
-    let start = if scroll_offset >= 1_000_000 { max_scroll } else { scroll_offset.min(max_scroll) };
+    let start = if scroll_offset >= 1_000_000 {
+        max_scroll
+    } else {
+        scroll_offset.min(max_scroll)
+    };
     let end = (start + visible_lines).min(body_lines.len());
     let timestamp = messages
         .first()

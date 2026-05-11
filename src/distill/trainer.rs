@@ -19,7 +19,10 @@ impl Default for TrainConfig {
         Self {
             base_model_path: String::new(),
             output_dir: ".codetether/lora".to_string(),
-            lora_rank: 16, learning_rate: 2e-4, epochs: 3, batch_size: 4,
+            lora_rank: 16,
+            learning_rate: 2e-4,
+            epochs: 3,
+            batch_size: 4,
         }
     }
 }
@@ -38,10 +41,18 @@ pub struct TrainResult {
 pub fn train_lora(config: &TrainConfig, records_path: &Path) -> Result<TrainResult> {
     let version = std::fs::read_dir(&config.output_dir)
         .map(|entries| {
-            entries.filter_map(|e| e.ok())
-                .filter_map(|e| e.file_name().to_str()?.strip_prefix('v')?.parse::<usize>().ok())
+            entries
+                .filter_map(|e| e.ok())
+                .filter_map(|e| {
+                    e.file_name()
+                        .to_str()?
+                        .strip_prefix('v')?
+                        .parse::<usize>()
+                        .ok()
+                })
                 .max()
-                .unwrap_or(0) + 1
+                .unwrap_or(0)
+                + 1
         })
         .unwrap_or(1);
     let adapter_path = format!("{}/v{}", config.output_dir, version);
@@ -49,5 +60,11 @@ pub fn train_lora(config: &TrainConfig, records_path: &Path) -> Result<TrainResu
         version, records_path = %records_path.display(), base_model = %config.base_model_path,
         "LoRA training initiated (stub)"
     );
-    Ok(TrainResult { adapter_path, version, train_loss: 0.0, val_loss: 0.0, records_used: 0 })
+    Ok(TrainResult {
+        adapter_path,
+        version,
+        train_loss: 0.0,
+        val_loss: 0.0,
+        records_used: 0,
+    })
 }

@@ -225,7 +225,10 @@ impl Session {
 
     /// Resolve the on-disk path for a session file.
     pub(crate) fn session_path(id: &str) -> Result<PathBuf> {
-        if id.is_empty() || id.len() > 128 || id.contains(|c: char| !c.is_alphanumeric() && c != '-' && c != '_') {
+        if id.is_empty()
+            || id.len() > 128
+            || id.contains(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
+        {
             anyhow::bail!("Invalid session ID:rejecting path traversal risk");
         }
         Ok(Self::sessions_dir()?.join(format!("{}.json", id)))

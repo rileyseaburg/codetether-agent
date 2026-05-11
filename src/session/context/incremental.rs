@@ -72,9 +72,13 @@ pub(super) async fn derive_incremental(
 ) -> Result<DerivedContext> {
     let origin_len = session.messages.len();
     let mut clone = session.messages.clone();
-    if let Some(ctx) =
-        super::incremental_below_budget::try_pass_through(&mut clone, system_prompt, tools, budget_tokens, origin_len)
-    {
+    if let Some(ctx) = super::incremental_below_budget::try_pass_through(
+        &mut clone,
+        system_prompt,
+        tools,
+        budget_tokens,
+        origin_len,
+    ) {
         return Ok(ctx);
     }
 
@@ -158,12 +162,17 @@ pub(super) async fn derive_incremental(
     }
     let (mut messages, _, mut origins) = interleave(&clone, &keep, &gaps);
     repair_with_origins(&mut messages, &mut origins);
-    let mut resolutions: Vec<ResidencyLevel> =
-        messages.iter().map(residency_for_message).collect();
+    let mut resolutions: Vec<ResidencyLevel> = messages.iter().map(residency_for_message).collect();
     let mut provenance = vec!["incremental".to_string()];
     let (final_dropped, tags) = clamp_and_recompute(
-        &mut messages, &mut resolutions, &mut origins,
-        system_prompt, tools, budget_tokens, clone.len(), &dropped_ranges,
+        &mut messages,
+        &mut resolutions,
+        &mut origins,
+        system_prompt,
+        tools,
+        budget_tokens,
+        clone.len(),
+        &dropped_ranges,
     );
     provenance.extend(tags.into_iter().map(str::to_string));
     Ok(DerivedContext {

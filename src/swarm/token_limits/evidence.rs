@@ -1,6 +1,4 @@
-pub fn extract_evidence(
-    history: &[(&str, &str, bool)],
-) -> (Vec<String>, Vec<String>, Vec<String>) {
+pub fn extract_evidence(history: &[(&str, &str, bool)]) -> (Vec<String>, Vec<String>, Vec<String>) {
     let mut files = Vec::new();
     let mut tools = Vec::new();
     let mut errors = Vec::new();

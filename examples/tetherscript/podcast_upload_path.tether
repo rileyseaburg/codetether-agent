@@ -1,0 +1,99 @@
+// Local podcast upload path for when the public podcast site/API is down.
+// The agent stages audio bytes with normal file tools; this plugin writes
+// episode metadata and a compact RSS feed into a podcast filesystem.
+
+fn stage_episode(podcast_dir, episode_id, title, description, audio_url, duration_seconds, duration_text, file_size, episode_number, season_number, script_path) {
+    let podcast_path = podcast_dir + "/podcast.json"
+    let episodes_dir = podcast_dir + "/episodes"
+    let script = fs_read(script_path)?
+    let ep = episode_map(podcast_dir, episode_id, title, description, audio_url, duration_seconds, duration_text, file_size, episode_number, season_number, script)
+    fs_write(episodes_dir + "/" + episode_id + ".json", json_encode_pretty(ep))?
+    update_podcast_count(podcast_path, episodes_dir)
+    write_feed(podcast_path, episodes_dir)
+    let out = map()
+    out["episode_id"] = episode_id
+    out["metadata_path"] = episodes_dir + "/" + episode_id + ".json"
+    out["feed_path"] = podcast_dir + "/feed.xml"
+    return json_encode(out)
+}
+
+fn episode_map(podcast_dir, episode_id, title, description, audio_url, duration_seconds, duration_text, file_size, episode_number, season_number, script) {
+    let ep = map()
+    ep["episode_id"] = episode_id
+    ep["podcast_id"] = podcast_id_from_dir(podcast_dir)
+    ep["title"] = title
+    ep["description"] = description
+    ep["script"] = script
+    ep["voice_id"] = "gemini-multi-voice"
+    ep["voice_name"] = "Gemini TTS Multi-Voice Cast"
+    ep["audio_url"] = audio_url
+    ep["duration_seconds"] = duration_seconds
+    ep["duration_text"] = duration_text
+    ep["file_size"] = file_size
+    ep["episode_number"] = episode_number
+    ep["season_number"] = season_number
+    ep["episode_type"] = "full"
+    ep["explicit"] = "no"
+    ep["published_at"] = "2026-05-06T15:45:00"
+    return ep
+}
+
+fn update_podcast_count(podcast_path, episodes_dir) {
+    let podcast = json_parse(fs_read(podcast_path)?)
+    let files = fs_list(episodes_dir)?
+    podcast["episode_count"] = len(files)
+    podcast["updated_at"] = "2026-05-06T15:45:00"
+    fs_write(podcast_path, json_encode_pretty(podcast))?
+    return len(files)
+}
+
+fn write_feed(podcast_path, episodes_dir) {
+    let podcast = json_parse(fs_read(podcast_path)?)
+    let lines = [rss_header(podcast)]
+    let files = fs_list(episodes_dir)?
+    for file in files {
+        if str(file).contains(".json") {
+            let ep = json_parse(fs_read(episodes_dir + "/" + str(file))?)
+            lines.push(rss_item(ep))
+        }
+    }
+    lines.push("</channel></rss>")
+    let feed_path = parent_dir(podcast_path) + "/feed.xml"
+    fs_write(feed_path, lines.join(""))?
+    return feed_path
+}
+
+fn rss_header(podcast) {
+    return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+        "<rss version=\"2.0\" xmlns:itunes=\"http://www.itunes.com/dtds/podcast-1.0.dtd\">" +
+        "<channel><title>" + xml(str(podcast["title"])) + "</title>" +
+        "<link>" + xml(str(podcast["feed_url"])) + "</link>" +
+        "<language>" + xml(str(podcast["language"])) + "</language>" +
+        "<description>" + xml(str(podcast["description"])) + "</description>" +
+        "<itunes:author>" + xml(str(podcast["author"])) + "</itunes:author>" +
+        "<itunes:explicit>" + xml(str(podcast["explicit"])) + "</itunes:explicit>"
+}
+
+fn rss_item(ep) {
+    return "<item><title>" + xml(str(ep["title"])) + "</title>" +
+        "<description>" + xml(str(ep["description"])) + "</description>" +
+        "<guid isPermaLink=\"false\">" + xml(str(ep["episode_id"])) + "</guid>" +
+        "<enclosure url=\"" + xml(str(ep["audio_url"])) + "\" length=\"" + str(ep["file_size"]) + "\" type=\"audio/mpeg\" />" +
+        "<itunes:duration>" + str(ep["duration_text"]) + "</itunes:duration>" +
+        "<itunes:episode>" + str(ep["episode_number"]) + "</itunes:episode>" +
+        "<itunes:season>" + str(ep["season_number"]) + "</itunes:season>" +
+        "<itunes:episodeType>full</itunes:episodeType></item>"
+}
+
+fn podcast_id_from_dir(path) {
+    let parts = path.split("/")
+    return str(parts[len(parts) - 1])
+}
+
+fn parent_dir(path) {
+    return path.replace("/podcast.json", "")
+}
+
+fn xml(text) {
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+}

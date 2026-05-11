@@ -185,7 +185,10 @@ impl std::fmt::Debug for SessionMetadata {
                     .as_ref()
                     .map(|cfg| (&cfg.endpoint, &cfg.bucket, &cfg.prefix)),
             )
-            .field("provider_keys", &self.provider_keys.as_ref().map(|_| "<redacted>"))
+            .field(
+                "provider_keys",
+                &self.provider_keys.as_ref().map(|_| "<redacted>"),
+            )
             .field(
                 "subcall_provider",
                 &self.subcall_provider.as_ref().map(|_| "<provider>"),
