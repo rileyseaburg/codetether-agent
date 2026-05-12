@@ -15,12 +15,12 @@ impl Session {
     ///
     /// # Errors
     ///
-    /// Returns an error if the session file does not exist or the JSON is
-    /// malformed.
+    /// Returns an error if the session file does not exist, exceeds the
+    /// sanity size cap, or the JSON is malformed.
     pub async fn load(id: &str) -> Result<Self> {
         let path = Self::session_path(id)?;
-        let content = fs::read_to_string(&path).await?;
-        let mut session: Session = serde_json::from_str(&content)?;
+        super::helper::persistence_cap::ensure_session_file_size(&path).await?;
+        let mut session: Session = serde_json::from_str(&fs::read_to_string(&path).await?)?;
         session.normalize_sidecars();
         Ok(session)
     }
