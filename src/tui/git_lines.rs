@@ -6,8 +6,8 @@ use crate::tui::app::state::git_state::GitViewState;
 use crate::tui::git_style::heading;
 
 /// Convert captured git state into renderable lines.
-pub fn build_git_lines(state: &GitViewState) -> Vec<Line<'static>> {
-    let mut lines: Vec<Line<'static>> = Vec::new();
+pub fn build_git_lines(state: &GitViewState) -> Vec<Line<'_>> {
+    let mut lines: Vec<Line<'_>> = Vec::new();
     push_summary(&mut lines, state);
     push_list(&mut lines, "── Recent Commits ──", &state.log_lines);
     push_diff(&mut lines, state);
