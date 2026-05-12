@@ -1,0 +1,28 @@
+[package]
+name = "codetether-rlm"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
+description = "Recursive Language Model processing for CodeTether"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+memchr = "2"
+minio = "0.3"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+streaming-iterator = "0.1.9"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tree-sitter = "0.24"
+tree-sitter-rust = "0.23"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tempfile = "3"
