@@ -203,7 +203,9 @@ pub async fn run(
     );
 
     let loaded_session = match session_timeout_result {
-        _ if std::env::var_os("CODETETHER_TUI_NEW_SESSION").is_some() => Err(anyhow::anyhow!("requested fresh session")),
+        _ if std::env::var_os("CODETETHER_TUI_NEW_SESSION").is_some() => {
+            Err(anyhow::anyhow!("requested fresh session"))
+        }
         Ok(inner) => inner,
         Err(_) => {
             tracing::warn!(

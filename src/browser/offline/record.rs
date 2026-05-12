@@ -24,7 +24,12 @@ pub fn run(url: &str, out: &Path) -> Result<String> {
     let headers: BTreeMap<String, String> = resp
         .headers()
         .iter()
-        .map(|(k, v)| (k.as_str().to_ascii_lowercase(), String::from_utf8_lossy(v.as_bytes()).to_string()))
+        .map(|(k, v)| {
+            (
+                k.as_str().to_ascii_lowercase(),
+                String::from_utf8_lossy(v.as_bytes()).to_string(),
+            )
+        })
         .collect();
     let content_type = headers.get("content-type").cloned();
     let bytes = resp.bytes()?;

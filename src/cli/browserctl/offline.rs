@@ -13,7 +13,11 @@ fn dispatch(cmd: &OfflineCommand) -> Result<String> {
     match cmd {
         OfflineCommand::AuthTrace { url, max_redirects } => auth_trace::run(url, *max_redirects),
         OfflineCommand::CookieDiff { before, after } => cookie_diff::run(before, after),
-        OfflineCommand::ExplainCors { url, origin, method } => explain_cors::run(url, origin, method),
+        OfflineCommand::ExplainCors {
+            url,
+            origin,
+            method,
+        } => explain_cors::run(url, origin, method),
         OfflineCommand::Record { url, out } => record::run(url, out),
         OfflineCommand::Replay { capture } => replay::run(capture),
     }

@@ -16,5 +16,9 @@ pub(crate) fn rec_with(name: &str, value: &str, path: &str, domain: Option<&str>
     if let Some(d) = domain {
         attrs.insert("domain".into(), d.into());
     }
-    CookieRecord { name: name.into(), value: value.into(), attrs }
+    CookieRecord {
+        name: name.into(),
+        value: value.into(),
+        attrs,
+    }
 }

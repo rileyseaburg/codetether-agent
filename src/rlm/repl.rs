@@ -27,6 +27,7 @@ use crate::cognition::tool_router::{ToolCallRouter, ToolRouterConfig};
 use super::context_trace::{ContextEvent, ContextTrace, ContextTraceSummary};
 use super::oracle::{FinalPayload, GrepMatch, GrepOracle, GrepPayload, QueryType, TraceStep};
 use super::tools::{RlmToolResult, dispatch_tool_call, rlm_tool_definitions};
+use super::{RlmAnalysisResult, SubQuery};
 
 /// REPL runtime options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -503,15 +504,6 @@ pub struct RlmExecutor {
     verbose: bool,
 
     tool_router: Option<ToolCallRouter>,
-}
-
-/// Record of a sub-LM call
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SubQuery {
-    pub query: String,
-    pub context_slice: Option<String>,
-    pub response: String,
-    pub tokens_used: usize,
 }
 
 impl RlmExecutor {
@@ -1509,15 +1501,6 @@ impl RlmExecutor {
 
         (query, context)
     }
-}
-
-/// Result of RLM analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RlmAnalysisResult {
-    pub answer: String,
-    pub iterations: usize,
-    pub sub_queries: Vec<SubQuery>,
-    pub stats: super::RlmStats,
 }
 
 /// Spawn an external REPL process for Python or Bun

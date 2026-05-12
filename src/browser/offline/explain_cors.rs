@@ -25,12 +25,21 @@ pub fn run(url: &str, origin: &str, method: &str) -> Result<String> {
         .header("access-control-request-method", method)
         .send()?;
     let preflight_status = resp.status().as_u16();
-    let headers: BTreeMap<String, String> = resp.headers().iter()
-        .map(|(k, v)| (k.as_str().to_ascii_lowercase(), String::from_utf8_lossy(v.as_bytes()).to_string()))
+    let headers: BTreeMap<String, String> = resp
+        .headers()
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.as_str().to_ascii_lowercase(),
+                String::from_utf8_lossy(v.as_bytes()).to_string(),
+            )
+        })
         .collect();
     let mut reasons = Vec::new();
     if !(200..300).contains(&preflight_status) {
-        reasons.push(format!("preflight returned non-2xx status {preflight_status}"));
+        reasons.push(format!(
+            "preflight returned non-2xx status {preflight_status}"
+        ));
     }
     reasons.extend(header_reasons(&headers, origin, method));
     Ok(serde_json::to_string_pretty(&CorsExplanation {

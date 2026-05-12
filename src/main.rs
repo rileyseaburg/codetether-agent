@@ -576,8 +576,14 @@ async fn main() -> anyhow::Result<()> {
                 None
             };
             let start_new = args.project.as_deref() == Some(std::path::Path::new("new"));
-            let project = if start_new { cli.project } else { args.project.or(cli.project) };
-            if start_new { unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") } };
+            let project = if start_new {
+                cli.project
+            } else {
+                args.project.or(cli.project)
+            };
+            if start_new {
+                unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") }
+            };
             tui::run(project, allow_network, a2a_options).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,
@@ -1412,7 +1418,9 @@ async fn main() -> anyhow::Result<()> {
                     if result.vault_saved {
                         println!("🔐 API key has been saved to Vault (codetether/moltbook).");
                     } else {
-                        println!("⚠️  Could not save API key to Vault. Check VAULT_ADDR/VAULT_TOKEN and save it manually.");
+                        println!(
+                            "⚠️  Could not save API key to Vault. Check VAULT_ADDR/VAULT_TOKEN and save it manually."
+                        );
                     }
                     Ok(())
                 }
