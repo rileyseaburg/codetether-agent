@@ -93,12 +93,18 @@ fn candidate_paths() -> Vec<PathBuf> {
     ]
 }
 
-/// Platform-specific fallback lookup using native Win32 APIs.
-/// Uses registry probing + PATH lookup via the `platform` module,
-/// eliminating the `where.exe` subprocess.
+/// Platform-specific fallback lookup after static path probing.
 #[cfg(target_os = "windows")]
 fn platform_lookup() -> Option<PathBuf> {
-    crate::platform::windows::browser::find_browser()
+    [
+        "chrome.exe",
+        "msedge.exe",
+        "brave.exe",
+        "vivaldi.exe",
+        "chromium.exe",
+    ]
+    .iter()
+    .find_map(|name| which::which(name).ok())
 }
 
 #[cfg(not(target_os = "windows"))]

@@ -1005,9 +1005,9 @@ dependencies = [
  "base64 0.22.1",
  "candle-core",
  "candle-transformers",
- "chromiumoxide",
  "chrono",
  "clap",
+ "codetether-browser",
  "codetether-rlm",
  "config",
  "cpal",
@@ -1080,6 +1080,27 @@ dependencies = [
  "walkdir",
  "which",
  "windows 0.62.2",
+]
+
+[[package]]
+name = "codetether-browser"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "chromiumoxide",
+ "futures",
+ "once_cell",
+ "parking_lot",
+ "rand 0.10.1",
+ "reqwest 0.13.3",
+ "serde",
+ "serde_json",
+ "tetherscript",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "which",
 ]
 
 [[package]]

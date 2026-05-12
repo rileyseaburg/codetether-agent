@@ -1,8 +1,8 @@
 //! Replay captured HTTP responses through tetherscript.
 
 use anyhow::Result;
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
 use std::path::Path;
 
 use super::record::Capture;
