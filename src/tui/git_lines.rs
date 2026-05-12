@@ -32,7 +32,7 @@ fn branch_label(state: &GitViewState) -> String {
     }
 }
 
-fn push_summary(lines: &mut Vec<Line<'static>>, state: &GitViewState) {
+fn push_summary<'a>(lines: &mut Vec<Line<'a>>, state: &GitViewState) {
     let branch = branch_label(state);
     lines.push(Line::from(format!("Branch: {branch}")));
     lines.push(Line::from(format!("Dirty files: {}", state.dirty_files)));
