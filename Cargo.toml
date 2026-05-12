@@ -129,7 +129,7 @@ dotenvy = "0.15"
 
 # Secrets (HashiCorp Vault)
 vaultrs = "0.7"
-S
+
 # Kubernetes self-deployment
 kube = { version = "3.0.1", features = ["runtime", "client", "derive", "config"] }
 k8s-openapi = { version = "0.27.0", features = ["latest"] }

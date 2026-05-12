@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::rlm::RlmStats;
+/// use codetether_rlm::RlmStats;
 ///
 /// let s = RlmStats::default();
 /// assert_eq!(s.input_tokens, 0);

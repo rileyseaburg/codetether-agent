@@ -22,12 +22,13 @@ pub(super) fn try_tool_calls(
     let mut final_answer: Option<String> = None;
 
     for tc in &response.tool_calls {
+        let args_str = tc.arguments.to_string();
         trace.log_event(ContextEvent::ToolCall {
             name: tc.name.clone(),
-            arguments_preview: tc.arguments.to_string().chars().take(200).collect(),
-            tokens: ContextTrace::estimate_tokens(&tc.arguments.to_string()),
+            arguments_preview: args_str.chars().take(200).collect(),
+            tokens: ContextTrace::estimate_tokens(&args_str),
         });
-        match host.dispatch(&tc.name, &tc.arguments.to_string()) {
+        match host.dispatch(&tc.name, &args_str) {
             Some(HostToolResult::Final(a)) => {
                 results.push(LlmMessage::tool_result(&tc.id, "FINAL received"));
                 final_answer = Some(a);

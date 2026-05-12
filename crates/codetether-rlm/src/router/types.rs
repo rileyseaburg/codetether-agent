@@ -56,3 +56,12 @@ pub trait IntoCrateCtx<'a> {
     /// Convert into the crate's internal context.
     fn into_crate_ctx(self) -> CrateAutoProcessContext<'a>;
 }
+
+/// Outcome of the iterative RLM loop.
+pub struct LoopOutcome {
+    pub final_answer: Option<String>,
+    pub iterations: usize,
+    pub subcalls: usize,
+    pub aborted: bool,
+    pub last_error: Option<String>,
+}

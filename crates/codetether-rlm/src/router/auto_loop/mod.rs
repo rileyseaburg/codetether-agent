@@ -4,20 +4,12 @@ use tracing::warn;
 use crate::config::RlmConfig;
 use crate::context_trace::ContextTrace;
 use crate::traits::{LlmMessage, ToolDefinition};
-use super::types::CrateAutoProcessContext;
+use super::types::{CrateAutoProcessContext, LoopOutcome};
 use super::host::RouterHost;
 
 mod support;
 mod tool_dispatch;
 mod text_path;
-
-/// Outcome of the iterative loop.
-pub(super) struct LoopOutcome {
-    pub final_answer: Option<String>,
-    pub iterations: usize,
-    pub subcalls: usize,
-    pub aborted: bool,
-}
 
 /// Run the iterative analysis loop.
 pub async fn run(
@@ -29,6 +21,7 @@ pub async fn run(
     let mut subcalls = 0;
     let mut final_answer: Option<String> = None;
     let mut aborted = false;
+    let mut last_error: Option<String> = None;
 
     for i in 0..config.max_iterations {
         iterations = i + 1;
@@ -40,8 +33,9 @@ pub async fn run(
             Ok(r) => r,
             Err(e) => {
                 warn!(error = %e, iteration = iterations, "RLM: Model call failed");
+                last_error = Some(format!("Model call failed at iteration {iterations}: {e}"));
                 if iterations > 1 { break; }
-                return LoopOutcome { final_answer: None, iterations, subcalls, aborted: false };
+                return LoopOutcome { final_answer: None, iterations, subcalls, aborted: false, last_error };
             }
         };
         let response = support::maybe_rewrite(ctx, response, tools).await;
@@ -52,5 +46,5 @@ pub async fn run(
         subcalls += 1;
         if subcalls >= config.max_subcalls { warn!(subcalls, "RLM: Max subcalls reached"); break; }
     }
-    LoopOutcome { final_answer, iterations, subcalls, aborted }
+    LoopOutcome { final_answer, iterations, subcalls, aborted, last_error }
 }

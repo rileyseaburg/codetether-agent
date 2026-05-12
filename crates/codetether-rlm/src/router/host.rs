@@ -20,7 +20,7 @@ pub enum HostToolResult {
 ///
 /// Implemented by `codetether-agent` with `RlmRepl` and the
 /// `dispatch_tool_call` function from `src/rlm/tools.rs`.
-pub trait RouterHost: Send + Sync {
+pub trait RouterHost: Send {
     /// Return the `rlm_head/tail/grep/…` tool definitions.
     fn tool_definitions(&self) -> Vec<ToolDefinition>;
 

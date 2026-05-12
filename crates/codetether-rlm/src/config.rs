@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::rlm::RlmConfig;
+/// use codetether_rlm::RlmConfig;
 ///
 /// let cfg = RlmConfig::default();
 /// assert_eq!(cfg.mode, "auto");

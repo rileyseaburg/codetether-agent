@@ -13,7 +13,7 @@ pub struct S3Config {
 }
 impl S3Config {
     /// Build from standard environment variables.
-    pub async fn from_env_or_vault() -> anyhow::Result<Self> {
+    pub fn from_env_or_vault() -> anyhow::Result<Self> {
         Ok(Self {
             endpoint: std::env::var("MINIO_ENDPOINT")
                 .unwrap_or_else(|_| "http://localhost:9000".into()),

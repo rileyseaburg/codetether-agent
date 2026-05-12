@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::rlm::{RlmResult, RlmStats};
+/// use codetether_rlm::{RlmResult, RlmStats};
 ///
 /// let r = RlmResult {
 ///     processed: "summary".into(),

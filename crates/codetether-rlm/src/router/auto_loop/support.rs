@@ -9,8 +9,9 @@ pub(super) fn emit_progress(ctx: &CrateAutoProcessContext<'_>, iter: usize, max:
         p(ProcessProgress { iteration: iter, max_iterations: max, status: "running".into() });
     }
     if let Some(ref bus) = ctx.bus {
+        let trace_id = ctx.trace_id.unwrap_or_else(uuid::Uuid::new_v4);
         bus.emit_progress(crate::RlmProgressEvent {
-            trace_id: uuid::Uuid::nil(), iteration: iter,
+            trace_id, iteration: iter,
             max_iterations: max, status: "running".into(),
         });
     }

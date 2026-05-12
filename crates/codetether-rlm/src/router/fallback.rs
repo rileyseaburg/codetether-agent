@@ -15,7 +15,7 @@ pub fn fallback_result(
         processed: format!("[RLM processing failed, showing truncated output]\n\n{truncated}"),
         stats: RlmStats {
             input_tokens, output_tokens: out_tok, iterations: 0, subcalls: 0,
-            elapsed_ms: 0, compression_ratio: input_tokens as f64 / out_tok.max(1) as f64,
+            elapsed_ms: 0, compression_ratio: if out_tok == 0 { 0.0 } else { out_tok as f64 / input_tokens as f64 },
         },
         success: false, error: Some("Model call failed".into()),
         trace: None, trace_id: None,

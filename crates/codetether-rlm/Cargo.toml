@@ -12,7 +12,7 @@ async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 memchr = "2"
-minio = "0.3"
+minio = "0.4.0"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
