@@ -21,7 +21,6 @@ use futures::StreamExt;
 use futures::stream::BoxStream;
 use std::collections::HashMap;
 
-
 #[derive(Default)]
 struct ToolAccumulator {
     id: String,

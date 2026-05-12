@@ -1,8 +1,8 @@
-//! Replay a captured HTTP response through a deterministic tetherscript BrowserSession.
+//! Replay captured HTTP responses through tetherscript.
 
 use anyhow::Result;
-use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
+use base64::Engine as _;
 use std::path::Path;
 
 use super::record::Capture;
@@ -30,20 +30,28 @@ fn replay_capture(cap: &Capture, body: &[u8]) -> Result<ReplayReport> {
     let html = String::from_utf8_lossy(body).to_string();
     let mut session = BrowserSession::new();
     session.goto_html(cap.url.clone(), html);
-    let eval = session
+    Ok(report(cap, body, eval_title(&mut session)))
+}
+
+#[cfg(feature = "tetherscript")]
+fn eval_title(session: &mut tetherscript::browser_session::BrowserSession) -> String {
+    session
         .eval_js("document.title")
-        .map(|v| format!("{:?}", v))
-        .unwrap_or_else(|e| format!("eval-error: {e}"));
-    Ok(ReplayReport {
-        url: cap.url.clone(),
-        status: cap.status,
-        body_bytes: body.len(),
-        content_type: cap.content_type.clone(),
-        eval_result: eval,
-    })
+        .map(|value| format!("{value:?}"))
+        .unwrap_or_else(|error| format!("eval-error: {error}"))
 }
 
 #[cfg(not(feature = "tetherscript"))]
 fn replay_capture(_: &Capture, _: &[u8]) -> Result<ReplayReport> {
     anyhow::bail!("replay requires the `tetherscript` feature");
+}
+
+fn report(cap: &Capture, body: &[u8], eval_result: String) -> ReplayReport {
+    ReplayReport {
+        url: cap.url.clone(),
+        status: cap.status,
+        body_bytes: body.len(),
+        content_type: cap.content_type.clone(),
+        eval_result,
+    }
 }

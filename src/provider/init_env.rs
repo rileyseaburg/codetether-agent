@@ -44,15 +44,7 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
             Ok(Arc::new(super::copilot::CopilotProvider::new(t)?))
         }),
         ("cerebras", "CEREBRAS_API_KEY", |k| {
-            let src = include_str!("../../examples/tetherscript/cerebras_chat.tether");
-            Ok(Arc::new(
-                super::tetherscript_provider::TetherScriptProvider::new(
-                    src,
-                    &k,
-                    "https://api.cerebras.ai/v1",
-                    "cerebras",
-                )?,
-            ))
+            super::tetherscript_provider::cerebras::provider(&k, None)
         }),
     ];
 

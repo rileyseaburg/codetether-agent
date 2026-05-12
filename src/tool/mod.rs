@@ -390,7 +390,7 @@ impl ToolRegistry {
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
         #[cfg(feature = "tetherscript")]
-        registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
+        tetherscript::register(&mut registry);
         registry.register_compat_aliases();
 
         registry
@@ -482,7 +482,7 @@ impl ToolRegistry {
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
         #[cfg(feature = "tetherscript")]
-        registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
+        tetherscript::register(&mut registry);
         registry.register_compat_aliases();
 
         registry

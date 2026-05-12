@@ -2299,10 +2299,6 @@ async fn enqueue_post_clone_task(
 fn worker_should_enqueue_post_clone_task(
     metadata: &serde_json::Map<String, serde_json::Value>,
 ) -> bool {
-    if metadata.get("source").and_then(|value| value.as_str()) == Some("github-app") {
-        return false;
-    }
-
     metadata
         .get("post_clone_task")
         .and_then(|value| value.as_object())
@@ -3711,7 +3707,7 @@ mod tests {
     }
 
     #[test]
-    fn worker_skips_github_app_post_clone_followups() {
+    fn worker_allows_github_app_post_clone_followups() {
         let metadata = json!({
             "source": "github-app",
             "post_clone_task": {
@@ -3723,7 +3719,7 @@ mod tests {
         .cloned()
         .unwrap();
 
-        assert!(!worker_should_enqueue_post_clone_task(&metadata));
+        assert!(worker_should_enqueue_post_clone_task(&metadata));
     }
 
     #[test]
