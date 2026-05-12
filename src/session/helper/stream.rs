@@ -10,7 +10,7 @@
 //! Each text chunk forwarded over `event_tx` is a **full snapshot** of the
 //! accumulated assistant text so far. For extremely long replies this would be
 //! O(n²) in memory; to bound the worst case the snapshot is capped at
-//! [`MAX_STREAM_SNAPSHOT_BYTES`] with a trailing `" …[truncated]"` marker.
+//! [`stream_caps::MAX_STREAM_SNAPSHOT_BYTES`](super::stream_caps::MAX_STREAM_SNAPSHOT_BYTES) with a trailing `" …[truncated]"` marker.
 //! The full text is still returned in the final [`CompletionResponse`]; only
 //! the streamed previews are truncated.
 
@@ -21,18 +21,6 @@ use futures::StreamExt;
 use futures::stream::BoxStream;
 use std::collections::HashMap;
 
-/// Maximum bytes forwarded per [`SessionEvent::TextChunk`] snapshot.
-///
-/// Bounds worst-case memory for runaway providers to O(n) rather than O(n²)
-/// across the streaming lifetime. The final response is **not** truncated.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::session::helper::stream::MAX_STREAM_SNAPSHOT_BYTES;
-/// assert_eq!(MAX_STREAM_SNAPSHOT_BYTES, 256 * 1024);
-/// ```
-pub const MAX_STREAM_SNAPSHOT_BYTES: usize = 256 * 1024;
 
 #[derive(Default)]
 struct ToolAccumulator {
@@ -48,7 +36,7 @@ struct ToolAccumulator {
 /// tool-call argument deltas keyed by tool-call id, and tracks the final
 /// [`FinishReason`] and [`Usage`]. When `event_tx` is `Some`, each text delta
 /// triggers a [`SessionEvent::TextChunk`] carrying the full accumulated text
-/// up to that point — truncated to [`MAX_STREAM_SNAPSHOT_BYTES`] with a
+/// up to that point — truncated to [`stream_caps::MAX_STREAM_SNAPSHOT_BYTES`](super::stream_caps::MAX_STREAM_SNAPSHOT_BYTES) with a
 /// `" …[truncated]"` suffix when exceeded.
 ///
 /// # Arguments
@@ -96,17 +84,10 @@ pub async fn collect_stream_completion_with_events(
                 if delta.is_empty() {
                     continue;
                 }
+                super::stream_caps::ensure_text_room(text.len(), delta.len())?;
                 text.push_str(&delta);
                 if let Some(tx) = event_tx {
-                    let to_send = if text.len() > MAX_STREAM_SNAPSHOT_BYTES {
-                        let mut t =
-                            crate::util::truncate_bytes_safe(&text, MAX_STREAM_SNAPSHOT_BYTES)
-                                .to_string();
-                        t.push_str(" …[truncated]");
-                        t
-                    } else {
-                        text.clone()
-                    };
+                    let to_send = super::stream_caps::snapshot_for_send(&text);
                     let _ = tx.send(SessionEvent::TextChunk(to_send)).await;
                 }
             }
@@ -128,8 +109,14 @@ pub async fn collect_stream_completion_with_events(
                 arguments_delta,
             } => {
                 if let Some(idx) = tool_index_by_id.get(&id).copied() {
+                    super::stream_caps::ensure_tool_args_room(
+                        tools[idx].arguments.len(),
+                        arguments_delta.len(),
+                        &tools[idx].id,
+                    )?;
                     tools[idx].arguments.push_str(&arguments_delta);
                 } else {
+                    super::stream_caps::ensure_tool_args_room(0, arguments_delta.len(), &id)?;
                     let idx = tools.len();
                     tool_index_by_id.insert(id.clone(), idx);
                     tools.push(ToolAccumulator {
