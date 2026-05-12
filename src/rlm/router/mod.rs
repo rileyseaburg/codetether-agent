@@ -4,6 +4,7 @@
 //! monolith. All pure logic lives in the crate.
 
 pub mod adapter_bus;
+pub mod adapter_convert;
 pub mod adapter_provider;
 pub mod context;
 pub mod convert;
@@ -11,11 +12,11 @@ pub mod host_impl;
 
 pub use context::{AutoProcessContext, ProcessProgress, RoutingContext, RoutingResult};
 
-use anyhow::Result;
-use codetether_rlm::router;
-use super::repl::{RlmRepl, ReplRuntime};
 use super::RlmConfig;
 use super::RlmResult;
+use super::repl::{ReplRuntime, RlmRepl};
+use anyhow::Result;
+use codetether_rlm::router;
 
 /// RLM Router — delegates to [`codetether_rlm::router`].
 pub struct RlmRouter;
@@ -27,12 +28,21 @@ impl RlmRouter {
     }
 
     /// Smart truncate large output with RLM hint.
-    pub fn smart_truncate(output: &str, tool_id: &str, args: &serde_json::Value, max: usize) -> (String, bool, usize) {
+    pub fn smart_truncate(
+        output: &str,
+        tool_id: &str,
+        args: &serde_json::Value,
+        max: usize,
+    ) -> (String, bool, usize) {
         router::smart_truncate(output, tool_id, args, max)
     }
 
     /// Automatically process large output through RLM.
-    pub async fn auto_process(output: &str, ctx: AutoProcessContext<'_>, config: &RlmConfig) -> Result<RlmResult> {
+    pub async fn auto_process(
+        output: &str,
+        ctx: AutoProcessContext<'_>,
+        config: &RlmConfig,
+    ) -> Result<RlmResult> {
         let mut repl = RlmRepl::new(output.to_string(), ReplRuntime::Rust);
         let mut host = host_impl::ReplHost(&mut repl);
         let crate_ctx = convert::convert_ctx(ctx);

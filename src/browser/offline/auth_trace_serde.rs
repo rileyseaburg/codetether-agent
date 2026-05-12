@@ -19,5 +19,9 @@ pub(crate) fn serialize_cookie(c: &tetherscript::browser_session::Cookie) -> Coo
     if let Some(exp) = c.expires_at {
         attrs.insert("expires_at".into(), exp.to_string());
     }
-    CookieRecord { name: c.name.clone(), value: c.value.clone(), attrs }
+    CookieRecord {
+        name: c.name.clone(),
+        value: c.value.clone(),
+        attrs,
+    }
 }

@@ -34,7 +34,13 @@ fn replay_capture(cap: &Capture, body: &[u8]) -> Result<ReplayReport> {
         .eval_js("document.title")
         .map(|v| format!("{:?}", v))
         .unwrap_or_else(|e| format!("eval-error: {e}"));
-    Ok(ReplayReport { url: cap.url.clone(), status: cap.status, body_bytes: body.len(), content_type: cap.content_type.clone(), eval_result: eval })
+    Ok(ReplayReport {
+        url: cap.url.clone(),
+        status: cap.status,
+        body_bytes: body.len(),
+        content_type: cap.content_type.clone(),
+        eval_result: eval,
+    })
 }
 
 #[cfg(not(feature = "tetherscript"))]

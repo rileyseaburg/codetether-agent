@@ -39,10 +39,32 @@ pub fn diff(before: &[CookieRecord], after: &[CookieRecord]) -> CookieDelta {
     duplicates.extend(adup);
     duplicates.sort();
     duplicates.dedup();
-    let added = amap.iter().filter(|(k, _)| !bmap.contains_key(*k)).map(|(_, c)| (*c).clone()).collect();
-    let removed = bmap.iter().filter(|(k, _)| !amap.contains_key(*k)).map(|(_, c)| (*c).clone()).collect();
-    let changed = bmap.iter()
-        .filter_map(|(k, b)| amap.get(k).and_then(|a| (a != b).then(|| Changed { key: k.clone(), before: (*b).clone(), after: (*a).clone() })))
+    let added = amap
+        .iter()
+        .filter(|(k, _)| !bmap.contains_key(*k))
+        .map(|(_, c)| (*c).clone())
         .collect();
-    CookieDelta { added, removed, changed, duplicates }
+    let removed = bmap
+        .iter()
+        .filter(|(k, _)| !amap.contains_key(*k))
+        .map(|(_, c)| (*c).clone())
+        .collect();
+    let changed = bmap
+        .iter()
+        .filter_map(|(k, b)| {
+            amap.get(k).and_then(|a| {
+                (a != b).then(|| Changed {
+                    key: k.clone(),
+                    before: (*b).clone(),
+                    after: (*a).clone(),
+                })
+            })
+        })
+        .collect();
+    CookieDelta {
+        added,
+        removed,
+        changed,
+        duplicates,
+    }
 }
