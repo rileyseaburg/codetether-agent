@@ -15,8 +15,25 @@ pub fn build_git_lines(state: &GitViewState) -> Vec<Line<'static>> {
     lines
 }
 
+fn branch_label(state: &GitViewState) -> String {
+    if let Some(branch) = state.branch.as_deref() {
+        return branch.to_string();
+    }
+
+    let has_git_data = !state.branches.is_empty()
+        || !state.log_lines.is_empty()
+        || !state.diff_stat.trim().is_empty()
+        || state.dirty_files > 0;
+
+    if has_git_data {
+        "(detached HEAD)".to_string()
+    } else {
+        "(not a git repo)".to_string()
+    }
+}
+
 fn push_summary(lines: &mut Vec<Line<'static>>, state: &GitViewState) {
-    let branch = state.branch.as_deref().unwrap_or("(detached HEAD)");
+    let branch = branch_label(state);
     lines.push(Line::from(format!("Branch: {branch}")));
     lines.push(Line::from(format!("Dirty files: {}", state.dirty_files)));
     lines.push(Line::from(format!("Captured: {}", state.captured_at)));
