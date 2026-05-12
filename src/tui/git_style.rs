@@ -6,9 +6,9 @@ use ratatui::{
 };
 
 /// Render a cyan section heading.
-pub fn heading(text: &str) -> Line<'static> {
+pub fn heading(text: &str) -> Line<'_> {
     Line::from(Span::styled(
-        text.to_string(),
+        text,
         Style::default()
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD),
