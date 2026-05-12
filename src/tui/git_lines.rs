@@ -48,10 +48,10 @@ fn push_list<'a>(lines: &mut Vec<Line<'a>>, title: &'a str, items: &'a [String])
     lines.push(Line::from(""));
 }
 
-fn push_diff(lines: &mut Vec<Line<'static>>, state: &GitViewState) {
+fn push_diff<'a>(lines: &mut Vec<Line<'a>>, state: &'a GitViewState) {
     lines.push(heading("── Diff Stat ──"));
     for line in state.diff_stat.lines() {
-        lines.push(Line::from(line.to_string()));
+        lines.push(Line::from(line));
     }
     lines.push(Line::from(""));
 }
