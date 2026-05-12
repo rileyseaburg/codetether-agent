@@ -40,10 +40,10 @@ fn push_summary<'a>(lines: &mut Vec<Line<'a>>, state: &GitViewState) {
     lines.push(Line::from(""));
 }
 
-fn push_list(lines: &mut Vec<Line<'static>>, title: &str, items: &[String]) {
+fn push_list<'a>(lines: &mut Vec<Line<'a>>, title: &'a str, items: &'a [String]) {
     lines.push(heading(title));
     for item in items.iter().take(20) {
-        lines.push(Line::from(item.clone()));
+        lines.push(Line::from(item.as_str()));
     }
     lines.push(Line::from(""));
 }
