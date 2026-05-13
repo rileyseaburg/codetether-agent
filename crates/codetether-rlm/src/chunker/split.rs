@@ -5,7 +5,10 @@ use super::types::{Chunk, ChunkType};
 
 /// Split a large chunk into smaller pieces.
 pub fn split_large_chunk(
-    lines: &[&str], start_line: usize, chunk_type: ChunkType, max_tokens: usize,
+    lines: &[&str],
+    start_line: usize,
+    chunk_type: ChunkType,
+    max_tokens: usize,
 ) -> Vec<Chunk> {
     let mut chunks = Vec::new();
     let mut current: Vec<&str> = Vec::new();
@@ -15,9 +18,12 @@ pub fn split_large_chunk(
         let lt = estimate_tokens(line);
         if current_tokens + lt > max_tokens && !current.is_empty() {
             chunks.push(Chunk {
-                content: current.join("\n"), chunk_type,
-                start_line: current_start, end_line: start_line + i - 1,
-                tokens: current_tokens, priority: 3,
+                content: current.join("\n"),
+                chunk_type,
+                start_line: current_start,
+                end_line: start_line + i - 1,
+                tokens: current_tokens,
+                priority: 3,
             });
             current = Vec::new();
             current_tokens = 0;
@@ -28,9 +34,12 @@ pub fn split_large_chunk(
     }
     if !current.is_empty() {
         chunks.push(Chunk {
-            content: current.join("\n"), chunk_type,
-            start_line: current_start, end_line: start_line + lines.len() - 1,
-            tokens: current_tokens, priority: 3,
+            content: current.join("\n"),
+            chunk_type,
+            start_line: current_start,
+            end_line: start_line + lines.len() - 1,
+            tokens: current_tokens,
+            priority: 3,
         });
     }
     chunks

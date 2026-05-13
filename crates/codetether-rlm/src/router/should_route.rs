@@ -11,11 +11,7 @@ use super::types::{RoutingContext, RoutingResult};
 /// Gated on [`output_capability`]: only
 /// [`OutputCapability::BulkSummarizable`] tools may be destructively
 /// summarised. `ExactContent` and `Unknown` fail closed.
-pub fn should_route(
-    output: &str,
-    ctx: &RoutingContext,
-    config: &RlmConfig,
-) -> RoutingResult {
+pub fn should_route(output: &str, ctx: &RoutingContext, config: &RlmConfig) -> RoutingResult {
     let estimated = RlmChunker::estimate_tokens(output);
 
     if config.mode == "off" {

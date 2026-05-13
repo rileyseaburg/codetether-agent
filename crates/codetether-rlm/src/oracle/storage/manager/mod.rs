@@ -55,7 +55,7 @@ impl OracleTraceStorage {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(DEFAULT_MAX_SPOOL_BYTES);
-        let remote = match S3Config::from_env_or_vault().await {
+        let remote = match S3Config::from_env_or_vault() {
             Ok(cfg) => match MinioOracleRemote::from_bus_config(cfg) {
                 Ok(r) => Some(Arc::new(r) as Arc<dyn OracleRemote>),
                 Err(e) => {
@@ -68,11 +68,7 @@ impl OracleTraceStorage {
                 None
             }
         };
-        Self {
-            spool_dir,
-            max_spool_bytes: max,
-            remote,
-        }
+        Self { spool_dir, max_spool_bytes: max, remote }
     }
 
     /// Construct with injected dependencies for testing.
@@ -82,10 +78,6 @@ impl OracleTraceStorage {
         max_spool_bytes: u64,
         remote: Option<Arc<dyn OracleRemote>>,
     ) -> Self {
-        Self {
-            spool_dir,
-            max_spool_bytes,
-            remote,
-        }
+        Self { spool_dir, max_spool_bytes, remote }
     }
 }

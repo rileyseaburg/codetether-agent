@@ -1,4 +1,4 @@
-FROM rust:1.88-slim AS builder
+FROM rust:1.89-slim AS builder
 
 WORKDIR /build
 
@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY src ./src
+COPY crates ./crates
 COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies

@@ -10,9 +10,11 @@
 pub use codetether_rlm::*;
 
 // Local driver modules and host adapter
+pub mod executor_bridge;
 pub mod repl;
 pub mod router;
 pub mod tools;
 
-// Re-export RlmRouter at the rlm:: level for existing call sites.
+// Re-export RLM entry points at the rlm:: level for existing call sites.
+pub use executor_bridge::RlmExecutor;
 pub use router::RlmRouter;

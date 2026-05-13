@@ -46,6 +46,9 @@ pub struct ChunkOptions {
 
 impl Default for ChunkOptions {
     fn default() -> Self {
-        Self { max_chunk_tokens: 4000, preserve_recent: 100 }
+        Self {
+            max_chunk_tokens: 4000,
+            preserve_recent: 100,
+        }
     }
 }

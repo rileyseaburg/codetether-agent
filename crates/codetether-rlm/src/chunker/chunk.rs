@@ -13,20 +13,33 @@ pub fn chunk(content: &str, options: Option<ChunkOptions>) -> Vec<Chunk> {
     let mut chunks = Vec::new();
     let (mut cur, mut ctype, mut start, mut pri) = (Vec::<&str>::new(), ChunkType::Text, 0, 1u8);
     for (i, line) in lines.iter().enumerate() {
-        if let Some((bt, bp)) = boundaries.get(&i) && !cur.is_empty() {
+        if let Some((bt, bp)) = boundaries.get(&i)
+            && !cur.is_empty()
+        {
             flush_chunk(&mut chunks, &cur, start, i, ctype, &opts);
-            cur = Vec::new(); start = i; ctype = *bt; pri = *bp;
+            cur = Vec::new();
+            start = i;
+            ctype = *bt;
+            pri = *bp;
         }
         cur.push(line);
-        if i >= lines.len().saturating_sub(opts.preserve_recent) { pri = pri.max(8); }
+        if i >= lines.len().saturating_sub(opts.preserve_recent) {
+            pri = pri.max(8);
+        }
     }
-    if !cur.is_empty() { flush_chunk(&mut chunks, &cur, start, lines.len(), ctype, &opts); }
+    if !cur.is_empty() {
+        flush_chunk(&mut chunks, &cur, start, lines.len(), ctype, &opts);
+    }
     chunks
 }
 
 fn flush_chunk(
-    out: &mut Vec<Chunk>, lines: &[&str], start: usize, end: usize,
-    ctype: ChunkType, opts: &ChunkOptions,
+    out: &mut Vec<Chunk>,
+    lines: &[&str],
+    start: usize,
+    end: usize,
+    ctype: ChunkType,
+    opts: &ChunkOptions,
 ) {
     let content = lines.join("\n");
     let tokens = estimate_tokens(&content);

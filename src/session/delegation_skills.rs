@@ -37,8 +37,7 @@
 /// [`choose_router_target_bandit`](crate::session::helper::router::choose_router_target_bandit).
 pub const MODEL_CALL: &str = "model_call";
 
-/// Skill for RLM compaction model selection in
-/// [`resolve_rlm_model_bandit`](crate::session::helper::compression::resolve_rlm_model_bandit).
+/// Skill for RLM compaction model selection in [`crate::rlm::select_rlm_model`].
 pub const RLM_COMPACT: &str = "rlm_compact";
 
 /// Skill for swarm-executor dispatch

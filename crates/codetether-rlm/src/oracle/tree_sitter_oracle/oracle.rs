@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// Tree-sitter based oracle for validating structural queries.
 pub struct TreeSitterOracle {

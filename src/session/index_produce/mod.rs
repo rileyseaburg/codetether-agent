@@ -4,7 +4,7 @@
 //! structure lives in [`super::index`]; this file owns the async
 //! call through the RLM router to materialise a summary.
 
-mod build_context;
+mod background;
 mod call;
 mod observability;
 pub mod summary_gate;

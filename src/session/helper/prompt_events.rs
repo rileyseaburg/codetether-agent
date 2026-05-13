@@ -24,8 +24,7 @@ use crate::event_stream::ChatEvent;
 use crate::provider::{
     CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
 };
-use crate::rlm::router::AutoProcessContext;
-use crate::rlm::{RlmConfig, RlmRouter, RoutingContext};
+use crate::rlm::RlmConfig;
 use crate::tool::ToolRegistry;
 
 use super::super::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionEvent, SessionResult};
@@ -56,9 +55,7 @@ use super::runtime::{
     enrich_tool_input_with_runtime_context, is_codesearch_no_match_output, is_interactive_tool,
 };
 use super::text::extract_text_content;
-use super::token::{
-    context_window_for_model, estimate_tokens_for_messages, session_completion_max_tokens,
-};
+use super::token::session_completion_max_tokens;
 use super::tool_audit_detail::{tool_failure_detail, tool_success_detail};
 use super::validation::{build_validation_report, capture_git_dirty_files, track_touched_files};
 use crate::session::{
@@ -225,6 +222,7 @@ pub(crate) async fn run_prompt_with_events(
             if let Some(msg) = &proactive_lsp_message {
                 messages.push(msg.clone());
             }
+            super::rlm_background::resolve_pending(&mut derived.messages);
             messages.extend(derived.messages.clone());
             let request = CompletionRequest {
                 messages,
@@ -636,6 +634,20 @@ pub(crate) async fn run_prompt_with_events(
         );
 
         let mut codesearch_thrash_guard_triggered = false;
+        if super::tool_parallel::try_execute(
+            session,
+            &tool_calls,
+            &tool_registry,
+            &cwd,
+            &model,
+            Arc::clone(&provider),
+            &event_tx,
+            &mut consecutive_codesearch_no_matches,
+        )
+        .await
+        {
+            continue;
+        }
         for (tool_id, tool_name, tool_input) in tool_calls {
             let (tool_name, tool_input) =
                 normalize_tool_call_for_execution(&tool_name, &tool_input);
@@ -859,8 +871,8 @@ pub(crate) async fn run_prompt_with_events(
                 &model,
                 Arc::clone(&provider),
                 &session.metadata.rlm,
-            )
-            .await;
+                Some(rlm_notify(event_tx.clone())),
+            );
 
             session.add_message(Message {
                 role: Role::Tool,
@@ -933,7 +945,7 @@ fn parse_session_model_selector(session: &Session, providers: &[&str]) -> (Optio
 }
 
 /// Execute a tool call and emit the corresponding audit entry.
-async fn execute_tool(
+pub(super) async fn execute_tool(
     tool_registry: &ToolRegistry,
     tool_name: &str,
     exec_input: &serde_json::Value,
@@ -1065,7 +1077,7 @@ fn write_tool_event_file(
 
 /// Route a large tool output through the Recursive Language Model when it
 /// exceeds the routing heuristics.
-async fn maybe_route_through_rlm(
+fn maybe_route_through_rlm(
     rendered_content: &str,
     tool_name: &str,
     tool_input: &serde_json::Value,
@@ -1075,60 +1087,24 @@ async fn maybe_route_through_rlm(
     model: &str,
     provider: Arc<dyn crate::provider::Provider>,
     rlm_config: &RlmConfig,
+    notify: Option<super::rlm_background::Notify>,
 ) -> String {
-    let ctx_window = context_window_for_model(model);
-    let current_tokens = estimate_tokens_for_messages(messages);
-    let routing_ctx = RoutingContext {
-        tool_id: tool_name.to_string(),
-        session_id: session_id.to_string(),
-        call_id: Some(tool_id.to_string()),
-        model_context_limit: ctx_window,
-        current_context_tokens: Some(current_tokens),
-    };
-    let routing = RlmRouter::should_route(rendered_content, &routing_ctx, rlm_config);
-    if !routing.should_route {
-        return rendered_content.to_string();
-    }
-
-    tracing::info!(
-        tool = %tool_name,
-        reason = %routing.reason,
-        estimated_tokens = routing.estimated_tokens,
-        "RLM: Routing large tool output"
-    );
-    let auto_ctx = AutoProcessContext {
-        tool_id: tool_name,
-        tool_args: tool_input.clone(),
+    super::rlm_background::route_or_defer(
+        rendered_content,
+        tool_name,
+        tool_input,
+        tool_id,
         session_id,
-        abort: None,
-        on_progress: None,
-        provider: Arc::clone(&provider),
-        model: model.to_string(),
-        bus: None,
-        trace_id: None,
-        subcall_provider: None,
-        subcall_model: None,
-    };
-    let original_bytes = rendered_content.len();
-    match RlmRouter::auto_process(rendered_content, auto_ctx, &rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                iterations = result.stats.iterations,
-                "RLM: Processing complete"
-            );
-            format!(
-                "[RLM-SUMMARY tool={tool_name} original_bytes={original_bytes} reason={reason}]\n{body}\n[END RLM-SUMMARY — the raw tool output was replaced by this model-generated summary; re-running the same call will produce a similar summary, not the original bytes]",
-                reason = routing.reason,
-                body = result.processed,
-            )
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "RLM: auto_process failed, using smart_truncate");
-            let (truncated, _, _) =
-                RlmRouter::smart_truncate(rendered_content, tool_name, tool_input, ctx_window / 4);
-            truncated
-        }
-    }
+        messages,
+        model,
+        provider,
+        rlm_config,
+        notify,
+    )
+}
+
+fn rlm_notify(tx: mpsc::Sender<SessionEvent>) -> super::rlm_background::Notify {
+    Arc::new(move |event| {
+        let _ = tx.try_send(event);
+    })
 }

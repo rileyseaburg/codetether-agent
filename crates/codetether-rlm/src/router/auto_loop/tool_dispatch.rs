@@ -1,8 +1,8 @@
 //! Structured tool-call dispatch during the RLM loop.
 
-use tracing::info;
 use crate::context_trace::{ContextEvent, ContextTrace};
 use crate::traits::LlmMessage;
+use tracing::info;
 
 use super::super::host::{HostToolResult, RouterHost};
 
@@ -16,8 +16,13 @@ pub(super) fn try_tool_calls(
     trace: &mut ContextTrace,
     summary_mode: bool,
 ) -> Option<String> {
-    if summary_mode || response.tool_calls.is_empty() { return None; }
-    info!(count = response.tool_calls.len(), "RLM router: dispatching structured tool calls");
+    if summary_mode || response.tool_calls.is_empty() {
+        return None;
+    }
+    info!(
+        count = response.tool_calls.len(),
+        "RLM router: dispatching structured tool calls"
+    );
     let mut results: Vec<LlmMessage> = Vec::new();
     let mut final_answer: Option<String> = None;
 
@@ -35,9 +40,14 @@ pub(super) fn try_tool_calls(
                 break;
             }
             Some(HostToolResult::Output(o)) => results.push(LlmMessage::tool_result(&tc.id, &o)),
-            None => results.push(LlmMessage::tool_result(&tc.id, &format!("Unknown tool: {}", tc.name))),
+            None => results.push(LlmMessage::tool_result(
+                &tc.id,
+                &format!("Unknown tool: {}", tc.name),
+            )),
         }
     }
-    for r in results { conversation.push(r); }
+    for r in results {
+        conversation.push(r);
+    }
     final_answer
 }

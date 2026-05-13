@@ -27,10 +27,7 @@ mod tests {
 
     #[test]
     fn extracts_single_quoted() {
-        assert_eq!(
-            extract_final("text FINAL('ans') x"),
-            Some("ans".into())
-        );
+        assert_eq!(extract_final("text FINAL('ans') x"), Some("ans".into()));
     }
 
     #[test]

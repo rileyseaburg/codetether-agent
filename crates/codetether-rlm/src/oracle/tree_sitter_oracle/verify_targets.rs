@@ -1,4 +1,4 @@
-use super::{answer_names, compare, TreeSitterOracle, TreeSitterVerification};
+use super::{TreeSitterOracle, TreeSitterVerification, answer_names, compare};
 
 impl TreeSitterOracle {
     pub(crate) fn verify_functions(&mut self, answer: &str) -> TreeSitterVerification {

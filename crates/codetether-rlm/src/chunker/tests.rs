@@ -12,7 +12,10 @@ fn detect_code() {
 #[test]
 fn detect_conversation() {
     let content = "[User]: Can you help?\n[Assistant]: Of course!\n[User]: Implement a feature.";
-    assert_eq!(RlmChunker::detect_content_type(content), ContentType::Conversation);
+    assert_eq!(
+        RlmChunker::detect_content_type(content),
+        ContentType::Conversation
+    );
 }
 
 #[test]

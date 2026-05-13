@@ -2,7 +2,6 @@
 
 use crate::session::SessionEvent;
 use codetether_rlm::traits::RlmEventBus;
-use std::sync::Arc;
 
 /// Wraps `SessionBus` as `RlmEventBus`.
 pub(super) struct BusWrap(pub(crate) crate::session::SessionBus);

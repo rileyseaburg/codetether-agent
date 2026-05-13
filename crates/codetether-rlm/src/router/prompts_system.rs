@@ -31,8 +31,22 @@ Be SPECIFIC - include actual file paths, function names, error messages. Generic
 pub fn build_exploration_summary(content: &str, input_tokens: usize) -> String {
     let lines: Vec<&str> = content.lines().collect();
     let total = lines.len();
-    let head = lines.iter().take(30).copied().collect::<Vec<_>>().join("\n");
-    let tail = lines.iter().rev().take(50).collect::<Vec<_>>().into_iter().rev().copied().collect::<Vec<_>>().join("\n");
+    let head = lines
+        .iter()
+        .take(30)
+        .copied()
+        .collect::<Vec<_>>()
+        .join("\n");
+    let tail = lines
+        .iter()
+        .rev()
+        .take(50)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .copied()
+        .collect::<Vec<_>>()
+        .join("\n");
     format!(
         "=== CONTEXT EXPLORATION ===\n\
          Total: {} chars, {total} lines, ~{input_tokens} tokens\n\n\

@@ -1,22 +1,18 @@
 //! Iterative RLM analysis loop — main entry.
 
-use tracing::warn;
+use super::host::RouterHost;
+use super::types::{CrateAutoProcessContext, LoopOutcome};
 use crate::config::RlmConfig;
 use crate::context_trace::ContextTrace;
 use crate::traits::{LlmMessage, ToolDefinition};
-use super::types::{CrateAutoProcessContext, LoopOutcome};
-use super::host::RouterHost;
+use tracing::warn;
 
 mod support;
-mod tool_dispatch;
 mod text_path;
+mod tool_dispatch;
 
 /// Run the iterative analysis loop.
-pub async fn run(
-    ctx: &CrateAutoProcessContext<'_>, config: &RlmConfig,
-    host: &mut dyn RouterHost, conversation: &mut Vec<LlmMessage>,
-    trace: &mut ContextTrace, tools: &[ToolDefinition], summary_mode: bool,
-) -> LoopOutcome {
+pub async fn run(ctx: &CrateAutoProcessContext<'_>, config: &RlmConfig, host: &mut dyn RouterHost, conversation: &mut Vec<LlmMessage>, trace: &mut ContextTrace, tools: &[ToolDefinition], summary_mode: bool) -> LoopOutcome {
     let mut iterations = 0;
     let mut subcalls = 0;
     let mut final_answer: Option<String> = None;
@@ -34,13 +30,18 @@ pub async fn run(
             Err(e) => {
                 warn!(error = %e, iteration = iterations, "RLM: Model call failed");
                 last_error = Some(format!("Model call failed at iteration {iterations}: {e}"));
-                if iterations > 1 { break; }
+                if iterations > 1 {
+                    break;
+                }
                 return LoopOutcome { final_answer: None, iterations, subcalls, aborted: false, last_error };
             }
         };
         let response = support::maybe_rewrite(ctx, response, tools).await;
         conversation.push(LlmMessage::assistant_from(&response));
-        if let Some(a) = tool_dispatch::try_tool_calls(host, &response, conversation, trace, summary_mode) { final_answer = Some(a); break; }
+        if let Some(a) = tool_dispatch::try_tool_calls(host, &response, conversation, trace, summary_mode) {
+            final_answer = Some(a);
+            break;
+        }
         if let Some(a) = text_path::try_text_path(&response, summary_mode, iterations) { final_answer = Some(a); break; }
         text_path::push_continuation(conversation, &response);
         subcalls += 1;

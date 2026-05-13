@@ -45,16 +45,40 @@ pub struct LlmMessage {
 
 impl LlmMessage {
     /// Create a user message.
-    pub fn user(text: String) -> Self { Self { role: "user".into(), text, tool_calls: vec![], tool_call_id: None } }
+    pub fn user(text: String) -> Self {
+        Self {
+            role: "user".into(),
+            text,
+            tool_calls: vec![],
+            tool_call_id: None,
+        }
+    }
     /// Create an assistant message (text only).
-    pub fn assistant(text: String) -> Self { Self { role: "assistant".into(), text, tool_calls: vec![], tool_call_id: None } }
+    pub fn assistant(text: String) -> Self {
+        Self {
+            role: "assistant".into(),
+            text,
+            tool_calls: vec![],
+            tool_call_id: None,
+        }
+    }
     /// Create an assistant message from a response.
     pub fn assistant_from(resp: &LlmResponse) -> Self {
-        Self { role: "assistant".into(), text: resp.text.clone(), tool_calls: resp.tool_calls.clone(), tool_call_id: None }
+        Self {
+            role: "assistant".into(),
+            text: resp.text.clone(),
+            tool_calls: resp.tool_calls.clone(),
+            tool_call_id: None,
+        }
     }
     /// Create a tool-result message.
     pub fn tool_result(call_id: &str, content: &str) -> Self {
-        Self { role: "tool".into(), text: content.into(), tool_calls: vec![], tool_call_id: Some(call_id.into()) }
+        Self {
+            role: "tool".into(),
+            text: content.into(),
+            tool_calls: vec![],
+            tool_call_id: Some(call_id.into()),
+        }
     }
 }
 

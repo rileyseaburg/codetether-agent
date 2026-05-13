@@ -11,9 +11,9 @@
 
 use crate::S3Config;
 use anyhow::{Context, Result};
+use minio::s3::client::{MinioClient, MinioClientBuilder};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
-use minio::s3::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use std::str::FromStr;
 
 use super::super::helpers::normalize_endpoint;
@@ -56,7 +56,7 @@ impl MinioOracleRemote {
         let base_url = BaseUrl::from_str(&endpoint)
             .with_context(|| format!("Invalid MinIO endpoint: {endpoint}"))?;
         let client = MinioClientBuilder::new(base_url)
-            .provider(Some(Box::new(creds)))
+            .provider(Some(creds))
             .build()
             .context("Failed to build MinIO client")?;
         let region = std::env::var("CODETETHER_BUS_S3_REGION")

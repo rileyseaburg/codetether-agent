@@ -21,8 +21,7 @@ impl S3Config {
             secret_key: std::env::var("MINIO_SECRET_KEY")?,
             bucket: std::env::var("MINIO_RLM_BUCKET")
                 .unwrap_or_else(|_| "codetether-rlm-traces".into()),
-            prefix: std::env::var("MINIO_RLM_PREFIX")
-                .unwrap_or_else(|_| "training/".into()),
+            prefix: std::env::var("MINIO_RLM_PREFIX").unwrap_or_else(|_| "training/".into()),
             secure: std::env::var("MINIO_SECURE").as_deref() == Ok("true"),
             ignore_cert: std::env::var("MINIO_IGNORE_CERT").as_deref() == Ok("true"),
         })

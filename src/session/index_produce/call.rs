@@ -3,10 +3,8 @@
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
-use tracing::info;
 
 use super::super::index::types::{Granularity, SummaryNode, SummaryRange};
-use super::build_context::{SummaryProduceParams, build_auto_context};
 use super::observability::SummaryObservability;
 use crate::provider::{Message, Provider};
 use crate::rlm::RlmConfig;
@@ -27,9 +25,9 @@ pub async fn produce_summary(
     model: &str,
     rlm_config: &RlmConfig,
     session_id: &str,
-    subcall_provider: Option<Arc<dyn Provider>>,
-    subcall_model: Option<String>,
-    observability: SummaryObservability,
+    _subcall_provider: Option<Arc<dyn Provider>>,
+    _subcall_model: Option<String>,
+    _observability: SummaryObservability,
 ) -> Result<SummaryNode> {
     let slice = messages
         .get(range.start..range.end)
@@ -41,30 +39,16 @@ pub async fn produce_summary(
         slice.len(),
         target_tokens,
     );
-    info!(
-        start = range.start,
-        end = range.end,
+    let content = super::background::summary_or_fallback(
+        &input,
         target_tokens,
-        "Producing summary via RLM"
-    );
-
-    let params = SummaryProduceParams {
-        range,
-        target_tokens,
-        session_id,
         provider,
         model,
-        subcall_provider,
-        subcall_model: subcall_model.as_deref(),
-        bus: observability.bus,
-        trace_id: observability.trace_id,
-    };
-    let auto_ctx = build_auto_context(params);
-    let result = crate::rlm::RlmRouter::auto_process(&input, auto_ctx, rlm_config)
-        .await
-        .context("RLM summarisation for SummaryIndex::summary_for failed")?;
+        rlm_config,
+        session_id,
+    );
     Ok(SummaryNode {
-        content: super::summary_text::bounded_summary(result, target_tokens)?,
+        content,
         target_tokens,
         granularity,
         generation,

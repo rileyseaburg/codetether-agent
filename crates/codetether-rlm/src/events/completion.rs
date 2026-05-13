@@ -24,7 +24,9 @@ pub struct RlmCompletion {
 impl RlmCompletion {
     /// output_tokens / input_tokens, 0.0 when input is zero.
     pub fn compression_ratio(&self) -> f64 {
-        if self.input_tokens == 0 { 0.0 } else {
+        if self.input_tokens == 0 {
+            0.0
+        } else {
             self.output_tokens as f64 / self.input_tokens as f64
         }
     }

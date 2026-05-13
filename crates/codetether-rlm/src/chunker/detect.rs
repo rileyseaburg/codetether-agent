@@ -16,17 +16,33 @@ pub fn detect_content_type(content: &str) -> ContentType {
     let (mut code, mut logs, mut convo, mut docs) = (0, 0, 0, 0);
     for line in &sample {
         let t = line.trim();
-        if detect_helpers::is_code_line(t) { code += 1; }
-        if detect_helpers::is_log_line(t) { logs += 1; }
-        if detect_helpers::is_conversation_line(t) { convo += 1; }
-        if detect_helpers::is_document_line(t) { docs += 1; }
+        if detect_helpers::is_code_line(t) {
+            code += 1;
+        }
+        if detect_helpers::is_log_line(t) {
+            logs += 1;
+        }
+        if detect_helpers::is_conversation_line(t) {
+            convo += 1;
+        }
+        if detect_helpers::is_document_line(t) {
+            docs += 1;
+        }
     }
     let total = code + logs + convo + docs;
-    if total == 0 { return ContentType::Mixed; }
+    if total == 0 {
+        return ContentType::Mixed;
+    }
     let thr = (total as f64 * 0.3) as usize;
-    if convo > thr { ContentType::Conversation }
-    else if logs > thr { ContentType::Logs }
-    else if code > thr { ContentType::Code }
-    else if docs > thr { ContentType::Documents }
-    else { ContentType::Mixed }
+    if convo > thr {
+        ContentType::Conversation
+    } else if logs > thr {
+        ContentType::Logs
+    } else if code > thr {
+        ContentType::Code
+    } else if docs > thr {
+        ContentType::Documents
+    } else {
+        ContentType::Mixed
+    }
 }

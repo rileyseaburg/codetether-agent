@@ -8,7 +8,7 @@
 //!
 //! 1. Estimate the current request token cost (system + messages + tools).
 //! 2. If it exceeds 90% of the model's usable budget, compress the prefix
-//!    of the conversation via [`RlmRouter::auto_process`], keeping the
+//!    via a ready background RLM summary or deterministic chunker fallback, keeping the
 //!    most recent `keep_last` messages verbatim.
 //! 3. Progressively shrink `keep_last` (16 → 12 → 8 → 6 → 3 → 1) until the budget
 //!    is met or nothing more can be compressed.
@@ -42,8 +42,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::provider::{ContentPart, Message, Role, ToolDefinition};
-use crate::rlm::router::AutoProcessContext;
-use crate::rlm::{RlmChunker, RlmRouter};
+use crate::rlm::RlmChunker;
 
 use super::error::messages_to_rlm_context;
 use super::token::{
@@ -83,129 +82,6 @@ const SAFETY_BUDGET_RATIO: f64 = 0.90;
 /// Reserve (in tokens) added on top of `session_completion_max_tokens()` for
 /// tool schemas, protocol framing, and provider-specific wrappers.
 const RESERVE_OVERHEAD_TOKENS: usize = 2048;
-
-/// Fallback chunk-compression target size as a fraction of the ctx window.
-const FALLBACK_CHUNK_RATIO: f64 = 0.25;
-
-/// Default cheap model used for RLM context compression when neither
-/// [`crate::rlm::RlmConfig::root_model`] nor the
-/// `CODETETHER_RLM_MODEL` environment variable is set.
-///
-/// RLM compaction can consume a surprisingly large share of session
-/// cost because it runs on large prefixes of history at every step
-/// past the threshold. Using the caller's main model (often Claude
-/// Opus or GPT-5) for this work quietly multiplies spend. We default
-/// to a cheap general-purpose model instead; users who want higher
-/// fidelity summaries can override via config or env.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::session::helper::compression::DEFAULT_RLM_MODEL;
-/// assert!(DEFAULT_RLM_MODEL.contains('/'));
-/// ```
-pub const DEFAULT_RLM_MODEL: &str = "zai/glm-5.1";
-
-/// Resolve the model string that should be used for RLM compaction.
-///
-/// Precedence (highest first):
-///
-/// 1. [`crate::rlm::RlmConfig::root_model`] on the session.
-/// 2. The `CODETETHER_RLM_MODEL` environment variable.
-/// 3. [`DEFAULT_RLM_MODEL`].
-///
-/// Always returns `Some(...)` — the caller's main model is only ever
-/// used as a fallback inside [`compress_messages_keep_last`] when
-/// resolution against the returned string fails at the provider
-/// registry. The `Option` is retained to leave room for a future
-/// "prefer caller's model" policy without a signature break.
-fn resolve_rlm_model(rlm_config: &crate::rlm::RlmConfig) -> Option<String> {
-    if let Some(m) = rlm_config.root_model.as_ref() {
-        return Some(m.clone());
-    }
-    if let Ok(env_model) = std::env::var("CODETETHER_RLM_MODEL")
-        && !env_model.trim().is_empty()
-    {
-        return Some(env_model);
-    }
-    Some(DEFAULT_RLM_MODEL.to_string())
-}
-
-/// Candidate model pool that [`resolve_rlm_model_bandit`] can rank
-/// when the rule-based precedence returns no winner and delegation is
-/// enabled.
-///
-/// Hand-picked per CADMAS-CTX Section 5.9 — a small set of cheap
-/// general-purpose models with stable cost profiles so the LCB scoring
-/// actually has a meaningful dynamic range. Add models here rather
-/// than at call sites so the candidate list stays reviewable.
-const RLM_MODEL_CANDIDATES: &[&str] = &[
-    "zai/glm-5.1",
-    "glm5/glm-5",
-    "openrouter/openai/gpt-oss-120b:free",
-];
-
-/// CADMAS-CTX-aware variant of [`resolve_rlm_model`] (Phase C step 30).
-///
-/// When delegation is enabled on `state`, ranks [`RLM_MODEL_CANDIDATES`]
-/// by the LCB score `μ − γ·√u` under the supplied `bucket` (skill
-/// key: `"rlm_compact"`) and returns the highest-scoring candidate.
-/// When delegation is disabled, this is exactly [`resolve_rlm_model`].
-///
-/// The *update* half of the bandit loop lives at the compaction call
-/// site — a `session.state.update(model, "rlm_compact", bucket,
-/// produced_under_budget)` after each pass. That wiring is deferred
-/// to a follow-up commit to keep this one scoped to the selection
-/// primitive.
-///
-/// # Arguments
-///
-/// * `rlm_config` — Session-level RLM configuration.
-/// * `state` — CADMAS-CTX sidecar. Read-only here.
-/// * `bucket` — Context bucket from the current turn's
-///   [`RelevanceMeta`](crate::session::relevance::RelevanceMeta).
-///
-/// # Returns
-///
-/// Same shape as [`resolve_rlm_model`]: `Some(model)` to target a
-/// dedicated cheap model, or `None` to signal the caller should reuse
-/// its own model.
-pub(crate) fn resolve_rlm_model_bandit(
-    rlm_config: &crate::rlm::RlmConfig,
-    state: &crate::session::delegation::DelegationState,
-    bucket: crate::session::relevance::Bucket,
-) -> Option<String> {
-    if !state.enabled() {
-        return resolve_rlm_model(rlm_config);
-    }
-    // Explicit configuration still wins — the bandit only disambiguates
-    // the otherwise-static fallback list.
-    if let Some(m) = rlm_config.root_model.as_ref() {
-        return Some(m.clone());
-    }
-    if let Ok(env_model) = std::env::var("CODETETHER_RLM_MODEL")
-        && !env_model.trim().is_empty()
-    {
-        return Some(env_model);
-    }
-
-    let mut best: Option<(&str, f64)> = None;
-    for candidate in RLM_MODEL_CANDIDATES {
-        let score = state
-            .score(
-                candidate,
-                crate::session::delegation_skills::RLM_COMPACT,
-                bucket,
-            )
-            .unwrap_or(0.0);
-        match best {
-            Some((_, current)) if current >= score => {}
-            _ => best = Some((candidate, score)),
-        }
-    }
-    best.map(|(m, _)| m.to_string())
-        .or_else(|| Some(DEFAULT_RLM_MODEL.to_string()))
-}
 
 /// Non-buffer inputs for [`compress_messages_keep_last`] and
 /// [`enforce_on_messages`].
@@ -286,8 +162,8 @@ impl CompressContext {
 ///
 /// # Errors
 ///
-/// Propagates any error from [`RlmRouter::auto_process`] that cannot be
-/// recovered by the chunk-compression fallback.
+/// Propagates any error from the compression pipeline that cannot be
+/// recovered by the deterministic fallback.
 pub(crate) async fn compress_messages_keep_last(
     messages: &mut Vec<Message>,
     ctx: &CompressContext,
@@ -306,90 +182,24 @@ pub(crate) async fn compress_messages_keep_last(
 
     let context = messages_to_rlm_context(&prefix);
     let ctx_window = context_window_for_model(model);
-
-    // Prefer a cheap dedicated RLM model over the caller's main model
-    // to keep compaction cost bounded. Falls back to the caller's
-    // provider/model if the dedicated model cannot be resolved.
-    let (rlm_provider, rlm_model) = match resolve_rlm_model_bandit(
-        &ctx.rlm_config,
-        &ctx.delegation,
-        ctx.bucket,
-    ) {
-        Some(target_model) if target_model != model => {
-            match crate::provider::ProviderRegistry::shared_from_vault().await {
-                Ok(registry) => match registry.resolve_model(&target_model) {
-                    Ok((p, m)) => {
-                        tracing::info!(
-                            rlm_model = %m,
-                            caller_model = %model,
-                            "RLM: using cheap dedicated model for compression"
-                        );
-                        (p, m)
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            rlm_model = %target_model,
-                            error = %err,
-                            "RLM: dedicated model resolution failed; falling back to caller model"
-                        );
-                        (Arc::clone(&provider), model.to_string())
-                    }
-                },
-                Err(err) => {
-                    tracing::warn!(
-                        error = %err,
-                        "RLM: provider registry unavailable; falling back to caller model"
-                    );
-                    (Arc::clone(&provider), model.to_string())
-                }
-            }
-        }
-        _ => (Arc::clone(&provider), model.to_string()),
-    };
-
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_context",
-        tool_args: serde_json::json!({"reason": reason}),
-        session_id: &ctx.session_id,
-        abort: None,
-        on_progress: None,
-        provider: rlm_provider,
-        model: rlm_model.clone(),
-        bus: ctx.observability.bus.clone(),
-        trace_id: ctx.observability.trace_id,
-        subcall_provider: ctx.subcall_provider.clone(),
-        subcall_model: ctx.subcall_model.clone(),
-    };
-
-    let summary = super::compression_gate::run_keep_last(
-        RlmRouter::auto_process(&context, auto_ctx, &ctx.rlm_config).await,
-        (ctx_window as f64 * FALLBACK_CHUNK_RATIO) as usize,
+    if context.trim().is_empty() {
+        *messages = prefix;
+        messages.extend(tail);
+        return Ok(false);
+    }
+    if let Some(summary) = super::compression_defer::context_summary(
         &context,
+        ctx_window,
+        &ctx.session_id,
         reason,
-        &rlm_model,
-    );
-
-    let summary_msg = Message {
-        role: Role::Assistant,
-        content: vec![ContentPart::Text {
-            text: format!(
-                "[AUTO CONTEXT COMPRESSION]\nOlder conversation + tool output was compressed \
-                 to fit the model context window.\n\n{summary}\n\n\
-                 [RECOVERY] If you need specific details that this summary \
-                 dropped (exact file paths, prior tool output, earlier user \
-                 instructions, numeric values), call the `session_recall` \
-                 tool with a targeted query instead of guessing or asking \
-                 the user to repeat themselves."
-            ),
-        }],
-    };
-
-    let mut new_messages = Vec::with_capacity(1 + tail.len());
-    new_messages.push(summary_msg);
-    new_messages.extend(tail);
-    *messages = new_messages;
-
-    Ok(true)
+        model,
+        Arc::clone(&provider),
+        &ctx.rlm_config,
+    ) {
+        super::compression_summary::install(messages, tail, summary);
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 /// Ratio of the model's context window a single "last" message can occupy
@@ -419,12 +229,10 @@ const OVERSIZED_LAST_MESSAGE_PREFIX_CHARS: usize = 500;
 ///
 /// * When the last message contains ≤ threshold tokens, returns
 ///   `Ok(false)` without touching the buffer.
-/// * On successful RLM compression, rewrites the last message's content
-///   to a single text part with an `[Original message: N tokens,
-///   compressed via RLM]` prefix, the compressed body, and the first
-///   [`OVERSIZED_LAST_MESSAGE_PREFIX_CHARS`] characters of the original
-///   as a literal suffix.
-/// * On RLM failure, falls back to [`RlmChunker::compress`].
+/// * If a background RLM summary is already cached, rewrites the last
+///   message with that summary and a literal request prefix.
+/// * Otherwise schedules background RLM and returns a deterministic
+///   [`RlmChunker::compress`] projection immediately.
 ///
 /// # Arguments
 ///
@@ -474,40 +282,24 @@ pub(crate) async fn compress_last_message_if_oversized(
         "RLM: Last message exceeds context threshold, compressing"
     );
 
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_context",
-        tool_args: serde_json::json!({}),
-        session_id: &ctx.session_id,
-        abort: None,
-        on_progress: None,
-        provider: Arc::clone(&provider),
-        model: model.to_string(),
-        bus: ctx.observability.bus.clone(),
-        trace_id: ctx.observability.trace_id,
-        subcall_provider: ctx.subcall_provider.clone(),
-        subcall_model: ctx.subcall_model.clone(),
-    };
-
-    let replacement = match RlmRouter::auto_process(&original, auto_ctx, &ctx.rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                "RLM: Last message compressed"
-            );
-            super::compression_last_message::wrap_or_chunk(
-                result,
-                threshold,
+    let cached = super::rlm_background::context_summary(
+        &original,
+        "oversized_last_message",
+        &ctx.session_id,
+        model,
+        provider,
+        &ctx.rlm_config,
+    );
+    let replacement = cached
+        .map(|summary| {
+            super::compression_last_message::wrap_cached(
+                summary,
                 &original,
                 msg_tokens,
                 OVERSIZED_LAST_MESSAGE_PREFIX_CHARS,
             )
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "RLM: Failed to compress last message, falling back to chunker");
-            RlmChunker::compress(&original, threshold, None)
-        }
-    };
+        })
+        .unwrap_or_else(|| RlmChunker::compress(&original, threshold, None));
 
     last.content = vec![ContentPart::Text { text: replacement }];
     Ok(true)

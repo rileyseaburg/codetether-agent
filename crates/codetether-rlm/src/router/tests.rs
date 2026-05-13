@@ -2,15 +2,18 @@
 
 use crate::capability::output_capability;
 use crate::config::RlmConfig;
-use crate::router::{RoutingContext, should_route};
 use crate::router::extract::extract_final;
+use crate::router::{RoutingContext, should_route};
 
 #[test]
 fn webfetch_routes_when_oversized() {
     let output = "a".repeat(200_000);
     let ctx = RoutingContext {
-        tool_id: "webfetch".into(), session_id: "s".into(), call_id: None,
-        model_context_limit: 200_000, current_context_tokens: Some(1000),
+        tool_id: "webfetch".into(),
+        session_id: "s".into(),
+        call_id: None,
+        model_context_limit: 200_000,
+        current_context_tokens: Some(1000),
     };
     assert!(should_route(&output, &ctx, &RlmConfig::default()).should_route);
 }
@@ -19,8 +22,11 @@ fn webfetch_routes_when_oversized() {
 fn unknown_tools_never_route() {
     let output = "a".repeat(200_000);
     let ctx = RoutingContext {
-        tool_id: "some_new_tool".into(), session_id: "s".into(), call_id: None,
-        model_context_limit: 200_000, current_context_tokens: Some(1000),
+        tool_id: "some_new_tool".into(),
+        session_id: "s".into(),
+        call_id: None,
+        model_context_limit: 200_000,
+        current_context_tokens: Some(1000),
     };
     let r = should_route(&output, &ctx, &RlmConfig::default());
     assert!(!r.should_route);
@@ -31,8 +37,11 @@ fn unknown_tools_never_route() {
 fn exact_content_tools_never_route() {
     let output = "a".repeat(500_000);
     let ctx = RoutingContext {
-        tool_id: "read".into(), session_id: "s".into(), call_id: None,
-        model_context_limit: 200_000, current_context_tokens: Some(1000),
+        tool_id: "read".into(),
+        session_id: "s".into(),
+        call_id: None,
+        model_context_limit: 200_000,
+        current_context_tokens: Some(1000),
     };
     let r = should_route(&output, &ctx, &RlmConfig::default());
     assert!(!r.should_route);

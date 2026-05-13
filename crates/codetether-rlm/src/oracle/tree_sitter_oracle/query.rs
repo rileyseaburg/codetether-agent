@@ -1,7 +1,7 @@
 use anyhow::Result;
 use streaming_iterator::StreamingIterator;
 
-use super::{query_match, AstMatch, AstQueryResult, TreeSitterOracle};
+use super::{AstMatch, AstQueryResult, TreeSitterOracle, query_match};
 
 impl TreeSitterOracle {
     /// Execute a tree-sitter S-expression query.

@@ -30,9 +30,9 @@ pub struct RlmConfig {
     /// Preferred runtime: "rust", "bun", or "python"
     #[serde(default = "config_defaults::default_runtime")]
     pub runtime: String,
-    /// Model reference for root processing (provider:model)
+    /// Model reference for root processing (`provider/model` or bare model).
     pub root_model: Option<String>,
-    /// Model reference for subcalls (provider:model)
+    /// Model reference for subcalls (`provider/model` or bare model).
     pub subcall_model: Option<String>,
     /// Message count trigger for RLM compaction. `0` disables.
     #[serde(default = "config_defaults::default_history_trigger_messages")]

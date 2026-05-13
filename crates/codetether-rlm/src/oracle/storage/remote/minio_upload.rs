@@ -16,15 +16,19 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::Utc;
 use minio::s3::builders::ObjectContent;
+use minio::s3::types::Region;
+use std::str::FromStr;
 
 #[async_trait]
 impl OracleRemote for MinioOracleRemote {
     async fn upload_record(&self, record: &OracleTraceRecord) -> Result<(String, String)> {
         let key = object_key(self, record);
         let payload = serde_json::to_vec(record).context("Serialize oracle record")?;
+        let region = Region::from_str(&self.region).ok();
         self.client
-            .put_object_content(&self.bucket, &key, ObjectContent::from(payload))
-            .region(Some(self.region.clone()))
+            .put_object_content(&self.bucket, &key, ObjectContent::from(payload))?
+            .region(region)
+            .build()
             .send()
             .await
             .with_context(|| format!("Upload to {}/{}", self.bucket, key))?;

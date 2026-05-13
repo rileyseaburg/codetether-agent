@@ -11,8 +11,11 @@
 pub mod capability;
 pub mod chunker;
 pub mod config;
+pub mod context_index;
 pub mod context_trace;
+pub mod engine;
 pub mod events;
+pub mod model_select;
 pub mod oracle;
 pub mod result;
 pub mod router;
@@ -22,7 +25,12 @@ pub mod types;
 
 pub use chunker::{Chunk, ChunkOptions, ContentType, RlmChunker};
 pub use config::RlmConfig;
+pub use context_index::{ContextIndex, EvidenceKind, EvidenceRecord, PlanIntent, RetrievalPlan};
 pub use events::{RlmCompletion, RlmOutcome, RlmProgressEvent, RlmSubcallFallback, S3Config};
+pub use model_select::{
+    RLM_MODEL_ENV, RlmModelChoice, RlmModelPurpose, RlmModelSource, select_rlm_model,
+    select_rlm_model_with_env,
+};
 pub use oracle::{
     AstPayload, AstResult, FinalPayload, GeneratedQuery, GrepMatch, GrepOracle, GrepPayload,
     GrepVerification, OracleResult, OracleTracePersistResult, OracleTraceRecord,

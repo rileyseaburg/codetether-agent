@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use super::{extract, StructDefinition, TreeSitterOracle};
+use super::{StructDefinition, TreeSitterOracle, extract};
 
 const STRUCTS_QUERY: &str = r#"
 (struct_item

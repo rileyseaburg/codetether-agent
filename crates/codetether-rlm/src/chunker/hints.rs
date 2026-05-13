@@ -33,6 +33,8 @@ pub fn get_processing_hints(content_type: ContentType) -> &'static str {
              - Actionable items\n\
              - References and links"
         }
-        ContentType::Mixed => "Mixed content detected. Analyze the structure first, then extract key information.",
+        ContentType::Mixed => {
+            "Mixed content detected. Analyze the structure first, then extract key information."
+        }
     }
 }

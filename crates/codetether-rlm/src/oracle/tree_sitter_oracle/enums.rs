@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use super::{extract, EnumDefinition, TreeSitterOracle};
+use super::{EnumDefinition, TreeSitterOracle, extract};
 
 const ENUMS_QUERY: &str = r#"
 (enum_item
