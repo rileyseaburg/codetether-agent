@@ -4,10 +4,12 @@ use std::sync::Arc;
 use crate::provider::{Provider, ToolDefinition};
 use crate::tool::ToolRegistry;
 
-use super::bootstrap::{inject_tool_prompt, list_tools_bootstrap_definition};
-use super::provider::{prefers_temperature_one, temperature_is_deprecated};
-use super::runtime::{is_interactive_tool, is_local_cuda_provider, local_cuda_light_system_prompt};
 use super::workspace_tools::registry_for_cwd;
+
+#[path = "request_state/settings.rs"]
+mod settings;
+#[path = "request_state/tools.rs"]
+mod tools;
 
 pub(crate) struct ProviderStepState {
     pub tool_registry: Arc<ToolRegistry>,
@@ -25,46 +27,22 @@ pub(crate) fn build_provider_step_state(
     cwd: &Path,
 ) -> ProviderStepState {
     let tool_registry = registry_for_cwd(provider, model, cwd);
-    let tool_definitions: Vec<_> = tool_registry
-        .definitions()
-        .into_iter()
-        .filter(|tool| !is_interactive_tool(&tool.name))
-        .collect();
-
-    let temperature = if temperature_is_deprecated(model) {
-        None
-    } else if prefers_temperature_one(model) {
-        Some(1.0)
-    } else {
-        Some(0.7)
-    };
-
-    let model_supports_tools = !matches!(
+    let tool_definitions = tools::active_tool_definitions(&tool_registry);
+    let model_supports_tools = settings::model_supports_tools(selected_provider);
+    let advertised_tool_definitions =
+        tools::advertised_tools(model_supports_tools, &tool_definitions);
+    let system_prompt = settings::system_prompt_for(
         selected_provider,
-        "gemini-web" | "local-cuda" | "local_cuda" | "localcuda"
+        model_supports_tools,
+        &advertised_tool_definitions,
+        cwd,
     );
-    let advertised_tool_definitions = if model_supports_tools {
-        tool_definitions.clone()
-    } else {
-        vec![list_tools_bootstrap_definition()]
-    };
-
-    let system_prompt = if is_local_cuda_provider(selected_provider) {
-        local_cuda_light_system_prompt()
-    } else {
-        crate::agent::builtin::build_system_prompt(cwd)
-    };
-    let system_prompt = if !model_supports_tools && !advertised_tool_definitions.is_empty() {
-        inject_tool_prompt(&system_prompt, &advertised_tool_definitions)
-    } else {
-        system_prompt
-    };
 
     ProviderStepState {
         tool_registry,
         tool_definitions,
         advertised_tool_definitions,
-        temperature,
+        temperature: settings::temperature_for(model),
         model_supports_tools,
         system_prompt,
     }
