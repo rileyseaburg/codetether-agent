@@ -11,7 +11,7 @@ pub(super) fn route(
     provider: Arc<dyn Provider>,
     out: &super::result::Output,
 ) -> String {
-    super::super::rlm_background::route_or_defer(
+    let routed = super::super::rlm_background::route_or_defer(
         &out.content,
         &out.tool_name,
         &out.tool_input,
@@ -22,5 +22,6 @@ pub(super) fn route(
         provider,
         &session.metadata.rlm,
         None,
-    )
+    );
+    super::super::evidence::digest::compact_output(&out.tool_name, &routed)
 }

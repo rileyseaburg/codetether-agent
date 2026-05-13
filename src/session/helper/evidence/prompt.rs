@@ -1,49 +1,43 @@
-use super::level::EvidenceLevel;
-
-const GUARDRAILS: &str = "\
-Validation evidence rules:
-- Label every verification claim as one of: {levels}.
-- Do not say validated, passed, complete, proven, or deployed unless the same sentence names the validation level.
-- Mocked routes, local Playwright, or fixture-backed tests must be called mocked local and cannot imply platform IDs or live upload success.
-- Live Argo or platform claims require concrete evidence: namespace, app/job/pod name, sync or health state, artifact path, URL, or platform ID.
-- A failed live validation is not completion when the user requested passing proof; continue with the next recovery run or name the blocker.
-- If evidence artifacts were produced, preserve their paths in the final answer; do not remove them unless durable equivalent evidence is named.
-- Let runtime tools and TetherScript do repeatable computation; summarize their concrete outputs instead of reasoning from memory.";
+use std::path::Path;
 
 pub(crate) fn append_guardrails(system_prompt: String) -> String {
+    append_guardrails_with_memory(system_prompt, None)
+}
+
+pub(crate) fn append_guardrails_for_cwd(system_prompt: String, cwd: &Path) -> String {
+    append_guardrails_with_memory(system_prompt, Some(cwd))
+}
+
+fn append_guardrails_with_memory(system_prompt: String, cwd: Option<&Path>) -> String {
     if system_prompt.contains("Validation evidence rules:") {
         return system_prompt;
     }
     let live_claim = super::claim::assess_claim("Argo validation");
     let recovery = super::recovery::recovery_for(&live_claim, true);
-    let guardrails = GUARDRAILS.replace("{levels}", &EvidenceLevel::all_labels());
+    let workflow = super::workflow::infer("Argo platform upload");
+    let guardrails = super::guardrails::render();
+    let capabilities = super::capabilities::render();
+    let trapdoor = super::trapdoor::render();
+    let memory_protocol = super::memory_protocol::render();
+    let core = cwd
+        .map(super::core_memory::render)
+        .unwrap_or_else(|| super::core_memory::storage_hint().to_string());
     let ids = if live_claim.needs_concrete_id {
         format!(
-            "\nRuntime classifier: {} claims need concrete IDs; recovery action: {recovery:?}.",
+            "\nRuntime classifier: {} claims need concrete IDs; recovery action: {recovery:?}; gate: {}.",
             live_claim.level.label(),
+            workflow.required_gate(),
         )
     } else {
         String::new()
     };
-    format!("{system_prompt}\n\n{guardrails}{ids}")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::append_guardrails;
-
-    #[test]
-    fn injects_validation_level_terms() {
-        let prompt = append_guardrails("base".to_string());
-        assert!(prompt.contains("mocked local"));
-        assert!(prompt.contains("live deployment/Argo"));
-        assert!(prompt.contains("failed live validation is not completion"));
-    }
-
-    #[test]
-    fn injection_is_idempotent() {
-        let once = append_guardrails("base".to_string());
-        let twice = append_guardrails(once.clone());
-        assert_eq!(once, twice);
-    }
+    super::assembly::render(super::assembly::PromptSections {
+        system_prompt,
+        guardrails,
+        capabilities,
+        trapdoor,
+        memory_protocol,
+        core,
+        ids,
+    })
 }
