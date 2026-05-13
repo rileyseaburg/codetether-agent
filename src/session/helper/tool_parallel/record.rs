@@ -10,7 +10,7 @@ use crate::session::helper::runtime::is_codesearch_no_match_output;
 use crate::session::{Session, SessionEvent};
 use crate::tool::ToolRegistry;
 
-pub(super) async fn try_execute(
+pub(crate) async fn try_execute(
     session: &mut Session,
     calls: &[(String, String, serde_json::Value)],
     registry: &ToolRegistry,
