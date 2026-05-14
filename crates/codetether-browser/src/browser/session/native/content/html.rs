@@ -1,5 +1,12 @@
+//! HTML extraction for native browser pages.
+
 use crate::browser::{BrowserError, BrowserOutput, output::HtmlContent, request::ScopeRequest};
 
+/// Return HTML for the current page or selected element.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(in crate::browser::session::native) async fn html(
     session: &super::super::super::BrowserSession,
     request: ScopeRequest,

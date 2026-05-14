@@ -1,7 +1,14 @@
+//! Browserctl page navigation action adapters.
+
 use crate::browser::{BrowserCommand, BrowserError, BrowserOutput, request::NavigationRequest};
 use crate::tool::browserctl::helpers::require_string;
 use crate::tool::browserctl::input::BrowserCtlInput;
 
+/// Build and execute a goto command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `url` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn goto(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -15,12 +22,22 @@ pub(in crate::tool::browserctl) async fn goto(
     super::super::execute(input, BrowserCommand::Goto(request)).await
 }
 
+/// Execute a back command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when execution fails.
 pub(in crate::tool::browserctl) async fn back(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {
     super::super::execute(input, BrowserCommand::Back).await
 }
 
+/// Execute a reload command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when execution fails.
 pub(in crate::tool::browserctl) async fn reload(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {

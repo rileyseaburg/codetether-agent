@@ -1,8 +1,15 @@
+//! Keyboard input handlers.
+
 use crate::browser::{
     BrowserError, BrowserOutput,
     request::{KeyboardPressRequest, KeyboardTypeRequest},
 };
 
+/// Type text through the page keyboard model.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or input fails.
 pub(in crate::browser::session::native) async fn keyboard_type(
     session: &super::super::super::BrowserSession,
     request: KeyboardTypeRequest,
@@ -19,6 +26,11 @@ pub(in crate::browser::session::native) async fn keyboard_type(
     .await
 }
 
+/// Press a named key through the page keyboard model.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or input fails.
 pub(in crate::browser::session::native) async fn keyboard_press(
     session: &super::super::super::BrowserSession,
     request: KeyboardPressRequest,

@@ -1,5 +1,12 @@
+//! Mouse input handlers.
+
 use crate::browser::{BrowserError, BrowserOutput, request::PointerClick};
 
+/// Click at page coordinates.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or input fails.
 pub(in crate::browser::session::native) async fn mouse_click(
     session: &super::super::super::BrowserSession,
     request: PointerClick,

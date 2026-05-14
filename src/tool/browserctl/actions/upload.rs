@@ -1,7 +1,14 @@
+//! Browserctl upload action adapter.
+
 use super::super::input::BrowserCtlInput;
 use crate::browser::{BrowserCommand, BrowserError, BrowserOutput, request::UploadRequest};
 use crate::tool::browserctl::helpers::require_string;
 
+/// Build and execute a file upload command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `selector`, `paths`, or execution fails.
 pub(in crate::tool::browserctl) async fn upload(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {

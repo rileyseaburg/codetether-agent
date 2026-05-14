@@ -1,3 +1,5 @@
+//! Browserctl higher-level DOM action adapters.
+
 use super::super::helpers::{optional_string, require_string};
 use super::super::input::BrowserCtlInput;
 use crate::browser::{
@@ -5,6 +7,11 @@ use crate::browser::{
     request::{ClickTextRequest, FillRequest, ToggleRequest},
 };
 
+/// Build and execute a visible-text click command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `text` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn click_text(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
@@ -19,6 +26,12 @@ pub(in crate::tool::browserctl) async fn click_text(
     super::execute(input, BrowserCommand::ClickText(request)).await
 }
 
+/// Build and execute a native fill command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `selector` or `value` is missing, or execution
+/// fails.
 pub(in crate::tool::browserctl) async fn fill_native(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
@@ -30,6 +43,11 @@ pub(in crate::tool::browserctl) async fn fill_native(
     super::execute(input, BrowserCommand::FillNative(request)).await
 }
 
+/// Build and execute a toggle command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `selector` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn toggle(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {

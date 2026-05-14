@@ -1,5 +1,13 @@
+//! Tab close operation.
+
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::CloseTabRequest};
 
+/// Close a tab by index.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or the tab is not
+/// found.
 pub(in crate::browser::session::native) async fn close(
     session: &super::super::super::BrowserSession,
     request: CloseTabRequest,

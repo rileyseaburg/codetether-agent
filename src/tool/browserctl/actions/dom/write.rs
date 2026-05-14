@@ -1,3 +1,5 @@
+//! Browserctl DOM write action adapters.
+
 use crate::browser::{
     BrowserCommand, BrowserError, BrowserOutput,
     request::{FillRequest, KeyPressRequest, SelectorRequest, TypeRequest},
@@ -5,6 +7,11 @@ use crate::browser::{
 use crate::tool::browserctl::helpers::require_string;
 use crate::tool::browserctl::input::BrowserCtlInput;
 
+/// Build and execute a selector click command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `selector` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn click(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -15,6 +22,12 @@ pub(in crate::tool::browserctl) async fn click(
     super::super::execute(input, BrowserCommand::Click(request)).await
 }
 
+/// Build and execute a fill command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `selector` or `value` is missing, or execution
+/// fails.
 pub(in crate::tool::browserctl) async fn fill(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -26,6 +39,11 @@ pub(in crate::tool::browserctl) async fn fill(
     super::super::execute(input, BrowserCommand::Fill(request)).await
 }
 
+/// Build and execute a type command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `text` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn type_text(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -38,6 +56,11 @@ pub(in crate::tool::browserctl) async fn type_text(
     super::super::execute(input, BrowserCommand::Type(request)).await
 }
 
+/// Build and execute a key press command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `key` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn press(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {

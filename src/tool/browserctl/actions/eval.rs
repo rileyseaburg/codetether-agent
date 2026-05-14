@@ -1,7 +1,14 @@
+//! Browserctl JavaScript evaluation action adapter.
+
 use super::super::helpers::require_string;
 use super::super::input::BrowserCtlInput;
 use crate::browser::{BrowserCommand, request::EvalRequest};
 
+/// Build and execute a JavaScript evaluation command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when `expression` is missing or execution fails.
 pub(in crate::tool::browserctl) async fn eval(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {

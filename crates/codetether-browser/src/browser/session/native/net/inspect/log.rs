@@ -1,6 +1,13 @@
+//! Network event log extraction.
+
 use crate::browser::{BrowserError, BrowserOutput, request::NetworkLogRequest};
 use serde_json::json;
 
+/// Return recorded network events for the current page.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(in crate::browser::session::native) async fn log(
     session: &super::super::super::super::BrowserSession,
     request: NetworkLogRequest,

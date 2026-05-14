@@ -1,8 +1,16 @@
+//! JavaScript evaluation for native browser pages.
+
 mod value;
 
 use crate::browser::{BrowserError, BrowserOutput, output::EvalOutput, request::EvalRequest};
 use tetherscript::browser_agent::BrowserPage;
 
+/// Evaluate JavaScript in the current page.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or evaluation
+/// fails.
 pub(super) async fn run(
     session: &super::super::BrowserSession,
     request: EvalRequest,
@@ -22,10 +30,16 @@ pub(super) async fn run(
     }))
 }
 
+/// Evaluate JavaScript and return the display string for the result.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when evaluation fails.
 pub(super) fn string(page: &mut BrowserPage, script: &str) -> Result<String, BrowserError> {
     Ok(page.eval_js(script).map_err(js_error)?.display())
 }
 
+/// Convert a TetherScript JavaScript error string into a browser error.
 pub(super) fn js_error(message: String) -> BrowserError {
     BrowserError::JsException {
         message,

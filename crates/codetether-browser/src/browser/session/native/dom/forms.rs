@@ -1,9 +1,17 @@
+//! Form-oriented DOM operations.
+
 use crate::browser::{
     BrowserError, BrowserOutput,
     request::{ClickTextRequest, FillRequest, ToggleRequest},
 };
 use tetherscript::browser_agent::Locator;
 
+/// Fill an input-like element by selector.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started, the selector does
+/// not resolve, or the element cannot be filled.
 pub(in crate::browser::session::native) async fn fill(
     session: &super::super::super::BrowserSession,
     request: FillRequest,
@@ -15,6 +23,12 @@ pub(in crate::browser::session::native) async fn fill(
     .await
 }
 
+/// Click an element matched by visible text.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or no matching
+/// element can be clicked.
 pub(in crate::browser::session::native) async fn click_text(
     session: &super::super::super::BrowserSession,
     request: ClickTextRequest,
@@ -27,6 +41,12 @@ pub(in crate::browser::session::native) async fn click_text(
     super::page::with(session, |page| page.click(&locator).map(|_| ())).await
 }
 
+/// Toggle a checkbox-like control by selector.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or script
+/// evaluation fails.
 pub(in crate::browser::session::native) async fn toggle(
     session: &super::super::super::BrowserSession,
     request: ToggleRequest,

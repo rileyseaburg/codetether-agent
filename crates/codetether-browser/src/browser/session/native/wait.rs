@@ -1,6 +1,14 @@
+//! Wait operations for native browser sessions.
+
 use crate::browser::{BrowserError, BrowserOutput, request::WaitRequest};
 use tetherscript::browser::{query_selector, text_content};
 
+/// Wait until a selector or text condition is satisfied.
+///
+/// # Errors
+///
+/// Returns [`BrowserError::WaitTimeout`] when the requested selector state does
+/// not match before the timeout.
 pub(super) async fn run(
     session: &super::super::BrowserSession,
     request: WaitRequest,

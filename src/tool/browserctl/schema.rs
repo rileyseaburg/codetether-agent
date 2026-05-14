@@ -2,6 +2,7 @@
 
 use serde_json::{Value, json};
 
+/// Return the browserctl JSON parameter schema.
 pub(super) fn parameters_schema() -> Value {
     json!({
         "type": "object",

@@ -1,8 +1,15 @@
+//! Shared HTTP sender for native network commands.
+
 use crate::browser::{BrowserError, BrowserOutput};
 use reqwest::Method;
 use serde_json::json;
 use std::collections::HashMap;
 
+/// Send an HTTP request and return a JSON response summary.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the method is invalid or the request fails.
 pub(in crate::browser::session::native) async fn send(
     method: &str,
     url: &str,

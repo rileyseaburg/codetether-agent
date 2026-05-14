@@ -1,5 +1,12 @@
+//! Command dispatch for the native backend.
+
 use crate::browser::{BrowserCommand as Command, BrowserError, BrowserOutput};
 
+/// Route a browser command to its native implementation.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] from the selected command handler.
 pub(super) async fn run(
     session: &super::super::BrowserSession,
     command: Command,

@@ -1,3 +1,5 @@
+//! Browser-flavored HTTP verb adapters.
+
 use crate::browser::{
     BrowserError, BrowserOutput,
     request::{AxiosRequest, FetchRequest, XhrRequest},
@@ -5,6 +7,11 @@ use crate::browser::{
 
 type Session = super::super::super::super::BrowserSession;
 
+/// Execute a fetch-style HTTP request.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the HTTP request fails.
 pub(in crate::browser::session::native) async fn fetch(
     _session: &Session,
     request: FetchRequest,
@@ -12,6 +19,11 @@ pub(in crate::browser::session::native) async fn fetch(
     super::send(&request.method, &request.url, request.headers, request.body).await
 }
 
+/// Execute an XHR-style HTTP request.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the HTTP request fails.
 pub(in crate::browser::session::native) async fn xhr(
     _session: &Session,
     request: XhrRequest,
@@ -19,6 +31,11 @@ pub(in crate::browser::session::native) async fn xhr(
     super::send(&request.method, &request.url, request.headers, request.body).await
 }
 
+/// Execute an axios-style HTTP request.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the HTTP request fails.
 pub(in crate::browser::session::native) async fn axios(
     _session: &Session,
     request: AxiosRequest,

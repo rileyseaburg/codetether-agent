@@ -1,3 +1,5 @@
+//! Browserctl wait and screenshot action adapters.
+
 use super::super::helpers::require_string;
 use super::super::input::BrowserCtlInput;
 use crate::browser::{
@@ -5,6 +7,11 @@ use crate::browser::{
     request::{ScreenshotRequest, WaitRequest},
 };
 
+/// Build and execute a wait command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when execution fails.
 pub(in crate::tool::browserctl) async fn wait(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
@@ -20,6 +27,11 @@ pub(in crate::tool::browserctl) async fn wait(
     super::execute(input, BrowserCommand::Wait(request)).await
 }
 
+/// Build and execute a screenshot command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when screenshot capture or file writing fails.
 pub(in crate::tool::browserctl) async fn screenshot(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {

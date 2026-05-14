@@ -1,6 +1,13 @@
+//! Text extraction for native browser pages.
+
 use crate::browser::{BrowserError, BrowserOutput, output::TextContent, request::ScopeRequest};
 use tetherscript::browser::{query_selector, text_content};
 
+/// Return text for the current page or selected element.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(in crate::browser::session::native) async fn text(
     session: &super::super::super::BrowserSession,
     request: ScopeRequest,

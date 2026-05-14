@@ -1,7 +1,10 @@
+//! JavaScript value serialization helpers.
+
 use serde_json::{Value, json};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use tetherscript::js::JsValue;
 
+/// Convert a TetherScript JavaScript value into JSON.
 pub(super) fn to_json(value: &JsValue) -> Value {
     match value {
         JsValue::Undefined | JsValue::Null => Value::Null,

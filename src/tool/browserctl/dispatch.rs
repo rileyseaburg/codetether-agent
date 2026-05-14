@@ -1,6 +1,13 @@
+//! Top-level browserctl action dispatcher.
+
 use super::actions::{device, dom, dom_extra, eval, lifecycle, nav, net, tabs, upload};
 use super::input::{BrowserCtlAction, BrowserCtlInput};
 
+/// Dispatch parsed browserctl input to the matching action adapter.
+///
+/// # Errors
+///
+/// Returns [`crate::browser::BrowserError`] when the action adapter fails.
 pub(super) async fn dispatch(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {

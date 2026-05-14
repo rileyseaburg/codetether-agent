@@ -1,8 +1,15 @@
+//! Tab list operation.
+
 use crate::browser::{
     BrowserError, BrowserOutput,
     output::{TabInfo, TabList},
 };
 
+/// Return all open tabs and the selected index.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(in crate::browser::session::native) async fn list(
     session: &super::super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {

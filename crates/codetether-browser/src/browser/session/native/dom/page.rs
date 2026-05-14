@@ -1,6 +1,14 @@
+//! Shared page mutation helper for DOM operations.
+
 use crate::browser::{BrowserError, BrowserOutput};
 use tetherscript::browser_agent::BrowserPage;
 
+/// Run a synchronous DOM operation against the current page.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or the operation
+/// reports a JavaScript error.
 pub(super) async fn with<F>(
     session: &super::super::super::BrowserSession,
     op: F,

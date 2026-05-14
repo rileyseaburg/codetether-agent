@@ -1,6 +1,13 @@
+//! HTML and HTTP loading helpers for native navigation.
+
 use crate::browser::BrowserError;
 use std::path::Path;
 
+/// Load HTML from a URL or local file path.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when a file cannot be read or HTTP retrieval fails.
 pub(super) async fn html(url: &str) -> Result<String, BrowserError> {
     if matches!(url, "" | "about:blank") {
         return Ok(String::new());
@@ -17,11 +24,17 @@ pub(super) async fn html(url: &str) -> Result<String, BrowserError> {
     http_get(url).await
 }
 
+/// Fetch a URL with reqwest and return its body text.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the request or body read fails.
 pub(super) async fn http_get(url: &str) -> Result<String, BrowserError> {
     let response = reqwest::get(url).await.map_err(map)?;
     response.text().await.map_err(map)
 }
 
+/// Map reqwest errors into browser operation failures.
 pub(super) fn map(error: reqwest::Error) -> BrowserError {
     BrowserError::OperationFailed(error.to_string())
 }

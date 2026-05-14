@@ -1,5 +1,13 @@
+//! Page navigation operations for native sessions.
+
 use crate::browser::{BrowserError, BrowserOutput, request::NavigationRequest};
 
+/// Navigate the current tab to a URL.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the page cannot be loaded or the session is
+/// not started.
 pub(super) async fn goto(
     session: &super::super::BrowserSession,
     request: NavigationRequest,
@@ -17,6 +25,11 @@ pub(super) async fn goto(
     Ok(super::lifecycle::ack())
 }
 
+/// Navigate backward in the current tab history.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(super) async fn back(
     session: &super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -30,6 +43,11 @@ pub(super) async fn back(
     Ok(super::lifecycle::ack())
 }
 
+/// Reload the current tab.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(super) async fn reload(
     session: &super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {

@@ -1,3 +1,8 @@
+//! Browser control tool implementation.
+//!
+//! The tool parses browserctl JSON input, dispatches to the shared browser
+//! session, and formats browser outputs as tool results.
+
 mod actions;
 mod dispatch;
 mod helpers;
@@ -11,9 +16,11 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 
+/// Tool entry point for browser automation commands.
 pub struct BrowserCtlTool;
 
 impl BrowserCtlTool {
+    /// Create a browser control tool.
     pub fn new() -> Self {
         Self
     }

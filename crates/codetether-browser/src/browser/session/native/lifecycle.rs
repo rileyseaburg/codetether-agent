@@ -1,6 +1,13 @@
+//! Native browser session lifecycle operations.
+
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::StartRequest};
 use serde_json::json;
 
+/// Start a native TetherScript browser session.
+///
+/// # Errors
+///
+/// This currently only returns errors for API compatibility.
 pub(super) async fn start(
     session: &super::super::BrowserSession,
     _request: StartRequest,
@@ -9,6 +16,11 @@ pub(super) async fn start(
     Ok(ack())
 }
 
+/// Stop the native browser session.
+///
+/// # Errors
+///
+/// This currently only returns errors for API compatibility.
 pub(super) async fn stop(
     session: &super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -16,6 +28,11 @@ pub(super) async fn stop(
     Ok(ack())
 }
 
+/// Return native backend health information.
+///
+/// # Errors
+///
+/// This currently only returns errors for API compatibility.
 pub(super) async fn health(
     session: &super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -37,6 +54,7 @@ pub(super) async fn health(
     })))
 }
 
+/// Return a successful acknowledgement output.
 pub(super) fn ack() -> BrowserOutput {
     BrowserOutput::Ack(Ack { ok: true })
 }

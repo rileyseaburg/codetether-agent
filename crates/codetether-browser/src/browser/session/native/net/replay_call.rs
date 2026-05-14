@@ -1,5 +1,13 @@
+//! Network request replay support.
+
 use crate::browser::{BrowserError, BrowserOutput, request::ReplayRequest};
 
+/// Replay a captured network request through the HTTP sender.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the capture data is invalid or the request
+/// fails.
 pub(in crate::browser::session::native) async fn replay(
     _session: &super::super::super::BrowserSession,
     request: ReplayRequest,

@@ -1,7 +1,15 @@
+//! File upload operations.
+
 use crate::browser::{BrowserError, BrowserOutput, request::UploadRequest};
 use std::path::Path;
 use tetherscript::browser_agent::FilePayload;
 
+/// Upload files through a file input selected by CSS.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started, a file is missing,
+/// or the target element rejects the files.
 pub(in crate::browser::session::native) async fn upload(
     session: &super::super::super::BrowserSession,
     request: UploadRequest,

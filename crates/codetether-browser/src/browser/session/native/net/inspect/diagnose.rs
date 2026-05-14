@@ -1,6 +1,13 @@
+//! Native network diagnostics.
+
 use crate::browser::{BrowserError, BrowserOutput, request::DiagnoseRequest};
 use serde_json::json;
 
+/// Return network and backend diagnostic information.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(in crate::browser::session::native) async fn diagnose(
     session: &super::super::super::super::BrowserSession,
     _request: DiagnoseRequest,

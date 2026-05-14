@@ -1,5 +1,13 @@
+//! Tab creation operation.
+
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::NewTabRequest};
 
+/// Open a new tab and select it.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or the target page
+/// cannot be loaded.
 pub(in crate::browser::session::native) async fn new(
     session: &super::super::super::BrowserSession,
     request: NewTabRequest,

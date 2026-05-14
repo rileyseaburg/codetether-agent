@@ -1,5 +1,12 @@
+//! Scroll state updates.
+
 use crate::browser::{BrowserError, BrowserOutput, request::ScrollRequest};
 
+/// Apply a scroll delta to the current page.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started.
 pub(in crate::browser::session::native) async fn scroll(
     session: &super::super::super::super::BrowserSession,
     request: ScrollRequest,

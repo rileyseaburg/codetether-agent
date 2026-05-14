@@ -1,8 +1,16 @@
+//! Text and key input operations.
+
 use crate::browser::{
     BrowserError, BrowserOutput,
     request::{KeyPressRequest, TypeRequest},
 };
 
+/// Type text through a selector-targeted page operation.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or script
+/// evaluation fails.
 pub(in crate::browser::session::native) async fn type_text(
     session: &super::super::super::BrowserSession,
     request: TypeRequest,
@@ -15,6 +23,11 @@ pub(in crate::browser::session::native) async fn type_text(
     super::page::with(session, |page| page.eval_js(&script).map(|_| ())).await
 }
 
+/// Press a keyboard key through the page input model.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when the session is not started or input fails.
 pub(in crate::browser::session::native) async fn press(
     session: &super::super::super::BrowserSession,
     request: KeyPressRequest,
