@@ -10,7 +10,6 @@ pub mod archive;
 pub mod bootstrap;
 pub mod build;
 pub mod compression;
-mod compression_bus;
 mod compression_defer;
 mod compression_last_message;
 mod compression_summary;

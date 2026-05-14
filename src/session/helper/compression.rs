@@ -103,17 +103,6 @@ pub(crate) struct CompressContext {
     pub rlm_config: crate::rlm::RlmConfig,
     /// UUID of the owning session, propagated to RLM traces.
     pub session_id: String,
-    /// Optional pre-resolved subcall provider from
-    /// [`SessionMetadata::subcall_provider`](crate::session::types::SessionMetadata).
-    pub subcall_provider: Option<Arc<dyn crate::provider::Provider>>,
-    /// Model name resolved alongside [`Self::subcall_provider`].
-    pub subcall_model: Option<String>,
-    /// CADMAS-CTX routing state used to rank fallback RLM compaction models.
-    pub delegation: crate::session::delegation::DelegationState,
-    /// Context bucket for the current transcript projection.
-    pub bucket: crate::session::relevance::Bucket,
-    /// RLM observability: bus + trace id. See `compression_bus`.
-    pub observability: super::compression_bus::Observability,
 }
 
 impl CompressContext {
@@ -122,11 +111,6 @@ impl CompressContext {
         Self {
             rlm_config: session.metadata.rlm.clone(),
             session_id: session.id.clone(),
-            subcall_provider: session.metadata.subcall_provider.clone(),
-            subcall_model: session.metadata.subcall_model_name.clone(),
-            delegation: session.metadata.delegation.clone(),
-            bucket: crate::session::relevance::bucket_for_messages(&session.messages),
-            observability: super::compression_bus::Observability::default(),
         }
     }
 }
@@ -425,8 +409,6 @@ pub(crate) async fn enforce_on_messages(
     )
     .await;
 
-    let rlm_ctx = super::compression_bus::observability_ctx(ctx, event_tx, trace_id);
-
     for keep_last in KEEP_LAST_CANDIDATES {
         let est = estimate_request_tokens(system_prompt, messages, tools);
         let still_long =
@@ -456,7 +438,7 @@ pub(crate) async fn enforce_on_messages(
 
         let did = compress_messages_keep_last(
             messages,
-            &rlm_ctx,
+            ctx,
             Arc::clone(&provider),
             model,
             keep_last,
@@ -899,7 +881,5 @@ mod tests {
         };
         let snapshot = CompressContext::from_session(&session);
         assert_eq!(snapshot.session_id, "session-42");
-        assert!(snapshot.subcall_provider.is_none());
-        assert!(snapshot.subcall_model.is_none());
     }
 }

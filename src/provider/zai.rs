@@ -28,6 +28,48 @@ pub struct ZaiProvider {
     base_url: String,
 }
 
+fn should_disable_thinking_for_request(request: &CompletionRequest) -> bool {
+    if request
+        .messages
+        .iter()
+        .any(contains_explicit_short_answer_instruction)
+    {
+        return true;
+    }
+
+    request.max_tokens.is_some_and(|max| max <= 256)
+        && request.messages.iter().any(|message| {
+            message.content.iter().any(|part| match part {
+                ContentPart::Text { text } => text.chars().count() <= 512,
+                _ => false,
+            })
+        })
+}
+
+fn contains_explicit_short_answer_instruction(message: &Message) -> bool {
+    message.content.iter().any(|part| match part {
+        ContentPart::Text { text } => {
+            let lower = text.to_ascii_lowercase();
+            lower.contains("reply with exactly")
+                || lower.contains("say only")
+                || lower.contains("respond with exactly")
+                || lower.contains("return exactly")
+        }
+        _ => false,
+    })
+}
+
+fn thinking_config_for_request(request: &CompletionRequest) -> Value {
+    if should_disable_thinking_for_request(request) {
+        json!({"type": "disabled"})
+    } else {
+        json!({
+            "type": "enabled",
+            "clear_thinking": true
+        })
+    }
+}
+
 #[derive(Debug, Default)]
 struct ZaiStreamToolState {
     stream_id: String,
@@ -273,10 +315,20 @@ impl ZaiProvider {
                             })
                             .collect();
 
-                        let mut msg_json = json!({
-                            "role": "assistant",
-                            "content": text,
-                        });
+                        let mut msg_json = if tool_calls.is_empty() {
+                            json!({
+                                "role": "assistant",
+                                "content": text,
+                            })
+                        } else {
+                            // Z.AI rejects content: "" when tool_calls is present;
+                            // use null instead (same pattern as openai_codex.rs).
+                            json!({
+                                "role": "assistant",
+                                "content": if text.is_empty() { Value::Null } else { json!(text) },
+                                "tool_calls": tool_calls,
+                            })
+                        };
                         if include_reasoning_content {
                             let reasoning: String = msg
                                 .content
@@ -290,9 +342,6 @@ impl ZaiProvider {
                             if !reasoning.is_empty() {
                                 msg_json["reasoning_content"] = json!(reasoning);
                             }
-                        }
-                        if !tool_calls.is_empty() {
-                            msg_json["tool_calls"] = json!(tool_calls);
                         }
                         msg_json
                     }
@@ -728,10 +777,7 @@ impl Provider for ZaiProvider {
         // clear_thinking to false (Preserved Thinking), which requires
         // reasoning_content in historical assistant messages. Since we strip
         // reasoning_content, we must explicitly set clear_thinking: true.
-        body["thinking"] = json!({
-            "type": "enabled",
-            "clear_thinking": true
-        });
+        body["thinking"] = thinking_config_for_request(&request);
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
@@ -894,10 +940,7 @@ impl Provider for ZaiProvider {
             "stream": true,
         });
 
-        body["thinking"] = json!({
-            "type": "enabled",
-            "clear_thinking": true
-        });
+        body["thinking"] = thinking_config_for_request(&request);
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
@@ -1141,6 +1184,120 @@ mod tests {
             serde_json::from_str(args).expect("arguments string must contain valid JSON");
 
         assert_eq!(parsed, json!({"input":"Beijing"}));
+    }
+
+    #[test]
+    fn convert_messages_uses_null_content_for_empty_assistant_tool_calls() {
+        let messages = vec![Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolCall {
+                id: "call_1".to_string(),
+                name: "get_weather".to_string(),
+                arguments: r#"{"city":"Beijing"}"#.to_string(),
+                thought_signature: None,
+            }],
+        }];
+
+        let converted = ZaiProvider::convert_messages(&messages, false);
+
+        assert!(converted[0].get("tool_calls").is_some());
+        assert_eq!(converted[0]["content"], Value::Null);
+    }
+
+    #[test]
+    fn convert_messages_keeps_text_content_for_assistant_tool_calls_with_text() {
+        let messages = vec![Message {
+            role: Role::Assistant,
+            content: vec![
+                ContentPart::Text {
+                    text: "Using a tool.".to_string(),
+                },
+                ContentPart::ToolCall {
+                    id: "call_1".to_string(),
+                    name: "get_weather".to_string(),
+                    arguments: r#"{"city":"Beijing"}"#.to_string(),
+                    thought_signature: None,
+                },
+            ],
+        }];
+
+        let converted = ZaiProvider::convert_messages(&messages, false);
+
+        assert!(converted[0].get("tool_calls").is_some());
+        assert_eq!(converted[0]["content"], json!("Using a tool."));
+    }
+
+    #[test]
+    fn short_exact_zai_requests_disable_thinking() {
+        let request = CompletionRequest {
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "Reply with exactly: api-model-call-ok".to_string(),
+                }],
+            }],
+            tools: vec![],
+            model: "glm-5.1".to_string(),
+            temperature: None,
+            top_p: None,
+            max_tokens: Some(20),
+            stop: vec![],
+        };
+
+        assert!(should_disable_thinking_for_request(&request));
+        assert_eq!(
+            thinking_config_for_request(&request),
+            json!({"type": "disabled"})
+        );
+    }
+
+    #[test]
+    fn long_low_budget_zai_requests_keep_thinking_enabled() {
+        let request = CompletionRequest {
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: format!(
+                        "Summarize the following material. {}",
+                        "context paragraph. ".repeat(40)
+                    ),
+                }],
+            }],
+            tools: vec![],
+            model: "glm-5.1".to_string(),
+            temperature: None,
+            top_p: None,
+            max_tokens: Some(128),
+            stop: vec![],
+        };
+
+        assert!(!should_disable_thinking_for_request(&request));
+        assert_eq!(thinking_config_for_request(&request)["type"], "enabled");
+    }
+
+    #[test]
+    fn normal_zai_requests_keep_clear_thinking_enabled() {
+        let request = CompletionRequest {
+            messages: vec![Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: "Explain the tradeoffs.".to_string(),
+                }],
+            }],
+            tools: vec![],
+            model: "glm-5.1".to_string(),
+            temperature: None,
+            top_p: None,
+            max_tokens: Some(1024),
+            stop: vec![],
+        };
+
+        assert!(!should_disable_thinking_for_request(&request));
+        assert_eq!(thinking_config_for_request(&request)["type"], "enabled");
+        assert_eq!(
+            thinking_config_for_request(&request)["clear_thinking"],
+            true
+        );
     }
 
     #[test]

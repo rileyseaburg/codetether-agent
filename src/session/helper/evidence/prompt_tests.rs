@@ -1,8 +1,9 @@
-use super::prompt::append_guardrails;
+use super::prompt::append_guardrails_for_cwd;
+use std::path::Path;
 
 #[test]
 fn injects_validation_level_terms() {
-    let prompt = append_guardrails("base".to_string());
+    let prompt = append_guardrails_for_cwd("base".to_string(), Path::new("."));
     assert!(prompt.contains("mocked local"));
     assert!(prompt.contains("live deployment/Argo"));
     assert!(prompt.contains("failed live validation is not completion"));
@@ -18,7 +19,7 @@ fn injects_validation_level_terms() {
 
 #[test]
 fn injection_is_idempotent() {
-    let once = append_guardrails("base".to_string());
-    let twice = append_guardrails(once.clone());
+    let once = append_guardrails_for_cwd("base".to_string(), Path::new("."));
+    let twice = append_guardrails_for_cwd(once.clone(), Path::new("."));
     assert_eq!(once, twice);
 }

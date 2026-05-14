@@ -40,7 +40,7 @@ mod writeback_path;
 mod writeback_persist;
 
 pub(crate) use final_gate::gate as gate_final_answer;
-pub(crate) use prompt::{append_guardrails, append_guardrails_for_cwd};
+pub(crate) use prompt::append_guardrails_for_cwd;
 
 #[cfg(test)]
 mod prompt_tests;
