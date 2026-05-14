@@ -2,40 +2,16 @@ pub async fn execute(
     session: &crate::browser::BrowserSession,
     command: crate::browser::BrowserCommand,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
-    use crate::browser::BrowserCommand as Command;
-    match command {
-        Command::Health => super::health::run(session).await,
-        Command::Start(request) => super::lifecycle::start(session, request).await,
-        Command::Stop => super::lifecycle::stop(session).await,
-        Command::Snapshot => super::snapshot::run(session).await,
-        Command::Goto(request) => super::navigation::goto(session, request).await,
-        Command::Back => super::navigation::back(session).await,
-        Command::Reload => super::navigation::reload(session).await,
-        Command::Wait(request) => super::wait::for_selector(session, request).await,
-        Command::Click(request) => super::dom::click(session, request).await,
-        Command::Upload(request) => super::upload::run(session, request).await,
-        Command::Fill(request) => super::dom::fill(session, request).await,
-        Command::Type(request) => super::dom_extra::type_text(session, request).await,
-        Command::Press(request) => super::dom_extra::press(session, request).await,
-        Command::Text(request) => super::dom::text(session, request).await,
-        Command::Html(request) => super::dom::html(session, request).await,
-        Command::Eval(request) => super::eval::run(session, request).await,
-        Command::ClickText(request) => super::dom_extra::click_text(session, request).await,
-        Command::FillNative(request) => super::dom_extra::fill_native(session, request).await,
-        Command::Toggle(request) => super::dom_extra::toggle(session, request).await,
-        Command::Screenshot(request) => super::screen::capture(session, request).await,
-        Command::MouseClick(request) => super::device::mouse_click(session, request).await,
-        Command::KeyboardType(request) => super::device::keyboard_type(session, request).await,
-        Command::KeyboardPress(request) => super::device::keyboard_press(session, request).await,
-        Command::Tabs => super::tabs::list(session).await,
-        Command::TabsSelect(request) => super::tabs::select(session, request).await,
-        Command::TabsNew(request) => super::tabs::new(session, request).await,
-        Command::TabsClose(request) => super::tabs::close(session, request).await,
-        Command::NetworkLog(request) => super::net::log::network_log(session, request).await,
-        Command::Fetch(request) => super::net::fetch::fetch(session, request).await,
-        Command::Axios(request) => super::net::axios::axios(session, request).await,
-        Command::Xhr(request) => super::net::xhr::xhr(session, request).await,
-        Command::Replay(request) => super::net::replay::replay(session, request).await,
-        Command::Diagnose(request) => super::net::diagnose::diagnose(session, request).await,
+    #[cfg(feature = "tetherscript")]
+    {
+        return super::native::execute(session, command).await;
+    }
+
+    #[cfg(not(feature = "tetherscript"))]
+    {
+        let _ = (session, command);
+        Err(crate::browser::BrowserError::NotImplemented(
+            "browserctl requires the tetherscript feature".into(),
+        ))
     }
 }

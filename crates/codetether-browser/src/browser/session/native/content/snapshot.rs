@@ -1,0 +1,23 @@
+use crate::browser::{
+    BrowserError, BrowserOutput,
+    output::{PageSnapshot, Viewport},
+};
+
+pub(super) async fn snapshot(
+    session: &super::super::super::BrowserSession,
+) -> Result<BrowserOutput, BrowserError> {
+    let native = session.inner.native.lock().await;
+    let page = native
+        .as_ref()
+        .ok_or(BrowserError::SessionNotStarted)?
+        .current()?;
+    Ok(BrowserOutput::Snapshot(PageSnapshot {
+        url: page.session.url.clone(),
+        title: super::title(page),
+        text: super::title::document_text(page),
+        viewport: Some(Viewport {
+            width: page.viewport_width as u32,
+            height: page.viewport_height as u32,
+        }),
+    }))
+}

@@ -75,7 +75,7 @@ fn detect_result() -> ToolResult {
             let output = serde_json::json!({
                 "found": false,
                 "platform": std::env::consts::OS,
-                "hint": "Install Chrome, Edge, Brave, or Vivaldi, or pass `executable_path` to `start`. Firefox and Safari are not supported.",
+                "hint": "No external browser executable is required; browserctl uses the native TetherScript backend.",
             });
             ToolResult {
                 output: serde_json::to_string_pretty(&output).unwrap_or_default(),

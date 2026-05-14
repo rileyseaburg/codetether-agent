@@ -1,8 +1,5 @@
 use thiserror::Error;
 
-#[path = "error_cdp.rs"]
-mod cdp;
-
 #[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum BrowserError {

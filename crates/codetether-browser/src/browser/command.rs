@@ -1,7 +1,7 @@
 use super::request::{
     AxiosRequest, ClickTextRequest, CloseTabRequest, DiagnoseRequest, EvalRequest, FetchRequest,
     FillRequest, KeyPressRequest, NavigationRequest, NetworkLogRequest, NewTabRequest,
-    ReplayRequest, ScopeRequest, ScreenshotRequest, SelectorRequest, StartRequest,
+    ReplayRequest, ScopeRequest, ScreenshotRequest, ScrollRequest, SelectorRequest, StartRequest,
     TabSelectRequest, ToggleRequest, TypeRequest, UploadRequest, WaitRequest, XhrRequest,
 };
 
@@ -15,6 +15,10 @@ pub enum BrowserCommand {
     Reload,
     Wait(WaitRequest),
     Click(SelectorRequest),
+    Hover(SelectorRequest),
+    Focus(SelectorRequest),
+    Blur(SelectorRequest),
+    Scroll(ScrollRequest),
     Upload(UploadRequest),
     Fill(FillRequest),
     Type(TypeRequest),

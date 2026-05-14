@@ -8,7 +8,8 @@ pub struct BrowserSession {
 
 #[derive(Default)]
 pub(super) struct SessionInner {
-    pub runtime: Mutex<Option<super::SessionRuntime>>,
+    #[cfg(feature = "tetherscript")]
+    pub native: Mutex<Option<super::native::NativeRuntime>>,
 }
 
 impl BrowserSession {
