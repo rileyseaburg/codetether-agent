@@ -12,6 +12,12 @@ impl NativePage {
         Self::from_page(BrowserPage::new(TetherSession::new()))
     }
 
+    pub fn from_html(url: String, html: String) -> Self {
+        let mut page = BrowserPage::from_html(url, html);
+        let _ = page.run_scripts();
+        Self::from_page(page)
+    }
+
     pub fn from_page(page: BrowserPage) -> Self {
         Self {
             session: page.session,
