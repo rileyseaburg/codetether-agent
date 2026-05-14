@@ -1,5 +1,5 @@
 mod diagnose;
 mod log;
 
-pub(super) use diagnose::diagnose;
-pub(super) use log::log;
+pub(in crate::browser::session::native) use diagnose::diagnose;
+pub(in crate::browser::session::native) use log::log;

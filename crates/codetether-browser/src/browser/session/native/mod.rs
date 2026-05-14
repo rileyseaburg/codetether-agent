@@ -12,7 +12,7 @@ mod state;
 mod tabs;
 mod wait;
 
-pub(super) use state::{NativePage, NativeRuntime};
+pub(in crate::browser::session) use state::{NativePage, NativeRuntime};
 
 use crate::browser::{BrowserCommand, BrowserError, BrowserOutput};
 

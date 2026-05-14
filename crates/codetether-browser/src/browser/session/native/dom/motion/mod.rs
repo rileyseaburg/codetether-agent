@@ -2,6 +2,6 @@ mod focus;
 mod pointer;
 mod scroll;
 
-pub(super) use focus::{blur, focus};
-pub(super) use pointer::{click, hover};
-pub(super) use scroll::scroll;
+pub(in crate::browser::session::native) use focus::{blur, focus};
+pub(in crate::browser::session::native) use pointer::{click, hover};
+pub(in crate::browser::session::native) use scroll::scroll;

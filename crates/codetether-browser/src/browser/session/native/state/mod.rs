@@ -1,5 +1,5 @@
 mod page;
 mod runtime;
 
-pub(super) use page::NativePage;
-pub(super) use runtime::NativeRuntime;
+pub(in crate::browser::session) use page::NativePage;
+pub(in crate::browser::session) use runtime::NativeRuntime;

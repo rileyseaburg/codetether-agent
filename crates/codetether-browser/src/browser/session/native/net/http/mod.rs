@@ -1,5 +1,5 @@
 mod send;
 mod verbs;
 
-pub(super) use send::send;
-pub(super) use verbs::{axios, fetch, xhr};
+pub(in crate::browser::session::native) use send::send;
+pub(in crate::browser::session::native) use verbs::{axios, fetch, xhr};
