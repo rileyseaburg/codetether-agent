@@ -1,55 +1,35 @@
 //! RLM invocation for session recall results.
 
+mod context;
+mod fallback;
+mod success;
+
 use crate::provider::Provider;
-use crate::rlm::router::AutoProcessContext;
 use crate::rlm::{RlmConfig, RlmRouter};
 use crate::tool::ToolResult;
 use anyhow::Result;
-use serde_json::json;
 use std::sync::Arc;
 
 /// Run RLM processing against the flattened recall context.
 pub async fn run_recall(
-    context: &str,
+    recall_context: &str,
     sources: &[String],
     query: &str,
     provider: Arc<dyn Provider>,
     model: &str,
     config: &RlmConfig,
 ) -> Result<ToolResult> {
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_recall",
-        tool_args: json!({ "query": query }),
-        session_id: "session-recall-tool",
-        abort: None,
-        on_progress: None,
-        provider,
-        model: model.to_string(),
-        bus: None,
-        trace_id: None,
-        subcall_provider: None,
-        subcall_model: None,
-    };
-    let framed = format!(
-        "Recall task: {query}\n\nUse the session transcript below \
-         to answer the recall task. Quote short passages verbatim \
-         when useful; otherwise summarise.\n\n{context}"
-    );
+    let framed = context::frame(query, recall_context);
+    let auto_ctx = context::auto(provider, model, query);
+
     match RlmRouter::auto_process(&framed, auto_ctx, config).await {
-        Ok(result) => Ok(ToolResult::success(format!(
-            "Recalled from {} session(s): {}\n(RLM: {} → {} tokens, {} iterations)\n\n{}",
-            sources.len(),
-            sources.join(", "),
-            result.stats.input_tokens,
-            result.stats.output_tokens,
-            result.stats.iterations,
-            result.processed,
-        ))),
-        Err(e) => Ok(super::faults::fault_result(
+        Ok(result) if result.success => Ok(success::format(sources, &result)),
+        Ok(result) => Ok(fallback::non_converged(recall_context, sources, &result)),
+        Err(error) => Ok(super::faults::fault_result(
             crate::session::Fault::BackendError {
-                reason: e.to_string(),
+                reason: error.to_string(),
             },
-            format!("RLM recall failed: {e}"),
+            format!("RLM recall failed: {error}"),
         )),
     }
 }
