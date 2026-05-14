@@ -13,7 +13,7 @@ use crate::tui::chat::message::ChatMessage;
 use crate::tui::message_formatter::MessageFormatter;
 
 type Key = (u128, usize, usize, u8);
-const CACHE_CAP: usize = 512;
+const CACHE_CAP: usize = 128;
 
 thread_local! {
     static FORMAT_CACHE: RefCell<HashMap<Key, Vec<Line<'static>>>> =

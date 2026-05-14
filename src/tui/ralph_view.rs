@@ -292,12 +292,12 @@ impl RalphViewState {
                 if let Some(story) = self.stories.iter_mut().find(|s| s.id == story_id) {
                     story.current_tool = Some(detail.tool_name.clone());
                     story.steps += 1;
-                    story.tool_call_history.push(detail);
+                    crate::tui::agent_detail_update::push(&mut story.tool_call_history, detail);
                 }
             }
             RalphEvent::StoryMessage { story_id, entry } => {
                 if let Some(story) = self.stories.iter_mut().find(|s| s.id == story_id) {
-                    story.messages.push(entry);
+                    crate::tui::agent_detail_update::push(&mut story.messages, entry);
                 }
             }
             RalphEvent::StoryQualityCheck {
@@ -323,7 +323,7 @@ impl RalphViewState {
             }
             RalphEvent::StoryOutput { story_id, output } => {
                 if let Some(story) = self.stories.iter_mut().find(|s| s.id == story_id) {
-                    story.output = Some(output);
+                    crate::tui::agent_detail_update::output(&mut story.output, &output, "Ralph output");
                 }
             }
             RalphEvent::StoryError { story_id, error } => {

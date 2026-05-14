@@ -16,7 +16,7 @@ pub mod delegation_outcome;
 pub mod executor;
 pub mod k8s_result;
 pub mod kubernetes_executor;
-pub mod orchestrator;
+mod live_bus; pub mod orchestrator;
 pub mod rate_limiter;
 pub mod remote_subtask;
 pub mod result_store;

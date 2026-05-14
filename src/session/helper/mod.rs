@@ -22,6 +22,7 @@ pub mod error;
 pub mod event_payload;
 mod evidence;
 pub mod experimental;
+mod live_bus;
 pub mod loop_constants;
 pub mod markup;
 mod persist;
@@ -33,6 +34,7 @@ pub mod prompt_events;
 pub(crate) mod prompt_too_long;
 pub mod provider;
 pub mod recall_context;
+mod refactor_guard;
 pub mod request_state;
 mod retry_error;
 pub(crate) mod rlm_background;
@@ -52,3 +54,5 @@ mod workspace_tools;
 mod prompt_events_test_provider;
 #[cfg(test)]
 mod prompt_events_tests;
+#[cfg(test)]
+mod validation_tests;

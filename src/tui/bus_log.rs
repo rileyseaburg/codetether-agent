@@ -75,10 +75,8 @@ impl BusLogEntry {
                 let preview = truncate(&text_preview, 80);
                 let a2a = from == "remote-a2a" || to == "remote-a2a";
                 let kind = if a2a { "A2A•MSG" } else { "MSG" };
-                let detail = format!(
-                    "From: {from}\nTo: {to}\nTransport: {}\nParts ({}):\n{text_preview}",
-                    if a2a { "A2A/mDNS peer" } else { "local bus" },
-                    parts.len()
+                let detail = crate::tui::bus_log_entry_payload::message(
+                    from, to, a2a, parts.len(), &text_preview,
                 );
                 (
                     kind.to_string(),
@@ -146,9 +144,8 @@ impl BusLogEntry {
                 (
                     "←TOOL".to_string(),
                     format!("{icon} {agent_id} {tool_name}"),
-                    format!(
-                        "Request: {request_id}\nAgent: {agent_id}\nStep: {step}\nTool: {tool_name}\nSuccess: {success}\nResult: {}",
-                        truncate(result, 200)
+                    crate::tui::bus_log_entry_payload::tool_response(
+                        request_id, agent_id, *step, tool_name, *success, result,
                     ),
                     if *success { Color::Green } else { Color::Red },
                 )
@@ -221,8 +218,8 @@ impl BusLogEntry {
                 (
                     "TOOL•FULL".to_string(),
                     format!("{icon} {agent_id} step {step} {tool_name}: {preview}"),
-                    format!(
-                        "Agent: {agent_id}\nTool: {tool_name}\nStep: {step}\nSuccess: {success}\n\n--- Full Output ---\n{output}"
+                    crate::tui::bus_log_entry_payload::tool_full(
+                        agent_id, tool_name, *step, *success, output,
                     ),
                     if *success { Color::Green } else { Color::Red },
                 )
@@ -236,7 +233,7 @@ impl BusLogEntry {
                 (
                     "THINK".to_string(),
                     format!("{agent_id} step {step}: {preview}"),
-                    format!("Agent: {agent_id}\nStep: {step}\n\n--- Reasoning ---\n{thinking}"),
+                    crate::tui::bus_log_entry_payload::thinking(agent_id, *step, thinking),
                     Color::LightMagenta,
                 )
             }
@@ -261,7 +258,9 @@ impl BusLogEntry {
                 (
                     "VOICE•T".to_string(),
                     format!("{room_name} [{role}]{fin}: {preview}"),
-                    format!("Room: {room_name}\nRole: {role}\nFinal: {is_final}\n\n{text}"),
+                    crate::tui::bus_log_entry_payload::transcript(
+                        room_name, role, *is_final, text,
+                    ),
                     Color::LightCyan,
                 )
             }
@@ -312,13 +311,13 @@ impl Default for BusLogState {
             detail_mode: false,
             detail_scroll: 0,
             filter: String::new(),
-            filter_input_mode: false,
-            auto_scroll: true,
-            list_state: ListState::default(),
-            max_entries: 10_000,
+                filter_input_mode: false,
+                auto_scroll: true,
+                list_state: ListState::default(),
+                max_entries: 2_000,
+            }
         }
     }
-}
 
 impl BusLogState {
     pub fn new() -> Self {

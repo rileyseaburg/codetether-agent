@@ -443,11 +443,11 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 ContentPart::Thinking { text } if !text.is_empty() => {
                     if let Some(ref bus) = session.bus {
                         let handle = bus.handle(&session.agent);
-                        handle.send_with_correlation(
+                        let thinking = super::live_bus::compact_thinking(text); handle.send_with_correlation(
                             format!("agent.{}.thinking", session.agent),
                             crate::bus::BusMessage::AgentThinking {
                                 agent_id: session.agent.clone(),
-                                thinking: text.clone(),
+                                thinking,
                                 step,
                             },
                             Some(turn_id.clone()),
@@ -701,13 +701,13 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             if let Some(ref bus) = session.bus {
                 let handle = bus.handle(&session.agent);
-                handle.send_with_correlation(
+                let bus_result = super::live_bus::compact_tool(&rendered_content); handle.send_with_correlation(
                     format!("agent.{}.tool.response", session.agent),
                     crate::bus::BusMessage::ToolResponse {
                         request_id: tool_id.clone(),
                         agent_id: session.agent.clone(),
                         tool_name: tool_name.clone(),
-                        result: rendered_content.clone(),
+                        result: bus_result.clone(),
                         success,
                         step,
                     },
@@ -718,7 +718,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                     crate::bus::BusMessage::ToolOutputFull {
                         agent_id: session.agent.clone(),
                         tool_name: tool_name.clone(),
-                        output: rendered_content.clone(),
+                        output: bus_result,
                         success,
                         step,
                     },
@@ -794,7 +794,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
         .await;
 
     Ok(SessionResult {
-        text: final_output.trim().to_string(),
+        text: super::evidence::gate_final_answer(final_output.trim(), session),
         session_id: session.id.clone(),
     })
 }

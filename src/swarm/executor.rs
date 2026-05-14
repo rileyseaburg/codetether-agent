@@ -2449,7 +2449,7 @@ pub async fn run_agent_loop(
                 format!("agent.{subtask_id}.thinking"),
                 BusMessage::AgentThinking {
                     agent_id: subtask_id.clone(),
-                    thinking: thinking_text,
+                    thinking: crate::swarm::live_bus::thinking(&thinking_text),
                     step: steps,
                 },
             );
@@ -2656,7 +2656,7 @@ pub async fn run_agent_loop(
                     BusMessage::ToolOutputFull {
                         agent_id: subtask_id.clone(),
                         tool_name: tool_name.clone(),
-                        output: result.clone(),
+                        output: crate::swarm::live_bus::tool_output(&result),
                         success: tool_success,
                         step: steps,
                     },

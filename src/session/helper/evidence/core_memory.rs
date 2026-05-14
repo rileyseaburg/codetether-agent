@@ -13,7 +13,7 @@ pub(crate) fn render(project_root: &Path) -> String {
 }
 
 pub(crate) fn storage_hint() -> &'static str {
-    "Persist durable decisions with memory.save using scope=current project and tags core-memory,evidence,scope."
+    "Persist durable decisions with memory.save using scope=current project and tags core-memory,evidence,scope.\nBelief-guided recall: no active belief keywords."
 }
 
 #[cfg(test)]

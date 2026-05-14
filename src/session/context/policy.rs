@@ -40,7 +40,7 @@ pub fn effective_policy(session: &Session) -> DerivePolicy {
                 threshold_tokens: resolve_reset_threshold(persisted),
             };
         }
-        return persisted;
+        return super::default_policy::non_override(persisted);
     };
     let normalized = raw.trim().to_ascii_lowercase();
     match normalized.as_str() {
@@ -62,8 +62,7 @@ pub fn effective_policy(session: &Session) -> DerivePolicy {
 fn resolve_reset_threshold(persisted: DerivePolicy) -> usize {
     let default_threshold = match persisted {
         DerivePolicy::Reset { threshold_tokens } => threshold_tokens,
-        DerivePolicy::Legacy
-        | DerivePolicy::Incremental { .. }
+        DerivePolicy::Legacy | DerivePolicy::Incremental { .. }
         | DerivePolicy::OracleReplay { .. } => DEFAULT_RESET_THRESHOLD_TOKENS,
     };
     env::var("CODETETHER_CONTEXT_RESET_THRESHOLD_TOKENS")

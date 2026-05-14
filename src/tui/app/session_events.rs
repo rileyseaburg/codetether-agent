@@ -2,9 +2,12 @@
 
 mod context;
 mod errors;
+mod flow;
 mod lifecycle;
+mod pipeline;
 mod text;
 mod text_dispatch;
+mod retention;
 mod tools;
 mod usage;
 
@@ -21,29 +24,13 @@ pub async fn handle_session_event(
     app: &mut App,
     session: &mut Session,
     worker_bridge: &Option<TuiWorkerBridge>,
-    mut evt: SessionEvent,
+    evt: SessionEvent,
 ) {
     note_event(app);
-    evt = match lifecycle::handle_event(app, session, worker_bridge, evt).await {
-        Some(evt) => evt,
-        None => return,
+    let Some(evt) = pipeline::run(app, session, worker_bridge, evt).await else {
+        return flow::stop(app);
     };
-    evt = match tools::handle_event(app, worker_bridge, evt).await {
-        Some(evt) => evt,
-        None => return,
-    };
-    evt = match text_dispatch::handle_event(app, evt) {
-        Some(evt) => evt,
-        None => return,
-    };
-    evt = match usage::handle_event(app, evt) {
-        Some(evt) => evt,
-        None => return,
-    };
-    evt = match errors::handle_event(app, session, worker_bridge, evt).await {
-        Some(evt) => evt,
-        None => return,
-    };
+    retention::trim(app);
     context::handle_event(app, evt);
 }
 

@@ -503,7 +503,7 @@ pub(crate) async fn run_prompt_with_events(
                     format!("agent.{}.thinking", session.agent),
                     crate::bus::BusMessage::AgentThinking {
                         agent_id: session.agent.clone(),
-                        thinking: thinking_text.trim().to_string(),
+                        thinking: super::live_bus::compact_thinking(thinking_text.trim()),
                         step,
                     },
                     Some(turn_id.clone()),
@@ -821,7 +821,7 @@ pub(crate) async fn run_prompt_with_events(
                         request_id: tool_id.clone(),
                         agent_id: session.agent.clone(),
                         tool_name: tool_name.clone(),
-                        result: rendered_content.clone(),
+                        result: super::live_bus::compact_tool(&rendered_content),
                         success,
                         step,
                     },
@@ -832,7 +832,7 @@ pub(crate) async fn run_prompt_with_events(
                     crate::bus::BusMessage::ToolOutputFull {
                         agent_id: session.agent.clone(),
                         tool_name: tool_name.clone(),
-                        output: rendered_content.clone(),
+                        output: super::live_bus::compact_tool(&rendered_content),
                         success,
                         step,
                     },
@@ -920,7 +920,7 @@ pub(crate) async fn run_prompt_with_events(
     let _ = event_tx.send(SessionEvent::Done).await;
 
     Ok(SessionResult {
-        text: final_output.trim().to_string(),
+        text: super::evidence::gate_final_answer(final_output.trim(), session),
         session_id: session.id.clone(),
     })
 }

@@ -19,6 +19,7 @@
 //! codetether mcp connect "npx -y @modelcontextprotocol/server-filesystem /path"
 //! ```
 
+mod bus_payload;
 pub mod bus_bridge;
 mod client;
 mod server;

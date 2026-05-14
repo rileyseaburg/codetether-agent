@@ -12,6 +12,8 @@ fn injects_validation_level_terms() {
     assert!(prompt.contains("core-memory"));
     assert!(prompt.contains("Core memory protocol"));
     assert!(prompt.contains("Belief-guided recall"));
+    assert!(prompt.contains("Workflow evidence templates"));
+    assert!(prompt.contains("Runtime prefetch facts"));
 }
 
 #[test]

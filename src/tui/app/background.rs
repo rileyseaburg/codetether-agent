@@ -134,7 +134,7 @@ pub async fn apply_single_result(
 
             *session = updated_session;
             session.attach_global_bus_if_missing();
-            app.state.session_id = Some(session.id.clone());
+            crate::tui::app::turn_cancel::clear(app); app.state.session_id = Some(session.id.clone());
             let _ = session.save().await;
             refresh_sessions(app, cwd).await;
         }
