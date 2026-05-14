@@ -3,7 +3,7 @@ use crate::browser::{
     output::{PageSnapshot, Viewport},
 };
 
-pub(super) async fn snapshot(
+pub(in crate::browser::session::native) async fn snapshot(
     session: &super::super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {
     let native = session.inner.native.lock().await;

@@ -3,7 +3,7 @@ use reqwest::Method;
 use serde_json::json;
 use std::collections::HashMap;
 
-pub(super) async fn send(
+pub(in crate::browser::session::native) async fn send(
     method: &str,
     url: &str,
     headers: Option<HashMap<String, String>>,

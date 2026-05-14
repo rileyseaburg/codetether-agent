@@ -1,7 +1,7 @@
 use crate::browser::{BrowserError, BrowserOutput, output::TextContent, request::ScopeRequest};
 use tetherscript::browser::{query_selector, text_content};
 
-pub(super) async fn text(
+pub(in crate::browser::session::native) async fn text(
     session: &super::super::super::BrowserSession,
     request: ScopeRequest,
 ) -> Result<BrowserOutput, BrowserError> {

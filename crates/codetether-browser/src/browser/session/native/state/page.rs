@@ -1,7 +1,7 @@
 use tetherscript::browser_agent::BrowserPage;
 use tetherscript::browser_session::BrowserSession as TetherSession;
 
-pub(super) struct NativePage {
+pub(in crate::browser::session) struct NativePage {
     pub session: TetherSession,
     pub viewport_width: i64,
     pub viewport_height: i64,

@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, request::SelectorRequest};
 
-pub(super) async fn click(
+pub(in crate::browser::session::native) async fn click(
     session: &super::super::super::super::BrowserSession,
     request: SelectorRequest,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -11,7 +11,7 @@ pub(super) async fn click(
     .await
 }
 
-pub(super) async fn hover(
+pub(in crate::browser::session::native) async fn hover(
     session: &super::super::super::super::BrowserSession,
     request: SelectorRequest,
 ) -> Result<BrowserOutput, BrowserError> {

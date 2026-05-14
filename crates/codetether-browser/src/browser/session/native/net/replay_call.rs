@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, request::ReplayRequest};
 
-pub(super) async fn replay(
+pub(in crate::browser::session::native) async fn replay(
     _session: &super::super::super::BrowserSession,
     request: ReplayRequest,
 ) -> Result<BrowserOutput, BrowserError> {

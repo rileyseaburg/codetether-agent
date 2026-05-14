@@ -3,7 +3,7 @@ use crate::browser::{
     request::{KeyPressRequest, TypeRequest},
 };
 
-pub(super) async fn type_text(
+pub(in crate::browser::session::native) async fn type_text(
     session: &super::super::super::BrowserSession,
     request: TypeRequest,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -15,7 +15,7 @@ pub(super) async fn type_text(
     super::page::with(session, |page| page.eval_js(&script).map(|_| ())).await
 }
 
-pub(super) async fn press(
+pub(in crate::browser::session::native) async fn press(
     session: &super::super::super::BrowserSession,
     request: KeyPressRequest,
 ) -> Result<BrowserOutput, BrowserError> {

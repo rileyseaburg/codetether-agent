@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, output::HtmlContent, request::ScopeRequest};
 
-pub(super) async fn html(
+pub(in crate::browser::session::native) async fn html(
     session: &super::super::super::BrowserSession,
     request: ScopeRequest,
 ) -> Result<BrowserOutput, BrowserError> {

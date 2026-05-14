@@ -2,7 +2,7 @@ use crate::browser::{BrowserError, BrowserOutput, request::UploadRequest};
 use std::path::Path;
 use tetherscript::browser_agent::FilePayload;
 
-pub(super) async fn upload(
+pub(in crate::browser::session::native) async fn upload(
     session: &super::super::super::BrowserSession,
     request: UploadRequest,
 ) -> Result<BrowserOutput, BrowserError> {

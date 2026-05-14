@@ -3,7 +3,7 @@ use crate::browser::{
     request::{KeyboardPressRequest, KeyboardTypeRequest},
 };
 
-pub(super) async fn keyboard_type(
+pub(in crate::browser::session::native) async fn keyboard_type(
     session: &super::super::super::BrowserSession,
     request: KeyboardTypeRequest,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -19,7 +19,7 @@ pub(super) async fn keyboard_type(
     .await
 }
 
-pub(super) async fn keyboard_press(
+pub(in crate::browser::session::native) async fn keyboard_press(
     session: &super::super::super::BrowserSession,
     request: KeyboardPressRequest,
 ) -> Result<BrowserOutput, BrowserError> {

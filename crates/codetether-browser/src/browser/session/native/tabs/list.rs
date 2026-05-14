@@ -3,7 +3,7 @@ use crate::browser::{
     output::{TabInfo, TabList},
 };
 
-pub(super) async fn list(
+pub(in crate::browser::session::native) async fn list(
     session: &super::super::super::BrowserSession,
 ) -> Result<BrowserOutput, BrowserError> {
     let native = session.inner.native.lock().await;

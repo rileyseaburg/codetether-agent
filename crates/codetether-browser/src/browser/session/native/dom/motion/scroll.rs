@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, request::ScrollRequest};
 
-pub(super) async fn scroll(
+pub(in crate::browser::session::native) async fn scroll(
     session: &super::super::super::super::BrowserSession,
     request: ScrollRequest,
 ) -> Result<BrowserOutput, BrowserError> {

@@ -1,7 +1,7 @@
 use crate::browser::{BrowserError, BrowserOutput, request::NetworkLogRequest};
 use serde_json::json;
 
-pub(super) async fn log(
+pub(in crate::browser::session::native) async fn log(
     session: &super::super::super::super::BrowserSession,
     request: NetworkLogRequest,
 ) -> Result<BrowserOutput, BrowserError> {

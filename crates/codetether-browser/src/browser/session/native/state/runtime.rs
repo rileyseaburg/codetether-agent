@@ -1,7 +1,7 @@
 use super::NativePage;
 use crate::browser::BrowserError;
 
-pub(super) struct NativeRuntime {
+pub(in crate::browser::session) struct NativeRuntime {
     pub pages: Vec<NativePage>,
     pub current: usize,
 }

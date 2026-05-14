@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::TabSelectRequest};
 
-pub(super) async fn select(
+pub(in crate::browser::session::native) async fn select(
     session: &super::super::super::BrowserSession,
     request: TabSelectRequest,
 ) -> Result<BrowserOutput, BrowserError> {

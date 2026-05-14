@@ -5,21 +5,21 @@ use crate::browser::{
 
 type Session = super::super::super::super::BrowserSession;
 
-pub(super) async fn fetch(
+pub(in crate::browser::session::native) async fn fetch(
     _session: &Session,
     request: FetchRequest,
 ) -> Result<BrowserOutput, BrowserError> {
     super::send(&request.method, &request.url, request.headers, request.body).await
 }
 
-pub(super) async fn xhr(
+pub(in crate::browser::session::native) async fn xhr(
     _session: &Session,
     request: XhrRequest,
 ) -> Result<BrowserOutput, BrowserError> {
     super::send(&request.method, &request.url, request.headers, request.body).await
 }
 
-pub(super) async fn axios(
+pub(in crate::browser::session::native) async fn axios(
     _session: &Session,
     request: AxiosRequest,
 ) -> Result<BrowserOutput, BrowserError> {

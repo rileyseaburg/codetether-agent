@@ -4,7 +4,7 @@ use crate::browser::{
 };
 use tetherscript::browser_agent::Locator;
 
-pub(super) async fn fill(
+pub(in crate::browser::session::native) async fn fill(
     session: &super::super::super::BrowserSession,
     request: FillRequest,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -15,7 +15,7 @@ pub(super) async fn fill(
     .await
 }
 
-pub(super) async fn click_text(
+pub(in crate::browser::session::native) async fn click_text(
     session: &super::super::super::BrowserSession,
     request: ClickTextRequest,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -27,7 +27,7 @@ pub(super) async fn click_text(
     super::page::with(session, |page| page.click(&locator).map(|_| ())).await
 }
 
-pub(super) async fn toggle(
+pub(in crate::browser::session::native) async fn toggle(
     session: &super::super::super::BrowserSession,
     request: ToggleRequest,
 ) -> Result<BrowserOutput, BrowserError> {

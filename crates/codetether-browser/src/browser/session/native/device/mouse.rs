@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, request::PointerClick};
 
-pub(super) async fn mouse_click(
+pub(in crate::browser::session::native) async fn mouse_click(
     session: &super::super::super::BrowserSession,
     request: PointerClick,
 ) -> Result<BrowserOutput, BrowserError> {

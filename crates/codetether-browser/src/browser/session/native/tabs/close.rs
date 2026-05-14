@@ -1,6 +1,6 @@
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::CloseTabRequest};
 
-pub(super) async fn close(
+pub(in crate::browser::session::native) async fn close(
     session: &super::super::super::BrowserSession,
     request: CloseTabRequest,
 ) -> Result<BrowserOutput, BrowserError> {

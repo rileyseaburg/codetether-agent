@@ -1,7 +1,7 @@
 use crate::browser::{BrowserError, BrowserOutput, output::Ack, request::NewTabRequest};
 use tetherscript::browser_agent::BrowserPage;
 
-pub(super) async fn new(
+pub(in crate::browser::session::native) async fn new(
     session: &super::super::super::BrowserSession,
     request: NewTabRequest,
 ) -> Result<BrowserOutput, BrowserError> {
