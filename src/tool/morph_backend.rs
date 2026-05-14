@@ -139,7 +139,7 @@ async fn apply_with_direct_openrouter(prompt: &str, base_url: &str) -> Result<St
         }]
     });
 
-    let client = reqwest::Client::new();
+    let client = crate::provider::shared_http::shared_client();
     let resp = client
         .post(format!("{base_url}/chat/completions"))
         .header("Authorization", format!("Bearer {api_key}"))
