@@ -5,6 +5,7 @@ edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "Recursive Language Model processing for CodeTether"
 license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
 
 [dependencies]
 anyhow = "1"

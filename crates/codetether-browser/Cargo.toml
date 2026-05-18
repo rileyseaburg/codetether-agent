@@ -5,6 +5,7 @@ edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "Browser automation runtime for CodeTether"
 license = "MIT"
+repository = "https://github.com/rileyseaburg/codetether-agent"
 
 [features]
 default = []

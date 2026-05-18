@@ -203,19 +203,56 @@ echo "==> Release notes written to RELEASE_NOTES.md"
 echo ""
 echo "===> Publishing to crates.io..."
 
-# Dry-run first to catch issues before attempting the real publish
-if ! cargo publish --dry-run -p codetether-agent 2>&1; then
-    echo "Error: cargo publish --dry-run failed. Aborting publish."
-    echo "Fix the errors above and re-run, or set CARGO_REGISTRY_TOKEN."
-    echo "Continuing with Jenkins release..."
-else
-    if ! cargo publish -p codetether-agent 2>&1; then
-        echo "Warning: cargo publish failed for codetether-agent."
+publish_crate() {
+    local crate="$1"
+    local wait_for_index="${2:-false}"
+
+    if ! cargo publish --dry-run -p "$crate" 2>&1; then
+        echo "Error: cargo publish --dry-run failed for $crate. Aborting publish."
+        echo "Fix the errors above and re-run, or set CARGO_REGISTRY_TOKEN."
+        return 1
+    fi
+
+    if ! cargo publish -p "$crate" 2>&1; then
+        if cargo search "$crate" --limit 1 | grep -q "^$crate ="; then
+            echo "==> $crate already exists on crates.io; continuing."
+            return 0
+        fi
+
+        echo "Warning: cargo publish failed for $crate and it was not found on crates.io."
         echo "The crate may already exist at this version, or the API token is missing."
         echo "Set CARGO_REGISTRY_TOKEN or run: cargo login <token>"
-    else
-        echo "==> Published codetether-agent v${new_version} to crates.io"
+        return 1
     fi
+
+    echo "==> Published $crate to crates.io"
+
+    if [ "$wait_for_index" = "true" ]; then
+        wait_for_crate_index "$crate"
+    fi
+}
+
+wait_for_crate_index() {
+    local crate="$1"
+
+    echo "==> Waiting for $crate to appear in crates.io index..."
+    for _ in {1..30}; do
+        if cargo search "$crate" --limit 1 | grep -q "^$crate ="; then
+            echo "==> $crate is visible in crates.io index"
+            return 0
+        fi
+        sleep 10
+    done
+
+    echo "Warning: $crate did not appear in crates.io index yet."
+    echo "Retry the release publish step after crates.io finishes indexing."
+    return 1
+}
+
+if ! publish_crate codetether-browser true || \
+   ! publish_crate codetether-rlm true || \
+   ! publish_crate codetether-agent false; then
+    echo "Continuing with Jenkins release..."
 fi
 
 echo "==> Jenkins will build and create the GitHub release automatically."

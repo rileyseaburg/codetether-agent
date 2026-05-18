@@ -76,8 +76,8 @@ functiongemma = []
 
 [dependencies]
 # Workspace crates
-codetether-browser = { path = "crates/codetether-browser" }
-codetether-rlm = { path = "crates/codetether-rlm" }
+codetether-browser = { path = "crates/codetether-browser", version = "0.1.0" }
+codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.0" }
 
 # Async runtime
 unicode-width = "0.2"
