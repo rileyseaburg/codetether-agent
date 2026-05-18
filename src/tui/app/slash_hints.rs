@@ -8,7 +8,7 @@ pub const SLASH_HINTS: &[(&str, &str)] = &[
     ("/add ", "Easy mode: create a teammate"),
     ("/talk ", "Easy mode: message or focus a teammate"),
     ("/list", "Easy mode: list teammates"),
-    ("/remove ", "Easy mode: remove a teammate"),
+    ("/remove", "Undo last turn; with a name, remove a teammate"),
     ("/home", "Easy mode: return to main chat"),
     ("/help", "Open help"),
     ("/spawn ", "Create a named sub-agent"),
