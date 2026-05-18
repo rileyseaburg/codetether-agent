@@ -2,6 +2,10 @@ use crate::session::list_all_sessions_for_directory;
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
+mod new_session;
+
+pub use new_session::create as create_new_session;
+
 pub async fn refresh_sessions(app: &mut App, cwd: &std::path::Path) {
     tracing::info!(cwd = %cwd.display(), "refresh_sessions: starting");
     match list_all_sessions_for_directory(cwd).await {
