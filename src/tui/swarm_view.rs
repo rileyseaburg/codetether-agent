@@ -249,12 +249,12 @@ impl SwarmViewState {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
                     task.current_tool = Some(detail.tool_name.clone());
                     task.steps += 1;
-                    task.tool_call_history.push(detail);
+                    crate::tui::agent_detail_update::push(&mut task.tool_call_history, detail);
                 }
             }
             SwarmEvent::AgentMessage { subtask_id, entry } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
-                    task.messages.push(entry);
+                    crate::tui::agent_detail_update::push(&mut task.messages, entry);
                 }
             }
             SwarmEvent::AgentComplete {
@@ -274,7 +274,7 @@ impl SwarmViewState {
             }
             SwarmEvent::AgentOutput { subtask_id, output } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
-                    task.output = Some(output);
+                    crate::tui::agent_detail_update::output(&mut task.output, &output, "swarm output");
                 }
             }
             SwarmEvent::AgentError { subtask_id, error } => {

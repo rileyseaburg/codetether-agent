@@ -3,10 +3,6 @@ name: CodeTether Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  issues:
-    types: [assigned, labeled]
-  issue_comment:
-    types: [created]
   pull_request_review_comment:
     types: [created]
 
@@ -23,18 +19,11 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # PRs: always run
-    # Issues: when assigned or labeled 'codetether'
-    # Issue comments: when @mentioning the bot
+    # PRs: always run.
+    # Issue and issue-comment automation is handled by the GitHub App webhook
+    # and persistent harvester workers, not this legacy GitHub Actions path.
     if: >
       github.event_name == 'pull_request' ||
-      (github.event_name == 'issues' && (
-        github.event.action == 'assigned' ||
-        contains(github.event.issue.labels.*.name, 'codetether')
-      )) ||
-      (github.event_name == 'issue_comment' && (
-        contains(github.event.comment.body, '@codetether')
-      )) ||
       (github.event_name == 'pull_request_review_comment' && (
         contains(github.event.comment.body, '@codetether')
       ))
@@ -45,17 +34,10 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           COMMENT_BODY: ${{ github.event.comment.body || '' }}
-          ISSUE_PR_URL: ${{ github.event.issue.pull_request.url || '' }}
         run: |
           mode="server"
           body="$(printf '%s' "${COMMENT_BODY}" | tr '\n' ' ' | tr '[:upper:]' '[:lower:]')"
-          is_pr_comment="false"
-          if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
-            is_pr_comment="true"
-          elif [ "$EVENT_NAME" = "issue_comment" ] && [ -n "$ISSUE_PR_URL" ]; then
-            is_pr_comment="true"
-          fi
-          if [ "$is_pr_comment" = "true" ] && printf '%s' "$body" | grep -Eq '(@codetether([^[:alnum:]_-]|$).*(fix|apply|address|implement|patch))|((fix|apply|address|implement|patch).+@codetether([^[:alnum:]_-]|$))'; then
+          if [ "$EVENT_NAME" = "pull_request_review_comment" ] && printf '%s' "$body" | grep -Eq '(@codetether([^[:alnum:]_-]|$).*(fix|apply|address|implement|patch))|((fix|apply|address|implement|patch).+@codetether([^[:alnum:]_-]|$))'; then
             mode="local"
           fi
           echo "mode=${mode}" >> "$GITHUB_OUTPUT"
@@ -64,7 +46,7 @@ jobs:
         shell: bash
         env:
           REPO_DIR: ${{ github.workspace }}/repo
-          CHECKOUT_REF: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_review_comment') && github.event.pull_request.head.sha || (github.event_name == 'issue_comment' && github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number)) || github.sha }}
+          CHECKOUT_REF: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_review_comment') && github.event.pull_request.head.sha || github.sha }}
           RAW_GITHUB_TOKEN: ${{ github.token }}
         run: |
           rm -rf "${REPO_DIR}"

@@ -2,8 +2,8 @@
 
 use crate::util::truncate_bytes_safe;
 
-const TOOL_OUTPUT_RETAINED_BYTES: usize = 64 * 1024;
-const TOOL_ARGUMENTS_RETAINED_BYTES: usize = 16 * 1024;
+const TOOL_OUTPUT_RETAINED_BYTES: usize = 8 * 1024;
+const TOOL_ARGUMENTS_RETAINED_BYTES: usize = 4 * 1024;
 
 /// Bound tool output retained in the TUI message list.
 pub fn tool_output(output: &str) -> String {

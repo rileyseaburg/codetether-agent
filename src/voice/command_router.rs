@@ -15,7 +15,11 @@ pub fn route_command(cmd: &VoiceCommand) -> String {
             format!("fix issue #{}", issue)
         }
         VoiceIntent::ReviewPr => {
-            let pr = cmd.parameters.first().map(|s| s.as_str()).unwrap_or("latest");
+            let pr = cmd
+                .parameters
+                .first()
+                .map(|s| s.as_str())
+                .unwrap_or("latest");
             format!("review PR {}", pr)
         }
         VoiceIntent::Status => "current status".to_string(),

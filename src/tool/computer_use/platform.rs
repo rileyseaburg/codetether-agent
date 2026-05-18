@@ -1,6 +1,9 @@
 //! Platform-specific computer use implementations.
 
-use crate::tool::computer_use::{input::ComputerUseInput, response};
+use crate::tool::computer_use::input::ComputerUseInput;
+
+#[cfg(not(target_os = "windows"))]
+use crate::tool::computer_use::response;
 
 #[cfg(target_os = "windows")]
 mod windows;

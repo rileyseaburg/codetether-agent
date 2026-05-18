@@ -10,12 +10,16 @@ pub fn estimate_message_tokens(message: &Message) -> usize {
     for part in &message.content {
         tokens += match part {
             ContentPart::Text { text } => estimate_tokens(text),
-            ContentPart::ToolCall { id, name, arguments, .. } => {
-                estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10
-            }
-            ContentPart::ToolResult { tool_call_id, content } => {
-                estimate_tokens(tool_call_id) + estimate_tokens(content) + 6
-            }
+            ContentPart::ToolCall {
+                id,
+                name,
+                arguments,
+                ..
+            } => estimate_tokens(id) + estimate_tokens(name) + estimate_tokens(arguments) + 10,
+            ContentPart::ToolResult {
+                tool_call_id,
+                content,
+            } => estimate_tokens(tool_call_id) + estimate_tokens(content) + 6,
             ContentPart::Image { .. } | ContentPart::File { .. } => 2000,
             ContentPart::Thinking { text } => estimate_tokens(text),
         };

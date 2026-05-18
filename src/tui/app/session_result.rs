@@ -23,10 +23,9 @@ pub async fn apply(
         Err(err) => {
             crate::tui::app::worker_bridge::handle_processing_stopped(app, worker_bridge).await;
             super::bus_reply::emit(app, "failed", Some(err.to_string()));
-            app.state.messages.push(ChatMessage::new(
-                MessageType::Error,
-                err.to_string(),
-            ));
+            app.state
+                .messages
+                .push(ChatMessage::new(MessageType::Error, err.to_string()));
             app.state.status = "Request failed".to_string();
             app.state.scroll_to_bottom();
         }

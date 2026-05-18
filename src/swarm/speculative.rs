@@ -33,7 +33,11 @@ impl SpeculativeRunner {
         let mut specs = Vec::with_capacity(self.branch_count);
         for i in 0..self.branch_count {
             let fallback = STRATEGY_PROMPTS[i % STRATEGY_PROMPTS.len()];
-            let strategy = self.strategies.get(i).map(String::as_str).unwrap_or(fallback);
+            let strategy = self
+                .strategies
+                .get(i)
+                .map(String::as_str)
+                .unwrap_or(fallback);
             specs.push(BranchSpec {
                 branch_name: format!("speculative-{}", i),
                 strategy_prompt: strategy.to_string(),

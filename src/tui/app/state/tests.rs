@@ -101,7 +101,10 @@ fn tool_preview_scroll_auto_follow_and_clamp() {
     // Scrolling down past max re-enables auto-follow sentinel.
     state.tool_preview_scroll = 3;
     state.scroll_tool_preview_down(10);
-    assert_eq!(state.tool_preview_scroll, super::scroll::TOOL_PREVIEW_FOLLOW);
+    assert_eq!(
+        state.tool_preview_scroll,
+        super::scroll::TOOL_PREVIEW_FOLLOW
+    );
     // Scrolling up cancels auto-follow, starts from current max_scroll.
     state.scroll_tool_preview_up(2);
     assert_eq!(state.tool_preview_scroll, 2);

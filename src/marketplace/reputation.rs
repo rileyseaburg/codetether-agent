@@ -18,8 +18,8 @@ impl ReputationRecord {
         if self.tasks_completed + self.tasks_failed == 0 {
             return 0.5;
         }
-        let success_rate = self.tasks_completed as f32
-            / (self.tasks_completed + self.tasks_failed) as f32;
+        let success_rate =
+            self.tasks_completed as f32 / (self.tasks_completed + self.tasks_failed) as f32;
         (success_rate * 0.6 + self.avg_quality_score * 0.4).clamp(0.0, 1.0)
     }
 }

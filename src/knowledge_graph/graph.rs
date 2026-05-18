@@ -62,6 +62,9 @@ impl KnowledgeGraph {
     }
 
     pub fn symbols_in_file(&self, path: &str) -> Vec<&CodeNode> {
-        self.nodes.values().filter(|n| n.file_path == path).collect()
+        self.nodes
+            .values()
+            .filter(|n| n.file_path == path)
+            .collect()
     }
 }

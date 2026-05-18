@@ -21,6 +21,7 @@
 pub mod agent_profile;
 #[path = "latency/chat.rs"]
 pub mod chat_latency;
+pub mod context_health;
 pub mod default_impl;
 pub mod git_state;
 pub mod history;
@@ -122,6 +123,10 @@ pub struct AppState {
     pub selected_model_index: usize,
     pub model_picker_active: bool,
     pub model_filter: String,
+    pub model_refresh_in_flight: bool,
+    pub model_refresh_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<model_picker::ModelRefreshEvent>>,
+    pub model_picker_target_model: Option<String>,
     pub streaming_text: String,
     pub processing_started_at: Option<Instant>,
     pub current_request_first_token_ms: Option<u64>,
@@ -138,6 +143,7 @@ pub struct AppState {
     pub context_used: Option<usize>,
     /// Usable token budget paired with [`AppState::context_used`].
     pub context_budget: Option<usize>,
+    pub context_health: context_health::ContextHealthState,
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,

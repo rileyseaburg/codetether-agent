@@ -28,7 +28,11 @@ pub fn push_throughput_span(spans: &mut Vec<Span<'static>>, app: &App) {
         return;
     }
     spans.push(Span::raw(" | "));
-    let color = if tps < 10.0 { Color::Yellow } else { Color::Cyan };
+    let color = if tps < 10.0 {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
     spans.push(Span::styled(
         format!("⚡{:.0} tok/s", tps),
         Style::default().fg(color),
@@ -54,5 +58,8 @@ pub fn push_context_budget_span(spans: &mut Vec<Span<'static>>, app: &App) {
         Color::Green
     };
     spans.push(Span::raw(" | "));
-    spans.push(Span::styled(format!("ctx:{pct}%"), Style::default().fg(color)));
+    spans.push(Span::styled(
+        format!("ctx:{pct}%"),
+        Style::default().fg(color),
+    ));
 }

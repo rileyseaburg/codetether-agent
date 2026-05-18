@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
 # Copy source, vendor directory, proto files, policies, and examples
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY src ./src
+COPY crates ./crates
 COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies

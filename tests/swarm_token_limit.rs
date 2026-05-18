@@ -7,12 +7,11 @@
 
 use codetether_agent::provider::{ContentPart, Message, Role};
 use codetether_agent::swarm::token_exhaustion::{
-    extract_evidence, RecoveryAdvice, TokenExhaustionReport,
+    RecoveryAdvice, TokenExhaustionReport, extract_evidence,
 };
 use codetether_agent::swarm::token_truncate::{
-    estimate_message_tokens, estimate_tokens, estimate_total_tokens,
+    DEFAULT_CONTEXT_LIMIT, estimate_message_tokens, estimate_tokens, estimate_total_tokens,
     truncate_large_tool_results, truncate_messages_to_fit, truncate_single_result,
-    DEFAULT_CONTEXT_LIMIT,
 };
 
 // ---------------------------------------------------------------------------
@@ -270,10 +269,12 @@ fn recovery_advice_resumable_when_steps_completed() {
     };
     let advice = RecoveryAdvice::from_report(&report);
     assert!(advice.can_resume);
-    assert!(advice
-        .suggested_splits
-        .iter()
-        .any(|s| s.contains("src/main.rs")));
+    assert!(
+        advice
+            .suggested_splits
+            .iter()
+            .any(|s| s.contains("src/main.rs"))
+    );
 }
 
 #[test]

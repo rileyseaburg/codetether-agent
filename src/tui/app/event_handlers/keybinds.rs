@@ -22,6 +22,7 @@ use tokio::sync::mpsc;
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::{input, navigation as nav, state::App, symbols};
+use crate::tui::models::ViewMode;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 use super::mode_keys::handle_char_or_mode_key;
@@ -56,6 +57,9 @@ pub(super) async fn handle_unmodified_key(
         KeyCode::Char('?') if app.state.view_mode != crate::tui::models::ViewMode::Chat => {
             nav::toggle_help(app)
         }
+        KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            crate::tui::app::model_picker::open_model_picker(app, session, registry.as_ref()).await;
+        }
         KeyCode::Up => nav::handle_up(app, key.modifiers),
         KeyCode::Down => nav::handle_down(app, key.modifiers),
         KeyCode::PageUp => nav::handle_page_up(app),
@@ -87,7 +91,7 @@ pub(super) async fn handle_unmodified_key(
             // inject pasted characters more slowly than Linux terminals.
             // Convert it to an in-buffer newline so the whole paste
             // becomes a single chat message instead of N messages.
-            if app.state.view_mode == crate::tui::models::ViewMode::Chat
+            if app.state.view_mode == ViewMode::Chat
                 && app
                     .state
                     .last_key_at

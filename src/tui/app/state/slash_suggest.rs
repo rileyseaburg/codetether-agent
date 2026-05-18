@@ -27,7 +27,10 @@ impl super::AppState {
                 .collect();
         }
         if matches.is_empty() && query == "/" {
-            matches = super::slash_commands::SLASH_COMMANDS.iter().copied().collect();
+            matches = super::slash_commands::SLASH_COMMANDS
+                .iter()
+                .copied()
+                .collect();
         }
         self.slash_suggestions = matches.into_iter().map(String::from).collect();
         if self.selected_slash_suggestion >= self.slash_suggestions.len() {

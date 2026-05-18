@@ -32,6 +32,8 @@ const READ_ONLY_TOOL_IDS: &[&str] = &[
     "lsp",
     "webfetch",
     "websearch",
+    "context_budget",
+    "context_browse",
 ];
 
 /// Returns `true` if `tool_id` identifies a known read-only tool that is

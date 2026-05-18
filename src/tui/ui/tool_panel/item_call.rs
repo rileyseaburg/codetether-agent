@@ -41,9 +41,7 @@ pub(super) fn render_tool_call(
         "replace_string_in_file" | "edit_file" => {
             push_edit_diff(body_lines, arguments, preview_width)
         }
-        "create_file" | "write_file" => {
-            push_create_preview(body_lines, arguments, preview_width)
-        }
+        "create_file" | "write_file" => push_create_preview(body_lines, arguments, preview_width),
         _ => {}
     }
 }

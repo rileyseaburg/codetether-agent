@@ -1,23 +1,10 @@
 //! JSON schema helpers for the agent tool.
 //!
-//! This module keeps the schema payload out of the tool implementation file so
-//! the public tool wrapper stays within the repo's file-size limits.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! let schema = agent_tool_parameters();
-//! ```
+//! Keeps the schema payload out of the tool implementation file.
 
 use serde_json::{Value, json};
 
 /// Returns the JSON schema for the sub-agent management tool.
-///
-/// # Examples
-///
-/// ```ignore
-/// let schema = agent_tool_parameters();
-/// ```
 pub(super) fn agent_tool_parameters() -> Value {
     json!({
         "type": "object",
@@ -26,7 +13,8 @@ pub(super) fn agent_tool_parameters() -> Value {
             "name": { "type": "string", "description": "Agent name" },
             "instructions": { "type": "string", "description": "System instructions (spawn)" },
             "message": { "type": "string", "description": "Message to send" },
-            "model": { "type": "string", "description": "Model (spawn). Must be free/subscription-eligible." }
+            "model": { "type": "string", "description": "Model (spawn). Must be free/subscription-eligible." },
+            "ephemeral": { "type": "boolean", "description": "Spawn without durable session persistence; returns an explicit warning." }
         },
         "required": ["action"]
     })

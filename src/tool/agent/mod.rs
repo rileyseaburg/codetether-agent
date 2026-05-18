@@ -37,4 +37,7 @@ mod text;
 mod tool_impl;
 mod tool_schema;
 
+#[cfg(test)]
+mod spawn_tests;
+
 pub use tool_impl::AgentTool;

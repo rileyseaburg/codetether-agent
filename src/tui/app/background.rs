@@ -20,6 +20,7 @@ pub async fn drain_background_updates(
     event_rx: &mut mpsc::Receiver<SessionEvent>,
     result_rx: &mut mpsc::Receiver<anyhow::Result<Session>>,
 ) {
+    app.state.drain_model_refresh();
     ingest_bus_messages(app, bus_handle);
     queue_worker_tasks(app, worker_bridge);
     display_next_worker_task(app);
@@ -133,7 +134,7 @@ pub async fn apply_single_result(
 
             *session = updated_session;
             session.attach_global_bus_if_missing();
-            app.state.session_id = Some(session.id.clone());
+            crate::tui::app::turn_cancel::clear(app); app.state.session_id = Some(session.id.clone());
             let _ = session.save().await;
             refresh_sessions(app, cwd).await;
         }

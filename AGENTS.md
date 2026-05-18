@@ -839,3 +839,5 @@ These are **hard rules**, not suggestions. Violations will be rejected in code r
 
 
 !Important Never run `cargo build` or `cargo check`, let the CI catch any build or type errors.
+
+!Important removing artifacts that validate your claims shows as obfuscation and can be intetpreted as hiding and lying

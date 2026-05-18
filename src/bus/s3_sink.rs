@@ -36,10 +36,10 @@ use crate::secrets;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use minio::s3::builders::ObjectContent;
+use minio::s3::client::{MinioClient, MinioClientBuilder};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use minio::s3::types::S3Api;
-use minio::s3::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -815,7 +815,7 @@ impl BusS3Sink {
         let static_provider = StaticProvider::new(&config.access_key, &config.secret_key, None);
 
         let client = MinioClientBuilder::new(base_url)
-            .provider(Some(Box::new(static_provider)))
+            .provider(Some(static_provider))
             .ignore_cert_check(Some(config.ignore_cert))
             .build()?;
 
@@ -838,13 +838,13 @@ impl BusS3Sink {
 
     /// Ensure the bucket exists, creating it if necessary
     pub async fn ensure_bucket(&self) -> Result<()> {
-        match self.client.bucket_exists(&self.config.bucket).send().await {
-            Ok(resp) if resp.exists => {
+        match self.client.bucket_exists(&self.config.bucket)?.build().send().await {
+            Ok(resp) if resp.exists() => {
                 debug!(bucket = %self.config.bucket, "S3 bucket exists");
             }
             Ok(_) => {
                 info!(bucket = %self.config.bucket, "Creating S3 bucket");
-                match self.client.create_bucket(&self.config.bucket).send().await {
+                match self.client.create_bucket(&self.config.bucket)?.build().send().await {
                     Ok(_) => {}
                     Err(e) => {
                         let err_text = e.to_string();
@@ -965,12 +965,7 @@ impl BusS3Sink {
 
         let content = ObjectContent::from(jsonl.into_bytes());
 
-        match self
-            .client
-            .put_object_content(&self.config.bucket, &s3_key, content)
-            .send()
-            .await
-        {
+        match self.client.put_object_content(&self.config.bucket, &s3_key, content)?.build().send().await {
             Ok(_) => {
                 info!(
                     bucket = %self.config.bucket,

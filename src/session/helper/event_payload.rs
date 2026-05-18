@@ -2,8 +2,8 @@
 
 use crate::util::truncate_bytes_safe;
 
-const TOOL_OUTPUT_EVENT_MAX_BYTES: usize = 64 * 1024;
-const TOOL_ARGUMENTS_EVENT_MAX_BYTES: usize = 16 * 1024;
+const TOOL_OUTPUT_EVENT_MAX_BYTES: usize = 8 * 1024;
+const TOOL_ARGUMENTS_EVENT_MAX_BYTES: usize = 4 * 1024;
 const TRUNCATED_OUTPUT_MARKER: &str =
     "\n\n[truncated for live TUI event; full output remains in session history]";
 const TRUNCATED_ARGUMENTS_MARKER: &str = "\n\n[truncated for live TUI event: tool arguments]";

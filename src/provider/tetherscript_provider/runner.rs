@@ -35,18 +35,9 @@ impl TetherScriptProvider {
     }
 
     pub(crate) fn make_plugin(&self) -> Result<tetherscript::plugin::LoadedPlugin> {
-        use tetherscript::plugin::{PluginHost, TetherScriptAuthority};
-        use tetherscript::provider_cap::ProviderAuthority;
-        let mut h = PluginHost::new();
-        h.grant("tetherscript", TetherScriptAuthority::new());
-        let pa = ProviderAuthority::new(&self.base_url);
-        let pa = ProviderAuthority::with_bound_header(
-            pa,
-            "Authorization",
-            &format!("Bearer {}", self.api_key),
-        );
-        h.grant("provider", pa);
-        h.load_source("p.tether", &self.source).context("load")
+        super::authority::host(&self.base_url, &self.api_key)
+            .load_source("p.tether", &self.source)
+            .context("load")
     }
 
     pub(crate) fn name_str(&self) -> &str {

@@ -47,7 +47,7 @@ fn session_messages_to_chat_messages(session: &Session) -> Vec<ChatMessage> {
     let mut chat_messages = Vec::new();
     let mut tool_call_names = HashMap::new();
 
-    for message in session.history() {
+    for message in crate::tui::app::message_window::recent(session) {
         if is_hidden_context_marker(message) {
             continue;
         }

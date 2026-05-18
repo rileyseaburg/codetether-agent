@@ -24,7 +24,10 @@ fn enqueue_agent_message(app: &mut App, envelope: &BusEnvelope) {
     let message = text_parts(parts);
     if !message.trim().is_empty() {
         app.state.enqueue_worker_task(IncomingTask {
-            task_id: envelope.correlation_id.clone().unwrap_or_else(|| envelope.id.clone()),
+            task_id: envelope
+                .correlation_id
+                .clone()
+                .unwrap_or_else(|| envelope.id.clone()),
             message,
             from_agent: Some(from.clone()),
         });

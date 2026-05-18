@@ -21,11 +21,14 @@ pub struct PluginEntry {
 /// Search the plugin registry by name or capability.
 pub fn search_plugins<'a>(query: &str, plugins: &'a [PluginEntry]) -> Vec<&'a PluginEntry> {
     let lower = query.to_lowercase();
-    plugins.iter()
+    plugins
+        .iter()
         .filter(|p| {
             p.name.to_lowercase().contains(&lower)
-            || p.description.to_lowercase().contains(&lower)
-            || p.capabilities.iter().any(|c| c.to_lowercase().contains(&lower))
+                || p.description.to_lowercase().contains(&lower)
+                || p.capabilities
+                    .iter()
+                    .any(|c| c.to_lowercase().contains(&lower))
         })
         .collect()
 }

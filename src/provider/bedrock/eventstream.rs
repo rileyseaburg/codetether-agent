@@ -96,10 +96,14 @@ impl FrameBuffer {
             return Ok(None);
         }
         let total_len = u32::from_be_bytes(
-            self.buf[0..4].try_into().map_err(|_| anyhow!("short read"))?
+            self.buf[0..4]
+                .try_into()
+                .map_err(|_| anyhow!("short read"))?,
         ) as usize;
         let headers_len = u32::from_be_bytes(
-            self.buf[4..8].try_into().map_err(|_| anyhow!("short read"))?
+            self.buf[4..8]
+                .try_into()
+                .map_err(|_| anyhow!("short read"))?,
         ) as usize;
 
         if total_len < 16 || headers_len + 16 > total_len {

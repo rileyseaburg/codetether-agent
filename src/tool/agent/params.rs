@@ -35,6 +35,8 @@ pub(super) struct Params {
     pub message: Option<String>,
     #[serde(default)]
     pub model: Option<String>,
+    #[serde(default)]
+    pub ephemeral: bool,
     #[serde(default, rename = "__ct_current_model")]
     pub _current_model: Option<String>,
     #[serde(default, rename = "__ct_parent_workspace")]

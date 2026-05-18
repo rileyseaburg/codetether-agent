@@ -6,6 +6,9 @@ pub mod bus_ingest;
 pub mod bus_reply;
 pub mod codex_sessions;
 pub mod commands;
+pub mod context_status;
+#[cfg(test)]
+mod context_status_tests;
 #[path = "event_handlers/mod.rs"]
 pub mod event_handlers;
 #[path = "event_loop/mod.rs"]
@@ -18,7 +21,7 @@ pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
 pub mod mcp;
-pub mod message_text;
+pub mod message_text; pub mod message_window;
 pub mod model_picker;
 pub mod navigation;
 pub mod okr_gate;
@@ -44,7 +47,6 @@ pub mod terminal_state;
 #[cfg(test)]
 mod test_modules;
 pub mod text;
-pub(crate) mod turn_undo_registration;
-pub mod watchdog;
+pub mod turn_cancel; pub(crate) mod turn_undo_registration; pub mod watchdog;
 pub mod worker_bridge;
 pub mod worker_tasks;

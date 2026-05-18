@@ -40,6 +40,7 @@ impl TetherScriptPluginInput {
     }
 
     /// Whether browser capability should be granted to the plugin.
+    #[cfg(test)]
     pub fn wants_browser(&self) -> bool {
         self.grant_browser
             .as_deref()

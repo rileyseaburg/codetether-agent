@@ -5,10 +5,12 @@
 //! `CODETETHER_DISABLE_ENV_FALLBACK=1` is set.
 
 use anyhow::{Context, Result};
+use parking_lot::RwLock as ClientRwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
+use vaultrs::error::ClientError;
 use vaultrs::kv2;
 
 /// Path in Vault where provider secrets are stored
@@ -18,20 +20,30 @@ const DEFAULT_SECRETS_PATH: &str = "secret/data/codetether/providers";
 /// Vault-based secrets manager
 #[derive(Clone)]
 pub struct SecretsManager {
-    client: Option<Arc<VaultClient>>,
+    client: Arc<ClientRwLock<Option<Arc<VaultClient>>>>,
     /// Cache of loaded API keys (provider_id -> api_key)
     pub cache: Arc<RwLock<HashMap<String, String>>>,
     mount: String,
     path: String,
+    k8s_auth: Option<Arc<KubernetesAuthConfig>>,
+}
+
+#[derive(Clone, Debug)]
+struct KubernetesAuthConfig {
+    address: String,
+    role: String,
+    auth_mount: String,
+    jwt_path: String,
 }
 
 impl Default for SecretsManager {
     fn default() -> Self {
         Self {
-            client: None,
+            client: Arc::new(ClientRwLock::new(None)),
             cache: Arc::new(RwLock::new(HashMap::new())),
             mount: "secret".to_string(),
             path: "codetether/providers".to_string(),
+            k8s_auth: None,
         }
     }
 }
@@ -48,13 +60,14 @@ impl SecretsManager {
         let client = VaultClient::new(settings).context("Failed to create Vault client")?;
 
         Ok(Self {
-            client: Some(Arc::new(client)),
+            client: Arc::new(ClientRwLock::new(Some(Arc::new(client)))),
             cache: Arc::new(RwLock::new(HashMap::new())),
             mount: config.mount.clone().unwrap_or_else(|| "secret".to_string()),
             path: config
                 .path
                 .clone()
                 .unwrap_or_else(|| "codetether/providers".to_string()),
+            k8s_auth: None,
         })
     }
 
@@ -74,12 +87,31 @@ impl SecretsManager {
         let jwt_path = std::env::var("VAULT_K8S_SA_JWT_PATH")
             .unwrap_or_else(|_| "/var/run/secrets/kubernetes.io/serviceaccount/token".to_string());
 
-        let jwt = tokio::fs::read_to_string(&jwt_path)
+        let auth = KubernetesAuthConfig {
+            address: address.to_string(),
+            role: role.to_string(),
+            auth_mount: mount.to_string(),
+            jwt_path,
+        };
+
+        let client = Self::login_with_kubernetes(&auth).await?;
+
+        Ok(Self {
+            client: Arc::new(ClientRwLock::new(Some(client))),
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            mount: kv_mount.unwrap_or("secret").to_string(),
+            path: kv_path.unwrap_or("codetether/providers").to_string(),
+            k8s_auth: Some(Arc::new(auth)),
+        })
+    }
+
+    async fn login_with_kubernetes(auth: &KubernetesAuthConfig) -> Result<Arc<VaultClient>> {
+        let jwt = tokio::fs::read_to_string(&auth.jwt_path)
             .await
             .with_context(|| {
                 format!(
                     "Failed to read Kubernetes service account token from {}",
-                    jwt_path
+                    auth.jwt_path
                 )
             })?;
         let jwt = jwt.trim().to_string();
@@ -87,31 +119,27 @@ impl SecretsManager {
         // Bootstrap client with an empty token — only used for the one-shot
         // auth call; the real authenticated client is built from the result.
         let bootstrap_settings = VaultClientSettingsBuilder::default()
-            .address(address)
+            .address(&auth.address)
             .token("")
             .build()
             .context("Failed to build bootstrap Vault client settings")?;
         let bootstrap_client = VaultClient::new(bootstrap_settings)
             .context("Failed to create bootstrap Vault client")?;
 
-        let auth_info = vaultrs::auth::kubernetes::login(&bootstrap_client, mount, role, &jwt)
-            .await
-            .context("Vault Kubernetes auth login failed")?;
+        let auth_info =
+            vaultrs::auth::kubernetes::login(&bootstrap_client, &auth.auth_mount, &auth.role, &jwt)
+                .await
+                .context("Vault Kubernetes auth login failed")?;
 
         let settings = VaultClientSettingsBuilder::default()
-            .address(address)
+            .address(&auth.address)
             .token(&auth_info.client_token)
             .build()
             .context("Failed to build authenticated Vault client settings")?;
         let client =
             VaultClient::new(settings).context("Failed to create authenticated Vault client")?;
 
-        Ok(Self {
-            client: Some(Arc::new(client)),
-            cache: Arc::new(RwLock::new(HashMap::new())),
-            mount: kv_mount.unwrap_or("secret").to_string(),
-            path: kv_path.unwrap_or("codetether/providers").to_string(),
-        })
+        Ok(Arc::new(client))
     }
 
     /// Try to create from environment (for initial bootstrap only).
@@ -175,7 +203,44 @@ impl SecretsManager {
 
     /// Check if Vault is configured and connected
     pub fn is_connected(&self) -> bool {
-        self.client.is_some()
+        self.client.read().is_some()
+    }
+
+    fn client(&self) -> Option<Arc<VaultClient>> {
+        self.client.read().clone()
+    }
+
+    async fn refresh_kubernetes_auth(&self) -> Result<Option<Arc<VaultClient>>> {
+        let Some(auth) = self.k8s_auth.as_deref() else {
+            return Ok(self.client());
+        };
+
+        tracing::warn!("Vault token was rejected; refreshing Kubernetes auth token");
+        let client = Self::login_with_kubernetes(auth).await?;
+        {
+            let mut current = self.client.write();
+            *current = Some(client.clone());
+        }
+        self.clear_cache().await;
+        tracing::info!(
+            role = %auth.role,
+            mount = %auth.auth_mount,
+            "Refreshed Vault Kubernetes auth token"
+        );
+        Ok(Some(client))
+    }
+
+    fn should_refresh_vault_token(err: &ClientError) -> bool {
+        match err {
+            ClientError::APIError { code, errors } => {
+                *code == 403
+                    || errors.iter().any(|msg| {
+                        let msg = msg.to_ascii_lowercase();
+                        msg.contains("invalid token") || msg.contains("permission denied")
+                    })
+            }
+            _ => false,
+        }
     }
 
     /// Get an API key for a provider from Vault
@@ -189,14 +254,23 @@ impl SecretsManager {
         }
 
         // Fetch from Vault
-        let client = match &self.client {
+        let client = match self.client() {
             Some(c) => c,
             None => return Ok(None),
         };
 
         let secret_path = format!("{}/{}", self.path, provider_id);
 
-        match kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await {
+        let mut result =
+            kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
+            if let Some(client) = self.refresh_kubernetes_auth().await? {
+                result =
+                    kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+            }
+        }
+
+        match result {
             Ok(secret) => {
                 // Cache the result
                 if let Some(ref api_key) = secret.api_key {
@@ -215,14 +289,23 @@ impl SecretsManager {
 
     /// Get all secrets for a provider
     pub async fn get_provider_secrets(&self, provider_id: &str) -> Result<Option<ProviderSecrets>> {
-        let client = match &self.client {
+        let client = match self.client() {
             Some(c) => c,
             None => return Ok(None),
         };
 
         let secret_path = format!("{}/{}", self.path, provider_id);
 
-        match kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await {
+        let mut result =
+            kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
+            if let Some(client) = self.refresh_kubernetes_auth().await? {
+                result =
+                    kv2::read::<ProviderSecrets>(client.as_ref(), &self.mount, &secret_path).await;
+            }
+        }
+
+        match result {
             Ok(secret) => Ok(Some(secret)),
             Err(vaultrs::error::ClientError::APIError { code: 404, .. }) => Ok(None),
             Err(e) => {
@@ -238,15 +321,19 @@ impl SecretsManager {
         provider_id: &str,
         secrets: &ProviderSecrets,
     ) -> Result<()> {
-        let client = match &self.client {
+        let client = match self.client() {
             Some(c) => c,
             None => anyhow::bail!("Vault client not configured"),
         };
 
         let secret_path = format!("{}/{}", self.path, provider_id);
-        kv2::set(client.as_ref(), &self.mount, &secret_path, secrets)
-            .await
-            .with_context(|| format!("Failed to write provider secrets for {}", provider_id))?;
+        let mut result = kv2::set(client.as_ref(), &self.mount, &secret_path, secrets).await;
+        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
+            if let Some(client) = self.refresh_kubernetes_auth().await? {
+                result = kv2::set(client.as_ref(), &self.mount, &secret_path, secrets).await;
+            }
+        }
+        result.with_context(|| format!("Failed to write provider secrets for {}", provider_id))?;
 
         // Update cache with latest API key value
         let mut cache = self.cache.write().await;
@@ -266,12 +353,19 @@ impl SecretsManager {
 
     /// List all providers that have secrets configured
     pub async fn list_configured_providers(&self) -> Result<Vec<String>> {
-        let client = match &self.client {
+        let client = match self.client() {
             Some(c) => c,
             None => return Ok(Vec::new()),
         };
 
-        match kv2::list(client.as_ref(), &self.mount, &self.path).await {
+        let mut result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
+        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
+            if let Some(client) = self.refresh_kubernetes_auth().await? {
+                result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
+            }
+        }
+
+        match result {
             Ok(keys) => Ok(keys),
             Err(vaultrs::error::ClientError::APIError { code: 404, .. }) => Ok(Vec::new()),
             Err(e) => {
