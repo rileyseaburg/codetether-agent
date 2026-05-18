@@ -318,7 +318,7 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
         },
     };
 
-    let undo_count = crate::tui::app::turn_undo_mods::turn_undo::truncate_last_turns(
+    let undo_count = crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns(
         &mut session.messages,
         &mut session.pages,
         &mut app.state.messages,

@@ -1,5 +1,5 @@
 use crate::provider::Message;
-use crate::tui::app::turn_undo_mods::turn_undo::is_user_message;
+use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::is_user_message;
 use crate::tui::chat::message::{ChatMessage, MessageType};
 
 pub(crate) fn count_session_users(messages: &[Message]) -> usize {

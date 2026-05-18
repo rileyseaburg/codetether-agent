@@ -44,6 +44,7 @@ pub mod terminal_state;
 #[cfg(test)]
 mod test_modules;
 pub mod text;
-pub(crate) mod turn_undo_mods; pub mod watchdog;
+pub(crate) mod turn_undo_registration;
+pub mod watchdog;
 pub mod worker_bridge;
 pub mod worker_tasks;

@@ -1,7 +1,7 @@
 use crate::provider::{Message, Role};
 use crate::session::pages::PageKind;
-use crate::tui::app::turn_undo_mods::turn_undo_count::{count_session_users, count_ui_users};
-use crate::tui::app::turn_undo_mods::turn_undo_index::{session_cut, ui_cut};
+use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo_count::{count_session_users, count_ui_users};
+use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo_index::{session_cut, ui_cut};
 use crate::tui::chat::message::ChatMessage;
 
 pub(crate) fn truncate_last_turns(
@@ -22,7 +22,7 @@ pub(crate) fn truncate_last_turns(
 fn undo_count(messages: &[Message], ui_messages: &[ChatMessage], requested: usize) -> usize {
     let session_count = count_session_users(messages);
     let ui_count = count_ui_users(ui_messages);
-    requested.min(session_count).max(requested.min(ui_count))
+    requested.min(session_count.min(ui_count))
 }
 
 fn truncate_session(messages: &mut Vec<Message>, pages: &mut Vec<PageKind>, count: usize) {

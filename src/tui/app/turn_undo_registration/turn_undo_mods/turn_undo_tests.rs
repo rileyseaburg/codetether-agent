@@ -2,7 +2,7 @@
 mod tests {
     use crate::provider::{ContentPart, Message, Role};
     use crate::session::pages::PageKind;
-    use crate::tui::app::turn_undo_mods::turn_undo::truncate_last_turns;
+    use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns;
     use crate::tui::chat::message::{ChatMessage, MessageType};
 
     fn msg(role: Role, text: &str) -> Message {
