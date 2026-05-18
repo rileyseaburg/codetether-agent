@@ -3,7 +3,7 @@ members = [".", "crates/codetether-browser", "crates/codetether-rlm"]
 
 [package]
 name = "codetether-agent"
-version = "4.7.0-a-002.1"
+version = "4.7.0-a-002.2"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
