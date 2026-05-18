@@ -8,7 +8,7 @@ mod state;
 
 pub async fn create(app: &mut App, cwd: &Path, session: &mut Session) {
     let mut new_session = match Session::new().await {
-        Ok(session) => session,
+        Ok(created) => created,
         Err(err) => return persist::fail_create(app, err),
     };
     if let Err(error) = session.save().await {

@@ -7,10 +7,8 @@ pub(super) fn copy_preferences(app: &App, session: &Session, new_session: &mut S
     new_session.metadata.allow_network = app.state.allow_network;
     new_session.metadata.slash_autocomplete = app.state.slash_autocomplete;
     new_session.metadata.use_worktree = app.state.use_worktree;
-    new_session
-        .metadata
-        .model
-        .clone_from(&session.metadata.model);
+    let model = &session.metadata.model;
+    new_session.metadata.model.clone_from(model);
 }
 
 pub(super) fn reset_chat_state(app: &mut App, session: &Session) {
