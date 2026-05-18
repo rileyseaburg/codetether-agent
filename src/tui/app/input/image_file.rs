@@ -4,7 +4,8 @@ use crate::session::ImageAttachment;
 
 pub(crate) fn attach(path: &Path) -> Result<ImageAttachment, String> {
     ensure_regular_file(path)?;
-    let bytes = std::fs::read(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+    let bytes =
+        std::fs::read(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
     let mime_type = super::image_mime::guess(path).ok_or_else(|| unsupported(path))?;
     tracing::info!(path = %path.display(), mime = %mime_type, size_bytes = bytes.len(), "Attached image file");
     Ok(ImageAttachment {

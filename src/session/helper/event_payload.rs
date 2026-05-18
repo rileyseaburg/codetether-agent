@@ -24,7 +24,8 @@ fn bounded(input: &str, max_bytes: usize, marker: &str) -> String {
     if input.len() <= max_bytes {
         return input.to_string();
     }
-    let mut bounded = truncate_bytes_safe(input, max_bytes).to_string();
+    let content_bytes = max_bytes.saturating_sub(marker.len());
+    let mut bounded = truncate_bytes_safe(input, content_bytes).to_string();
     bounded.push_str(marker);
     bounded
 }

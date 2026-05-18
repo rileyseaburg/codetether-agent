@@ -2,7 +2,9 @@
 
 use crate::config::RlmConfig;
 
-use super::{RLM_MODEL_ENV, RlmModelChoice, RlmModelPurpose, RlmModelSource, configured::configured};
+use super::{
+    RLM_MODEL_ENV, RlmModelChoice, RlmModelPurpose, RlmModelSource, configured::configured,
+};
 
 /// Select the model for an RLM call surface.
 pub fn select_rlm_model(

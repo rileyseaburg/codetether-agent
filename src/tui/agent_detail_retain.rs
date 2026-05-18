@@ -1,7 +1,7 @@
 //! Retention helpers for live agent detail panes.
 
 use crate::tui::retained_payload::{
-    bounded, push_capped, AGENT_OUTPUT_MAX_BYTES, DETAIL_HISTORY_MAX_ITEMS,
+    AGENT_OUTPUT_MAX_BYTES, DETAIL_HISTORY_MAX_ITEMS, bounded, push_capped,
 };
 
 pub fn push<T>(items: &mut Vec<T>, item: T) {

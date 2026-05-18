@@ -37,5 +37,9 @@ fn classify_outcome(o: &LoopOutcome) -> RlmOutcome {
     if o.last_error.is_some() {
         return RlmOutcome::Failed;
     }
-    if o.final_answer.is_some() { RlmOutcome::Converged } else { RlmOutcome::Exhausted }
+    if o.final_answer.is_some() {
+        RlmOutcome::Converged
+    } else {
+        RlmOutcome::Exhausted
+    }
 }

@@ -19,10 +19,10 @@ fn bounded(input: &str, max_bytes: usize, label: &str) -> String {
     if input.len() <= max_bytes {
         return input.to_string();
     }
-    let mut bounded = truncate_bytes_safe(input, max_bytes).to_string();
-    bounded.push_str("\n\n[truncated in TUI retained message: ");
-    bounded.push_str(label);
-    bounded.push(']');
+    let marker = format!("\n\n[truncated in TUI retained message: {label}]");
+    let content_bytes = max_bytes.saturating_sub(marker.len());
+    let mut bounded = truncate_bytes_safe(input, content_bytes).to_string();
+    bounded.push_str(&marker);
     bounded
 }
 

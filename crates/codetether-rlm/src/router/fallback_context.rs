@@ -4,16 +4,34 @@
 pub fn session_context_fallback(output: &str, input_tokens: usize) -> String {
     let lines: Vec<&str> = output.lines().collect();
     let files = collect_file_lines(&lines);
-    let tools: Vec<&str> = lines.iter().filter(|l| l.contains("[Tool ")).take(10).copied().collect();
+    let tools: Vec<&str> = lines
+        .iter()
+        .filter(|l| l.contains("[Tool "))
+        .take(10)
+        .copied()
+        .collect();
     let errs: Vec<&str> = lines
         .iter()
         .filter(|l| l.to_lowercase().contains("error") || l.to_lowercase().contains("failed"))
         .take(5)
         .copied()
         .collect();
-    let head: String = lines.iter().take(30).copied().collect::<Vec<_>>().join("\n");
-    let tail: String = lines.iter().rev().take(80).collect::<Vec<_>>()
-        .into_iter().rev().copied().collect::<Vec<_>>().join("\n");
+    let head: String = lines
+        .iter()
+        .take(30)
+        .copied()
+        .collect::<Vec<_>>()
+        .join("\n");
+    let tail: String = lines
+        .iter()
+        .rev()
+        .take(80)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .copied()
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let mut p = vec![
         "## Context Summary (Fallback Mode)".into(),
@@ -38,14 +56,26 @@ pub fn session_context_fallback(output: &str, input_tokens: usize) -> String {
 }
 
 fn collect_file_lines<'a>(lines: &'a [&'a str]) -> Vec<&'a str> {
-    lines.iter().filter_map(|l| {
+    lines
+        .iter()
+        .filter_map(|l| {
             (l.contains(".ts") || l.contains(".rs") || l.contains(".py") || l.contains(".json"))
                 .then_some(*l)
         })
-        .take(15).collect()
+        .take(15)
+        .collect()
 }
 
 fn append_sections(parts: &mut Vec<String>, head: &str, tail: &str) {
-    parts.extend_from_slice(&["### Initial Request".into(), "```".into(), head.into(), "```".into(),
-        String::new(), "### Recent Activity".into(), "```".into(), tail.into(), "```".into()]);
+    parts.extend_from_slice(&[
+        "### Initial Request".into(),
+        "```".into(),
+        head.into(),
+        "```".into(),
+        String::new(),
+        "### Recent Activity".into(),
+        "```".into(),
+        tail.into(),
+        "```".into(),
+    ]);
 }

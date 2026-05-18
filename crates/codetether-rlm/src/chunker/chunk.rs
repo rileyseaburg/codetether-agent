@@ -44,8 +44,20 @@ fn flush_chunk(
     let content = lines.join("\n");
     let tokens = estimate_tokens(&content);
     if tokens > opts.max_chunk_tokens {
-        out.extend(split_large_chunk(lines, start, ctype, opts.max_chunk_tokens));
+        out.extend(split_large_chunk(
+            lines,
+            start,
+            ctype,
+            opts.max_chunk_tokens,
+        ));
     } else {
-        out.push(Chunk { content, chunk_type: ctype, start_line: start, end_line: end.saturating_sub(1), tokens, priority: 3 });
+        out.push(Chunk {
+            content,
+            chunk_type: ctype,
+            start_line: start,
+            end_line: end.saturating_sub(1),
+            tokens,
+            priority: 3,
+        });
     }
 }

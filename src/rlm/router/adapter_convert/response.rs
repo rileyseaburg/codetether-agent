@@ -29,7 +29,12 @@ fn tool_calls(resp: &CompletionResponse) -> Vec<ToolCall> {
         .content
         .iter()
         .filter_map(|p| match p {
-            ContentPart::ToolCall { id, name, arguments, .. } => Some(ToolCall {
+            ContentPart::ToolCall {
+                id,
+                name,
+                arguments,
+                ..
+            } => Some(ToolCall {
                 id: id.clone(),
                 name: name.clone(),
                 arguments: serde_json::from_str(arguments).unwrap_or_default(),

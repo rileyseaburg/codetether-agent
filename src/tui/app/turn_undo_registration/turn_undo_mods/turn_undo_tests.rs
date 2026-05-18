@@ -21,8 +21,14 @@ mod tests {
         let mut messages = vec![msg(Role::User, "u1"), msg(Role::Assistant, "a1")];
         messages.extend([msg(Role::User, "u2"), msg(Role::Assistant, "a2")]);
         let mut pages = vec![PageKind::Conversation; messages.len()];
-        let mut ui = vec![chat(MessageType::User, "u1"), chat(MessageType::Assistant, "a1")];
-        ui.extend([chat(MessageType::User, "u2"), chat(MessageType::Assistant, "a2")]);
+        let mut ui = vec![
+            chat(MessageType::User, "u1"),
+            chat(MessageType::Assistant, "a1"),
+        ];
+        ui.extend([
+            chat(MessageType::User, "u2"),
+            chat(MessageType::Assistant, "a2"),
+        ]);
         let count = truncate_last_turns(&mut messages, &mut pages, &mut ui, 1);
         assert_eq!(count, 1);
         assert_eq!(messages.len(), 2);

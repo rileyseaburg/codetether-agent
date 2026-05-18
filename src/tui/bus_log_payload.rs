@@ -1,6 +1,6 @@
 //! Compact bus payloads before retaining them in TUI state.
 
-use crate::tui::retained_payload::{bounded, TOOL_DETAIL_MAX_BYTES};
+use crate::tui::retained_payload::{TOOL_DETAIL_MAX_BYTES, bounded};
 
 pub fn detail(input: &str, label: &str) -> String {
     bounded(input, TOOL_DETAIL_MAX_BYTES, label)

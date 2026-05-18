@@ -68,7 +68,11 @@ impl OracleTraceStorage {
                 None
             }
         };
-        Self { spool_dir, max_spool_bytes: max, remote }
+        Self {
+            spool_dir,
+            max_spool_bytes: max,
+            remote,
+        }
     }
 
     /// Construct with injected dependencies for testing.
@@ -78,6 +82,10 @@ impl OracleTraceStorage {
         max_spool_bytes: u64,
         remote: Option<Arc<dyn OracleRemote>>,
     ) -> Self {
-        Self { spool_dir, max_spool_bytes, remote }
+        Self {
+            spool_dir,
+            max_spool_bytes,
+            remote,
+        }
     }
 }

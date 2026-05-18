@@ -4,7 +4,6 @@ use std::path::Path;
 
 use crate::session::ImageAttachment;
 
-
 pub(crate) fn attach_image_file(path: &Path) -> Result<ImageAttachment, String> {
     super::image_file::attach(path)
 }

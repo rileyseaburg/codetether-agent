@@ -14,7 +14,9 @@ mod tests {
             role: Role::User,
             content: vec![ContentPart::Text { text: "u".into() }],
         });
-        app.state.messages.push(ChatMessage::new(MessageType::User, "u"));
+        app.state
+            .messages
+            .push(ChatMessage::new(MessageType::User, "u"));
         handle_slash_command(&mut app, ".".as_ref(), &mut session, None, "/remove").await;
         assert!(session.messages.is_empty());
     }

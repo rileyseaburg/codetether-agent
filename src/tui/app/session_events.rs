@@ -5,9 +5,9 @@ mod errors;
 mod flow;
 mod lifecycle;
 mod pipeline;
+mod retention;
 mod text;
 mod text_dispatch;
-mod retention;
 mod tools;
 mod usage;
 

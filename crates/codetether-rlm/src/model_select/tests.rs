@@ -27,7 +27,9 @@ fn subcall_config_wins_for_subcalls() {
         ..Default::default()
     };
     let choice =
-        select_rlm_model_with_env(&cfg, RlmModelPurpose::Subcall, "foreground/m", None, |_| None);
+        select_rlm_model_with_env(&cfg, RlmModelPurpose::Subcall, "foreground/m", None, |_| {
+            None
+        });
     assert_eq!(choice.model, "sub/m");
     assert_eq!(choice.source, RlmModelSource::SubcallConfig);
 }
@@ -35,10 +37,13 @@ fn subcall_config_wins_for_subcalls() {
 #[test]
 fn foreground_model_is_default() {
     let cfg = RlmConfig::default();
-    let choice =
-        select_rlm_model_with_env(&cfg, RlmModelPurpose::Background, "foreground/m", None, |_| {
-            Some(2.0)
-        });
+    let choice = select_rlm_model_with_env(
+        &cfg,
+        RlmModelPurpose::Background,
+        "foreground/m",
+        None,
+        |_| Some(2.0),
+    );
     assert_eq!(choice.model, "foreground/m");
     assert_eq!(choice.source, RlmModelSource::Caller);
 }
