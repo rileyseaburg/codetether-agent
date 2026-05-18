@@ -330,38 +330,17 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
         },
     };
 
-    // Collect indices of every User message in order; the Nth-from-the-end
-    // is our cut point (truncate to it → drop that user message and
-    // everything after).
-    let session_user_idxs: Vec<usize> = session
-        .messages
-        .iter()
-        .enumerate()
-        .filter_map(|(i, m)| (m.role == crate::provider::Role::User).then_some(i))
-        .collect();
-    let tui_user_idxs: Vec<usize> = app
-        .state
-        .messages
-        .iter()
-        .enumerate()
-        .filter_map(|(i, m)| matches!(m.message_type, MessageType::User).then_some(i))
-        .collect();
-
-    if session_user_idxs.is_empty() || tui_user_idxs.is_empty() {
+    let undo_count = crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns(
+        &mut session.messages,
+        &mut session.pages,
+        &mut app.state.messages,
+        n,
+    );
+    if undo_count == 0 {
         push_system_message(app, "Nothing to undo.");
         return;
     }
 
-    let available = session_user_idxs.len().min(tui_user_idxs.len());
-    let undo_count = n.min(available);
-
-    // Index of the (available - undo_count)'th user message = first user turn to drop.
-    let s_cut = session_user_idxs[available - undo_count];
-    let t_cut = tui_user_idxs[available - undo_count];
-
-    session.messages.truncate(s_cut);
-    session.pages.truncate(s_cut);
-    app.state.messages.truncate(t_cut);
     session.updated_at = chrono::Utc::now();
     app.state.streaming_text.clear();
     app.state.scroll_to_bottom();

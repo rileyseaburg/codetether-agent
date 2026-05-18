@@ -35,7 +35,7 @@ pub fn usage_hint(cmd: &str) -> Option<&'static str> {
         "/model" => Some("/model <name>  — switch LLM model"),
         "/focus" => Some("/focus <agent>  — switch to agent's chat"),
         "/ls" | "/list" => Some("/ls  — list spawned agents"),
-        "/rm" | "/remove" => Some("/rm <name>  — remove an agent"),
+        "/rm" | "/remove" => Some("/rm [agent]  — undo turn, or remove agent"),
         _ => None,
     }
 }
