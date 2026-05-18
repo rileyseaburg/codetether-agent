@@ -24,15 +24,18 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 /// push_user_messages(&mut app, "hello", &[]);
 /// ```
 pub(crate) fn push_user_messages(app: &mut App, prompt: &str, images: &[ImageAttachment]) {
-    app.state
-        .messages
-        .push(ChatMessage::new(MessageType::User, prompt.to_string()));
+    if !prompt.is_empty() {
+        app.state
+            .messages
+            .push(ChatMessage::new(MessageType::User, prompt.to_string()));
+    }
     for image in images {
+        let summary = super::image::image_summary(image);
         app.state.messages.push(ChatMessage::new(
             MessageType::Image {
                 url: image.data_url.clone(),
             },
-            image.data_url.clone(),
+            summary,
         ));
     }
 }
