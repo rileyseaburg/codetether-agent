@@ -92,7 +92,7 @@ pub async fn collect_stream_completion_with_events(
 
     while let Some(chunk) = stream.next().await {
         match chunk {
-            StreamChunk::Text(delta) => {
+            StreamChunk::Thinking(delta) | StreamChunk::Text(delta) => {
                 if delta.is_empty() {
                     continue;
                 }

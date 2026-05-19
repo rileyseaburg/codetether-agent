@@ -31,7 +31,10 @@ pub(super) fn collect_calls(m: &Message) -> Vec<Value> {
         .iter()
         .filter_map(|p| match p {
             ContentPart::ToolCall {
-                id, name, arguments, ..
+                id,
+                name,
+                arguments,
+                ..
             } => Some(json!({
                 "id": id,
                 "type": "function",
