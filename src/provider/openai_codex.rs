@@ -1648,13 +1648,15 @@ impl OpenAiCodexProvider {
         }
 
         let mut text = String::new();
+        let mut thinking = String::new();
         let mut tools = Vec::<ToolAccumulator>::new();
         let mut tool_index_by_id = HashMap::<String, usize>::new();
         let mut usage = Usage::default();
 
         while let Some(chunk) = stream.next().await {
             match chunk {
-                StreamChunk::Text(delta) | StreamChunk::Thinking(delta) => text.push_str(&delta),
+                StreamChunk::Text(delta) => text.push_str(&delta),
+                StreamChunk::Thinking(delta) => thinking.push_str(&delta),
                 StreamChunk::ToolCallStart { id, name } => {
                     let next_idx = tools.len();
                     let idx = *tool_index_by_id.entry(id.clone()).or_insert(next_idx);
@@ -1684,7 +1686,7 @@ impl OpenAiCodexProvider {
                         });
                     }
                 }
-                StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
+                StreamChunk::ToolCallEnd { .. } => {}
                 StreamChunk::Done { usage: done_usage } => {
                     if let Some(done_usage) = done_usage {
                         usage = done_usage;
@@ -1695,6 +1697,9 @@ impl OpenAiCodexProvider {
         }
 
         let mut content = Vec::new();
+        if !thinking.is_empty() {
+            content.push(ContentPart::Thinking { text: thinking });
+        }
         if !text.is_empty() {
             content.push(ContentPart::Text { text });
         }
