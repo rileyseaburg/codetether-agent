@@ -118,6 +118,12 @@ impl Tool for SwarmExecuteTool {
                     "type": "integer",
                     "description": "Timeout per sub-agent in seconds (default: 300)",
                     "default": 300
+                },
+                "collapse_cancellation_mode": {
+                    "type": "string",
+                    "enum": ["automatic", "advisory", "disabled"],
+                    "description": "Whether collapse-controller cancellation is automatic, audit-only advisory, or disabled",
+                    "default": "automatic"
                 }
             },
             "required": ["tasks"]
@@ -338,19 +344,23 @@ Share any intermediate results using the swarm_share tool so other agents can be
                 )
                 .await?;
 
-                let success = matches!(exit, crate::swarm::executor::AgentLoopExit::Completed)
-                    || matches!(exit, crate::swarm::executor::AgentLoopExit::MaxStepsReached);
+                let success = matches!(
+                    exit,
+                    crate::swarm::executor::AgentLoopExit::Completed
+                );
+
+                let error_msg = if success {
+                    None
+                } else {
+                    Some(format!("{exit:?}"))
+                };
 
                 Ok::<TaskResult, anyhow::Error>(TaskResult {
                     task_id,
                     task_name: task_input.name,
                     success,
                     output,
-                    error: if success {
-                        None
-                    } else {
-                        Some(format!("{:?}", exit))
-                    },
+                    error: error_msg,
                     steps,
                     tool_calls,
                 })
@@ -372,33 +382,34 @@ Share any intermediate results using the swarm_share tool so other agents can be
                         // Handle aggregation strategies
                         match aggregation_strategy.as_str() {
                             "all" => {
-                                // Return immediately on first failure
-                                return Ok(ToolResult::success(
-                                    json!({
-                                        "status": "failed",
-                                        "failed_task": result.task_name,
-                                        "error": result.error,
-                                        "results": [result],
-                                        "summary": {
-                                            "total": 1,
-                                            "success": 0,
-                                            "failures": 1
-                                        }
-                                    })
-                                    .to_string(),
-                                ));
+                                let msg = json!({
+                                    "status": "failed",
+                                    "failed_task": result.task_name,
+                                    "error": result.error,
+                                    "results": [result],
+                                    "summary": {
+                                        "total": 1,
+                                        "success": 0,
+                                        "failures": 1
+                                    }
+                                });
+                                return Ok(ToolResult::error(msg.to_string())
+                                    .with_metadata("aggregation", json!("all"))
+                                    .with_metadata("status", json!("failed"))
+                                    .with_metadata("failures", json!(1)));
                             }
                             "first_error" => {
-                                return Ok(ToolResult::success(
-                                    json!({
-                                        "status": "error",
-                                        "error": result.error,
-                                        "failed_task": result.task_name,
-                                        "completed_tasks": results.len(),
-                                        "results": results,
-                                    })
-                                    .to_string(),
-                                ));
+                                let msg = json!({
+                                    "status": "error",
+                                    "error": result.error,
+                                    "failed_task": result.task_name,
+                                    "completed_tasks": results.len(),
+                                    "results": results,
+                                });
+                                return Ok(ToolResult::error(msg.to_string())
+                                    .with_metadata("aggregation", json!("first_error"))
+                                    .with_metadata("status", json!("error"))
+                                    .with_metadata("failures", json!(1)));
                             }
                             _ => {} // "best_effort" - continue collecting
                         }
@@ -462,7 +473,18 @@ Share any intermediate results using the swarm_share tool so other agents can be
             }
         };
 
-        Ok(ToolResult::success(response.to_string()))
+        let tool_result = if failures == 0 {
+            ToolResult::success(response.to_string())
+        } else {
+            ToolResult::error(response.to_string())
+                .with_metadata("aggregation", json!(aggregation_strategy))
+                .with_metadata("status", response["status"].clone())
+                .with_metadata("total", json!(total))
+                .with_metadata("successes", json!(successes))
+                .with_metadata("failures", json!(failures))
+        };
+
+        Ok(tool_result)
     }
 }
 
@@ -487,5 +509,95 @@ impl SwarmExecuteTool {
                 )
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a ToolResult matching the aggregation logic in execute().
+    /// This tests the ToolResult contract without needing providers.
+    fn aggregate(
+        status: &str,
+        strategy: &str,
+        successes: usize,
+        failures: usize,
+        total: usize,
+    ) -> ToolResult {
+        let response = json!({
+            "status": status,
+            "results": [],
+            "summary": { "total": total, "success": successes, "failures": failures }
+        });
+        if failures == 0 {
+            ToolResult::success(response.to_string())
+        } else {
+            ToolResult::error(response.to_string())
+                .with_metadata("aggregation", json!(strategy))
+                .with_metadata("status", json!(status))
+                .with_metadata("total", json!(total))
+                .with_metadata("successes", json!(successes))
+                .with_metadata("failures", json!(failures))
+        }
+    }
+
+    #[test]
+    fn all_success_has_tool_result_success_true() {
+        let r = aggregate("success", "best_effort", 3, 0, 3);
+        assert!(r.success, "all-success must have .success = true");
+        assert!(r.metadata.is_empty());
+    }
+
+    #[test]
+    fn partial_success_has_tool_result_success_false() {
+        let r = aggregate("partial_success", "best_effort", 2, 1, 3);
+        assert!(!r.success, "partial_success must have .success = false");
+        assert_eq!(r.metadata["status"], "partial_success");
+        assert_eq!(r.metadata["successes"], 2);
+        assert_eq!(r.metadata["failures"], 1);
+    }
+
+    #[test]
+    fn partial_failure_all_strategy_is_error() {
+        let r = aggregate("partial_failure", "all", 1, 2, 3);
+        assert!(!r.success, "partial_failure with 'all' must be error");
+        assert_eq!(r.metadata["aggregation"], "all");
+        assert_eq!(r.metadata["total"], 3);
+    }
+
+    #[test]
+    fn error_first_error_strategy_is_error() {
+        let r = aggregate("error", "first_error", 0, 1, 1);
+        assert!(!r.success);
+        assert_eq!(r.metadata["aggregation"], "first_error");
+        assert_eq!(r.metadata["failures"], 1);
+    }
+
+    #[test]
+    fn failed_status_output_is_parseable_json() {
+        let msg = json!({
+            "status": "failed",
+            "failed_task": "task_a",
+            "error": null,
+            "results": [],
+            "summary": { "total": 1, "success": 0, "failures": 1 }
+        });
+        let r = ToolResult::error(msg.to_string())
+            .with_metadata("aggregation", json!("all"))
+            .with_metadata("status", json!("failed"))
+            .with_metadata("failures", json!(1));
+        assert!(!r.success);
+        let parsed: serde_json::Value = serde_json::from_str(&r.output).unwrap();
+        assert_eq!(parsed["status"], "failed");
+    }
+
+    #[test]
+    fn parent_detects_failure_without_parsing_output() {
+        let ok = aggregate("success", "best_effort", 2, 0, 2);
+        assert!(ok.success);
+        let fail = aggregate("partial_success", "best_effort", 1, 1, 2);
+        assert!(!fail.success);
+        // Parent loop only needs: if !result.success { handle_failure() }
     }
 }
