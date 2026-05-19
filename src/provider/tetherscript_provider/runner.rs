@@ -45,7 +45,18 @@ impl TetherScriptProvider {
     }
 
     pub(crate) fn call_list_models(&self) -> Result<Vec<ModelInfo>> {
-        self.call_sync("list_models")
-            .and_then(|v| serde_json::from_value(v).map_err(Into::into))
+        self.call_sync("list_models").and_then(|v| {
+            let mut v = v;
+            // Inject the provider name into each model entry so TetherScript
+            // plugins don't have to include it (avoids "missing field `provider`").
+            if let Some(arr) = v.as_array_mut() {
+                for entry in arr.iter_mut() {
+                    if entry.is_object() && !entry.get("provider").is_some() {
+                        entry["provider"] = serde_json::Value::String(self.name.clone());
+                    }
+                }
+            }
+            serde_json::from_value(v).map_err(Into::into)
+        })
     }
 }
