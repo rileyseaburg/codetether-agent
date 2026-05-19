@@ -32,3 +32,23 @@ fn read_only_registry_removes_mutating_tools() {
     }
     assert!(registry.contains("read"));
 }
+
+#[test]
+fn misleading_readonly_metadata_cannot_enable_mutating_tools() {
+    let task = crate::swarm::SubTask::new("Edit Code", "Edit the auth module")
+        .with_specialty("Researcher")
+        .with_needs_worktree(false);
+
+    assert!(!task.is_read_only());
+    assert!(task.needs_worktree());
+}
+
+#[test]
+fn honest_readonly_metadata_keeps_readonly_tools() {
+    let task = crate::swarm::SubTask::new("Research", "Find unsafe usages")
+        .with_specialty("Researcher")
+        .with_needs_worktree(false);
+
+    assert!(task.is_read_only());
+    assert!(!task.needs_worktree());
+}
