@@ -206,6 +206,30 @@ impl SecretsManager {
         self.client.read().is_some()
     }
 
+    /// Verify the configured Vault client can reach the backing server.
+    ///
+    /// A missing provider path (404) still proves Vault is reachable; transport,
+    /// authentication, and permission errors are returned to the caller so CLI
+    /// flows can fail before collecting credentials they cannot persist.
+    pub async fn verify_reachable(&self) -> Result<()> {
+        let client = match self.client() {
+            Some(c) => c,
+            None => anyhow::bail!("Vault client not configured"),
+        };
+
+        let mut result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
+        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
+            if let Some(client) = self.refresh_kubernetes_auth().await? {
+                result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
+            }
+        }
+
+        match result {
+            Ok(_) | Err(vaultrs::error::ClientError::APIError { code: 404, .. }) => Ok(()),
+            Err(error) => Err(error).context("Failed to reach configured Vault provider path"),
+        }
+    }
+
     fn client(&self) -> Option<Arc<VaultClient>> {
         self.client.read().clone()
     }
@@ -520,6 +544,14 @@ pub async fn get_provider_secrets(provider_id: &str) -> Option<ProviderSecrets> 
 pub async fn set_provider_secrets(provider_id: &str, secrets: &ProviderSecrets) -> Result<()> {
     match SECRETS_MANAGER.get() {
         Some(manager) => manager.set_provider_secrets(provider_id, secrets).await,
+        None => anyhow::bail!("Secrets manager not initialized"),
+    }
+}
+
+/// Verify the configured Vault backend is reachable (convenience function).
+pub async fn verify_reachable() -> Result<()> {
+    match SECRETS_MANAGER.get() {
+        Some(manager) => manager.verify_reachable().await,
         None => anyhow::bail!("Secrets manager not initialized"),
     }
 }

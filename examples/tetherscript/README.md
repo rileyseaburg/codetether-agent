@@ -113,6 +113,19 @@ For a LAN-hosted LM Studio server, call `chat_at` with the base URL:
 
 This is a TetherScript plugin helper, not a `ProviderRegistry` entry.
 
+## Language features (alpha.16)
+
+Use current TetherScript syntax in plugin hooks: mutable bindings, `for x in
+iterable`, closures, byte strings, and `Result`/`?` propagation.
+
+```json
+{
+  "path": "examples/tetherscript/language_features.tether",
+  "hook": "summarize",
+  "args": ["codetether"]
+}
+```
+
 ## JavaScript evaluation (alpha.8)
 
 Run JavaScript through the built-in zero-dependency interpreter:

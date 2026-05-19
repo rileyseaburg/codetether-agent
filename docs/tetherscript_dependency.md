@@ -4,35 +4,36 @@ CodeTether uses TetherScript's scripting VM for the `tetherscript_plugin` tool,
 the deterministic browser substrate behind `codetether browserctl offline ...`,
 and the native default backend for `browserctl` sessions.
 
-The crate is published on crates.io as `tetherscript`. v0.1.0-alpha.14 keeps
-the browserctl bridge API compatible while adding native browser-agent release
-coverage, CLI browser grants, production debug reports, and stricter package
-metadata. v0.1.0-alpha.12 introduced the deterministic browser substrate used
-by offline browserctl probes.
-
 ## Version
 
-- **Crate**: `tetherscript` v0.1.0-alpha.14
+- **Crate**: `tetherscript` v0.1.0-alpha.16
 - **Source**: <https://crates.io/crates/tetherscript>
-- **Repository**: <https://github.com/tetherscript-Rs/tetherscript>
+- **Repository**: <https://github.com/CodeTether/TetherScript>
 
-## Capabilities available
+## Current language features
 
-| Capability module | Authority type | Purpose |
-|---|---|---|
-| `tetherscript::plugin::TetherScriptAuthority` | Base scripting builtins |
-| `tetherscript::provider_cap::ProviderAuthority` | HTTP provider calls |
-| `tetherscript::browser_cap::BrowserAuthority` | Browser control via native browserctl bridge |
-| `tetherscript::fs_cap::FsAuthority` | Filesystem access |
-| `tetherscript::rpc_cap::RpcAuthority` | RPC calls |
+Alpha.16 includes closures, recursion, lexical scopes, `let mut`, `for x in
+iterable`, runtime `move` ownership checks, `Result` plus `?`, byte strings,
+JSON, HTTP, SMTP, filesystem/process/path/time/hash tools, and browser/JS
+agent primitives.
 
 ## Native browserctl backend
 
 With the `tetherscript` feature enabled, `browserctl start` creates an
-in-process `tetherscript::browser_agent::BrowserPage` session.
-DOM actions, navigation, evaluation, screenshots, tabs, network replay, and
-diagnostics route through TetherScript primitives. The crate no longer depends
-on the old CDP automation stack.
+in-process `tetherscript::browser_agent::BrowserPage` session. DOM actions,
+navigation, evaluation, screenshots, tabs, network replay, diagnostics, cookies,
+CORS checks, redirects, form interaction, and HAR-style evidence route through
+TetherScript primitives instead of the old CDP automation stack.
+
+## Capability modules
+
+| Capability module | Purpose |
+|---|---|
+| `TetherScriptAuthority` | Base scripting builtins |
+| `ProviderAuthority` | HTTP provider calls |
+| `BrowserAuthority` | Browser control via native browserctl bridge |
+| `FsAuthority` | Filesystem access |
+| `RpcAuthority` | RPC calls |
 
 The version is locked in both `Cargo.toml` and `Cargo.lock` to keep builds
 reproducible.

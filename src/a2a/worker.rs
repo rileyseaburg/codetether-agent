@@ -2121,26 +2121,7 @@ async fn handle_clone_repo_task(
                 &repo_path,
                 Some(&serde_json::Value::Object(workspace.agent_config.clone())),
             );
-            run_git_command_at(
-                Some(&repo_path),
-                vec!["fetch".to_string(), "origin".to_string(), branch.clone()],
-            )
-            .await?;
-            run_git_command_at(
-                Some(&repo_path),
-                vec!["checkout".to_string(), branch.clone()],
-            )
-            .await?;
-            run_git_command_at(
-                Some(&repo_path),
-                vec![
-                    "pull".to_string(),
-                    "--ff-only".to_string(),
-                    "origin".to_string(),
-                    branch.clone(),
-                ],
-            )
-            .await?;
+            refresh_existing_clone(&repo_path, &branch).await?;
         } else {
             prepare_clone_target(&repo_path).await?;
 
@@ -2181,6 +2162,77 @@ async fn handle_clone_repo_task(
 
     let _ = tokio::fs::remove_file(&temp_helper_path).await;
     clone_result
+}
+
+async fn refresh_existing_clone(repo_path: &Path, branch: &str) -> Result<()> {
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "fetch".to_string(),
+            "origin".to_string(),
+            branch.to_string(),
+        ],
+    )
+    .await?;
+
+    stash_dirty_clone_state(repo_path).await?;
+
+    let remote_ref = format!("origin/{branch}");
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "checkout".to_string(),
+            "-B".to_string(),
+            branch.to_string(),
+            remote_ref.clone(),
+        ],
+    )
+    .await?;
+    run_git_command_at(
+        Some(repo_path),
+        vec!["reset".to_string(), "--hard".to_string(), remote_ref],
+    )
+    .await?;
+    run_git_command_at(
+        Some(repo_path),
+        vec!["clean".to_string(), "-fd".to_string()],
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn stash_dirty_clone_state(repo_path: &Path) -> Result<()> {
+    let status = run_git_command_at(
+        Some(repo_path),
+        vec!["status".to_string(), "--porcelain".to_string()],
+    )
+    .await?;
+    if status.trim().is_empty() {
+        return Ok(());
+    }
+
+    let message = format!(
+        "codetether auto-save before workspace refresh {}",
+        chrono::Utc::now().to_rfc3339()
+    );
+    tracing::warn!(
+        repo_path = %repo_path.display(),
+        "Existing clone has local changes; stashing them before refreshing from origin"
+    );
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "stash".to_string(),
+            "push".to_string(),
+            "--include-untracked".to_string(),
+            "-m".to_string(),
+            message,
+        ],
+    )
+    .await?;
+
+    Ok(())
 }
 
 async fn register_cloned_workspace(

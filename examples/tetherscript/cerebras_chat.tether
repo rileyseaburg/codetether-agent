@@ -23,7 +23,11 @@ fn model_info(id, name, ctx, tools) {
     let m = map()
     m["id"] = id
     m["name"] = name
+    m["provider"] = "cerebras"
     m["context_window"] = ctx
+    m["max_output_tokens"] = 16384
+    m["supports_vision"] = false
     m["supports_tools"] = tools
+    m["supports_streaming"] = true
     return m
 }
