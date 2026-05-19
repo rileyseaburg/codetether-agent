@@ -3,7 +3,7 @@ use crate::swarm::SubTask;
 use crate::tool::readonly::is_read_only;
 
 pub fn is_read_only_task(task: &SubTask) -> bool {
-    !task.needs_worktree()
+    task.is_read_only()
 }
 
 pub fn definitions(all: &[ToolDefinition], read_only: bool) -> Vec<ToolDefinition> {

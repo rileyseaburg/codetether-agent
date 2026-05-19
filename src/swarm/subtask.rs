@@ -50,17 +50,9 @@ pub struct SubTask {
     /// Stage in the execution plan (0 = can run immediately)
     pub stage: usize,
 
-    /// Explicit override for whether this subtask needs an isolated
-    /// git worktree. `None` (the default) runs [`SubTask::needs_worktree`]
-    /// heuristics on specialty + instruction; `Some(true)` forces a
-    /// worktree; `Some(false)` forces the shared working directory.
-    ///
-    /// Skipping the worktree for read-only tasks (research, review,
-    /// planning, fact-check) saves ~1s of setup, an inode, and
-    /// `.git/worktrees` lock contention when running many agents
-    /// in parallel. Tasks that edit files should keep the default or
-    /// explicitly request a worktree so their edits don't collide with
-    /// sibling agents in the same swarm.
+    /// Model-suggested worktree preference. This is advisory, not
+    /// authoritative: mutating instructions still require isolation even
+    /// when model metadata claims the task is read-only.
     #[serde(default)]
     pub needs_worktree: Option<bool>,
 }
@@ -116,74 +108,25 @@ impl SubTask {
         self
     }
 
-    /// Explicitly set whether this subtask needs a worktree.
-    ///
-    /// `true` forces isolation; `false` forces the shared directory;
-    /// omit this call to fall back to [`SubTask::needs_worktree`]
-    /// heuristics. See the field docs on [`SubTask::needs_worktree`]
-    /// for why this matters in large swarms.
+    /// Record the model-suggested worktree preference. `false` is only
+    /// advisory; mutating instructions still require isolation.
     pub fn with_needs_worktree(mut self, needs: bool) -> Self {
         self.needs_worktree = Some(needs);
         self
     }
 
     /// Decide whether this subtask should run in an isolated worktree.
-    ///
-    /// Honours the explicit override when set; otherwise applies a
-    /// conservative heuristic:
-    ///
-    /// - Specialty keywords like `research`, `review`, `analy`,
-    ///   `audit`, `plan`, `fact`, `summari`, `search`, `explore`,
-    ///   `docs` imply a read-only task → no worktree.
-    /// - Instruction keywords like `write`, `edit`, `create`, `fix`,
-    ///   `implement`, `refactor`, `apply`, `commit` imply file
-    ///   mutation → worktree.
-    /// - Unknown tasks default to `true` (worktree) to stay safe
-    ///   against accidental cross-agent edit collisions.
+    /// Mutating intent always wins over model-provided read-only metadata.
     pub fn needs_worktree(&self) -> bool {
-        if let Some(explicit) = self.needs_worktree {
-            return explicit;
+        match classify_task(&self.instruction, self.specialty.as_deref()) {
+            TaskKind::Mutating => true,
+            TaskKind::ReadOnly => self.needs_worktree.unwrap_or(false),
         }
-        let haystack_specialty = self.specialty.as_deref().unwrap_or("").to_ascii_lowercase();
-        let haystack_instruction = self.instruction.to_ascii_lowercase();
+    }
 
-        const READONLY_HINTS: &[&str] = &[
-            "research",
-            "review",
-            "analy",
-            "audit",
-            "plan",
-            "fact",
-            "summari",
-            "explore",
-            "docs",
-            "read-only",
-            "readonly",
-        ];
-        const MUTATING_HINTS: &[&str] = &[
-            "write",
-            "edit",
-            "create ",
-            "fix",
-            "implement",
-            "refactor",
-            "apply",
-            "commit",
-            "patch",
-            "scaffold",
-            "build",
-        ];
-
-        if READONLY_HINTS
-            .iter()
-            .any(|k| haystack_specialty.contains(k))
-            && !MUTATING_HINTS
-                .iter()
-                .any(|k| haystack_instruction.contains(k))
-        {
-            return false;
-        }
-        true
+    /// Whether this task should receive only read-only tools.
+    pub fn is_read_only(&self) -> bool {
+        !self.needs_worktree()
     }
 
     /// Check if this subtask can run (all dependencies complete)
@@ -205,6 +148,33 @@ impl SubTask {
             SubTaskStatus::Failed
         };
         self.completed_at = Some(Utc::now());
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TaskKind {
+    ReadOnly,
+    Mutating,
+}
+
+fn classify_task(instruction: &str, specialty: Option<&str>) -> TaskKind {
+    let instruction = instruction.to_ascii_lowercase();
+    let mutating = "write edit create fix implement refactor apply commit patch scaffold build delete remove rename move mkdir install deploy";
+    if mutating
+        .split_whitespace()
+        .any(|needle| instruction.contains(needle))
+    {
+        return TaskKind::Mutating;
+    }
+    let specialty = specialty.unwrap_or_default().to_ascii_lowercase();
+    let readonly = "research review analy audit plan fact summari explore docs read-only readonly search investigate";
+    if readonly
+        .split_whitespace()
+        .any(|needle| specialty.contains(needle))
+    {
+        TaskKind::ReadOnly
+    } else {
+        TaskKind::Mutating
     }
 }
 
