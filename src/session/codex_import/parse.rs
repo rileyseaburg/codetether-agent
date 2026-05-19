@@ -93,7 +93,19 @@ pub(crate) fn parse_codex_session_from_path(
         usage,
         agent: "build".to_string(),
         metadata: SessionMetadata {
-            directory: (!meta.cwd.is_empty()).then(|| PathBuf::from(meta.cwd)),
+            directory: (!meta.cwd.is_empty()).then(|| {
+                let raw = PathBuf::from(&meta.cwd);
+                match raw.canonicalize() {
+                    Ok(canon) => canon,
+                    Err(_) => {
+                        tracing::warn!(
+                            path = %meta.cwd,
+                            "Codex import: cwd does not resolve, storing as-is"
+                        );
+                        raw
+                    }
+                }
+            }),
             model,
             provenance: Some(ExecutionProvenance::for_session(&id, "build")),
             ..Default::default()

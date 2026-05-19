@@ -37,6 +37,7 @@ pub fn sync_messages_from_session(app: &mut App, session: &Session) {
     app.state.last_tool_name = None;
     app.state.last_tool_latency_ms = None;
     app.state.last_tool_success = None;
+    app.state.chat_latency.clear();
     app.state.reset_tool_preview_scroll();
     app.state.set_tool_preview_max_scroll(0);
     app.state.scroll_to_bottom();
@@ -46,7 +47,7 @@ fn session_messages_to_chat_messages(session: &Session) -> Vec<ChatMessage> {
     let mut chat_messages = Vec::new();
     let mut tool_call_names = HashMap::new();
 
-    for message in session.history() {
+    for message in crate::tui::app::message_window::recent(session) {
         if is_hidden_context_marker(message) {
             continue;
         }
@@ -98,7 +99,7 @@ fn chat_messages_from_provider_message(
                 chat_messages.push(ChatMessage::new(
                     MessageType::ToolCall {
                         name: name.clone(),
-                        arguments: arguments.clone(),
+                        arguments: crate::tui::chat::payload::tool_arguments(arguments),
                     },
                     format!("{name}: {}", truncate_preview(arguments, 240)),
                 ));
@@ -116,7 +117,7 @@ fn chat_messages_from_provider_message(
                 chat_messages.push(ChatMessage::new(
                     MessageType::ToolResult {
                         name: name.clone(),
-                        output: content.clone(),
+                        output: crate::tui::chat::payload::tool_output(content),
                         success,
                         duration_ms: None,
                     },

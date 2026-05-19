@@ -1684,7 +1684,7 @@ impl OpenAiCodexProvider {
                         });
                     }
                 }
-                StreamChunk::ToolCallEnd { .. } => {}
+                StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
                 StreamChunk::Done { usage: done_usage } => {
                     if let Some(done_usage) = done_usage {
                         usage = done_usage;

@@ -17,7 +17,6 @@ use crate::tui::app::panic_cleanup::install_panic_cleanup_hook;
 use crate::tui::app::resume_window::session_resume_window;
 use crate::tui::app::state::App;
 use crate::tui::app::terminal_state::{TerminalGuard, restore_terminal_state};
-use crate::tui::ui::main::ui;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 /// Outcome of trying to resume the most recent workspace session at startup.
@@ -123,8 +122,7 @@ pub async fn run(
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
 
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
     terminal.clear()?;
 
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -173,7 +171,7 @@ pub async fn run(
     app.state.peer_endpoint_ready = peer_endpoint_ready;
     app.state.session_id = Some(session.id.clone());
     app.state.status = "Loading providers and workspace…".to_string();
-    terminal.draw(|f| ui(f, &mut app, &session))?;
+    crate::tui::app::safe_draw::draw_ui(&mut terminal, &mut app, &session)?;
 
     let registry_task = async {
         init_tui_secrets_manager().await;
@@ -205,6 +203,9 @@ pub async fn run(
     );
 
     let loaded_session = match session_timeout_result {
+        _ if std::env::var_os("CODETETHER_TUI_NEW_SESSION").is_some() => {
+            Err(anyhow::anyhow!("requested fresh session"))
+        }
         Ok(inner) => inner,
         Err(_) => {
             tracing::warn!(
@@ -263,8 +264,8 @@ pub async fn run(
         session.apply_config(&cfg, registry.as_deref());
     }
 
-    let (event_tx, event_rx) = mpsc::channel::<SessionEvent>(256);
-    let (result_tx, result_rx) = mpsc::channel::<anyhow::Result<Session>>(8);
+    let (event_tx, event_rx) = mpsc::channel::<SessionEvent>(64);
+    let (result_tx, result_rx) = mpsc::channel::<anyhow::Result<Session>>(1);
 
     app.state.workspace = workspace_snapshot.unwrap_or_else(|err| {
         tracing::warn!(error = %err, "Workspace snapshot task failed");

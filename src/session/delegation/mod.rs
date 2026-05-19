@@ -14,6 +14,7 @@
 pub mod beta;
 pub mod config;
 pub mod env;
+pub mod lambda;
 pub mod state;
 pub mod state_mut;
 pub mod state_query;

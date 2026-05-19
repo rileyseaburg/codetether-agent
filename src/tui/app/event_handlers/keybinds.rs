@@ -22,6 +22,7 @@ use tokio::sync::mpsc;
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::{input, navigation as nav, state::App, symbols};
+use crate::tui::models::ViewMode;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
 use super::mode_keys::handle_char_or_mode_key;
@@ -52,9 +53,12 @@ pub(super) async fn handle_unmodified_key(
 ) -> anyhow::Result<bool> {
     match key.code {
         KeyCode::Esc => handle_esc(app),
-        KeyCode::Tab if app.state.slash_suggestions_visible() => nav::handle_tab(app),
+        KeyCode::Tab if app.state.slash_suggestions_navigable() => nav::handle_tab(app),
         KeyCode::Char('?') if app.state.view_mode != crate::tui::models::ViewMode::Chat => {
             nav::toggle_help(app)
+        }
+        KeyCode::Char('m') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            crate::tui::app::model_picker::open_model_picker(app, session, registry.as_ref()).await;
         }
         KeyCode::Up => nav::handle_up(app, key.modifiers),
         KeyCode::Down => nav::handle_down(app, key.modifiers),
@@ -80,16 +84,18 @@ pub(super) async fn handle_unmodified_key(
         }
         KeyCode::Enter => {
             // Paste-burst heuristic: if another key arrived in the
-            // last ~20 ms (faster than any human can physically type),
+            // last ~80 ms (faster than any human can physically type),
             // the Enter is almost certainly part of a pasted block on
             // a terminal that swallowed the bracketed-paste markers.
+            // 80 ms accommodates Windows Terminal / PowerShell which
+            // inject pasted characters more slowly than Linux terminals.
             // Convert it to an in-buffer newline so the whole paste
             // becomes a single chat message instead of N messages.
-            if app.state.view_mode == crate::tui::models::ViewMode::Chat
+            if app.state.view_mode == ViewMode::Chat
                 && app
                     .state
                     .last_key_at
-                    .map(|t| t.elapsed() < std::time::Duration::from_millis(20))
+                    .map(|t| t.elapsed() < std::time::Duration::from_millis(80))
                     .unwrap_or(false)
             {
                 app.state.insert_char('\n');

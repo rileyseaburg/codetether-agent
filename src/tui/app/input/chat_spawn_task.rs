@@ -41,16 +41,8 @@ pub(super) async fn run_spawned_task(
         tokio::select! {
             biased;
             _ = cancel.notified() => {
-                tracing::info!("Provider turn interrupted by user steering");
-                // `run_prompt` mutates `session` in place as assistant
-                // tokens/tool calls stream in via SessionEvent, and it's
-                // also what appends the *user* message to `session.messages`
-                // at turn start. Return the live `session` so the partial
-                // turn (including the user prompt that triggered it) is
-                // preserved in history; returning a pre-turn snapshot here
-                // would silently drop the user's message.
                 session.metadata.directory = original_dir_for_cancel;
-                Ok(session.clone())
+                Ok::<(), anyhow::Error>(())
             }
             r = run_prompt(
                 &mut session,
@@ -60,7 +52,8 @@ pub(super) async fn run_spawned_task(
                 registry,
                 original_dir,
             ) => r,
-        }
+        }?;
+        Ok(session)
     })
     .catch_unwind()
     .await;

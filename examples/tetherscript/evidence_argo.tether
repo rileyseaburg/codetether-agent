@@ -1,0 +1,27 @@
+fn argo_status(text) {
+    if text.contains("Healthy") && text.contains("Synced") {
+        return Ok("healthy-synced")
+    }
+
+    if text.contains("Degraded") {
+        return Ok("degraded")
+    }
+
+    if text.contains("OutOfSync") {
+        return Ok("out-of-sync")
+    }
+
+    if text.contains("Failed") || text.contains("Error") {
+        return Ok("failed")
+    }
+
+    return Ok("unknown")
+}
+
+fn pod_succeeded(text) {
+    if text.contains("Succeeded") || text.contains("Completed") {
+        return Ok(true)
+    }
+
+    return Ok(false)
+}

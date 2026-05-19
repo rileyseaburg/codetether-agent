@@ -8,7 +8,7 @@
 //!
 //! 1. Estimate the current request token cost (system + messages + tools).
 //! 2. If it exceeds 90% of the model's usable budget, compress the prefix
-//!    of the conversation via [`RlmRouter::auto_process`], keeping the
+//!    via a ready background RLM summary or deterministic chunker fallback, keeping the
 //!    most recent `keep_last` messages verbatim.
 //! 3. Progressively shrink `keep_last` (16 → 12 → 8 → 6 → 3 → 1) until the budget
 //!    is met or nothing more can be compressed.
@@ -42,8 +42,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::provider::{ContentPart, Message, Role, ToolDefinition};
-use crate::rlm::router::AutoProcessContext;
-use crate::rlm::{RlmChunker, RlmRouter};
+use crate::rlm::RlmChunker;
 
 use super::error::messages_to_rlm_context;
 use super::token::{
@@ -64,135 +63,25 @@ const KEEP_LAST_CANDIDATES: [usize; 6] = [16, 12, 8, 6, 3, 1];
 /// coherent.
 const TRUNCATE_KEEP_LAST: usize = 4;
 
+/// Byte ceilings used by terminal truncation when the retained tail still
+/// exceeds the provider context budget. The cascade preserves generous
+/// head/tail snippets first, then gets progressively stricter.
+const TERMINAL_PAYLOAD_CAPS: [usize; 8] = [
+    262_144, 131_072, 65_536, 32_768, 16_384, 8_192, 4_096, 2_048,
+];
+
+/// Final emergency ceiling if the normal cascade still cannot bring the
+/// prompt under budget. This should only affect pathological single-turn
+/// tool dumps; the newest user instruction is already protected by the
+/// oversized-message compressor before this fallback runs.
+const TERMINAL_EMERGENCY_CAP_BYTES: usize = 1_024;
+
 /// Fraction of the usable budget we target after compression.
 const SAFETY_BUDGET_RATIO: f64 = 0.90;
 
 /// Reserve (in tokens) added on top of `session_completion_max_tokens()` for
 /// tool schemas, protocol framing, and provider-specific wrappers.
 const RESERVE_OVERHEAD_TOKENS: usize = 2048;
-
-/// Fallback chunk-compression target size as a fraction of the ctx window.
-const FALLBACK_CHUNK_RATIO: f64 = 0.25;
-
-/// Default cheap model used for RLM context compression when neither
-/// [`crate::rlm::RlmConfig::root_model`] nor the
-/// `CODETETHER_RLM_MODEL` environment variable is set.
-///
-/// RLM compaction can consume a surprisingly large share of session
-/// cost because it runs on large prefixes of history at every step
-/// past the threshold. Using the caller's main model (often Claude
-/// Opus or GPT-5) for this work quietly multiplies spend. We default
-/// to a cheap general-purpose model instead; users who want higher
-/// fidelity summaries can override via config or env.
-///
-/// # Examples
-///
-/// ```rust
-/// use codetether_agent::session::helper::compression::DEFAULT_RLM_MODEL;
-/// assert!(DEFAULT_RLM_MODEL.contains('/'));
-/// ```
-pub const DEFAULT_RLM_MODEL: &str = "zai/glm-5.1";
-
-/// Resolve the model string that should be used for RLM compaction.
-///
-/// Precedence (highest first):
-///
-/// 1. [`crate::rlm::RlmConfig::root_model`] on the session.
-/// 2. The `CODETETHER_RLM_MODEL` environment variable.
-/// 3. [`DEFAULT_RLM_MODEL`].
-///
-/// Always returns `Some(...)` — the caller's main model is only ever
-/// used as a fallback inside [`compress_messages_keep_last`] when
-/// resolution against the returned string fails at the provider
-/// registry. The `Option` is retained to leave room for a future
-/// "prefer caller's model" policy without a signature break.
-fn resolve_rlm_model(rlm_config: &crate::rlm::RlmConfig) -> Option<String> {
-    if let Some(m) = rlm_config.root_model.as_ref() {
-        return Some(m.clone());
-    }
-    if let Ok(env_model) = std::env::var("CODETETHER_RLM_MODEL")
-        && !env_model.trim().is_empty()
-    {
-        return Some(env_model);
-    }
-    Some(DEFAULT_RLM_MODEL.to_string())
-}
-
-/// Candidate model pool that [`resolve_rlm_model_bandit`] can rank
-/// when the rule-based precedence returns no winner and delegation is
-/// enabled.
-///
-/// Hand-picked per CADMAS-CTX Section 5.9 — a small set of cheap
-/// general-purpose models with stable cost profiles so the LCB scoring
-/// actually has a meaningful dynamic range. Add models here rather
-/// than at call sites so the candidate list stays reviewable.
-const RLM_MODEL_CANDIDATES: &[&str] = &[
-    "zai/glm-5.1",
-    "glm5/glm-5",
-    "openrouter/openai/gpt-oss-120b:free",
-];
-
-/// CADMAS-CTX-aware variant of [`resolve_rlm_model`] (Phase C step 30).
-///
-/// When delegation is enabled on `state`, ranks [`RLM_MODEL_CANDIDATES`]
-/// by the LCB score `μ − γ·√u` under the supplied `bucket` (skill
-/// key: `"rlm_compact"`) and returns the highest-scoring candidate.
-/// When delegation is disabled, this is exactly [`resolve_rlm_model`].
-///
-/// The *update* half of the bandit loop lives at the compaction call
-/// site — a `session.state.update(model, "rlm_compact", bucket,
-/// produced_under_budget)` after each pass. That wiring is deferred
-/// to a follow-up commit to keep this one scoped to the selection
-/// primitive.
-///
-/// # Arguments
-///
-/// * `rlm_config` — Session-level RLM configuration.
-/// * `state` — CADMAS-CTX sidecar. Read-only here.
-/// * `bucket` — Context bucket from the current turn's
-///   [`RelevanceMeta`](crate::session::relevance::RelevanceMeta).
-///
-/// # Returns
-///
-/// Same shape as [`resolve_rlm_model`]: `Some(model)` to target a
-/// dedicated cheap model, or `None` to signal the caller should reuse
-/// its own model.
-pub(crate) fn resolve_rlm_model_bandit(
-    rlm_config: &crate::rlm::RlmConfig,
-    state: &crate::session::delegation::DelegationState,
-    bucket: crate::session::relevance::Bucket,
-) -> Option<String> {
-    if !state.enabled() {
-        return resolve_rlm_model(rlm_config);
-    }
-    // Explicit configuration still wins — the bandit only disambiguates
-    // the otherwise-static fallback list.
-    if let Some(m) = rlm_config.root_model.as_ref() {
-        return Some(m.clone());
-    }
-    if let Ok(env_model) = std::env::var("CODETETHER_RLM_MODEL")
-        && !env_model.trim().is_empty()
-    {
-        return Some(env_model);
-    }
-
-    let mut best: Option<(&str, f64)> = None;
-    for candidate in RLM_MODEL_CANDIDATES {
-        let score = state
-            .score(
-                candidate,
-                crate::session::delegation_skills::RLM_COMPACT,
-                bucket,
-            )
-            .unwrap_or(0.0);
-        match best {
-            Some((_, current)) if current >= score => {}
-            _ => best = Some((candidate, score)),
-        }
-    }
-    best.map(|(m, _)| m.to_string())
-        .or_else(|| Some(DEFAULT_RLM_MODEL.to_string()))
-}
 
 /// Non-buffer inputs for [`compress_messages_keep_last`] and
 /// [`enforce_on_messages`].
@@ -214,15 +103,6 @@ pub(crate) struct CompressContext {
     pub rlm_config: crate::rlm::RlmConfig,
     /// UUID of the owning session, propagated to RLM traces.
     pub session_id: String,
-    /// Optional pre-resolved subcall provider from
-    /// [`SessionMetadata::subcall_provider`](crate::session::types::SessionMetadata).
-    pub subcall_provider: Option<Arc<dyn crate::provider::Provider>>,
-    /// Model name resolved alongside [`Self::subcall_provider`].
-    pub subcall_model: Option<String>,
-    /// CADMAS-CTX routing state used to rank fallback RLM compaction models.
-    pub delegation: crate::session::delegation::DelegationState,
-    /// Context bucket for the current transcript projection.
-    pub bucket: crate::session::relevance::Bucket,
 }
 
 impl CompressContext {
@@ -231,10 +111,6 @@ impl CompressContext {
         Self {
             rlm_config: session.metadata.rlm.clone(),
             session_id: session.id.clone(),
-            subcall_provider: session.metadata.subcall_provider.clone(),
-            subcall_model: session.metadata.subcall_model_name.clone(),
-            delegation: session.metadata.delegation.clone(),
-            bucket: crate::session::relevance::bucket_for_messages(&session.messages),
         }
     }
 }
@@ -270,8 +146,8 @@ impl CompressContext {
 ///
 /// # Errors
 ///
-/// Propagates any error from [`RlmRouter::auto_process`] that cannot be
-/// recovered by the chunk-compression fallback.
+/// Propagates any error from the compression pipeline that cannot be
+/// recovered by the deterministic fallback.
 pub(crate) async fn compress_messages_keep_last(
     messages: &mut Vec<Message>,
     ctx: &CompressContext,
@@ -284,122 +160,30 @@ pub(crate) async fn compress_messages_keep_last(
         return Ok(false);
     }
 
-    let split_idx = messages.len().saturating_sub(keep_last);
+    let split_idx = crate::session::context::active_tail::active_tail_start(messages, keep_last);
     let tail = messages.split_off(split_idx);
     let prefix = std::mem::take(messages);
 
     let context = messages_to_rlm_context(&prefix);
     let ctx_window = context_window_for_model(model);
-
-    // Prefer a cheap dedicated RLM model over the caller's main model
-    // to keep compaction cost bounded. Falls back to the caller's
-    // provider/model if the dedicated model cannot be resolved.
-    let (rlm_provider, rlm_model) = match resolve_rlm_model_bandit(
+    if context.trim().is_empty() {
+        *messages = prefix;
+        messages.extend(tail);
+        return Ok(false);
+    }
+    if let Some(summary) = super::compression_defer::context_summary(
+        &context,
+        ctx_window,
+        &ctx.session_id,
+        reason,
+        model,
+        Arc::clone(&provider),
         &ctx.rlm_config,
-        &ctx.delegation,
-        ctx.bucket,
     ) {
-        Some(target_model) if target_model != model => {
-            match crate::provider::ProviderRegistry::shared_from_vault().await {
-                Ok(registry) => match registry.resolve_model(&target_model) {
-                    Ok((p, m)) => {
-                        tracing::info!(
-                            rlm_model = %m,
-                            caller_model = %model,
-                            "RLM: using cheap dedicated model for compression"
-                        );
-                        (p, m)
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            rlm_model = %target_model,
-                            error = %err,
-                            "RLM: dedicated model resolution failed; falling back to caller model"
-                        );
-                        (Arc::clone(&provider), model.to_string())
-                    }
-                },
-                Err(err) => {
-                    tracing::warn!(
-                        error = %err,
-                        "RLM: provider registry unavailable; falling back to caller model"
-                    );
-                    (Arc::clone(&provider), model.to_string())
-                }
-            }
-        }
-        _ => (Arc::clone(&provider), model.to_string()),
-    };
-
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_context",
-        tool_args: serde_json::json!({"reason": reason}),
-        session_id: &ctx.session_id,
-        abort: None,
-        on_progress: None,
-        provider: rlm_provider,
-        model: rlm_model.clone(),
-        bus: None,
-        trace_id: None,
-        subcall_provider: ctx.subcall_provider.clone(),
-        subcall_model: ctx.subcall_model.clone(),
-    };
-
-    let summary = match RlmRouter::auto_process(&context, auto_ctx, &ctx.rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                reason,
-                rlm_model = %rlm_model,
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                compression_ratio = result.stats.compression_ratio,
-                "RLM: Compressed session history"
-            );
-            // Attribute RLM token spend against the RLM model so the
-            // TUI cost badge reflects it instead of silently inflating
-            // the caller's main model's reported usage.
-            crate::telemetry::TOKEN_USAGE.record_model_usage(
-                &rlm_model,
-                result.stats.input_tokens as u64,
-                result.stats.output_tokens as u64,
-            );
-            result.processed
-        }
-        Err(e) => {
-            tracing::warn!(
-                reason,
-                error = %e,
-                "RLM: Failed to compress session history; falling back to chunk compression"
-            );
-            RlmChunker::compress(
-                &context,
-                (ctx_window as f64 * FALLBACK_CHUNK_RATIO) as usize,
-                None,
-            )
-        }
-    };
-
-    let summary_msg = Message {
-        role: Role::Assistant,
-        content: vec![ContentPart::Text {
-            text: format!(
-                "[AUTO CONTEXT COMPRESSION]\nOlder conversation + tool output was compressed \
-                 to fit the model context window.\n\n{summary}\n\n\
-                 [RECOVERY] If you need specific details that this summary \
-                 dropped (exact file paths, prior tool output, earlier user \
-                 instructions, numeric values), call the `session_recall` \
-                 tool with a targeted query instead of guessing or asking \
-                 the user to repeat themselves."
-            ),
-        }],
-    };
-
-    let mut new_messages = Vec::with_capacity(1 + tail.len());
-    new_messages.push(summary_msg);
-    new_messages.extend(tail);
-    *messages = new_messages;
-
-    Ok(true)
+        super::compression_summary::install(messages, tail, summary);
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 /// Ratio of the model's context window a single "last" message can occupy
@@ -429,12 +213,10 @@ const OVERSIZED_LAST_MESSAGE_PREFIX_CHARS: usize = 500;
 ///
 /// * When the last message contains ≤ threshold tokens, returns
 ///   `Ok(false)` without touching the buffer.
-/// * On successful RLM compression, rewrites the last message's content
-///   to a single text part with an `[Original message: N tokens,
-///   compressed via RLM]` prefix, the compressed body, and the first
-///   [`OVERSIZED_LAST_MESSAGE_PREFIX_CHARS`] characters of the original
-///   as a literal suffix.
-/// * On RLM failure, falls back to [`RlmChunker::compress`].
+/// * If a background RLM summary is already cached, rewrites the last
+///   message with that summary and a literal request prefix.
+/// * Otherwise schedules background RLM and returns a deterministic
+///   [`RlmChunker::compress`] projection immediately.
 ///
 /// # Arguments
 ///
@@ -484,42 +266,24 @@ pub(crate) async fn compress_last_message_if_oversized(
         "RLM: Last message exceeds context threshold, compressing"
     );
 
-    let auto_ctx = AutoProcessContext {
-        tool_id: "session_context",
-        tool_args: serde_json::json!({}),
-        session_id: &ctx.session_id,
-        abort: None,
-        on_progress: None,
-        provider: Arc::clone(&provider),
-        model: model.to_string(),
-        bus: None,
-        trace_id: None,
-        subcall_provider: ctx.subcall_provider.clone(),
-        subcall_model: ctx.subcall_model.clone(),
-    };
-
-    let replacement = match RlmRouter::auto_process(&original, auto_ctx, &ctx.rlm_config).await {
-        Ok(result) => {
-            tracing::info!(
-                input_tokens = result.stats.input_tokens,
-                output_tokens = result.stats.output_tokens,
-                "RLM: Last message compressed"
-            );
-            format!(
-                "[Original message: {msg_tokens} tokens, compressed via RLM]\n\n{}\n\n---\nOriginal request prefix:\n{}",
-                result.processed,
-                original
-                    .chars()
-                    .take(OVERSIZED_LAST_MESSAGE_PREFIX_CHARS)
-                    .collect::<String>()
+    let cached = super::rlm_background::context_summary(
+        &original,
+        "oversized_last_message",
+        &ctx.session_id,
+        model,
+        provider,
+        &ctx.rlm_config,
+    );
+    let replacement = cached
+        .map(|summary| {
+            super::compression_last_message::wrap_cached(
+                summary,
+                &original,
+                msg_tokens,
+                OVERSIZED_LAST_MESSAGE_PREFIX_CHARS,
             )
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "RLM: Failed to compress last message, using truncation");
-            let max_chars = threshold * 4;
-            RlmChunker::compress(&original, max_chars / 4, None)
-        }
-    };
+        })
+        .unwrap_or_else(|| RlmChunker::compress(&original, threshold, None));
 
     last.content = vec![ContentPart::Text { text: replacement }];
     Ok(true)
@@ -706,8 +470,13 @@ pub(crate) async fn enforce_on_messages(
 
     // Every RLM / chunk attempt still leaves us over budget.
     // Apply terminal truncation as the last-resort fallback.
-    let dropped_tokens =
-        terminal_truncate_messages(messages, system_prompt, tools, TRUNCATE_KEEP_LAST);
+    let dropped_tokens = terminal_truncate_messages(
+        messages,
+        system_prompt,
+        tools,
+        TRUNCATE_KEEP_LAST,
+        safety_budget,
+    );
     let after_tokens = estimate_request_tokens(system_prompt, messages, tools);
 
     tracing::warn!(
@@ -826,28 +595,45 @@ pub async fn enforce_context_window(
 /// # Returns
 ///
 /// An approximate count of tokens removed (saturating subtraction).
-/// Returns `0` when `messages.len() <= keep_last` and no work is done.
+/// Returns `0` when `messages.len() <= keep_last`, the request already fits
+/// `target_tokens`, and no work is done.
 pub(crate) fn terminal_truncate_messages(
     messages: &mut Vec<Message>,
     system_prompt: &str,
     tools: &[ToolDefinition],
     keep_last: usize,
+    target_tokens: usize,
 ) -> usize {
-    if messages.len() <= keep_last {
+    let before = estimate_request_tokens(system_prompt, messages, tools);
+    if messages.len() <= keep_last && before <= target_tokens {
         return 0;
     }
 
-    let before = estimate_request_tokens(system_prompt, messages, tools);
-    let split_idx = messages.len().saturating_sub(keep_last);
-    let tail = messages.split_off(split_idx);
+    let split_idx = if messages.len() > keep_last {
+        crate::session::context::active_tail::active_tail_start(messages, keep_last)
+    } else {
+        0
+    };
+    let dropped_prefix = split_idx > 0;
+    let tail = if dropped_prefix {
+        messages.split_off(split_idx)
+    } else {
+        std::mem::take(messages)
+    };
 
     let marker = Message {
         role: Role::Assistant,
         content: vec![ContentPart::Text {
-            text: "[CONTEXT TRUNCATED]\nOlder conversation was dropped to keep the request \
-                   under the model's context window. Ask for details to recall anything \
-                   specific."
-                .to_string(),
+            text: if dropped_prefix {
+                "[CONTEXT TRUNCATED]\nOlder conversation was dropped to keep the request \
+                 under the model's context window. Some retained tool output may also be \
+                 shortened with head/tail snippets."
+                    .to_string()
+            } else {
+                "[CONTEXT TRUNCATED]\nRecent tool output was too large for the model's \
+                 context window and was shortened with head/tail snippets."
+                    .to_string()
+            },
         }],
     };
 
@@ -856,8 +642,130 @@ pub(crate) fn terminal_truncate_messages(
     new_messages.extend(tail);
     *messages = new_messages;
 
+    let shrunk_parts =
+        shrink_retained_payloads_to_budget(messages, system_prompt, tools, target_tokens);
+    if shrunk_parts > 0 {
+        tracing::warn!(
+            shrunk_parts,
+            target_tokens,
+            after_tokens = estimate_request_tokens(system_prompt, messages, tools),
+            "Terminal truncation shortened retained message payloads"
+        );
+    }
+
     let after = estimate_request_tokens(system_prompt, messages, tools);
     before.saturating_sub(after)
+}
+
+fn shrink_retained_payloads_to_budget(
+    messages: &mut [Message],
+    system_prompt: &str,
+    tools: &[ToolDefinition],
+    target_tokens: usize,
+) -> usize {
+    if target_tokens == usize::MAX
+        || estimate_request_tokens(system_prompt, messages, tools) <= target_tokens
+    {
+        return 0;
+    }
+
+    let mut changed_parts = 0;
+    for cap in TERMINAL_PAYLOAD_CAPS {
+        changed_parts += shrink_payloads_over_cap(messages, cap, false);
+        if estimate_request_tokens(system_prompt, messages, tools) <= target_tokens {
+            return changed_parts;
+        }
+    }
+
+    changed_parts += shrink_payloads_over_cap(messages, TERMINAL_EMERGENCY_CAP_BYTES, true);
+    changed_parts
+}
+
+fn shrink_payloads_over_cap(
+    messages: &mut [Message],
+    cap_bytes: usize,
+    include_latest_user: bool,
+) -> usize {
+    let message_count = messages.len();
+    let mut changed = 0;
+    for (msg_idx, msg) in messages.iter_mut().enumerate() {
+        let role = msg.role;
+        let is_latest_user = matches!(role, Role::User) && msg_idx + 1 == message_count;
+        for part in &mut msg.content {
+            let cap = match part {
+                ContentPart::ToolResult { .. } | ContentPart::Thinking { .. } => cap_bytes,
+                ContentPart::ToolCall { .. } => cap_bytes,
+                ContentPart::Text { text } => {
+                    if msg_idx == 0 && text.starts_with("[CONTEXT TRUNCATED]") {
+                        continue;
+                    }
+                    if is_latest_user && !include_latest_user {
+                        cap_bytes.max(16_384)
+                    } else {
+                        cap_bytes
+                    }
+                }
+                ContentPart::Image { .. } | ContentPart::File { .. } => continue,
+            };
+            if shrink_content_part(part, cap) {
+                changed += 1;
+            }
+        }
+    }
+    changed
+}
+
+fn shrink_content_part(part: &mut ContentPart, cap_bytes: usize) -> bool {
+    match part {
+        ContentPart::Text { text } => shrink_string_payload(text, cap_bytes, "text"),
+        ContentPart::ToolResult { content, .. } => {
+            shrink_string_payload(content, cap_bytes, "tool_result")
+        }
+        ContentPart::ToolCall { arguments, .. } => {
+            shrink_string_payload(arguments, cap_bytes, "tool_call_arguments")
+        }
+        ContentPart::Thinking { text } => shrink_string_payload(text, cap_bytes, "thinking"),
+        ContentPart::Image { .. } | ContentPart::File { .. } => false,
+    }
+}
+
+fn shrink_string_payload(value: &mut String, cap_bytes: usize, label: &str) -> bool {
+    if value.len() <= cap_bytes {
+        return false;
+    }
+    *value = terminal_head_tail(value, cap_bytes, label);
+    true
+}
+
+fn terminal_head_tail(value: &str, cap_bytes: usize, label: &str) -> String {
+    let marker = format!(
+        "\n\n[terminal context fallback truncated {label}; original_bytes={}]\n\n",
+        value.len()
+    );
+    if cap_bytes <= marker.len() + 32 {
+        return format!(
+            "[terminal context fallback truncated {label}; original_bytes={}]",
+            value.len()
+        );
+    }
+
+    let available = cap_bytes - marker.len();
+    let head_budget = available / 2;
+    let tail_budget = available - head_budget;
+    let head = crate::util::truncate_bytes_safe(value, head_budget);
+    let tail = suffix_bytes_safe(value, tail_budget);
+    format!("{head}{marker}{tail}")
+}
+
+fn suffix_bytes_safe(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut start = s.len().saturating_sub(max_bytes);
+    while start < s.len() && !s.is_char_boundary(start) {
+        start += 1;
+    }
+    &s[start..]
 }
 
 async fn emit(event_tx: Option<&mpsc::Sender<SessionEvent>>, ev: SessionEvent) {
@@ -879,11 +787,21 @@ mod tests {
         }
     }
 
+    fn tool_result(content: String) -> Message {
+        Message {
+            role: Role::Tool,
+            content: vec![ContentPart::ToolResult {
+                tool_call_id: "call_1".to_string(),
+                content,
+            }],
+        }
+    }
+
     #[test]
     fn terminal_truncate_noop_when_short_enough() {
         let mut messages = vec![user("a"), user("b")];
         let before_len = messages.len();
-        let dropped = terminal_truncate_messages(&mut messages, "", &[], 4);
+        let dropped = terminal_truncate_messages(&mut messages, "", &[], 4, usize::MAX);
         assert_eq!(dropped, 0);
         assert_eq!(messages.len(), before_len);
     }
@@ -891,7 +809,7 @@ mod tests {
     #[test]
     fn terminal_truncate_drops_prefix_and_prepends_marker() {
         let mut messages: Vec<Message> = (0..10).map(|i| user(&format!("msg-{i}"))).collect();
-        let _ = terminal_truncate_messages(&mut messages, "", &[], 3);
+        let _ = terminal_truncate_messages(&mut messages, "", &[], 3, usize::MAX);
 
         // 1 synthetic marker + 3 most-recent messages.
         assert_eq!(messages.len(), 4);
@@ -914,6 +832,29 @@ mod tests {
             })
             .collect();
         assert_eq!(kept_texts, vec!["msg-7", "msg-8", "msg-9"]);
+    }
+
+    #[test]
+    fn terminal_truncate_shrinks_oversized_tail_when_message_count_is_short() {
+        let huge_output = format!("head\n{}\ntail", "x".repeat(200_000));
+        let mut messages = vec![user("inspect the logs"), tool_result(huge_output)];
+        let before = estimate_request_tokens("", &messages, &[]);
+
+        let dropped = terminal_truncate_messages(&mut messages, "", &[], 4, 6_000);
+        let after = estimate_request_tokens("", &messages, &[]);
+
+        assert!(dropped > 0);
+        assert!(after < before);
+        assert!(after <= 6_000, "after={after}");
+        assert_eq!(messages.len(), 3);
+        assert!(matches!(messages[0].role, Role::Assistant));
+
+        let ContentPart::ToolResult { content, .. } = &messages[2].content[0] else {
+            panic!("expected tool result");
+        };
+        assert!(content.contains("terminal context fallback truncated tool_result"));
+        assert!(content.contains("head"));
+        assert!(content.contains("tail"));
     }
 
     #[test]
@@ -940,7 +881,5 @@ mod tests {
         };
         let snapshot = CompressContext::from_session(&session);
         assert_eq!(snapshot.session_id, "session-42");
-        assert!(snapshot.subcall_provider.is_none());
-        assert!(snapshot.subcall_model.is_none());
     }
 }

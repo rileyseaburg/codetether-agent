@@ -1,6 +1,8 @@
 use clap::{ArgAction, Parser, Subcommand};
 use std::path::PathBuf;
 
+use super::offline_args::OfflineCommand;
+
 #[derive(Parser, Debug)]
 #[command(
     about = "Control a Chromium browser via the local DevTools Protocol",
@@ -48,5 +50,10 @@ pub enum BrowserCtlCommand {
         path: PathBuf,
         #[arg(long, default_value_t = true)]
         full_page: bool,
+    },
+    /// TetherScript-backed offline probes: auth-trace, cookie-diff, explain-cors, record, replay
+    Offline {
+        #[command(subcommand)]
+        cmd: OfflineCommand,
     },
 }

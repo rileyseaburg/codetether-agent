@@ -20,6 +20,7 @@
 //! ```
 
 pub mod bus_bridge;
+mod bus_payload;
 mod client;
 mod server;
 mod transport;

@@ -14,7 +14,8 @@
 //! * [`DerivePolicy::Reset`] — **Lu et al.** reset-to-(prompt, summary)
 //!   semantic from arXiv:2510.06727. When the token estimate exceeds
 //!   the threshold, compresses the prefix to a single summary message
-//!   and keeps only the most recent user turn. See
+//!   and keeps the active-task tail, anchored at the latest substantive
+//!   user turn rather than short follow-ups like "continue". See
 //!   [`derive_with_policy`](super::context::derive_with_policy) for
 //!   the implementation.
 //! * [`DerivePolicy::Incremental`] — Liu et al. select-then-pack
@@ -57,9 +58,9 @@ pub enum DerivePolicy {
     ///
     /// When the request's estimated token cost exceeds
     /// `threshold_tokens`, replace everything older than the last user
-    /// turn with a single RLM-generated summary and discard the rest of
-    /// the tail. The derived context for the next provider call
-    /// contains at most `[summary, last_user_turn]`.
+    /// turn with a single RLM-generated summary. The derived context for
+    /// the next provider call contains `[summary, active_task_tail...]`
+    /// so short continuation turns do not drop the task-defining prompt.
     Reset {
         /// Token budget that triggers the reset. Typically ~95 % of
         /// the model's working context length.

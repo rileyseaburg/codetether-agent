@@ -1,3 +1,5 @@
+//! Browserctl tab action adapters.
+
 use super::super::helpers::require_index;
 use super::super::input::BrowserCtlInput;
 use crate::browser::{
@@ -5,12 +7,23 @@ use crate::browser::{
     request::{CloseTabRequest, NewTabRequest, TabSelectRequest},
 };
 
+/// Execute a tab list command.
+///
+/// # Errors
+///
+/// Returns [`crate::browser::BrowserError`] when execution fails.
 pub(in crate::tool::browserctl) async fn tabs(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
     super::execute(input, BrowserCommand::Tabs).await
 }
 
+/// Build and execute a tab selection command.
+///
+/// # Errors
+///
+/// Returns [`crate::browser::BrowserError`] when `index` is missing or
+/// execution fails.
 pub(in crate::tool::browserctl) async fn tabs_select(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
@@ -23,6 +36,11 @@ pub(in crate::tool::browserctl) async fn tabs_select(
     .await
 }
 
+/// Build and execute a new-tab command.
+///
+/// # Errors
+///
+/// Returns [`crate::browser::BrowserError`] when execution fails.
 pub(in crate::tool::browserctl) async fn tabs_new(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {
@@ -35,6 +53,11 @@ pub(in crate::tool::browserctl) async fn tabs_new(
     .await
 }
 
+/// Build and execute a tab close command.
+///
+/// # Errors
+///
+/// Returns [`crate::browser::BrowserError`] when execution fails.
 pub(in crate::tool::browserctl) async fn tabs_close(
     input: &BrowserCtlInput,
 ) -> Result<crate::browser::BrowserOutput, crate::browser::BrowserError> {

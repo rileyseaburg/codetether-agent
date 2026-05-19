@@ -124,12 +124,11 @@ pub fn dispatch(provider_id: &str, secrets: &ProviderSecrets) -> Option<Arc<dyn 
             );
         }
         "cerebras" => {
-            let url = secrets
-                .base_url
-                .clone()
-                .unwrap_or_else(|| "https://api.cerebras.ai/v1".into());
+            let url = secrets.base_url.clone().unwrap_or_else(|| {
+                super::tetherscript_provider::cerebras::default_base_url().into()
+            });
             try_register!(
-                super::openai::OpenAIProvider::with_base_url(api_key.into(), url, "cerebras"),
+                super::tetherscript_provider::cerebras::new(api_key, Some(&url)),
                 provider_id
             );
         }

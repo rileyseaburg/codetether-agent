@@ -43,6 +43,9 @@ pub fn register_env_fallbacks(registry: &mut ProviderRegistry) {
         ("github-copilot", "GITHUB_COPILOT_TOKEN", |t| {
             Ok(Arc::new(super::copilot::CopilotProvider::new(t)?))
         }),
+        ("cerebras", "CEREBRAS_API_KEY", |k| {
+            super::tetherscript_provider::cerebras::provider(&k, None)
+        }),
     ];
 
     for (pid, env_var, ctor) in fallbacks {

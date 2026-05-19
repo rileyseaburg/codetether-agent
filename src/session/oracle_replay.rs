@@ -7,7 +7,6 @@
 //! Not suitable for production — only for Pareto benchmarking.
 
 use crate::session::derive_policy::DerivePolicy;
-use crate::session::eval::PolicyRunResult;
 
 /// Oracle outcome for one recorded trace.
 #[derive(Debug, Clone)]

@@ -350,7 +350,9 @@ impl ToolRegistry {
         registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(context_budget::ContextBudgetTool));
         registry.register(Arc::new(context_pin::ContextPinTool));
-        registry.register(Arc::new(context_summarize::ContextSummarizeTool));
+        registry.register(Arc::new(
+            context_summarize::ContextSummarizeTool::cached_only(),
+        ));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -388,7 +390,7 @@ impl ToolRegistry {
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
         #[cfg(feature = "tetherscript")]
-        registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
+        tetherscript::register(&mut registry);
         registry.register_compat_aliases();
 
         registry
@@ -428,7 +430,10 @@ impl ToolRegistry {
         registry.register(Arc::new(context_browse::ContextBrowseTool));
         registry.register(Arc::new(context_budget::ContextBudgetTool));
         registry.register(Arc::new(context_pin::ContextPinTool));
-        registry.register(Arc::new(context_summarize::ContextSummarizeTool));
+        registry.register(Arc::new(context_summarize::ContextSummarizeTool::new(
+            Arc::clone(&provider),
+            model.clone(),
+        )));
         registry.register(Arc::new(question::QuestionTool::new()));
         registry.register(Arc::new(task::TaskTool::new()));
         registry.register(Arc::new(plan::PlanEnterTool::new()));
@@ -477,7 +482,7 @@ impl ToolRegistry {
         registry.register(Arc::new(k8s_tool::K8sTool::new()));
         // TetherScript plugin runtime for project-local extension hooks
         #[cfg(feature = "tetherscript")]
-        registry.register(Arc::new(tetherscript::TetherScriptPluginTool::new()));
+        tetherscript::register(&mut registry);
         registry.register_compat_aliases();
 
         registry

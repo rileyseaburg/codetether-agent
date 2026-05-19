@@ -2,7 +2,7 @@
 
 use crate::provider::{ContentPart, Message, Role};
 
-use super::{build_reset_summary_message, last_user_index, latest_reset_marker_index};
+use super::{build_reset_summary_message, latest_reset_marker_index};
 
 fn text(role: Role, s: &str) -> Message {
     Message {
@@ -11,24 +11,6 @@ fn text(role: Role, s: &str) -> Message {
             text: s.to_string(),
         }],
     }
-}
-
-#[test]
-fn last_user_index_finds_latest_user_turn() {
-    let msgs = vec![
-        text(Role::System, "sys"),
-        text(Role::User, "first"),
-        text(Role::Assistant, "reply"),
-        text(Role::User, "second"),
-        text(Role::Assistant, "reply2"),
-    ];
-    assert_eq!(last_user_index(&msgs), Some(3));
-}
-
-#[test]
-fn last_user_index_is_none_without_user_turn() {
-    let msgs = vec![text(Role::System, "sys"), text(Role::Assistant, "noop")];
-    assert!(last_user_index(&msgs).is_none());
 }
 
 #[test]

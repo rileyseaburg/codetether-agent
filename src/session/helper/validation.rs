@@ -114,6 +114,9 @@ pub async fn build_validation_report(
     if existing_files.is_empty() {
         return Ok(None);
     }
+    if let Some(report) = super::refactor_guard::evaluate(workspace_dir, &existing_files).await? {
+        return Ok(Some(report));
+    }
 
     let root_uri = format!("file://{}", workspace_dir.display());
     let lsp_tool = LspTool::with_root(root_uri);
@@ -344,44 +347,4 @@ struct EslintMessage {
     message: String,
     line: u32,
     column: u32,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn tracks_edit_paths_from_arguments() {
-        let workspace_dir = Path::new("/workspace");
-        let mut touched_files = HashSet::new();
-        track_touched_files(
-            &mut touched_files,
-            workspace_dir,
-            "edit",
-            &json!({ "path": "src/main.ts" }),
-            None,
-        );
-
-        assert!(touched_files.contains(&PathBuf::from("/workspace/src/main.ts")));
-    }
-
-    #[test]
-    fn tracks_patch_paths_from_metadata() {
-        let workspace_dir = Path::new("/workspace");
-        let mut touched_files = HashSet::new();
-        let metadata =
-            HashMap::from([("files".to_string(), json!(["src/lib.rs", "tests/app.rs"]))]);
-
-        track_touched_files(
-            &mut touched_files,
-            workspace_dir,
-            "patch",
-            &json!({}),
-            Some(&metadata),
-        );
-
-        assert!(touched_files.contains(&PathBuf::from("/workspace/src/lib.rs")));
-        assert!(touched_files.contains(&PathBuf::from("/workspace/tests/app.rs")));
-    }
 }

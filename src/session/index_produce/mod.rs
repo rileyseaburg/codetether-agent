@@ -4,16 +4,16 @@
 //! structure lives in [`super::index`]; this file owns the async
 //! call through the RLM router to materialise a summary.
 
-mod build_context;
+mod background;
 mod call;
+mod observability;
+pub mod summary_gate;
+pub mod summary_text;
 
-use std::sync::Arc;
-
-use anyhow::{Context as _, Result};
-use tracing::info;
-
-use super::index::types::{Granularity, SummaryNode, SummaryRange};
-use crate::provider::{Message, Provider};
-use crate::rlm::RlmConfig;
+#[cfg(test)]
+mod summary_gate_tests;
+#[cfg(test)]
+mod summary_text_tests;
 
 pub use call::produce_summary;
+pub use observability::SummaryObservability;

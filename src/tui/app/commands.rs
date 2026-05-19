@@ -291,6 +291,18 @@ async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
     }
 }
 
+/// Dispatch a `/context ...` command for context/RLM health status.
+fn handle_context_command(app: &mut App, rest: &str) {
+    match rest.trim() {
+        "" | "status" => {
+            let body = crate::tui::app::context_status::render(&app.state);
+            push_system_message(app, body);
+            app.state.status = "Context status".to_string();
+        }
+        _ => app.state.status = "Usage: /context [status]".to_string(),
+    }
+}
+
 /// Undo the last `n` user turns in both the TUI and the persisted session.
 ///
 /// `rest` may be empty (undo 1 turn) or a positive integer.
@@ -318,38 +330,17 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
         },
     };
 
-    // Collect indices of every User message in order; the Nth-from-the-end
-    // is our cut point (truncate to it → drop that user message and
-    // everything after).
-    let session_user_idxs: Vec<usize> = session
-        .messages
-        .iter()
-        .enumerate()
-        .filter_map(|(i, m)| (m.role == crate::provider::Role::User).then_some(i))
-        .collect();
-    let tui_user_idxs: Vec<usize> = app
-        .state
-        .messages
-        .iter()
-        .enumerate()
-        .filter_map(|(i, m)| matches!(m.message_type, MessageType::User).then_some(i))
-        .collect();
-
-    if session_user_idxs.is_empty() || tui_user_idxs.is_empty() {
+    let undo_count = crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns(
+        &mut session.messages,
+        &mut session.pages,
+        &mut app.state.messages,
+        n,
+    );
+    if undo_count == 0 {
         push_system_message(app, "Nothing to undo.");
         return;
     }
 
-    let available = session_user_idxs.len().min(tui_user_idxs.len());
-    let undo_count = n.min(available);
-
-    // Index of the (available - undo_count)'th user message = first user turn to drop.
-    let s_cut = session_user_idxs[available - undo_count];
-    let t_cut = tui_user_idxs[available - undo_count];
-
-    session.messages.truncate(s_cut);
-    session.pages.truncate(s_cut);
-    app.state.messages.truncate(t_cut);
     session.updated_at = chrono::Utc::now();
     app.state.streaming_text.clear();
     app.state.scroll_to_bottom();
@@ -819,6 +810,11 @@ pub async fn handle_slash_command(
         return;
     }
 
+    if let Some(rest) = command_with_optional_args(&normalized, "/context") {
+        handle_context_command(app, rest);
+        return;
+    }
+
     if let Some(rest) = command_with_optional_args(&normalized, "/mcp") {
         handle_mcp_command(app, rest).await;
         return;
@@ -892,6 +888,12 @@ pub async fn handle_slash_command(
             app.state.set_view_mode(ViewMode::Audit);
             app.state.status = "Audit — subagent activity".to_string();
         }
+        "/git" => {
+            let cwd = std::path::PathBuf::from(&app.state.cwd_display);
+            app.state.git = crate::tui::git_capture::capture_git_state(&cwd);
+            app.state.set_view_mode(ViewMode::Git);
+            app.state.status = "Git status".to_string();
+        }
         "/chat" | "/home" | "/main" => return_to_chat(app),
         "/webview" => {
             app.state.chat_layout_mode =
@@ -951,9 +953,38 @@ pub async fn handle_slash_command(
                 }
             }
         }
+        "/recall" => {
+            let beliefs =
+                crate::memory::palace::load_project_beliefs(Path::new(&app.state.cwd_display));
+            if beliefs.is_empty() {
+                push_system_message(
+                    app,
+                    "No project memories found. Memories accumulate as you work.",
+                );
+            } else {
+                let active: Vec<&crate::cognition::beliefs::Belief> = beliefs
+                    .iter()
+                    .filter(|b| b.confidence >= 0.5)
+                    .take(30)
+                    .collect();
+                let mut lines = vec![format!(
+                    "🏰 Project Memory Palace ({} beliefs, {} active)",
+                    beliefs.len(),
+                    active.len()
+                )];
+                for b in &active {
+                    lines.push(format!("  • {} [conf: {:.2}]", b.claim, b.confidence));
+                }
+                push_system_message(app, lines.join("\n"));
+            }
+            app.state.status = "Project memory palace".to_string();
+        }
+        "/plugin" => {
+            push_system_message(app, "Usage: /plugin <install|list|remove> <name>");
+        }
         "/keys" => {
             app.state.status =
-                "Protocol-first commands: /protocol /bus /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
+                "Protocol-first commands: /protocol /bus /context /file /autoapply /network /autocomplete /mcp /model /sessions /import-codex /swarm /ralph /latency /symbols /settings /lsp /rlm /chat /new /undo /fork /spawn /kill /agents /agent /audit /git\nEasy aliases: /add /talk /list /remove /focus /home /say /ls /rm /main"
                     .to_string();
         }
         _ => {}
@@ -999,6 +1030,7 @@ pub async fn handle_slash_command(
             | "/rlm"
             | "/latency"
             | "/audit"
+            | "/git"
             | "/chat"
             | "/home"
             | "/main"
@@ -1013,6 +1045,7 @@ pub async fn handle_slash_command(
             | "/network"
             | "/autocomplete"
             | "/mcp"
+            | "/context"
             | "/spawn"
             | "/kill"
             | "/agents"
@@ -1020,6 +1053,7 @@ pub async fn handle_slash_command(
             | "/autochat"
             | "/protocols"
             | "/registry"
+            | "/recall"
     ) {
         app.state.status = format!("Unknown command: {normalized}");
     }

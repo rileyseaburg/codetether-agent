@@ -5,9 +5,9 @@ pub fn handle_status() -> anyhow::Result<crate::tool::ToolResult> {
         "supported": true,
         "platform": "Windows",
         "apis": {
-            "window_enumeration": "user32 EnumWindows via PowerShell Add-Type",
-            "screen_capture": "System.Drawing.CopyFromScreen",
-            "input": "user32 SendInput"
+            "window_enumeration": "native user32 EnumWindows",
+            "screen_capture": "native GDI BitBlt",
+            "input": "native user32 SendInput"
         },
         "permissions": {
             "ui_access": "standard_user32_session",

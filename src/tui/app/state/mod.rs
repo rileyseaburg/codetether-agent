@@ -18,23 +18,28 @@
 //! - `settings_nav` — settings selection and view-mode switching
 //! - `message_cache` — render-line cache for performance
 
-#![allow(dead_code)]
-
 pub mod agent_profile;
+#[path = "latency/chat.rs"]
+pub mod chat_latency;
+pub mod context_health;
 pub mod default_impl;
+pub mod git_state;
 pub mod history;
 pub mod input_cursor;
 pub mod input_edit;
 pub mod message_cache;
 pub mod model_picker;
 pub mod model_picker_nav;
+pub mod pending_tool;
 pub mod profile_defs;
 pub mod scroll;
 pub mod session_nav;
 pub mod settings_nav;
 pub mod slash_commands;
+pub mod slash_hints;
 pub mod slash_suggest;
 pub mod timing;
+pub mod view_save;
 pub mod worker_bridge;
 
 #[cfg(test)]
@@ -50,15 +55,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::session::{ImageAttachment, SessionSummary};
-use crate::tui::audit_view::AuditViewState;
-use crate::tui::bus_log::BusLogState;
-use crate::tui::chat::message::ChatMessage;
-use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
-use crate::tui::ralph_view::RalphViewState;
-use crate::tui::swarm_view::SwarmViewState;
-use crate::tui::symbol_search::SymbolSearchState;
-use crate::tui::worker_bridge::IncomingTask;
+use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
+use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
+use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
+use crate::tui::{symbol_search::SymbolSearchState, worker_bridge::IncomingTask};
 
 pub use crate::session::SessionEvent;
 
@@ -76,6 +77,11 @@ pub struct AppState {
     pub input_scroll: usize,
     pub chat_scroll: usize,
     pub chat_last_max_scroll: usize,
+    /// When true, every session event scrolls chat to the bottom. Set to
+    /// `false` by [`AppState::scroll_up`] so the user's manual scrollback
+    /// position survives streaming output. Re-enabled by
+    /// [`AppState::scroll_to_bottom`] (e.g. End / G keypress).
+    pub chat_auto_follow: bool,
     pub tool_preview_scroll: usize,
     pub tool_preview_last_max_scroll: usize,
     /// Selected index in the protocol/agent registry view (left pane list).
@@ -92,6 +98,7 @@ pub struct AppState {
     pub bus_log: BusLogState,
     pub swarm: SwarmViewState,
     pub audit: AuditViewState,
+    pub git: git_state::GitViewState,
     pub ralph: RalphViewState,
     pub symbol_search: SymbolSearchState,
     pub slash_suggestions: Vec<String>,
@@ -107,12 +114,19 @@ pub struct AppState {
     pub worker_bridge_registered_agents: HashSet<String>,
     pub worker_bridge_processing_state: Option<bool>,
     pub worker_task_queue: VecDeque<IncomingTask>,
+    /// Tracks the currently executing remote task so a bus reply can
+    /// be sent to `from_agent` upon completion.
+    pub active_remote_task: Option<IncomingTask>,
     pub help_scroll: HelpScrollState,
     pub show_help: bool,
     pub available_models: Vec<String>,
     pub selected_model_index: usize,
     pub model_picker_active: bool,
     pub model_filter: String,
+    pub model_refresh_in_flight: bool,
+    pub model_refresh_rx:
+        Option<tokio::sync::mpsc::UnboundedReceiver<model_picker::ModelRefreshEvent>>,
+    pub model_picker_target_model: Option<String>,
     pub streaming_text: String,
     pub processing_started_at: Option<Instant>,
     pub current_request_first_token_ms: Option<u64>,
@@ -123,9 +137,19 @@ pub struct AppState {
     pub last_completion_latency_ms: Option<u64>,
     pub last_completion_prompt_tokens: Option<usize>,
     pub last_completion_output_tokens: Option<usize>,
+    /// Most recent pre-flight token estimate (request side). Surfaced as a
+    /// percentage badge in the chat title bar so users see context pressure
+    /// build up turn-over-turn instead of being surprised by a compaction.
+    pub context_used: Option<usize>,
+    /// Usable token budget paired with [`AppState::context_used`].
+    pub context_budget: Option<usize>,
+    pub context_health: context_health::ContextHealthState,
     pub last_tool_name: Option<String>,
     pub last_tool_latency_ms: Option<u64>,
     pub last_tool_success: Option<bool>,
+    pub pending_tool_name: Option<String>,
+    pub pending_tool_started_at: Option<Instant>,
+    pub chat_latency: chat_latency::ChatLatencyStats,
     pub pending_images: Vec<ImageAttachment>,
     /// Sidecar buffer for paste blocks that were too large to inline
     /// into the input box. Each entry is rendered in the input as a
@@ -190,4 +214,13 @@ pub struct AppState {
     /// Shared slot for the background voice thread to deliver transcribed text.
     /// The tick loop polls this and injects into [`AppState::input`].
     pub pending_voice_text: Option<Arc<std::sync::Mutex<Option<String>>>>,
+    /// Saved chat scroll state captured when leaving Chat for another view,
+    /// so streaming output that arrives while the user is in `/bus` etc.
+    /// doesn't lose their scrollback position when they return.
+    pub saved_chat_scroll: usize,
+    pub saved_chat_auto_follow: bool,
+    pub saved_tool_preview_scroll: usize,
+    /// Live throughput tracking for the status-line tok/s badge.
+    pub streaming_start: Option<Instant>,
+    pub streaming_chars: usize,
 }

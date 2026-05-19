@@ -33,7 +33,7 @@ use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::{state::App, worker_bridge::sync_worker_bridge_agents};
 use crate::tui::{
-    constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS, ui::main::ui, worker_bridge::TuiWorkerBridge,
+    constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS, worker_bridge::TuiWorkerBridge,
 };
 
 /// Drive the TUI draw-event-dispatch loop until quit.
@@ -72,7 +72,7 @@ pub async fn run_event_loop(
 
     loop {
         sync_worker_bridge_agents(app, &worker_bridge);
-        terminal.draw(|f| ui(f, app, session))?;
+        crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
         if select_loop::select_once(
             &mut reader,
             app,

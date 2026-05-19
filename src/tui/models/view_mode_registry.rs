@@ -17,4 +17,5 @@ pub const ALL_VIEW_MODES: &[ViewMode] = &[
     ViewMode::FilePicker,
     ViewMode::Inspector,
     ViewMode::Audit,
+    ViewMode::Git,
 ];

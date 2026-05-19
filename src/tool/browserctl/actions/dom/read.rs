@@ -1,7 +1,14 @@
+//! Browserctl DOM read action adapters.
+
 use crate::browser::{BrowserCommand, BrowserError, BrowserOutput, request::ScopeRequest};
 use crate::tool::browserctl::helpers::optional_string;
 use crate::tool::browserctl::input::BrowserCtlInput;
 
+/// Build and execute a text extraction command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when command execution fails.
 pub(in crate::tool::browserctl) async fn text(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {
@@ -12,6 +19,11 @@ pub(in crate::tool::browserctl) async fn text(
     super::super::execute(input, BrowserCommand::Text(request)).await
 }
 
+/// Build and execute an HTML extraction command.
+///
+/// # Errors
+///
+/// Returns [`BrowserError`] when command execution fails.
 pub(in crate::tool::browserctl) async fn html(
     input: &BrowserCtlInput,
 ) -> Result<BrowserOutput, BrowserError> {

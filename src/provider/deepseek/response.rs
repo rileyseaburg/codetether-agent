@@ -6,6 +6,7 @@ use serde::Deserialize;
 pub(crate) struct DsResponse {
     #[allow(dead_code)]
     pub id: String,
+    #[allow(dead_code)]
     pub model: String,
     pub choices: Vec<DsChoice>,
     #[serde(default)]
@@ -22,6 +23,7 @@ pub(crate) struct DsChoice {
 #[derive(Debug, Deserialize)]
 pub(crate) struct DsMessage {
     #[serde(default)]
+    #[allow(dead_code)]
     pub role: String,
     #[serde(default)]
     pub content: Option<String>,
@@ -35,6 +37,7 @@ pub(crate) struct DsMessage {
 pub(crate) struct DsToolCall {
     pub id: String,
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     pub call_type: String,
     pub function: DsFunction,
 }

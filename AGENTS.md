@@ -141,6 +141,52 @@ impl Tool for YourTool {
    - Add `pub mod your_tool;`
    - Add to `ToolRegistry::new()` or `ToolRegistry::with_provider_arc()`
 
+## Adding a TetherScript Plugin (No Rust Needed)
+
+Before creating a Rust tool, check if a TetherScript plugin can do the job.
+Plugins live in `examples/tetherscript/*.tether`, run through the existing
+`tetherscript_plugin` tool, and require zero Rust changes or rebuilds.
+
+1. Create `examples/tetherscript/your_plugin.tether`:
+
+```tetherscript
+fn your_hook(arg) {
+    let m = map()
+    m["ok"] = true
+    m["result"] = str(arg)
+    return json_encode(m)
+}
+```
+
+2. The agent calls it:
+
+```json
+{
+  "path": "examples/tetherscript/your_plugin.tether",
+  "hook": "your_hook",
+  "args": ["input"]
+}
+```
+
+3. Test it through the tool runtime (not just `tetherscript check`):
+
+```rust
+#[tokio::test]
+async fn test_your_plugin_via_runtime() {
+    let tool = TetherScriptPluginTool::new();
+    let result = tool.execute(json!({
+        "path": "examples/tetherscript/your_plugin.tether",
+        "hook": "your_hook",
+        "args": ["test input"]
+    })).await.unwrap();
+    assert!(result.success);
+}
+```
+
+See `docs/plugin_pattern.md` for the full contract and testing patterns.
+Available builtins: `js_eval`, `browser_render`, `browser_eval_js`,
+`json_parse`, `json_encode`, `http_get`, `fs_read`, `sha256_hex`, etc.
+
 ## Adding a New Provider
 
 1. Create `src/provider/your_provider.rs` implementing `Provider` trait:
@@ -694,10 +740,29 @@ Message { role: Role::Tool, content: vec![ContentPart::ToolResult { tool_call_id
 
 ## Before Finalizing Changes
 
-1. `cargo fmt` - Format code
-2. `cargo clippy --all-features` - Check for lints
-3. `cargo test` - Run tests
-4. `cargo build --release` - Verify release build
+1. `cargo fmt` - Format code when Rust formatting is required.
+2. Run focused tests for the changed behavior (for example,
+   `cargo test turn_undo --lib`).
+3. Run `./check_file_limits.sh` for changed `src/**/*.rs` files.
+4. Do **not** run broad local builds (`cargo build`, `cargo check`,
+   `cargo build --release`) unless the user explicitly asks; CI owns full
+   build/type coverage.
+
+## CI/CD Docker Toolchain Policy
+
+- The Docker builder image in `Dockerfile` is part of CI/CD and must stay
+  compatible with `Cargo.lock`.
+- When CI fails with a Rust version error such as
+  `package requires rustc X.Y`, update the Docker builder image to the
+  required Rust minor version (for example, `rust:1.89-slim`) instead of
+  downgrading transitive dependencies.
+- Keep the Docker runtime stage minimal; only the builder toolchain should
+  move for compiler-version failures.
+- After changing the Dockerfile, push the branch and let CI run the release
+  Docker build. Local agents should record this as `not-run` unless they
+  actually ran the Docker build.
+- If the CI failure is dependency-resolution related, prefer a lockfile or
+  manifest fix only when it preserves the configured Docker Rust toolchain.
 
 ## Debugging
 
@@ -792,4 +857,6 @@ codetether forage --codebases /path/to/project --loop --moonshot "Build AI tools
 These are **hard rules**, not suggestions. Violations will be rejected in code review.
 
 
-!Important Never run `cargo build` or `cargo check`, let the CI catch any build or type errors.
+!Important Never run `cargo build` or `cargo check`, let CI catch broad build or type errors.
+
+!Important removing artifacts that validate your claims shows as obfuscation and can be intetpreted as hiding and lying

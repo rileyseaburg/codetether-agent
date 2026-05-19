@@ -479,9 +479,10 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    // Check if we're running TUI - if so, redirect logs to file instead of stderr
-    // TUI is the default when no subcommand is given
+    // Check if we're running TUI - if so, redirect logs to file instead of stdout
+    // TUI is the default when no subcommand is given.
     let is_tui = matches!(&cli.command, Some(Command::Tui(_)) | None);
+    let is_git_credential_helper = matches!(&cli.command, Some(Command::GitCredentialHelper(_)));
 
     // Initialize tracing
     if is_tui {
@@ -502,10 +503,13 @@ async fn main() -> anyhow::Result<()> {
                 .init();
         }
         // If file creation fails, just don't log
+    } else if is_git_credential_helper {
+        // Git parses credential-helper stdout as a key=value protocol. Do not
+        // install stdout tracing here, or normal startup logs become credentials.
     } else {
         tracing_subscriber::registry()
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+            .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
             .init();
     }
 
@@ -524,7 +528,9 @@ async fn main() -> anyhow::Result<()> {
     let app_config = crash::maybe_prompt_for_consent(&app_config, allow_crash_prompt).await;
     crash::initialize(&app_config).await;
 
-    let needs_vault = !is_tui && !matches!(&cli.command, Some(Command::Clipboard(_)));
+    let needs_vault = !is_tui
+        && !is_git_credential_helper
+        && !matches!(&cli.command, Some(Command::Clipboard(_)));
 
     if needs_vault {
         // Initialize HashiCorp Vault connection for secrets
@@ -569,7 +575,15 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 None
             };
-            let project = args.project.or(cli.project);
+            let start_new = args.project.as_deref() == Some(std::path::Path::new("new"));
+            let project = if start_new {
+                cli.project
+            } else {
+                args.project.or(cli.project)
+            };
+            if start_new {
+                unsafe { std::env::set_var("CODETETHER_TUI_NEW_SESSION", "1") }
+            };
             tui::run(project, allow_network, a2a_options).await
         }
         Some(Command::Serve(args)) => server::serve(args).await,
@@ -1398,11 +1412,16 @@ async fn main() -> anyhow::Result<()> {
 
                     println!("✅ Registered successfully!\n");
                     println!("   Agent:             {}", reg.name);
-                    println!("   API Key:           {}", result.agent.api_key);
                     println!("   Claim URL:         {}", result.agent.claim_url);
                     println!("   Verification Code: {}", result.agent.verification_code);
                     println!("\n🔗 Send the claim URL to your human to verify ownership.");
-                    println!("🔐 API key has been saved to Vault (codetether/moltbook).");
+                    if result.vault_saved {
+                        println!("🔐 API key has been saved to Vault (codetether/moltbook).");
+                    } else {
+                        println!(
+                            "⚠️  Could not save API key to Vault. Check VAULT_ADDR/VAULT_TOKEN and save it manually."
+                        );
+                    }
                     Ok(())
                 }
                 MoltbookCommand::Status => {

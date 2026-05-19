@@ -81,6 +81,27 @@ pub(super) fn handle_ctrl_key(
             };
             app.state.status = format!("Layout: {label}");
         }
+        KeyCode::Char('l') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Bus;
+            app.state.status = "Bus log".to_string();
+        }
+        KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Swarm;
+            app.state.status = "Swarm".to_string();
+        }
+        KeyCode::Char('p') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Protocol;
+            app.state.status = "Protocol registry".to_string();
+        }
         KeyCode::Char('o') if ctrl && app.state.view_mode == ViewMode::Chat => {
             crate::tui::app::file_picker::open_file_picker(app, cwd);
         }
@@ -88,6 +109,14 @@ pub(super) fn handle_ctrl_key(
             handle_voice_key(app);
         }
         KeyCode::Char('v') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            handle_clipboard_paste(app);
+        }
+        KeyCode::Insert
+            if key.modifiers.contains(KeyModifiers::SHIFT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            // Shift+Insert is the standard paste shortcut on Windows
+            // and many Linux terminal emulators.
             handle_clipboard_paste(app);
         }
         KeyCode::Char('Y') if ctrl && app.state.view_mode == ViewMode::Chat => {

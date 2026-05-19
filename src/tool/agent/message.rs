@@ -1,6 +1,7 @@
 //! Handle the "message" action.
 
 use super::event_loop;
+use super::execution_state;
 use super::helpers;
 use super::message_result;
 use super::store;
@@ -26,6 +27,11 @@ pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResul
         .context("name required for message")?
         .clone();
     let message = params.message.as_ref().context("message required")?.clone();
+    let Some(_run_guard) = execution_state::try_start(&name) else {
+        return Ok(ToolResult::error(format!(
+            "Agent @{name} is busy processing another message; retry shortly"
+        )));
+    };
 
     let session = store::get(&name)
         .map(|e| e.session)

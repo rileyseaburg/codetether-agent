@@ -1,0 +1,26 @@
+// TetherScript language feature sampler for plugin hooks.
+
+fn uppercase_name(name) {
+    return Ok(name.upper())
+}
+
+fn summarize(name) {
+    let mut parts = ["agent", name]
+    parts.push("plugin")
+
+    let mut total = 0
+    for part in parts {
+        total = total + part.len()
+    }
+
+    let upper = uppercase_name(name)?
+    let bytes_value = b"TS\x21"
+    let add_one = fn(value) { value + 1 }
+
+    let m = map()
+    m["upper"] = upper
+    m["total_len"] = total
+    m["bytes_hex"] = bytes_value.hex()
+    m["closure"] = add_one(41)
+    return Ok(m)
+}

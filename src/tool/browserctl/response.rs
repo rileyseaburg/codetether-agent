@@ -1,12 +1,20 @@
+//! Browserctl response formatting.
+
 use crate::browser::{BrowserError, BrowserOutput};
 use crate::tool::ToolResult;
 use serde_json::json;
 use std::collections::HashMap;
 
+/// Convert a browser error into a failed tool result.
 pub(super) fn error_result(error: BrowserError) -> ToolResult {
     ToolResult::error(error.to_string()).with_metadata("browser_error", json!(error.to_string()))
 }
 
+/// Convert a browser output into a successful tool result.
+///
+/// # Errors
+///
+/// Returns an error when serialization or screenshot writing fails.
 pub(super) async fn success_result(
     input: &super::input::BrowserCtlInput,
     output: BrowserOutput,

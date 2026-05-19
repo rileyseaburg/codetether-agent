@@ -44,6 +44,12 @@ pub(super) async fn handle_enter_chat(
     if !prompt.is_empty() {
         app.state.push_history(prompt.clone());
     }
+    let prompt = if let Some((agent_name, msg)) = super::mention_route::parse_mention(&prompt) {
+        tracing::info!(agent = %agent_name, "Mention detected, routing as prefixed message");
+        format!("[to @{}] {}", agent_name, msg)
+    } else {
+        prompt
+    };
     if prompt.starts_with('/') {
         handle_slash_command(app, cwd, session, registry.as_ref(), &prompt).await;
         app.state.clear_input();

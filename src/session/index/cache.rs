@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::types::{MAX_CACHED_SUMMARIES, SummaryNode, SummaryRange};
+use super::types::{SummaryNode, SummaryRange};
 
 /// Hierarchical summary cache over the chat transcript.
 ///

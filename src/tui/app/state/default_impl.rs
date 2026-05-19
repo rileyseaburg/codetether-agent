@@ -3,8 +3,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::tui::audit_view::AuditViewState;
-use crate::tui::bus_log::BusLogState;
 use crate::tui::help::HelpScrollState;
 use crate::tui::models::{InputMode, ViewMode};
 use crate::tui::ralph_view::RalphViewState;
@@ -22,6 +20,7 @@ impl Default for super::AppState {
             input_scroll: 0,
             chat_scroll: 0,
             chat_last_max_scroll: 0,
+            chat_auto_follow: true,
             tool_preview_scroll: 0,
             tool_preview_last_max_scroll: 0,
             protocol_selected: 0,
@@ -33,9 +32,10 @@ impl Default for super::AppState {
             selected_session: 0,
             session_filter: String::new(),
             cwd_display: String::new(),
-            bus_log: BusLogState::new(),
+            bus_log: crate::tui::bus_log::BusLogState::new(),
             swarm: SwarmViewState::new(),
-            audit: AuditViewState::default(),
+            audit: crate::tui::audit_view::AuditViewState::default(),
+            git: super::git_state::GitViewState::default(),
             ralph: RalphViewState::new(),
             symbol_search: SymbolSearchState::new(),
             slash_suggestions: vec![],
@@ -50,12 +50,16 @@ impl Default for super::AppState {
             worker_bridge_registered_agents: HashSet::new(),
             worker_bridge_processing_state: None,
             worker_task_queue: VecDeque::new(),
+            active_remote_task: None,
             help_scroll: HelpScrollState::default(),
             show_help: false,
             available_models: Vec::new(),
             selected_model_index: 0,
             model_picker_active: false,
             model_filter: String::new(),
+            model_refresh_in_flight: false,
+            model_refresh_rx: None,
+            model_picker_target_model: None,
             streaming_text: String::new(),
             processing_started_at: None,
             current_request_first_token_ms: None,
@@ -66,9 +70,15 @@ impl Default for super::AppState {
             last_completion_latency_ms: None,
             last_completion_prompt_tokens: None,
             last_completion_output_tokens: None,
+            context_used: None,
+            context_budget: None,
+            context_health: Default::default(),
             last_tool_name: None,
             last_tool_latency_ms: None,
             last_tool_success: None,
+            pending_tool_name: None,
+            pending_tool_started_at: None,
+            chat_latency: Default::default(),
             pending_images: Vec::new(),
             pending_text_pastes: Vec::new(),
             current_turn_cancel: None,
@@ -114,6 +124,11 @@ impl Default for super::AppState {
             last_key_at: None,
             recording_stop_flag: None,
             pending_voice_text: None,
+            saved_chat_scroll: 0,
+            saved_chat_auto_follow: true,
+            saved_tool_preview_scroll: 0,
+            streaming_start: None,
+            streaming_chars: 0,
         }
     }
 }

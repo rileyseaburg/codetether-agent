@@ -12,14 +12,20 @@
 pub mod cache;
 pub mod collapse_controller;
 pub mod delegation;
+pub mod delegation_outcome;
 pub mod executor;
+pub mod k8s_result;
 pub mod kubernetes_executor;
-pub mod orchestrator;
+mod live_bus; pub mod orchestrator;
 pub mod rate_limiter;
 pub mod remote_subtask;
 pub mod result_store;
+pub mod speculative;
 pub mod subtask;
+pub mod token_exhaustion;
+pub mod token_truncate;
 mod tool_policy;
+pub mod validation;
 
 pub use cache::{CacheConfig, CacheStats, SwarmCache};
 pub use collapse_controller::{

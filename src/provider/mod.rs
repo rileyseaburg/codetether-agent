@@ -138,6 +138,7 @@ pub mod openrouter;
 pub mod retry;
 pub mod shared_http;
 pub mod stepfun;
+pub mod tetherscript_provider;
 pub mod vertex_anthropic;
 pub mod vertex_glm;
 pub mod zai;
@@ -149,6 +150,7 @@ mod init_dispatch_impl;
 mod init_env;
 mod parse;
 mod registry;
+mod tenant_keys;
 mod traits;
 mod types;
 
@@ -156,6 +158,7 @@ mod types;
 
 pub use parse::parse_model_string;
 pub use registry::ProviderRegistry;
+pub use tenant_keys::{PerTaskProviderKeys, TenantProviderKeyPayload};
 pub use traits::{ModelInfo, Provider};
 pub use types::{
     CompletionRequest, CompletionResponse, ContentPart, EmbeddingRequest, EmbeddingResponse,

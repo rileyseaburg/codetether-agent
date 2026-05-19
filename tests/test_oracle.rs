@@ -1,12 +1,11 @@
 //! Integration tests for the RLM oracle system.
 
-use codetether_agent::rlm::RlmStats;
 use codetether_agent::rlm::context_trace::{ContextEvent, ContextTrace};
 use codetether_agent::rlm::oracle::{
     FinalAnswerFormat, GrepOracle, GrepVerification, OracleResult, QueryType, TraceValidator,
     TreeSitterOracle,
 };
-use codetether_agent::rlm::repl::RlmAnalysisResult;
+use codetether_agent::rlm::{RlmAnalysisResult, RlmStats};
 
 fn sample_rust_code() -> String {
     r#"

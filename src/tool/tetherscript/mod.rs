@@ -1,11 +1,12 @@
 //! TetherScript-backed plugin tool.
 
-mod convert;
+pub mod convert;
 mod errors;
 mod execute;
 mod input;
 mod join;
 mod load;
+mod partner;
 mod result;
 mod runner;
 mod schema;
@@ -16,3 +17,5 @@ mod tool;
 mod tests;
 
 pub use tool::TetherScriptPluginTool;
+
+pub(crate) use partner::register;

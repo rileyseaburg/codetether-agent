@@ -12,9 +12,13 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::time::Instant;
 use tokio::process::Command;
-use tokio::time::{Duration, timeout};
 
 use crate::telemetry::{TOOL_EXECUTIONS, ToolExecution, record_persistent};
+
+#[path = "bash_capture.rs"]
+mod bash_capture;
+#[path = "bash_output.rs"]
+mod bash_output;
 
 /// Execute shell commands
 pub struct BashTool {
@@ -367,21 +371,14 @@ impl Tool for BashTool {
             cmd.current_dir(dir);
         }
 
-        let result = timeout(Duration::from_secs(timeout_secs), cmd.output()).await;
+        let max_len = super::tool_output_budget();
+        let result = bash_capture::run(cmd, timeout_secs, max_len).await;
 
         match result {
-            Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
+            Ok(bash_capture::CaptureOutcome::Finished(output)) => {
                 let exit_code = output.status.code().unwrap_or(-1);
 
-                let combined = if stderr.is_empty() {
-                    stdout.to_string()
-                } else if stdout.is_empty() {
-                    stderr.to_string()
-                } else {
-                    format!("{}\n--- stderr ---\n{}", stdout, stderr)
-                };
+                let combined = bash_output::combine(&output.stdout.text, &output.stderr.text);
                 let combined = redact_output(
                     combined,
                     github_auth
@@ -404,29 +401,9 @@ impl Tool for BashTool {
                     combined
                 };
 
-                // Truncate if too long
-                let max_len = 50_000;
-                let (output_str, truncated) = if combined.len() > max_len {
-                    // Find a valid char boundary at or before max_len
-                    let truncate_at = match combined.is_char_boundary(max_len) {
-                        true => max_len,
-                        false => {
-                            let mut boundary = max_len;
-                            while !combined.is_char_boundary(boundary) && boundary > 0 {
-                                boundary -= 1;
-                            }
-                            boundary
-                        }
-                    };
-                    let truncated_output = format!(
-                        "{}...\n[Output truncated, {} bytes total]",
-                        &combined[..truncate_at],
-                        combined.len()
-                    );
-                    (truncated_output, true)
-                } else {
-                    (combined.clone(), false)
-                };
+                let source_len = output.total_bytes();
+                let (output_str, truncated) =
+                    bash_output::truncate(combined, max_len, source_len, output.truncated());
 
                 let duration = exec_start.elapsed();
 
@@ -443,7 +420,7 @@ impl Tool for BashTool {
                 );
                 let exec = if success {
                     exec.complete_success(
-                        format!("exit_code={}, output_len={}", exit_code, combined.len()),
+                        format!("exit_code={}, output_len={}", exit_code, source_len),
                         duration,
                     )
                 } else {
@@ -451,7 +428,7 @@ impl Tool for BashTool {
                         format!(
                             "exit_code={}: {}",
                             exit_code,
-                            combined.lines().next().unwrap_or("(no output)")
+                            output_str.lines().next().unwrap_or("(no output)")
                         ),
                         duration,
                     )
@@ -479,7 +456,7 @@ impl Tool for BashTool {
                     .collect(),
                 })
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 let duration = exec_start.elapsed();
                 let exec = ToolExecution::start(
                     "bash",
@@ -503,7 +480,7 @@ impl Tool for BashTool {
                     Some(json!({"command": command})),
                 )))
             }
-            Err(_) => {
+            Ok(bash_capture::CaptureOutcome::TimedOut) => {
                 let duration = exec_start.elapsed();
                 let exec = ToolExecution::start(
                     "bash",

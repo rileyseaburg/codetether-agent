@@ -36,12 +36,9 @@ mod tests {
 
         assert!(matches!(
             app.state.messages.first().map(|m| &m.message_type),
-            Some(MessageType::User)
-        ));
-        assert!(matches!(
-            app.state.messages.get(1).map(|m| &m.message_type),
             Some(MessageType::Image { .. })
         ));
+        assert_eq!(app.state.messages[0].content, "[image/png image, 3 B]");
         assert!(app.state.pending_images.is_empty());
     }
 }

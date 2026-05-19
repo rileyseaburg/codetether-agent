@@ -1,3 +1,8 @@
+//! Browser control tool implementation.
+//!
+//! The tool parses browserctl JSON input, dispatches to the shared browser
+//! session, and formats browser outputs as tool results.
+
 mod actions;
 mod dispatch;
 mod helpers;
@@ -11,9 +16,11 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 
+/// Tool entry point for browser automation commands.
 pub struct BrowserCtlTool;
 
 impl BrowserCtlTool {
+    /// Create a browser control tool.
     pub fn new() -> Self {
         Self
     }
@@ -75,7 +82,7 @@ fn detect_result() -> ToolResult {
             let output = serde_json::json!({
                 "found": false,
                 "platform": std::env::consts::OS,
-                "hint": "Install Chrome, Edge, Brave, or Vivaldi, or pass `executable_path` to `start`. Firefox and Safari are not supported.",
+                "hint": "No external browser executable is required; browserctl uses the native TetherScript backend.",
             });
             ToolResult {
                 output: serde_json::to_string_pretty(&output).unwrap_or_default(),

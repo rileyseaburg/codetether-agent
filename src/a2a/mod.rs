@@ -8,6 +8,7 @@
 //! - **gRPC** — `grpc.rs` (tonic-based, compiled from `proto/a2a/v1/a2a.proto`)
 
 pub mod bridge;
+pub mod bus_emit;
 pub mod claim;
 pub mod client;
 #[path = "git_credentials/mod.rs"]
@@ -17,6 +18,7 @@ pub mod lan;
 pub mod mdns;
 pub mod server;
 pub mod spawn;
+pub mod task_scope;
 pub mod types;
 pub mod voice_grpc;
 pub mod worker;
