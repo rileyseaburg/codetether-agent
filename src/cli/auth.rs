@@ -411,6 +411,9 @@ async fn authenticate_codex(args: CodexAuthArgs) -> Result<()> {
             "HashiCorp Vault is not configured. Set VAULT_ADDR and VAULT_TOKEN before running `codetether auth codex`."
         );
     }
+    secrets::verify_reachable().await.context(
+        "HashiCorp Vault is configured but unreachable. Start Vault, correct VAULT_ADDR/VAULT_TOKEN, or unset stale Vault env before running `codetether auth codex`.",
+    )?;
 
     if args.device_code {
         let credentials = authenticate_codex_device_code().await?;

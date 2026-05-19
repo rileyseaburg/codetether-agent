@@ -1,7 +1,7 @@
 use crate::provenance::ClaimProvenance;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TaskClaimResponse {
     pub task_id: String,
     pub worker_id: String,
@@ -10,6 +10,12 @@ pub struct TaskClaimResponse {
     pub tenant_id: Option<String>,
     pub user_id: Option<String>,
     pub agent_identity_id: Option<String>,
+    #[serde(default)]
+    pub task_timeout_seconds: Option<u64>,
+    #[serde(default)]
+    pub provider_keys: Option<serde_json::Value>,
+    #[serde(default)]
+    pub provider_key_source: Option<String>,
 }
 
 impl TaskClaimResponse {
@@ -41,6 +47,9 @@ mod tests {
             tenant_id: Some("tenant-1".to_string()),
             user_id: Some("user-1".to_string()),
             agent_identity_id: None,
+            task_timeout_seconds: None,
+            provider_keys: None,
+            provider_key_source: None,
         }
         .into_provenance();
         assert_eq!(provenance.agent_identity_id.as_deref(), Some("user:user-1"));

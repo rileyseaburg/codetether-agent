@@ -22,6 +22,7 @@ use crate::tui::worker_bridge::TuiWorkerBridge;
 
 use super::chat_helpers::push_user_messages;
 use super::chat_submit_dispatch::dispatch_prompt;
+use super::pasted_text::expand_paste_placeholders;
 
 /// Submit the chat input to the provider.
 ///
@@ -43,6 +44,12 @@ pub(super) async fn handle_enter_chat(
     if !prompt.is_empty() {
         app.state.push_history(prompt.clone());
     }
+    let prompt = if let Some((agent_name, msg)) = super::mention_route::parse_mention(&prompt) {
+        tracing::info!(agent = %agent_name, "Mention detected, routing as prefixed message");
+        format!("[to @{}] {}", agent_name, msg)
+    } else {
+        prompt
+    };
     if prompt.starts_with('/') {
         handle_slash_command(app, cwd, session, registry.as_ref(), &prompt).await;
         app.state.clear_input();
@@ -58,9 +65,16 @@ pub(super) async fn handle_enter_chat(
     }
 
     let pending_images = std::mem::take(&mut app.state.pending_images);
+    let pending_text_pastes = std::mem::take(&mut app.state.pending_text_pastes);
     if prompt.is_empty() && pending_images.is_empty() {
         return;
     }
+
+    // The user-facing chat history shows the compact placeholder so a
+    // 1-line summary stands in for what would otherwise be an
+    // 1000-line wall of text. The agent receives the expanded form
+    // with the full pasted content wrapped in delimiters.
+    let agent_prompt = expand_paste_placeholders(&prompt, &pending_text_pastes);
 
     push_user_messages(app, &prompt, &pending_images);
     dispatch_prompt(
@@ -69,7 +83,7 @@ pub(super) async fn handle_enter_chat(
         session,
         registry,
         worker_bridge,
-        &prompt,
+        &agent_prompt,
         pending_images,
         event_tx,
         result_tx,

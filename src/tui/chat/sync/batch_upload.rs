@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use minio::s3::builders::ObjectContent;
+use minio::s3::client::MinioClient;
 
 use super::archive_reader::read_chat_archive_batch;
 use super::config_types::ChatSyncConfig;
@@ -17,7 +18,7 @@ pub struct ChatSyncBatch {
 }
 
 pub async fn sync_batch(
-    client: &minio::s3::Client,
+    client: &MinioClient,
     archive_path: &PathBuf,
     config: &ChatSyncConfig,
     host_tag: &str,
@@ -40,7 +41,8 @@ pub async fn sync_batch(
     };
     let bytes = payload.len() as u64;
     client
-        .put_object_content(&config.bucket, &key, ObjectContent::from(payload))
+        .put_object_content(&config.bucket, &key, ObjectContent::from(payload))?
+        .build()
         .send()
         .await?;
     Ok(Some(ChatSyncBatch {

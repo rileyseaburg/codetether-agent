@@ -15,12 +15,12 @@ impl Session {
     ///
     /// # Errors
     ///
-    /// Returns an error if the session file does not exist or the JSON is
-    /// malformed.
+    /// Returns an error if the session file does not exist, exceeds the
+    /// sanity size cap, or the JSON is malformed.
     pub async fn load(id: &str) -> Result<Self> {
         let path = Self::session_path(id)?;
-        let content = fs::read_to_string(&path).await?;
-        let mut session: Session = serde_json::from_str(&content)?;
+        super::helper::persistence_cap::ensure_session_file_size(&path).await?;
+        let mut session: Session = serde_json::from_str(&fs::read_to_string(&path).await?)?;
         session.normalize_sidecars();
         Ok(session)
     }
@@ -55,8 +55,12 @@ impl Session {
         window: usize,
     ) -> Result<TailLoad> {
         let sessions_dir = Self::sessions_dir()?;
-        let canonical_workspace =
-            workspace.map(|w| w.canonicalize().unwrap_or_else(|_| w.to_path_buf()));
+        let canonical_workspace = workspace.map(|w| {
+            w.canonicalize().unwrap_or_else(|e| {
+                tracing::warn!(path = %w.display(), error = %e, "canonicalize failed; using raw path");
+                w.to_path_buf()
+            })
+        });
         tokio::task::spawn_blocking(move || {
             scan_with_index(&sessions_dir, canonical_workspace, window)
         })
@@ -192,10 +196,11 @@ impl Session {
     /// Delete a session file by ID. No-op if the file does not exist.
     pub async fn delete(id: &str) -> Result<()> {
         let path = Self::session_path(id)?;
-        if path.exists() {
-            tokio::fs::remove_file(&path).await?;
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e.into()),
         }
-        Ok(())
     }
 
     /// Resolve the sessions directory (`<data_dir>/sessions`).
@@ -220,6 +225,12 @@ impl Session {
 
     /// Resolve the on-disk path for a session file.
     pub(crate) fn session_path(id: &str) -> Result<PathBuf> {
+        if id.is_empty()
+            || id.len() > 128
+            || id.contains(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
+        {
+            anyhow::bail!("Invalid session ID:rejecting path traversal risk");
+        }
         Ok(Self::sessions_dir()?.join(format!("{}.json", id)))
     }
 }
@@ -237,24 +248,36 @@ fn scan_with_index(
         let index = super::workspace_index::WorkspaceIndex::load_sync();
         if let Some(id) = index.get(ws) {
             let candidate = sessions_dir.join(format!("{id}.json"));
-            if candidate.exists()
-                && let Ok(load) = tail_load_sync(&candidate, window)
-            {
-                // Confirm it still belongs to this workspace — the user
-                // could have edited the session's metadata.directory
-                // manually or moved a file.
-                let dir_ok = load
-                    .session
-                    .metadata
-                    .directory
-                    .as_ref()
-                    .map(|d| {
-                        let canonical = d.canonicalize().unwrap_or_else(|_| d.clone());
-                        &canonical == ws
-                    })
-                    .unwrap_or(false);
-                if dir_ok {
-                    return Ok(load);
+            if candidate.exists() {
+                if let Ok(load) = tail_load_sync(&candidate, window) {
+                    // Confirm it still belongs to this workspace — the user
+                    // could have edited the session's metadata.directory
+                    // manually or moved a file.
+                    let dir_ok = load
+                        .session
+                        .metadata
+                        .directory
+                        .as_ref()
+                        .map(|d| {
+                            let canonical = d.canonicalize().unwrap_or_else(|_| d.clone());
+                            &canonical == ws
+                        })
+                        .unwrap_or(false);
+                    if dir_ok {
+                        return Ok(load);
+                    }
+                    tracing::warn!(
+                        session_id = %id,
+                        stored_dir = ?load.session.metadata.directory,
+                        expected_dir = ?ws,
+                        "Index hit but directory mismatch; falling back to scan"
+                    );
+                } else {
+                    tracing::warn!(
+                        session_id = %id,
+                        path = %candidate.display(),
+                        "Index hit but session file failed to parse; falling back to scan"
+                    );
                 }
             }
         }
@@ -315,7 +338,10 @@ fn scan_sync(
     for entry in fs::read_dir(sessions_dir)? {
         let entry = match entry {
             Ok(e) => e,
-            Err(_) => continue,
+            Err(err) => {
+                tracing::warn!(error = %err, "skipping unreadable directory entry");
+                continue;
+            }
         };
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("json") {
@@ -495,6 +521,11 @@ fn file_contains_finder(path: &Path, finder: &memchr::memmem::Finder<'_>) -> Res
     let meta = file.metadata()?;
     let len = meta.len();
     if (len as usize) < needle_len {
+        return Ok(false);
+    }
+    const MAX_MMAP_SIZE: u64 = 64 * 1024 * 1024; // 64 MB
+    if len > MAX_MMAP_SIZE {
+        tracing::warn!(path = %path.display(), size = len, "Skipping oversized session file");
         return Ok(false);
     }
     // SAFETY: We only read the mapping, we do not mutate it. The

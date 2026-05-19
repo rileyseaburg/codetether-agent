@@ -17,8 +17,7 @@
 //! | `swarm.{id}` | Swarm-level coordination |
 //! | `broadcast` | Global announcements |
 //! | `tools.{name}` | Tool-specific channels |
-
-pub mod global;
+pub mod global; pub mod payload;
 pub mod registry;
 pub mod relay;
 pub mod s3_sink;

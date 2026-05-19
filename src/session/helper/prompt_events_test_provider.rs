@@ -41,7 +41,7 @@ impl Provider for StreamContextErrorProvider {
         _: CompletionRequest,
     ) -> Result<BoxStream<'static, StreamChunk>> {
         if self.calls.fetch_add(1, Ordering::SeqCst) == 0 {
-            Err(anyhow::anyhow!("context length exceeded"))
+            Err(anyhow::anyhow!("Your input exceeds the context window"))
         } else {
             Ok(Box::pin(stream::iter([StreamChunk::Text("ok".into())])))
         }

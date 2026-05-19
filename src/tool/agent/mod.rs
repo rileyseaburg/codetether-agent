@@ -13,6 +13,9 @@
 
 mod actions;
 mod event_loop;
+mod execution_state;
+#[cfg(test)]
+mod execution_state_tests;
 mod handlers;
 mod helpers;
 mod message;
@@ -33,5 +36,8 @@ mod store;
 mod text;
 mod tool_impl;
 mod tool_schema;
+
+#[cfg(test)]
+mod spawn_tests;
 
 pub use tool_impl::AgentTool;

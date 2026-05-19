@@ -6,6 +6,7 @@
 //! Ralph iterates through PRD user stories, running quality gates after each,
 //! and uses RLM to compress progress when context gets too large.
 
+mod delegation;
 mod ralph_loop;
 pub mod state_store;
 pub mod store_http;
@@ -13,6 +14,7 @@ pub mod store_memory;
 mod types;
 mod verification;
 
+pub use delegation::*;
 pub use ralph_loop::*;
 pub use state_store::{RalphRunState, RalphRunSummary, RalphStateStore, StoryResultEntry};
 pub use types::*;

@@ -1,19 +1,28 @@
-//! Windows apps listing for computer use.
+//! Native window enumeration via Win32.
 
+use crate::platform::windows::computer_use::list_windows;
+
+/// List visible, non-minimized windows with useful metadata.
+///
+/// Filters to only visible windows to reduce noise for agents.
 pub async fn handle_list_apps() -> anyhow::Result<crate::tool::ToolResult> {
-    let script = r#"
-$p=Get-Process|Where-Object {$_.MainWindowHandle -ne 0 -and $_.MainWindowTitle}
-$p|Select-Object @{n='app';e={$_.ProcessName}},@{n='pid';e={$_.Id}},@{n='window_title';e={$_.MainWindowTitle}},@{n='hwnd';e={$_.MainWindowHandle.ToInt64()}}|ConvertTo-Json -Compress -Depth 3
-"#;
-    let value = super::ps::run(script).await?;
-    let apps = match value {
-        serde_json::Value::Array(items) => items,
-        serde_json::Value::Null => Vec::new(),
-        other => vec![other],
-    };
+    let all = list_windows()?;
+    let visible: Vec<serde_json::Value> = all
+        .iter()
+        .filter(|w| {
+            let vis = w.get("visible").and_then(|v| v.as_bool()).unwrap_or(false);
+            let title = w.get("title").and_then(|t| t.as_str()).unwrap_or("");
+            let min = w
+                .get("minimized")
+                .and_then(|m| m.as_bool())
+                .unwrap_or(false);
+            vis && !title.is_empty() && !min
+        })
+        .cloned()
+        .collect();
     Ok(super::response::success_result(serde_json::json!({
         "platform": "Windows",
-        "count": apps.len(),
-        "apps": apps
+        "count": visible.len(),
+        "windows": visible
     })))
 }

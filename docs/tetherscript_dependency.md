@@ -1,17 +1,39 @@
 # TetherScript Dependency
 
-CodeTether uses TetherScript's scripting VM for the `tetherscript_plugin` tool.
+CodeTether uses TetherScript's scripting VM for the `tetherscript_plugin` tool,
+the deterministic browser substrate behind `codetether browserctl offline ...`,
+and the native default backend for `browserctl` sessions.
 
-The VM API used by this tool is pinned to a Git revision because the scripting
-crate is not currently available from crates.io as a compatible release. Build
-and CI environments therefore need `git` and network access to fetch:
+## Version
 
-```text
-https://github.com/kiln-rs/kiln.git
-```
+- **Crate**: `tetherscript` v0.1.0-alpha.16
+- **Source**: <https://crates.io/crates/tetherscript>
+- **Repository**: <https://github.com/CodeTether/TetherScript>
 
-The repository has not been renamed yet, but the package, library, and binary
-at this revision are `tetherscript`.
+## Current language features
 
-The revision is locked in both `Cargo.toml` and `Cargo.lock` to keep builds
-reproducible once the dependency has been fetched.
+Alpha.16 includes closures, recursion, lexical scopes, `let mut`, `for x in
+iterable`, runtime `move` ownership checks, `Result` plus `?`, byte strings,
+JSON, HTTP, SMTP, filesystem/process/path/time/hash tools, and browser/JS
+agent primitives.
+
+## Native browserctl backend
+
+With the `tetherscript` feature enabled, `browserctl start` creates an
+in-process `tetherscript::browser_agent::BrowserPage` session. DOM actions,
+navigation, evaluation, screenshots, tabs, network replay, diagnostics, cookies,
+CORS checks, redirects, form interaction, and HAR-style evidence route through
+TetherScript primitives instead of the old CDP automation stack.
+
+## Capability modules
+
+| Capability module | Purpose |
+|---|---|
+| `TetherScriptAuthority` | Base scripting builtins |
+| `ProviderAuthority` | HTTP provider calls |
+| `BrowserAuthority` | Browser control via native browserctl bridge |
+| `FsAuthority` | Filesystem access |
+| `RpcAuthority` | RPC calls |
+
+The version is locked in both `Cargo.toml` and `Cargo.lock` to keep builds
+reproducible.

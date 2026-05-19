@@ -11,10 +11,11 @@ pub async fn open_model_picker(
     session: &Session,
     registry: Option<&Arc<ProviderRegistry>>,
 ) {
-    let _ = app.state.refresh_available_models(registry).await;
     app.state.open_model_picker();
     app.state.set_view_mode(ViewMode::Model);
-    if let Some(current_model) = session.metadata.model.as_deref()
+    app.state.model_picker_target_model = session.metadata.model.clone();
+
+    if let Some(current_model) = app.state.model_picker_target_model.as_deref()
         && let Some(index) = app
             .state
             .filtered_models()
@@ -23,15 +24,26 @@ pub async fn open_model_picker(
     {
         app.state.selected_model_index = index;
     }
-    app.state.status = if app.state.available_models.is_empty() {
-        "No models available".to_string()
+
+    if let Some(registry) = registry {
+        let cached_count = app.state.available_models.len();
+        app.state.status = if cached_count == 0 {
+            "Loading models...".to_string()
+        } else {
+            format!("Model picker: refreshing {cached_count} cached models")
+        };
+        app.state.start_model_refresh(Arc::clone(registry));
     } else {
-        "Model picker".to_string()
-    };
+        app.state.available_models.clear();
+        app.state.model_refresh_in_flight = false;
+        app.state.model_refresh_rx = None;
+        app.state.status = "No models available".to_string();
+    }
 }
 
 pub fn close_model_picker(app: &mut App) {
     app.state.close_model_picker();
+    app.state.model_picker_target_model = None;
     return_to_chat(app);
 }
 
@@ -43,5 +55,6 @@ pub fn apply_selected_model(app: &mut App, session: &mut Session) {
         app.state.status = "No model selected".to_string();
     }
     app.state.close_model_picker();
+    app.state.model_picker_target_model = None;
     return_to_chat(app);
 }

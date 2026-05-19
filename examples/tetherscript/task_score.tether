@@ -1,0 +1,25 @@
+fn score(title, priority) {
+    let value = priority
+
+    if title.contains("security") {
+        return Ok(value + 50)
+    }
+
+    if title.contains("bug") {
+        return Ok(value + 25)
+    }
+
+    return Ok(value)
+}
+
+fn classify(title) {
+    if title.contains("security") {
+        return Ok("critical")
+    }
+
+    if title.contains("bug") {
+        return Ok("high")
+    }
+
+    return Ok("normal")
+}

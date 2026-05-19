@@ -27,6 +27,8 @@ pub fn is_retryable_provider_error(err: &str) -> bool {
         "rate limit",
         "too many requests",
         "quota exceeded",
+        "token_quota_exceeded",
+        "too many tokens",
         "service unavailable",
         "temporarily unavailable",
         "bad gateway",
@@ -41,8 +43,8 @@ pub fn is_retryable_provider_error(err: &str) -> bool {
         "unknown error",
         "protocol error code 469",
         "no text payload",
-        "context length exceeded",
-        "maximum context length",
+        "context length",
+        "context window",
     ];
 
     if non_retryable_status_codes

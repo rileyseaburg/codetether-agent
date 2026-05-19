@@ -1,5 +1,6 @@
 //! Shared autochat relay helpers used by TUI and CLI flows.
 
+pub mod delegation;
 pub mod model_rotation;
 pub mod shared_context;
 pub mod transport;

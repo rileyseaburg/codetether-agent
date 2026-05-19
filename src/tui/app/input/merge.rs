@@ -26,13 +26,13 @@ pub(super) async fn push_or_merge(
         }
         Err(e) => {
             tracing::warn!(error = %e, "PR creation failed, attempting local merge");
-            recover_with_local_merge(mgr, wt).await;
+            merge_locally(mgr, wt).await;
         }
     }
 }
 
 /// Attempt a local git merge as a recovery path.
-async fn recover_with_local_merge(mgr: &WorktreeManager, wt: &WorktreeInfo) {
+pub(super) async fn merge_locally(mgr: &WorktreeManager, wt: &WorktreeInfo) {
     match mgr.merge(&wt.name).await {
         Ok(mr) if mr.success => {
             tracing::info!(

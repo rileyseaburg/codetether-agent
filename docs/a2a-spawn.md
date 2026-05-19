@@ -98,13 +98,13 @@ mDNS announce + browse. Pass `--no-a2a` to opt out.
 **Terminal 1** (TUI in repo A — no flags needed):
 ```bash
 cd /path/to/repo-A
-codetether tui --a2a-hostname 0.0.0.0
+codetether tui
 ```
 
 **Terminal 2** (TUI in repo B — no flags needed):
 ```bash
 cd /path/to/repo-B
-codetether tui --a2a-hostname 0.0.0.0
+codetether tui
 ```
 
 That's the whole setup. Each TUI starts as normal and *also* exposes
@@ -129,7 +129,7 @@ a separate feature (not in this build).
 |---|---|---|
 | `--no-a2a` | (A2A on) | Disable the A2A peer entirely. The TUI becomes purely interactive. |
 | `--a2a-port <PORT>` | `0` (OS-assigned) | Pin a specific port if you need a stable URL for curl scripts. |
-| `--a2a-hostname <HOST>` | `127.0.0.1` | Use `0.0.0.0` for LAN reachability and to enable mDNS discovery (loopback doesn't multicast on Linux). |
+| `--a2a-hostname <HOST>` | `0.0.0.0` | Wildcard bind is the default default path for same-host/LAN mDNS discovery. Use `127.0.0.1` for loopback-only mode. |
 | `--a2a-public-url <URL>` | derived from bind addr (substituting first LAN IPv4 for `0.0.0.0`) | URL published in the agent card. |
 | `--a2a-name <NAME>` | auto: `<host>-<repo>-<short-pid>` | Card name (what peers see). |
 | `--a2a-description <TEXT>` | (default) | Card description. |

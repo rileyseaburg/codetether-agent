@@ -1337,12 +1337,11 @@ impl OpenAiCodexProvider {
                     Self::finish_responses_tool_call(parser, key, chunks);
                 }
             }
-            Some("response.completed") | Some("response.done") => {
-                if let Some(output) = event
-                    .get("response")
-                    .and_then(|response| response.get("output"))
-                    .and_then(Value::as_array)
-                {
+            Some("response.completed") | Some("response.done")
+                if event.pointer("/response/status").and_then(Value::as_str)
+                    != Some("in_progress") =>
+            {
+                if let Some(output) = event.pointer("/response/output").and_then(Value::as_array) {
                     for item in output {
                         if item.get("type").and_then(Value::as_str) == Some("function_call")
                             && let Some(key) = item
@@ -1685,7 +1684,7 @@ impl OpenAiCodexProvider {
                         });
                     }
                 }
-                StreamChunk::ToolCallEnd { .. } => {}
+                StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
                 StreamChunk::Done { usage: done_usage } => {
                     if let Some(done_usage) = done_usage {
                         usage = done_usage;

@@ -63,10 +63,10 @@
 
 use anyhow::{Context, Result};
 use minio::s3::builders::ObjectContent;
+use minio::s3::client::{MinioClient, MinioClientBuilder};
 use minio::s3::creds::StaticProvider;
 use minio::s3::http::BaseUrl;
 use minio::s3::types::S3Api;
-use minio::s3::{Client as MinioClient, ClientBuilder as MinioClientBuilder};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -179,7 +179,7 @@ fn build_client(config: &HistorySinkConfig) -> Result<MinioClient> {
         .with_context(|| format!("Invalid MinIO endpoint: {}", config.endpoint))?;
     let creds = StaticProvider::new(&config.access_key, &config.secret_key, None);
     MinioClientBuilder::new(base_url)
-        .provider(Some(Box::new(creds)))
+        .provider(Some(creds))
         .build()
         .context("Failed to build MinIO client for history sink")
 }
@@ -221,12 +221,8 @@ pub async fn upload_full_history(
     let bytes = body.into_bytes();
     let byte_len = bytes.len();
     let client = build_client(config)?;
-    let content = ObjectContent::from(bytes);
     let key = config.object_key(session_id);
-    client
-        .put_object_content(&config.bucket, &key, content)
-        .send()
-        .await
+    client.put_object_content(&config.bucket, &key, ObjectContent::from(bytes))?.build().send().await
         .with_context(|| {
             format!(
                 "failed to PUT s3://{}/{key} ({} bytes)",
@@ -330,16 +326,19 @@ pub async fn resolve_pointer(
         None => (None, None),
     };
 
-    let body = client
-        .get_object(&handle.bucket, &handle.key)
+    let body = client.get_object(&handle.bucket, &handle.key).map_err(|e| Fault::BackendError {
+            reason: format!("GET s3://{}/{} failed: {e}", handle.bucket, handle.key),
+        })?
         .offset(offset)
         .length(length)
-        .send()
-        .await
+        .build().send().await
         .map_err(|e| Fault::BackendError {
             reason: format!("GET s3://{}/{} failed: {e}", handle.bucket, handle.key),
         })?
-        .content
+        .content()
+        .map_err(|e| Fault::BackendError {
+            reason: format!("read body for {} failed: {e}", handle.key),
+        })?
         .to_segmented_bytes()
         .await
         .map_err(|e| Fault::BackendError {

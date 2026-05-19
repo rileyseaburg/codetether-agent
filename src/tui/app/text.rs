@@ -60,7 +60,7 @@ pub fn normalize_easy_command(input: &str) -> String {
         "/list" | "/ls" => "/agents".to_string(),
         "/remove" | "/rm" => {
             if args.is_empty() {
-                "/kill".to_string()
+                "/undo".to_string()
             } else {
                 format!("/kill {args}")
             }
@@ -138,7 +138,7 @@ mod tests {
     fn normalize_easy_command_remove_alias() {
         assert_eq!(normalize_easy_command("/remove coder"), "/kill coder");
         assert_eq!(normalize_easy_command("/rm coder"), "/kill coder");
-        assert_eq!(normalize_easy_command("/remove"), "/kill");
+        assert_eq!(normalize_easy_command("/remove"), "/undo");
     }
 
     #[test]

@@ -61,6 +61,10 @@ fn paste_into_chat(app: &mut App, normalized: &str) {
     if super::try_attach_data_url(app, normalized) {
         return;
     }
+    if super::pasted_text::should_summarize(normalized) {
+        attach_summarised_paste(app, normalized);
+        return;
+    }
     app.state.input_mode = if app.state.input.is_empty() && normalized.starts_with('/') {
         InputMode::Command
     } else if app.state.input.starts_with('/') {
@@ -75,4 +79,28 @@ fn paste_into_chat(app: &mut App, normalized: &str) {
     } else {
         "Pasted into input".to_string()
     };
+}
+
+/// Attach a large paste to the sidecar and insert a placeholder at
+/// the cursor instead of the full text.
+fn attach_summarised_paste(app: &mut App, normalized: &str) {
+    let line_count = normalized.lines().count();
+    let byte_count = normalized.len();
+    let size = super::pasted_text::format_size(byte_count);
+    let placeholder = super::pasted_text::attach_paste(&mut app.state, normalized.to_string());
+    let id = app
+        .state
+        .pending_text_pastes
+        .last()
+        .map(|p| p.id)
+        .unwrap_or(0);
+    if app.state.input.starts_with('/') {
+        app.state.input_mode = InputMode::Command;
+    } else {
+        app.state.input_mode = InputMode::Editing;
+    }
+    app.state.insert_text(&placeholder);
+    app.state.status = format!(
+        "Pasted {line_count} lines ({size}) summarised as #{id}; full text will be sent to the agent."
+    );
 }

@@ -17,6 +17,13 @@ pub fn tetherscript_to_json(value: &TetherScriptValue) -> Value {
         }
         TetherScriptValue::Map(values) => Value::Object(map_to_json(&values.borrow())),
         TetherScriptValue::Result(result) => result_to_json(result),
+        TetherScriptValue::Bytes(bytes) => Value::Array(
+            bytes
+                .borrow()
+                .iter()
+                .map(|byte| Value::Number(Number::from(*byte)))
+                .collect(),
+        ),
         TetherScriptValue::Fn(_)
         | TetherScriptValue::VmFn(_)
         | TetherScriptValue::Native(_)

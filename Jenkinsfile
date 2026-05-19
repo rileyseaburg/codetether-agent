@@ -288,7 +288,13 @@ REMOTE
                     ]) {
                         sh '''
                             echo "Publishing ${VERSION} to crates.io ..."
-                            cargo publish --allow-dirty
+                            if ! cargo publish --allow-dirty 2>&1 | tee /tmp/cargo-publish.log; then
+                                if grep -q 'already exists on crates.io index' /tmp/cargo-publish.log; then
+                                    echo "Crate ${VERSION} already exists on crates.io; continuing."
+                                else
+                                    exit 1
+                                fi
+                            fi
                         '''
                     }
                 }

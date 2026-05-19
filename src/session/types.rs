@@ -14,6 +14,7 @@ use crate::provider::{Message, Usage};
 use crate::session::delegation::DelegationState;
 use crate::session::derive_policy::DerivePolicy;
 use crate::session::history_sink::HistorySinkConfig;
+use crate::session::index::SummaryIndex;
 use crate::session::pages::PageKind;
 
 /// Default maximum agentic loop iterations when [`Session::max_steps`] is
@@ -74,6 +75,11 @@ pub struct Session {
     /// history/context split.
     #[serde(default)]
     pub pages: Vec<PageKind>,
+    /// Hierarchical summary cache — Phase B step 14. Populated lazily
+    /// by step 18's producer and invalidated on the
+    /// [`Session::add_message`] hot path.
+    #[serde(default)]
+    pub summary_index: SummaryIndex,
     /// Per-tool-call audit records.
     #[serde(deserialize_with = "crate::session::tail_seed::deserialize_tail_vec")]
     pub tool_uses: Vec<ToolUse>,
@@ -139,6 +145,9 @@ pub struct SessionMetadata {
     /// session JSON would persist secrets to disk.
     #[serde(skip)]
     pub history_sink: Option<HistorySinkConfig>,
+    /// Claim-scoped provider key payload. Not serialized so BYOK secrets are not written to disk.
+    #[serde(skip)]
+    pub provider_keys: Option<serde_json::Value>,
     /// Pre-resolved subcall provider from
     /// [`RlmConfig::subcall_model`](crate::rlm::RlmConfig::subcall_model).
     ///
@@ -175,6 +184,10 @@ impl std::fmt::Debug for SessionMetadata {
                     .history_sink
                     .as_ref()
                     .map(|cfg| (&cfg.endpoint, &cfg.bucket, &cfg.prefix)),
+            )
+            .field(
+                "provider_keys",
+                &self.provider_keys.as_ref().map(|_| "<redacted>"),
             )
             .field(
                 "subcall_provider",

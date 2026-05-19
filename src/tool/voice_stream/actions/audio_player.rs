@@ -1,35 +1,35 @@
-//! HTML audio player helper.
+//! HTML audio player helper — temp file + browser launch.
 
 use anyhow::{Context, Result, bail};
+use std::path::PathBuf;
 use tracing::info;
 
-pub(crate) struct PlayerLaunch {
-    pub html_path: std::path::PathBuf,
-    pub browser_opened: bool,
+pub(crate) struct Launch {
+    pub(crate) html_path: PathBuf,
+    pub(crate) browser_opened: bool,
 }
 
-/// Write a minimal HTML audio player and open the browser.
-pub(crate) fn open(job_id: &str, output_url: &str) -> Result<PlayerLaunch> {
+pub(crate) fn open(job_id: &str, output_url: &str) -> Result<Launch> {
     let output_url = validate_url(output_url)?;
-    let path = std::env::temp_dir().join(format!("voice_{}.html", safe_name(job_id)));
-    std::fs::write(&path, html(job_id, output_url)).context("Failed to write HTML player")?;
+    let path = player_path(job_id);
+    std::fs::write(&path, player_html(job_id, output_url))
+        .context("Failed to write HTML player")?;
     info!(job_id, output_url, "Opening voice audio player in browser");
-    let browser_opened = open::that(&path).is_ok();
-    Ok(PlayerLaunch {
+    Ok(Launch {
         html_path: path,
-        browser_opened,
+        browser_opened: open::that(player_path(job_id)).is_ok(),
     })
 }
 
-fn html(job_id: &str, output_url: &str) -> String {
+fn player_path(job_id: &str) -> PathBuf {
+    std::env::temp_dir().join(format!("voice_{}.html", safe_name(job_id)))
+}
+
+fn player_html(job_id: &str, output_url: &str) -> String {
     let title = escape_html(job_id);
     let source = escape_html(output_url);
     format!(
-        r#"<!DOCTYPE html>
-<html><head><title>Voice: {title}</title></head>
-<body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#111">
-<audio controls autoplay src="{source}" style="width:80%"></audio>
-</body></html>"#
+        r#"<!DOCTYPE html><html><head><title>Voice: {title}</title></head><body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#111"><audio controls autoplay src="{source}" style="width:80%"></audio></body></html>"#
     )
 }
 

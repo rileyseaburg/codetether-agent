@@ -76,7 +76,7 @@ pub fn handle_up(app: &mut App, modifiers: KeyModifiers) {
         app.state.settings_select_prev();
         return;
     }
-    if app.state.slash_suggestions_visible() {
+    if app.state.slash_suggestions_navigable() {
         app.state.select_prev_slash_suggestion();
         return;
     }
@@ -138,7 +138,7 @@ pub fn handle_down(app: &mut App, modifiers: KeyModifiers) {
         app.state.settings_select_next();
         return;
     }
-    if app.state.slash_suggestions_visible() {
+    if app.state.slash_suggestions_navigable() {
         app.state.select_next_slash_suggestion();
         return;
     }

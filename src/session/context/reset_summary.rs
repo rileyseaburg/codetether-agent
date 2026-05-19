@@ -1,45 +1,36 @@
-//! RLM summarisation for the prefix dropped by [`DerivePolicy::Reset`].
+//! Background summarisation for Reset-policy dropped prefixes.
 
 use std::sync::Arc;
 
-use anyhow::{Context as _, Result};
+use anyhow::Result;
+use tokio::sync::mpsc;
 
 use crate::provider::Message;
-use crate::rlm::RlmRouter;
-use crate::rlm::router::AutoProcessContext;
+use crate::rlm::RlmChunker;
+use crate::session::SessionEvent;
 use crate::session::helper::error::messages_to_rlm_context;
 
-/// RLM-summarise the prefix dropped by
+/// Summarise the prefix dropped by
 /// [`derive_reset`](super::reset::derive_reset).
-///
-/// Extracted so the surrounding control flow stays scannable and the
-/// summary prompt can be swapped for an agent-authored one in a future
-/// commit.
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn summarise_prefix_for_reset(
     prefix: &[Message],
     session_id: &str,
     provider: Arc<dyn crate::provider::Provider>,
     model: &str,
     rlm_config: &crate::rlm::RlmConfig,
-    subcall_provider: Option<Arc<dyn crate::provider::Provider>>,
-    subcall_model: Option<String>,
+    _subcall_provider: Option<Arc<dyn crate::provider::Provider>>,
+    _subcall_model: Option<String>,
+    _event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<String> {
     let context = messages_to_rlm_context(prefix);
-    let auto_ctx = AutoProcessContext {
-        tool_id: "context_reset",
-        tool_args: serde_json::json!({"policy": "reset"}),
+    let cached = crate::session::helper::rlm_background::context_summary(
+        &context,
+        "context_reset",
         session_id,
-        abort: None,
-        on_progress: None,
+        model,
         provider,
-        model: model.to_string(),
-        bus: None,
-        trace_id: None,
-        subcall_provider,
-        subcall_model,
-    };
-    let result = RlmRouter::auto_process(&context, auto_ctx, rlm_config)
-        .await
-        .context("RLM summarisation for DerivePolicy::Reset failed")?;
-    Ok(result.processed)
+        rlm_config,
+    );
+    Ok(cached.unwrap_or_else(|| RlmChunker::compress(&context, 512, None)))
 }

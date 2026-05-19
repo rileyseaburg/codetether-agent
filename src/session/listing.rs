@@ -34,10 +34,21 @@ pub async fn list_sessions() -> Result<Vec<SessionSummary>> {
 
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false)
-            && let Ok(content) = fs::read_to_string(&path).await
-            && let Ok(session) = serde_json::from_str::<Session>(&content)
-        {
+        if path.extension().map(|e| e == "json").unwrap_or(false) {
+            let content = match fs::read_to_string(&path).await {
+                Ok(c) => c,
+                Err(err) => {
+                    tracing::warn!(path = %path.display(), error = %err, "skipping unreadable session file");
+                    continue;
+                }
+            };
+            let session = match serde_json::from_str::<Session>(&content) {
+                Ok(s) => s,
+                Err(err) => {
+                    tracing::warn!(path = %path.display(), error = %err, "skipping malformed session file");
+                    continue;
+                }
+            };
             summaries.push(SessionSummary {
                 id: session.id,
                 title: session.title,
@@ -66,7 +77,15 @@ pub async fn list_sessions_for_directory(dir: &std::path::Path) -> Result<Vec<Se
         .filter(|s| {
             s.directory
                 .as_ref()
-                .map(|d| d.canonicalize().unwrap_or_else(|_| d.clone()) == canonical)
+                .map(|d| {
+                    match d.canonicalize() {
+                        Ok(c) => c == canonical,
+                        Err(_) => {
+                            // Fallback: prefix match if either side can't canonicalize
+                            d == dir || canonical.starts_with(d) || d.starts_with(&canonical)
+                        }
+                    }
+                })
                 .unwrap_or(false)
         })
         .collect())

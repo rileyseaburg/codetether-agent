@@ -4,7 +4,7 @@
 # - A2A protocol server
 # - Cognition engine
 
-FROM rust:1.88-slim AS builder
+FROM rust:1.89-slim AS builder
 
 WORKDIR /build
 
@@ -17,12 +17,14 @@ RUN apt-get update && apt-get install -y \
     protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy source, vendor directory, proto files, and policies
+# Copy source, vendor directory, proto files, policies, and examples
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY src ./src
+COPY crates ./crates
 COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
+COPY examples ./examples
 
 # Build release binary
 RUN cargo build --release --bin codetether

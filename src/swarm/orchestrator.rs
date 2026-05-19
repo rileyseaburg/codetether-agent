@@ -103,10 +103,7 @@ impl Orchestrator {
     }
 
     fn prefers_temperature_one(model: &str) -> bool {
-        let normalized = model.to_ascii_lowercase();
-        normalized.contains("kimi-k2")
-            || normalized.contains("glm-")
-            || normalized.contains("minimax")
+        crate::session::helper::provider::prefers_temperature_one(model)
     }
 
     /// Decompose a complex task into subtasks

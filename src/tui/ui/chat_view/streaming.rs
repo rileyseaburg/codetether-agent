@@ -61,6 +61,7 @@ pub fn push_streaming_preview(
                 .fg(Color::DarkGray)
                 .add_modifier(Modifier::DIM),
         ),
+        super::elapsed_badge::elapsed_badge(state),
     ]));
     let formatted = cached_format(&state.streaming_text, formatter);
     for line in formatted {

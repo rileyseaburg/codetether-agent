@@ -208,6 +208,8 @@ pub struct EmbeddingResponse {
 pub enum StreamChunk {
     /// Incremental text delta.
     Text(String),
+    /// Model thinking/reasoning content.
+    Thinking(String),
     /// Beginning of a tool call.
     ToolCallStart { id: String, name: String },
     /// Partial tool-call arguments.

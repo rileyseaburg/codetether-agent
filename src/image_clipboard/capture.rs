@@ -21,6 +21,7 @@ use crate::session::ImageAttachment;
 /// assert!(image.data_url.starts_with("data:image/png;base64,"));
 /// # Ok::<(), anyhow::Error>(())
 /// ```
+#[cfg(not(windows))]
 pub fn capture_image() -> Result<ImageAttachment> {
     let mut clipboard = arboard::Clipboard::new().context("system clipboard is not available")?;
     let image = clipboard
@@ -28,6 +29,18 @@ pub fn capture_image() -> Result<ImageAttachment> {
         .context("clipboard does not contain an image")?;
     attachment_from_rgba(image.width, image.height, image.bytes.into_owned())
         .context("clipboard image could not be encoded as PNG")
+}
+
+/// Read the current system clipboard image (Windows — not yet implemented).
+///
+/// Image clipboard on Windows requires BITMAPV5HEADER parsing which
+/// is not yet wired through the `windows` crate raw-dylib path.
+#[cfg(windows)]
+pub fn capture_image() -> Result<ImageAttachment> {
+    anyhow::bail!(
+        "image clipboard capture is not yet supported on Windows \
+         via the raw-dylib path; use /image <path> to attach a file"
+    )
 }
 
 /// Replace the system clipboard with text.
@@ -42,11 +55,19 @@ pub fn capture_image() -> Result<ImageAttachment> {
 /// codetether_agent::image_clipboard::copy_text("hello")?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
+#[cfg(not(windows))]
 pub fn copy_text(text: &str) -> Result<()> {
     let mut clipboard = arboard::Clipboard::new().context("system clipboard is not available")?;
     clipboard
         .set_text(text.to_string())
         .context("failed to write image paste text to clipboard")
+}
+
+/// Replace the system clipboard with text (Windows via raw-dylib).
+#[cfg(windows)]
+pub fn copy_text(text: &str) -> Result<()> {
+    crate::tui::clipboard_winapi::set_clipboard_text(text)
+        .context("failed to write text to clipboard via raw-dylib")
 }
 
 fn attachment_from_rgba(width: usize, height: usize, bytes: Vec<u8>) -> Option<ImageAttachment> {

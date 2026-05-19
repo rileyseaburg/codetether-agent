@@ -1,0 +1,11 @@
+fn classify(title) {
+    if title.contains("security") {
+        return Ok("critical")
+    }
+
+    if title.contains("bug") {
+        return Ok("high")
+    }
+
+    return Ok("normal")
+}

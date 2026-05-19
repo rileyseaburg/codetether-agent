@@ -561,6 +561,28 @@ pub async fn execute(args: RunArgs) -> Result<()> {
 
     tracing::info!("Running with message: {}", message);
 
+    if args.branches > 1 {
+        let runner = crate::swarm::speculative::SpeculativeRunner::new(
+            args.branches,
+            args.strategies.clone(),
+        );
+        let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let specs = runner.build_branches(&cwd, message)?;
+        tracing::info!(branches = %runner.branch_count, "Many-worlds speculative mode enabled");
+        for spec in &specs {
+            tracing::info!(
+                branch = %spec.branch_name,
+                strategy = %spec.strategy_prompt,
+                "Speculative branch assigned"
+            );
+        }
+        println!(
+            "[speculative] {} parallel branches queued (collapse controller will race + prune)",
+            runner.branch_count
+        );
+        // TODO: wire through SwarmExecutor when parallel dispatch is ready
+    }
+
     // Load configuration
     let config = Config::load().await.unwrap_or_default();
     let workspace_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
@@ -807,12 +829,13 @@ pub async fn execute(args: RunArgs) -> Result<()> {
                 );
                 s
             }
-            Err(_) => {
+            Err(err) => {
                 let s = Session::new().await?;
-                tracing::info!(
+                tracing::warn!(
+                    error = %err,
                     session_id = %s.id,
                     workspace = %workspace_dir.display(),
-                    "No workspace session found; created new session"
+                    "Session lookup failed; created new session"
                 );
                 s
             }
@@ -832,6 +855,15 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     if let Some(model) = model {
         tracing::info!("Using model: {}", model);
         session.metadata.model = Some(model);
+    }
+
+    // Load project memory palace
+    let beliefs = crate::memory::palace::load_project_beliefs(&workspace_dir);
+    if !beliefs.is_empty() {
+        let ctx = crate::memory::palace::belief_context(&beliefs);
+        if !ctx.is_empty() {
+            tracing::info!(beliefs = beliefs.len(), "Loaded project memory palace");
+        }
     }
 
     session.metadata.knowledge_snapshot = knowledge_snapshot;

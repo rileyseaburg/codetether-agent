@@ -1,0 +1,18 @@
+fn repair_msg(msg) {
+    if msg.role != "assistant" {
+        return msg
+    }
+
+    let tools = msg["tool_calls"]
+    if tools == nil {
+        return msg
+    }
+
+    let reasoning = msg["reasoning_content"]
+    if reasoning != nil {
+        return msg
+    }
+
+    msg["reasoning_content"] = ""
+    return msg
+}
