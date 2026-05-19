@@ -38,6 +38,9 @@ for COMMIT in $COMMITS; do
         SIGNED=$((SIGNED + 1))
         AGENT=$(echo "$BODY" | grep -i "^CodeTether-Agent-Name:" | head -n1 | sed 's/^[^:]*:[[:space:]]*//' || echo "unknown")
         echo "  ✅ $COMMIT — agent=${AGENT:-unknown}"
+    elif echo "$BODY" | grep -qi "^CodeTether-Worker-ID:"; then
+        SIGNED=$((SIGNED + 1))
+        echo "  ✅ $COMMIT — worker provenance"
     else
         UNSIGNED=$((UNSIGNED + 1))
         echo "  ⚠️  $COMMIT — no provenance trailer"
