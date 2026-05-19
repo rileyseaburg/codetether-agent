@@ -22,6 +22,7 @@ use std::path::Path;
 ///
 /// assert_eq!(enriched["path"], "/workspace/src/lib.rs");
 /// assert_eq!(enriched["__ct_session_id"], "session-1");
+/// assert_eq!(enriched["__ct_parent_workspace"], "/workspace");
 /// ```
 pub fn enrich_tool_input_with_runtime_context(
     tool_input: &Value,
@@ -41,9 +42,17 @@ pub fn enrich_tool_input_with_runtime_context(
         if let Some(provenance) = provenance {
             insert_provenance_fields(obj, provenance);
         }
+        insert_parent_workspace(obj, workspace_dir);
         normalize_workspace_paths(obj, workspace_dir);
     }
     enriched
+}
+
+fn insert_parent_workspace(obj: &mut Map<String, Value>, parent_workspace: &Path) {
+    obj.insert(
+        "__ct_parent_workspace".to_string(),
+        json!(parent_workspace.display().to_string()),
+    );
 }
 
 /// Insert a string field into a JSON object only when the value is present.

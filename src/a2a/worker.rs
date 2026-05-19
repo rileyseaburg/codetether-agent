@@ -4,6 +4,8 @@ mod clone_location;
 mod clone_target;
 mod model_defaults;
 mod model_preferences;
+pub(crate) mod task_timeline;
+pub(super) mod workspace_resolve;
 
 use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
@@ -33,6 +35,7 @@ use tokio::time::Instant;
 
 use self::model_defaults::{default_model_for_provider, prefers_temperature_one};
 use self::model_preferences::choose_provider_for_tier;
+use crate::a2a::task_scope::check_task_scope;
 use crate::a2a::worker_tool_registry::{create_filtered_registry, is_tool_allowed};
 use crate::a2a::worker_workspace_context::resolve_task_workspace_dir;
 use clone_location::{git_clone_base_dir, resolve_workspace_clone_path};
@@ -174,10 +177,15 @@ struct WorkerTaskRuntime {
     server: String,
     token: Option<String>,
     worker_id: String,
+    agent_name: String,
     processing: Arc<Mutex<HashSet<String>>>,
     max_concurrent_tasks: usize,
     auto_approve: AutoApprove,
     bus: Arc<AgentBus>,
+    /// Shared progress state for the currently active task (read by heartbeat).
+    task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
+    /// Server-side workspace IDs this worker is scoped to (empty = accept all).
+    workspace_ids: Vec<String>,
 }
 
 // Run the A2A worker
@@ -203,7 +211,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
     // Wrap in shared mutex so background workspace-sync can add new local paths
     let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
 
-    let client = Client::new();
+    let client = build_worker_http_client()?;
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
     let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
     if cognition_heartbeat.enabled {
@@ -240,15 +248,21 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         handle.announce_ready(worker_capabilities());
     }
 
+    let task_progress: Arc<Mutex<task_timeline::TaskProgressState>> =
+        Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
+
     let task_runtime = WorkerTaskRuntime {
         client: client.clone(),
         server: server.to_string(),
         token: args.token.clone(),
         worker_id: worker_id.clone(),
+        agent_name: name.clone(),
         processing: processing.clone(),
         max_concurrent_tasks,
         auto_approve,
         bus: bus.clone(),
+        task_progress: task_progress.clone(),
+        workspace_ids: Vec::new(),
     };
 
     // Register worker
@@ -314,11 +328,15 @@ pub async fn run(args: A2aArgs) -> Result<()> {
             heartbeat_state.clone(),
             processing.clone(),
             cognition_heartbeat.clone(),
+            task_progress.clone(),
         );
 
         match connect_stream(&task_runtime, &name, &codebases, None).await {
-            Ok(()) => {
+            Ok(StreamDisconnectReason::Ended) => {
                 tracing::warn!("Stream ended, reconnecting...");
+            }
+            Ok(StreamDisconnectReason::ReadError(error)) => {
+                tracing::warn!(error = %error, "Stream read failed, reconnecting...");
             }
             Err(e) => {
                 tracing::error!("Stream error: {}, reconnecting...", e);
@@ -363,7 +381,7 @@ pub async fn run_with_state(
     // Wrap in shared mutex so background workspace-sync can add new local paths
     let shared_codebases: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(codebases));
 
-    let client = Client::new();
+    let client = build_worker_http_client()?;
     let processing = Arc::new(Mutex::new(HashSet::<String>::new()));
     let cognition_heartbeat = CognitionHeartbeatConfig::from_env();
     if cognition_heartbeat.enabled {
@@ -406,15 +424,21 @@ pub async fn run_with_state(
         handle.announce_ready(worker_capabilities());
     }
 
+    let task_progress_ws: Arc<Mutex<task_timeline::TaskProgressState>> =
+        Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
+
     let task_runtime = WorkerTaskRuntime {
         client: client.clone(),
         server: server.to_string(),
         token: args.token.clone(),
         worker_id: worker_id.clone(),
+        agent_name: name.clone(),
         processing: processing.clone(),
         max_concurrent_tasks,
         auto_approve,
         bus: bus.clone(),
+        task_progress: task_progress_ws.clone(),
+        workspace_ids: Vec::new(),
     };
 
     // Register worker
@@ -493,11 +517,15 @@ pub async fn run_with_state(
             heartbeat_state.clone(),
             processing.clone(),
             cognition_heartbeat.clone(),
+            task_progress_ws.clone(),
         );
 
         match connect_stream(&task_runtime, &name, &codebases, Some(task_notify_rx)).await {
-            Ok(()) => {
+            Ok(StreamDisconnectReason::Ended) => {
                 tracing::warn!("Stream ended, reconnecting...");
+            }
+            Ok(StreamDisconnectReason::ReadError(error)) => {
+                tracing::warn!(error = %error, "Stream read failed, reconnecting...");
             }
             Err(e) => {
                 tracing::error!("Stream error: {}, reconnecting...", e);
@@ -523,6 +551,16 @@ pub fn generate_worker_id() -> String {
     )
 }
 
+fn build_worker_http_client() -> Result<Client> {
+    Client::builder()
+        .no_gzip()
+        .no_brotli()
+        .no_zstd()
+        .no_deflate()
+        .build()
+        .context("Failed to build worker HTTP client")
+}
+
 fn resolve_worker_id() -> String {
     for key in ["CODETETHER_WORKER_ID", "A2A_WORKER_ID"] {
         if let Ok(value) = std::env::var(key) {
@@ -537,6 +575,25 @@ fn resolve_worker_id() -> String {
 
 fn normalize_max_concurrent_tasks(max_concurrent_tasks: usize) -> usize {
     max_concurrent_tasks.max(1)
+}
+
+fn persistent_worker_enabled() -> bool {
+    std::env::var("PERSISTENT_WORKER_ENABLED")
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
+fn persistent_worker_lease_seconds() -> u64 {
+    std::env::var("PERSISTENT_WORKER_LEASE_SECONDS")
+        .ok()
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(3600)
 }
 
 async fn reserve_task_slot(
@@ -632,6 +689,50 @@ fn worker_capabilities() -> Vec<String> {
     capabilities
 }
 
+/// Copy timeline progress into the runtime's shared progress state for heartbeat.
+async fn sync_timeline_to_runtime(
+    timeline: &task_timeline::TaskTimeline,
+    runtime: &WorkerTaskRuntime,
+) {
+    timeline.sync_progress().await;
+    let state = timeline.progress_handle().lock().await.clone();
+    *runtime.task_progress.lock().await = state;
+}
+
+/// Resolve workspace IDs for the configured workspace roots and log diagnostics.
+async fn resolve_and_log_workspace_ids(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    workspace_roots: &[String],
+) -> Vec<String> {
+    match workspace_resolve::resolve_workspace_ids(client, server, token, workspace_roots).await {
+        Ok(resolved) => {
+            if resolved.is_empty() {
+                tracing::warn!(
+                    roots = ?workspace_roots,
+                    "No server-side workspace IDs resolved for configured roots \
+                     — the server may not route tasks to this worker. \
+                     Ensure workspaces are registered with the control plane \
+                     and that their paths fall under the configured roots."
+                );
+            } else {
+                let ids: Vec<String> = resolved.iter().map(|ws| ws.id.clone()).collect();
+                tracing::info!(
+                    workspace_ids = ?ids,
+                    count = resolved.len(),
+                    "Resolved server-side workspace IDs for configured roots"
+                );
+            }
+            resolved.iter().map(|ws| ws.id.clone()).collect()
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to resolve workspace IDs from server");
+            Vec::new()
+        }
+    }
+}
+
 fn task_value<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a serde_json::Value> {
     task.get("task")
         .and_then(|t| t.get(key))
@@ -642,11 +743,45 @@ fn task_str<'a>(task: &'a serde_json::Value, key: &str) -> Option<&'a str> {
     task_value(task, key).and_then(|v| v.as_str())
 }
 
+fn task_u64(task: &serde_json::Value, key: &str) -> Option<u64> {
+    let value = task_value(task, key)?;
+    if let Some(v) = value.as_u64() {
+        return Some(v);
+    }
+    if let Some(v) = value.as_i64()
+        && v >= 0
+    {
+        return Some(v as u64);
+    }
+    if let Some(v) = value.as_str()
+        && let Ok(parsed) = v.trim().parse::<u64>()
+    {
+        return Some(parsed);
+    }
+    None
+}
+
 fn task_metadata(task: &serde_json::Value) -> serde_json::Map<String, serde_json::Value> {
     task_value(task, "metadata")
         .and_then(|m| m.as_object())
         .cloned()
         .unwrap_or_default()
+}
+
+fn task_timeout_secs(
+    task: &serde_json::Value,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> u64 {
+    task_u64(task, "task_timeout_seconds")
+        .or_else(|| task_u64(task, "timeout_secs"))
+        .or_else(|| {
+            metadata_u64(
+                metadata,
+                &["task_timeout_seconds", "timeout_secs", "timeout"],
+            )
+        })
+        .unwrap_or(1200)
+        .clamp(60, 604800)
 }
 
 fn model_ref_to_provider_model(model: &str) -> String {
@@ -959,7 +1094,7 @@ async fn resolve_swarm_model(
         return Some(model);
     }
 
-    let registry = ProviderRegistry::from_vault().await.ok()?;
+    let registry = ProviderRegistry::shared_from_vault().await.ok()?;
     let providers = registry.list();
     if providers.is_empty() {
         return None;
@@ -1100,6 +1235,9 @@ pub async fn register_worker(
         })
         .collect();
 
+    // Resolve workspace IDs that correspond to our configured paths.
+    let workspace_ids = resolve_and_log_workspace_ids(client, server, token, codebases).await;
+
     let res = req
         .json(&serde_json::json!({
             "worker_id": worker_id,
@@ -1109,6 +1247,7 @@ pub async fn register_worker(
             "k8s_node_name": k8s_node_name,
             "models": models_array,
             "workspaces": codebases,
+            "workspace_ids": workspace_ids,
             "interfaces": advertised_interfaces(public_url),
             "agents": agent_defs,
         }))
@@ -1145,10 +1284,10 @@ async fn load_provider_models() -> Result<HashMap<String, Vec<crate::provider::M
 async fn load_provider_models_uncached() -> Result<HashMap<String, Vec<crate::provider::ModelInfo>>>
 {
     // Try Vault first
-    let registry = match ProviderRegistry::from_vault().await {
+    let registry = match ProviderRegistry::shared_from_vault().await {
         Ok(r) if !r.list().is_empty() => {
             tracing::info!("Loaded {} providers from Vault", r.list().len());
-            r
+            (*r).clone()
         }
         Ok(_) => {
             tracing::warn!("Vault returned 0 providers, falling back to config/env vars");
@@ -1190,9 +1329,15 @@ async fn fallback_registry() -> Result<ProviderRegistry> {
 async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     tracing::info!("Checking for pending tasks...");
 
-    let mut req = runtime
-        .client
-        .get(format!("{}/v1/agent/tasks?status=pending", runtime.server));
+    let mut url = format!("{}/v1/agent/tasks?status=pending", runtime.server);
+    if !runtime.agent_name.is_empty() {
+        url = format!(
+            "{}&agent_name={}",
+            url,
+            urlencoding::encode(&runtime.agent_name)
+        );
+    }
+    let mut req = runtime.client.get(&url);
     if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
@@ -1214,6 +1359,21 @@ async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
 
     for task in tasks {
         if let Some(id) = task["id"].as_str() {
+            // Scope gate: reject tasks not targeted at this worker
+            if let Err(reason) = check_task_scope(
+                &task,
+                &runtime.worker_id,
+                &runtime.agent_name,
+                &runtime.workspace_ids,
+            ) {
+                tracing::debug!(
+                    task_id = id,
+                    reason = %reason,
+                    "Pending task skipped — out of scope"
+                );
+                continue;
+            }
+
             match reserve_task_slot(&runtime.processing, id, runtime.max_concurrent_tasks).await {
                 TaskReservation::Reserved => {
                     let task_id = id.to_string();
@@ -1241,12 +1401,18 @@ async fn fetch_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum StreamDisconnectReason {
+    Ended,
+    ReadError(String),
+}
+
 async fn connect_stream(
     runtime: &WorkerTaskRuntime,
     name: &str,
     codebases: &[String],
     task_notify_rx: Option<mpsc::Receiver<String>>,
-) -> Result<()> {
+) -> Result<StreamDisconnectReason> {
     let url = format!(
         "{}/v1/worker/tasks/stream?agent_name={}&worker_id={}",
         runtime.server,
@@ -1258,6 +1424,8 @@ async fn connect_stream(
         .client
         .get(&url)
         .header("Accept", "text/event-stream")
+        .header("Accept-Encoding", "identity")
+        .header("Cache-Control", "no-cache, no-transform")
         .header("X-Worker-ID", &runtime.worker_id)
         .header("X-Agent-Name", name)
         .header("X-Codebases", codebases.join(","))
@@ -1325,11 +1493,11 @@ async fn connect_stream(
                         }
                     }
                     Some(Err(e)) => {
-                        return Err(e.into());
+                        return Ok(StreamDisconnectReason::ReadError(e.to_string()));
                     }
                     None => {
                         // Stream ended
-                        return Ok(());
+                        return Ok(StreamDisconnectReason::Ended);
                     }
                 }
             }
@@ -1349,6 +1517,21 @@ async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntim
         .and_then(|t| t["id"].as_str())
         .or_else(|| task["id"].as_str())
     {
+        // Scope gate: reject tasks not targeted at this worker
+        if let Err(reason) = check_task_scope(
+            task,
+            &runtime.worker_id,
+            &runtime.agent_name,
+            &runtime.workspace_ids,
+        ) {
+            tracing::debug!(
+                task_id = id,
+                reason = %reason,
+                "SSE task skipped — out of scope"
+            );
+            return;
+        }
+
         match reserve_task_slot(&runtime.processing, id, runtime.max_concurrent_tasks).await {
             TaskReservation::Reserved => {
                 let task_id = id.to_string();
@@ -1375,9 +1558,15 @@ async fn spawn_task_handler(task: &serde_json::Value, runtime: &WorkerTaskRuntim
 }
 
 async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
-    let mut req = runtime
-        .client
-        .get(format!("{}/v1/agent/tasks?status=pending", runtime.server));
+    let mut url = format!("{}/v1/agent/tasks?status=pending", runtime.server);
+    if !runtime.agent_name.is_empty() {
+        url = format!(
+            "{}&agent_name={}",
+            url,
+            urlencoding::encode(&runtime.agent_name)
+        );
+    }
+    let mut req = runtime.client.get(&url);
     if let Some(t) = &runtime.token {
         req = req.bearer_auth(t);
     }
@@ -1399,6 +1588,21 @@ async fn poll_pending_tasks(runtime: &WorkerTaskRuntime) -> Result<()> {
     }
 
     for task in &tasks {
+        // Scope gate: reject tasks not targeted at this worker
+        let task_id_str = task_str(task, "id").unwrap_or("?");
+        if let Err(reason) = check_task_scope(
+            task,
+            &runtime.worker_id,
+            &runtime.agent_name,
+            &runtime.workspace_ids,
+        ) {
+            tracing::debug!(
+                task_id = task_id_str,
+                reason = %reason,
+                "Poll task skipped — out of scope"
+            );
+            continue;
+        }
         spawn_task_handler(task, runtime).await;
     }
 
@@ -1409,9 +1613,25 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     let task_id = task_str(task, "id").ok_or_else(|| anyhow::anyhow!("No task ID"))?;
     let title = task_str(task, "title").unwrap_or("Untitled");
 
-    tracing::info!("Handling task: {} ({})", title, task_id);
+    // Determine task timeout from the task payload/metadata or default to 1200s.
+    let metadata = task_metadata(task);
+    let timeout_secs = task_timeout_secs(task, &metadata);
+
+    let mut timeline = task_timeline::TaskTimeline::new(task_id, timeout_secs);
+    timeline.checkpoint(task_timeline::TaskCheckpoint::TaskReceived);
+    tracing::info!(
+        "Handling task: {} ({}) [timeout={}s]",
+        title,
+        task_id,
+        timeout_secs
+    );
+
+    // Wire the timeline's progress state into the runtime so the heartbeat picks it up.
+    // We'll sync after each checkpoint.
+    sync_timeline_to_runtime(&timeline, runtime).await;
 
     // Claim the task
+    timeline.checkpoint(task_timeline::TaskCheckpoint::ClaimRequested);
     let mut req = runtime
         .client
         .post(format!("{}/v1/worker/tasks/claim", runtime.server))
@@ -1437,7 +1657,21 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
     }
 
     let claim = res.json::<TaskClaimResponse>().await?;
+    if let Some(claim_timeout_secs) = claim
+        .task_timeout_seconds
+        .map(|timeout_secs| timeout_secs.clamp(60, 604800))
+    {
+        timeline.update_timeout_secs(claim_timeout_secs);
+    }
+    let provider_keys = claim.provider_keys.clone();
     let claim_provenance = claim.into_provenance();
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::Claimed,
+        Some(format!(
+            "run_id={:?} attempt_id={:?}",
+            claim_provenance.run_id, claim_provenance.attempt_id
+        )),
+    );
     tracing::info!(
         task_id,
         run_id = ?claim_provenance.run_id,
@@ -1447,7 +1681,16 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
 
     // --- All post-claim work is wrapped so we always release the task ---
     let inner_result: Result<(&str, Option<String>, Option<String>, Option<String>)> =
-        execute_claimed_task(runtime, task, task_id, title, &claim_provenance).await;
+        execute_claimed_task(
+            runtime,
+            task,
+            task_id,
+            title,
+            &claim_provenance,
+            provider_keys,
+            &mut timeline,
+        )
+        .await;
 
     let (status, result, error, session_id) = match inner_result {
         Ok(tuple) => tuple,
@@ -1456,6 +1699,10 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
                 task_id,
                 error = %e,
                 "Task failed after claim (releasing as failed)"
+            );
+            timeline.checkpoint_with_detail(
+                task_timeline::TaskCheckpoint::Failed,
+                Some(format!("{}", e)),
             );
             (
                 "failed",
@@ -1466,6 +1713,11 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         }
     };
 
+    // Emit final diagnostics before releasing
+    timeline.emit_diagnostics();
+    let diagnostics_json = timeline.diagnostics_json();
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::Releasing);
     release_task_result(
         &runtime.client,
         &runtime.server,
@@ -1476,8 +1728,14 @@ async fn handle_task(runtime: &WorkerTaskRuntime, task: &serde_json::Value) -> R
         result,
         error,
         session_id,
+        Some(diagnostics_json),
     )
     .await?;
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::Released);
+
+    // Clear task progress so heartbeat stops reporting stale state
+    runtime.task_progress.lock().await.clear();
 
     tracing::info!("Task released: {} with status: {}", task_id, status);
     Ok(())
@@ -1492,8 +1750,11 @@ async fn execute_claimed_task<'a>(
     task_id: &'a str,
     title: &'a str,
     claim_provenance: &ClaimProvenance,
+    provider_keys: Option<serde_json::Value>,
+    timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
     let metadata = task_metadata(task);
+    timeline.checkpoint(task_timeline::TaskCheckpoint::MetadataParsed);
     let resume_session_id = metadata
         .get("resume_session_id")
         .and_then(|v| v.as_str())
@@ -1582,6 +1843,10 @@ async fn execute_claimed_task<'a>(
     } else {
         Session::new().await?
     };
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::SessionReady,
+        Some(format!("session_id={}", session.id)),
+    );
 
     if !is_virtual_task {
         if let Some(workspace_path) = resolve_task_workspace_dir(
@@ -1594,6 +1859,14 @@ async fn execute_claimed_task<'a>(
         {
             session.metadata.directory = Some(workspace_path);
         }
+        timeline.checkpoint_with_detail(
+            task_timeline::TaskCheckpoint::WorkspaceReady,
+            session
+                .metadata
+                .directory
+                .as_deref()
+                .map(|d| d.display().to_string()),
+        );
     }
 
     // For virtual/global tasks, clear the workspace directory so tools don't
@@ -1625,21 +1898,42 @@ async fn execute_claimed_task<'a>(
     };
     session.set_agent_name(agent_type.to_string());
     session.attach_claim_provenance(claim_provenance);
+    session.metadata.provider_keys = provider_keys;
 
-    // Skip git hook installation for virtual tasks (no workspace directory).
+    // Skip repository-local Git setup for virtual tasks (no workspace directory).
     if !is_virtual_task {
+        if let (Some(directory), Some(workspace_id)) =
+            (session.metadata.directory.as_deref(), workspace_id)
+            && directory.join(".git").exists()
+            && let Err(err) = configure_repo_git_auth(directory, workspace_id)
+        {
+            tracing::warn!(task_id, error = %err, "Failed to configure Git credential helper");
+        }
         if let Some(directory) = session.metadata.directory.as_deref()
             && let Err(err) = install_commit_msg_hook(directory)
         {
             tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
         }
+        timeline.checkpoint(task_timeline::TaskCheckpoint::GitHookInstalled);
     }
 
     if let Some(model) = selected_model.clone() {
         session.metadata.model = Some(model);
     }
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::ModelSelected,
+        session.metadata.model.clone(),
+    );
 
     tracing::info!(task_id, agent_type, "Executing prompt: {}", prompt);
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::AgentStarting,
+        Some(format!(
+            "agent={} model={:?}",
+            agent_type, session.metadata.model
+        )),
+    );
+    sync_timeline_to_runtime(&timeline, runtime).await;
 
     // Set up output streaming to forward progress to the server and bus
     let stream_client = runtime.client.clone();
@@ -1749,6 +2043,27 @@ async fn execute_claimed_task<'a>(
         }
     };
 
+    // Record agent completion checkpoint
+    timeline.checkpoint_with_detail(
+        task_timeline::TaskCheckpoint::AgentDone,
+        Some(format!("status={}", status)),
+    );
+    sync_timeline_to_runtime(&timeline, runtime).await;
+
+    // Check deadline before proceeding to commit/release phase
+    if timeline.is_near_deadline() {
+        tracing::warn!(
+            task_id,
+            elapsed_secs = format!("{:.1}", timeline.elapsed_secs()),
+            budget_pct = format!("{:.1}%", timeline.budget_pct_used()),
+            "Near deadline after agent completion — will attempt graceful shutdown"
+        );
+        timeline.checkpoint(task_timeline::TaskCheckpoint::GracefulShutdown);
+    }
+
+    // Sync progress state for heartbeat reporting
+    timeline.sync_progress().await;
+
     Ok((
         status,
         result,
@@ -1806,26 +2121,7 @@ async fn handle_clone_repo_task(
                 &repo_path,
                 Some(&serde_json::Value::Object(workspace.agent_config.clone())),
             );
-            run_git_command_at(
-                Some(&repo_path),
-                vec!["fetch".to_string(), "origin".to_string(), branch.clone()],
-            )
-            .await?;
-            run_git_command_at(
-                Some(&repo_path),
-                vec!["checkout".to_string(), branch.clone()],
-            )
-            .await?;
-            run_git_command_at(
-                Some(&repo_path),
-                vec![
-                    "pull".to_string(),
-                    "--ff-only".to_string(),
-                    "origin".to_string(),
-                    branch.clone(),
-                ],
-            )
-            .await?;
+            refresh_existing_clone(&repo_path, &branch).await?;
         } else {
             prepare_clone_target(&repo_path).await?;
 
@@ -1866,6 +2162,77 @@ async fn handle_clone_repo_task(
 
     let _ = tokio::fs::remove_file(&temp_helper_path).await;
     clone_result
+}
+
+async fn refresh_existing_clone(repo_path: &Path, branch: &str) -> Result<()> {
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "fetch".to_string(),
+            "origin".to_string(),
+            branch.to_string(),
+        ],
+    )
+    .await?;
+
+    stash_dirty_clone_state(repo_path).await?;
+
+    let remote_ref = format!("origin/{branch}");
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "checkout".to_string(),
+            "-B".to_string(),
+            branch.to_string(),
+            remote_ref.clone(),
+        ],
+    )
+    .await?;
+    run_git_command_at(
+        Some(repo_path),
+        vec!["reset".to_string(), "--hard".to_string(), remote_ref],
+    )
+    .await?;
+    run_git_command_at(
+        Some(repo_path),
+        vec!["clean".to_string(), "-fd".to_string()],
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn stash_dirty_clone_state(repo_path: &Path) -> Result<()> {
+    let status = run_git_command_at(
+        Some(repo_path),
+        vec!["status".to_string(), "--porcelain".to_string()],
+    )
+    .await?;
+    if status.trim().is_empty() {
+        return Ok(());
+    }
+
+    let message = format!(
+        "codetether auto-save before workspace refresh {}",
+        chrono::Utc::now().to_rfc3339()
+    );
+    tracing::warn!(
+        repo_path = %repo_path.display(),
+        "Existing clone has local changes; stashing them before refreshing from origin"
+    );
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "stash".to_string(),
+            "push".to_string(),
+            "--include-untracked".to_string(),
+            "-m".to_string(),
+            message,
+        ],
+    )
+    .await?;
+
+    Ok(())
 }
 
 async fn register_cloned_workspace(
@@ -1920,6 +2287,10 @@ async fn enqueue_post_clone_task(
     workspace_id: &str,
     metadata: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<()> {
+    if !worker_should_enqueue_post_clone_task(metadata) {
+        return Ok(());
+    }
+
     let Some(post_clone_task) = metadata.get("post_clone_task") else {
         return Ok(());
     };
@@ -1977,6 +2348,15 @@ async fn enqueue_post_clone_task(
     Ok(())
 }
 
+fn worker_should_enqueue_post_clone_task(
+    metadata: &serde_json::Map<String, serde_json::Value>,
+) -> bool {
+    metadata
+        .get("post_clone_task")
+        .and_then(|value| value.as_object())
+        .is_some()
+}
+
 async fn run_git_command_at(current_dir: Option<&Path>, args: Vec<String>) -> Result<String> {
     let mut command = Command::new("git");
     if let Some(dir) = current_dir {
@@ -2009,6 +2389,7 @@ async fn release_task_result(
     result: Option<String>,
     error: Option<String>,
     session_id: Option<String>,
+    diagnostics: Option<serde_json::Value>,
 ) -> Result<()> {
     let mut req = client
         .post(format!("{}/v1/worker/tasks/release", server))
@@ -2017,16 +2398,23 @@ async fn release_task_result(
         req = req.bearer_auth(token);
     }
 
-    req.json(&serde_json::json!({
+    let mut payload = serde_json::json!({
         "task_id": task_id,
         "status": status,
         "result": result,
         "error": error,
         "session_id": session_id,
-    }))
-    .send()
-    .await
-    .context("Failed to release task result")?;
+    });
+    if let Some(diagnostics) = diagnostics {
+        if let Some(obj) = payload.as_object_mut() {
+            obj.insert("diagnostics".to_string(), diagnostics);
+        }
+    }
+
+    req.json(&payload)
+        .send()
+        .await
+        .context("Failed to release task result")?;
 
     Ok(())
 }
@@ -2197,15 +2585,46 @@ async fn execute_session_with_policy(
     model_tier: Option<&str>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> Result<crate::session::SessionResult> {
-    use crate::provider::{
-        CompletionRequest, ContentPart, Message, ProviderRegistry, Role, parse_model_string,
-    };
+    use crate::provider::{ContentPart, Message, ProviderRegistry, Role, parse_model_string};
     use std::sync::Arc;
 
-    // Load provider registry from Vault
-    let registry = ProviderRegistry::from_vault()
-        .await
-        .context("Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN")?;
+    let per_task_keys = session
+        .metadata
+        .provider_keys
+        .as_ref()
+        .and_then(|value| match crate::provider::PerTaskProviderKeys::from_value(value) {
+            Ok(keys) => keys,
+            Err(err) => {
+                tracing::warn!(error = %err, "Invalid per-task provider key payload; falling back to platform registry");
+                None
+            }
+        });
+
+    // Load provider registry from claim-injected tenant keys, falling back to Vault/env platform keys.
+    let registry = if let Some(ref keys) = per_task_keys {
+        let registry = keys.build_registry();
+        if registry.list().is_empty() {
+            tracing::warn!(
+                "Per-task provider key payload produced no providers; falling back to platform registry"
+            );
+            (*ProviderRegistry::shared_from_vault().await.context(
+                "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
+            )?)
+            .clone()
+        } else {
+            tracing::info!(
+                source = keys.source(),
+                providers = ?keys.provider_names(),
+                "Using tenant-scoped per-task provider registry"
+            );
+            registry
+        }
+    } else {
+        (*ProviderRegistry::shared_from_vault().await.context(
+            "Failed to load provider registry from Vault — check VAULT_ADDR/VAULT_TOKEN",
+        )?)
+        .clone()
+    };
     let providers = registry.list();
     tracing::info!("Available providers: {:?}", providers);
 
@@ -2315,26 +2734,15 @@ async fn execute_session_with_policy(
     for step in 1..=max_steps {
         tracing::info!(step = step, "Agent step starting");
 
-        // Build messages with system prompt first
-        let mut messages = vec![Message {
-            role: Role::System,
-            content: vec![ContentPart::Text {
-                text: system_prompt.clone(),
-            }],
-        }];
-        messages.extend(session.messages.clone());
-
-        let request = CompletionRequest {
-            messages,
-            tools: tool_definitions.clone(),
-            model: model.clone(),
+        let response = complete_worker_step_with_context_fallback(
+            Arc::clone(&provider),
+            session,
+            &model,
+            &system_prompt,
+            &tool_definitions,
             temperature,
-            top_p: None,
-            max_tokens: Some(8192),
-            stop: Vec::new(),
-        };
-
-        let response = provider.complete(request).await?;
+        )
+        .await?;
 
         crate::telemetry::TOKEN_USAGE.record_model_usage(
             &model,
@@ -2418,8 +2826,25 @@ async fn execute_session_with_policy(
             }
 
             let content = if let Some(tool) = tool_registry.get(&tool_name) {
-                let exec_result: Result<crate::tool::ToolResult> =
-                    tool.execute(tool_input.clone()).await;
+                let tool_timeout_secs =
+                    env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
+                let exec_result: Result<crate::tool::ToolResult> = match tokio::time::timeout(
+                    Duration::from_secs(tool_timeout_secs),
+                    tool.execute(tool_input.clone()),
+                )
+                .await
+                {
+                    Ok(result) => result,
+                    Err(_) => Ok(crate::tool::ToolResult::structured_error(
+                        "TOOL_TIMEOUT",
+                        &tool_name,
+                        &format!("tool timed out after {tool_timeout_secs}s"),
+                        None,
+                        Some(serde_json::json!({
+                            "hint": "Narrow the request, set a more specific path/include filter, or retry with smaller scope."
+                        })),
+                    )),
+                };
                 match exec_result {
                     Ok(result) => {
                         tracing::info!(tool = %tool_name, success = result.success, "Tool execution completed");
@@ -2465,6 +2890,103 @@ async fn execute_session_with_policy(
     })
 }
 
+async fn complete_worker_step_with_context_fallback(
+    provider: Arc<dyn crate::provider::Provider>,
+    session: &Session,
+    model: &str,
+    system_prompt: &str,
+    tool_definitions: &[crate::provider::ToolDefinition],
+    temperature: Option<f32>,
+) -> Result<crate::provider::CompletionResponse> {
+    let options = crate::session::context::RequestOptions {
+        temperature,
+        top_p: None,
+        max_tokens: Some(8192),
+        force_keep_last: None,
+    };
+
+    match crate::session::context::complete_with_context(
+        Arc::clone(&provider),
+        session,
+        model,
+        system_prompt,
+        tool_definitions,
+        options,
+    )
+    .await
+    {
+        Ok(response) => Ok(response),
+        Err(error) if crate::session::helper::error::is_prompt_too_long_error(&error) => {
+            let compact_tools = compact_worker_tool_definitions(tool_definitions);
+            tracing::warn!(
+                error = %error,
+                tool_count = tool_definitions.len(),
+                original_tool_schema_bytes = tool_schema_bytes(tool_definitions),
+                compact_tool_schema_bytes = tool_schema_bytes(&compact_tools),
+                "Provider rejected prompt after context compaction; retrying with compact tool schemas"
+            );
+            crate::session::context::complete_with_context(
+                provider,
+                session,
+                model,
+                system_prompt,
+                &compact_tools,
+                options,
+            )
+            .await
+            .map_err(|retry_error| {
+                if crate::session::helper::error::is_prompt_too_long_error(&retry_error) {
+                    retry_error.context(
+                        "provider rejected prompt as too long after RLM compaction and compact tool-schema fallback",
+                    )
+                } else {
+                    retry_error
+                }
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn compact_worker_tool_definitions(
+    tools: &[crate::provider::ToolDefinition],
+) -> Vec<crate::provider::ToolDefinition> {
+    tools
+        .iter()
+        .map(|tool| crate::provider::ToolDefinition {
+            name: tool.name.clone(),
+            description: tool.description.clone(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "additionalProperties": true
+            }),
+        })
+        .collect()
+}
+
+fn tool_schema_bytes(tools: &[crate::provider::ToolDefinition]) -> usize {
+    let mut writer = CountingWriter::default();
+    serde_json::to_writer(&mut writer, tools)
+        .map(|_| writer.bytes)
+        .unwrap_or(0)
+}
+
+#[derive(Default)]
+struct CountingWriter {
+    bytes: usize,
+}
+
+impl std::io::Write for CountingWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.bytes += buf.len();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 /// Start the heartbeat background task
 /// Returns a JoinHandle that can be used to cancel the heartbeat
 pub fn start_heartbeat(
@@ -2474,6 +2996,7 @@ pub fn start_heartbeat(
     heartbeat_state: HeartbeatState,
     processing: Arc<Mutex<HashSet<String>>>,
     cognition_config: CognitionHeartbeatConfig,
+    task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut consecutive_failures = 0u32;
@@ -2481,6 +3004,8 @@ pub fn start_heartbeat(
         const HEARTBEAT_INTERVAL_SECS: u64 = 30;
         const COGNITION_RETRY_COOLDOWN_SECS: u64 = 300;
         let mut cognition_payload_disabled_until: Option<Instant> = None;
+        let persistent_heartbeat_enabled = persistent_worker_enabled();
+        let persistent_lease_seconds = persistent_worker_lease_seconds();
 
         let mut interval =
             tokio::time::interval(tokio::time::Duration::from_secs(HEARTBEAT_INTERVAL_SECS));
@@ -2514,6 +3039,23 @@ pub fn start_heartbeat(
 
             let status_str = heartbeat_state.status.lock().await.as_str().to_string();
             let sub_agents = heartbeat_state.sub_agents_snapshot().await;
+
+            // Include task pipeline progress in heartbeat
+            let progress_snapshot = task_progress.lock().await.clone();
+            let task_progress_payload = if progress_snapshot.task_id.is_some() {
+                Some(serde_json::json!({
+                    "task_id": progress_snapshot.task_id,
+                    "current_checkpoint": progress_snapshot.current_checkpoint,
+                    "elapsed_secs": format!("{:.1}", progress_snapshot.elapsed_secs),
+                    "remaining_secs": format!("{:.1}", progress_snapshot.remaining_secs),
+                    "budget_pct_used": format!("{:.1}%", progress_snapshot.budget_pct_used),
+                    "checkpoints_reached": progress_snapshot.checkpoints_reached.len(),
+                    "last_detail": progress_snapshot.last_detail,
+                }))
+            } else {
+                None
+            };
+
             let base_payload = serde_json::json!({
                 "worker_id": &heartbeat_state.worker_id,
                 "agent_name": &heartbeat_state.agent_name,
@@ -2535,6 +3077,13 @@ pub fn start_heartbeat(
             {
                 obj.insert("cognition".to_string(), cognition_payload);
                 included_cognition_payload = true;
+            }
+
+            // Include task pipeline progress if a task is active
+            if let Some(progress_json) = task_progress_payload.clone() {
+                if let Some(obj) = payload.as_object_mut() {
+                    obj.insert("task_progress".to_string(), progress_json);
+                }
             }
 
             match req.json(&payload).send().await {
@@ -2612,6 +3161,25 @@ pub fn start_heartbeat(
                 }
             }
 
+            if persistent_heartbeat_enabled
+                && let Some(progress_json) = task_progress_payload
+                && let Err(e) = send_extended_task_heartbeat(
+                    &client,
+                    &server,
+                    &token,
+                    &heartbeat_state.worker_id,
+                    progress_json,
+                    persistent_lease_seconds,
+                )
+                .await
+            {
+                tracing::warn!(
+                    worker_id = %heartbeat_state.worker_id,
+                    error = %e,
+                    "Extended task heartbeat failed"
+                );
+            }
+
             // Log error after 3 consecutive failures but do not terminate
             if consecutive_failures >= MAX_FAILURES {
                 tracing::error!(
@@ -2625,6 +3193,72 @@ pub fn start_heartbeat(
             }
         }
     })
+}
+
+async fn send_extended_task_heartbeat(
+    client: &Client,
+    server: &str,
+    token: &Option<String>,
+    worker_id: &str,
+    progress: serde_json::Value,
+    lease_seconds: u64,
+) -> Result<()> {
+    let task_id = progress
+        .get("task_id")
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.is_empty())
+        .context("active task progress missing task_id")?
+        .to_string();
+    let checkpoint_seq = progress
+        .get("checkpoints_reached")
+        .and_then(|value| value.as_u64())
+        .unwrap_or(1)
+        .max(1);
+    let status_message = progress
+        .get("current_checkpoint")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string());
+
+    let mut req = client.post(format!("{}/v1/worker/tasks/heartbeat-extended", server));
+    if let Some(token) = token {
+        req = req.bearer_auth(token);
+    }
+
+    let response = req
+        .json(&serde_json::json!({
+            "task_id": &task_id,
+            "worker_id": worker_id,
+            "status_message": status_message,
+            "checkpoint": progress,
+            "checkpoint_seq": checkpoint_seq,
+            "lease_extension_seconds": lease_seconds,
+        }))
+        .send()
+        .await?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!("extended heartbeat rejected with {}: {}", status, body);
+    }
+
+    let body = response
+        .json::<serde_json::Value>()
+        .await
+        .unwrap_or_default();
+    if body.get("success").and_then(|value| value.as_bool()) == Some(false) {
+        tracing::debug!(
+            task_id = %task_id,
+            message = body
+                .get("message")
+                .and_then(|value| value.as_str())
+                .unwrap_or("no active run"),
+            "Extended task heartbeat skipped"
+        );
+        return Ok(());
+    }
+
+    Ok(())
 }
 
 async fn fetch_cognition_heartbeat_payload(
@@ -2897,7 +3531,74 @@ async fn sync_workspaces_from_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::{
+        CompletionRequest, CompletionResponse, ContentPart, FinishReason, Message, ModelInfo,
+        Provider, Role, StreamChunk, ToolDefinition, Usage,
+    };
+    use futures::stream::{self, BoxStream};
     use serde_json::json;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    struct ContextErrorUntilCompactProvider {
+        calls: AtomicUsize,
+        saw_compact_schema: AtomicBool,
+    }
+
+    impl ContextErrorUntilCompactProvider {
+        fn new() -> Self {
+            Self {
+                calls: AtomicUsize::new(0),
+                saw_compact_schema: AtomicBool::new(false),
+            }
+        }
+
+        fn calls(&self) -> usize {
+            self.calls.load(Ordering::SeqCst)
+        }
+
+        fn saw_compact_schema(&self) -> bool {
+            self.saw_compact_schema.load(Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl Provider for ContextErrorUntilCompactProvider {
+        fn name(&self) -> &str {
+            "mock"
+        }
+
+        async fn list_models(&self) -> Result<Vec<ModelInfo>> {
+            Ok(Vec::new())
+        }
+
+        async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            let compact = request.tools.iter().all(|tool| {
+                tool.parameters.get("additionalProperties") == Some(&serde_json::Value::Bool(true))
+            });
+            if compact {
+                self.saw_compact_schema.store(true, Ordering::SeqCst);
+                return Ok(CompletionResponse {
+                    message: Message {
+                        role: Role::Assistant,
+                        content: vec![ContentPart::Text { text: "ok".into() }],
+                    },
+                    usage: Usage::default(),
+                    finish_reason: FinishReason::Stop,
+                });
+            }
+            anyhow::bail!(
+                "Your input exceeds the context window of this model. Please adjust your input and try again."
+            )
+        }
+
+        async fn complete_stream(
+            &self,
+            _request: CompletionRequest,
+        ) -> Result<BoxStream<'static, StreamChunk>> {
+            Ok(Box::pin(stream::empty()))
+        }
+    }
 
     #[test]
     fn metadata_lookup_reads_nested_forage_keys() {
@@ -2932,6 +3633,85 @@ mod tests {
         assert!(args.no_s3);
         assert_eq!(args.model.as_deref(), Some("openrouter/z-ai/glm-5"));
         assert_eq!(args.execution_engine, "run");
+    }
+
+    #[test]
+    fn compact_worker_tool_definitions_preserve_tool_identity() {
+        let tools = vec![ToolDefinition {
+            name: "large_tool".to_string(),
+            description: "Large tool schema".to_string(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "string",
+                        "description": "x".repeat(20_000)
+                    }
+                }
+            }),
+        }];
+
+        let compact = compact_worker_tool_definitions(&tools);
+
+        assert_eq!(compact[0].name, tools[0].name);
+        assert_eq!(compact[0].description, tools[0].description);
+        assert_eq!(
+            compact[0].parameters.get("additionalProperties"),
+            Some(&serde_json::Value::Bool(true))
+        );
+        assert!(tool_schema_bytes(&compact) < tool_schema_bytes(&tools) / 10);
+    }
+
+    #[tokio::test]
+    async fn worker_retries_context_window_error_with_compact_tool_schema() {
+        let provider = Arc::new(ContextErrorUntilCompactProvider::new());
+        let provider_dyn: Arc<dyn Provider> = provider.clone();
+        let mut session = Session::new().await.expect("session");
+        session.add_message(Message {
+            role: Role::User,
+            content: vec![ContentPart::Text {
+                text: "Run cronjob \"rule:Retry Failed Conversion Forwards\".".to_string(),
+            }],
+        });
+        let tools = vec![ToolDefinition {
+            name: "large_tool".to_string(),
+            description: "Large tool schema".to_string(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "payload": {
+                        "type": "string",
+                        "description": "x".repeat(20_000)
+                    }
+                }
+            }),
+        }];
+
+        let response = complete_worker_step_with_context_fallback(
+            provider_dyn,
+            &session,
+            "mock-model",
+            "system",
+            &tools,
+            Some(0.7),
+        )
+        .await
+        .expect("compact tool-schema retry should recover");
+
+        assert_eq!(
+            response
+                .message
+                .content
+                .iter()
+                .filter_map(|part| match part {
+                    ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<String>(),
+            "ok"
+        );
+        assert_eq!(provider.calls(), 5);
+        assert!(provider.saw_compact_schema());
     }
 
     #[test]
@@ -2979,6 +3759,37 @@ mod tests {
     }
 
     #[test]
+    fn worker_allows_github_app_post_clone_followups() {
+        let metadata = json!({
+            "source": "github-app",
+            "post_clone_task": {
+                "title": "Work issue #76",
+                "prompt": "fix it"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(worker_should_enqueue_post_clone_task(&metadata));
+    }
+
+    #[test]
+    fn worker_allows_legacy_post_clone_followups() {
+        let metadata = json!({
+            "post_clone_task": {
+                "title": "Continue after clone",
+                "prompt": "run build"
+            }
+        })
+        .as_object()
+        .cloned()
+        .unwrap();
+
+        assert!(worker_should_enqueue_post_clone_task(&metadata));
+    }
+
+    #[test]
     fn resolve_worker_id_prefers_env() {
         let original = std::env::var("CODETETHER_WORKER_ID").ok();
         unsafe {
@@ -3014,6 +3825,22 @@ mod tests {
     fn advertised_interfaces_omit_empty_public_url() {
         assert_eq!(advertised_interfaces(None), serde_json::json!({}));
         assert_eq!(advertised_interfaces(Some("   ")), serde_json::json!({}));
+    }
+
+    #[test]
+    fn worker_http_client_builds_with_stream_decoders_disabled() {
+        assert!(build_worker_http_client().is_ok());
+    }
+
+    #[test]
+    fn task_timeout_prefers_fire_and_forget_payload_timeout() {
+        let task = json!({
+            "id": "task-1",
+            "task_timeout_seconds": 604800,
+            "metadata": {"timeout_secs": 1200}
+        });
+        let metadata = task_metadata(&task);
+        assert_eq!(task_timeout_secs(&task, &metadata), 604800);
     }
 
     #[tokio::test]

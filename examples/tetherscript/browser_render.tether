@@ -1,0 +1,50 @@
+// Headless browser — parse HTML, apply CSS, render to text.
+// Uses TetherScript's built-in browser engine (new in 0.1.0-alpha.8).
+
+fn render(html) {
+    let result = browser_render(html)
+    let m = map()
+    m["ok"] = true
+    m["text"] = result
+    return json_encode(m)
+}
+
+fn render_with_css(html, css) {
+    let result = browser_render(html, css)
+    let m = map()
+    m["ok"] = true
+    m["text"] = result
+    return json_encode(m)
+}
+
+fn layout(html, css, width) {
+    let result = browser_layout(html, css, width)
+    let m = map()
+    m["ok"] = true
+    m["layout"] = result
+    return json_encode(m)
+}
+
+fn display_list(html, css, width) {
+    let result = browser_display_list(html, css, width)
+    let m = map()
+    m["ok"] = true
+    m["commands"] = result
+    return json_encode(m)
+}
+
+fn snapshot(html) {
+    let result = browser_snapshot(html)
+    let m = map()
+    m["ok"] = true
+    m["snapshot"] = result
+    return json_encode(m)
+}
+
+fn snapshot_wide(html, css, width) {
+    let result = browser_snapshot(html, css, width)
+    let m = map()
+    m["ok"] = true
+    m["snapshot"] = result
+    return json_encode(m)
+}

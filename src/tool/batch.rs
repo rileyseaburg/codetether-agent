@@ -28,7 +28,7 @@ impl BatchTool {
 
     /// Set the registry after construction to break circular dependency.
     pub fn set_registry(&self, registry: Weak<ToolRegistry>) {
-        let mut guard = self.registry.write().unwrap();
+        let mut guard = self.registry.write().unwrap_or_else(|e| e.into_inner());
         *guard = Some(registry);
     }
 }
@@ -92,7 +92,7 @@ impl Tool for BatchTool {
 
         // Get registry from weak reference
         let registry = {
-            let guard = self.registry.read().unwrap();
+            let guard = self.registry.read().unwrap_or_else(|e| e.into_inner());
             match guard.as_ref() {
                 Some(weak) => match weak.upgrade() {
                     Some(arc) => arc,

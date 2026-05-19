@@ -1,4 +1,4 @@
-FROM rust:1.88-slim AS builder
+FROM rust:1.89-slim AS builder
 
 WORKDIR /build
 
@@ -16,9 +16,11 @@ ENV CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
 
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY src ./src
+COPY crates ./crates
 COPY vendor ./vendor
 COPY proto ./proto
 COPY policies ./policies
+COPY examples ./examples
 
 RUN cargo build --release --target x86_64-pc-windows-gnu --bin codetether
 

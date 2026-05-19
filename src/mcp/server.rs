@@ -1089,7 +1089,7 @@ impl McpServer {
                     request_id,
                     agent_id: "mcp-server".into(),
                     tool_name: params.name,
-                    result: output_text,
+                    result: super::bus_payload::tool_response(&output_text),
                     success,
                     step: 0,
                 },

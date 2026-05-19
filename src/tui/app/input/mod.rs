@@ -11,20 +11,28 @@ mod chat_helpers;
 mod chat_spawn;
 mod chat_spawn_task;
 mod chat_submit;
-mod chat_submit_dispatch;
+pub(crate) mod chat_submit_dispatch;
 
 // Re-exports so the event loop's auto-drain hook can submit a queued
 // user message as a fresh turn without duplicating the dispatch logic.
 mod enter;
 pub(crate) mod image;
 mod image_data_paste;
+mod image_data_url;
+mod image_file;
+mod image_mime;
+mod image_tests;
+mod mention_route;
 mod merge;
 mod paste;
+pub(crate) mod pasted_text;
 mod pr;
 mod pr_body;
 mod pr_command;
+mod pr_command_tests;
 mod pr_description;
 mod pr_helpers;
+mod pr_request;
 mod pr_title;
 mod sessions;
 mod tests_enter;

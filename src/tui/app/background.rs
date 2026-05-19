@@ -2,7 +2,7 @@ use std::path::Path;
 
 use tokio::sync::mpsc;
 
-use crate::bus::BusHandle;
+use crate::bus::{BusHandle, BusMessage};
 use crate::session::{Session, SessionEvent};
 use crate::tui::app::session_events::handle_session_event;
 use crate::tui::app::session_sync::refresh_sessions;
@@ -20,6 +20,7 @@ pub async fn drain_background_updates(
     event_rx: &mut mpsc::Receiver<SessionEvent>,
     result_rx: &mut mpsc::Receiver<anyhow::Result<Session>>,
 ) {
+    app.state.drain_model_refresh();
     ingest_bus_messages(app, bus_handle);
     queue_worker_tasks(app, worker_bridge);
     display_next_worker_task(app);
@@ -29,7 +30,19 @@ pub async fn drain_background_updates(
 
 fn ingest_bus_messages(app: &mut App, bus_handle: &mut BusHandle) {
     while let Some(envelope) = bus_handle.try_recv() {
+        track_protocol_agent(app, &envelope.message);
         app.state.bus_log.ingest(&envelope);
+    }
+}
+
+fn track_protocol_agent(app: &mut App, message: &BusMessage) {
+    match message {
+        BusMessage::AgentReady { agent_id, .. } | BusMessage::Heartbeat { agent_id, .. } => {
+            app.state
+                .worker_bridge_registered_agents
+                .insert(agent_id.clone());
+        }
+        _ => {}
     }
 }
 
@@ -121,7 +134,7 @@ pub async fn apply_single_result(
 
             *session = updated_session;
             session.attach_global_bus_if_missing();
-            app.state.session_id = Some(session.id.clone());
+            crate::tui::app::turn_cancel::clear(app); app.state.session_id = Some(session.id.clone());
             let _ = session.save().await;
             refresh_sessions(app, cwd).await;
         }

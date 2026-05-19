@@ -2,10 +2,8 @@ use super::{BrowserCtlArgs, BrowserCtlCommand};
 use serde_json::{Value, json};
 
 pub fn needs_attach(command: &BrowserCtlCommand) -> bool {
-    !matches!(
-        command,
-        BrowserCtlCommand::Start { .. } | BrowserCtlCommand::Stop | BrowserCtlCommand::Health
-    )
+    use BrowserCtlCommand::*;
+    !matches!(command, Start { .. } | Stop | Health | Offline { .. })
 }
 
 pub fn attach(args: &BrowserCtlArgs) -> Value {
@@ -46,5 +44,8 @@ pub fn command(args: &BrowserCtlArgs) -> Value {
             "path": path,
             "full_page": full_page,
         }),
+        BrowserCtlCommand::Offline { .. } => unreachable!(
+            "Offline commands are dispatched via offline::execute and never reach the BrowserCtlTool action layer"
+        ),
     }
 }

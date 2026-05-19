@@ -785,7 +785,9 @@ impl CandleThinker {
             .squeeze(0)
             .context("failed to squeeze logits batch dimension")?;
 
-        let mut generated: Vec<u32> = Vec::with_capacity(self.max_tokens);
+        // Clamp the capacity hint so a misconfigured `max_tokens` cannot
+        // pre-reserve gigabytes of u32 up front. The Vec still grows.
+        let mut generated: Vec<u32> = Vec::with_capacity(self.max_tokens.min(64 * 1024));
         let mut finish_reason = "length".to_string();
 
         for _ in 0..self.max_tokens {

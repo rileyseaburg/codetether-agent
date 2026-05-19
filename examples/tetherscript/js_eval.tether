@@ -1,0 +1,23 @@
+// JavaScript interpreter — evaluate JS source code.
+// Uses TetherScript's zero-dependency JS engine (new in 0.1.0-alpha.8).
+
+fn eval(source) {
+    let result = js_eval(source)
+    let m = map()
+    m["ok"] = true
+    m["result"] = str(result)
+    return json_encode(m)
+}
+
+fn eval_json(source) {
+    let result = js_eval(source)
+    let parsed = json_parse(str(result))
+    let m = map()
+    m["ok"] = true
+    if parsed.is_ok() {
+        m["value"] = parsed.unwrap()
+    } else {
+        m["value"] = str(result)
+    }
+    return json_encode(m)
+}

@@ -6,10 +6,10 @@
 use super::{
     BranchObservation, BranchRuntimeState, CacheConfig, CacheStats, CollapseController,
     CollapsePolicy, DecompositionStrategy, ExecutionMode, StageStats, SwarmCache, SwarmConfig,
-    SwarmResult,
+    SwarmResult, k8s_result,
     kubernetes_executor::{
         RemoteSubtaskPayload, SWARM_SUBTASK_PAYLOAD_ENV, encode_payload, latest_probe_from_logs,
-        probe_changed_files_set, result_from_logs,
+        probe_changed_files_set,
     },
     orchestrator::Orchestrator,
     result_store::ResultStore,
@@ -18,7 +18,9 @@ use super::{
 };
 use crate::bus::{AgentBus, BusMessage};
 use crate::k8s::{K8sManager, SubagentPodSpec, SubagentPodState};
+use crate::session::delegation::DelegationState;
 use crate::tui::swarm_view::{AgentMessageEntry, AgentToolCallDetail, SubTaskInfo, SwarmEvent};
+use std::sync::Mutex as StdMutex;
 
 // Re-export swarm types for convenience
 pub use super::SwarmMessage;
@@ -41,6 +43,8 @@ use std::time::Instant;
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::AbortHandle;
 use tokio::time::{Duration, MissedTickBehavior, timeout};
+#[path = "path_guard/mod.rs"]
+mod path_guard;
 
 /// Default context limit (256k tokens - conservative for most models)
 const DEFAULT_CONTEXT_LIMIT: usize = 256_000;
@@ -274,8 +278,6 @@ const SIMPLE_TRUNCATE_CHARS: usize = 6000;
 
 /// Collapse controller sampling interval for branch health.
 const COLLAPSE_SAMPLE_SECS: u64 = 5;
-const SWARM_FALLBACK_PROMPT_ENV: &str = "CODETETHER_SWARM_FALLBACK_PROMPT";
-const SWARM_FALLBACK_MODEL_ENV: &str = "CODETETHER_SWARM_FALLBACK_MODEL";
 const K8S_PASSTHROUGH_ENV_VARS: &[&str] = &[
     "VAULT_ADDR",
     "VAULT_TOKEN",
@@ -426,13 +428,19 @@ pub struct SwarmExecutor {
     /// Optional event channel for TUI real-time updates
     event_tx: Option<mpsc::Sender<SwarmEvent>>,
     /// Telemetry collector for swarm execution metrics
-    telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>,
+    telemetry: Arc<SwarmTelemetryCollector>,
     /// Cache for avoiding duplicate subtask execution
     cache: Option<Arc<tokio::sync::Mutex<SwarmCache>>>,
     /// Shared result store for sub-agent result sharing
     result_store: Arc<ResultStore>,
     /// Optional agent bus for inter-agent communication
     bus: Option<Arc<AgentBus>>,
+    /// Optional CADMAS-CTX delegation state for LCB provider selection.
+    ///
+    /// Wrapped in `Arc<Mutex<...>>` so subtask outcome updates (Phase C
+    /// step 28) can flow back into the same posterior the next dispatch
+    /// reads from, even when the caller only owns `&self`.
+    delegation: Option<Arc<StdMutex<DelegationState>>>,
 }
 
 impl SwarmExecutor {
@@ -442,10 +450,11 @@ impl SwarmExecutor {
             config,
             coordinator_agent: None,
             event_tx: None,
-            telemetry: Arc::new(tokio::sync::Mutex::new(SwarmTelemetryCollector::default())),
+            telemetry: Arc::new(SwarmTelemetryCollector::default()),
             cache: None,
             result_store: ResultStore::new_arc(),
             bus: None,
+            delegation: None,
         }
     }
 
@@ -456,10 +465,11 @@ impl SwarmExecutor {
             config,
             coordinator_agent: None,
             event_tx: None,
-            telemetry: Arc::new(tokio::sync::Mutex::new(SwarmTelemetryCollector::default())),
+            telemetry: Arc::new(SwarmTelemetryCollector::default()),
             cache: Some(Arc::new(tokio::sync::Mutex::new(cache))),
             result_store: ResultStore::new_arc(),
             bus: None,
+            delegation: None,
         })
     }
 
@@ -472,6 +482,12 @@ impl SwarmExecutor {
     /// Set an agent bus for inter-agent communication
     pub fn with_bus(mut self, bus: Arc<AgentBus>) -> Self {
         self.bus = Some(bus);
+        self
+    }
+
+    /// Set CADMAS-CTX delegation state for LCB provider selection.
+    pub fn with_delegation(mut self, state: DelegationState) -> Self {
+        self.delegation = Some(Arc::new(StdMutex::new(state)));
         self
     }
 
@@ -494,16 +510,13 @@ impl SwarmExecutor {
     }
 
     /// Set a telemetry collector for swarm execution metrics
-    pub fn with_telemetry(
-        mut self,
-        telemetry: Arc<tokio::sync::Mutex<SwarmTelemetryCollector>>,
-    ) -> Self {
+    pub fn with_telemetry(mut self, telemetry: Arc<SwarmTelemetryCollector>) -> Self {
         self.telemetry = telemetry;
         self
     }
 
     /// Get the telemetry collector as an Arc
-    pub fn telemetry_arc(&self) -> Arc<tokio::sync::Mutex<SwarmTelemetryCollector>> {
+    pub fn telemetry_arc(&self) -> Arc<SwarmTelemetryCollector> {
         Arc::clone(&self.telemetry)
     }
     /// Get the coordinator agent if set
@@ -652,8 +665,6 @@ impl SwarmExecutor {
         let swarm_id = uuid::Uuid::new_v4().to_string();
         let strategy_str = format!("{:?}", strategy);
         self.telemetry
-            .lock()
-            .await
             .start_swarm(&swarm_id, subtasks.len(), &strategy_str)
             .await;
 
@@ -756,8 +767,6 @@ impl SwarmExecutor {
 
         // Record overall execution latency
         self.telemetry
-            .lock()
-            .await
             .record_swarm_latency("total_execution", start_time.elapsed())
             .await;
 
@@ -771,8 +780,8 @@ impl SwarmExecutor {
         // Aggregate results
         let success = all_results.iter().all(|r| r.success);
 
-        // Complete telemetry collection
-        let _telemetry_metrics = self.telemetry.lock().await.complete_swarm(success).await;
+        // Complete telemetry collection (interior-mutable, no outer lock to hold)
+        let _telemetry_metrics = self.telemetry.complete_swarm(success).await;
         let result = self.aggregate_results(&all_results).await?;
 
         tracing::info!(
@@ -821,6 +830,9 @@ impl SwarmExecutor {
         let mut all_worktrees: HashMap<String, WorktreeInfo> = HashMap::new();
         let mut cached_results: Vec<SubTaskResult> = Vec::new();
         let mut completed_entries: Vec<(SubTaskResult, Option<WorktreeInfo>)> = Vec::new();
+        // Phase C step 28: per-subtask LCB dispatch records so the
+        // posterior gets the outcome update on completion.
+        let mut subtask_assignments: HashMap<String, (String, String)> = HashMap::new();
         let mut kill_reasons: HashMap<String, String> = HashMap::new();
         let mut promoted_subtask_id: Option<String> = None;
 
@@ -933,9 +945,47 @@ impl SwarmExecutor {
         }
 
         for (idx, subtask) in pending_subtasks.into_iter().enumerate() {
-            let model = model.clone();
-            let _provider_name = provider_name.clone();
-            let provider = Arc::clone(&provider);
+            // LCB delegation: pick best provider for this subtask's specialty.
+            let (chosen_provider, chosen_model) = if let Some(ref state) = self.delegation {
+                match state.lock() {
+                    Ok(guard) => super::delegation::choose_provider_for_subtask(
+                        &providers,
+                        &guard,
+                        subtask.specialty.as_deref().unwrap_or("General"),
+                        &provider_name,
+                        &model,
+                    ),
+                    Err(e) => {
+                        tracing::warn!("delegation state mutex poisoned; recovering");
+                        let guard = e.into_inner();
+                        super::delegation::choose_provider_for_subtask(
+                            &providers,
+                            &guard,
+                            subtask.specialty.as_deref().unwrap_or("General"),
+                            &provider_name,
+                            &model,
+                        )
+                    }
+                }
+            } else {
+                (provider_name.clone(), model.clone())
+            };
+            let subtask_provider = providers
+                .get(&chosen_provider)
+                .unwrap_or_else(|| Arc::clone(&provider));
+            let model = chosen_model;
+            subtask_assignments.insert(
+                subtask.id.clone(),
+                (
+                    chosen_provider.clone(),
+                    subtask
+                        .specialty
+                        .clone()
+                        .unwrap_or_else(|| "General".into()),
+                ),
+            );
+            let _provider_name = chosen_provider;
+            let provider = subtask_provider;
 
             // Get context from dependencies
             let context = {
@@ -1305,12 +1355,29 @@ impl SwarmExecutor {
                         Ok((subtask_id, Ok(result))) => {
                             abort_handles.remove(&subtask_id);
                             let wt = active_worktrees.remove(&subtask_id).or_else(|| all_worktrees.get(&subtask_id).cloned());
+                            if let (Some(state), Some((prov, spec))) =
+                                (self.delegation.as_ref(), subtask_assignments.get(&subtask_id))
+                            {
+                                super::delegation_outcome::record_subtask_outcome(
+                                    state,
+                                    prov,
+                                    spec,
+                                    result.success,
+                                );
+                            }
                             completed_entries.push((result, wt));
                         }
                         Ok((subtask_id, Err(e))) => {
                             abort_handles.remove(&subtask_id);
                             active_worktrees.remove(&subtask_id);
                             let wt = all_worktrees.get(&subtask_id).cloned();
+                            if let (Some(state), Some((prov, spec))) =
+                                (self.delegation.as_ref(), subtask_assignments.get(&subtask_id))
+                            {
+                                super::delegation_outcome::record_subtask_outcome(
+                                    state, prov, spec, false,
+                                );
+                            }
                             completed_entries.push((
                                 SubTaskResult {
                                     subtask_id: subtask_id.clone(),
@@ -1334,6 +1401,13 @@ impl SwarmExecutor {
                             abort_handles.remove(&subtask_id);
                             active_worktrees.remove(&subtask_id);
                             let wt = all_worktrees.get(&subtask_id).cloned();
+                            if let (Some(state), Some((prov, spec))) =
+                                (self.delegation.as_ref(), subtask_assignments.get(&subtask_id))
+                            {
+                                super::delegation_outcome::record_subtask_outcome(
+                                    state, prov, spec, false,
+                                );
+                            }
                             completed_entries.push((
                                 SubTaskResult {
                                     subtask_id: subtask_id.clone(),
@@ -1682,22 +1756,6 @@ impl SwarmExecutor {
                         env_vars.insert((*key).to_string(), value);
                     }
                 }
-                let fallback_prompt = if context.trim().is_empty() {
-                    format!(
-                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
-Return only the final subtask answer.",
-                        subtask.id, subtask.instruction
-                    )
-                } else {
-                    format!(
-                        "You are executing swarm subtask '{}'.\n\nTask:\n{}\n\n\
-Dependency context:\n{}\n\nReturn only the final subtask answer.",
-                        subtask.id, subtask.instruction, context
-                    )
-                };
-                env_vars.insert(SWARM_FALLBACK_PROMPT_ENV.to_string(), fallback_prompt);
-                env_vars.insert(SWARM_FALLBACK_MODEL_ENV.to_string(), model.clone());
-
                 let mut labels = HashMap::new();
                 labels.insert("codetether.run/swarm-id".to_string(), swarm_id.to_string());
                 labels.insert(
@@ -1710,19 +1768,10 @@ Dependency context:\n{}\n\nReturn only the final subtask answer.",
                     env_vars,
                     labels,
                     command: Some(vec!["sh".to_string(), "-lc".to_string()]),
-                    args: Some(vec![
-                        format!(
-                            "if codetether help swarm-subagent >/dev/null 2>&1; then \
-exec codetether swarm-subagent --payload-env {payload_env}; \
-else \
-exec codetether run \"$${fallback_prompt_env}\" --model \"$${fallback_model_env}\"; \
-fi",
-                            payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
-                            fallback_prompt_env = SWARM_FALLBACK_PROMPT_ENV,
-                            fallback_model_env = SWARM_FALLBACK_MODEL_ENV,
-                        )
-                        .replace("$$", "$"),
-                    ]),
+                    args: Some(vec![format!(
+                        "exec codetether swarm-subagent --payload-env {payload_env}",
+                        payload_env = SWARM_SUBTASK_PAYLOAD_ENV,
+                    )]),
                 };
 
                 if let Err(error) = k8s.spawn_subagent_pod_with_spec(&subtask.id, spec).await {
@@ -1867,27 +1916,14 @@ fi",
                     .subagent_logs(&subtask_id, 10_000)
                     .await
                     .unwrap_or_default();
-                let mut result = result_from_logs(&logs).unwrap_or_else(|| SubTaskResult {
-                    subtask_id: subtask_id.clone(),
-                    subagent_id: format!("agent-{subtask_id}"),
-                    success: pod_state.exit_code.unwrap_or(1) == 0,
-                    result: logs,
-                    steps: 0,
-                    tool_calls: 0,
-                    execution_time_ms: active_state.started_at.elapsed().as_millis() as u64,
-                    error: if pod_state.exit_code.unwrap_or(1) == 0 {
-                        None
-                    } else {
-                        Some(
-                            pod_state
-                                .reason
-                                .clone()
-                                .unwrap_or_else(|| "Remote sub-agent failed".to_string()),
-                        )
-                    },
-                    artifacts: Vec::new(),
-                    retry_count: 0,
-                });
+                let elapsed_ms = active_state.started_at.elapsed().as_millis() as u64;
+                let mut result = k8s_result::final_result(
+                    &subtask_id,
+                    elapsed_ms,
+                    pod_state.exit_code,
+                    pod_state.reason.as_deref(),
+                    &logs,
+                );
 
                 if let Some(reason) = kill_reasons.get(&subtask_id) {
                     result.success = false;
@@ -2289,74 +2325,6 @@ async fn precreate_worktrees(
 /// Run the agentic loop for a sub-agent with tool execution
 #[allow(clippy::too_many_arguments)]
 /// Run an agentic loop with tools - reusable for Ralph and swarm sub-agents
-/// Resolve relative file paths in tool call arguments to use the given working directory.
-///
-/// When sub-agents run in worktrees, the file tools (read, write, edit, etc.) resolve
-/// relative paths from the process CWD (the main repo), not the worktree. This function
-/// rewrites relative paths to absolute paths within the worktree before tool execution.
-fn resolve_tool_paths(
-    tool_name: &str,
-    args: &mut serde_json::Value,
-    working_dir: &std::path::Path,
-) {
-    match tool_name {
-        "read" | "write" | "list" | "grep" | "codesearch" => {
-            if let Some(path) = args.get("path").and_then(|v| v.as_str()).map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["path"] = serde_json::json!(working_dir.join(&path).display().to_string());
-            }
-        }
-        "edit" => {
-            if let Some(path) = args
-                .get("filePath")
-                .and_then(|v| v.as_str())
-                .map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["filePath"] = serde_json::json!(working_dir.join(&path).display().to_string());
-            }
-        }
-        "glob" => {
-            if let Some(pattern) = args
-                .get("pattern")
-                .and_then(|v| v.as_str())
-                .map(String::from)
-                && !std::path::Path::new(&pattern).is_absolute()
-                && !pattern.starts_with("*")
-            {
-                args["pattern"] =
-                    serde_json::json!(working_dir.join(&pattern).display().to_string());
-            }
-        }
-        "multiedit" => {
-            if let Some(edits) = args.get_mut("edits").and_then(|v| v.as_array_mut()) {
-                for edit in edits.iter_mut() {
-                    if let Some(file) = edit.get("file").and_then(|v| v.as_str()).map(String::from)
-                        && !std::path::Path::new(&file).is_absolute()
-                    {
-                        edit["file"] =
-                            serde_json::json!(working_dir.join(&file).display().to_string());
-                    }
-                }
-            }
-        }
-        "patch" => {
-            if let Some(path) = args.get("file").and_then(|v| v.as_str()).map(String::from)
-                && !std::path::Path::new(&path).is_absolute()
-            {
-                args["file"] = serde_json::json!(working_dir.join(&path).display().to_string());
-            }
-        }
-        "bash" => {
-            // If bash has no cwd, set it to the working directory
-            if args.get("cwd").and_then(|v| v.as_str()).is_none() {
-                args["cwd"] = serde_json::json!(working_dir.display().to_string());
-            }
-        }
-        _ => {}
-    }
-}
 
 pub async fn run_agent_loop(
     provider: Arc<dyn Provider>,
@@ -2481,7 +2449,7 @@ pub async fn run_agent_loop(
                 format!("agent.{subtask_id}.thinking"),
                 BusMessage::AgentThinking {
                     agent_id: subtask_id.clone(),
-                    thinking: thinking_text,
+                    thinking: crate::swarm::live_bus::thinking(&thinking_text),
                     step: steps,
                 },
             );
@@ -2582,52 +2550,58 @@ pub async fn run_agent_loop(
                         serde_json::json!({})
                     });
 
-                // Resolve relative file paths to the working directory (critical for worktree isolation)
-                if let Some(ref wd) = working_dir {
-                    resolve_tool_paths(&tool_name, &mut args, wd);
-                }
-                let agent_name = format!("agent-{subtask_id}");
-                let provenance =
-                    ExecutionProvenance::for_operation(&agent_name, ExecutionOrigin::Swarm);
-                args = enrich_tool_input_with_runtime_context(
-                    &args,
-                    working_dir
-                        .as_deref()
-                        .unwrap_or_else(|| std::path::Path::new(".")),
-                    Some(model),
-                    &subtask_id,
-                    &agent_name,
-                    Some(&provenance),
-                );
+                // Normalize and enforce worktree filesystem paths before tool execution.
+                let path_denial = working_dir.as_ref().and_then(|wd| {
+                    path_guard::normalize_tool_args(&tool_name, &mut args, wd).err()
+                });
+                if let Some(e) = path_denial {
+                    tool_success = false;
+                    tracing::warn!(tool = %tool_name, error = %e, "Tool path policy denied");
+                    format!("Tool path policy denied: {e}")
+                } else {
+                    let agent_name = format!("agent-{subtask_id}");
+                    let provenance =
+                        ExecutionProvenance::for_operation(&agent_name, ExecutionOrigin::Swarm);
+                    args = enrich_tool_input_with_runtime_context(
+                        &args,
+                        working_dir
+                            .as_deref()
+                            .unwrap_or_else(|| std::path::Path::new(".")),
+                        Some(model),
+                        &subtask_id,
+                        &agent_name,
+                        Some(&provenance),
+                    );
 
-                match tool.execute(args).await {
-                    Ok(r) => {
-                        if r.success {
-                            tracing::info!(
-                                tool = %tool_name,
-                                duration_ms = tool_start.elapsed().as_millis() as u64,
-                                success = true,
-                                "Tool execution completed"
-                            );
-                            r.output
-                        } else {
-                            tool_success = false;
-                            tracing::warn!(
-                                tool = %tool_name,
-                                error = %r.output,
-                                "Tool returned error"
-                            );
-                            format!("Tool error: {}", r.output)
+                    match tool.execute(args).await {
+                        Ok(r) => {
+                            if r.success {
+                                tracing::info!(
+                                    tool = %tool_name,
+                                    duration_ms = tool_start.elapsed().as_millis() as u64,
+                                    success = true,
+                                    "Tool execution completed"
+                                );
+                                r.output
+                            } else {
+                                tool_success = false;
+                                tracing::warn!(
+                                    tool = %tool_name,
+                                    error = %r.output,
+                                    "Tool returned error"
+                                );
+                                format!("Tool error: {}", r.output)
+                            }
                         }
-                    }
-                    Err(e) => {
-                        tool_success = false;
-                        tracing::error!(
-                            tool = %tool_name,
-                            error = %e,
-                            "Tool execution failed"
-                        );
-                        format!("Tool execution failed: {}", e)
+                        Err(e) => {
+                            tool_success = false;
+                            tracing::error!(
+                                tool = %tool_name,
+                                error = %e,
+                                "Tool execution failed"
+                            );
+                            format!("Tool execution failed: {}", e)
+                        }
                     }
                 }
             } else {
@@ -2682,7 +2656,7 @@ pub async fn run_agent_loop(
                     BusMessage::ToolOutputFull {
                         agent_id: subtask_id.clone(),
                         tool_name: tool_name.clone(),
-                        output: result.clone(),
+                        output: crate::swarm::live_bus::tool_output(&result),
                         success: tool_success,
                         step: steps,
                     },

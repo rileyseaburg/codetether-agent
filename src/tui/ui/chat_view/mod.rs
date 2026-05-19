@@ -5,7 +5,10 @@
 
 pub mod attachment;
 pub mod auto_apply;
+pub mod badges;
+mod build_uncached;
 pub mod cursor;
+pub mod elapsed_badge;
 pub mod empty;
 pub mod entries;
 pub mod entry_result;
@@ -28,5 +31,6 @@ pub mod streaming;
 pub mod suggestions;
 pub mod title;
 pub mod token_spans;
+pub mod turn_badge;
 
 pub use render::render_chat_view;

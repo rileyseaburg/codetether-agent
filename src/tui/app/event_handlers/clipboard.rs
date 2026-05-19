@@ -60,7 +60,31 @@ pub(super) fn handle_clipboard_paste(app: &mut App) {
 /// contents stay in the input buffer instead of each line submitting
 /// itself as a separate chat message.
 fn insert_clipboard_text(app: &mut App, text: &str) {
+    use crate::tui::app::input::pasted_text;
+
     let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+    if pasted_text::should_summarize(&normalized) {
+        let line_count = normalized.lines().count();
+        let byte_count = normalized.len();
+        let size = pasted_text::format_size(byte_count);
+        let placeholder = pasted_text::attach_paste(&mut app.state, normalized);
+        let id = app
+            .state
+            .pending_text_pastes
+            .last()
+            .map(|p| p.id)
+            .unwrap_or(0);
+        if app.state.input.starts_with('/') {
+            app.state.input_mode = InputMode::Command;
+        } else {
+            app.state.input_mode = InputMode::Editing;
+        }
+        app.state.insert_text(&placeholder);
+        app.state.status = format!(
+            "Pasted {line_count} lines ({size}) from clipboard summarised as #{id}; full text will be sent to the agent."
+        );
+        return;
+    }
     app.state.input_mode = if app.state.input.is_empty() && normalized.starts_with('/') {
         InputMode::Command
     } else if app.state.input.starts_with('/') {

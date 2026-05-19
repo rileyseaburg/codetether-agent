@@ -5,7 +5,6 @@ dist
 doc
 docs
 docker/vault
-examples
 npm
 script
 target

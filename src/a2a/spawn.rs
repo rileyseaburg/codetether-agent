@@ -45,6 +45,7 @@
 //! source map).
 
 use crate::a2a::client::A2AClient;
+use crate::a2a::lan;
 use crate::a2a::mdns::{self, DiscoveredPeer};
 use crate::a2a::server::A2AServer;
 use crate::a2a::types::{Message, MessageRole, MessageSendConfiguration, MessageSendParams, Part};
@@ -69,9 +70,8 @@ use tokio::sync::mpsc;
 pub struct SpawnOptions {
     /// Agent name. `None` → auto-pick `<host>-<repo>-<short-pid>`.
     pub name: Option<String>,
-    /// Bind hostname. `127.0.0.1` is loopback-only (still works for
-    /// single-machine multi-agent via mDNS over loopback). Use `0.0.0.0`
-    /// to be reachable across the LAN.
+    /// Bind hostname. `0.0.0.0` is the zero-config default so mDNS can
+    /// announce real interfaces. Use `127.0.0.1` for loopback-only peers.
     pub hostname: String,
     /// Bind port. `0` → OS picks an available port.
     pub port: u16,
@@ -93,11 +93,11 @@ pub struct SpawnOptions {
 }
 
 impl SpawnOptions {
-    /// Zero-config defaults: auto port, auto name, mDNS on, auto-intro on.
+    /// Zero-config defaults: wildcard host, auto port/name, mDNS, intro on.
     pub fn auto() -> Self {
         Self {
             name: None,
-            hostname: "127.0.0.1".to_string(),
+            hostname: "0.0.0.0".to_string(),
             port: 0,
             public_url: None,
             description: None,
@@ -201,6 +201,7 @@ pub struct A2APeerHandle {
     server_task: tokio::task::JoinHandle<()>,
     discovery_task: tokio::task::JoinHandle<()>,
     mdns_intake_task: Option<tokio::task::JoinHandle<()>>,
+    lan_tasks: Vec<tokio::task::JoinHandle<()>>,
     /// Held to keep the daemon alive; on drop unregisters the service.
     _mdns_handle: Option<mdns::MdnsHandle>,
 }
@@ -220,6 +221,9 @@ impl Drop for A2APeerHandle {
         if let Some(t) = self.mdns_intake_task.as_ref() {
             t.abort();
         }
+        for task in &self.lan_tasks {
+            task.abort();
+        }
         // _mdns_handle's own Drop unregisters the mDNS service.
     }
 }
@@ -229,6 +233,7 @@ struct A2APreparation {
     router: Router,
     discovery_task: tokio::task::JoinHandle<()>,
     mdns_intake_task: Option<tokio::task::JoinHandle<()>>,
+    lan_tasks: Vec<tokio::task::JoinHandle<()>>,
     mdns_handle: Option<mdns::MdnsHandle>,
     agent_name: String,
     bind_addr: String,
@@ -316,14 +321,17 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
     // advertise LAN addrs the server isn't bound to.
     let mdns_bind_addrs: Vec<std::net::IpAddr> = match opts.hostname.as_str() {
         "0.0.0.0" | "::" | "[::]" => vec![],
-        other => other
-            .parse::<std::net::IpAddr>()
-            .ok()
-            .into_iter()
-            .collect(),
+        other => other.parse::<std::net::IpAddr>().ok().into_iter().collect(),
     };
+    let mut lan_tasks = Vec::new();
     let (mdns_handle, mdns_intake_task) = if opts.mdns {
         let (peer_tx, peer_rx) = mpsc::channel::<DiscoveredPeer>(64);
+        match lan::announce_and_listen(agent_name.clone(), public_url.clone(), peer_tx.clone())
+            .await
+        {
+            Ok(tasks) => lan_tasks = tasks,
+            Err(error) => tracing::warn!(%error, "A2A LAN broadcast discovery unavailable"),
+        }
         match mdns::announce_and_browse(&agent_name, effective_port, mdns_bind_addrs, peer_tx) {
             Ok(handle) => {
                 let intake = tokio::spawn(mdns_intake_loop(
@@ -348,13 +356,14 @@ async fn prepare_a2a(opts: SpawnOptions, bus: Arc<AgentBus>) -> Result<A2APrepar
         (None, None)
     };
 
-    let router: Router = A2AServer::new(card).router();
+    let router: Router = A2AServer::with_bus(card, Arc::clone(&bus)).router();
 
     Ok(A2APreparation {
         listener,
         router,
         discovery_task,
         mdns_intake_task,
+        lan_tasks,
         mdns_handle,
         agent_name,
         bind_addr,
@@ -473,6 +482,14 @@ async fn handle_mdns_peer(
     bus.registry.register(card.clone());
 
     if is_new {
+        let handle = bus.handle("a2a-discovery");
+        handle.send(
+            "broadcast",
+            crate::bus::BusMessage::Heartbeat {
+                agent_id: card.name.clone(),
+                status: format!("discovered via A2A at {endpoint}"),
+            },
+        );
         tracing::info!(
             agent = %agent_name,
             peer_name = %card.name,
@@ -526,6 +543,7 @@ pub async fn start_a2a_in_background(
         server_task,
         discovery_task: prep.discovery_task,
         mdns_intake_task: prep.mdns_intake_task,
+        lan_tasks: prep.lan_tasks,
         _mdns_handle: prep.mdns_handle,
     })
 }
@@ -551,6 +569,7 @@ pub async fn run(args: SpawnArgs) -> Result<()> {
     let agent_name = prep.agent_name.clone();
     let discovery_task = prep.discovery_task;
     let mdns_intake_task = prep.mdns_intake_task;
+    let lan_tasks = prep.lan_tasks;
     let _mdns_handle = prep.mdns_handle; // dropped at end of fn → unregisters
 
     axum::serve(prep.listener, prep.router)
@@ -561,6 +580,9 @@ pub async fn run(args: SpawnArgs) -> Result<()> {
     discovery_task.abort();
     if let Some(t) = mdns_intake_task {
         t.abort();
+    }
+    for task in lan_tasks {
+        task.abort();
     }
     tracing::info!(agent = %agent_name, "Spawned A2A agent shut down");
     Ok(())

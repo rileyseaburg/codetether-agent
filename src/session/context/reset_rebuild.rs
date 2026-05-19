@@ -3,10 +3,12 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tokio::sync::mpsc;
 
 use crate::provider::Message;
 use crate::session::ResidencyLevel;
 use crate::session::Session;
+use crate::session::SessionEvent;
 use crate::session::helper::experimental;
 
 use super::helpers::DerivedContext;
@@ -15,6 +17,7 @@ use super::reset_summary::summarise_prefix_for_reset;
 
 /// Summarise `prefix` via RLM, prepend the summary message, append
 /// `tail`, repair orphans, and return the resulting [`DerivedContext`].
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn rebuild_with_summary(
     session: &Session,
     prefix: &[Message],
@@ -22,6 +25,7 @@ pub(super) async fn rebuild_with_summary(
     provider: Arc<dyn crate::provider::Provider>,
     model: &str,
     origin_len: usize,
+    event_tx: Option<&mpsc::Sender<SessionEvent>>,
 ) -> Result<DerivedContext> {
     let rlm_config = session.metadata.rlm.clone();
     let summary = summarise_prefix_for_reset(
@@ -32,6 +36,7 @@ pub(super) async fn rebuild_with_summary(
         &rlm_config,
         session.metadata.subcall_provider.clone(),
         session.metadata.subcall_model_name.clone(),
+        event_tx,
     )
     .await?;
 

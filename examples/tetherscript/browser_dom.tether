@@ -1,0 +1,27 @@
+// DOM querying and text extraction from HTML.
+
+fn text(html, selector) {
+    let nodes = browser_query_selector(html, selector)
+    if len(nodes) == 0 {
+        return Err("no elements matched selector")
+    }
+    let content = browser_text_content(html, selector)
+    return Ok(content)
+}
+
+fn query(html, selector) {
+    return Ok(browser_query_selector(html, selector))
+}
+
+fn styles(html, css) {
+    return Ok(browser_styles(html, css))
+}
+
+fn extract_links(html) {
+    let result = browser_query_selector(html, "a")
+    return Ok(json_encode(result))
+}
+
+fn extract_text(html) {
+    return Ok(browser_render(html))
+}

@@ -37,7 +37,7 @@ pub(super) async fn create_github_pr(
 ) -> anyhow::Result<String> {
     let commits = collect_commit_log(&wt.path, base_branch).await;
     let bullets = format_commit_bullets(&commits);
-    let args = create_pr_args(wt, base_branch, prompt, &bullets);
+    let args = create_pr_args(wt, base_branch, prompt, &bullets, &commits);
     let output = tokio::process::Command::new("gh")
         .args(&args)
         .current_dir(&wt.path)

@@ -42,4 +42,8 @@ pub const SLASH_COMMANDS: &[&str] = &[
     "/webview",
     "/classic",
     "/autochat",
+    "/recall",
+    "/plugin",
+    "/audit",
+    "/git",
 ];

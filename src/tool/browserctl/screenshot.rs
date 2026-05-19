@@ -1,9 +1,17 @@
+//! Screenshot file writing for browserctl.
+
 use crate::browser::output::ScreenshotData;
 use anyhow::{Context, Result};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+/// Write screenshot bytes to disk and return the output path.
+///
+/// # Errors
+///
+/// Returns an error when no output path is supplied or the file cannot be
+/// written.
 pub(super) async fn write(
     input: &super::input::BrowserCtlInput,
     screenshot: ScreenshotData,

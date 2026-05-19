@@ -18,11 +18,24 @@ pub const ENV_RSS_CRITICAL_MIB: &str = "CODETETHER_RSS_CRITICAL_MIB";
 pub const ENV_RSS_SAMPLE_SECS: &str = "CODETETHER_RSS_SAMPLE_SECS";
 
 /// Default warning threshold (MiB) — logs `warn!` once when RSS crosses it.
-const DEFAULT_WARN_MIB: u64 = 2048;
+///
+/// Tuned for interactive use: the agent normally lives under a few hundred
+/// MiB, so 1 GiB is already a sign that something is growing unbounded.
+/// Crank this up via `CODETETHER_RSS_WARN_MIB` for batch/server runs.
+const DEFAULT_WARN_MIB: u64 = 1024;
 /// Default critical threshold (MiB) — writes a breadcrumb once when crossed.
-const DEFAULT_CRITICAL_MIB: u64 = 8192;
+///
+/// 3 GiB is enough headroom for legitimate large-context work while still
+/// giving us a pre-OOM crash report before a runaway allocator wipes the
+/// process. Without this fire-before-OOM behavior the user just sees
+/// `memory allocation of N bytes failed` with no call site.
+const DEFAULT_CRITICAL_MIB: u64 = 3072;
 /// Default sampling interval (seconds).
-const DEFAULT_SAMPLE_SECS: u64 = 5;
+///
+/// Short enough to catch fast growth (e.g. a runaway loop allocating
+/// hundreds of MiB/s) before the watchdog misses the window between
+/// "fine" and "OOM aborted."
+const DEFAULT_SAMPLE_SECS: u64 = 2;
 
 /// Spawn the watchdog in the background. Idempotent — calling it more
 /// than once in the same process is a no-op.

@@ -24,6 +24,7 @@ pub struct ProtocolSummary {
     pub registered_agents: Vec<String>,
     pub queued_tasks: usize,
     pub recent_task: Option<String>,
+    pub peer_endpoint_ready: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -72,13 +73,15 @@ impl BusLogEntry {
                     .collect::<Vec<_>>()
                     .join(" ");
                 let preview = truncate(&text_preview, 80);
+                let a2a = from == "remote-a2a" || to == "remote-a2a";
+                let kind = if a2a { "A2A•MSG" } else { "MSG" };
+                let detail = crate::tui::bus_log_entry_payload::message(
+                    from, to, a2a, parts.len(), &text_preview,
+                );
                 (
-                    "MSG".to_string(),
+                    kind.to_string(),
                     format!("{from} → {to}: {preview}"),
-                    format!(
-                        "From: {from}\nTo: {to}\nParts ({}):\n{text_preview}",
-                        parts.len()
-                    ),
+                    detail,
                     Color::Cyan,
                 )
             }
@@ -141,19 +144,25 @@ impl BusLogEntry {
                 (
                     "←TOOL".to_string(),
                     format!("{icon} {agent_id} {tool_name}"),
-                    format!(
-                        "Request: {request_id}\nAgent: {agent_id}\nStep: {step}\nTool: {tool_name}\nSuccess: {success}\nResult: {}",
-                        truncate(result, 200)
+                    crate::tui::bus_log_entry_payload::tool_response(
+                        request_id, agent_id, *step, tool_name, *success, result,
                     ),
                     if *success { Color::Green } else { Color::Red },
                 )
             }
-            BusMessage::Heartbeat { agent_id, status } => (
-                "BEAT".to_string(),
-                format!("{agent_id} [{status}]"),
-                format!("Agent: {agent_id}\nStatus: {status}"),
-                Color::DarkGray,
-            ),
+            BusMessage::Heartbeat { agent_id, status } => {
+                let is_a2a = status.starts_with("discovered via A2A");
+                (
+                    if is_a2a { "A2A•PEER" } else { "BEAT" }.to_string(),
+                    format!("{agent_id} [{status}]"),
+                    format!("Agent: {agent_id}\nStatus: {status}"),
+                    if is_a2a {
+                        Color::LightCyan
+                    } else {
+                        Color::DarkGray
+                    },
+                )
+            }
             BusMessage::RalphLearning {
                 prd_id,
                 story_id,
@@ -209,8 +218,8 @@ impl BusLogEntry {
                 (
                     "TOOL•FULL".to_string(),
                     format!("{icon} {agent_id} step {step} {tool_name}: {preview}"),
-                    format!(
-                        "Agent: {agent_id}\nTool: {tool_name}\nStep: {step}\nSuccess: {success}\n\n--- Full Output ---\n{output}"
+                    crate::tui::bus_log_entry_payload::tool_full(
+                        agent_id, tool_name, *step, *success, output,
                     ),
                     if *success { Color::Green } else { Color::Red },
                 )
@@ -224,7 +233,7 @@ impl BusLogEntry {
                 (
                     "THINK".to_string(),
                     format!("{agent_id} step {step}: {preview}"),
-                    format!("Agent: {agent_id}\nStep: {step}\n\n--- Reasoning ---\n{thinking}"),
+                    crate::tui::bus_log_entry_payload::thinking(agent_id, *step, thinking),
                     Color::LightMagenta,
                 )
             }
@@ -249,7 +258,9 @@ impl BusLogEntry {
                 (
                     "VOICE•T".to_string(),
                     format!("{room_name} [{role}]{fin}: {preview}"),
-                    format!("Room: {room_name}\nRole: {role}\nFinal: {is_final}\n\n{text}"),
+                    crate::tui::bus_log_entry_payload::transcript(
+                        room_name, role, *is_final, text,
+                    ),
                     Color::LightCyan,
                 )
             }
@@ -300,13 +311,13 @@ impl Default for BusLogState {
             detail_mode: false,
             detail_scroll: 0,
             filter: String::new(),
-            filter_input_mode: false,
-            auto_scroll: true,
-            list_state: ListState::default(),
-            max_entries: 10_000,
+                filter_input_mode: false,
+                auto_scroll: true,
+                list_state: ListState::default(),
+                max_entries: 2_000,
+            }
         }
     }
-}
 
 impl BusLogState {
     pub fn new() -> Self {
@@ -387,6 +398,13 @@ impl BusLogState {
         self.filtered_entries().get(self.selected_index).copied()
     }
 
+    pub fn a2a_message_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|entry| entry.kind == "A2A•MSG")
+            .count()
+    }
+
     pub fn enter_filter_mode(&mut self) {
         self.filter_input_mode = true;
     }
@@ -453,6 +471,17 @@ pub fn render_bus_log_with_summary(
         };
         let worker_id = summary.worker_id.as_deref().unwrap_or("n/a");
         let worker_name = summary.worker_name.as_deref().unwrap_or("n/a");
+        let peer_label = if summary.peer_endpoint_ready {
+            "ready"
+        } else {
+            "off"
+        };
+        let peer_color = if summary.peer_endpoint_ready {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        };
+        let a2a_count = state.a2a_message_count();
         let recent_task = summary
             .recent_task
             .unwrap_or_else(|| "No recent A2A tasks".to_string());
@@ -469,6 +498,12 @@ pub fn render_bus_log_with_summary(
                 Span::raw(worker_name).cyan(),
                 "  •  ".dim(),
                 Span::raw(worker_id).dim(),
+            ]),
+            Line::from(vec![
+                "A2A peer: ".dim(),
+                Span::styled(peer_label, Style::default().fg(peer_color).bold()),
+                "  •  ".dim(),
+                Span::raw(format!("{a2a_count} visible A2A msg(s)")),
             ]),
             Line::from(vec![
                 "Heartbeat: ".dim(),

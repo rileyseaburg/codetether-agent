@@ -23,6 +23,7 @@ use crate::tui::models::ViewMode;
 use super::alt_scroll::handle_alt_scroll;
 use super::clipboard::handle_clipboard_paste;
 use super::copy_reply::handle_copy_reply;
+use super::copy_transcript::handle_copy_transcript;
 use super::ctrl_c::handle_ctrl_c;
 
 /// Try to handle a Ctrl/Alt modified key press.
@@ -80,6 +81,27 @@ pub(super) fn handle_ctrl_key(
             };
             app.state.status = format!("Layout: {label}");
         }
+        KeyCode::Char('l') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Bus;
+            app.state.status = "Bus log".to_string();
+        }
+        KeyCode::Char('s') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Swarm;
+            app.state.status = "Swarm".to_string();
+        }
+        KeyCode::Char('p') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            if app.state.view_mode == ViewMode::Chat {
+                app.state.save_scroll_state();
+            }
+            app.state.view_mode = ViewMode::Protocol;
+            app.state.status = "Protocol registry".to_string();
+        }
         KeyCode::Char('o') if ctrl && app.state.view_mode == ViewMode::Chat => {
             crate::tui::app::file_picker::open_file_picker(app, cwd);
         }
@@ -89,8 +111,25 @@ pub(super) fn handle_ctrl_key(
         KeyCode::Char('v') if ctrl && app.state.view_mode == ViewMode::Chat => {
             handle_clipboard_paste(app);
         }
+        KeyCode::Insert
+            if key.modifiers.contains(KeyModifiers::SHIFT)
+                && app.state.view_mode == ViewMode::Chat =>
+        {
+            // Shift+Insert is the standard paste shortcut on Windows
+            // and many Linux terminal emulators.
+            handle_clipboard_paste(app);
+        }
+        KeyCode::Char('Y') if ctrl && app.state.view_mode == ViewMode::Chat => {
+            // Kitty keyboard protocol: Ctrl+Shift+Y arrives as 'Y' + CONTROL.
+            handle_copy_transcript(app);
+        }
         KeyCode::Char('y') if ctrl && app.state.view_mode == ViewMode::Chat => {
-            handle_copy_reply(app);
+            // Legacy terminals: Ctrl+Shift+Y arrives as 'y' + CONTROL+SHIFT.
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                handle_copy_transcript(app);
+            } else {
+                handle_copy_reply(app);
+            }
         }
         KeyCode::Char('x') if ctrl && app.state.watchdog_notification.is_some() => {
             crate::tui::app::watchdog::handle_watchdog_cancel(&mut app.state);

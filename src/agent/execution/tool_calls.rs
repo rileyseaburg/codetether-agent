@@ -14,8 +14,8 @@
 //! ```
 
 use super::messages::PendingToolCall;
-use crate::agent::{Agent, ToolUse};
-use crate::provider::{ContentPart, Message, Role};
+use super::tool_result_record::record_results;
+use crate::agent::Agent;
 use crate::session::Session;
 use crate::tool::ToolResult;
 use crate::tool::readonly::is_read_only;
@@ -52,27 +52,4 @@ impl Agent {
 
 fn can_parallelize(calls: &[PendingToolCall]) -> bool {
     calls.len() > 1 && calls.iter().all(|(_, name, _)| is_read_only(name))
-}
-
-fn record_results(
-    session: &mut Session,
-    tool_calls: Vec<PendingToolCall>,
-    results: Vec<ToolResult>,
-) {
-    for ((id, name, arguments), result) in tool_calls.into_iter().zip(results) {
-        session.tool_uses.push(ToolUse {
-            id: id.clone(),
-            name: name.clone(),
-            input: arguments.clone(),
-            output: result.output.clone(),
-            success: result.success,
-        });
-        session.add_message(Message {
-            role: Role::Tool,
-            content: vec![ContentPart::ToolResult {
-                tool_call_id: id,
-                content: result.output,
-            }],
-        });
-    }
 }

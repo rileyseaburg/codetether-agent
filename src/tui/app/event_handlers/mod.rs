@@ -3,6 +3,7 @@
 mod alt_scroll;
 mod clipboard;
 mod copy_reply;
+mod copy_transcript;
 mod ctrl_c;
 mod event_dispatch;
 mod keybinds;

@@ -29,7 +29,9 @@ pub fn render_input(f: &mut Frame, app: &App, area: Rect, palette: &ColorPalette
     } else if matches!(app.state.input_mode, InputMode::Command) {
         format!(" Command (/ for commands, Tab to autocomplete){suffix}")
     } else {
-        format!(" Message (Enter=send · Ctrl+V=paste · Ctrl+R=voice){suffix}")
+        format!(
+            " Message (Enter=send · Ctrl+V=paste · Ctrl+Y=copy reply · Ctrl+⇧Y=copy all · Ctrl+R=voice){suffix}"
+        )
     };
     let border_color = if app.state.processing {
         Color::Yellow

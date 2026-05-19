@@ -124,12 +124,11 @@ pub fn dispatch(provider_id: &str, secrets: &ProviderSecrets) -> Option<Arc<dyn 
             );
         }
         "cerebras" => {
-            let url = secrets
-                .base_url
-                .clone()
-                .unwrap_or_else(|| "https://api.cerebras.ai/v1".into());
+            let url = secrets.base_url.clone().unwrap_or_else(|| {
+                super::tetherscript_provider::cerebras::default_base_url().into()
+            });
             try_register!(
-                super::openai::OpenAIProvider::with_base_url(api_key.into(), url, "cerebras"),
+                super::tetherscript_provider::cerebras::new(api_key, Some(&url)),
                 provider_id
             );
         }
@@ -148,8 +147,18 @@ pub fn dispatch(provider_id: &str, secrets: &ProviderSecrets) -> Option<Arc<dyn 
                 provider_id
             );
         }
-        "deepseek" | "groq" | "togetherai" | "fireworks-ai" | "mistral" | "nvidia" | "alibaba"
-        | "openai" | "azure" | "novita" => {
+        "deepseek" => {
+            let url = secrets
+                .base_url
+                .clone()
+                .unwrap_or_else(|| "https://api.deepseek.com".into());
+            try_register!(
+                super::deepseek::DeepSeekProvider::with_base_url(api_key.into(), url),
+                provider_id
+            );
+        }
+        "groq" | "togetherai" | "fireworks-ai" | "mistral" | "nvidia" | "alibaba" | "openai"
+        | "azure" | "novita" => {
             super::init_dispatch_impl::dispatch_openai_compat(api_key, secrets, provider_id)
         }
         _ => {

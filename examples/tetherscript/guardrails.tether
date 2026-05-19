@@ -1,0 +1,23 @@
+fn allow_path(path) {
+    if path.contains(".env") {
+        return Ok(false)
+    }
+
+    if path.contains("id_rsa") {
+        return Ok(false)
+    }
+
+    return Ok(true)
+}
+
+fn scan_text(text) {
+    if text.contains("sk-") {
+        return Err("possible API key detected")
+    }
+
+    if text.contains("BEGIN PRIVATE KEY") {
+        return Err("private key detected")
+    }
+
+    return Ok("clean")
+}

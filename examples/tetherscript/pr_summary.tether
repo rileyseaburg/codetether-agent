@@ -1,0 +1,11 @@
+fn title(kind, area, summary) {
+    return Ok(kind + "(" + area + "): " + summary)
+}
+
+fn checklist(tests, docs) {
+    println("## Checklist")
+    println("- Tests: " + tests)
+    println("- Docs: " + docs)
+
+    return Ok("checklist generated")
+}

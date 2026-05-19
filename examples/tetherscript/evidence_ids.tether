@@ -1,0 +1,26 @@
+fn youtube_present(text) {
+    if text.contains("youtube") && text.contains("video") {
+        return Ok(true)
+    }
+    if text.contains("youtu.be/") {
+        return Ok(true)
+    }
+    return Ok(false)
+}
+
+fn tiktok_present(text) {
+    if text.contains("tiktok") && text.contains("video") {
+        return Ok(true)
+    }
+    return Ok(false)
+}
+
+fn google_present(text) {
+    if text.contains("drive.google.com") {
+        return Ok(true)
+    }
+    if text.contains("google") && text.contains("video") {
+        return Ok(true)
+    }
+    return Ok(false)
+}
