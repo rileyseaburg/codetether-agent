@@ -21,7 +21,8 @@ pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
 pub mod mcp;
-pub mod message_text; pub mod message_window;
+pub mod message_text;
+pub mod message_window;
 pub mod model_picker;
 pub mod navigation;
 pub mod okr_gate;
@@ -47,6 +48,8 @@ pub mod terminal_state;
 #[cfg(test)]
 mod test_modules;
 pub mod text;
-pub mod turn_cancel; pub(crate) mod turn_undo_registration; pub mod watchdog;
+pub mod turn_cancel;
+pub(crate) mod turn_undo_registration;
+pub mod watchdog;
 pub mod worker_bridge;
 pub mod worker_tasks;
