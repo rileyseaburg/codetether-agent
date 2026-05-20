@@ -23,6 +23,8 @@ async fn issue_dod_review_accepts_proven_checklist_without_false_approval() {
         result.metadata.get("value"),
         Some(&json!({
             "ok": {
+                "actual_dod_items": 2,
+                "all_dod_items_present": true,
                 "approved": false,
                 "decision": "accept",
                 "expected_dod_items": 2,

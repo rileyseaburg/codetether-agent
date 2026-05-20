@@ -4,15 +4,15 @@ use crate::tool::Tool;
 use crate::tool::tetherscript::TetherScriptPluginTool;
 
 #[tokio::test]
-async fn issue_dod_review_requires_explicit_issue_dod_checklist() {
+async fn issue_dod_review_rejects_when_dod_items_omitted() {
     let tool = TetherScriptPluginTool::new();
     let result = tool
         .execute(json!({
             "path": "examples/tetherscript/issue_dod_review.tether",
             "hook": "validate",
             "args": [
-                "## Acceptance criteria\n- Preserve the source issue checklist.",
-                "Reviewed tests and docs. Looks good."
+                "## Acceptance criteria\n- Item A.\n- Item B.\n- Item C.",
+                "## Issue DoD checklist\n- [x] Item A. Verified.\n\nApproved."
             ]
         }))
         .await
@@ -23,14 +23,14 @@ async fn issue_dod_review_requires_explicit_issue_dod_checklist() {
         result.metadata.get("value"),
         Some(&json!({
             "ok": {
-                "actual_dod_items": 0,
+                "actual_dod_items": 1,
                 "all_dod_items_present": false,
-                "approved": false,
+                "approved": true,
                 "decision": "reject",
-                "expected_dod_items": 1,
-                "has_issue_dod_checklist": false,
+                "expected_dod_items": 3,
+                "has_issue_dod_checklist": true,
                 "has_missing_or_unproven_item": false,
-                "reason": "review output must include an Issue DoD checklist",
+                "reason": "review output must preserve all source issue DoD items (expected 3, found 1)",
                 "valid": false
             }
         }))

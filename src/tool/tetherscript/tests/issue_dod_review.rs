@@ -23,6 +23,8 @@ async fn issue_dod_review_rejects_approval_with_unproven_items() {
         result.metadata.get("value"),
         Some(&json!({
             "ok": {
+                "actual_dod_items": 2,
+                "all_dod_items_present": true,
                 "approved": true,
                 "decision": "reject",
                 "expected_dod_items": 2,

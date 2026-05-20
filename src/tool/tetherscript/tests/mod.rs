@@ -27,6 +27,8 @@ mod issue_dod_checklist_required;
 #[cfg(feature = "tetherscript")]
 mod issue_dod_review;
 #[cfg(feature = "tetherscript")]
+mod issue_dod_review_items_preserved;
+#[cfg(feature = "tetherscript")]
 mod issue_dod_review_proven;
 #[cfg(feature = "tetherscript")]
 mod language_features;
