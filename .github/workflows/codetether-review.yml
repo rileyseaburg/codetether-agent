@@ -19,16 +19,25 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # PRs: always run.
-    # Issue and issue-comment automation is handled by the GitHub App webhook
-    # and persistent harvester workers, not this legacy GitHub Actions path.
-    if: >
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'pull_request_review_comment' && (
-        contains(github.event.comment.body, '@codetether')
-      ))
     steps:
+      - name: Check eligibility
+        id: eligible
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_BODY: ${{ github.event.comment.body || '' }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif printf '%s' "$COMMENT_BODY" | grep -q '@codetether'; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping: not a PR event and comment does not mention @codetether"
+          fi
+
       - name: Classify request
+        if: steps.eligible.outputs.should_run == 'true'
         id: classify
         shell: bash
         env:
@@ -43,6 +52,7 @@ jobs:
           echo "mode=${mode}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout repository
+        if: steps.eligible.outputs.should_run == 'true'
         shell: bash
         env:
           REPO_DIR: ${{ github.workspace }}/repo
@@ -61,6 +71,7 @@ jobs:
 
       # Get a GitHub App installation token so comments come from the bot identity
       - name: Get App Token
+        if: steps.eligible.outputs.should_run == 'true'
         uses: actions/create-github-app-token@v3.1.1
         id: app-token
         with:
@@ -68,6 +79,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: CodeTether Review
+        if: steps.eligible.outputs.should_run == 'true'
         uses: rileyseaburg/codetether-action@v1
         with:
           mode: ${{ steps.classify.outputs.mode }}
