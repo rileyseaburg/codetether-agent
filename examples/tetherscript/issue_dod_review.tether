@@ -1,0 +1,92 @@
+// Lightweight reviewer guard for GitHub issue Definition-of-Done (DoD) checks.
+//
+// The hook intentionally stays simple and deterministic so it can run as a
+// project-local TetherScript fixture. Review automation should not approve a PR
+// unless the reviewer output contains an Issue DoD checklist and every issue DoD
+// item is marked with concrete proof.
+
+fn dod_item_count(issue_body) {
+    let mut count = 0
+    for line in issue_body.lines() {
+        let trimmed = line.trim()
+        if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") || trimmed.starts_with("-") {
+            count = count + 1
+        }
+    }
+    return count
+}
+
+fn has_issue_dod_checklist(review_output) {
+    let normalized = review_output.lower()
+    if normalized.contains("issue dod checklist") {
+        return true
+    }
+    if normalized.contains("issue definition of done") {
+        return true
+    }
+    return false
+}
+
+fn has_missing_or_unproven_item(review_output) {
+    let normalized = review_output.lower()
+    if normalized.contains("- [ ]") {
+        return true
+    }
+    if normalized.contains("missing") {
+        return true
+    }
+    if normalized.contains("unproven") {
+        return true
+    }
+    if normalized.contains("not proven") {
+        return true
+    }
+    if normalized.contains("not-run") {
+        return true
+    }
+    return false
+}
+
+fn looks_approved(review_output) {
+    let normalized = review_output.lower()
+    if normalized.contains("approved") {
+        return true
+    }
+    if normalized.contains("lgtm") {
+        return true
+    }
+    if normalized.contains("merge-ready") {
+        return true
+    }
+    return false
+}
+
+fn validate(issue_body, review_output) {
+    let expected_items = dod_item_count(issue_body)
+    let has_checklist = has_issue_dod_checklist(review_output)
+    let has_unproven = has_missing_or_unproven_item(review_output)
+    let approves = looks_approved(review_output)
+
+    let result = map()
+    result["expected_dod_items"] = expected_items
+    result["has_issue_dod_checklist"] = has_checklist
+    result["has_missing_or_unproven_item"] = has_unproven
+    result["approved"] = approves
+    result["valid"] = has_checklist && !(approves && has_unproven)
+
+    if !has_checklist {
+        result["decision"] = "reject"
+        result["reason"] = "review output must include an Issue DoD checklist"
+        return Ok(result)
+    }
+
+    if approves && has_unproven {
+        result["decision"] = "reject"
+        result["reason"] = "review must not approve when any Issue DoD item is missing or unproven"
+        return Ok(result)
+    }
+
+    result["decision"] = "accept"
+    result["reason"] = "review output preserves the Issue DoD gate"
+    return Ok(result)
+}
