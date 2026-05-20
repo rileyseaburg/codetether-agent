@@ -21,7 +21,11 @@ mod inline_failure;
 #[cfg(feature = "tetherscript")]
 mod inline_success;
 #[cfg(feature = "tetherscript")]
+mod issue_dod_checklist_required;
+#[cfg(feature = "tetherscript")]
 mod issue_dod_review;
+#[cfg(feature = "tetherscript")]
+mod issue_dod_review_proven;
 #[cfg(feature = "tetherscript")]
 mod invalid_params;
 #[cfg(feature = "tetherscript")]
