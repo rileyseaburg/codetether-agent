@@ -139,21 +139,26 @@ pub struct SessionMetadata {
     /// CADMAS-CTX routing posteriors for this session.
     #[serde(default)]
     pub delegation: DelegationState,
-    #[serde(default)] pub run_checkpoint: Option<crate::session::RunCheckpoint>, /// Runtime MinIO / S3 history sink configuration.
+    /// Resumable run checkpoint data, persisted beside session metadata.
+    #[serde(default)]
+    pub run_checkpoint: Option<crate::session::RunCheckpoint>,
+    /// Runtime MinIO / S3 history sink configuration.
     ///
     /// Intentionally not serialized: carrying live access keys inside the
     /// session JSON would persist secrets to disk.
     #[serde(skip)]
     pub history_sink: Option<HistorySinkConfig>,
     /// Claim-scoped provider key payload. Not serialized so BYOK secrets are not written to disk.
-    #[serde(skip)] pub provider_keys: Option<serde_json::Value>,
+    #[serde(skip)]
+    pub provider_keys: Option<serde_json::Value>,
     /// Pre-resolved subcall provider from
     /// [`RlmConfig::subcall_model`](crate::rlm::RlmConfig::subcall_model).
     ///
     /// Not serialised — re-resolved from the provider registry each time
     /// [`Session::apply_config`] runs. When `None`, all RLM iterations
     /// use the root provider.
-    #[serde(skip)] pub subcall_provider: Option<std::sync::Arc<dyn crate::provider::Provider>>,
+    #[serde(skip)]
+    pub subcall_provider: Option<std::sync::Arc<dyn crate::provider::Provider>>,
     /// Model name resolved alongside [`Self::subcall_provider`].
     /// Not serialised.
     #[serde(skip)]
@@ -175,7 +180,8 @@ impl std::fmt::Debug for SessionMetadata {
             .field("share_url", &self.share_url)
             .field("rlm", &self.rlm)
             .field("context_policy", &self.context_policy)
-            .field("delegation", &self.delegation).field("run_checkpoint", &self.run_checkpoint)
+            .field("delegation", &self.delegation)
+            .field("run_checkpoint", &self.run_checkpoint)
             .field(
                 "history_sink",
                 &self

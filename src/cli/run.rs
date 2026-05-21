@@ -553,7 +553,8 @@ async fn decide_dynamic_spawn_with_registry(
 }
 
 pub async fn execute(args: RunArgs) -> Result<()> {
-    let message = args.message.trim(); super::run_checkpoint::validate_auto_continue(args.auto_continue_until)?;
+    let message = args.message.trim();
+    super::run_checkpoint::validate_auto_continue(args.auto_continue_until)?;
 
     if message.is_empty() {
         anyhow::bail!("You must provide a message");
