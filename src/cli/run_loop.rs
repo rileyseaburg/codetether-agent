@@ -16,7 +16,7 @@ pub async fn execute_prompt_with_resume(
     loop {
         let before = session.messages.len();
         let result = session.prompt(&prompt_text).await?;
-        if !crate::session::step_limit::was_exhausted() {
+        if !crate::session::step_limit::was_budget_exhausted() {
             session.clear_run_checkpoint().await?;
             return Ok(result);
         }
