@@ -444,7 +444,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                 ContentPart::Thinking { text } if !text.is_empty() => {
                     if let Some(ref bus) = session.bus {
                         let handle = bus.handle(&session.agent);
-                        let thinking = super::live_bus::compact_thinking(text); handle.send_with_correlation(
+                        let thinking = super::live_bus::compact_thinking(text);
+                        handle.send_with_correlation(
                             format!("agent.{}.thinking", session.agent),
                             crate::bus::BusMessage::AgentThinking {
                                 agent_id: session.agent.clone(),
@@ -703,7 +704,8 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             if let Some(ref bus) = session.bus {
                 let handle = bus.handle(&session.agent);
-                let bus_result = super::live_bus::compact_tool(&rendered_content); handle.send_with_correlation(
+                let bus_result = super::live_bus::compact_tool(&rendered_content);
+                handle.send_with_correlation(
                     format!("agent.{}.tool.response", session.agent),
                     crate::bus::BusMessage::ToolResponse {
                         request_id: tool_id.clone(),

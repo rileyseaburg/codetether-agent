@@ -117,6 +117,7 @@ pub use self::tail_load::TailLoad;
 pub use self::tasks::{TaskEvent, TaskLog, TaskState, TaskStatus};
 pub use self::types::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionMetadata};
 
-#[cfg(test)] mod checkpoint_tests;
+#[cfg(test)]
+mod checkpoint_tests;
 #[cfg(test)]
 mod tests;
