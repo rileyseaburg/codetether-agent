@@ -1,4 +1,9 @@
 //! Prompt execution loop for resumable `codetether run`.
+//!
+//! When `--auto-continue-until N` is set, the loop will attempt up to `N`
+//! resume cycles after the step budget is exhausted. `Some(1)` means the
+//! initial run plus one resume attempt; `None` (default) means no automatic
+//! resume.
 
 use crate::session::Session;
 use anyhow::Result;
@@ -8,11 +13,11 @@ pub async fn execute_prompt_with_resume(
     session: &mut Session,
     message: &str,
     max_steps: Option<usize>,
-    attempts: Option<usize>,
+    resume_attempts: Option<usize>,
     workspace: &Path,
 ) -> Result<crate::session::SessionResult> {
     let mut prompt_text = message.to_string();
-    let mut attempts_left = attempts.unwrap_or(1);
+    let mut resumes_left = resume_attempts.unwrap_or(0);
     loop {
         let before = session.messages.len();
         let result = session.prompt(&prompt_text).await?;
@@ -27,11 +32,13 @@ pub async fn execute_prompt_with_resume(
             )
             .await?;
         }
-        attempts_left = attempts_left.saturating_sub(1);
-        if attempts_left == 0 {
+        if resumes_left == 0 {
             return Ok(result);
         }
-        let Some(plan) = super::run_checkpoint::resume_plan(session, attempts_left).await? else {
+        resumes_left -= 1;
+        let Some(plan) =
+            super::run_checkpoint::resume_plan(session, resumes_left).await?
+        else {
             return Ok(result);
         };
         session.max_steps = Some(budget);
