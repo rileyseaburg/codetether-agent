@@ -275,7 +275,7 @@ pub fn build_help_lines(app_state: &AppState) -> Vec<Line<'static>> {
         "Ctrl+Shift+Y",
         "Copy entire conversation transcript (clean plain text)",
     ));
-    lines.push(key_row("Ctrl+R", "Record voice input"));
+    lines.push(key_row("Ctrl+R", "Start/stop voice recording"));
     lines.push(key_row("Ctrl+V", "Paste from clipboard (or image)"));
     lines.push(key_row("Enter", "Send message or run slash command"));
     lines.push(key_row("Tab", "Accept slash autocomplete"));
