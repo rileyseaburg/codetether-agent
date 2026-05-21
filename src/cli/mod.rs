@@ -7,7 +7,9 @@ pub mod config;
 pub mod context;
 pub mod go_ralph;
 pub mod oracle;
-pub mod run; pub mod run_checkpoint; pub mod run_loop;
+pub mod run;
+pub mod run_checkpoint;
+pub mod run_loop;
 pub mod search;
 pub mod search_render;
 
@@ -320,7 +322,9 @@ pub struct RunArgs {
     #[arg(short, long)]
     pub model: Option<String>,
 
-    #[arg(long)] pub agent: Option<String>,
+    /// Agent to use
+    #[arg(long)]
+    pub agent: Option<String>,
 
     /// Output format
     #[arg(long, default_value = "default", value_parser = ["default", "json"])]
@@ -334,8 +338,11 @@ pub struct RunArgs {
     #[arg(long)]
     pub codex_session: Option<String>,
 
-    #[arg(long)] pub max_steps: Option<usize>,
+    /// Maximum agentic loop steps (default: 250, minimum: 1)
+    #[arg(long)]
+    pub max_steps: Option<usize>,
 
+    /// Auto-continue checkpoint/resume cycles until this many attempts (minimum: 1)
     #[arg(long)]
     pub auto_continue_until: Option<usize>,
     /// Number of parallel speculative branches to race (1-8, default: 1).
