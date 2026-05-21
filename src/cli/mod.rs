@@ -345,6 +345,7 @@ pub struct RunArgs {
     /// Auto-continue checkpoint/resume cycles until this many attempts (minimum: 1)
     #[arg(long)]
     pub auto_continue_until: Option<usize>,
+
     /// Number of parallel speculative branches to race (1-8, default: 1).
     /// When > 1, enables many-worlds speculative dev via the collapse controller.
     #[arg(long, default_value = "1")]
