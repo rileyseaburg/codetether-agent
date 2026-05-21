@@ -15,10 +15,9 @@ pub(crate) fn open(job_id: &str, output_url: &str) -> Result<Launch> {
     std::fs::write(&path, player_html(job_id, output_url))
         .context("Failed to write HTML player")?;
     info!(job_id, output_url, "Opening voice audio player in browser");
-    let browser_opened = open::that(&path).is_ok();
     Ok(Launch {
         html_path: path,
-        browser_opened,
+        browser_opened: open::that(player_path(job_id)).is_ok(),
     })
 }
 
@@ -30,10 +29,7 @@ fn player_html(job_id: &str, output_url: &str) -> String {
     let title = escape_html(job_id);
     let source = escape_html(output_url);
     format!(
-        r#"<!DOCTYPE html><html><head><title>Voice: {title}</title></head>
-<body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#111">
-<audio controls autoplay src="{source}" style="width:80%"></audio>
-</body></html>"#
+        r#"<!DOCTYPE html><html><head><title>Voice: {title}</title></head><body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#111"><audio controls autoplay src="{source}" style="width:80%"></audio></body></html>"#
     )
 }
 
@@ -50,7 +46,6 @@ fn escape_html(value: &str) -> String {
         .replace('"', "&quot;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
-        .replace('\'', "&#39;")
 }
 
 fn safe_name(value: &str) -> String {
