@@ -127,7 +127,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
     tracing::info!("Using model: {} via provider: {}", model, selected_provider);
     tracing::info!("Available tools: {}", tool_definitions.len());
 
-    let max_steps = session.max_steps.unwrap_or(DEFAULT_MAX_STEPS);
+    let max_steps = session.max_steps.unwrap_or(DEFAULT_MAX_STEPS); crate::session::step_limit::start_step_limited_run();
     let mut final_output = String::new();
     let baseline_git_dirty_files = capture_git_dirty_files(&cwd).await;
     let mut touched_files = HashSet::new();
@@ -491,7 +491,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
                     continue;
                 }
             }
-            break;
+            crate::session::step_limit::mark_completed(); break;
         }
 
         if !truncated_tool_ids.is_empty() {
