@@ -666,28 +666,25 @@ pub enum AutoApprove {
 pub const DEFAULT_A2A_SERVER_URL: &str = "https://api.codetether.run";
 
 /// Capabilities of the codetether-agent worker
-const PERSISTENT_WORKER_CAPABILITIES: &[&str] = &[
+const BASE_WORKER_CAPABILITIES: &[&str] = &[
     "forage", "ralph", "swarm", "rlm", "a2a", "mcp", "grpc", "grpc-web", "jsonrpc",
 ];
 
 fn worker_capabilities() -> Vec<String> {
+    let mut capabilities: Vec<String> = BASE_WORKER_CAPABILITIES
+        .iter()
+        .map(|capability| capability.to_string())
+        .collect();
+
     let is_knative = std::env::var("KNATIVE_SERVICE")
         .map(|value| {
             let normalized = value.trim().to_lowercase();
             normalized == "1" || normalized == "true" || normalized == "yes"
         })
         .unwrap_or(false);
-
     if is_knative {
-        return vec!["knative".to_string()];
+        capabilities.push("knative".to_string());
     }
-
-    let mut capabilities: Vec<String> = PERSISTENT_WORKER_CAPABILITIES
-        .iter()
-        .map(|capability| capability.to_string())
-        .collect();
-
-    capabilities.push("persistent".to_string());
 
     capabilities
 }

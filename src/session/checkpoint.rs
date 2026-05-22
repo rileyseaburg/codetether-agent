@@ -4,11 +4,26 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// A structured checkpoint capturing the state of a `codetether run` that
-/// exhausted its step budget, enabling automatic resume.
-///
-/// All fields are populated from runtime session data by the
-/// [`RunCheckpoint::from_session`] constructor.
+#[path = "checkpoint_assemble.rs"]
+mod checkpoint_assemble;
+#[path = "checkpoint_assistant.rs"]
+mod checkpoint_assistant;
+#[path = "checkpoint_build.rs"]
+mod checkpoint_build;
+#[path = "checkpoint_defaults.rs"]
+mod checkpoint_defaults;
+#[path = "checkpoint_state.rs"]
+mod checkpoint_state;
+#[path = "checkpoint_text.rs"]
+mod checkpoint_text;
+#[path = "checkpoint_tool.rs"]
+mod checkpoint_tool;
+#[path = "checkpoint_update.rs"]
+mod checkpoint_update;
+#[path = "checkpoint_walk.rs"]
+mod checkpoint_walk;
+
+/// A structured checkpoint for a step-budget-exhausted `codetether run`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunCheckpoint {
     pub reason: CheckpointReason,
@@ -28,127 +43,10 @@ pub struct RunCheckpoint {
     pub created_at: DateTime<Utc>,
 }
 
+/// The reason a resumable run checkpoint was created.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CheckpointReason {
+    /// The run stopped because its configured maximum step budget was reached.
     MaxStepsExhausted,
-}
-
-impl RunCheckpoint {
-    /// Build a checkpoint by extracting real runtime state from session
-    /// messages.
-    ///
-    /// * `objective` — the original user prompt / objective string.
-    /// * `max_steps` — the step budget that was exhausted.
-    /// * `session_id` — the session UUID.
-    /// * `workspace` — optional workspace path.
-    /// * `message_count` — total messages at checkpoint time.
-    /// * `messages` — the session message slice to extract state from.
-    pub fn from_session_messages(
-        objective: impl Into<String>,
-        max_steps: usize,
-        session_id: impl Into<String>,
-        workspace: Option<PathBuf>,
-        message_count: usize,
-        messages: &[crate::provider::Message],
-    ) -> Self {
-        let extracted = extract_checkpoint_state(messages);
-        Self {
-            reason: CheckpointReason::MaxStepsExhausted,
-            original_objective: objective.into(),
-            max_step_budget: max_steps,
-            session_id: session_id.into(),
-            workspace,
-            message_count,
-            current_browser_url: extracted.browser_url,
-            completed_actions: extracted.completed_actions,
-            blockers: extracted.blockers,
-            next_intended_action: extracted.next_action,
-            created_at: Utc::now(),
-        }
-    }
-}
-
-/// Intermediate state extracted from session messages.
-struct ExtractedState {
-    browser_url: Option<String>,
-    completed_actions: Vec<String>,
-    blockers: Vec<String>,
-    next_action: String,
-}
-
-fn extract_checkpoint_state(messages: &[crate::provider::Message]) -> ExtractedState {
-    use crate::provider::{ContentPart, Role};
-
-    let mut browser_url: Option<String> = None;
-    let mut completed_actions: Vec<String> = Vec::new();
-    let mut blockers: Vec<String> = Vec::new();
-    let mut last_assistant_text: Option<String> = None;
-
-    for msg in messages {
-        match msg.role {
-            Role::Tool => {
-                for part in &msg.content {
-                    if let ContentPart::ToolResult { content, .. } = part {
-                        extract_browser_url_from_text(content, &mut browser_url);
-                        if content.contains("error") || content.contains("Error") {
-                            blockers.push(truncate_to_line(content, 200));
-                        }
-                    }
-                }
-            }
-            Role::Assistant => {
-                for part in &msg.content {
-                    match part {
-                        ContentPart::ToolCall { name, .. } => {
-                            completed_actions.push(name.clone());
-                        }
-                        ContentPart::Text { text } if !text.is_empty() => {
-                            last_assistant_text = Some(truncate_to_line(text, 500));
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    let next_action = last_assistant_text.unwrap_or_else(|| {
-        "Continue from the last assistant/tool state toward the original objective.".to_string()
-    });
-
-    ExtractedState {
-        browser_url,
-        completed_actions,
-        blockers,
-        next_action,
-    }
-}
-
-/// Scan text for the last URL that looks like a browser page.
-fn extract_browser_url_from_text(text: &str, url: &mut Option<String>) {
-    for line in text.lines().rev() {
-        if let Some(found) = line.split_whitespace().find(|s| s.starts_with("https://")) {
-            *url = Some(found.trim_end_matches(',').trim_end_matches('.').to_string());
-            return;
-        }
-        if let Some(found) = line.split_whitespace().find(|s| s.starts_with("http://")) {
-            *url = Some(found.trim_end_matches(',').trim_end_matches('.').to_string());
-            return;
-        }
-    }
-}
-
-/// Truncate text to the first non-empty line, capped at `max` chars.
-fn truncate_to_line(text: &str, max: usize) -> String {
-    let line = text
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("");
-    if line.len() <= max {
-        line.to_string()
-    } else {
-        format!("{}...", &line[..max.saturating_sub(3)])
-    }
 }
