@@ -10,7 +10,11 @@ pub(super) fn scan(parts: &[ContentPart], state: &mut ScanState) {
             ContentPart::Text { text } if !text.is_empty() => {
                 state.next_action = Some(checkpoint_text::truncate_to_line(text, 500));
             }
-            ContentPart::Text { .. } | ContentPart::ToolResult { .. } => {}
+            ContentPart::Text { .. }
+            | ContentPart::ToolResult { .. }
+            | ContentPart::Image { .. }
+            | ContentPart::File { .. }
+            | ContentPart::Thinking { .. } => {}
         }
     }
 }
