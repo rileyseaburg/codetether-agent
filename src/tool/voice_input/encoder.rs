@@ -14,10 +14,23 @@ pub fn encode_wav(samples: &[i16]) -> Result<Vec<u8>> {
     let mut cursor = Cursor::new(Vec::new());
     {
         let mut writer = hound::WavWriter::new(&mut cursor, spec)?;
-        for &s in samples {
-            writer.write_sample(s)?;
+        for &sample in samples {
+            writer.write_sample(sample)?;
         }
         writer.finalize()?;
     }
     Ok(cursor.into_inner())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::encode_wav;
+
+    #[test]
+    fn encode_wav_returns_valid_wave_bytes() {
+        let bytes = encode_wav(&[0, 1024, -1024]).unwrap();
+        assert!(bytes.len() >= 44);
+        assert_eq!(&bytes[..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WAVE");
+    }
 }
