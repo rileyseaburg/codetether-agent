@@ -200,6 +200,21 @@ fn worker_a2a_port() -> u16 {
         .unwrap_or(8081)
 }
 
+fn worker_a2a_peer_seeds() -> Vec<String> {
+    ["CODETETHER_WORKER_A2A_PEERS", "CODETETHER_A2A_PEERS"]
+        .into_iter()
+        .filter_map(|name| std::env::var(name).ok())
+        .flat_map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|peer| !peer.is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
 fn worker_public_url_for_port(args: &A2aArgs, port: u16) -> Option<String> {
     let configured = args
         .public_url
@@ -229,13 +244,17 @@ async fn maybe_start_worker_a2a_peer(
 
     let port = worker_a2a_port();
     let public_url = worker_public_url_for_port(args, port);
+    let peer = worker_a2a_peer_seeds();
+    if !peer.is_empty() {
+        tracing::info!(peer_count = peer.len(), "Worker A2A peer seeds configured");
+    }
     let opts = SpawnOptions {
         name: Some(format!("{name}-a2a")),
         hostname: args.hostname.clone(),
         port,
         public_url,
         description: Some(format!("CodeTether harvester worker A2A peer for {name}")),
-        peer: Vec::new(),
+        peer,
         discovery_interval_secs: 15,
         auto_introduce: true,
         mdns: true,
