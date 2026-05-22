@@ -11,6 +11,7 @@ use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
     configure_repo_git_auth, configure_repo_git_github_app, write_git_credential_helper_script,
 };
+use crate::a2a::spawn::{A2APeerHandle, SpawnOptions};
 use crate::a2a::worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
@@ -188,11 +189,77 @@ struct WorkerTaskRuntime {
     workspace_ids: Vec<String>,
 }
 
+fn worker_a2a_mdns_enabled() -> bool {
+    env_bool("CODETETHER_WORKER_A2A_MDNS", false)
+}
+
+fn worker_a2a_port() -> u16 {
+    std::env::var("CODETETHER_WORKER_A2A_PORT")
+        .ok()
+        .and_then(|value| value.trim().parse::<u16>().ok())
+        .unwrap_or(8081)
+}
+
+fn worker_public_url_for_port(args: &A2aArgs, port: u16) -> Option<String> {
+    let configured = args
+        .public_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+
+    if let Ok(mut url) = reqwest::Url::parse(configured) {
+        let _ = url.set_port(Some(port));
+        return Some(url.as_str().trim_end_matches('/').to_string());
+    }
+
+    Some(configured.trim_end_matches('/').to_string())
+}
+
+async fn maybe_start_worker_a2a_peer(
+    args: &A2aArgs,
+    name: &str,
+    bus: Arc<AgentBus>,
+) -> Option<A2APeerHandle> {
+    if !worker_a2a_mdns_enabled() {
+        tracing::info!(
+            "Worker A2A mDNS peer disabled; set CODETETHER_WORKER_A2A_MDNS=true to enable"
+        );
+        return None;
+    }
+
+    let port = worker_a2a_port();
+    let public_url = worker_public_url_for_port(args, port);
+    let opts = SpawnOptions {
+        name: Some(format!("{name}-a2a")),
+        hostname: args.hostname.clone(),
+        port,
+        public_url,
+        description: Some(format!("CodeTether harvester worker A2A peer for {name}")),
+        peer: Vec::new(),
+        discovery_interval_secs: 15,
+        auto_introduce: true,
+        mdns: true,
+    };
+
+    match crate::a2a::spawn::start_a2a_in_background(opts, bus).await {
+        Ok(handle) => {
+            tracing::info!(agent = %handle.agent_name, public_url = %handle.public_url, "Worker A2A mDNS peer started");
+            Some(handle)
+        }
+        Err(error) => {
+            tracing::warn!(%error, "Worker A2A mDNS peer failed to start; continuing SSE worker path");
+            None
+        }
+    }
+}
+
 // Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
     let name = args
         .name
+        .as_deref()
+        .map(ToString::to_string)
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = resolve_worker_id();
     export_worker_runtime_env(server, &args.token, &worker_id);
@@ -200,6 +267,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
 
     let codebases: Vec<String> = args
         .workspaces
+        .as_deref()
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
@@ -247,6 +315,8 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         let handle = bus.handle(&worker_id);
         handle.announce_ready(worker_capabilities());
     }
+
+    let _a2a_peer = maybe_start_worker_a2a_peer(&args, &name, bus.clone()).await;
 
     let task_progress: Arc<Mutex<task_timeline::TaskProgressState>> =
         Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
@@ -360,6 +430,8 @@ pub async fn run_with_state(
     let server = args.server.trim_end_matches('/');
     let name = args
         .name
+        .as_deref()
+        .map(ToString::to_string)
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = resolve_worker_id();
     export_worker_runtime_env(server, &args.token, &worker_id);
@@ -370,6 +442,7 @@ pub async fn run_with_state(
 
     let codebases: Vec<String> = args
         .workspaces
+        .as_deref()
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
@@ -423,6 +496,8 @@ pub async fn run_with_state(
         let handle = bus.handle(&worker_id);
         handle.announce_ready(worker_capabilities());
     }
+
+    let _a2a_peer = maybe_start_worker_a2a_peer(&args, &name, bus.clone()).await;
 
     let task_progress_ws: Arc<Mutex<task_timeline::TaskProgressState>> =
         Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
