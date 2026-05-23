@@ -35,6 +35,35 @@ pub enum CheckpointReason {
 }
 
 impl RunCheckpoint {
+    /// Build a checkpoint for a max-step-exhausted run when message history is
+    /// not available to inspect. Runtime code should prefer
+    /// [`RunCheckpoint::from_session_messages`] so browser URLs, completed
+    /// actions, blockers, and next actions are extracted from real session
+    /// state.
+    pub fn exhausted(
+        objective: impl Into<String>,
+        max_steps: usize,
+        session_id: impl Into<String>,
+        workspace: Option<PathBuf>,
+        message_count: usize,
+    ) -> Self {
+        Self {
+            reason: CheckpointReason::MaxStepsExhausted,
+            original_objective: objective.into(),
+            max_step_budget: max_steps,
+            session_id: session_id.into(),
+            workspace,
+            message_count,
+            current_browser_url: None,
+            completed_actions: Vec::new(),
+            blockers: Vec::new(),
+            next_intended_action:
+                "Continue from the last assistant/tool state toward the original objective."
+                    .to_string(),
+            created_at: Utc::now(),
+        }
+    }
+
     /// Build a checkpoint by extracting real runtime state from session
     /// messages.
     ///
@@ -130,11 +159,21 @@ fn extract_checkpoint_state(messages: &[crate::provider::Message]) -> ExtractedS
 fn extract_browser_url_from_text(text: &str, url: &mut Option<String>) {
     for line in text.lines().rev() {
         if let Some(found) = line.split_whitespace().find(|s| s.starts_with("https://")) {
-            *url = Some(found.trim_end_matches(',').trim_end_matches('.').to_string());
+            *url = Some(
+                found
+                    .trim_end_matches(',')
+                    .trim_end_matches('.')
+                    .to_string(),
+            );
             return;
         }
         if let Some(found) = line.split_whitespace().find(|s| s.starts_with("http://")) {
-            *url = Some(found.trim_end_matches(',').trim_end_matches('.').to_string());
+            *url = Some(
+                found
+                    .trim_end_matches(',')
+                    .trim_end_matches('.')
+                    .to_string(),
+            );
             return;
         }
     }
@@ -142,10 +181,7 @@ fn extract_browser_url_from_text(text: &str, url: &mut Option<String>) {
 
 /// Truncate text to the first non-empty line, capped at `max` chars.
 fn truncate_to_line(text: &str, max: usize) -> String {
-    let line = text
-        .lines()
-        .find(|l| !l.trim().is_empty())
-        .unwrap_or("");
+    let line = text.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
     if line.len() <= max {
         line.to_string()
     } else {

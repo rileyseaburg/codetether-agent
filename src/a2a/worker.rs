@@ -15,9 +15,10 @@ use crate::a2a::spawn::{A2APeerHandle, SpawnOptions};
 use crate::a2a::worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
-use crate::provenance::{ClaimProvenance, install_commit_msg_hook};
+use crate::provenance::{ClaimProvenance, git_commit_with_provenance, install_commit_msg_hook};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
+use crate::session::helper::runtime::enrich_tool_input_with_runtime_context;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::swarm_view::SwarmEvent;
 use anyhow::{Context, Result};
@@ -28,7 +29,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tokio::process::Command;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
@@ -2158,6 +2159,39 @@ async fn execute_claimed_task<'a>(
         timeline.checkpoint(task_timeline::TaskCheckpoint::GracefulShutdown);
     }
 
+    let mut status = status;
+    let mut result = result;
+    let mut error = error;
+
+    if status == "completed"
+        && !is_virtual_task
+        && let Some(directory) = session.metadata.directory.as_deref()
+    {
+        match commit_and_push_task_changes(
+            directory,
+            task_id,
+            session.metadata.provenance.as_ref(),
+            timeline,
+        )
+        .await
+        {
+            Ok(Some(summary)) => {
+                result = Some(match result {
+                    Some(existing) if !existing.trim().is_empty() => {
+                        format!("{existing}\n\n{summary}")
+                    }
+                    _ => summary,
+                });
+            }
+            Ok(None) => {}
+            Err(err) => {
+                tracing::error!(task_id, error = %err, "Failed to commit and push task changes");
+                status = "failed";
+                error = Some(format!("Post-agent git commit/push failed: {err}"));
+            }
+        }
+    }
+
     // Sync progress state for heartbeat reporting
     timeline.sync_progress().await;
 
@@ -2167,6 +2201,89 @@ async fn execute_claimed_task<'a>(
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
     ))
+}
+
+async fn commit_and_push_task_changes(
+    repo_path: &Path,
+    task_id: &str,
+    provenance: Option<&crate::provenance::ExecutionProvenance>,
+    timeline: &mut task_timeline::TaskTimeline,
+) -> Result<Option<String>> {
+    if !repo_path.join(".git").exists() {
+        tracing::debug!(repo_path = %repo_path.display(), "Skipping post-agent commit: not a git repo");
+        return Ok(None);
+    }
+
+    let status = run_git_command_at(
+        Some(repo_path),
+        vec!["status".to_string(), "--porcelain".to_string()],
+    )
+    .await?;
+    if status.trim().is_empty() {
+        tracing::info!(task_id, repo_path = %repo_path.display(), "No changes to commit after task");
+        return Ok(None);
+    }
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitStaging);
+    run_git_command_at(
+        Some(repo_path),
+        vec!["add".to_string(), "--all".to_string()],
+    )
+    .await?;
+
+    let staged_status = run_git_command_at(
+        Some(repo_path),
+        vec!["status".to_string(), "--porcelain".to_string()],
+    )
+    .await?;
+    if staged_status.trim().is_empty() {
+        return Ok(None);
+    }
+
+    let commit_message = format!("CodeTether task {task_id}");
+    let commit_output = git_commit_with_provenance(repo_path, &commit_message, provenance).await?;
+    if !commit_output.status.success() {
+        anyhow::bail!(
+            "git commit failed: {}",
+            String::from_utf8_lossy(&commit_output.stderr).trim()
+        );
+    }
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitCreated);
+
+    let commit_sha = run_git_command_at(
+        Some(repo_path),
+        vec!["rev-parse".to_string(), "HEAD".to_string()],
+    )
+    .await
+    .unwrap_or_default();
+    let branch = run_git_command_at(
+        Some(repo_path),
+        vec![
+            "rev-parse".to_string(),
+            "--abbrev-ref".to_string(),
+            "HEAD".to_string(),
+        ],
+    )
+    .await
+    .unwrap_or_else(|_| "HEAD".to_string());
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushing);
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "push".to_string(),
+            "origin".to_string(),
+            format!("HEAD:{branch}"),
+        ],
+    )
+    .await?;
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushed);
+
+    Ok(Some(format!(
+        "Committed and pushed task changes: {} on {}",
+        commit_sha.trim(),
+        branch.trim()
+    )))
 }
 
 async fn handle_forage_task(
@@ -2209,6 +2326,8 @@ async fn handle_clone_repo_task(
     let temp_helper_path =
         git_clone_base_dir().join(format!(".{}-git-credential-helper", workspace_id));
     write_git_credential_helper_script(&temp_helper_path, &workspace_id)?;
+    let clone_lock_path = workspace_clone_lock_path(&workspace_id);
+    let clone_lock = acquire_workspace_clone_lock(&clone_lock_path).await?;
 
     let clone_result = async {
         let git_dir = repo_path.join(".git");
@@ -2258,7 +2377,95 @@ async fn handle_clone_repo_task(
     .await;
 
     let _ = tokio::fs::remove_file(&temp_helper_path).await;
+    release_workspace_clone_lock(clone_lock).await;
     clone_result
+}
+
+fn workspace_clone_lock_path(workspace_id: &str) -> PathBuf {
+    let safe_workspace_id: String = workspace_id
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_') {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    git_clone_base_dir().join(format!(".{safe_workspace_id}.clone.lock"))
+}
+
+async fn acquire_workspace_clone_lock(lock_path: &Path) -> Result<tokio::fs::File> {
+    if let Some(parent) = lock_path.parent() {
+        tokio::fs::create_dir_all(parent).await.with_context(|| {
+            format!("Failed to create clone lock directory {}", parent.display())
+        })?;
+    }
+
+    let stale_after = Duration::from_secs(env_u64("CODETETHER_WORKER_CLONE_LOCK_STALE_SECS", 1800));
+    loop {
+        match tokio::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(lock_path)
+            .await
+        {
+            Ok(file) => return Ok(file),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+                if workspace_clone_lock_is_stale(lock_path, stale_after).await {
+                    tracing::warn!(lock = %lock_path.display(), "Removing stale workspace clone lock");
+                    let _ = tokio::fs::remove_file(lock_path).await;
+                    continue;
+                }
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            Err(err) => {
+                return Err(err).with_context(|| {
+                    format!(
+                        "Failed to acquire workspace clone lock {}",
+                        lock_path.display()
+                    )
+                });
+            }
+        }
+    }
+}
+
+async fn workspace_clone_lock_is_stale(lock_path: &Path, stale_after: Duration) -> bool {
+    let Ok(metadata) = tokio::fs::metadata(lock_path).await else {
+        return false;
+    };
+    let Ok(modified) = metadata.modified() else {
+        return false;
+    };
+    SystemTime::now()
+        .duration_since(modified)
+        .map(|age| age > stale_after)
+        .unwrap_or(false)
+}
+
+async fn release_workspace_clone_lock(lock: tokio::fs::File) {
+    if let Ok(metadata) = lock.metadata().await {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let clone_base = git_clone_base_dir();
+            if let Ok(mut entries) = tokio::fs::read_dir(&clone_base).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if let Ok(entry_metadata) = entry.metadata().await {
+                        if entry_metadata.ino() == metadata.ino()
+                            && entry_metadata.dev() == metadata.dev()
+                        {
+                            drop(lock);
+                            let _ = tokio::fs::remove_file(entry.path()).await;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    drop(lock);
 }
 
 async fn refresh_existing_clone(repo_path: &Path, branch: &str) -> Result<()> {
@@ -2922,12 +3129,21 @@ async fn execute_session_with_policy(
                 continue;
             }
 
+            let enriched_tool_input = enrich_tool_input_with_runtime_context(
+                &tool_input,
+                &workspace_dir,
+                Some(&model),
+                &session.id,
+                &session.agent,
+                session.metadata.provenance.as_ref(),
+            );
+
             let content = if let Some(tool) = tool_registry.get(&tool_name) {
                 let tool_timeout_secs =
                     env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
                 let exec_result: Result<crate::tool::ToolResult> = match tokio::time::timeout(
                     Duration::from_secs(tool_timeout_secs),
-                    tool.execute(tool_input.clone()),
+                    tool.execute(enriched_tool_input.clone()),
                 )
                 .await
                 {
