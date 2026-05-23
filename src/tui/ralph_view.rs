@@ -323,7 +323,11 @@ impl RalphViewState {
             }
             RalphEvent::StoryOutput { story_id, output } => {
                 if let Some(story) = self.stories.iter_mut().find(|s| s.id == story_id) {
-                    crate::tui::agent_detail_update::output(&mut story.output, &output, "Ralph output");
+                    crate::tui::agent_detail_update::output(
+                        &mut story.output,
+                        &output,
+                        "Ralph output",
+                    );
                 }
             }
             RalphEvent::StoryError { story_id, error } => {

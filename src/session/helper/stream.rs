@@ -73,6 +73,7 @@ pub async fn collect_stream_completion_with_events(
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<crate::provider::CompletionResponse> {
     let mut text = String::new();
+    let mut thinking = String::new();
     let mut tools = Vec::<ToolAccumulator>::new();
     let mut tool_index_by_id = HashMap::<String, usize>::new();
     let mut usage = Usage::default();
@@ -89,6 +90,12 @@ pub async fn collect_stream_completion_with_events(
                     let to_send = super::stream_caps::snapshot_for_send(&text);
                     let _ = tx.send(SessionEvent::TextChunk(to_send)).await;
                 }
+            }
+            StreamChunk::Thinking(delta) => {
+                if delta.is_empty() {
+                    continue;
+                }
+                thinking.push_str(&delta);
             }
             StreamChunk::ToolCallStart { id, name } => {
                 let next_idx = tools.len();
@@ -125,7 +132,7 @@ pub async fn collect_stream_completion_with_events(
                     });
                 }
             }
-            StreamChunk::ToolCallEnd { .. } | StreamChunk::Thinking(_) => {}
+            StreamChunk::ToolCallEnd { .. } => {}
             StreamChunk::Done { usage: done_usage } => {
                 if let Some(done_usage) = done_usage {
                     usage = done_usage;
@@ -136,6 +143,9 @@ pub async fn collect_stream_completion_with_events(
     }
 
     let mut content = Vec::new();
+    if !thinking.is_empty() {
+        content.push(ContentPart::Thinking { text: thinking });
+    }
     if !text.is_empty() {
         content.push(ContentPart::Text { text });
     }

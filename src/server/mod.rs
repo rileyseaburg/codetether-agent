@@ -1846,7 +1846,7 @@ async fn openai_chat_completions(
     let openai_model = make_openai_model_id(&selected_provider, &model_id);
 
     if is_stream {
-        let mut provider_stream =
+        let provider_stream =
             provider
                 .complete_stream(completion_request)
                 .await
@@ -1891,6 +1891,9 @@ async fn openai_chat_completions(
                             None,
                         );
                         yield Ok(openai_stream_event(&content_chunk));
+                    }
+                    crate::provider::StreamChunk::Thinking(_) => {
+                        // Do not leak reasoning into OpenAI-compatible streaming output.
                     }
                     crate::provider::StreamChunk::ToolCallStart { id, name } => {
                         saw_tool_calls = true;

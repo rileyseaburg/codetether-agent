@@ -222,7 +222,11 @@ pub async fn upload_full_history(
     let byte_len = bytes.len();
     let client = build_client(config)?;
     let key = config.object_key(session_id);
-    client.put_object_content(&config.bucket, &key, ObjectContent::from(bytes))?.build().send().await
+    client
+        .put_object_content(&config.bucket, &key, ObjectContent::from(bytes))?
+        .build()
+        .send()
+        .await
         .with_context(|| {
             format!(
                 "failed to PUT s3://{}/{key} ({} bytes)",
@@ -326,12 +330,16 @@ pub async fn resolve_pointer(
         None => (None, None),
     };
 
-    let body = client.get_object(&handle.bucket, &handle.key).map_err(|e| Fault::BackendError {
+    let body = client
+        .get_object(&handle.bucket, &handle.key)
+        .map_err(|e| Fault::BackendError {
             reason: format!("GET s3://{}/{} failed: {e}", handle.bucket, handle.key),
         })?
         .offset(offset)
         .length(length)
-        .build().send().await
+        .build()
+        .send()
+        .await
         .map_err(|e| Fault::BackendError {
             reason: format!("GET s3://{}/{} failed: {e}", handle.bucket, handle.key),
         })?

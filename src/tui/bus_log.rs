@@ -76,7 +76,11 @@ impl BusLogEntry {
                 let a2a = from == "remote-a2a" || to == "remote-a2a";
                 let kind = if a2a { "A2A•MSG" } else { "MSG" };
                 let detail = crate::tui::bus_log_entry_payload::message(
-                    from, to, a2a, parts.len(), &text_preview,
+                    from,
+                    to,
+                    a2a,
+                    parts.len(),
+                    &text_preview,
                 );
                 (
                     kind.to_string(),
@@ -258,9 +262,7 @@ impl BusLogEntry {
                 (
                     "VOICE•T".to_string(),
                     format!("{room_name} [{role}]{fin}: {preview}"),
-                    crate::tui::bus_log_entry_payload::transcript(
-                        room_name, role, *is_final, text,
-                    ),
+                    crate::tui::bus_log_entry_payload::transcript(room_name, role, *is_final, text),
                     Color::LightCyan,
                 )
             }
@@ -311,13 +313,13 @@ impl Default for BusLogState {
             detail_mode: false,
             detail_scroll: 0,
             filter: String::new(),
-                filter_input_mode: false,
-                auto_scroll: true,
-                list_state: ListState::default(),
-                max_entries: 2_000,
-            }
+            filter_input_mode: false,
+            auto_scroll: true,
+            list_state: ListState::default(),
+            max_entries: 2_000,
         }
     }
+}
 
 impl BusLogState {
     pub fn new() -> Self {

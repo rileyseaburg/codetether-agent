@@ -22,12 +22,19 @@ pub fn flatten_messages_with_budget(messages: &[Message], budget: usize) -> (Str
     let marker = "[...truncated]\n";
     let marker_tok = RlmChunker::estimate_tokens(marker);
 
+    /// Check if `tokens + cost` exceeds `budget`.
+    macro_rules! over_budget {
+        ($tokens:expr, $cost:expr) => {
+            ($tokens + $cost) > budget
+        };
+    }
+
     for (idx, m) in messages.iter().enumerate() {
         let role = super::super::text::role_label(m.role);
         let hdr = format!("[{idx} {role}]\n");
         let hdr_tok = RlmChunker::estimate_tokens(&hdr);
 
-        if tokens + hdr_tok > budget {
+        if over_budget!(tokens, hdr_tok) {
             truncated = true;
             break;
         }
@@ -37,7 +44,7 @@ pub fn flatten_messages_with_budget(messages: &[Message], budget: usize) -> (Str
         for part in &m.content {
             let seg = render_part(part);
             let seg_tok = RlmChunker::estimate_tokens(&seg);
-            if tokens + seg_tok > budget {
+            if over_budget!(tokens, seg_tok) {
                 if tokens + marker_tok <= budget {
                     out.push_str(marker);
                     tokens += marker_tok;
@@ -49,7 +56,7 @@ pub fn flatten_messages_with_budget(messages: &[Message], budget: usize) -> (Str
             tokens += seg_tok;
         }
 
-        if tokens + sep_tok > budget {
+        if over_budget!(tokens, sep_tok) {
             truncated = true;
             break;
         }

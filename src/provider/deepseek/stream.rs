@@ -44,7 +44,9 @@ pub(crate) async fn exec(
             }
             ContentPart::Image { .. }
             | ContentPart::File { .. }
-            | ContentPart::ToolResult { .. } => {}
+            | ContentPart::ToolResult { .. } => {
+                tracing::debug!("Skipping non-streamable ContentPart variant");
+            }
         }
     }
 
