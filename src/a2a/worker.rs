@@ -11,12 +11,14 @@ use crate::a2a::claim::TaskClaimResponse;
 use crate::a2a::git_credentials::{
     configure_repo_git_auth, configure_repo_git_github_app, write_git_credential_helper_script,
 };
+use crate::a2a::spawn::{A2APeerHandle, SpawnOptions};
 use crate::a2a::worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
-use crate::provenance::{ClaimProvenance, install_commit_msg_hook};
+use crate::provenance::{ClaimProvenance, git_commit_with_provenance, install_commit_msg_hook};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
+use crate::session::helper::runtime::enrich_tool_input_with_runtime_context;
 use crate::swarm::{DecompositionStrategy, SwarmConfig, SwarmExecutor};
 use crate::tui::swarm_view::SwarmEvent;
 use anyhow::{Context, Result};
@@ -27,7 +29,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tokio::process::Command;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
@@ -188,11 +190,96 @@ struct WorkerTaskRuntime {
     workspace_ids: Vec<String>,
 }
 
+fn worker_a2a_mdns_enabled() -> bool {
+    env_bool("CODETETHER_WORKER_A2A_MDNS", false)
+}
+
+fn worker_a2a_port() -> u16 {
+    std::env::var("CODETETHER_WORKER_A2A_PORT")
+        .ok()
+        .and_then(|value| value.trim().parse::<u16>().ok())
+        .unwrap_or(8081)
+}
+
+fn worker_a2a_peer_seeds() -> Vec<String> {
+    ["CODETETHER_WORKER_A2A_PEERS", "CODETETHER_A2A_PEERS"]
+        .into_iter()
+        .filter_map(|name| std::env::var(name).ok())
+        .flat_map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|peer| !peer.is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+fn worker_public_url_for_port(args: &A2aArgs, port: u16) -> Option<String> {
+    let configured = args
+        .public_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+
+    if let Ok(mut url) = reqwest::Url::parse(configured) {
+        let _ = url.set_port(Some(port));
+        return Some(url.as_str().trim_end_matches('/').to_string());
+    }
+
+    Some(configured.trim_end_matches('/').to_string())
+}
+
+async fn maybe_start_worker_a2a_peer(
+    args: &A2aArgs,
+    name: &str,
+    bus: Arc<AgentBus>,
+) -> Option<A2APeerHandle> {
+    if !worker_a2a_mdns_enabled() {
+        tracing::info!(
+            "Worker A2A mDNS peer disabled; set CODETETHER_WORKER_A2A_MDNS=true to enable"
+        );
+        return None;
+    }
+
+    let port = worker_a2a_port();
+    let public_url = worker_public_url_for_port(args, port);
+    let peer = worker_a2a_peer_seeds();
+    if !peer.is_empty() {
+        tracing::info!(peer_count = peer.len(), "Worker A2A peer seeds configured");
+    }
+    let opts = SpawnOptions {
+        name: Some(format!("{name}-a2a")),
+        hostname: args.hostname.clone(),
+        port,
+        public_url,
+        description: Some(format!("CodeTether harvester worker A2A peer for {name}")),
+        peer,
+        discovery_interval_secs: 15,
+        auto_introduce: true,
+        mdns: true,
+    };
+
+    match crate::a2a::spawn::start_a2a_in_background(opts, bus).await {
+        Ok(handle) => {
+            tracing::info!(agent = %handle.agent_name, public_url = %handle.public_url, "Worker A2A mDNS peer started");
+            Some(handle)
+        }
+        Err(error) => {
+            tracing::warn!(%error, "Worker A2A mDNS peer failed to start; continuing SSE worker path");
+            None
+        }
+    }
+}
+
 // Run the A2A worker
 pub async fn run(args: A2aArgs) -> Result<()> {
     let server = args.server.trim_end_matches('/');
     let name = args
         .name
+        .as_deref()
+        .map(ToString::to_string)
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = resolve_worker_id();
     export_worker_runtime_env(server, &args.token, &worker_id);
@@ -200,6 +287,7 @@ pub async fn run(args: A2aArgs) -> Result<()> {
 
     let codebases: Vec<String> = args
         .workspaces
+        .as_deref()
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
@@ -247,6 +335,8 @@ pub async fn run(args: A2aArgs) -> Result<()> {
         let handle = bus.handle(&worker_id);
         handle.announce_ready(worker_capabilities());
     }
+
+    let _a2a_peer = maybe_start_worker_a2a_peer(&args, &name, bus.clone()).await;
 
     let task_progress: Arc<Mutex<task_timeline::TaskProgressState>> =
         Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
@@ -360,6 +450,8 @@ pub async fn run_with_state(
     let server = args.server.trim_end_matches('/');
     let name = args
         .name
+        .as_deref()
+        .map(ToString::to_string)
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = resolve_worker_id();
     export_worker_runtime_env(server, &args.token, &worker_id);
@@ -370,6 +462,7 @@ pub async fn run_with_state(
 
     let codebases: Vec<String> = args
         .workspaces
+        .as_deref()
         .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()]);
 
@@ -423,6 +516,8 @@ pub async fn run_with_state(
         let handle = bus.handle(&worker_id);
         handle.announce_ready(worker_capabilities());
     }
+
+    let _a2a_peer = maybe_start_worker_a2a_peer(&args, &name, bus.clone()).await;
 
     let task_progress_ws: Arc<Mutex<task_timeline::TaskProgressState>> =
         Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
@@ -666,25 +761,28 @@ pub enum AutoApprove {
 pub const DEFAULT_A2A_SERVER_URL: &str = "https://api.codetether.run";
 
 /// Capabilities of the codetether-agent worker
-const BASE_WORKER_CAPABILITIES: &[&str] = &[
+const PERSISTENT_WORKER_CAPABILITIES: &[&str] = &[
     "forage", "ralph", "swarm", "rlm", "a2a", "mcp", "grpc", "grpc-web", "jsonrpc",
 ];
 
 fn worker_capabilities() -> Vec<String> {
-    let mut capabilities: Vec<String> = BASE_WORKER_CAPABILITIES
-        .iter()
-        .map(|capability| capability.to_string())
-        .collect();
-
     let is_knative = std::env::var("KNATIVE_SERVICE")
         .map(|value| {
             let normalized = value.trim().to_lowercase();
             normalized == "1" || normalized == "true" || normalized == "yes"
         })
         .unwrap_or(false);
+
     if is_knative {
-        capabilities.push("knative".to_string());
+        return vec!["knative".to_string()];
     }
+
+    let mut capabilities: Vec<String> = PERSISTENT_WORKER_CAPABILITIES
+        .iter()
+        .map(|capability| capability.to_string())
+        .collect();
+
+    capabilities.push("persistent".to_string());
 
     capabilities
 }
@@ -2061,6 +2159,39 @@ async fn execute_claimed_task<'a>(
         timeline.checkpoint(task_timeline::TaskCheckpoint::GracefulShutdown);
     }
 
+    let mut status = status;
+    let mut result = result;
+    let mut error = error;
+
+    if status == "completed"
+        && !is_virtual_task
+        && let Some(directory) = session.metadata.directory.as_deref()
+    {
+        match commit_and_push_task_changes(
+            directory,
+            task_id,
+            session.metadata.provenance.as_ref(),
+            timeline,
+        )
+        .await
+        {
+            Ok(Some(summary)) => {
+                result = Some(match result {
+                    Some(existing) if !existing.trim().is_empty() => {
+                        format!("{existing}\n\n{summary}")
+                    }
+                    _ => summary,
+                });
+            }
+            Ok(None) => {}
+            Err(err) => {
+                tracing::error!(task_id, error = %err, "Failed to commit and push task changes");
+                status = "failed";
+                error = Some(format!("Post-agent git commit/push failed: {err}"));
+            }
+        }
+    }
+
     // Sync progress state for heartbeat reporting
     timeline.sync_progress().await;
 
@@ -2070,6 +2201,89 @@ async fn execute_claimed_task<'a>(
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
     ))
+}
+
+async fn commit_and_push_task_changes(
+    repo_path: &Path,
+    task_id: &str,
+    provenance: Option<&crate::provenance::ExecutionProvenance>,
+    timeline: &mut task_timeline::TaskTimeline,
+) -> Result<Option<String>> {
+    if !repo_path.join(".git").exists() {
+        tracing::debug!(repo_path = %repo_path.display(), "Skipping post-agent commit: not a git repo");
+        return Ok(None);
+    }
+
+    let status = run_git_command_at(
+        Some(repo_path),
+        vec!["status".to_string(), "--porcelain".to_string()],
+    )
+    .await?;
+    if status.trim().is_empty() {
+        tracing::info!(task_id, repo_path = %repo_path.display(), "No changes to commit after task");
+        return Ok(None);
+    }
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitStaging);
+    run_git_command_at(
+        Some(repo_path),
+        vec!["add".to_string(), "--all".to_string()],
+    )
+    .await?;
+
+    let staged_status = run_git_command_at(
+        Some(repo_path),
+        vec!["status".to_string(), "--porcelain".to_string()],
+    )
+    .await?;
+    if staged_status.trim().is_empty() {
+        return Ok(None);
+    }
+
+    let commit_message = format!("CodeTether task {task_id}");
+    let commit_output = git_commit_with_provenance(repo_path, &commit_message, provenance).await?;
+    if !commit_output.status.success() {
+        anyhow::bail!(
+            "git commit failed: {}",
+            String::from_utf8_lossy(&commit_output.stderr).trim()
+        );
+    }
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitCreated);
+
+    let commit_sha = run_git_command_at(
+        Some(repo_path),
+        vec!["rev-parse".to_string(), "HEAD".to_string()],
+    )
+    .await
+    .unwrap_or_default();
+    let branch = run_git_command_at(
+        Some(repo_path),
+        vec![
+            "rev-parse".to_string(),
+            "--abbrev-ref".to_string(),
+            "HEAD".to_string(),
+        ],
+    )
+    .await
+    .unwrap_or_else(|_| "HEAD".to_string());
+
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushing);
+    run_git_command_at(
+        Some(repo_path),
+        vec![
+            "push".to_string(),
+            "origin".to_string(),
+            format!("HEAD:{branch}"),
+        ],
+    )
+    .await?;
+    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushed);
+
+    Ok(Some(format!(
+        "Committed and pushed task changes: {} on {}",
+        commit_sha.trim(),
+        branch.trim()
+    )))
 }
 
 async fn handle_forage_task(
@@ -2112,6 +2326,8 @@ async fn handle_clone_repo_task(
     let temp_helper_path =
         git_clone_base_dir().join(format!(".{}-git-credential-helper", workspace_id));
     write_git_credential_helper_script(&temp_helper_path, &workspace_id)?;
+    let clone_lock_path = workspace_clone_lock_path(&workspace_id);
+    let clone_lock = acquire_workspace_clone_lock(&clone_lock_path).await?;
 
     let clone_result = async {
         let git_dir = repo_path.join(".git");
@@ -2161,7 +2377,95 @@ async fn handle_clone_repo_task(
     .await;
 
     let _ = tokio::fs::remove_file(&temp_helper_path).await;
+    release_workspace_clone_lock(clone_lock).await;
     clone_result
+}
+
+fn workspace_clone_lock_path(workspace_id: &str) -> PathBuf {
+    let safe_workspace_id: String = workspace_id
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_') {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    git_clone_base_dir().join(format!(".{safe_workspace_id}.clone.lock"))
+}
+
+async fn acquire_workspace_clone_lock(lock_path: &Path) -> Result<tokio::fs::File> {
+    if let Some(parent) = lock_path.parent() {
+        tokio::fs::create_dir_all(parent).await.with_context(|| {
+            format!("Failed to create clone lock directory {}", parent.display())
+        })?;
+    }
+
+    let stale_after = Duration::from_secs(env_u64("CODETETHER_WORKER_CLONE_LOCK_STALE_SECS", 1800));
+    loop {
+        match tokio::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(lock_path)
+            .await
+        {
+            Ok(file) => return Ok(file),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+                if workspace_clone_lock_is_stale(lock_path, stale_after).await {
+                    tracing::warn!(lock = %lock_path.display(), "Removing stale workspace clone lock");
+                    let _ = tokio::fs::remove_file(lock_path).await;
+                    continue;
+                }
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            Err(err) => {
+                return Err(err).with_context(|| {
+                    format!(
+                        "Failed to acquire workspace clone lock {}",
+                        lock_path.display()
+                    )
+                });
+            }
+        }
+    }
+}
+
+async fn workspace_clone_lock_is_stale(lock_path: &Path, stale_after: Duration) -> bool {
+    let Ok(metadata) = tokio::fs::metadata(lock_path).await else {
+        return false;
+    };
+    let Ok(modified) = metadata.modified() else {
+        return false;
+    };
+    SystemTime::now()
+        .duration_since(modified)
+        .map(|age| age > stale_after)
+        .unwrap_or(false)
+}
+
+async fn release_workspace_clone_lock(lock: tokio::fs::File) {
+    if let Ok(metadata) = lock.metadata().await {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let clone_base = git_clone_base_dir();
+            if let Ok(mut entries) = tokio::fs::read_dir(&clone_base).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if let Ok(entry_metadata) = entry.metadata().await {
+                        if entry_metadata.ino() == metadata.ino()
+                            && entry_metadata.dev() == metadata.dev()
+                        {
+                            drop(lock);
+                            let _ = tokio::fs::remove_file(entry.path()).await;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    drop(lock);
 }
 
 async fn refresh_existing_clone(repo_path: &Path, branch: &str) -> Result<()> {
@@ -2825,12 +3129,21 @@ async fn execute_session_with_policy(
                 continue;
             }
 
+            let enriched_tool_input = enrich_tool_input_with_runtime_context(
+                &tool_input,
+                &workspace_dir,
+                Some(&model),
+                &session.id,
+                &session.agent,
+                session.metadata.provenance.as_ref(),
+            );
+
             let content = if let Some(tool) = tool_registry.get(&tool_name) {
                 let tool_timeout_secs =
                     env_u64("CODETETHER_WORKER_TOOL_TIMEOUT_SECS", 120).clamp(1, 3600);
                 let exec_result: Result<crate::tool::ToolResult> = match tokio::time::timeout(
                     Duration::from_secs(tool_timeout_secs),
-                    tool.execute(tool_input.clone()),
+                    tool.execute(enriched_tool_input.clone()),
                 )
                 .await
                 {
