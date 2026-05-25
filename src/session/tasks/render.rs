@@ -62,7 +62,7 @@ pub fn governance_block(state: &TaskState) -> Option<String> {
         out.push_str("\nOPEN TASKS:\n");
         for t in open {
             let marker = match t.status {
-                super::event::TaskStatus::InProgress => "◐",
+                super::event::SessionTaskStatus::InProgress => "◐",
                 _ => "○",
             };
             out.push_str(&format!("{} [{}] {}\n", marker, t.id, t.content));
