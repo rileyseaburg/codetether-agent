@@ -8,7 +8,7 @@ pub fn client_origin(hwnd: i64) -> anyhow::Result<(i32, i32)> {
     unsafe {
         let hwnd = HWND(hwnd as *mut _);
         let mut point = POINT { x: 0, y: 0 };
-        ClientToScreen(hwnd, &mut point)?;
+        ClientToScreen(hwnd, &mut point).ok()?;
         Ok((point.x, point.y))
     }
 }
