@@ -2,6 +2,12 @@
 
 mod clone_location;
 mod clone_target;
+mod git_branch;
+#[cfg(test)]
+mod git_branch_tests;
+mod git_commit_push;
+mod git_commit_push_ops;
+mod git_refspec;
 mod model_defaults;
 mod model_preferences;
 pub(crate) mod task_timeline;
@@ -15,7 +21,7 @@ use crate::a2a::spawn::{A2APeerHandle, SpawnOptions};
 use crate::a2a::worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record};
 use crate::bus::AgentBus;
 use crate::cli::{A2aArgs, ForageArgs};
-use crate::provenance::{ClaimProvenance, git_commit_with_provenance, install_commit_msg_hook};
+use crate::provenance::{ClaimProvenance, install_commit_msg_hook};
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
 use crate::session::helper::runtime::enrich_tool_input_with_runtime_context;
@@ -2012,6 +2018,11 @@ async fn execute_claimed_task<'a>(
         {
             tracing::warn!(task_id, error = %err, "Failed to install commit-msg hook");
         }
+        git_branch::ensure_metadata_checked_out(
+            session.metadata.directory.as_deref(),
+            metadata_str(&metadata, &["branch_name", "git_branch", "pr_head"]),
+        )
+        .await?;
         timeline.checkpoint(task_timeline::TaskCheckpoint::GitHookInstalled);
     }
 
@@ -2167,7 +2178,7 @@ async fn execute_claimed_task<'a>(
         && !is_virtual_task
         && let Some(directory) = session.metadata.directory.as_deref()
     {
-        match commit_and_push_task_changes(
+        match git_commit_push::run(
             directory,
             task_id,
             session.metadata.provenance.as_ref(),
@@ -2201,89 +2212,6 @@ async fn execute_claimed_task<'a>(
         error,
         Some(session_id.unwrap_or_else(|| session.id.clone())),
     ))
-}
-
-async fn commit_and_push_task_changes(
-    repo_path: &Path,
-    task_id: &str,
-    provenance: Option<&crate::provenance::ExecutionProvenance>,
-    timeline: &mut task_timeline::TaskTimeline,
-) -> Result<Option<String>> {
-    if !repo_path.join(".git").exists() {
-        tracing::debug!(repo_path = %repo_path.display(), "Skipping post-agent commit: not a git repo");
-        return Ok(None);
-    }
-
-    let status = run_git_command_at(
-        Some(repo_path),
-        vec!["status".to_string(), "--porcelain".to_string()],
-    )
-    .await?;
-    if status.trim().is_empty() {
-        tracing::info!(task_id, repo_path = %repo_path.display(), "No changes to commit after task");
-        return Ok(None);
-    }
-
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitStaging);
-    run_git_command_at(
-        Some(repo_path),
-        vec!["add".to_string(), "--all".to_string()],
-    )
-    .await?;
-
-    let staged_status = run_git_command_at(
-        Some(repo_path),
-        vec!["status".to_string(), "--porcelain".to_string()],
-    )
-    .await?;
-    if staged_status.trim().is_empty() {
-        return Ok(None);
-    }
-
-    let commit_message = format!("CodeTether task {task_id}");
-    let commit_output = git_commit_with_provenance(repo_path, &commit_message, provenance).await?;
-    if !commit_output.status.success() {
-        anyhow::bail!(
-            "git commit failed: {}",
-            String::from_utf8_lossy(&commit_output.stderr).trim()
-        );
-    }
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitCreated);
-
-    let commit_sha = run_git_command_at(
-        Some(repo_path),
-        vec!["rev-parse".to_string(), "HEAD".to_string()],
-    )
-    .await
-    .unwrap_or_default();
-    let branch = run_git_command_at(
-        Some(repo_path),
-        vec![
-            "rev-parse".to_string(),
-            "--abbrev-ref".to_string(),
-            "HEAD".to_string(),
-        ],
-    )
-    .await
-    .unwrap_or_else(|_| "HEAD".to_string());
-
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushing);
-    run_git_command_at(
-        Some(repo_path),
-        vec![
-            "push".to_string(),
-            "origin".to_string(),
-            format!("HEAD:{branch}"),
-        ],
-    )
-    .await?;
-    timeline.checkpoint(task_timeline::TaskCheckpoint::CommitPushed);
-
-    Ok(Some(format!(
-        "Committed and pushed task changes: {} on {}",
-        commit_sha.trim(),
-        branch.trim()
-    )))
 }
 
 async fn handle_forage_task(
@@ -2695,32 +2623,21 @@ async fn release_task_result(
     session_id: Option<String>,
     diagnostics: Option<serde_json::Value>,
 ) -> Result<()> {
-    let mut req = client
-        .post(format!("{}/v1/worker/tasks/release", server))
-        .header("X-Worker-ID", worker_id);
-    if let Some(token) = token {
-        req = req.bearer_auth(token);
-    }
-
-    let mut payload = serde_json::json!({
-        "task_id": task_id,
-        "status": status,
-        "result": result,
-        "error": error,
-        "session_id": session_id,
-    });
-    if let Some(diagnostics) = diagnostics {
-        if let Some(obj) = payload.as_object_mut() {
-            obj.insert("diagnostics".to_string(), diagnostics);
-        }
-    }
-
-    req.json(&payload)
-        .send()
-        .await
-        .context("Failed to release task result")?;
-
-    Ok(())
+    release::send(
+        client,
+        server,
+        token,
+        worker_id,
+        release::Payload {
+            task_id,
+            status,
+            result,
+            error,
+            session_id,
+            diagnostics,
+        },
+    )
+    .await
 }
 
 async fn execute_swarm_with_policy(

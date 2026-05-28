@@ -2,7 +2,16 @@
 
 mod blender;
 mod blender_evidence;
+mod blender_focus;
+mod blender_frame;
+mod blender_pattern;
+mod blender_query;
+mod blender_query_script;
 mod blender_select;
+mod blender_select_result;
+mod blender_select_ui;
+mod blender_sequence;
+mod blender_timing;
 mod click;
 mod double_click;
 mod drag;

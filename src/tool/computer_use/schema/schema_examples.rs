@@ -17,7 +17,7 @@ pub fn examples() -> Value {
         {"action": "mouse_up", "button": "middle"},
         {"action": "scroll", "hwnd": 123456, "x": 1780, "y": 260, "scroll_amount": -600},
         {"action": "focus_viewport", "hwnd": 123456, "client_area": true, "x": 960, "y": 540},
-        {"action": "blender_select_frame", "hwnd": 123456, "object_name": "v03", "client_area": true, "x": 960, "y": 540},
+        {"action": "blender_select_frame", "hwnd": 123456, "viewport_child_hwnd": 234567, "object_name": "v03", "client_area": true},
         {"action": "press_key", "key": "^c"},
         {"action": "type_text", "text": "hello world"},
         {"action": "wait_ms", "ms": 500}
