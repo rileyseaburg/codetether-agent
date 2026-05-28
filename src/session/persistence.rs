@@ -205,22 +205,12 @@ impl Session {
 
     /// Resolve the sessions directory (`<data_dir>/sessions`).
     ///
-    /// Cached after first resolution: `Config::data_dir()` does env-var
-    /// lookups and filesystem checks which are cheap individually but add
-    /// up across hundreds of save/load calls over a session's lifetime.
+    /// Resolved from [`crate::config::Config::data_dir`] each time so tests
+    /// that override `CODETETHER_DATA_DIR` remain isolated.
     pub(crate) fn sessions_dir() -> Result<PathBuf> {
-        use std::sync::OnceLock;
-        static CACHED: OnceLock<PathBuf> = OnceLock::new();
-        if let Some(dir) = CACHED.get() {
-            return Ok(dir.clone());
-        }
-        let dir = crate::config::Config::data_dir()
+        crate::config::Config::data_dir()
             .map(|d| d.join("sessions"))
-            .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?;
-        // Best-effort set; if another thread won the race we just use
-        // theirs.
-        let _ = CACHED.set(dir.clone());
-        Ok(dir)
+            .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))
     }
 
     /// Resolve the on-disk path for a session file.
