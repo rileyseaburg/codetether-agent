@@ -35,7 +35,9 @@ async fn process(
     paths: &[&str],
     content: &str,
 ) -> Result<ToolResult> {
-    match RlmRouter::auto_process(content, ctx::auto(tool, action, query, paths), &tool.config).await {
+    match RlmRouter::auto_process(content, ctx::auto(tool, action, query, paths), &tool.config)
+        .await
+    {
         Ok(result) if result.success => Ok(ToolResult::success(format!(
             "RLM {action} complete ({} → {} tokens, {} iterations)\n\n{}",
             result.stats.input_tokens,
@@ -44,7 +46,11 @@ async fn process(
             result.processed
         ))),
         Ok(result) => {
-            tracing::warn!(input_tokens = result.stats.input_tokens, output_tokens = result.stats.output_tokens, "RLM auto_process did not converge for tool invocation");
+            tracing::warn!(
+                input_tokens = result.stats.input_tokens,
+                output_tokens = result.stats.output_tokens,
+                "RLM auto_process did not converge for tool invocation"
+            );
             Ok(fallback::non_converged(action, content))
         }
         Err(error) => {

@@ -18,19 +18,65 @@ use tokio_stream::Stream;
 use tonic::{Request, Response, Status};
 
 type StreamResult<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send>>;
-
 /// Shared state backing both JSON-RPC and gRPC transports.
+///
+/// Stores task records, push-notification configuration, agent metadata, and
+/// task-update fan-out channels for the gRPC service layer. The store is safe to
+/// share across concurrent request handlers: task and push-configuration maps
+/// use lock-free concurrent access through [`DashMap`], while task updates are
+/// distributed with a Tokio broadcast channel.
+///
+/// # Responsibilities
+///
+/// * Keep the authoritative in-process [`local::Task`] records by task ID.
+/// * Track per-task [`local::TaskPushNotificationConfig`] entries used by
+///   push-notification subscribers.
+/// * Expose the local [`local::AgentCard`] advertised by this server.
+/// * Optionally publish task lifecycle events through [`AgentBus`].
+/// * Broadcast task status changes to active streaming subscribers.
+///
+/// # Invariants
+///
+/// * Keys in `tasks` and `push_configs` are task IDs.
+/// * Values sent through `update_tx` use the same task ID namespace as `tasks`.
+/// * `card` describes the agent instance served by this store.
 pub struct GrpcTaskStore {
     tasks: DashMap<String, local::Task>,
     push_configs: DashMap<String, Vec<local::TaskPushNotificationConfig>>,
     card: local::AgentCard,
     bus: Option<Arc<AgentBus>>,
     /// Broadcast for task updates (task_id, status)
+    ///
+    /// Sends each observed task status transition to subscribers as a
+    /// `(task_id, status)` tuple. Receivers may lag or miss messages according
+    /// to Tokio broadcast-channel semantics, so consumers should treat this as
+    /// a live update stream rather than durable task history.
     update_tx: broadcast::Sender<(String, local::TaskStatus)>,
 }
-
 impl GrpcTaskStore {
     /// Create a new task store with the given agent card.
+    ///
+    /// Initializes an empty, shareable [`GrpcTaskStore`] for a single local
+    /// agent. The returned [`Arc`] is intended to be cloned into gRPC handlers,
+    /// JSON-RPC adapters, streaming tasks, and other transport glue that needs
+    /// access to the same in-process task state.
+    ///
+    /// # Parameters
+    ///
+    /// * `card` - Agent metadata served by this store and returned to clients
+    ///   that request the local agent card.
+    ///
+    /// # Returns
+    ///
+    /// A reference-counted store with no tasks, no push-notification
+    /// configuration, no attached [`AgentBus`], and a task-update broadcast
+    /// channel sized for 256 queued status updates per receiver.
+    ///
+    /// # Side effects
+    ///
+    /// Allocates the concurrent maps and creates a Tokio broadcast channel. It
+    /// does not publish network services, spawn background tasks, or emit any
+    /// task updates.
     pub fn new(card: local::AgentCard) -> Arc<Self> {
         let (update_tx, _) = broadcast::channel(256);
         Arc::new(Self {
@@ -43,6 +89,28 @@ impl GrpcTaskStore {
     }
 
     /// Create with an agent bus attached.
+    ///
+    /// Constructs a new store using [`Self::new`] and attaches an [`AgentBus`]
+    /// before the store is shared. The bus allows gRPC task activity to be
+    /// mirrored into the broader agent-event system while preserving the same
+    /// task storage and update-stream behavior as [`Self::new`].
+    ///
+    /// # Parameters
+    ///
+    /// * `card` - Agent metadata served by this store.
+    /// * `bus` - Shared event bus used to publish or coordinate task activity
+    ///   outside the gRPC transport.
+    ///
+    /// # Returns
+    ///
+    /// A reference-counted store with the supplied bus installed.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the freshly created [`Arc`] is not uniquely owned before
+    /// installing the bus. Under normal control flow this cannot happen because
+    /// the [`Arc`] has just been returned by [`Self::new`] and has not yet been
+    /// cloned.
     pub fn with_bus(card: local::AgentCard, bus: Arc<AgentBus>) -> Arc<Self> {
         let mut store = Self::new(card);
         Arc::get_mut(&mut store)
@@ -52,27 +120,86 @@ impl GrpcTaskStore {
     }
 
     /// Insert or update a task.
+    ///
+    /// Stores the provided task by its ID, replacing any existing task with the
+    /// same ID. Before writing the task into the map, this method broadcasts the
+    /// task's current status so live subscribers can react to status changes.
+    ///
+    /// # Parameters
+    ///
+    /// * `task` - Complete task record to insert or replace. Its `id` field is
+    ///   used as the storage key and as the task ID in the broadcast update.
+    ///
+    /// # Side effects
+    ///
+    /// Sends a best-effort status update on the broadcast channel and mutates
+    /// the in-memory task map. If there are no active receivers, or if receivers
+    /// have lagged, the broadcast result is ignored; the task is still stored.
     pub fn upsert_task(&self, task: local::Task) {
         let _ = self.update_tx.send((task.id.clone(), task.status.clone()));
         self.tasks.insert(task.id.clone(), task);
     }
 
     /// Get a task by id.
+    ///
+    /// Looks up a task in the in-memory store and returns an owned clone so the
+    /// caller can inspect or serialize it without holding a [`DashMap`] guard.
+    ///
+    /// # Parameters
+    ///
+    /// * `id` - Task identifier to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// `Some(local::Task)` when a task with the given ID exists, or `None` when
+    /// the store has no matching task.
+    ///
+    /// # Side effects
+    ///
+    /// This method does not mutate store state or emit task updates.
     pub fn get_task(&self, id: &str) -> Option<local::Task> {
         self.tasks.get(id).map(|r| r.value().clone())
     }
 
     /// Subscribe to task update notifications.
+    ///
+    /// Creates a new receiver for the live task-status broadcast stream. Each
+    /// message contains the task ID and the status observed by [`Self::upsert_task`].
+    ///
+    /// # Returns
+    ///
+    /// A Tokio broadcast receiver for `(task_id, status)` tuples. Broadcast
+    /// receivers are live streams, not durable logs; slow receivers may observe
+    /// lag errors according to Tokio broadcast-channel semantics.
+    ///
+    /// # Side effects
+    ///
+    /// Registers a new receiver with the broadcast channel. It does not read,
+    /// mutate, or replay existing tasks.
     pub fn subscribe_updates(&self) -> broadcast::Receiver<(String, local::TaskStatus)> {
         self.update_tx.subscribe()
     }
 
     /// Build the tonic service layer from this store.
+    ///
+    /// Wraps the shared task store in an [`A2aServiceImpl`] and returns the
+    /// generated tonic [`A2aServiceServer`] ready to be mounted into a gRPC
+    /// server.
+    ///
+    /// # Returns
+    ///
+    /// A tonic service server that handles A2A gRPC requests using this store as
+    /// its backing state.
+    ///
+    /// # Side effects
+    ///
+    /// Consumes one [`Arc`] handle to the store and moves it into the service
+    /// implementation. This method does not start listening on a socket; the
+    /// caller is responsible for adding the returned service to a tonic server.
     pub fn into_service(self: Arc<Self>) -> A2aServiceServer<A2aServiceImpl> {
         A2aServiceServer::new(A2aServiceImpl { store: self })
     }
 }
-
 /// Tonic service implementation.
 pub struct A2aServiceImpl {
     store: Arc<GrpcTaskStore>,

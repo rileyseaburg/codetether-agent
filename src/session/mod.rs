@@ -114,7 +114,7 @@ pub use self::relevance::{
     Bucket, Dependency, Difficulty, RelevanceMeta, ToolUse, bucket_for_messages,
 };
 pub use self::tail_load::TailLoad;
-pub use self::tasks::{TaskEvent, TaskLog, TaskState, TaskStatus};
+pub use self::tasks::{SessionTaskStatus, TaskEvent, TaskLog, TaskState};
 pub use self::types::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionMetadata};
 
 #[cfg(test)]

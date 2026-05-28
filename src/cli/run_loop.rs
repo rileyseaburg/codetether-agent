@@ -36,9 +36,7 @@ pub async fn execute_prompt_with_resume(
             return Ok(result);
         }
         resumes_left -= 1;
-        let Some(plan) =
-            super::run_checkpoint::resume_plan(session, resumes_left).await?
-        else {
+        let Some(plan) = super::run_checkpoint::resume_plan(session, resumes_left).await? else {
             return Ok(result);
         };
         session.max_steps = Some(budget);

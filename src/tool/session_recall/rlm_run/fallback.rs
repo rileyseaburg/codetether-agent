@@ -4,11 +4,7 @@ use crate::rlm::RlmResult;
 use crate::session::index_produce::summary_text::strip_stats_header;
 use crate::tool::ToolResult;
 
-pub(super) fn non_converged(
-    context: &str,
-    sources: &[String],
-    result: &RlmResult,
-) -> ToolResult {
+pub(super) fn non_converged(context: &str, sources: &[String], result: &RlmResult) -> ToolResult {
     tracing::warn!(
         input_tokens = result.stats.input_tokens,
         output_tokens = result.stats.output_tokens,

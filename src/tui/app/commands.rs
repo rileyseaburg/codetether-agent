@@ -209,7 +209,6 @@ async fn handle_mcp_command(app: &mut App, raw: &str) {
 /// - `/goal show` (or bare `/goal`) — print goal + open tasks.
 async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
     use crate::session::tasks::{TaskEvent, TaskLog, TaskState, governance_block};
-    use chrono::Utc;
 
     let log = match TaskLog::for_session(&session.id) {
         Ok(l) => l,
@@ -241,14 +240,19 @@ async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
                 return;
             }
             TaskEvent::GoalSet {
-                at: Utc::now(),
+                at: chrono::Utc::now(),
                 objective: tail.to_string(),
                 success_criteria: Vec::new(),
                 forbidden: Vec::new(),
+                source_session_id: session.id.clone(),
+                source_turn_id: String::new(),
+                source_text_hash: String::new(),
+                source_kind: Default::default(),
+                confidence: 0.0,
             }
         }
         "done" | "clear" => TaskEvent::GoalCleared {
-            at: Utc::now(),
+            at: chrono::Utc::now(),
             reason: if tail.is_empty() {
                 "completed".to_string()
             } else {
@@ -261,7 +265,7 @@ async fn handle_goal_command(app: &mut App, session: &Session, rest: &str) {
                 return;
             }
             TaskEvent::GoalReaffirmed {
-                at: Utc::now(),
+                at: chrono::Utc::now(),
                 progress_note: tail.to_string(),
             }
         }
@@ -330,12 +334,13 @@ async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
         },
     };
 
-    let undo_count = crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns(
-        &mut session.messages,
-        &mut session.pages,
-        &mut app.state.messages,
-        n,
-    );
+    let undo_count =
+        crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns(
+            &mut session.messages,
+            &mut session.pages,
+            &mut app.state.messages,
+            n,
+        );
     if undo_count == 0 {
         push_system_message(app, "Nothing to undo.");
         return;

@@ -274,7 +274,11 @@ impl SwarmViewState {
             }
             SwarmEvent::AgentOutput { subtask_id, output } => {
                 if let Some(task) = self.subtasks.iter_mut().find(|t| t.id == subtask_id) {
-                    crate::tui::agent_detail_update::output(&mut task.output, &output, "swarm output");
+                    crate::tui::agent_detail_update::output(
+                        &mut task.output,
+                        &output,
+                        "swarm output",
+                    );
                 }
             }
             SwarmEvent::AgentError { subtask_id, error } => {

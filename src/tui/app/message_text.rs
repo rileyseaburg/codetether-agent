@@ -25,7 +25,8 @@ pub fn extract_message_text(content: &[ContentPart]) -> String {
 }
 
 pub fn sync_messages_from_session(app: &mut App, session: &Session) {
-    app.state.messages = session_messages_to_chat_messages(session); crate::tui::app::message_cache_invalidate::clear(&mut app.state);
+    app.state.messages = session_messages_to_chat_messages(session);
+    crate::tui::app::message_cache_invalidate::clear(&mut app.state);
     app.state.current_request_first_token_ms = None;
     app.state.current_request_last_token_ms = None;
     app.state.last_request_first_token_ms = None;

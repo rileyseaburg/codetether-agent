@@ -838,13 +838,25 @@ impl BusS3Sink {
 
     /// Ensure the bucket exists, creating it if necessary
     pub async fn ensure_bucket(&self) -> Result<()> {
-        match self.client.bucket_exists(&self.config.bucket)?.build().send().await {
+        match self
+            .client
+            .bucket_exists(&self.config.bucket)?
+            .build()
+            .send()
+            .await
+        {
             Ok(resp) if resp.exists() => {
                 debug!(bucket = %self.config.bucket, "S3 bucket exists");
             }
             Ok(_) => {
                 info!(bucket = %self.config.bucket, "Creating S3 bucket");
-                match self.client.create_bucket(&self.config.bucket)?.build().send().await {
+                match self
+                    .client
+                    .create_bucket(&self.config.bucket)?
+                    .build()
+                    .send()
+                    .await
+                {
                     Ok(_) => {}
                     Err(e) => {
                         let err_text = e.to_string();
@@ -965,7 +977,13 @@ impl BusS3Sink {
 
         let content = ObjectContent::from(jsonl.into_bytes());
 
-        match self.client.put_object_content(&self.config.bucket, &s3_key, content)?.build().send().await {
+        match self
+            .client
+            .put_object_content(&self.config.bucket, &s3_key, content)?
+            .build()
+            .send()
+            .await
+        {
             Ok(_) => {
                 info!(
                     bucket = %self.config.bucket,

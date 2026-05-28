@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 pub(super) fn parameters_schema() -> Value {
     json!({
         "type": "object",
+        "description": "Controls the real OS cursor/keyboard. Use snapshot metadata for physical screen pixel coordinates.",
         "properties": {
             "action": {
                 "type": "string",
@@ -15,17 +16,17 @@ pub(super) fn parameters_schema() -> Value {
                     "type_text", "press_key", "scroll",
                     "bring_to_front", "wait_ms", "stop"
                 ],
-                "description": "Action to execute. Snapshot saves JPEG to temp. Use bring_to_front before interacting."
+                "description": "Action to execute. Snapshot returns physical screen pixel bounds and real cursor position. Use bring_to_front before interacting."
             },
             "app": {"type": "string", "description": "App name for request_app."},
             "hwnd": {"type": "integer", "description": "Window handle from list_apps."},
             "text": {"type": "string", "description": "Text for type_text."},
             "key": {"type": "string", "description": "SendKeys for press_key: ^c, %{TAB}, ENTER."},
             "scroll_amount": {"type": "integer", "description": "Wheel delta; negative=down."},
-            "x": {"type": "number", "description": "X coord for click/drag start."},
-            "y": {"type": "number", "description": "Y coord for click/drag start."},
-            "x2": {"type": "number", "description": "End X for drag."},
-            "y2": {"type": "number", "description": "End Y for drag."},
+            "x": {"type": "number", "description": "Physical screen pixel X for click/drag start."},
+            "y": {"type": "number", "description": "Physical screen pixel Y for click/drag start."},
+            "x2": {"type": "number", "description": "Physical screen pixel end X for drag."},
+            "y2": {"type": "number", "description": "Physical screen pixel end Y for drag."},
             "ms": {"type": "integer", "description": "Ms to wait for wait_ms."}
         },
         "required": ["action"],

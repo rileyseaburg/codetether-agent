@@ -39,7 +39,7 @@ impl Tool for ComputerUseTool {
     }
 
     fn description(&self) -> &str {
-        "Native Windows desktop automation. ALWAYS prefer this over bash/powershell for screenshots, clicking, typing, and window management. Actions: snapshot (saves JPEG to temp file), window_snapshot (specific window), list_apps, bring_to_front, click, right_click, double_click, drag, type_text, press_key, scroll, wait_ms."
+        "Native Windows desktop automation using the real OS cursor and keyboard. Start with snapshot or list_apps; snapshots return physical screen pixel bounds and cursor position. Use those coordinates for click, right_click, double_click, drag, and scroll. Use bring_to_front before interacting with a window."
     }
 
     fn parameters(&self) -> Value {

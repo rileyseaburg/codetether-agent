@@ -18,6 +18,7 @@ Thumbs.db
 *.dylib
 *.dll
 /dist/
+/.docker-cache/
 __pycache__/
 *.pyc
 nohup.out

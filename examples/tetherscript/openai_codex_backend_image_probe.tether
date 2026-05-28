@@ -1,0 +1,34 @@
+fn main() {
+    let scope = map()
+    scope.path_prefix = "/backend-api/codex/responses"
+    let codex = provider.narrow(scope)
+
+    let messages = []
+    let user = map()
+    user.role = "user"
+    user.content = image_prompt()
+    messages.push(user)
+
+    let opts = map()
+    opts.model = "gpt-5.4"
+    opts.max_completion_tokens = 64
+
+    let result = codex.chat_json(messages, opts)
+    println(json_encode(result.unwrap()))
+}
+
+fn image_prompt() {
+    let content = []
+    let text = map()
+    text.type = "text"
+    text.text = "If you can process this image, reply with IMAGE_OK."
+    content.push(text)
+
+    let image = map()
+    let image_url = map()
+    image.type = "image_url"
+    image_url.url = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+    image.image_url = image_url
+    content.push(image)
+    return content
+}

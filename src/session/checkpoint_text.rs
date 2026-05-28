@@ -25,5 +25,8 @@ pub(super) fn truncate_to_line(text: &str, max: usize) -> String {
 }
 
 fn clean_url(found: &str) -> String {
-    found.trim_end_matches(',').trim_end_matches('.').to_string()
+    found
+        .trim_end_matches(',')
+        .trim_end_matches('.')
+        .to_string()
 }

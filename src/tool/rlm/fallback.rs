@@ -20,11 +20,7 @@ pub(super) fn failed(action: &str, content: &str, error: anyhow::Error) -> ToolR
 
 fn truncate(action: &str, content: &str) -> String {
     let input_tokens = RlmChunker::estimate_tokens(content);
-    let (truncated, _, _) = RlmRouter::smart_truncate(
-        content,
-        action,
-        &json!({}),
-        input_tokens.min(8000),
-    );
+    let (truncated, _, _) =
+        RlmRouter::smart_truncate(content, action, &json!({}), input_tokens.min(8000));
     truncated
 }

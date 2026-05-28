@@ -4,8 +4,9 @@ use codetether_agent::provider::Provider;
 
 #[tokio::test]
 async fn cerebras_tetherscript_models_include_required_model_info_fields() {
-    let provider = codetether_agent::provider::tetherscript_provider::cerebras::new("test-key", None)
-        .expect("cerebras provider should initialize");
+    let provider =
+        codetether_agent::provider::tetherscript_provider::cerebras::new("test-key", None)
+            .expect("cerebras provider should initialize");
 
     let models = provider
         .list_models()
