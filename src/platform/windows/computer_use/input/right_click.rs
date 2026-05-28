@@ -1,7 +1,7 @@
 //! Right-click via Win32 SendInput.
 
+use super::move_cursor;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
-use windows::Win32::UI::WindowsAndMessaging::SetCursorPos;
 
 /// Move cursor to (x, y) and perform a right click.
 pub fn send_right_click(x: i32, y: i32) -> anyhow::Result<()> {
@@ -9,7 +9,7 @@ pub fn send_right_click(x: i32, y: i32) -> anyhow::Result<()> {
 }
 
 unsafe fn right_click_inner(x: i32, y: i32) -> anyhow::Result<()> {
-    unsafe { SetCursorPos(x, y) };
+    move_cursor(x, y)?;
     let down = MOUSEINPUT {
         dx: 0,
         dy: 0,

@@ -3,6 +3,9 @@
 //! Allows agents to store important insights, learnings, and decisions
 //! that persist across sessions for future reference.
 
+mod git_scope;
+mod scope;
+
 use super::{Tool, ToolResult};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -120,9 +123,19 @@ impl MemoryStore {
 
     /// Get a memory by ID
     pub fn get(&mut self, id: &str) -> Option<MemoryEntry> {
-        let entry = self.entries.get_mut(id)?;
+        let id = self.resolve_id(id)?;
+        let entry = self.entries.get_mut(&id)?;
         entry.touch();
         Some(entry.clone())
+    }
+
+    fn resolve_id(&self, id: &str) -> Option<String> {
+        if self.entries.contains_key(id) {
+            return Some(id.to_string());
+        }
+        let mut matches = self.entries.keys().filter(|key| key.starts_with(id));
+        let found = matches.next()?.clone();
+        matches.next().is_none().then_some(found)
     }
 
     /// Search memories by query or tags
@@ -130,6 +143,7 @@ impl MemoryStore {
         &mut self,
         query: Option<&str>,
         tags: Option<&[String]>,
+        scope: Option<&str>,
         limit: usize,
     ) -> Vec<MemoryEntry> {
         let mut results: Vec<MemoryEntry> = self
@@ -140,6 +154,11 @@ impl MemoryStore {
                 if let Some(search_tags) = tags
                     && !search_tags.is_empty()
                     && !search_tags.iter().any(|t| entry.tags.contains(t))
+                {
+                    return false;
+                }
+                if let Some(scope) = scope
+                    && entry.scope.as_deref() != Some(scope)
                 {
                     return false;
                 }
@@ -189,7 +208,9 @@ impl MemoryStore {
 
     /// Delete a memory
     pub fn delete(&mut self, id: &str) -> bool {
-        self.entries.remove(id).is_some()
+        self.resolve_id(id)
+            .and_then(|id| self.entries.remove(&id))
+            .is_some()
     }
 
     /// Get statistics
@@ -295,7 +316,7 @@ impl Tool for MemoryTool {
                 },
                 "scope": {
                     "type": "string",
-                    "description": "Project/context scope (optional for 'save')"
+                    "description": "Project/context scope. Defaults to a stable git scope, not the transient worktree path. Use 'all' for unscoped search/list."
                 },
                 "importance": {
                     "type": "integer",
@@ -361,7 +382,7 @@ impl MemoryTool {
             })
             .unwrap_or_default();
 
-        let scope = args["scope"].as_str().map(String::from);
+        let scope = scope::save(&args);
         let importance = args["importance"].as_u64().map(|v| v as u8).unwrap_or(3);
 
         let mut entry = MemoryEntry::new(content, tags).with_importance(importance);
@@ -392,12 +413,13 @@ impl MemoryTool {
                 .collect()
         });
         let limit = args["limit"].as_u64().map(|v| v as usize).unwrap_or(10);
+        let scope = scope::search(&args);
 
         let tags_ref = tags.as_deref();
 
         let results = {
             let mut store = self.store.lock().await;
-            store.search(query, tags_ref, limit)
+            store.search(query, tags_ref, scope.as_deref(), limit)
         };
 
         if results.is_empty() {
@@ -413,7 +435,7 @@ impl MemoryTool {
                 format!(
                     "{}. [{}] {} - {}\n   Tags: {}\n   Created: {}",
                     i + 1,
-                    m.id.chars().take(8).collect::<String>(),
+                    m.id,
                     m.content.chars().take(80).collect::<String>()
                         + if m.content.len() > 80 { "..." } else { "" },
                     format!("accessed {} times", m.access_count),
@@ -462,10 +484,11 @@ impl MemoryTool {
 
     async fn execute_list(&self, args: Value) -> Result<ToolResult> {
         let limit = args["limit"].as_u64().map(|v| v as usize).unwrap_or(10);
+        let scope = scope::search(&args);
 
         let results = {
             let mut store = self.store.lock().await;
-            store.search(None, None, limit)
+            store.search(None, None, scope.as_deref(), limit)
         };
 
         if results.is_empty() {
@@ -481,7 +504,7 @@ impl MemoryTool {
                 format!(
                     "{}. [{}] {} (importance: {}/5, accessed: {}x)",
                     i + 1,
-                    m.id.chars().take(8).collect::<String>(),
+                    m.id,
                     m.content.chars().take(60).collect::<String>()
                         + if m.content.len() > 60 { "..." } else { "" },
                     m.importance,
@@ -573,87 +596,4 @@ impl MemoryTool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::atomic::Ordering;
-
-    #[tokio::test]
-    async fn test_memory_save_and_get() {
-        let tool = MemoryTool::new();
-        // Mark as initialized to prevent loading from disk (isolated test)
-        tool.initialized.store(true, Ordering::SeqCst);
-
-        // Save a memory
-        let result = tool
-            .execute(json!({
-                "action": "save",
-                "content": "Test memory content",
-                "tags": ["test", "example"],
-                "importance": 4
-            }))
-            .await
-            .unwrap();
-
-        assert!(result.success);
-
-        // List memories
-        let result = tool
-            .execute(json!({
-                "action": "list",
-                "limit": 5
-            }))
-            .await
-            .unwrap();
-
-        assert!(result.success);
-        assert!(result.output.contains("Test memory content"));
-
-        // Get stats
-        let result = tool
-            .execute(json!({
-                "action": "stats"
-            }))
-            .await
-            .unwrap();
-
-        assert!(result.success);
-        assert!(result.output.contains("Total entries: 1"));
-    }
-
-    #[tokio::test]
-    async fn test_memory_search() {
-        let tool = MemoryTool::new();
-        // Mark as initialized to prevent loading from disk (isolated test)
-        tool.initialized.store(true, Ordering::SeqCst);
-
-        // Save with specific tags
-        tool.execute(json!({
-            "action": "save",
-            "content": "Rust programming insights",
-            "tags": ["rust", "programming"]
-        }))
-        .await
-        .unwrap();
-
-        tool.execute(json!({
-            "action": "save",
-            "content": "Python tips",
-            "tags": ["python", "programming"]
-        }))
-        .await
-        .unwrap();
-
-        // Search by tag
-        let result = tool
-            .execute(json!({
-                "action": "search",
-                "tags": ["rust"]
-            }))
-            .await
-            .unwrap();
-
-        assert!(result.success);
-        assert!(result.output.contains("Rust"));
-        assert!(!result.output.contains("Python"));
-    }
-}
+mod tests;

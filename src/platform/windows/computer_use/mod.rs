@@ -17,7 +17,8 @@ pub mod windows;
 
 pub use cursor::cursor_position;
 pub use input::{
-    parse_send_keys, send_chord, send_click, send_double_click, send_drag, send_key,
+    hold_modifiers, modifier_vks, mouse_down, mouse_up, move_cursor, parse_send_keys,
+    release_modifiers, send_chord, send_click, send_double_click, send_drag, send_key,
     send_right_click, send_scroll, send_text,
 };
 pub use process::list_processes;

@@ -36,6 +36,17 @@ pub fn resolve_vk(name: &str) -> u16 {
         "F10" => 0x79,
         "F11" => 0x7A,
         "F12" => 0x7B,
+        "NUMPAD0" | "NUMPAD_0" | "KP0" => 0x60,
+        "NUMPAD1" | "NUMPAD_1" | "KP1" => 0x61,
+        "NUMPAD2" | "NUMPAD_2" | "KP2" => 0x62,
+        "NUMPAD3" | "NUMPAD_3" | "KP3" => 0x63,
+        "NUMPAD4" | "NUMPAD_4" | "KP4" => 0x64,
+        "NUMPAD5" | "NUMPAD_5" | "KP5" => 0x65,
+        "NUMPAD6" | "NUMPAD_6" | "KP6" => 0x66,
+        "NUMPAD7" | "NUMPAD_7" | "KP7" => 0x67,
+        "NUMPAD8" | "NUMPAD_8" | "KP8" => 0x68,
+        "NUMPAD9" | "NUMPAD_9" | "KP9" => 0x69,
+        "NUMPAD_DOT" | "NUMPADDOT" | "KP_DOT" => 0x6E,
         s if s.len() == 1 => s.chars().next().unwrap() as u16,
         _ => 0x0D, // fallback to VK_RETURN
     }

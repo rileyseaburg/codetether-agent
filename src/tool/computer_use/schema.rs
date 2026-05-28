@@ -2,6 +2,8 @@
 
 use serde_json::{Value, json};
 
+mod schema_examples;
+
 pub(super) fn parameters_schema() -> Value {
     json!({
         "type": "object",
@@ -13,33 +15,28 @@ pub(super) fn parameters_schema() -> Value {
                     "status", "list_apps", "request_app",
                     "snapshot", "window_snapshot",
                     "click", "right_click", "double_click", "drag",
+                    "mouse_down", "mouse_move", "mouse_up",
                     "type_text", "press_key", "scroll",
                     "bring_to_front", "wait_ms", "stop"
                 ],
                 "description": "Action to execute. Snapshot returns physical screen pixel bounds and real cursor position. Use bring_to_front before interacting."
             },
             "app": {"type": "string", "description": "App name for request_app."},
-            "hwnd": {"type": "integer", "description": "Window handle from list_apps."},
+            "hwnd": {"type": "integer", "description": "Window handle from list_apps. For mouse actions, x/y become window-relative when hwnd is provided."},
             "text": {"type": "string", "description": "Text for type_text."},
             "key": {"type": "string", "description": "SendKeys for press_key: ^c, %{TAB}, ENTER."},
-            "scroll_amount": {"type": "integer", "description": "Wheel delta; negative=down."},
-            "x": {"type": "number", "description": "Physical screen pixel X for click/drag start."},
-            "y": {"type": "number", "description": "Physical screen pixel Y for click/drag start."},
-            "x2": {"type": "number", "description": "Physical screen pixel end X for drag."},
-            "y2": {"type": "number", "description": "Physical screen pixel end Y for drag."},
+            "button": {"type": "string", "enum": ["left", "middle", "right"], "description": "Mouse button for drag; default left. Use middle for Blender viewport orbit."},
+            "modifiers": {"type": "array", "items": {"type": "string", "enum": ["shift", "ctrl", "alt"]}, "description": "Modifier keys held during mouse actions. Use shift+middle drag to pan Blender."},
+            "scroll_amount": {"type": "integer", "description": "Wheel delta; negative=down. Provide x/y to move cursor before scrolling."},
+            "x": {"type": "number", "description": "Physical screen pixel X, or window-relative X when hwnd is provided."},
+            "y": {"type": "number", "description": "Physical screen pixel Y, or window-relative Y when hwnd is provided."},
+            "x2": {"type": "number", "description": "Physical screen pixel end X, or window-relative end X when hwnd is provided."},
+            "y2": {"type": "number", "description": "Physical screen pixel end Y, or window-relative end Y when hwnd is provided."},
+            "steps": {"type": "integer", "minimum": 1, "maximum": 240, "description": "Intermediate cursor moves for drag; use 8-20 for Blender viewport gestures."},
+            "duration_ms": {"type": "integer", "minimum": 0, "maximum": 30000, "description": "Total drag movement duration in milliseconds."},
             "ms": {"type": "integer", "description": "Ms to wait for wait_ms."}
         },
         "required": ["action"],
-        "examples": [
-            {"action": "snapshot"}, {"action": "list_apps"},
-            {"action": "bring_to_front", "hwnd": 123456},
-            {"action": "click", "x": 100, "y": 200},
-            {"action": "right_click", "x": 300, "y": 400},
-            {"action": "double_click", "x": 500, "y": 300},
-            {"action": "drag", "x": 100, "y": 200, "x2": 400, "y2": 500},
-            {"action": "press_key", "key": "^c"},
-            {"action": "type_text", "text": "hello world"},
-            {"action": "wait_ms", "ms": 500}
-        ]
+        "examples": schema_examples::examples()
     })
 }

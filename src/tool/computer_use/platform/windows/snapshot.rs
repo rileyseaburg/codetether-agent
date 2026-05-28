@@ -44,15 +44,5 @@ pub async fn handle_window_snapshot(
     let path = std::env::temp_dir().join(WINDOW_SNAPSHOT_TMP);
     std::fs::write(&path, &png)?;
     let size_kb = png.len() / 1024;
-    Ok(super::response::success_result(serde_json::json!({
-        "captured": true,
-        "mime_type": "image/png",
-        "path": path.display().to_string(),
-        "size_kb": size_kb,
-        "width": width,
-        "height": height,
-        "hwnd": hwnd,
-        "coordinate_space": "physical_screen_pixels",
-        "cursor": cursor.map(|(x, y)| serde_json::json!({"x": x, "y": y}))
-    })))
+    super::snapshot_output::window_result(hwnd, &path, size_kb, width, height, cursor)
 }
