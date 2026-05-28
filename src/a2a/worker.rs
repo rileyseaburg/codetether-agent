@@ -10,6 +10,8 @@ mod git_commit_push_ops;
 mod git_refspec;
 mod model_defaults;
 mod model_preferences;
+mod release;
+mod release_payload;
 pub(crate) mod task_timeline;
 pub(super) mod workspace_resolve;
 
