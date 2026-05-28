@@ -1,5 +1,6 @@
 //! Windows input handling for computer use.
 
+mod blender;
 mod click;
 mod double_click;
 mod drag;
@@ -15,6 +16,7 @@ mod text;
 mod validate;
 mod wait;
 
+pub use blender::{handle_blender_select_frame, handle_focus_viewport};
 pub use click::handle_click;
 pub use double_click::handle_double_click;
 pub use drag::handle_drag;

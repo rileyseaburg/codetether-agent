@@ -17,6 +17,7 @@ pub(super) fn parameters_schema() -> Value {
                     "click", "right_click", "double_click", "drag",
                     "mouse_down", "mouse_move", "mouse_up",
                     "type_text", "press_key", "scroll",
+                    "focus_viewport", "blender_select_frame",
                     "bring_to_front", "wait_ms", "stop"
                 ],
                 "description": "Action to execute. Snapshot returns physical screen pixel bounds and real cursor position. Use bring_to_front before interacting."
@@ -35,7 +36,8 @@ pub(super) fn parameters_schema() -> Value {
             "y2": {"type": "number", "description": "Physical screen pixel end Y, or window-relative end Y when hwnd is provided."},
             "steps": {"type": "integer", "minimum": 1, "maximum": 240, "description": "Intermediate cursor moves for drag; use 8-20 for Blender viewport gestures."},
             "duration_ms": {"type": "integer", "minimum": 0, "maximum": 30000, "description": "Total drag movement duration in milliseconds."},
-            "ms": {"type": "integer", "description": "Ms to wait for wait_ms."}
+            "ms": {"type": "integer", "description": "Ms to wait for wait_ms."},
+            "object_name": {"type": "string", "description": "Object name to select in Blender via UI search."}
         },
         "required": ["action"],
         "examples": schema_examples::examples()

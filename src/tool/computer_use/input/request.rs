@@ -38,4 +38,6 @@ pub struct ComputerUseInput {
     pub duration_ms: Option<u64>,
     #[serde(default)]
     pub ms: Option<u64>,
+    #[serde(default)]
+    pub object_name: Option<String>,
 }

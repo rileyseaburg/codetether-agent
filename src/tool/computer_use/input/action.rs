@@ -18,6 +18,8 @@ pub enum ComputerUseAction {
     TypeText,
     PressKey,
     Scroll,
+    FocusViewport,
+    BlenderSelectFrame,
     BringToFront,
     WaitMs,
     Stop,

@@ -31,6 +31,8 @@ pub async fn dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::T
         ComputerUseAction::TypeText => input::handle_type_text(input).await,
         ComputerUseAction::PressKey => input::handle_press_key(input).await,
         ComputerUseAction::Scroll => input::handle_scroll(input).await,
+        ComputerUseAction::FocusViewport => input::handle_focus_viewport(input).await,
+        ComputerUseAction::BlenderSelectFrame => input::handle_blender_select_frame(input).await,
         ComputerUseAction::BringToFront => input::handle_bring_to_front(input).await,
         ComputerUseAction::WaitMs => input::handle_wait_ms(input).await,
         ComputerUseAction::Stop => input::handle_stop(),

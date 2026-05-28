@@ -10,9 +10,13 @@ pub async fn handle_press_key(input: &ComputerUseInput) -> anyhow::Result<crate:
         .as_deref()
         .or(input.text.as_deref())
         .unwrap_or("ENTER");
-    let vks = parse_send_keys(key);
-    send_chord(&vks)?;
+    press_key_name(key)?;
     Ok(super::super::response::success_result(serde_json::json!({
         "pressed": key
     })))
+}
+
+pub fn press_key_name(key: &str) -> anyhow::Result<()> {
+    let vks = parse_send_keys(key);
+    send_chord(&vks)
 }
