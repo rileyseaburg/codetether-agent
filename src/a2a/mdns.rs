@@ -51,16 +51,51 @@ use tokio::sync::mpsc;
 
 /// mDNS service type used by all CodeTether A2A peers.
 pub const SERVICE_TYPE: &str = "_codetether-a2a._tcp.local.";
-
 /// Handle to a registered mDNS service. Drop or call [`Self::shutdown`] to
 /// unregister and stop the daemon.
+///
+/// Owns the resources created when advertising the local agent over mDNS. The
+/// handle keeps the underlying [`ServiceDaemon`] alive and records the service's
+/// full instance name so it can be unregistered cleanly when discovery should
+/// stop.
+///
+/// # Lifecycle
+///
+/// Call [`Self::shutdown`] when the service should be removed immediately. If
+/// the handle is dropped without an explicit shutdown call, its drop behavior is
+/// expected to perform the same cleanup path so the advertised service does not
+/// remain registered longer than the owning process intends.
+///
+/// # Fields
+///
+/// * `daemon` - Shared mDNS service daemon used to unregister the advertised
+///   service and stop background mDNS work.
+/// * `fullname` - Fully qualified mDNS service instance name registered with
+///   the daemon.
 pub struct MdnsHandle {
     daemon: Arc<ServiceDaemon>,
     fullname: String,
 }
-
 impl MdnsHandle {
     /// Best-effort unregister and shut the daemon down.
+    ///
+    /// Consumes the handle and attempts to remove the advertised service from
+    /// the local mDNS daemon before shutting the daemon down. This is useful for
+    /// deterministic cleanup when the caller knows the advertised agent should
+    /// no longer be discoverable.
+    ///
+    /// # Side effects
+    ///
+    /// Calls `unregister` for the service identified by `self.fullname`, then
+    /// calls `shutdown` on the shared [`ServiceDaemon`]. Peers may continue to
+    /// see cached mDNS records until their TTL expires.
+    ///
+    /// # Errors
+    ///
+    /// Errors from both daemon operations are intentionally ignored. Shutdown is
+    /// best-effort because the daemon may already have stopped or the service may
+    /// already have been unregistered, especially during repeated shutdown
+    /// signals or drop-time cleanup.
     pub fn shutdown(self) {
         // Calling unregister is best-effort; the daemon may already be
         // gone if shutdown_signal arrived twice.
@@ -70,14 +105,42 @@ impl MdnsHandle {
 }
 
 impl Drop for MdnsHandle {
+    /// Unregisters the advertised mDNS service and shuts down the service daemon
+    /// when the handle leaves scope.
+    ///
+    /// This provides best-effort cleanup for callers that do not explicitly call
+    /// [`MdnsHandle::shutdown`]. Both cleanup operations intentionally ignore
+    /// their return values because `drop` cannot report errors and cleanup may
+    /// race with prior explicit shutdown or daemon termination.
+    ///
+    /// # Side effects
+    ///
+    /// Removes the service identified by `self.fullname` from the local mDNS
+    /// daemon and then requests daemon shutdown. Network peers may stop seeing
+    /// the service after mDNS cache expiry rather than immediately.
     fn drop(&mut self) {
         let _ = self.daemon.unregister(&self.fullname);
         let _ = self.daemon.shutdown();
     }
 }
-
 /// A peer discovered over mDNS — every reachable URL the resolver saw,
 /// so the existing A2A discovery flow can try them in order.
+///
+/// Represents one advertised A2A peer service instance resolved from mDNS.
+/// A single service instance can map to multiple network addresses when the
+/// host has more than one interface, such as Ethernet, Wi-Fi, VPN, container
+/// bridge, or loopback-adjacent addresses. The discovery layer keeps all
+/// candidate URLs so the caller can attempt them in resolver order and select
+/// the first endpoint that returns a usable agent card.
+///
+/// # Invariants
+///
+/// * `urls` contains fully formed HTTP endpoint URLs for the resolved service
+///   port.
+/// * `instance_name` is the mDNS service instance name and is expected to match
+///   the peer's advertised card name.
+/// * URL ordering is resolver-dependent and should not be treated as a stable
+///   preference across networks or process runs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DiscoveredPeer {
     /// All `http://<addr>:<port>` URLs reported for this peer's service
@@ -96,6 +159,45 @@ pub struct DiscoveredPeer {
 /// Returns once the service is registered and the browse loop is running
 /// in a background tokio task. The returned [`MdnsHandle`] keeps the
 /// daemon alive — drop it on shutdown.
+///
+/// Registers the local A2A JSON-RPC endpoint as an mDNS service and begins
+/// browsing for other endpoints using the same service type. Resolved peers are
+/// converted into [`DiscoveredPeer`] values containing all usable IPv4 HTTP URLs
+/// reported by the resolver, then forwarded through `peer_tx` for the existing
+/// A2A intake flow to probe.
+///
+/// # Parameters
+///
+/// * `instance_name` - Human-readable service instance name advertised in mDNS
+///   and stored in TXT records. It is also sanitized into the `.local.` hostname
+///   used by the service registration.
+/// * `bind_port` - TCP port where the local A2A HTTP server is listening. This
+///   port is advertised to peers and used to filter loopback self-observations.
+/// * `bound_addrs` - Concrete IP addresses accepted by the HTTP listener. When
+///   non-empty, only these addresses are advertised. When empty, the service is
+///   registered with address auto-detection so mdns-sd can advertise all
+///   eligible interface addresses for wildcard binds such as `0.0.0.0`.
+/// * `peer_tx` - Async channel used by the blocking mDNS browse task to forward
+///   resolved peers into the caller's discovery pipeline.
+///
+/// # Returns
+///
+/// Returns an [`MdnsHandle`] after the local service has been registered and the
+/// background browse task has been spawned. Keeping the handle alive keeps the
+/// underlying [`ServiceDaemon`] alive; dropping it or calling
+/// [`MdnsHandle::shutdown`] unregisters the service.
+///
+/// # Errors
+///
+/// Returns an error if the mDNS daemon cannot be started, the service
+/// description cannot be constructed, the local service cannot be registered, or
+/// browsing for `SERVICE_TYPE` cannot be started.
+///
+/// # Side effects
+///
+/// Starts an mDNS daemon, publishes TXT records describing the local A2A peer,
+/// registers the service on the local network, and spawns a blocking background
+/// task that receives mDNS events and forwards resolved peers to `peer_tx`.
 pub fn announce_and_browse(
     instance_name: &str,
     bind_port: u16,
@@ -232,7 +334,29 @@ pub fn announce_and_browse(
 /// leading/trailing hyphen, ≤ 63 chars (RFC 1035 §2.3.1). An empty
 /// result falls back to "agent" so the caller never gets an invalid
 /// hostname (which would silently break `ServiceInfo::new`).
-fn sanitize_hostname(input: &str) -> String {
+///
+/// Sanitizes an arbitrary agent or host name for use as the host portion of an
+/// mDNS service record. ASCII letters and digits are kept, ASCII letters are
+/// lowercased, hyphens are kept, and every other character is converted to a
+/// hyphen before the label is length-limited and trimmed.
+///
+/// # Parameters
+///
+/// * `input` - Raw text to convert into a single DNS label. The input may
+///   contain uppercase letters, whitespace, punctuation, or non-ASCII
+///   characters.
+///
+/// # Returns
+///
+/// A non-empty DNS-safe label containing only lowercase ASCII alphanumeric
+/// characters and hyphens, with no leading or trailing hyphen and no more than
+/// 63 bytes.
+///
+/// # Side effects
+///
+/// This function is pure: it allocates the returned [`String`] but performs no
+/// filesystem, network, or mDNS operations.
+pub fn sanitize_hostname(input: &str) -> String {
     const MAX_LABEL: usize = 63;
     let mut s: String = input
         .chars()
