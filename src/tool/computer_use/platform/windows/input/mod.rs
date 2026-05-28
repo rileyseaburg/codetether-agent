@@ -1,6 +1,8 @@
 //! Windows input handling for computer use.
 
 mod blender;
+mod blender_evidence;
+mod blender_select;
 mod click;
 mod double_click;
 mod drag;
