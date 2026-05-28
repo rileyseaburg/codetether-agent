@@ -39,6 +39,9 @@ build-windows-docker:
 		--cache-to type=local,dest=.docker-cache/windows-new,mode=max \
 		--output type=local,dest=dist \
 		.; \
+	mkdir -p dist/windows; \
+	cp dist/codetether.exe dist/windows/codetether.exe; \
+	cp dist/codetether.exe dist/codetether-windows.exe; \
 	rm -rf .docker-cache/windows; \
 	mv .docker-cache/windows-new .docker-cache/windows
 
