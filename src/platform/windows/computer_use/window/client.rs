@@ -1,7 +1,7 @@
 //! Client-area origin lookup.
 
 use windows::Win32::Foundation::{HWND, POINT};
-use windows::Win32::UI::WindowsAndMessaging::ClientToScreen;
+use windows::Win32::Graphics::Gdi::ClientToScreen;
 
 /// Return the client area's top-left point in physical screen pixels.
 pub fn client_origin(hwnd: i64) -> anyhow::Result<(i32, i32)> {
