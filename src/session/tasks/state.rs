@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use std::collections::BTreeMap;
 
-use super::event::{TaskEvent, TaskStatus};
+use super::event::{SessionTaskStatus, TaskEvent};
 
 /// The session's currently-declared goal.
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ pub struct Task {
     pub id: String,
     pub content: String,
     pub parent_id: Option<String>,
-    pub status: TaskStatus,
+    pub status: SessionTaskStatus,
     pub last_note: Option<String>,
 }
 
@@ -46,10 +46,7 @@ impl TaskState {
 
     /// Tasks in a non-terminal state, in id order.
     pub fn open_tasks(&self) -> Vec<&Task> {
-        self.tasks
-            .values()
-            .filter(|t| matches!(t.status, TaskStatus::Pending | TaskStatus::InProgress))
-            .collect()
+        self.tasks.values().filter(|t| t.status.is_open()).collect()
     }
 
     fn apply(&mut self, ev: &TaskEvent) {
@@ -59,6 +56,7 @@ impl TaskState {
                 objective,
                 success_criteria,
                 forbidden,
+                ..
             } => {
                 self.goal = Some(Goal {
                     objective: objective.clone(),
@@ -90,7 +88,7 @@ impl TaskState {
                         id: id.clone(),
                         content: content.clone(),
                         parent_id: parent_id.clone(),
-                        status: TaskStatus::Pending,
+                        status: SessionTaskStatus::Pending,
                         last_note: None,
                     },
                 );

@@ -21,7 +21,7 @@ pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
 pub mod mcp;
-pub mod message_text; pub mod message_window;
+pub mod message_cache_invalidate; #[cfg(test)] mod message_cache_invalidate_tests; pub mod message_text; pub mod message_window;
 pub mod model_picker;
 pub mod navigation;
 pub mod okr_gate;

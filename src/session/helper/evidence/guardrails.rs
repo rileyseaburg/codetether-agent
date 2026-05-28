@@ -5,6 +5,7 @@ Validation evidence rules:
 - Label every verification claim as one of: {levels}.
 - Do not say validated, passed, complete, proven, or deployed unless the same sentence names the validation level.
 - Mocked routes, local Playwright, or fixture-backed tests must be called mocked local and cannot imply platform IDs or live upload success.
+- Ask for live Argo or platform evidence only when the user requested live deployment, upload, or release proof; do not block ordinary PR review on post-merge evidence.
 - Live Argo or platform claims require concrete evidence: namespace, app/job/pod name, sync or health state, artifact path, URL, or platform ID.
 - A failed live validation is not completion when the user requested passing proof; continue with the next recovery run or name the blocker.
 - Do not collapse an all-encompassing task into one proven slice; report each deliverable as {scope_statuses}.

@@ -19,12 +19,12 @@ lazy_static::lazy_static! {
 struct TaskInfo {
     id: String,
     description: String,
-    status: TaskStatus,
+    status: ToolTaskStatus,
     result: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum TaskStatus {
+enum ToolTaskStatus {
     Pending,
     #[allow(dead_code)]
     Running,
@@ -98,7 +98,7 @@ impl Tool for TaskTool {
                 let task = TaskInfo {
                     id: id.clone(),
                     description: description.clone(),
-                    status: TaskStatus::Pending,
+                    status: ToolTaskStatus::Pending,
                     result: None,
                 };
 
@@ -115,10 +115,10 @@ impl Tool for TaskTool {
                 match store.get(&id) {
                     Some(task) => {
                         let status_str = match task.status {
-                            TaskStatus::Pending => "pending",
-                            TaskStatus::Running => "running",
-                            TaskStatus::Complete => "complete",
-                            TaskStatus::Failed => "failed",
+                            ToolTaskStatus::Pending => "pending",
+                            ToolTaskStatus::Running => "running",
+                            ToolTaskStatus::Complete => "complete",
+                            ToolTaskStatus::Failed => "failed",
                         };
                         Ok(ToolResult::success(format!(
                             "Task {} [{}]: {}\n{}",
@@ -138,7 +138,7 @@ impl Tool for TaskTool {
                 let mut store = TASK_STORE.write();
                 match store.get_mut(&id) {
                     Some(task) => {
-                        task.status = TaskStatus::Complete;
+                        task.status = ToolTaskStatus::Complete;
                         task.result = Some(result.clone());
                         Ok(ToolResult::success(format!("Completed task: {}", id)))
                     }
@@ -151,7 +151,7 @@ impl Tool for TaskTool {
                 let mut store = TASK_STORE.write();
                 match store.get_mut(&id) {
                     Some(task) => {
-                        task.status = TaskStatus::Failed;
+                        task.status = ToolTaskStatus::Failed;
                         task.result = Some("Cancelled".to_string());
                         Ok(ToolResult::success(format!("Cancelled task: {}", id)))
                     }
@@ -168,10 +168,10 @@ impl Tool for TaskTool {
                     .values()
                     .map(|t| {
                         let icon = match t.status {
-                            TaskStatus::Pending => "○",
-                            TaskStatus::Running => "◐",
-                            TaskStatus::Complete => "●",
-                            TaskStatus::Failed => "✗",
+                            ToolTaskStatus::Pending => "○",
+                            ToolTaskStatus::Running => "◐",
+                            ToolTaskStatus::Complete => "●",
+                            ToolTaskStatus::Failed => "✗",
                         };
                         format!("{} {} - {}", icon, t.id, t.description)
                     })

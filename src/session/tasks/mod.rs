@@ -27,6 +27,7 @@
 //!
 //! [`Session`]: super::Session
 
+#[path = "event/mod.rs"]
 mod event;
 mod log;
 mod path;
@@ -34,7 +35,7 @@ mod render;
 mod state;
 
 #[allow(unused_imports)]
-pub use event::{TaskEvent, TaskStatus};
+pub use event::{GoalSourceKind, SessionTaskStatus, TaskEvent};
 pub use log::TaskLog;
 pub use path::task_log_path;
 pub use render::governance_block;
