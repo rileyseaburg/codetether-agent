@@ -1,6 +1,6 @@
 //! Lower-level Git operations for worker commit pushing.
 
-use super::{git_refspec, run_git_command_at};
+use super::{clone_git::run_git_command_at, git_refspec};
 use anyhow::Result;
 use std::path::Path;
 

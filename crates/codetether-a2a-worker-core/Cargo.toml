@@ -1,0 +1,17 @@
+[package]
+name = "codetether-a2a-worker-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Reusable A2A worker primitives for CodeTether"
+
+[lib]
+name = "codetether_a2a_worker_core"
+path = "src/lib.rs"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.10.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync"] }

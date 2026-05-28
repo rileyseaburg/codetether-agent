@@ -1,0 +1,76 @@
+//! Swarm execution policy for worker tasks.
+
+use std::sync::Arc;
+
+use anyhow::Result;
+
+use crate::{
+    bus::AgentBus,
+    provider::{ContentPart, Message, Role},
+    session::Session,
+};
+
+use super::swarm_setup::SwarmSetup;
+
+mod swarm_policy_run;
+mod swarm_policy_start;
+
+pub(super) async fn execute_swarm_with_policy(
+    session: &mut Session,
+    prompt: &str,
+    model_tier: Option<&str>,
+    explicit_model: Option<String>,
+    metadata: &serde_json::Map<String, serde_json::Value>,
+    complexity_hint: Option<&str>,
+    worker_personality: Option<&str>,
+    target_agent_name: Option<&str>,
+    bus: Option<&Arc<AgentBus>>,
+    output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
+) -> Result<(crate::session::SessionResult, bool)> {
+    session.add_message(Message {
+        role: Role::User,
+        content: vec![ContentPart::Text {
+            text: prompt.to_string(),
+        }],
+    });
+    if session.title.is_none() {
+        session.generate_title().await?;
+    }
+    let SwarmSetup { config, strategy } =
+        super::build_swarm_setup(session, metadata, explicit_model, model_tier).await;
+    swarm_policy_start::emit(
+        &output_callback,
+        strategy,
+        &config,
+        model_tier,
+        complexity_hint,
+        worker_personality,
+        target_agent_name,
+    );
+    let result = swarm_policy_run::run(prompt, strategy, config, bus, output_callback).await?;
+    let text = swarm_result_text(&result.result, result.success);
+    session.add_message(Message {
+        role: Role::Assistant,
+        content: vec![ContentPart::Text { text: text.clone() }],
+    });
+    session.save().await?;
+    Ok((
+        crate::session::SessionResult {
+            text,
+            session_id: session.id.clone(),
+        },
+        result.success,
+    ))
+}
+
+fn swarm_result_text(result: &str, success: bool) -> String {
+    if !result.trim().is_empty() {
+        return result.to_string();
+    }
+    if success {
+        "Swarm completed without textual output."
+    } else {
+        "Swarm finished with failures and no textual output."
+    }
+    .to_string()
+}
