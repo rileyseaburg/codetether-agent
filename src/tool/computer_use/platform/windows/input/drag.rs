@@ -21,6 +21,6 @@ pub async fn handle_drag(input: &ComputerUseInput) -> anyhow::Result<crate::tool
         "modifiers": input.modifiers,
         "steps": input.steps,
         "duration_ms": input.duration_ms,
-        "coordinate_mode": if input.hwnd.is_some() { "window_relative" } else { "physical_screen" }
+        "coordinate_mode": super::validate::coordinate_mode(input)
     })))
 }

@@ -23,6 +23,8 @@ pub struct ComputerUseInput {
     #[serde(default)]
     pub hwnd: Option<i64>,
     #[serde(default)]
+    pub client_area: bool,
+    #[serde(default)]
     pub x: Option<f64>,
     #[serde(default)]
     pub y: Option<f64>,

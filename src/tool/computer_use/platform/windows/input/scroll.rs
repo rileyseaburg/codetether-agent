@@ -18,6 +18,6 @@ pub async fn handle_scroll(input: &ComputerUseInput) -> anyhow::Result<crate::to
     Ok(super::report::mouse_result(serde_json::json!({
         "scrolled": amount,
         "target": target.map(|(x, y)| serde_json::json!({"x": x, "y": y})),
-        "coordinate_mode": if input.hwnd.is_some() { "window_relative" } else { "physical_screen" }
+        "coordinate_mode": super::validate::coordinate_mode(input)
     })))
 }

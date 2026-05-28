@@ -20,6 +20,14 @@ pub fn coord(value: Option<f64>, name: &str) -> anyhow::Result<i32> {
     Ok(value.round() as i32)
 }
 
+pub fn coordinate_mode(input: &ComputerUseInput) -> &'static str {
+    match (input.hwnd.is_some(), input.client_area) {
+        (true, true) => "window_client_relative",
+        (true, false) => "window_frame_relative",
+        (false, _) => "physical_screen",
+    }
+}
+
 fn resolve(
     input: &ComputerUseInput,
     x: Option<f64>,
@@ -32,6 +40,14 @@ fn resolve(
     let Some(hwnd) = input.hwnd else {
         return Ok((x, y));
     };
+    let (left, top) = origin(hwnd, input.client_area)?;
+    Ok((left + x, top + y))
+}
+
+fn origin(hwnd: i64, client_area: bool) -> anyhow::Result<(i32, i32)> {
+    if client_area {
+        return crate::platform::windows::computer_use::window::client_origin(hwnd);
+    }
     let bounds = crate::platform::windows::computer_use::window::window_bounds(hwnd)?;
-    Ok((bounds.left + x, bounds.top + y))
+    Ok((bounds.left, bounds.top))
 }

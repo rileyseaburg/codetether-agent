@@ -1,14 +1,11 @@
 use super::*;
-use std::sync::atomic::Ordering;
-
-fn initialized_tool() -> MemoryTool {
-    let tool = MemoryTool::new();
-    tool.initialized.store(true, Ordering::SeqCst);
-    tool
-}
+#[path = "tests_support.rs"]
+mod tests_support;
+use tests_support::*;
 
 #[tokio::test]
 async fn test_memory_save_and_get() {
+    let _dir = isolate_data_dir();
     let tool = initialized_tool();
     let result = tool
         .execute(json!({
@@ -31,6 +28,7 @@ async fn test_memory_save_and_get() {
 
 #[tokio::test]
 async fn test_memory_search() {
+    let _dir = isolate_data_dir();
     let tool = initialized_tool();
     for (content, tag) in [
         ("Rust programming insights", "rust"),

@@ -10,6 +10,6 @@ pub async fn handle_click(input: &ComputerUseInput) -> anyhow::Result<crate::too
     Ok(super::report::mouse_result(serde_json::json!({
         "clicked": true, "x": x, "y": y,
         "modifiers": input.modifiers,
-        "coordinate_mode": if input.hwnd.is_some() { "window_relative" } else { "physical_screen" }
+        "coordinate_mode": super::validate::coordinate_mode(input)
     })))
 }

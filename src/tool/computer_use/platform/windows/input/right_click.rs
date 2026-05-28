@@ -11,6 +11,6 @@ pub async fn handle_right_click(
     Ok(super::report::mouse_result(serde_json::json!({
         "right_clicked": true, "x": x, "y": y,
         "modifiers": input.modifiers,
-        "coordinate_mode": if input.hwnd.is_some() { "window_relative" } else { "physical_screen" }
+        "coordinate_mode": super::validate::coordinate_mode(input)
     })))
 }

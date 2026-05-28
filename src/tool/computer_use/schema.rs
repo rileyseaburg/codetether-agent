@@ -23,6 +23,7 @@ pub(super) fn parameters_schema() -> Value {
             },
             "app": {"type": "string", "description": "App name for request_app."},
             "hwnd": {"type": "integer", "description": "Window handle from list_apps. For mouse actions, x/y become window-relative when hwnd is provided."},
+            "client_area": {"type": "boolean", "description": "With hwnd, interpret x/y relative to the window client area instead of the outer frame. Useful for Blender child viewports."},
             "text": {"type": "string", "description": "Text for type_text."},
             "key": {"type": "string", "description": "SendKeys for press_key: ^c, %{TAB}, ENTER."},
             "button": {"type": "string", "enum": ["left", "middle", "right"], "description": "Mouse button for drag; default left. Use middle for Blender viewport orbit."},
