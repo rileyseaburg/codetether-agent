@@ -15,7 +15,7 @@ permissions:
 jobs:
   docker:
     name: Build ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: codetether-agent-k8s
     strategy:
       fail-fast: false
       matrix:
@@ -102,7 +102,7 @@ jobs:
 
   upload:
     name: Upload Release Assets
-    runs-on: ubuntu-latest
+    runs-on: codetether-agent-k8s
     needs: [docker, macos]
     steps:
       - uses: actions/download-artifact@v4
