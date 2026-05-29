@@ -6,6 +6,7 @@ use anyhow::Result;
 
 use crate::{provider::Provider, session::Session};
 
+mod session_output;
 mod session_step_tools;
 use session_step_tools::{append_text_output, collect_tool_calls, execute_tool_call};
 

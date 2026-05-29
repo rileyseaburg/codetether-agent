@@ -6,7 +6,7 @@ use crate::{
 };
 
 mod tool_run;
-mod session_output;
+use super::session_output;
 
 pub(super) type ToolCall = (String, String, serde_json::Value);
 

@@ -1,4 +1,4 @@
-use super::{TaskCheckpoint, TaskTimeline};
+use super::TaskCheckpoint;
 
 pub(super) fn log_checkpoint(
     task_id: &str,
@@ -15,5 +15,4 @@ pub(super) fn log_checkpoint(
     } else if budget >= 75.0 {
         tracing::warn!(task_id = %task_id, budget_pct = format!("{:.1}%", budget), "Task consumed {:.0}% of time budget", budget);
     }
-}
 }

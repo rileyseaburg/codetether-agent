@@ -4,9 +4,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use super::clone_git_cmd::run_git_command_at;
-
-pub(super) use clone_git_cmd::run_git_command_at;
+pub(super) use super::clone_git_cmd::run_git_command_at;
 
 pub(super) async fn refresh_existing_clone(repo_path: &Path, branch: &str) -> Result<()> {
     run_git_command_at(Some(repo_path), vec!["fetch".into(), "origin".into(), branch.into()]).await?;

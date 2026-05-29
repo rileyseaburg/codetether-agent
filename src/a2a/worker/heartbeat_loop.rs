@@ -5,8 +5,9 @@ use reqwest::Client;
 use std::{collections::HashSet, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::JoinHandle, time::Instant};
 use super::{CognitionHeartbeatConfig, HeartbeatState, persistent_worker_enabled,
-    persistent_worker_lease_seconds, send_extended_task_heartbeat,
-    heartbeat_payload::build_heartbeat_payload, heartbeat_post::post_heartbeat};
+    persistent_worker_lease_seconds, send_extended_task_heartbeat};
+use heartbeat_payload::build_heartbeat_payload;
+use heartbeat_post::post_heartbeat;
 pub fn start_heartbeat(
     client: Client, server: String, token: Option<String>,
     heartbeat_state: HeartbeatState, processing: Arc<Mutex<HashSet<String>>>,

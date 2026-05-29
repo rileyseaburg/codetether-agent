@@ -12,7 +12,7 @@ pub struct TaskTimeline {
     pub(super) start_utc: chrono::DateTime<chrono::Utc>,
     pub(super) checkpoints: Vec<CheckpointEntry>,
     pub(super) current: Option<TaskCheckpoint>,
-    progress: Arc<Mutex<TaskProgressState>>,
+    pub(super) progress: Arc<Mutex<TaskProgressState>>,
 }
 
 impl TaskTimeline {

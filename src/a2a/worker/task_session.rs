@@ -4,7 +4,8 @@ use anyhow::Result;
 
 use crate::{provenance::ClaimProvenance, session::Session};
 
-use super::{TaskContext, WorkerTaskRuntime, task_timeline, task_session_resolve};
+use super::{TaskContext, WorkerTaskRuntime, task_timeline};
+use super::task_session_resolve::{normalize_agent, resolve_workspace};
 
 mod task_session_git;
 
@@ -27,7 +28,7 @@ pub(super) async fn prepare_task_session(
         Some(format!("session_id={}", session.id)),
     );
     resolve_workspace(runtime, context, &mut session, timeline).await?;
-    let agent_type = task_session_resolve::normalize_agent(&context.raw_agent);
+    let agent_type = normalize_agent(&context.raw_agent);
     session.set_agent_name(agent_type.clone());
     session.attach_claim_provenance(claim_provenance);
     session.metadata.provider_keys = provider_keys;
