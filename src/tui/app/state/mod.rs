@@ -191,11 +191,7 @@ pub struct AppState {
     pub chat_sync_uploaded_bytes: u64,
     pub chat_sync_uploaded_batches: u64,
     pub autochat: super::autochat::state::AutochatState,
-    pub file_picker_dir: std::path::PathBuf,
-    pub file_picker_entries: Vec<crate::tui::app::file_picker::FilePickerEntry>,
-    pub file_picker_selected: usize,
-    pub file_picker_filter: String,
-    pub file_picker_active: bool,
+    pub file_picker: crate::tui::app::file_picker::FilePickerState,
     pub workspace: crate::tui::models::WorkspaceSnapshot,
     pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
     /// Cancel handle for the in-flight provider turn. Notifying this
