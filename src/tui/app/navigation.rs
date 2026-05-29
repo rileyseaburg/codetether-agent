@@ -6,6 +6,9 @@ use crate::tui::app::state::App;
 use crate::tui::app::symbols::symbol_search_active;
 use crate::tui::models::{InputMode, ViewMode};
 
+#[cfg(test)]
+mod tests;
+
 pub fn handle_escape(app: &mut App) {
     if symbol_search_active(app) {
         app.state.symbol_search.close();
@@ -23,8 +26,10 @@ pub fn handle_escape(app: &mut App) {
                 return_to_chat(app);
             }
             ViewMode::FilePicker => {
-                app.state.file_picker_active = false;
-                return_to_chat(app);
+                if !crate::tui::app::file_picker::file_picker_escape(app) {
+                    app.state.file_picker.active = false;
+                    return_to_chat(app);
+                }
             }
             ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.exit_detail(),
             ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.exit_detail(),
@@ -113,6 +118,7 @@ pub fn handle_up(app: &mut App, modifiers: KeyModifiers) {
                 app.state.bus_log.select_prev();
             }
         }
+        ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_select_prev(app),
         _ => app.state.scroll_up(1),
     }
 }
@@ -175,6 +181,7 @@ pub fn handle_down(app: &mut App, modifiers: KeyModifiers) {
                 app.state.bus_log.select_next();
             }
         }
+        ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_select_next(app),
         _ => app.state.scroll_down(1),
     }
 }
@@ -189,6 +196,7 @@ pub fn handle_page_up(app: &mut App) {
         ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.detail_scroll_up(10),
         ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.detail_scroll_up(10),
         ViewMode::Bus if app.state.bus_log.detail_mode => app.state.bus_log.detail_scroll_up(10),
+        ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_page_up(app),
         ViewMode::Chat => app.state.scroll_up(10),
         _ => {}
     }
@@ -204,6 +212,7 @@ pub fn handle_page_down(app: &mut App) {
         ViewMode::Swarm if app.state.swarm.detail_mode => app.state.swarm.detail_scroll_down(10),
         ViewMode::Ralph if app.state.ralph.detail_mode => app.state.ralph.detail_scroll_down(10),
         ViewMode::Bus if app.state.bus_log.detail_mode => app.state.bus_log.detail_scroll_down(10),
+        ViewMode::FilePicker => crate::tui::app::file_picker::file_picker_page_down(app),
         ViewMode::Protocol => {
             app.state.protocol_scroll = app.state.protocol_scroll.saturating_add(10);
         }
@@ -252,33 +261,11 @@ pub fn handle_delete(app: &mut App) {
 
 pub fn handle_symbol_enter(app: &mut App) {
     if let Some(symbol) = app.state.symbol_search.selected_symbol() {
-        app.state.status = format!(
-            "Selected symbol {} {}",
-            symbol.name,
-            symbol
-                .line
-                .map(|line| format!("at line {line}"))
-                .unwrap_or_default()
-        );
+        let location = symbol
+            .line
+            .map(|line| format!("at line {line}"))
+            .unwrap_or_default();
+        app.state.status = format!("Selected symbol {} {}", symbol.name, location);
     }
     app.state.symbol_search.close();
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn help_overlay_consumes_chat_arrow_navigation() {
-        let mut app = App::default();
-        app.state.show_help = true;
-        app.state.set_view_mode(ViewMode::Chat);
-        app.state.set_chat_max_scroll(25);
-        app.state.scroll_to_bottom();
-
-        handle_down(&mut app, KeyModifiers::NONE);
-
-        assert_eq!(app.state.help_scroll.offset, 1);
-        assert_eq!(app.state.chat_scroll, 1_000_000);
-    }
 }
