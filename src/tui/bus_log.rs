@@ -456,10 +456,13 @@ pub fn render_bus_log_with_summary(
         } else {
             "offline"
         };
+        // A missing remote worker bridge is a normal default (the in-process
+        // A2A peer is shown separately below), so render it neutral rather
+        // than alarming red.
         let worker_color = if summary.a2a_connected {
             Color::Green
         } else {
-            Color::Red
+            Color::DarkGray
         };
         let processing_label = match summary.processing {
             Some(true) => "processing",

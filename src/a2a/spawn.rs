@@ -396,27 +396,40 @@ async fn mdns_intake_loop(
     auto_introduce: bool,
 ) {
     let self_url = Arc::new(self_url.trim_end_matches('/').to_string());
-    let known: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
+    let liveness = Arc::new(Mutex::new(crate::a2a::peer_liveness::PeerLiveness::new()));
+
+    // Background sweep: age out peers that have stopped re-announcing so the
+    // TUI registry / UI counts don't show ghosts. mDNS re-resolves live peers
+    // periodically (refreshing their last-seen); a peer that goes away stops
+    // refreshing and is expired after the TTL. The guard aborts the task on drop.
+    let _expire_guard = crate::a2a::mdns_liveness::spawn_expire_loop(
+        Arc::clone(&bus),
+        Arc::clone(&liveness),
+    );
 
     while let Some(peer) = peer_rx.recv().await {
-        // Cheap pre-check by instance name to skip the per-interface
-        // duplicate announcements before we spawn anything.
-        let already_known_by_instance = {
-            let k = known.lock().await;
-            k.contains(&peer.instance_name)
+        // Cheap pre-check by instance name: skip only the duplicate
+        // per-interface announcements within the refresh window. Older
+        // sightings fall through so the peer re-heartbeats.
+        let recently_seen = {
+            let l = liveness.lock().await;
+            l.recently_seen(
+                &peer.instance_name,
+                crate::a2a::mdns_liveness::MDNS_PEER_REFRESH_INTERVAL,
+            )
         };
-        if already_known_by_instance {
+        if recently_seen {
             continue;
         }
 
         // Spawn one task per discovered peer so a slow/unreachable peer
         // can't block the next event in the queue.
         let bus = Arc::clone(&bus);
-        let known = Arc::clone(&known);
+        let liveness = Arc::clone(&liveness);
         let self_url = Arc::clone(&self_url);
         let agent_name = agent_name.clone();
         tokio::spawn(async move {
-            handle_mdns_peer(bus, known, self_url, agent_name, peer, auto_introduce).await;
+            handle_mdns_peer(bus, liveness, self_url, agent_name, peer, auto_introduce).await;
         });
     }
 }
@@ -427,7 +440,7 @@ async fn mdns_intake_loop(
 /// several addrs (LAN/VPN/docker); we cycle through them in order.
 async fn handle_mdns_peer(
     bus: Arc<AgentBus>,
-    known: Arc<Mutex<HashSet<String>>>,
+    liveness: Arc<Mutex<crate::a2a::peer_liveness::PeerLiveness>>,
     self_url: Arc<String>,
     agent_name: String,
     peer: DiscoveredPeer,
@@ -472,24 +485,18 @@ async fn handle_mdns_peer(
     };
 
     let is_new = {
-        let mut k = known.lock().await;
-        // Insert both keys so future probes via either path short-circuit.
-        let inserted = k.insert(card.name.clone());
-        k.insert(peer.instance_name.clone());
-        inserted
+        let mut l = liveness.lock().await;
+        l.record(&peer.instance_name, &card.name)
     };
 
     bus.registry.register(card.clone());
 
+    // Re-emit on every accepted resolution (not just first sight) so a peer
+    // that was registered once but later dropped by a consumer reappears on
+    // the next mDNS re-resolution instead of vanishing permanently.
+    crate::a2a::mdns_liveness::emit_discovered(&bus, &card.name, &endpoint);
+
     if is_new {
-        let handle = bus.handle("a2a-discovery");
-        handle.send(
-            "broadcast",
-            crate::bus::BusMessage::Heartbeat {
-                agent_id: card.name.clone(),
-                status: format!("discovered via A2A at {endpoint}"),
-            },
-        );
         tracing::info!(
             agent = %agent_name,
             peer_name = %card.name,
@@ -680,6 +687,7 @@ async fn discovery_loop(
             bus.registry.register(card.clone());
 
             if is_new {
+                crate::a2a::mdns_liveness::emit_discovered(&bus, &card.name, &endpoint);
                 tracing::info!(
                     agent = %agent_name,
                     peer_name = %card.name,
