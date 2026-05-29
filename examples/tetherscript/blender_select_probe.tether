@@ -1,0 +1,35 @@
+fn blender_select_probe(input_json) {
+    let input = json_parse(input_json)
+    let name = input["object_name"]
+    let output_path = input["output_path"]
+    let m = map()
+    m["purpose"] = "Paste this Python into Blender's console as exec(<script>) to select/frame and write JSON state."
+    m["output_path"] = output_path
+    m["python"] = python_script(name, output_path)
+    return json_encode(m)
+}
+
+fn python_script(name, output_path) {
+    let qname = json_encode(name)
+    let qout = json_encode(output_path)
+    return "import bpy,fnmatch,json,pathlib\n" +
+        "name=" + qname + "\n" +
+        "pat=name if any(c in name for c in '*?[]') else '*'+name+'*'\n" +
+        "matches=[o for o in bpy.data.objects if o.name==name or fnmatch.fnmatch(o.name,pat)]\n" +
+        "bpy.ops.object.select_all(action='DESELECT')\n" +
+        "for o in matches:\n    o.hide_set(False); o.hide_viewport=False; o.select_set(True)\n" +
+        "if matches:\n    bpy.context.view_layer.objects.active=matches[0]\n" +
+        "framed=False\n" +
+        "for a in bpy.context.screen.areas:\n" +
+        "    if a.type=='VIEW_3D':\n" +
+        "        r=next((r for r in a.regions if r.type=='WINDOW'),None)\n" +
+        "        if r:\n" +
+        "            with bpy.context.temp_override(area=a,region=r):\n" +
+        "                bpy.ops.view3d.view_selected(use_all_regions=False); framed=True\n" +
+        "            break\n" +
+        "state={'available':True,'matched_names':[o.name for o in matches]," +
+        "'selected_object_names':[o.name for o in bpy.context.selected_objects]," +
+        "'active_object_name':bpy.context.object.name if bpy.context.object else None," +
+        "'framed':framed,'selection_method':'tetherscript_python'}\n" +
+        "pathlib.Path(" + qout + ").write_text(json.dumps(state))"
+}

@@ -3,6 +3,8 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
+use super::clone_git::run_git_command_at;
+
 pub(super) async fn ensure_metadata_checked_out(
     repo_path: Option<&Path>,
     branch: Option<String>,
@@ -20,7 +22,7 @@ async fn ensure_checked_out(repo_path: &Path, branch: &str) -> Result<()> {
     if current_branch(repo_path).await?.trim() == branch {
         return Ok(());
     }
-    super::run_git_command_at(
+    run_git_command_at(
         Some(repo_path),
         vec!["checkout".into(), "-B".into(), branch.to_string()],
     )
@@ -30,7 +32,7 @@ async fn ensure_checked_out(repo_path: &Path, branch: &str) -> Result<()> {
 }
 
 async fn current_branch(repo_path: &Path) -> Result<String> {
-    super::run_git_command_at(
+    run_git_command_at(
         Some(repo_path),
         vec!["rev-parse".into(), "--abbrev-ref".into(), "HEAD".into()],
     )

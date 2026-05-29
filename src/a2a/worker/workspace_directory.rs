@@ -36,7 +36,9 @@ struct WorkspacePathRecord {
 /// ```
 pub(super) async fn resolve_workspace_directory(client: &Client, server: &str, token: &Option<String>, workspace_id: &str) -> Result<PathBuf> {
     let mut request = client.get(format!("{}/v1/agent/workspaces/{}", server.trim_end_matches('/'), workspace_id));
-    if let Some(token) = token { request = request.bearer_auth(token); }
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
     let response = request.send().await.with_context(|| format!("Failed to load workspace {}", workspace_id))?;
     let response = response.error_for_status().with_context(|| format!("Failed to fetch workspace {}", workspace_id))?;
     let workspace = response.json::<WorkspacePathRecord>().await.with_context(|| format!("Failed to decode workspace {} response", workspace_id))?;

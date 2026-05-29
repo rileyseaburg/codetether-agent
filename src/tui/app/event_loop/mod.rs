@@ -15,26 +15,34 @@
 //! ```
 
 mod autochat;
+mod bus_inbox;
+mod coalesce;
+mod io;
+mod select_args;
 mod select_loop;
+mod setup;
 mod shutdown;
 mod smart_retry;
 mod terminal;
+mod tick;
+mod timers;
 mod watchdog;
 mod watchdog_spawn;
 
-use std::{path::Path, sync::Arc, time::Duration};
+pub(crate) use io::LoopIo;
+pub(crate) use select_args::SelectArgs;
+pub(crate) use timers::LoopTimers;
 
-use crossterm::event::EventStream;
+use std::{path::Path, sync::Arc};
+
 use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
 
 use crate::bus::BusHandle;
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
-use crate::tui::app::{state::App, worker_bridge::sync_worker_bridge_agents};
-use crate::tui::{
-    constants::MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS, worker_bridge::TuiWorkerBridge,
-};
+use crate::tui::app::state::App;
+use crate::tui::worker_bridge::TuiWorkerBridge;
 
 /// Drive the TUI draw-event-dispatch loop until quit.
 ///
@@ -63,35 +71,26 @@ pub async fn run_event_loop(
     result_tx: mpsc::Sender<anyhow::Result<Session>>,
     mut result_rx: mpsc::Receiver<anyhow::Result<Session>>,
 ) -> anyhow::Result<()> {
-    let mut reader = EventStream::new();
-    let mut shutdown_rx = crate::tui::app::signal_shutdown::spawn_shutdown_listener();
-    let tick = Duration::from_millis(50);
-    let mut tick_timer = tokio::time::interval(tick);
-    let wd_interval = Duration::from_secs(MAIN_PROCESSING_WATCHDOG_TIMEOUT_SECS);
-    let mut wd_timer = tokio::time::interval(wd_interval);
+    let mut setup = setup::create();
 
     loop {
-        sync_worker_bridge_agents(app, &worker_bridge);
+        tick::before_draw(app, &worker_bridge);
         crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
-        if select_loop::select_once(
-            &mut reader,
+        let mut io = LoopIo::new(&mut event_rx, &mut result_rx, &mut setup.shutdown_rx);
+        let mut args = SelectArgs {
+            reader: &mut setup.reader,
             app,
             cwd,
             session,
-            &registry,
-            &mut worker_bridge,
-            &event_tx,
-            &result_tx,
-            &mut event_rx,
-            &mut result_rx,
-            &mut shutdown_rx,
-            &mut wd_timer,
-            wd_interval,
-            &mut tick_timer,
+            registry: &registry,
+            worker_bridge: &mut worker_bridge,
+            event_tx: &event_tx,
+            result_tx: &result_tx,
+            io: &mut io,
+            timers: &mut setup.timers,
             bus_handle,
-        )
-        .await?
-        {
+        };
+        if select_loop::select_once(&mut args).await? {
             break;
         }
     }
