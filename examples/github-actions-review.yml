@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   review:
-    runs-on: ubuntu-latest
+    runs-on: codetether-agent-k8s
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
 
   # ── Advanced: self-hosted with your own LLM keys ──
   # review-byok:
-  #   runs-on: ubuntu-latest
+  #   runs-on: codetether-agent-k8s
   #   steps:
   #     - uses: actions/checkout@v4
   #       with:
