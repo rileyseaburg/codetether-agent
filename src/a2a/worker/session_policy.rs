@@ -27,37 +27,17 @@ pub(super) async fn execute_session_with_policy(
     session_model::ensure_providers(&providers)?;
     let selection =
         session_model::select(session.metadata.model.as_deref(), &providers, model_tier)?;
-    let provider = registry
-        .get(&selection.provider)
+    let provider = registry.get(&selection.provider)
         .ok_or_else(|| anyhow::anyhow!("Provider {} not found", selection.provider))?;
-    session.add_message(Message {
-        role: crate::provider::Role::User,
-        content: vec![ContentPart::Text {
-            text: prompt.to_string(),
-        }],
-    });
-    if session.title.is_none() {
-        session.generate_title().await?;
-    }
-    let workspace_dir = session
-        .metadata
-        .directory
-        .clone()
+    session.add_message(Message { role: crate::provider::Role::User,
+        content: vec![ContentPart::Text { text: prompt.to_string() }] });
+    if session.title.is_none() { session.generate_title().await?; }
+    let workspace_dir = session.metadata.directory.clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-    let tool_registry = create_filtered_registry(
-        Arc::clone(&provider),
-        selection.model.clone(),
-        auto_approve,
-        &workspace_dir,
-        output_callback.clone(),
-    );
+    let tool_registry = create_filtered_registry(Arc::clone(&provider), selection.model.clone(),
+        auto_approve, &workspace_dir, output_callback.clone());
     let tool_definitions = tool_registry.definitions();
-    tracing::info!(
-        "Using model: {} via provider: {} (tier: {:?})",
-        selection.model,
-        selection.provider,
-        model_tier
-    );
+    tracing::info!("Using model: {} via provider: {} (tier: {:?})", selection.model, selection.provider, model_tier);
     let text = run_session_steps(
         provider,
         session,

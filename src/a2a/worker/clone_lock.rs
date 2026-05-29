@@ -37,7 +37,7 @@ pub(super) async fn acquire_workspace_clone_lock(lock_path: &Path) -> Result<tok
         {
             Ok(file) => return Ok(file),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                if workspace_clone_lock_is_stale(lock_path, stale_after).await {
+                if super::clone_lock_stale::workspace_clone_lock_is_stale(lock_path, stale_after).await {
                     let _ = tokio::fs::remove_file(lock_path).await;
                 } else {
                     tokio::time::sleep(Duration::from_millis(250)).await;
@@ -53,17 +53,4 @@ pub(super) async fn acquire_workspace_clone_lock(lock_path: &Path) -> Result<tok
             }
         }
     }
-}
-
-async fn workspace_clone_lock_is_stale(lock_path: &Path, stale_after: Duration) -> bool {
-    let Ok(metadata) = tokio::fs::metadata(lock_path).await else {
-        return false;
-    };
-    let Ok(modified) = metadata.modified() else {
-        return false;
-    };
-    SystemTime::now()
-        .duration_since(modified)
-        .map(|age| age > stale_after)
-        .unwrap_or(false)
 }

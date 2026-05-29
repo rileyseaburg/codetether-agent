@@ -17,16 +17,8 @@ pub(super) async fn enqueue_post_clone_task(
     else {
         return Ok(());
     };
-    let title = task
-        .get("title")
-        .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing title"))?;
-    let prompt = task
-        .get("prompt")
-        .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("post_clone_task is missing prompt"))?;
+    let title = task.get("title").and_then(|v| v.as_str()).filter(|v| !v.trim().is_empty()).ok_or_else(|| anyhow::anyhow!("post_clone_task is missing title"))?;
+    let prompt = task.get("prompt").and_then(|v| v.as_str()).filter(|v| !v.trim().is_empty()).ok_or_else(|| anyhow::anyhow!("post_clone_task is missing prompt"))?;
     let mut task_metadata = task
         .get("metadata")
         .cloned()

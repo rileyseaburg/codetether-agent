@@ -30,17 +30,11 @@ pub(super) async fn sync_workspaces_from_server(
         .or_else(|| data["codebases"].as_array().cloned())
         .unwrap_or_default();
     let current = shared_codebases.lock().await.clone();
-    let new_paths: Vec<String> = entries
-        .iter()
-        .filter_map(|entry| {
-            maybe_configure_repo_git_auth_from_entry(entry);
-            let path = entry["path"].as_str()?.trim();
-            (!path.is_empty()
-                && std::path::Path::new(path).exists()
-                && !current.iter().any(|codebase| codebase == path))
-            .then(|| path.to_string())
-        })
-        .collect();
+    let new_paths: Vec<String> = entries.iter().filter_map(|entry| {
+        maybe_configure_repo_git_auth_from_entry(entry);
+        let path = entry["path"].as_str()?.trim();
+        (!path.is_empty() && std::path::Path::new(path).exists() && !current.iter().any(|c| c == path)).then(|| path.to_string())
+    }).collect();
     if new_paths.is_empty() {
         return Ok(());
     }

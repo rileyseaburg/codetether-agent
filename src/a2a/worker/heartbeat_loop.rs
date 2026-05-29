@@ -1,19 +1,15 @@
 //! Worker heartbeat loop.
+mod heartbeat_payload;
+mod heartbeat_post;
 use reqwest::Client;
 use std::{collections::HashSet, sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::JoinHandle, time::Instant};
-mod heartbeat_payload;
-use super::{
-    CognitionHeartbeatConfig, HeartbeatState, persistent_worker_enabled,
+use super::{CognitionHeartbeatConfig, HeartbeatState, persistent_worker_enabled,
     persistent_worker_lease_seconds, send_extended_task_heartbeat,
-};
-use heartbeat_payload::build_heartbeat_payload;
+    heartbeat_payload::build_heartbeat_payload, heartbeat_post::post_heartbeat};
 pub fn start_heartbeat(
-    client: Client,
-    server: String,
-    token: Option<String>,
-    heartbeat_state: HeartbeatState,
-    processing: Arc<Mutex<HashSet<String>>>,
+    client: Client, server: String, token: Option<String>,
+    heartbeat_state: HeartbeatState, processing: Arc<Mutex<HashSet<String>>>,
     cognition_config: CognitionHeartbeatConfig,
     task_progress: Arc<Mutex<super::task_timeline::TaskProgressState>>,
 ) -> JoinHandle<()> {
@@ -28,52 +24,20 @@ pub fn start_heartbeat(
             interval.tick().await;
             let active_count = processing.lock().await.len();
             let tick = build_heartbeat_payload(
-                &client,
-                &heartbeat_state,
-                &cognition_config,
-                &task_progress,
-                active_count,
-                cognition_disabled_until,
-            )
-            .await;
-            match post_heartbeat(
-                &client,
-                &server,
-                &token,
-                &heartbeat_state.worker_id,
-                &tick.payload,
-            )
-            .await
-            {
+                &client, &heartbeat_state, &cognition_config,
+                &task_progress, active_count, cognition_disabled_until,
+            ).await;
+            match post_heartbeat(&client, &server, &token, &heartbeat_state.worker_id, &tick.payload).await {
                 true => failures = 0,
-                false
-                    if tick.cognition_included
-                        && post_heartbeat(
-                            &client,
-                            &server,
-                            &token,
-                            &heartbeat_state.worker_id,
-                            &tick.base_payload,
-                        )
-                        .await =>
-                {
-                    cognition_disabled_until = Some(Instant::now() + Duration::from_secs(300));
-                    failures = 0;
-                }
+                false if tick.cognition_included
+                    && post_heartbeat(&client, &server, &token, &heartbeat_state.worker_id, &tick.base_payload).await =>
+                { cognition_disabled_until = Some(Instant::now() + Duration::from_secs(300)); failures = 0; }
                 false => failures += 1,
             }
-            if persistent
-                && let Some(progress_json) = tick.task_progress_payload
+            if persistent && let Some(progress_json) = tick.task_progress_payload
                 && let Err(error) = send_extended_task_heartbeat(
-                    &client,
-                    &server,
-                    &token,
-                    &heartbeat_state.worker_id,
-                    progress_json,
-                    lease,
-                )
-                .await
-            {
+                    &client, &server, &token, &heartbeat_state.worker_id, progress_json, lease,
+                ).await {
                 tracing::warn!(worker_id = %heartbeat_state.worker_id, error = %error, "Extended task heartbeat failed");
             }
             if failures >= 3 {
@@ -82,23 +46,4 @@ pub fn start_heartbeat(
             }
         }
     })
-}
-async fn post_heartbeat(
-    client: &Client,
-    server: &str,
-    token: &Option<String>,
-    worker_id: &str,
-    payload: &serde_json::Value,
-) -> bool {
-    let mut req = client.post(format!(
-        "{}/v1/agent/workers/{}/heartbeat",
-        server, worker_id
-    ));
-    if let Some(token) = token {
-        req = req.bearer_auth(token);
-    }
-    req.json(payload)
-        .send()
-        .await
-        .is_ok_and(|r| r.status().is_success())
 }

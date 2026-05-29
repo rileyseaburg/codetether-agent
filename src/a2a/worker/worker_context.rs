@@ -4,7 +4,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use tokio::sync::Mutex;
 
-use crate::{bus::AgentBus, cli::A2aArgs};
+use crate::{a2a::spawn::A2APeerHandle, bus::AgentBus, cli::A2aArgs};
 
 use super::{CognitionHeartbeatConfig, HeartbeatState, WorkerTaskRuntime, task_timeline};
 
@@ -20,4 +20,7 @@ pub(super) struct WorkerContext {
     pub(super) bus: Arc<AgentBus>,
     pub(super) task_progress: Arc<Mutex<task_timeline::TaskProgressState>>,
     pub(super) task_runtime: WorkerTaskRuntime,
+    /// Held to keep A2A peer background tasks alive; dropping aborts them.
+    #[allow(dead_code)]
+    pub(super) a2a_peer: Option<A2APeerHandle>,
 }

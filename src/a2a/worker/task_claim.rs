@@ -17,8 +17,7 @@ pub(super) async fn claim_task(
     timeline: &mut task_timeline::TaskTimeline,
 ) -> Result<Option<ClaimedTaskData>> {
     timeline.checkpoint(task_timeline::TaskCheckpoint::ClaimRequested);
-    let mut request = runtime
-        .client
+    let mut request = runtime.client
         .post(format!("{}/v1/worker/tasks/claim", runtime.server))
         .header("X-Worker-ID", &runtime.worker_id);
     if let Some(token) = &runtime.token {
@@ -39,21 +38,13 @@ pub(super) async fn claim_task(
         return Ok(None);
     }
     let claim = response.json::<TaskClaimResponse>().await?;
-    if let Some(timeout) = claim
-        .task_timeout_seconds
-        .map(|value| value.clamp(60, 604800))
-    {
+    if let Some(timeout) = claim.task_timeout_seconds.map(|v| v.clamp(60, 604800)) {
         timeline.update_timeout_secs(timeout);
     }
     let provider_keys = claim.provider_keys.clone();
     let claim_provenance = claim.into_provenance();
-    timeline.checkpoint_with_detail(
-        task_timeline::TaskCheckpoint::Claimed,
-        Some(format!(
-            "run_id={:?} attempt_id={:?}",
-            claim_provenance.run_id, claim_provenance.attempt_id
-        )),
-    );
+    timeline.checkpoint_with_detail(task_timeline::TaskCheckpoint::Claimed,
+        Some(format!("run_id={:?} attempt_id={:?}", claim_provenance.run_id, claim_provenance.attempt_id)));
     tracing::info!(task_id, run_id = ?claim_provenance.run_id, attempt_id = ?claim_provenance.attempt_id, "Claimed task");
     Ok(Some(ClaimedTaskData {
         claim_provenance,
