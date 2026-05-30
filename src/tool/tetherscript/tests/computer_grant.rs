@@ -22,11 +22,11 @@ fn parses_computer_grant_fields() {
 }
 
 #[tokio::test]
-async fn grant_computer_runs_snapshot_from_tetherscript() {
+async fn grant_computer_runs_status_from_tetherscript() {
     let tool = TetherScriptPluginTool::new();
     let result = tool
         .execute(json!({
-            "source": "fn main() { return computer.snapshot() }",
+            "source": "fn main() { return computer.status() }",
             "hook": "main",
             "grant_computer": true,
             "computer_scope": ["computer.inspect"]
@@ -34,10 +34,7 @@ async fn grant_computer_runs_snapshot_from_tetherscript() {
         .await
         .unwrap();
 
-    if cfg!(target_os = "windows") {
-        assert!(result.success);
-    } else {
-        assert!(!result.success);
-        assert!(result.output.contains("Windows"));
-    }
+    assert!(result.output.contains("success"), "{}", result.output);
+    let value = result.metadata.get("value").unwrap();
+    assert_eq!(value["success"], true);
 }
