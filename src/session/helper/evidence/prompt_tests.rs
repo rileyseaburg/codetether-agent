@@ -7,6 +7,8 @@ fn injects_validation_level_terms() {
     assert!(prompt.contains("mocked local"));
     assert!(prompt.contains("live deployment/Argo"));
     assert!(prompt.contains("failed live validation is not completion"));
+    assert!(prompt.contains("do not block ordinary PR review on post-merge evidence"));
+    assert!(prompt.contains("do not require post-merge Argo proof for review-only tasks"));
     assert!(prompt.contains("all-encompassing task"));
     assert!(prompt.contains("TetherScript"));
     assert!(prompt.contains("Memory trapdoor"));

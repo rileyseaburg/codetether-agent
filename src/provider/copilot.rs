@@ -565,7 +565,12 @@ impl Provider for CopilotProvider {
             body["top_p"] = json!(top_p);
         }
         if let Some(max) = request.max_tokens {
-            body["max_tokens"] = json!(max);
+            let key = if request.model.starts_with("gpt-5") {
+                "max_completion_tokens"
+            } else {
+                "max_tokens"
+            };
+            body[key] = json!(max);
         }
         if !request.stop.is_empty() {
             body["stop"] = json!(request.stop);
@@ -745,26 +750,19 @@ mod tests {
 
     #[test]
     fn normalize_enterprise_domain_handles_scheme_and_trailing_slash() {
-        assert_eq!(
-            normalize_enterprise_domain("https://company.ghe.com/"),
-            "company.ghe.com"
-        );
-        assert_eq!(
-            normalize_enterprise_domain("http://company.ghe.com"),
-            "company.ghe.com"
-        );
-        assert_eq!(
-            normalize_enterprise_domain("company.ghe.com"),
-            "company.ghe.com"
-        );
+        for input in [
+            "https://company.ghe.com/",
+            "http://company.ghe.com",
+            "company.ghe.com",
+        ] {
+            assert_eq!(normalize_enterprise_domain(input), "company.ghe.com");
+        }
     }
 
     #[test]
     fn enterprise_base_url_uses_copilot_api_subdomain() {
-        assert_eq!(
-            enterprise_base_url("https://company.ghe.com/"),
-            "https://copilot-api.company.ghe.com"
-        );
+        let url = enterprise_base_url("https://company.ghe.com/");
+        assert_eq!(url, "https://copilot-api.company.ghe.com");
     }
 
     #[test]

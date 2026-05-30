@@ -4,6 +4,7 @@ mod apps;
 mod input;
 mod request;
 mod snapshot;
+mod snapshot_output;
 mod status;
 
 use crate::tool::computer_use::{input::ComputerUseAction, input::ComputerUseInput, response};
@@ -24,9 +25,14 @@ pub async fn dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::T
         ComputerUseAction::RightClick => input::handle_right_click(input).await,
         ComputerUseAction::DoubleClick => input::handle_double_click(input).await,
         ComputerUseAction::Drag => input::handle_drag(input).await,
+        ComputerUseAction::MouseDown => input::handle_mouse_down(input).await,
+        ComputerUseAction::MouseMove => input::handle_mouse_move(input).await,
+        ComputerUseAction::MouseUp => input::handle_mouse_up(input).await,
         ComputerUseAction::TypeText => input::handle_type_text(input).await,
         ComputerUseAction::PressKey => input::handle_press_key(input).await,
         ComputerUseAction::Scroll => input::handle_scroll(input).await,
+        ComputerUseAction::FocusViewport => input::handle_focus_viewport(input).await,
+        ComputerUseAction::BlenderSelectFrame => input::handle_blender_select_frame(input).await,
         ComputerUseAction::BringToFront => input::handle_bring_to_front(input).await,
         ComputerUseAction::WaitMs => input::handle_wait_ms(input).await,
         ComputerUseAction::Stop => input::handle_stop(),

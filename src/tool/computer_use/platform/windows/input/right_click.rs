@@ -7,8 +7,10 @@ pub async fn handle_right_click(
     input: &ComputerUseInput,
 ) -> anyhow::Result<crate::tool::ToolResult> {
     let (x, y) = super::validate::coords(input)?;
-    send_right_click(x, y)?;
-    Ok(super::super::response::success_result(serde_json::json!({
-        "right_clicked": true, "x": x, "y": y
+    super::modifiers::with_modifiers(&input.modifiers, || send_right_click(x, y))?;
+    Ok(super::report::mouse_result(serde_json::json!({
+        "right_clicked": true, "x": x, "y": y,
+        "modifiers": input.modifiers,
+        "coordinate_mode": super::validate::coordinate_mode(input)
     })))
 }

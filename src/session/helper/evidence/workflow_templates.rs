@@ -1,5 +1,6 @@
 const TEMPLATES: &[&str] = &[
-    "live Argo proof requires app/job/pod identity plus success state",
+    "PR review proof requires diff/CI evidence available before merge; do not require post-merge Argo proof for review-only tasks",
+    "live Argo proof requires app/job/pod identity plus success state when live deployment was requested",
     "Playwright proof requires command, exit state, and artifact path",
     "platform upload proof requires artifact path plus platform video ID",
     "DB migration proof requires environment, migration name, and row/query evidence",

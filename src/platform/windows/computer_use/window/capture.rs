@@ -1,13 +1,13 @@
-//! Capture a specific window as JPEG via Win32 PrintWindow/BitBlt.
+//! Capture a specific window as PNG via Win32 PrintWindow/BitBlt.
 
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
-/// Capture a window by HWND and encode as JPEG.
+/// Capture a window by HWND and encode as PNG.
 ///
-/// Returns `(jpeg_bytes, width, height)`.
-pub fn capture_window_jpeg(hwnd: i64) -> anyhow::Result<(Vec<u8>, u32, u32)> {
+/// Returns `(png_bytes, width, height)`.
+pub fn capture_window_png(hwnd: i64) -> anyhow::Result<(Vec<u8>, u32, u32)> {
     unsafe {
         let hwnd = HWND(hwnd as *mut _);
         let mut rect = std::mem::zeroed();
@@ -52,7 +52,7 @@ pub fn capture_window_jpeg(hwnd: i64) -> anyhow::Result<(Vec<u8>, u32, u32)> {
         ReleaseDC(Some(hwnd), hdc);
         anyhow::ensure!(ok != 0, "GetDIBits failed");
 
-        let jpeg = super::super::encode::bgra_to_encoded(w, h, px, image::ImageFormat::Jpeg)?;
-        Ok((jpeg, w, h))
+        let png = super::super::encode::bgra_to_png(w, h, px)?;
+        Ok((png, w, h))
     }
 }

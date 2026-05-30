@@ -554,6 +554,7 @@ async fn decide_dynamic_spawn_with_registry(
 
 pub async fn execute(args: RunArgs) -> Result<()> {
     let message = args.message.trim();
+    super::run_checkpoint::validate_auto_continue(args.auto_continue_until)?;
 
     if message.is_empty() {
         anyhow::bail!("You must provide a message");
@@ -878,8 +879,14 @@ pub async fn execute(args: RunArgs) -> Result<()> {
     crate::bus::s3_sink::spawn_bus_s3_sink(bus.clone());
     session.bus = Some(bus);
 
-    // Execute the prompt
-    let result = session.prompt(message).await?;
+    let result = super::run_loop::execute_prompt_with_resume(
+        &mut session,
+        message,
+        args.max_steps,
+        args.auto_continue_until,
+        &workspace_dir,
+    )
+    .await?;
 
     // Output based on format
     match args.format.as_str() {

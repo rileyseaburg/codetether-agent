@@ -1,7 +1,7 @@
 //! A2A Server - serve as an A2A agent
 
 use super::types::*;
-use crate::session::{Session, SessionEvent};
+use crate::session::SessionEvent;
 use crate::telemetry::record_persistent;
 use anyhow::Result;
 use axum::{
@@ -173,30 +173,6 @@ fn emit_a2a_message(server: &A2AServer, task_id: &str, from: &str, to: &str, mes
     );
 }
 
-async fn configure_a2a_session(session: &mut Session) {
-    let configured_model = std::env::var("CODETETHER_DEFAULT_MODEL")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty());
-
-    let configured_model = match configured_model {
-        Some(model) => Some(model),
-        None => match crate::config::Config::load().await {
-            Ok(config) => config
-                .default_model
-                .filter(|value| !value.trim().is_empty()),
-            Err(e) => {
-                tracing::debug!(error = %e, "Failed to load config for A2A session model");
-                None
-            }
-        },
-    };
-
-    if let Some(model) = configured_model {
-        session.metadata.model = Some(model);
-    }
-}
-
 fn record_a2a_message_telemetry(
     tool_name: &str,
     task_id: &str,
@@ -316,16 +292,19 @@ async fn handle_message_send(
         .unwrap_or(true);
 
     if blocking {
-        // Synchronous execution: create session, run prompt, return completed task
-        let mut session = Session::new().await.map_err(|e| {
-            JsonRpcError::internal_error(format!("Failed to create session: {}", e))
-        })?;
-        configure_a2a_session(&mut session).await;
+        let mut session =
+            crate::a2a::session_resolve::resolve_session(params.message.context_id.as_deref())
+                .await
+                .map_err(|e| {
+                    JsonRpcError::internal_error(format!("Failed to create session: {}", e))
+                })?;
+        crate::a2a::session_config::configure(&mut session).await;
         let started_at = Instant::now();
 
         match session.prompt(&prompt).await {
             Ok(result) => {
                 let result_text = result.text;
+                crate::a2a::session_config::persist(&session).await;
                 let response_message = Message {
                     message_id: Uuid::new_v4().to_string(),
                     role: MessageRole::Agent,
@@ -434,32 +413,34 @@ async fn handle_message_send(
         tokio::spawn(async move {
             let task_id = spawn_task_id;
             let started_at = Instant::now();
-            let mut session = match Session::new().await {
-                Ok(s) => s,
-                Err(e) => {
-                    tracing::error!("Failed to create session for task {}: {}", task_id, e);
-                    if let Some(mut t) = tasks.get_mut(&task_id) {
-                        t.status.state = TaskState::Failed;
-                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+            let mut session =
+                match crate::a2a::session_resolve::resolve_session(context_id.as_deref()).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::error!("Failed to create session for task {}: {}", task_id, e);
+                        if let Some(mut t) = tasks.get_mut(&task_id) {
+                            t.status.state = TaskState::Failed;
+                            t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                        }
+                        record_a2a_message_telemetry(
+                            "a2a_message_send",
+                            &task_id,
+                            false,
+                            &prompt,
+                            started_at.elapsed(),
+                            false,
+                            None,
+                            Some(e.to_string()),
+                        );
+                        return;
                     }
-                    record_a2a_message_telemetry(
-                        "a2a_message_send",
-                        &task_id,
-                        false,
-                        &prompt,
-                        started_at.elapsed(),
-                        false,
-                        None,
-                        Some(e.to_string()),
-                    );
-                    return;
-                }
-            };
-            configure_a2a_session(&mut session).await;
+                };
+            crate::a2a::session_config::configure(&mut session).await;
 
             match session.prompt(&prompt).await {
                 Ok(result) => {
                     let result_text = result.text;
+                    crate::a2a::session_config::persist(&session).await;
                     let response_message = Message {
                         message_id: Uuid::new_v4().to_string(),
                         role: MessageRole::Agent,
@@ -599,32 +580,33 @@ async fn handle_message_stream(
         // Create a channel for session events
         let (event_tx, mut event_rx) = mpsc::channel::<SessionEvent>(256);
 
-        let mut session = match Session::new().await {
-            Ok(s) => s,
-            Err(e) => {
-                tracing::error!(
-                    "Failed to create session for stream task {}: {}",
-                    task_id,
-                    e
-                );
-                if let Some(mut t) = tasks.get_mut(&task_id) {
-                    t.status.state = TaskState::Failed;
-                    t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+        let mut session =
+            match crate::a2a::session_resolve::resolve_session(context_id.as_deref()).await {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to create session for stream task {}: {}",
+                        task_id,
+                        e
+                    );
+                    if let Some(mut t) = tasks.get_mut(&task_id) {
+                        t.status.state = TaskState::Failed;
+                        t.status.timestamp = Some(chrono::Utc::now().to_rfc3339());
+                    }
+                    record_a2a_message_telemetry(
+                        "a2a_message_stream",
+                        &task_id,
+                        false,
+                        &prompt,
+                        started_at.elapsed(),
+                        false,
+                        None,
+                        Some(e.to_string()),
+                    );
+                    return;
                 }
-                record_a2a_message_telemetry(
-                    "a2a_message_stream",
-                    &task_id,
-                    false,
-                    &prompt,
-                    started_at.elapsed(),
-                    false,
-                    None,
-                    Some(e.to_string()),
-                );
-                return;
-            }
-        };
-        configure_a2a_session(&mut session).await;
+            };
+        crate::a2a::session_config::configure(&mut session).await;
 
         // Spawn a task to forward session events to the bus
         let bus_clone = bus.clone();
@@ -728,6 +710,7 @@ async fn handle_message_stream(
         {
             Ok(result) => {
                 let result_text = result.text;
+                crate::a2a::session_config::persist(&session).await;
                 let response_message = Message {
                     message_id: Uuid::new_v4().to_string(),
                     role: MessageRole::Agent,

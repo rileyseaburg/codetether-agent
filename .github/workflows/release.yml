@@ -43,7 +43,7 @@ concurrency:
 jobs:
   prepare:
     name: Prepare Version + Tag
-    runs-on: ubuntu-latest
+    runs-on: codetether-agent-k8s
     outputs:
       version: ${{ steps.version.outputs.next }}
       tag: ${{ steps.version.outputs.tag }}
@@ -214,7 +214,7 @@ jobs:
     name: Publish Crate + GitHub Release
     needs: [prepare, build]
     if: ${{ !inputs.dry_run && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: codetether-agent-k8s
     steps:
       - name: Checkout release commit
         uses: actions/checkout@v4

@@ -1,7 +1,7 @@
 //! Mouse click via Win32 SendInput — replaces PowerShell mouse_event.
 
+use super::move_cursor;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
-use windows::Win32::UI::WindowsAndMessaging::SetCursorPos;
 
 /// Move cursor to (x, y) and perform a left click.
 ///
@@ -14,7 +14,7 @@ pub fn send_click(x: i32, y: i32) -> anyhow::Result<()> {
 
 unsafe fn click_inner(x: i32, y: i32) -> anyhow::Result<()> {
     // Move cursor
-    unsafe { SetCursorPos(x, y) };
+    move_cursor(x, y)?;
 
     // MOUSEINPUT for left-button down + up (absolute click)
     let down = MOUSEINPUT {

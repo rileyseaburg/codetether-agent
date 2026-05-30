@@ -1,9 +1,14 @@
 [workspace]
-members = [".", "crates/codetether-browser", "crates/codetether-rlm"]
+members = [
+    ".",
+    "crates/codetether-a2a-worker-core",
+    "crates/codetether-browser",
+    "crates/codetether-rlm",
+]
 
 [package]
 name = "codetether-agent"
-version = "4.7.0-a-002.2"
+version = "4.7.0-a-002.4"
 edition = "2024"
 authors = ["Riley Seaburg <riley@rileyseaburg.com>"]
 description = "A2A-native AI coding agent for the CodeTether ecosystem"
@@ -76,6 +81,7 @@ functiongemma = []
 
 [dependencies]
 # Workspace crates
+codetether-a2a-worker-core = { path = "crates/codetether-a2a-worker-core", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.0" }
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.0" }
 

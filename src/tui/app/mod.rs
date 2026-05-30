@@ -1,9 +1,7 @@
 pub mod ask;
 pub mod autochat;
 pub mod background;
-pub mod bus_agent_track;
-pub mod bus_ingest;
-pub mod bus_reply;
+pub mod bus;
 pub mod codex_sessions;
 pub mod commands;
 pub mod context_status;
@@ -21,6 +19,9 @@ pub mod inbox;
 #[path = "input/mod.rs"]
 pub mod input;
 pub mod mcp;
+pub mod message_cache_invalidate;
+#[cfg(test)]
+mod message_cache_invalidate_tests;
 pub mod message_text;
 pub mod message_window;
 pub mod model_picker;

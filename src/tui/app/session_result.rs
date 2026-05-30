@@ -22,7 +22,7 @@ pub async fn apply(
         Ok(updated) => save_current(app, cwd, session, worker_bridge, updated).await,
         Err(err) => {
             crate::tui::app::worker_bridge::handle_processing_stopped(app, worker_bridge).await;
-            super::bus_reply::emit(app, "failed", Some(err.to_string()));
+            super::bus::reply::emit(app, "failed", Some(err.to_string()));
             app.state
                 .messages
                 .push(ChatMessage::new(MessageType::Error, err.to_string()));
@@ -43,7 +43,7 @@ async fn save_current(
         crate::tui::app::worker_bridge::handle_processing_stopped(app, worker_bridge).await;
         app.state.clear_request_timing();
     }
-    super::bus_reply::emit(app, "completed", None);
+    super::bus::reply::emit(app, "completed", None);
     *session = updated;
     session.attach_global_bus_if_missing();
     app.state.session_id = Some(session.id.clone());

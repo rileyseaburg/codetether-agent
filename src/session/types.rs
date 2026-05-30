@@ -139,6 +139,9 @@ pub struct SessionMetadata {
     /// CADMAS-CTX routing posteriors for this session.
     #[serde(default)]
     pub delegation: DelegationState,
+    /// Resumable run checkpoint data, persisted beside session metadata.
+    #[serde(default)]
+    pub run_checkpoint: Option<crate::session::RunCheckpoint>,
     /// Runtime MinIO / S3 history sink configuration.
     ///
     /// Intentionally not serialized: carrying live access keys inside the
@@ -178,6 +181,7 @@ impl std::fmt::Debug for SessionMetadata {
             .field("rlm", &self.rlm)
             .field("context_policy", &self.context_policy)
             .field("delegation", &self.delegation)
+            .field("run_checkpoint", &self.run_checkpoint)
             .field(
                 "history_sink",
                 &self

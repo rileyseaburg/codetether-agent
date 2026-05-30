@@ -16,6 +16,9 @@ pub fn parse_send_keys(expr: &str) -> Vec<u16> {
     if expr.is_empty() {
         return vec![0x0D]; // VK_RETURN
     }
+    if let Some(vks) = parse_word_chord(expr) {
+        return vks;
+    }
 
     // Collect modifier prefixes
     let mut mods = Vec::new();
@@ -34,4 +37,23 @@ pub fn parse_send_keys(expr: &str) -> Vec<u16> {
     result.push(key);
     // Caller (send_chord) handles modifier release automatically
     result
+}
+
+fn parse_word_chord(expr: &str) -> Option<Vec<u16>> {
+    let parts = expr.split_whitespace().collect::<Vec<_>>();
+    let (key, mods) = parts.split_last()?;
+    if mods.is_empty() {
+        return None;
+    }
+    let mut result = Vec::new();
+    for part in mods {
+        result.push(match part.to_ascii_uppercase().as_str() {
+            "SHIFT" => 0x10,
+            "CTRL" | "CONTROL" => 0x11,
+            "ALT" => 0x12,
+            _ => return None,
+        });
+    }
+    result.push(resolve_vk(key));
+    Some(result)
 }

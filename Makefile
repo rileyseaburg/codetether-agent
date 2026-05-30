@@ -12,7 +12,7 @@ export SCCACHE_S3_KEY_PREFIX ?= rust/
 export AWS_ACCESS_KEY_ID   ?= sccacheadmin
 export AWS_SECRET_ACCESS_KEY ?= hZz3CXz2EqTTA503mvgsaFWQLGfCucGS
 
-.PHONY: build-cuda build-release build-cached build-windows sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
+.PHONY: build-cuda build-release build-cached build-windows build-windows-docker sccache-stats deploy-spike2-cuda install-spike2-cuda status-spike2-cuda
 
 build-cuda:
 	cargo build --release --features candle-cuda
@@ -27,6 +27,23 @@ build-cached:
 # Cross-compile for Windows (requires mingw-w64 toolchain: sudo apt-get install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64)
 build-windows:
 	cargo build --release --target x86_64-pc-windows-gnu
+
+build-windows-docker:
+	set -euo pipefail; \
+	mkdir -p dist .docker-cache; \
+	docker buildx build \
+		--platform linux/amd64 \
+		--file docker/release/windows.Dockerfile \
+		--target artifact \
+		--cache-from type=local,src=.docker-cache/windows \
+		--cache-to type=local,dest=.docker-cache/windows-new,mode=max \
+		--output type=local,dest=dist \
+		.; \
+	mkdir -p dist/windows; \
+	cp dist/codetether.exe dist/windows/codetether.exe; \
+	cp dist/codetether.exe dist/codetether-windows.exe; \
+	rm -rf .docker-cache/windows; \
+	mv .docker-cache/windows-new .docker-cache/windows
 
 sccache-stats:
 	sccache --show-stats

@@ -10,7 +10,7 @@
 //! handle_char_or_mode_key(&mut app, &mut session, key).await;
 //! ```
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::session::Session;
 use crate::tui::app::commands::toggle_auto_apply_edits;
@@ -37,6 +37,12 @@ pub(super) async fn handle_char_or_mode_key(app: &mut App, session: &mut Session
     match key.code {
         KeyCode::Char('a') if app.state.view_mode == ViewMode::Settings => {
             toggle_auto_apply_edits(app, session).await;
+        }
+        KeyCode::Char('a')
+            if key.modifiers.contains(KeyModifiers::ALT)
+                && app.state.view_mode == ViewMode::FilePicker =>
+        {
+            crate::tui::app::file_picker::file_picker_attach(app);
         }
         KeyCode::Char('n') if app.state.view_mode == ViewMode::Settings => {
             toggle_network_access(app, session).await;

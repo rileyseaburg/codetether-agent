@@ -44,6 +44,9 @@
 //! - [`helper`] — the agentic loop implementation (non-public details).
 
 mod bus;
+mod checkpoint;
+mod checkpoint_prompt;
+mod checkpoint_store;
 mod event_compaction;
 mod event_rlm;
 mod event_token;
@@ -53,10 +56,11 @@ pub(crate) mod history_files;
 mod lifecycle;
 mod persistence;
 mod prompt_api;
+pub mod step_limit;
 mod tail_load;
 mod tail_seed;
 mod title;
-mod types;
+pub mod types;
 mod workspace_index;
 mod workspace_index_io;
 
@@ -82,6 +86,8 @@ pub mod relevance;
 pub mod tasks;
 
 pub use self::bus::{DurableSink, NoopSink, SessionBus};
+pub use self::checkpoint::{CheckpointReason, RunCheckpoint};
+pub use self::checkpoint_prompt::auto_resume_prompt;
 pub use self::codex_import::{
     import_codex_session_by_id, import_codex_sessions_for_directory, load_or_import_session,
 };
@@ -108,8 +114,10 @@ pub use self::relevance::{
     Bucket, Dependency, Difficulty, RelevanceMeta, ToolUse, bucket_for_messages,
 };
 pub use self::tail_load::TailLoad;
-pub use self::tasks::{TaskEvent, TaskLog, TaskState, TaskStatus};
+pub use self::tasks::{SessionTaskStatus, TaskEvent, TaskLog, TaskState};
 pub use self::types::{DEFAULT_MAX_STEPS, ImageAttachment, Session, SessionMetadata};
 
+#[cfg(test)]
+mod checkpoint_tests;
 #[cfg(test)]
 mod tests;

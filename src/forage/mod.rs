@@ -881,6 +881,7 @@ async fn execute_opportunity_with_run(
         file: Vec::new(),
         codex_session: None,
         max_steps: None,
+        auto_continue_until: None,
         branches: 1,
         strategies: Vec::new(),
     };

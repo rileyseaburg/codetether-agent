@@ -46,6 +46,6 @@ impl TetherScriptProvider {
 
     pub(crate) fn call_list_models(&self) -> Result<Vec<ModelInfo>> {
         self.call_sync("list_models")
-            .and_then(|v| serde_json::from_value(v).map_err(Into::into))
+            .and_then(|value| super::model_list::parse_models(value, &self.name))
     }
 }
