@@ -66,6 +66,8 @@ Scan text for obvious secrets:
 Require reviewer output to carry forward the source issue Definition of Done and
 reject approvals when any Issue DoD item is missing or unproven:
 
+Focused validation: `cargo test --features tetherscript issue_dod_review`.
+
 ```json
 {
   "path": "examples/tetherscript/issue_dod_review.tether",
