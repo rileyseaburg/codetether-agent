@@ -16,6 +16,34 @@ fn dod_item_count(issue_body) {
     return count
 }
 
+fn dod_item_text(line) {
+    let text = line.trim().lower()
+    let mut item = text
+    if text.starts_with("- [x]") || text.starts_with("- [ ]") {
+        item = text.replace("- [x]", "").replace("- [ ]", "")
+    }
+    if text.starts_with("-") {
+        item = text.replace("-", "")
+    }
+    return item.replace(".", "").trim()
+}
+
+fn all_dod_items_preserved(issue_body, review_output) {
+    let normalized_review = review_output.lower().replace(".", "")
+    let mut expected = 0
+    let mut preserved = 0
+    for line in issue_body.lines() {
+        let trimmed = line.trim()
+        if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") || trimmed.starts_with("-") {
+            expected = expected + 1
+            if normalized_review.contains(dod_item_text(trimmed)) {
+                preserved = preserved + 1
+            }
+        }
+    }
+    return expected > 0 && preserved == expected
+}
+
 fn has_issue_dod_checklist(review_output) {
     let normalized = review_output.lower()
     if normalized.contains("issue dod checklist") {
@@ -67,7 +95,7 @@ fn validate(issue_body, review_output) {
     let has_checklist = has_issue_dod_checklist(review_output)
     let has_unproven = has_missing_or_unproven_item(review_output)
     let approves = looks_approved(review_output)
-    let items_complete = actual_items >= expected_items && expected_items > 0
+    let items_complete = all_dod_items_preserved(issue_body, review_output)
 
     let result = map()
     result["expected_dod_items"] = expected_items
@@ -86,7 +114,7 @@ fn validate(issue_body, review_output) {
 
     if !items_complete {
         result["decision"] = "reject"
-        result["reason"] = "review output must preserve all source issue DoD items (expected " + str(expected_items) + ", found " + str(actual_items) + ")"
+        result["reason"] = "review output must preserve each source issue DoD item"
         return Ok(result)
     }
 
