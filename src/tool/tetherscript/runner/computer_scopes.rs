@@ -16,11 +16,14 @@ pub fn all() -> Vec<String> {
 /// Map a computer-use action to its required scope.
 pub fn for_action(action: &str) -> Option<&'static str> {
     match action {
-        "status" | "list_apps" | "snapshot" | "window_snapshot" => Some("computer.inspect"),
-        "request_app" | "bring_to_front" | "focus_viewport" => Some("computer.window"),
+        "status" | "list_apps" | "request_app" | "snapshot" => Some("computer.inspect"),
+        "window_snapshot" | "bring_to_front" | "focus_viewport" => Some("computer.window"),
         "click" | "right_click" | "double_click" | "drag" => Some("computer.pointer"),
-        "mouse_down" | "mouse_move" | "mouse_up" | "scroll" => Some("computer.pointer"),
-        "type_text" | "press_key" | "blender_select_frame" => Some("computer.keyboard"),
+        "mouse_down" | "mouse_move" | "mouse_up" | "blender_select_frame" => {
+            Some("computer.pointer")
+        }
+        "type_text" | "press_key" => Some("computer.keyboard"),
+        "scroll" => Some("computer.pointer"),
         "wait_ms" => Some("computer.wait"),
         "stop" => Some("computer.session"),
         _ => None,

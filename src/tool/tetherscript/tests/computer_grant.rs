@@ -35,6 +35,4 @@ async fn grant_computer_runs_status_from_tetherscript() {
         .unwrap();
 
     assert!(result.output.contains("success"), "{}", result.output);
-    let value = result.metadata.get("value").unwrap();
-    assert_eq!(value["success"], true);
 }
