@@ -268,14 +268,16 @@ impl ToolRegistry {
 
     /// Get tool definitions for LLM
     pub fn definitions(&self) -> Vec<crate::provider::ToolDefinition> {
-        self.tools
+        let defs: Vec<_> = self
+            .tools
             .values()
             .map(|t| crate::provider::ToolDefinition {
                 name: t.id().to_string(),
                 description: t.description().to_string(),
                 parameters: t.parameters(),
             })
-            .collect()
+            .collect();
+        profile::apply(defs)
     }
 
     /// Register multiple tools at once

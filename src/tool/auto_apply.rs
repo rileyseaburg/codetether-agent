@@ -13,6 +13,6 @@
 pub fn auto_apply_enabled(meta: &crate::session::SessionMetadata) -> bool {
     meta.auto_apply_edits
         || std::env::var("CODETETHER_AUTO_APPLY_EDITS")
-            .map(|v| v != "0" && !v.eq_ignore_ascii_case("false"))
+            .map(|v| !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false"))
             .unwrap_or(false)
 }

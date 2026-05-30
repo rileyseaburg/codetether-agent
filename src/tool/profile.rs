@@ -18,12 +18,13 @@ const LEAN_TOOL_IDS: &[&str] = &[
     "list",
     "tree",
     "codesearch",
-    "fileinfo",
-    "headtail",
+    "file_info",
+    "head_tail",
     "diff",
     "lsp",
     "patch",
-    "todo",
+    "todo_read",
+    "todo_write",
 ];
 
 /// Returns `true` when the lean benchmark profile is active.

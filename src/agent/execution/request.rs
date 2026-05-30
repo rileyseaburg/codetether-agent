@@ -20,7 +20,7 @@ impl Agent {
         session: &Session,
     ) -> Result<CompletionResponse> {
         let model = self.default_model();
-        let tools = crate::tool::profile::apply(self.tools.definitions());
+        let tools = self.tools.definitions();
         let system_prompt = super::messages::compose_system_prompt(&self.system_prompt, session);
         crate::session::context::complete_with_context(
             std::sync::Arc::clone(&self.provider),
