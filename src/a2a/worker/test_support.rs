@@ -13,10 +13,17 @@ pub(super) struct ContextErrorUntilCompactProvider {
 }
 impl ContextErrorUntilCompactProvider {
     pub(super) fn new() -> Self {
-        Self { calls: AtomicUsize::new(0), saw_compact_schema: AtomicBool::new(false) }
+        Self {
+            calls: AtomicUsize::new(0),
+            saw_compact_schema: AtomicBool::new(false),
+        }
     }
-    pub(super) fn calls(&self) -> usize { self.calls.load(Ordering::SeqCst) }
-    pub(super) fn saw_compact_schema(&self) -> bool { self.saw_compact_schema.load(Ordering::SeqCst) }
+    pub(super) fn calls(&self) -> usize {
+        self.calls.load(Ordering::SeqCst)
+    }
+    pub(super) fn saw_compact_schema(&self) -> bool {
+        self.saw_compact_schema.load(Ordering::SeqCst)
+    }
 }
 pub(super) fn provider_arc() -> Arc<ContextErrorUntilCompactProvider> {
     Arc::new(ContextErrorUntilCompactProvider::new())

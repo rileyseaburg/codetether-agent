@@ -13,6 +13,8 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::sync::Arc;
 
+mod support;
+
 pub struct SwarmExecuteTool;
 
 impl SwarmExecuteTool {
@@ -279,7 +281,17 @@ impl Tool for SwarmExecuteTool {
         tracing::info!(provider = %provider_name, model = %model_name, "Using provider for swarm");
 
         // Get tool definitions (filtered for sub-agents)
-        let tools = Self::get_subagent_tools();
+        let tools = support::subagent_tools();
+
+        // Provision one isolated worktree per mutating task so sub-agents
+        // never edit the shared checkout (read-only tasks share the dir).
+        let worktree_dirs = support::create_worktrees(
+            &tasks
+                .iter()
+                .map(|t| (t.name.clone(), t.instruction.clone()))
+                .collect::<Vec<_>>(),
+        )
+        .await;
 
         // System prompt for sub-agents
         let system_prompt = r#"You are a sub-agent in a swarm execution context.
@@ -293,10 +305,11 @@ Share any intermediate results using the swarm_share tool so other agents can be
         let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency));
         let mut join_handles = Vec::new();
 
-        for task_input in tasks.clone() {
+        for (idx, task_input) in tasks.clone().into_iter().enumerate() {
             let semaphore = semaphore.clone();
             let provider = provider.clone();
             let tools = tools.clone();
+            let working_dir = worktree_dirs.get(idx).cloned().flatten();
             let system_prompt = system_prompt.to_string();
             let task_id = task_input
                 .id
@@ -334,7 +347,7 @@ Share any intermediate results using the swarm_share tool so other agents can be
                     None,
                     task_id.clone(),
                     None,
-                    None,
+                    working_dir,
                 )
                 .await?;
 
@@ -463,29 +476,5 @@ Share any intermediate results using the swarm_share tool so other agents can be
         };
 
         Ok(ToolResult::success(response.to_string()))
-    }
-}
-
-impl SwarmExecuteTool {
-    /// Get tool definitions suitable for sub-agents
-    fn get_subagent_tools() -> Vec<crate::provider::ToolDefinition> {
-        // Filter out interactive/blocking tools that don't work well for sub-agents
-        let registry = ToolRegistry::new();
-        registry
-            .definitions()
-            .into_iter()
-            .filter(|t| {
-                !matches!(
-                    t.name.as_str(),
-                    "question"
-                        | "confirm_edit"
-                        | "confirm_multiedit"
-                        | "plan_enter"
-                        | "plan_exit"
-                        | "swarm_execute"
-                        | "agent"
-                )
-            })
-            .collect()
     }
 }

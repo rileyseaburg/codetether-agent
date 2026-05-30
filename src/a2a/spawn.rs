@@ -402,10 +402,8 @@ async fn mdns_intake_loop(
     // TUI registry / UI counts don't show ghosts. mDNS re-resolves live peers
     // periodically (refreshing their last-seen); a peer that goes away stops
     // refreshing and is expired after the TTL. The guard aborts the task on drop.
-    let _expire_guard = crate::a2a::mdns_liveness::spawn_expire_loop(
-        Arc::clone(&bus),
-        Arc::clone(&liveness),
-    );
+    let _expire_guard =
+        crate::a2a::mdns_liveness::spawn_expire_loop(Arc::clone(&bus), Arc::clone(&liveness));
 
     while let Some(peer) = peer_rx.recv().await {
         // Cheap pre-check by instance name: skip only the duplicate

@@ -19,8 +19,12 @@ pub(super) async fn run_worker_server_loop(
         let (notify_tx, notify_rx) = mpsc::channel::<String>(32);
         server_state.set_task_notification_channel(notify_tx).await;
         server_state.set_connected(true).await;
-        if let Err(error) = register_current_worker(&context).await { tracing::warn!(error = %error, "Failed to re-register worker on reconnection"); }
-        if let Err(error) = fetch_pending_tasks(&context.task_runtime).await { tracing::warn!(error = %error, "Reconnect task fetch failed"); }
+        if let Err(error) = register_current_worker(&context).await {
+            tracing::warn!(error = %error, "Failed to re-register worker on reconnection");
+        }
+        if let Err(error) = fetch_pending_tasks(&context.task_runtime).await {
+            tracing::warn!(error = %error, "Reconnect task fetch failed");
+        }
         let heartbeat = start_heartbeat(
             context.task_runtime.client.clone(),
             context.server.clone(),

@@ -7,7 +7,8 @@ pub(super) fn build_stream_request(
     name: &str,
     codebases: &[String],
 ) -> reqwest::RequestBuilder {
-    let mut request = runtime.client
+    let mut request = runtime
+        .client
         .get(format!(
             "{}/v1/worker/tasks/stream?agent_name={}&worker_id={}",
             runtime.server,

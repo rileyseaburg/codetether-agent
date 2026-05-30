@@ -4,8 +4,8 @@ use anyhow::Result;
 
 use crate::{provenance::ClaimProvenance, session::Session};
 
-use super::{TaskContext, WorkerTaskRuntime, task_timeline};
 use super::task_session_resolve::{normalize_agent, resolve_workspace};
+use super::{TaskContext, WorkerTaskRuntime, task_timeline};
 
 mod task_session_git;
 

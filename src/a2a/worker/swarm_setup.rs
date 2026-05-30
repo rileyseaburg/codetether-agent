@@ -19,9 +19,28 @@ pub(super) async fn build_swarm_setup(
 ) -> SwarmSetup {
     let strategy = parse_swarm_strategy(metadata);
     let config = SwarmConfig {
-        max_subagents: metadata_usize(metadata, &["swarm_max_subagents", "max_subagents", "subagents"]).unwrap_or(10).clamp(1, 100),
-        max_steps_per_subagent: metadata_usize(metadata, &["swarm_max_steps_per_subagent", "max_steps_per_subagent", "max_steps"]).unwrap_or(50).clamp(1, 200),
-        subagent_timeout_secs: metadata_u64(metadata, &["swarm_timeout_secs", "timeout_secs", "timeout"]).unwrap_or(600).clamp(30, 3600),
+        max_subagents: metadata_usize(
+            metadata,
+            &["swarm_max_subagents", "max_subagents", "subagents"],
+        )
+        .unwrap_or(10)
+        .clamp(1, 100),
+        max_steps_per_subagent: metadata_usize(
+            metadata,
+            &[
+                "swarm_max_steps_per_subagent",
+                "max_steps_per_subagent",
+                "max_steps",
+            ],
+        )
+        .unwrap_or(50)
+        .clamp(1, 200),
+        subagent_timeout_secs: metadata_u64(
+            metadata,
+            &["swarm_timeout_secs", "timeout_secs", "timeout"],
+        )
+        .unwrap_or(600)
+        .clamp(30, 3600),
         parallel_enabled: metadata_bool(metadata, &["swarm_parallel_enabled", "parallel_enabled"])
             .unwrap_or(true),
         model: resolve_swarm_model(explicit_model, model_tier).await,

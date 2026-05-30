@@ -8,6 +8,11 @@ pub(super) fn map_swarm_result(
     if success {
         ("completed", Some(text), None, Some(session_id))
     } else {
-        ("failed", Some(text), Some("Swarm execution completed with failures".into()), Some(session_id))
+        (
+            "failed",
+            Some(text),
+            Some("Swarm execution completed with failures".into()),
+            Some(session_id),
+        )
     }
 }

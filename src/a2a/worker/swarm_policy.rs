@@ -27,9 +27,15 @@ pub(super) async fn execute_swarm_with_policy(
     bus: Option<&Arc<AgentBus>>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> Result<(crate::session::SessionResult, bool)> {
-    session.add_message(Message { role: Role::User,
-        content: vec![ContentPart::Text { text: prompt.to_string() }] });
-    if session.title.is_none() { session.generate_title().await?; }
+    session.add_message(Message {
+        role: Role::User,
+        content: vec![ContentPart::Text {
+            text: prompt.to_string(),
+        }],
+    });
+    if session.title.is_none() {
+        session.generate_title().await?;
+    }
     let SwarmSetup { config, strategy } =
         super::build_swarm_setup(session, metadata, explicit_model, model_tier).await;
     swarm_policy_start::emit(
@@ -43,8 +49,16 @@ pub(super) async fn execute_swarm_with_policy(
     );
     let result = swarm_policy_run::run(prompt, strategy, config, bus, output_callback).await?;
     let text = super::swarm_policy_result::swarm_result_text(&result.result, result.success);
-    session.add_message(Message { role: Role::Assistant,
-        content: vec![ContentPart::Text { text: text.clone() }] });
+    session.add_message(Message {
+        role: Role::Assistant,
+        content: vec![ContentPart::Text { text: text.clone() }],
+    });
     session.save().await?;
-    Ok((crate::session::SessionResult { text, session_id: session.id.clone() }, result.success))
+    Ok((
+        crate::session::SessionResult {
+            text,
+            session_id: session.id.clone(),
+        },
+        result.success,
+    ))
 }

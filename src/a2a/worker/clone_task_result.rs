@@ -4,8 +4,8 @@ use anyhow::Result;
 
 use super::clone_enqueue::enqueue_post_clone_task;
 use super::clone_git::{refresh_existing_clone, run_git_command_at};
-use super::clone_task_data::CloneRepoTask;
 use super::clone_repo_exec;
+use super::clone_task_data::CloneRepoTask;
 use super::{
     configure_repo_git_auth, configure_repo_git_github_app_from_agent_config,
     install_commit_msg_hook, prepare_clone_target, register_cloned_workspace,

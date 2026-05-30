@@ -24,6 +24,7 @@ impl super::AppState {
         self.pending_tool_started_at.is_none()
             && self.cached_messages_len == self.messages.len()
             && self.cached_max_width == max_width
+            && self.cached_tool_preview_scroll == self.tool_preview_scroll
             && self.cached_streaming_snapshot.as_deref() == Some(&self.streaming_text)
             && self.cached_processing == self.processing
     }
@@ -59,6 +60,7 @@ impl super::AppState {
         self.cached_message_lines = lines;
         self.cached_messages_len = self.messages.len();
         self.cached_max_width = max_width;
+        self.cached_tool_preview_scroll = self.tool_preview_scroll;
         self.cached_streaming_snapshot = if self.processing {
             Some(self.streaming_text.clone())
         } else {

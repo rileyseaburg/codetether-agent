@@ -17,6 +17,7 @@ impl super::super::AppState {
         if self.pending_tool_started_at.is_some()
             || self.cached_frozen_len == 0
             || self.cached_messages_len != self.messages.len()
+            || self.cached_tool_preview_scroll != self.tool_preview_scroll
             || self.cached_max_width != max_width
         {
             return None;

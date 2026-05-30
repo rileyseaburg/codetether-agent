@@ -24,7 +24,10 @@ pub(super) async fn finalize_task_result(
         );
         timeline.checkpoint(task_timeline::TaskCheckpoint::GracefulShutdown);
     }
-    if *status == "completed" && !is_virtual_task && let Some(directory) = session.metadata.directory.as_deref() {
+    if *status == "completed"
+        && !is_virtual_task
+        && let Some(directory) = session.metadata.directory.as_deref()
+    {
         match super::git_commit_push::run(
             directory,
             task_id,

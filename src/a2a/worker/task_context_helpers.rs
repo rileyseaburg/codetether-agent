@@ -11,15 +11,23 @@ pub(super) fn tier_from_metadata(
 
 fn complexity_tier(value: &str) -> String {
     match value.to_ascii_lowercase().as_str() {
-        "quick" => "fast", "deep" => "heavy", _ => "balanced",
-    }.to_string()
+        "quick" => "fast",
+        "deep" => "heavy",
+        _ => "balanced",
+    }
+    .to_string()
 }
 
 pub(super) fn trimmed_metadata(
     metadata: &serde_json::Map<String, serde_json::Value>,
     key: &str,
 ) -> Option<String> {
-    metadata.get(key).and_then(|v| v.as_str()).map(str::trim).filter(|v| !v.is_empty()).map(ToString::to_string)
+    metadata
+        .get(key)
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(ToString::to_string)
 }
 
 pub(super) fn context_workspace_id(

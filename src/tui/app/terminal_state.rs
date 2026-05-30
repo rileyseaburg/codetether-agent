@@ -11,7 +11,7 @@ use crossterm::{
     cursor::Show,
     event::{DisableBracketedPaste, DisableMouseCapture},
     execute,
-    terminal::{disable_raw_mode, LeaveAlternateScreen},
+    terminal::{LeaveAlternateScreen, disable_raw_mode},
 };
 
 /// Restores terminal settings modified by the interactive TUI.

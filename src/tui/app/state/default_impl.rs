@@ -96,6 +96,7 @@ impl Default for super::AppState {
             cached_max_width: 0,
             cached_streaming_snapshot: None,
             cached_processing: false,
+            cached_tool_preview_scroll: 0,
             cached_frozen_len: 0,
             watchdog_notification: None,
             main_watchdog_root_prompt: None,

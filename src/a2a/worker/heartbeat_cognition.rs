@@ -4,7 +4,10 @@ use std::time::Duration;
 
 use reqwest::Client;
 
-use super::{CognitionHeartbeatConfig, CognitionLatestSnapshot, CognitionStatusSnapshot, trim_for_heartbeat, heartbeat_cognition_merge};
+use super::{
+    CognitionHeartbeatConfig, CognitionLatestSnapshot, CognitionStatusSnapshot,
+    heartbeat_cognition_merge, trim_for_heartbeat,
+};
 
 pub(super) async fn fetch_cognition_heartbeat_payload(
     client: &Client,

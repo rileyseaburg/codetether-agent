@@ -8,14 +8,17 @@ use tokio::sync::Mutex;
 use crate::{bus::AgentBus, cli::A2aArgs};
 
 use super::{
-    HeartbeatState, WorkerContext, build_worker_http_client,
-    export_worker_runtime_env, maybe_start_worker_a2a_peer, resolve_worker_id,
-    task_timeline, worker_capabilities, worker_init_helpers,
+    HeartbeatState, WorkerContext, build_worker_http_client, export_worker_runtime_env,
+    maybe_start_worker_a2a_peer, resolve_worker_id, task_timeline, worker_capabilities,
+    worker_init_helpers,
 };
 
 pub(super) async fn init_worker(args: A2aArgs) -> Result<WorkerContext> {
     let server = args.server.trim_end_matches('/').to_string();
-    let name = args.name.as_deref().map(ToString::to_string)
+    let name = args
+        .name
+        .as_deref()
+        .map(ToString::to_string)
         .unwrap_or_else(|| format!("codetether-{}", std::process::id()));
     let worker_id = resolve_worker_id();
     export_worker_runtime_env(&server, &args.token, &worker_id);
@@ -30,16 +33,35 @@ pub(super) async fn init_worker(args: A2aArgs) -> Result<WorkerContext> {
     let a2a_peer = maybe_start_worker_a2a_peer(&args, &name, bus.clone()).await;
     let task_progress = Arc::new(Mutex::new(task_timeline::TaskProgressState::new()));
     let task_runtime = worker_init_helpers::build_task_runtime(
-        &args, &client, &server, &worker_id, &name, &processing, &bus, &task_progress,
+        &args,
+        &client,
+        &server,
+        &worker_id,
+        &name,
+        &processing,
+        &bus,
+        &task_progress,
     );
     tracing::info!(
         "Starting A2A worker: {} ({}) server={} workspaces={:?} max_concurrent={}",
-        name, worker_id, server,
+        name,
+        worker_id,
+        server,
         shared_codebases.lock().await.clone(),
         task_runtime.max_concurrent_tasks
     );
     Ok(WorkerContext {
-        args, server, name, worker_id, shared_codebases, processing,
-        cognition_heartbeat, heartbeat_state, bus, task_progress, task_runtime, a2a_peer,
+        args,
+        server,
+        name,
+        worker_id,
+        shared_codebases,
+        processing,
+        cognition_heartbeat,
+        heartbeat_state,
+        bus,
+        task_progress,
+        task_runtime,
+        a2a_peer,
     })
 }

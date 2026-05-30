@@ -172,6 +172,7 @@ pub struct AppState {
     pub cached_max_width: usize,
     pub cached_streaming_snapshot: Option<String>,
     pub cached_processing: bool,
+    pub cached_tool_preview_scroll: usize,
     pub cached_frozen_len: usize,
     pub watchdog_notification: Option<super::watchdog::WatchdogNotification>,
     pub main_watchdog_root_prompt: Option<String>,

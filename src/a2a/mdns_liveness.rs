@@ -70,9 +70,6 @@ impl Drop for AbortOnDrop {
 }
 
 /// Spawn the expiry loop and return a guard that aborts it on drop.
-pub fn spawn_expire_loop(
-    bus: Arc<AgentBus>,
-    liveness: Arc<Mutex<PeerLiveness>>,
-) -> AbortOnDrop {
+pub fn spawn_expire_loop(bus: Arc<AgentBus>, liveness: Arc<Mutex<PeerLiveness>>) -> AbortOnDrop {
     AbortOnDrop(tokio::spawn(expire_loop(bus, liveness)))
 }

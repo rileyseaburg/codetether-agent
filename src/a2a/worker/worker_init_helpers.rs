@@ -37,7 +37,10 @@ pub(super) fn parse_codebases(args: &A2aArgs) -> Vec<String> {
     args.workspaces
         .as_deref()
         .map(|items| {
-            items.split(',').map(|item| item.trim().to_string()).collect()
+            items
+                .split(',')
+                .map(|item| item.trim().to_string())
+                .collect()
         })
         .unwrap_or_else(|| vec![std::env::current_dir().unwrap().display().to_string()])
 }

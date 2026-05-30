@@ -5,12 +5,15 @@ use futures::StreamExt;
 use tokio::sync::mpsc;
 
 use super::{
-    WorkerTaskRuntime, pending_tasks::poll_pending_tasks,
-    task_dispatch::spawn_task_handler, task_stream_request::build_stream_request,
+    WorkerTaskRuntime, pending_tasks::poll_pending_tasks, task_dispatch::spawn_task_handler,
+    task_stream_request::build_stream_request,
 };
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum StreamDisconnectReason { Ended, ReadError(String) }
+pub(super) enum StreamDisconnectReason {
+    Ended,
+    ReadError(String),
+}
 
 pub(super) async fn connect_stream(
     runtime: &WorkerTaskRuntime,
@@ -18,7 +21,9 @@ pub(super) async fn connect_stream(
     codebases: &[String],
     task_notify_rx: Option<mpsc::Receiver<String>>,
 ) -> Result<StreamDisconnectReason> {
-    let response = build_stream_request(runtime, name, codebases).send().await?;
+    let response = build_stream_request(runtime, name, codebases)
+        .send()
+        .await?;
     if !response.status().is_success() {
         anyhow::bail!("Failed to connect: {}", response.status());
     }
@@ -44,7 +49,18 @@ async fn process_buffer(buffer: &mut Vec<u8>, runtime: &WorkerTaskRuntime) {
     while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
         let event_bytes = buffer[..pos].to_vec();
         buffer.drain(..pos + 2);
-        let Ok(event_str) = std::str::from_utf8(&event_bytes) else { continue };
-        if let Some(data) = event_str.lines().find(|l| l.starts_with("data:")).map(|l| l.trim_start_matches("data:").trim()) && !data.is_empty() && data != "[DONE]" && let Ok(task) = serde_json::from_str::<serde_json::Value>(data) { spawn_task_handler(&task, runtime).await; }
+        let Ok(event_str) = std::str::from_utf8(&event_bytes) else {
+            continue;
+        };
+        if let Some(data) = event_str
+            .lines()
+            .find(|l| l.starts_with("data:"))
+            .map(|l| l.trim_start_matches("data:").trim())
+            && !data.is_empty()
+            && data != "[DONE]"
+            && let Ok(task) = serde_json::from_str::<serde_json::Value>(data)
+        {
+            spawn_task_handler(&task, runtime).await;
+        }
     }
 }

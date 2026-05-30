@@ -8,8 +8,11 @@ impl TaskTimeline {
         let reached: Vec<serde_json::Value> = self.checkpoints.iter()
             .map(|e| serde_json::json!({ "checkpoint": e.checkpoint.as_str(), "elapsed_ms": e.elapsed_ms, "timestamp": e.timestamp.to_rfc3339(), "detail": e.detail }))
             .collect();
-        let skipped: Vec<&str> = TaskCheckpoint::ALL.iter()
-            .filter(|cp| !self.reached(**cp)).map(|cp| cp.as_str()).collect();
+        let skipped: Vec<&str> = TaskCheckpoint::ALL
+            .iter()
+            .filter(|cp| !self.reached(**cp))
+            .map(|cp| cp.as_str())
+            .collect();
         let deltas: Vec<serde_json::Value> = (1..self.checkpoints.len())
             .map(|i| serde_json::json!({ "from": self.checkpoints[i-1].checkpoint.as_str(), "to": self.checkpoints[i].checkpoint.as_str(), "delta_ms": self.checkpoints[i].elapsed_ms - self.checkpoints[i - 1].elapsed_ms }))
             .collect();
