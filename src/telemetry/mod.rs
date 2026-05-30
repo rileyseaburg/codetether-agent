@@ -62,6 +62,11 @@
 //! ```
 
 pub mod a2a;
+pub mod alloc_guard;
+pub mod alloc_guard_config;
+pub mod alloc_guard_report;
+#[cfg(test)]
+mod alloc_guard_tests;
 pub mod context;
 pub mod cost;
 pub mod globals;
@@ -88,3 +93,11 @@ pub use tokens::{
     AtomicTokenCounter, GlobalTokenSnapshot, TokenCounts, TokenTotals, TokenUsageSnapshot,
 };
 pub use tools::{AtomicToolCounter, FileChange, ToolExecution};
+
+/// Arm both memory guards using `report_dir` as the crash-report spool:
+/// the capacity-guarding global allocator and the RSS watchdog. Both are
+/// idempotent and write into the same spool the flusher drains on startup.
+pub fn install_memory_guards(report_dir: std::path::PathBuf) {
+    alloc_guard_config::configure(report_dir.clone());
+    rss_watchdog::spawn(report_dir);
+}

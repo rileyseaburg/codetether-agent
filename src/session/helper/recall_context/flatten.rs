@@ -14,7 +14,9 @@ pub fn flatten_messages(messages: &[Message]) -> (String, bool) {
 
 /// Budget-aware flattening with a running token count (O(N), not O(N²)).
 pub fn flatten_messages_with_budget(messages: &[Message], budget: usize) -> (String, bool) {
-    let mut out = String::with_capacity(budget * 4);
+    // Reserve a sane amount up front (the string still grows as needed). A
+    // bogus `budget` must never turn this hint into a multi-GiB reservation.
+    let mut out = String::with_capacity(budget.saturating_mul(4).min(1024 * 1024));
     let mut tokens = 0usize;
     let mut truncated = false;
     let sep = "\n---\n\n";
