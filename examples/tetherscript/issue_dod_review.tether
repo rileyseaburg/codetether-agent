@@ -1,19 +1,8 @@
-// Lightweight reviewer guard for GitHub issue Definition-of-Done (DoD) checks.
-//
-// The hook intentionally stays simple and deterministic so it can run as a
-// project-local TetherScript fixture. Review automation should not approve a PR
-// unless the reviewer output contains an Issue DoD checklist and every issue DoD
-// item is marked with concrete proof.
+// Reviewer guard for GitHub issue Definition-of-Done (DoD) checks.
 
-fn dod_item_count(issue_body) {
-    let mut count = 0
-    for line in issue_body.lines() {
-        let trimmed = line.trim()
-        if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") || trimmed.starts_with("-") {
-            count = count + 1
-        }
-    }
-    return count
+fn is_dod_line(line) {
+    let trimmed = line.trim()
+    return trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") || trimmed.starts_with("-")
 }
 
 fn dod_item_text(line) {
@@ -21,7 +10,6 @@ fn dod_item_text(line) {
     let mut item = text
     if text.starts_with("- [x]") || text.starts_with("- [ ]") {
         item = text.replace("- [x]", "").replace("- [ ]", "")
-        return item.replace(".", "").trim()
     } else if text.starts_with("-") {
         item = text.replace("-", "")
     }
@@ -29,102 +17,38 @@ fn dod_item_text(line) {
 }
 
 fn all_dod_items_preserved(issue_body, review_output) {
-    let normalized_review = review_output.lower().replace(".", "")
+    let normalized = review_output.lower().replace(".", "")
     let mut expected = 0
     let mut preserved = 0
     for line in issue_body.lines() {
-        let trimmed = line.trim()
-        if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") || trimmed.starts_with("-") {
+        if is_dod_line(line) {
             expected = expected + 1
-            if normalized_review.contains(dod_item_text(trimmed)) {
-                preserved = preserved + 1
-            }
+            if normalized.contains(dod_item_text(line)) { preserved = preserved + 1 }
         }
     }
     return expected > 0 && preserved == expected
 }
 
-fn has_issue_dod_checklist(review_output) {
-    let normalized = review_output.lower()
-    if normalized.contains("issue dod checklist") {
-        return true
-    }
-    if normalized.contains("issue definition of done") {
-        return true
-    }
-    return false
-}
-
-fn has_missing_or_unproven_item(review_output) {
-    let normalized = review_output.lower()
-    if normalized.contains("- [ ]") {
-        return true
-    }
-    if normalized.contains("missing") {
-        return true
-    }
-    if normalized.contains("unproven") {
-        return true
-    }
-    if normalized.contains("not proven") {
-        return true
-    }
-    if normalized.contains("not-run") {
-        return true
-    }
-    return false
-}
-
-fn looks_approved(review_output) {
-    let normalized = review_output.lower()
-    if normalized.contains("approved") {
-        return true
-    }
-    if normalized.contains("lgtm") {
-        return true
-    }
-    if normalized.contains("merge-ready") {
-        return true
-    }
-    return false
-}
-
 fn validate(issue_body, review_output) {
-    let expected_items = dod_item_count(issue_body)
-    let actual_items = dod_item_count(review_output)
-    let has_checklist = has_issue_dod_checklist(review_output)
-    let has_unproven = has_missing_or_unproven_item(review_output)
-    let approves = looks_approved(review_output)
+    let lower = review_output.lower()
+    let has_checklist = lower.contains("issue dod checklist") || lower.contains("issue definition of done")
+    let has_unproven = lower.contains("- [ ]") || lower.contains("missing") || lower.contains("unproven") || lower.contains("not proven") || lower.contains("not-run")
+    let approves = lower.contains("approved") || lower.contains("lgtm") || lower.contains("merge-ready")
     let items_complete = all_dod_items_preserved(issue_body, review_output)
-
     let result = map()
-    result["expected_dod_items"] = expected_items
-    result["actual_dod_items"] = actual_items
-    result["has_issue_dod_checklist"] = has_checklist
-    result["has_missing_or_unproven_item"] = has_unproven
-    result["all_dod_items_present"] = items_complete
-    result["approved"] = approves
+    result["expected_dod_items"] = issue_body.lines().filter(is_dod_line).count()
+    result["actual_dod_items"] = review_output.lines().filter(is_dod_line).count()
+    result["has_issue_dod_checklist"] = has_checklist; result["has_missing_or_unproven_item"] = has_unproven
+    result["all_dod_items_present"] = items_complete; result["approved"] = approves
     result["valid"] = has_checklist && items_complete && !(approves && has_unproven)
+    if !has_checklist { return reject(result, "review output must include an Issue DoD checklist") }
+    if !items_complete { return reject(result, "review output must preserve each source issue DoD item") }
+    if approves && has_unproven { return reject(result, "review must not approve when any Issue DoD item is missing or unproven") }
+    result["decision"] = "accept"; result["reason"] = "review output preserves the Issue DoD gate"
+    return Ok(result)
+}
 
-    if !has_checklist {
-        result["decision"] = "reject"
-        result["reason"] = "review output must include an Issue DoD checklist"
-        return Ok(result)
-    }
-
-    if !items_complete {
-        result["decision"] = "reject"
-        result["reason"] = "review output must preserve each source issue DoD item"
-        return Ok(result)
-    }
-
-    if approves && has_unproven {
-        result["decision"] = "reject"
-        result["reason"] = "review must not approve when any Issue DoD item is missing or unproven"
-        return Ok(result)
-    }
-
-    result["decision"] = "accept"
-    result["reason"] = "review output preserves the Issue DoD gate"
+fn reject(result, reason) {
+    result["decision"] = "reject"; result["reason"] = reason
     return Ok(result)
 }
