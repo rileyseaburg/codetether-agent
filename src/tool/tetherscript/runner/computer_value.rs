@@ -4,11 +4,15 @@ use tetherscript::{capability::Authority, value::Value};
 
 use super::computer::ComputerAuthority;
 
-pub fn clone_with_scopes(auth: &ComputerAuthority, scopes: Vec<String>) -> Rc<dyn Authority> {
+pub fn clone_with(origins: Vec<String>, scopes: Vec<String>) -> Rc<dyn Authority> {
     Rc::new(ComputerAuthority {
-        origins: auth.origins.clone(),
+        origins,
         scopes: scopes.into_iter().collect(),
     })
+}
+
+pub fn origins(auth: &ComputerAuthority) -> &[String] {
+    &auth.origins
 }
 
 pub fn scopes(auth: &ComputerAuthority) -> &HashSet<String> {

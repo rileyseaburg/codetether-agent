@@ -7,7 +7,8 @@ use super::{computer::ComputerAuthority, computer_value};
 /// Invoke an existing `computer_use` action from a TetherScript computer grant.
 pub fn invoke(auth: &ComputerAuthority, method: &str, args: &[Value]) -> Result<Value, String> {
     let (payload, scope) = super::computer_payload::prepare(method, args)?;
-    require_scope(auth, scope)?;
+    require_scope(auth, method, scope)?;
+    super::computer_origin::require(auth, method, &payload)?;
     let input = input_from_payload(method, &payload)?;
     let result = run_dispatch(&input)?;
     let json = serde_json::to_value(result)
@@ -15,11 +16,11 @@ pub fn invoke(auth: &ComputerAuthority, method: &str, args: &[Value]) -> Result<
     Ok(json_to_tetherscript(json))
 }
 
-fn require_scope(auth: &ComputerAuthority, scope: &str) -> Result<(), String> {
+fn require_scope(auth: &ComputerAuthority, method: &str, scope: &str) -> Result<(), String> {
     computer_value::scopes(auth)
         .contains(scope)
         .then_some(())
-        .ok_or_else(|| format!("computer: scope `{scope}` not granted"))
+        .ok_or_else(|| format!("computer.{method}: scope `{scope}` not granted"))
 }
 
 fn input_from_payload(method: &str, payload: &Value) -> Result<ComputerUseInput, String> {
@@ -29,10 +30,16 @@ fn input_from_payload(method: &str, payload: &Value) -> Result<ComputerUseInput,
 }
 
 fn run_dispatch(input: &ComputerUseInput) -> Result<crate::tool::ToolResult, String> {
-    let rt = tokio::runtime::Builder::new_current_thread()
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => handle.block_on(platform::dispatch(input)),
+        Err(_) => runtime_dispatch(input),
+    }
+    .map_err(|e| format!("computer: computer_use dispatch failed: {e}"))
+}
+
+fn runtime_dispatch(input: &ComputerUseInput) -> anyhow::Result<crate::tool::ToolResult> {
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()
-        .map_err(|e| format!("computer: runtime create failed: {e}"))?;
-    rt.block_on(platform::dispatch(input))
-        .map_err(|e| format!("computer: computer_use dispatch failed: {e}"))
+        .build()?
+        .block_on(platform::dispatch(input))
 }

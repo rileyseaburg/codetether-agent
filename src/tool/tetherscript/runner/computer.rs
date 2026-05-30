@@ -22,7 +22,7 @@ pub struct ComputerAuthority {
 impl ComputerAuthority {
     pub fn new(origins: Vec<String>, scopes: Vec<String>) -> Rc<dyn Authority> {
         Rc::new(Self {
-            origins,
+            origins: origins.into_iter().map(normalize_origin).collect(),
             scopes: scopes.into_iter().collect(),
         })
     }
@@ -30,6 +30,10 @@ impl ComputerAuthority {
     pub fn all_scopes() -> Vec<String> {
         super::computer_scopes::all()
     }
+}
+
+fn normalize_origin(origin: String) -> String {
+    origin.trim_end_matches('/').to_string()
 }
 
 impl Authority for ComputerAuthority {
