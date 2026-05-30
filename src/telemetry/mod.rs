@@ -63,6 +63,7 @@
 
 pub mod a2a;
 pub mod alloc_guard;
+pub(crate) mod alloc_guard_command;
 pub mod alloc_guard_config;
 pub mod alloc_guard_report;
 #[cfg(test)]

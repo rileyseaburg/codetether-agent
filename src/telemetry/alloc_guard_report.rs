@@ -13,6 +13,7 @@ use chrono::Utc;
 use serde_json::json;
 
 use super::alloc_guard::SPOOL_DIR;
+use super::alloc_guard_command::command_line;
 use super::memory::MemorySnapshot;
 
 /// Handle an over-ceiling allocation: diagnose, spool, and abort. Marked
@@ -47,7 +48,7 @@ fn write_report(dir: &Path, size: usize, ceiling: usize, backtrace: &str) -> std
         "report_id": report_id,
         "occurred_at": Utc::now().to_rfc3339(),
         "app_version": env!("CARGO_PKG_VERSION"),
-        "command_line": std::env::args().collect::<Vec<_>>().join(" "),
+        "command_line": command_line(),
         "os": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
         "process_id": std::process::id(),

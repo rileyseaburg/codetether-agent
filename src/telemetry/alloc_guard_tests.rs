@@ -1,6 +1,7 @@
 //! Tests for the capacity-guarding allocator.
 
 use super::alloc_guard::CEILING;
+use std::ffi::OsString;
 use std::sync::atomic::Ordering;
 
 /// `configure` must resolve a non-zero ceiling, floor a too-small override,
@@ -32,4 +33,23 @@ fn configure_arms_guard_and_floors_tiny_override() {
     CEILING.store(0, Ordering::Relaxed);
     // SAFETY: single-threaded test teardown.
     unsafe { std::env::remove_var("CODETETHER_ALLOC_CEILING_MIB") };
+}
+
+#[test]
+fn command_line_tolerates_invalid_unicode() {
+    let args = [OsString::from("codetether"), invalid_os_string()];
+    let command_line = super::alloc_guard_command::command_line_from(args);
+    assert!(command_line.starts_with("codetether "));
+    assert!(command_line.contains('\u{fffd}'));
+}
+
+#[cfg(unix)]
+fn invalid_os_string() -> OsString {
+    use std::os::unix::ffi::OsStringExt;
+    OsString::from_vec(vec![0xff])
+}
+
+#[cfg(not(unix))]
+fn invalid_os_string() -> OsString {
+    OsString::from("�")
 }
