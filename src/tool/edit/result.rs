@@ -13,13 +13,13 @@ pub fn invalid(field: &str, message: &str, example: Value) -> ToolResult {
 }
 
 pub fn matcher_error(error: Value) -> ToolResult {
-    let code = error["code"].as_str().unwrap_or("NOT_FOUND");
-    let message = match code {
+    let code = error["code"].as_str().unwrap_or("NOT_FOUND").to_string();
+    let message = match code.as_str() {
         "AMBIGUOUS_MATCH" => "old_string matched multiple times.",
         "NOT_FOUND" => "old_string not found; closest candidate is included.",
         _ => "edit matcher failed.",
     };
-    ToolResult::structured_error(code, "edit", message, None, Some(error))
+    ToolResult::structured_error(&code, "edit", message, None, Some(error))
 }
 
 pub fn preview(
