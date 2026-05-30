@@ -11,6 +11,8 @@ mod alpha8_js_eval;
 #[cfg(feature = "tetherscript")]
 mod browser_grant;
 #[cfg(feature = "tetherscript")]
+mod computer_grant;
+#[cfg(feature = "tetherscript")]
 mod conversion;
 #[cfg(feature = "tetherscript")]
 mod deepseek_repair;
