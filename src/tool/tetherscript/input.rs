@@ -2,10 +2,6 @@ use serde::Deserialize;
 use serde_json::Value;
 
 /// Input parameters for the `tetherscript_plugin` tool.
-///
-/// Browser capability fields (`grant_browser`, `browser_origin`, `browser_scope`)
-/// are optional. When `grant_browser` is provided the runner creates a
-/// `BrowserAuthority` and grants it to the plugin host.
 #[derive(Debug, Deserialize)]
 pub struct TetherScriptPluginInput {
     #[serde(default)]
@@ -26,6 +22,15 @@ pub struct TetherScriptPluginInput {
     /// Allowed scopes for browser capability.
     #[serde(default)]
     pub browser_scope: Vec<String>,
+    /// Grant local computer_use as a TetherScript `computer` capability.
+    #[serde(default)]
+    pub grant_computer: bool,
+    /// Allowed origins for computer capability.
+    #[serde(default)]
+    pub computer_origin: Vec<String>,
+    /// Allowed scopes for computer capability.
+    #[serde(default)]
+    pub computer_scope: Vec<String>,
 }
 
 impl TetherScriptPluginInput {
@@ -45,5 +50,11 @@ impl TetherScriptPluginInput {
         self.grant_browser
             .as_deref()
             .is_some_and(|ep| !ep.is_empty())
+    }
+
+    /// Whether computer capability should be granted to the plugin.
+    #[cfg(test)]
+    pub fn wants_computer(&self) -> bool {
+        self.grant_computer
     }
 }

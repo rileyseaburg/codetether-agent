@@ -4,7 +4,7 @@ use std::time::Duration;
 use super::request::TetherScriptRun;
 use super::run_result::TetherScriptRunResult;
 use crate::tool::tetherscript::join::join_error;
-use crate::tool::tetherscript::runner::{self, BrowserGrant};
+use crate::tool::tetherscript::runner::{self, BrowserGrant, ComputerGrant};
 
 /// Execute a TetherScript run on a blocking thread with a timeout.
 pub async fn run(request: TetherScriptRun) -> Result<TetherScriptRunResult> {
@@ -19,6 +19,11 @@ pub async fn run(request: TetherScriptRun) -> Result<TetherScriptRunResult> {
                 endpoint: request.grant_browser,
                 origins: request.browser_origin,
                 scopes: request.browser_scope,
+            },
+            ComputerGrant {
+                enabled: request.grant_computer,
+                origins: request.computer_origin,
+                scopes: request.computer_scope,
             },
         )
     });

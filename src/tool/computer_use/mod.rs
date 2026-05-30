@@ -7,7 +7,7 @@ pub mod input;
 pub mod response;
 pub mod schema;
 
-mod platform;
+pub(crate) mod platform;
 
 use super::{Tool, ToolResult};
 use anyhow::{Context, Result};

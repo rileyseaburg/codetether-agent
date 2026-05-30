@@ -47,7 +47,7 @@ const MAGIC: &str = "codetether-a2a-v1";
 ///
 /// assert!(beacon.is_valid());
 /// assert_eq!(beacon.name, "desktop-worker");
-/// #[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Beacon {
     /// Protocol marker used to validate that this payload belongs to A2A discovery.
     magic: String,
