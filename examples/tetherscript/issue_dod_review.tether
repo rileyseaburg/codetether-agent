@@ -21,8 +21,8 @@ fn dod_item_text(line) {
     let mut item = text
     if text.starts_with("- [x]") || text.starts_with("- [ ]") {
         item = text.replace("- [x]", "").replace("- [ ]", "")
-    }
-    if text.starts_with("-") {
+        return item.replace(".", "").trim()
+    } else if text.starts_with("-") {
         item = text.replace("-", "")
     }
     return item.replace(".", "").trim()
