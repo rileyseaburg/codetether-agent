@@ -3,6 +3,14 @@
 //! A Rust implementation of an AI coding agent with first-class support for
 //! the A2A (Agent-to-Agent) protocol and the CodeTether ecosystem.
 
+/// Process-wide capacity-guarding allocator. Catches a single runaway
+/// allocation (a corrupted capacity hint reserving tens of GiB) and aborts
+/// cleanly with a spooled crash report rather than letting the OS OOM-kill
+/// the process. See [`telemetry::alloc_guard`]. The guard is inert until
+/// [`telemetry::alloc_guard_config::configure`] arms it at startup.
+#[global_allocator]
+static GLOBAL_ALLOC: telemetry::alloc_guard::GuardAlloc = telemetry::alloc_guard::GuardAlloc;
+
 pub mod a2a;
 pub mod agent;
 pub mod audit;
