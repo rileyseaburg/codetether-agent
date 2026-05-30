@@ -16,3 +16,13 @@ pub fn tool_output_budget() -> usize {
         .and_then(|v| v.parse().ok())
         .unwrap_or(DEFAULT_TOOL_OUTPUT_MAX_BYTES)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_budget_is_64k() {
+        assert_eq!(DEFAULT_TOOL_OUTPUT_MAX_BYTES, 64 * 1024);
+    }
+}

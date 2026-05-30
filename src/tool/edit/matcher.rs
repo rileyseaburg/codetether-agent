@@ -7,6 +7,7 @@ mod match_candidate;
 mod matcher_tests;
 use match_candidate::{nearest, tolerant_match};
 
+#[derive(Debug)]
 pub enum MatchPlan<'a> {
     Exact { count: usize },
     Tolerant { matched: &'a str },
