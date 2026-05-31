@@ -22,6 +22,7 @@ impl super::super::AppState {
         {
             return None;
         }
+        // Only clone the frozen portion — skip streaming suffix.
         let frozen: Vec<Line<'static>> = self
             .cached_message_lines
             .iter()

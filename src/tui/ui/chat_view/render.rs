@@ -9,7 +9,7 @@ use super::attachment::attachment_suffix;
 use super::input_area::render_input;
 use super::layout_compute::compute_chat_chunks;
 use super::lines::build_chat_lines;
-use super::messages::render_messages;
+use super::messages::render_messages_ref;
 use super::status_line::render_status_line;
 use super::suggestions::render_suggestions;
 use crate::session::Session;
@@ -30,8 +30,9 @@ pub fn render_chat_view(f: &mut Frame, app: &mut App, session: &Session) {
     let palette = ColorPalette::marketing();
     let formatter = MessageFormatter::new(chunks.messages.width.saturating_sub(4) as usize);
     let max_width = chunks.messages.width as usize;
-    let lines = build_chat_lines(app, max_width, max_width, &formatter, &palette);
-    render_messages(f, app, session, &chunks, &palette, lines);
+    let drawn = build_chat_lines(app, max_width, max_width, &formatter, &palette);
+    render_messages_ref(f, app, session, &chunks, &palette, drawn.as_slice());
+    drawn.restore(app, max_width);
     let suffix = attachment_suffix(app);
     render_input(f, app, chunks.input, &palette, &suffix);
     if let Some(rect) = chunks.suggestions {

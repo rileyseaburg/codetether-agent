@@ -17,7 +17,7 @@ impl super::AppState {
     /// lines. The cache is reusable only when no pending tool timer needs a
     /// live redraw and all render-affecting state matches the stored metadata.
     ///
-    /// Returns `true` when callers may clone and draw `cached_message_lines`.
+    /// Returns `true` when callers may take and draw `cached_message_lines`.
     pub(crate) fn is_message_cache_valid(&self, max_width: usize) -> bool {
         // A pending tool renders a live "running (N.Ns)" spinner; force a
         // rebuild every frame so its elapsed time keeps ticking.
@@ -29,16 +29,21 @@ impl super::AppState {
             && self.cached_processing == self.processing
     }
 
-    /// Returns cloned cached lines when the full cache can be reused.
+    /// Takes ownership of cached lines when the cache is valid, avoiding clone.
     ///
-    /// `max_width` is the current chat panel width. A `None` return tells the
-    /// caller to rebuild the buffer and store the fresh lines afterward.
-    pub fn get_or_build_message_lines(&mut self, max_width: usize) -> Option<Vec<Line<'static>>> {
+    /// Callers must call [`Self::restore_cached_message_lines`] after drawing
+    /// to put the lines back. Returns `None` when the cache is stale or empty.
+    pub fn take_cached_if_valid(&mut self, max_width: usize) -> Option<Vec<Line<'static>>> {
         if self.is_message_cache_valid(max_width) && !self.cached_message_lines.is_empty() {
-            Some(self.cached_message_lines.clone())
+            Some(std::mem::take(&mut self.cached_message_lines))
         } else {
             None
         }
+    }
+
+    /// Restores lines that were taken via [`Self::take_cached_if_valid`].
+    pub fn restore_cached_message_lines(&mut self, lines: Vec<Line<'static>>) {
+        self.cached_message_lines = lines;
     }
 
     /// Takes ownership of cached lines and leaves the line buffer empty.
@@ -49,6 +54,19 @@ impl super::AppState {
     #[allow(dead_code)]
     pub(crate) fn take_cached_message_lines(&mut self) -> Vec<Line<'static>> {
         self.cached_message_lines.drain(..).collect()
+    }
+
+    /// Returns cloned cached lines when the full cache can be reused.
+    ///
+    /// Prefer [`take_cached_if_valid`] for the zero-clone hot path. This
+    /// method exists for callers that need an owned copy without the
+    /// take/restore protocol (e.g. the webview renderer).
+    pub fn get_or_build_message_lines(&mut self, max_width: usize) -> Option<Vec<Line<'static>>> {
+        if self.is_message_cache_valid(max_width) && !self.cached_message_lines.is_empty() {
+            Some(self.cached_message_lines.clone())
+        } else {
+            None
+        }
     }
 
     /// Stores freshly rebuilt chat lines and their validation metadata.

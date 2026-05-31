@@ -20,6 +20,8 @@ use super::title::build_title;
 
 /// Render the chat messages block with title, borders, and scroll.
 ///
+/// Takes lines by value. For a zero-clone variant, see [`render_messages_ref`].
+///
 /// # Examples
 ///
 /// ```rust,no_run
@@ -30,6 +32,7 @@ use super::title::build_title;
 /// render_messages(f, app, sess, &chunks, &pal, vec![]);
 /// # }
 /// ```
+#[allow(dead_code)]
 pub fn render_messages(
     f: &mut Frame,
     app: &mut App,
@@ -44,5 +47,26 @@ pub fn render_messages(
         .title(build_title(app, session));
     let scroll = clamp_scroll(app, chunks.messages, &lines);
     let chat = Paragraph::new(lines).block(block).scroll((scroll, 0));
+    f.render_widget(chat, chunks.messages);
+}
+
+/// Zero-clone render: takes a `&[Line]` reference instead of `Vec<Line>`.
+///
+/// This avoids cloning the entire line buffer when the caller intends to
+/// reuse the lines after rendering (e.g. caching for the next frame).
+pub fn render_messages_ref(
+    f: &mut Frame,
+    app: &mut App,
+    session: &Session,
+    chunks: &ChatChunks,
+    palette: &ColorPalette,
+    lines: &[Line<'static>],
+) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(palette.border))
+        .title(build_title(app, session));
+    let scroll = clamp_scroll(app, chunks.messages, lines);
+    let chat = Paragraph::new(lines.to_vec()).block(block).scroll((scroll, 0));
     f.render_widget(chat, chunks.messages);
 }

@@ -75,7 +75,10 @@ pub async fn run_event_loop(
 
     loop {
         tick::before_draw(app, &worker_bridge);
-        crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
+        if app.state.needs_redraw {
+            crate::tui::app::safe_draw::draw_ui(terminal, app, session)?;
+            app.state.needs_redraw = false;
+        }
         let mut io = LoopIo::new(&mut event_rx, &mut result_rx, &mut setup.shutdown_rx);
         let mut args = SelectArgs {
             reader: &mut setup.reader,
