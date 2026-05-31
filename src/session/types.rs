@@ -18,8 +18,9 @@ use crate::session::index::SummaryIndex;
 use crate::session::pages::PageKind;
 
 /// Default maximum agentic loop iterations when [`Session::max_steps`] is
-/// `None`.
-pub const DEFAULT_MAX_STEPS: usize = 250;
+/// `None`. 250 was far too generous — most tasks converge in under 20 steps
+/// and anything past 50 usually means the model is spinning without progress.
+pub const DEFAULT_MAX_STEPS: usize = 50;
 
 /// An image attachment to include with a user message (e.g. pasted from the
 /// clipboard in the TUI).
