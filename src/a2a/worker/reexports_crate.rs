@@ -8,7 +8,7 @@ pub(super) use crate::{
         worker_workspace_context::resolve_task_workspace_dir,
         worker_workspace_record::{RegisteredWorkspaceRecord, fetch_workspace_record},
     },
-    provenance::install_commit_msg_hook,
+    provenance::{ensure_provenance_trailers, install_commit_msg_hook},
     session::helper::runtime::enrich_tool_input_with_runtime_context,
 };
 pub(super) use codetether_a2a_worker_core::{

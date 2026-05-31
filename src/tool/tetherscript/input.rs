@@ -28,7 +28,7 @@ pub struct TetherScriptPluginInput {
     /// Allowed origins for computer capability.
     #[serde(default)]
     pub computer_origin: Vec<String>,
-    /// Allowed scopes for computer capability.
+    /// Allowed scopes for computer capability. Omit for default scopes.
     #[serde(default)]
     pub computer_scope: Vec<String>,
 }

@@ -34,6 +34,10 @@ pub fn insert_provenance_fields(obj: &mut Map<String, Value>, provenance: &Execu
             "__ct_agent_identity_id",
             provenance.identity.agent_identity_id.as_deref(),
         ),
+        (
+            "__ct_agent_name",
+            Some(provenance.identity.agent_name.as_str()),
+        ),
         ("__ct_key_id", provenance.identity.key_id.as_deref()),
     ] {
         insert_provenance_field(obj, key, value);

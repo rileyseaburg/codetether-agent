@@ -17,6 +17,7 @@ fn parses_computer_grant_fields() {
     .unwrap();
 
     assert!(input.grant_computer);
+    assert!(input.wants_computer());
     assert_eq!(input.computer_origin, ["agent://desktop-script"]);
     assert_eq!(input.computer_scope, ["computer.inspect"]);
 }
