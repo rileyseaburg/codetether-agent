@@ -9,7 +9,7 @@
 /// Reminder sent when the build-mode agent responds with a plan-only answer
 /// despite the user asking for a file change.
 pub(crate) const BUILD_MODE_TOOL_FIRST_NUDGE: &str = "Build mode policy reminder: execute directly. \
-Start by calling at least one appropriate tool now (or emit  markup for non-native \
+Start by calling at least one appropriate tool now (or emit <tool_call> markup for non-native \
 tool providers). Do not ask for permission and do not provide a plan-only response.";
 
 /// Maximum number of "tool-first" retries before we surface an error to the
@@ -51,18 +51,13 @@ directly) or conclude the identifier is absent and continue with the best availa
 /// of actually emitting one.
 pub(crate) const NATIVE_TOOL_PROMISE_NUDGE: &str = "You said you would use tools. Do not describe the tool \
 call or promise a next step. Emit the actual tool call now. If native tool calling fails, emit a \
- JSON block immediately instead of prose.";
+<tool_call> JSON block immediately instead of prose.";
 
 /// Message sent when the loop-detection guard is forcing a final answer.
 pub(crate) const FORCE_FINAL_ANSWER_NUDGE: &str = "STOP using tools. Provide your final answer NOW \
-in plain text based on the tool results you already received. Do NOT output any  blocks.";
+in plain text based on the tool results you already received. Do NOT output any <tool_call> blocks.";
 
 /// Nudge when the model is making many tool calls but not writing any files.
 pub(crate) const NO_PROGRESS_NUDGE: &str = "You have made many tool calls without writing or editing \
 any files. If you are still investigating, that is fine — but if you have gathered enough information, \
 stop reading/searching and start implementing. Provide a final answer if you cannot complete the task.";
-
-/// Hard-stop message when total tool calls exceed the budget.
-pub(crate) const TOOL_BUDGET_EXCEEDED_MSG: &str = "Agent loop terminated: exceeded maximum tool call \
-budget (%d calls). The model appears to be stuck in a loop without converging on a solution. \
-Review the tool call history above to understand where things went off track.";
