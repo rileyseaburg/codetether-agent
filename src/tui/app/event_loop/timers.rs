@@ -9,7 +9,7 @@ pub(crate) struct LoopTimers {
 impl LoopTimers {
     pub fn new(watchdog_interval: Duration) -> Self {
         Self {
-            tick: tokio::time::interval(Duration::from_millis(50)),
+            tick: tokio::time::interval(Duration::from_millis(100)),
             watchdog: tokio::time::interval(watchdog_interval),
             watchdog_interval,
         }

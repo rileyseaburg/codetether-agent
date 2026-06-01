@@ -1,25 +1,23 @@
-use std::rc::Rc;
-
 use anyhow::Result;
 use serde_json::Value;
-use tetherscript::browser_cap::BrowserAuthority;
-use tetherscript::capability::Authority;
 use tetherscript::plugin::{PluginHost, TetherScriptAuthority};
 
 use crate::tool::tetherscript::convert::{json_to_tetherscript, tetherscript_to_json};
 
 use super::browser::BrowserGrant;
+use super::computer::ComputerGrant;
 use super::outcome::{self, TetherScriptOutcome};
 
-/// Run via PluginHost with optional browser capability granted.
+/// Run via PluginHost with optional host capabilities granted.
 pub fn run(
     source_name: String,
     source: String,
     hook: String,
     args: Vec<Value>,
     browser: BrowserGrant,
+    computer: ComputerGrant,
 ) -> Result<TetherScriptOutcome> {
-    let mut plugin = host(browser).load_source(&source_name, &source)?;
+    let mut plugin = host(browser, computer).load_source(&source_name, &source)?;
     let ts_args: Vec<_> = args.into_iter().map(json_to_tetherscript).collect();
     let call = plugin.call(&hook, &ts_args)?;
     let tether_val = call.value.clone();
@@ -30,20 +28,10 @@ pub fn run(
     })
 }
 
-fn host(browser: BrowserGrant) -> PluginHost {
+fn host(browser: BrowserGrant, computer: ComputerGrant) -> PluginHost {
     let mut host = PluginHost::new();
     host.grant("tetherscript", TetherScriptAuthority::new());
-    if let Some(endpoint) = &browser.endpoint {
-        host.grant("browser", browser_authority(endpoint, &browser));
-    }
+    super::host_grants::grant_browser(&mut host, browser);
+    super::host_grants::grant_computer(&mut host, computer);
     host
-}
-
-fn browser_authority(endpoint: &str, browser: &BrowserGrant) -> Rc<dyn Authority> {
-    let scopes = if browser.scopes.is_empty() {
-        BrowserAuthority::all_scopes()
-    } else {
-        browser.scopes.clone()
-    };
-    BrowserAuthority::new(endpoint, browser.origins.clone(), scopes)
 }

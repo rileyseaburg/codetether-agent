@@ -1,6 +1,6 @@
 //! Lower-level Git operations for worker commit pushing.
 
-use super::{clone_git::run_git_command_at, git_refspec};
+use super::{clone_git::run_git_command_at, git_commit_push_provenance, git_refspec};
 use anyhow::Result;
 use std::path::Path;
 
@@ -22,8 +22,13 @@ pub(super) async fn commit(
     provenance: Option<&crate::provenance::ExecutionProvenance>,
 ) -> Result<()> {
     let message = format!("CodeTether task {task_id}");
-    let output =
-        crate::provenance::git_commit_with_provenance(repo_path, &message, provenance).await?;
+    let effective_provenance = git_commit_push_provenance::worker_provenance(task_id, provenance);
+    let output = crate::provenance::git_commit_with_provenance(
+        repo_path,
+        &message,
+        Some(&effective_provenance),
+    )
+    .await?;
     if !output.status.success() {
         anyhow::bail!(
             "git commit failed: {}",

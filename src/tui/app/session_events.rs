@@ -7,6 +7,7 @@ mod lifecycle;
 mod pipeline;
 mod retention;
 mod text;
+mod text_bound;
 mod text_dispatch;
 mod tools;
 mod usage;

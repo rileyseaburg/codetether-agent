@@ -14,6 +14,9 @@ pub struct TetherScriptRun {
     pub grant_browser: Option<String>,
     pub browser_origin: Vec<String>,
     pub browser_scope: Vec<String>,
+    pub grant_computer: bool,
+    pub computer_origin: Vec<String>,
+    pub computer_scope: Vec<String>,
 }
 
 impl TetherScriptRun {
@@ -31,6 +34,9 @@ impl TetherScriptRun {
             grant_browser: input.grant_browser,
             browser_origin: input.browser_origin,
             browser_scope: input.browser_scope,
+            grant_computer: input.grant_computer,
+            computer_origin: input.computer_origin,
+            computer_scope: input.computer_scope,
         }
     }
 }

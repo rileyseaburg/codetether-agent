@@ -42,8 +42,9 @@ use super::error::is_retryable_upstream_error;
 use super::loop_constants::{
     BUILD_MODE_TOOL_FIRST_MAX_RETRIES, BUILD_MODE_TOOL_FIRST_NUDGE, CODESEARCH_THRASH_NUDGE,
     FORCE_FINAL_ANSWER_NUDGE, MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES, MAX_CONSECUTIVE_SAME_TOOL,
-    NATIVE_TOOL_PROMISE_NUDGE, NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES,
-    POST_EDIT_VALIDATION_MAX_RETRIES,
+    MAX_STEPS_WITHOUT_PROGRESS, MAX_TOTAL_TOOL_CALLS, NATIVE_TOOL_PROMISE_NUDGE,
+    NATIVE_TOOL_PROMISE_RETRY_MAX_RETRIES, NO_PROGRESS_NUDGE, POST_EDIT_VALIDATION_MAX_RETRIES,
+
 };
 use super::markup::normalize_textual_tool_calls;
 use super::provider::{
@@ -159,6 +160,8 @@ pub(crate) async fn run_prompt_with_events(
     let mut consecutive_codesearch_no_matches: u32 = 0;
     let mut build_mode_tool_retry_count: u8 = 0;
     let mut native_tool_promise_retry_count: u8 = 0;
+    let mut total_tool_calls: u32 = 0;
+    let mut steps_since_last_write: u32 = 0;
     let turn_id = Uuid::new_v4().to_string();
 
     let tool_router: Option<ToolCallRouter> = {
@@ -625,11 +628,54 @@ pub(crate) async fn run_prompt_with_events(
             }
         }
 
+        // ── Total tool call budget ──────────────────────────────
+        total_tool_calls += tool_calls.len() as u32;
+        if total_tool_calls > MAX_TOTAL_TOOL_CALLS {
+            tracing::warn!(
+                step = step,
+                total_tool_calls,
+                budget = MAX_TOTAL_TOOL_CALLS,
+                "Hard tool-call budget exceeded; terminating agent loop"
+            );
+            let mut nudge_msg = response.message.clone();
+            nudge_msg.content.retain(|p| !matches!(p, ContentPart::ToolCall { .. }));
+            if !nudge_msg.content.is_empty() { session.add_message(nudge_msg); }
+            return Err(anyhow::anyhow!(
+                "Agent loop terminated: exceeded maximum tool call budget ({} calls across {} steps).                  The model appears stuck. Review the tool history to understand what went wrong.",
+                total_tool_calls, step
+            ));
+        }
+
+        // ── Progress detection (no file writes in N steps) ──────
+        let any_write_tool = tool_calls.iter().any(|(_, name, _)| {
+            matches!(name.as_str(), "write" | "edit" | "create_file" | "replace_string_in_file" | "edit_file" | "bash")
+        });
+        if any_write_tool {
+            steps_since_last_write = 0;
+        } else {
+            steps_since_last_write += 1;
+        }
+        if steps_since_last_write >= MAX_STEPS_WITHOUT_PROGRESS {
+            tracing::warn!(
+                step = step,
+                steps_since_last_write,
+                "No file-writing tools called recently; nudging toward progress or answer"
+            );
+            session.add_message(Message {
+                role: Role::User,
+                content: vec![ContentPart::Text {
+                    text: NO_PROGRESS_NUDGE.to_string(),
+                }],
+            });
+            steps_since_last_write = 0; // reset so we don't spam the nudge
+        }
+
         session.add_message(response.message.clone());
 
         tracing::info!(
             step = step,
             num_tools = tool_calls.len(),
+            total_tool_calls,
             "Executing tool calls"
         );
 

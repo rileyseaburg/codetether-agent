@@ -220,4 +220,8 @@ pub struct AppState {
     /// Live throughput tracking for the status-line tok/s badge.
     pub streaming_start: Option<Instant>,
     pub streaming_chars: usize,
+    /// Dirty flag: set `true` by any mutation that requires a redraw.
+    /// The event loop clears it after drawing. Prevents redundant
+    /// full-renders when only the 50 ms tick fired with no state change.
+    pub needs_redraw: bool,
 }

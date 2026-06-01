@@ -23,6 +23,12 @@ pub(crate) fn complete(
     ));
     app.state
         .note_tool_completed(name.clone(), duration_ms, success);
-    app.state.status = format!("Tool finished: {name}");
+    app.state.status = status_text(&name, success, duration_ms, &output);
     app.state.scroll_to_bottom();
+}
+
+fn status_text(name: &str, success: bool, duration_ms: u64, output: &str) -> String {
+    let mark = if success { "✓" } else { "✗" };
+    let preview = truncate_preview(&output.replace('\n', " "), 80);
+    format!("{mark} {name} finished in {duration_ms}ms — {preview}")
 }

@@ -126,6 +126,7 @@ impl Default for super::AppState {
             saved_tool_preview_scroll: 0,
             streaming_start: None,
             streaming_chars: 0,
+            needs_redraw: true,
         }
     }
 }

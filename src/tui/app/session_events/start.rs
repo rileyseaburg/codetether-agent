@@ -15,9 +15,10 @@ pub(crate) async fn start(
     handle_processing_started(app, worker_bridge).await;
     ensure_timing(app);
     flush_streaming(app);
+    let preview = truncate_preview(&arguments.replace('\n', " "), 96);
     app.state.reset_tool_preview_scroll();
     app.state.start_pending_tool(name.clone());
-    app.state.status = format!("Running tool: {name}");
+    app.state.status = format!("Running {name}: {preview}");
     app.state.messages.push(ChatMessage::new(
         MessageType::ToolCall {
             name: name.clone(),

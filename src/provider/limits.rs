@@ -46,6 +46,9 @@ pub fn context_window_for_model(model: &str) -> usize {
         2_000_000
     } else if m.contains("gemini") {
         1_000_000
+    // ── MiniMax: most specific patterns first ────────────────────────
+    } else if m.contains("minimax-m3") || m.contains("minimaxm3") || m.contains("minimax/m3") {
+        1_000_000
     } else if m.contains("minimax") || m.contains("m2.5") {
         256_000
     } else if m.contains("qwen") || m.contains("qwq") {
@@ -95,6 +98,7 @@ mod tests {
         assert_eq!(context_window_for_model("gpt-4o-mini"), 128_000);
         assert_eq!(context_window_for_model("gemini-2.0-flash"), 1_000_000);
         assert_eq!(context_window_for_model("gemini-1.5-pro"), 1_000_000);
+        assert_eq!(context_window_for_model("minimax/m3"), 1_000_000);
         assert_eq!(context_window_for_model("minimax-m2.5"), 256_000);
         assert_eq!(context_window_for_model("qwen-2.5-coder"), 131_072);
         assert_eq!(context_window_for_model("deepseek-v4-flash"), 1_048_576);

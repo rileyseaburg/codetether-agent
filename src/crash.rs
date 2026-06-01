@@ -200,11 +200,12 @@ pub async fn initialize(config: &Config) {
     let settings = CrashReporterSettings::from_config(config);
     install_panic_hook(settings.clone());
 
-    // Spawn the RSS watchdog alongside the panic hook. The watchdog itself
-    // is idempotent; calling `initialize` twice is a no-op for it. It writes
-    // pre-OOM breadcrumbs into the same spool the crash-report flusher
-    // already drains on next startup.
-    crate::telemetry::rss_watchdog::spawn(settings.report_dir.clone());
+    // Arm the memory guards next to the panic hook: the capacity-guarding
+    // allocator (clean abort + spooled report on a runaway allocation) and
+    // the RSS watchdog (pre-OOM breadcrumbs). Both write into the same spool
+    // the crash-report flusher already drains on next startup, and both are
+    // idempotent, so calling `initialize` twice is harmless.
+    crate::telemetry::install_memory_guards(settings.report_dir.clone());
 
     if !settings.enabled {
         return;

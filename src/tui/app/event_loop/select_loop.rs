@@ -23,6 +23,7 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         _ = args.timers.watchdog.tick() => super::watchdog::maybe_watchdog_restart(app, session, args.registry, args.event_tx, args.result_tx, args.timers.watchdog_interval).await,
         _ = args.timers.tick.tick() => super::tick::run(app).await,
     }
+    // Drain background updates before marking dirty (they may produce new state).
     crate::tui::app::background::drain_background_updates(
         app,
         args.cwd,
@@ -43,5 +44,7 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         args.result_tx,
     )
     .await;
+    // Any select branch that fires may have mutated visible state.
+    app.state.needs_redraw = true;
     Ok(false)
 }

@@ -18,7 +18,7 @@ use crate::tui::ui::status_bar::format_timestamp;
 
 /// Reparse threshold: reuse the previously-parsed streaming preview while the
 /// text has grown by fewer than this many bytes.
-const STREAM_REPARSE_THRESHOLD: usize = 48;
+const STREAM_REPARSE_THRESHOLD: usize = 256;
 
 thread_local! {
     /// `(streaming_text_len_at_parse, parsed_lines)`. Keyed per UI thread;

@@ -4,5 +4,7 @@ mod tests_done;
 mod tests_text;
 #[path = "tests_tool.rs"]
 mod tests_tool;
+#[path = "tests_tool_status.rs"]
+mod tests_tool_status;
 #[path = "tests_usage.rs"]
 mod tests_usage;

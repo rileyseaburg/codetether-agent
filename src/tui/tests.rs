@@ -289,22 +289,10 @@ mod tests {
 
     #[test]
     fn next_go_model_toggles_between_glm_and_minimax() {
-        assert_eq!(
-            next_go_model(Some("zai/glm-5")),
-            "minimax-credits/MiniMax-M2.5-highspeed"
-        );
-        assert_eq!(
-            next_go_model(Some("z-ai/glm-5")),
-            "minimax-credits/MiniMax-M2.5-highspeed"
-        );
-        assert_eq!(
-            next_go_model(Some("minimax-credits/MiniMax-M2.5-highspeed")),
-            "zai/glm-5"
-        );
-        assert_eq!(
-            next_go_model(Some("unknown/model")),
-            "minimax-credits/MiniMax-M2.5-highspeed"
-        );
+        assert_eq!(next_go_model(Some("zai/glm-5")), "minimax/MiniMax-M3");
+        assert_eq!(next_go_model(Some("z-ai/glm-5")), "minimax/MiniMax-M3");
+        assert_eq!(next_go_model(Some("minimax/MiniMax-M3")), "zai/glm-5");
+        assert_eq!(next_go_model(Some("unknown/model")), "minimax/MiniMax-M3");
     }
 
     #[test]

@@ -32,6 +32,14 @@ pub(crate) const POST_EDIT_VALIDATION_MAX_RETRIES: u8 = 3;
 /// forces a final answer.
 pub(crate) const MAX_CONSECUTIVE_SAME_TOOL: u32 = 3;
 
+/// Absolute ceiling on total tool calls within a single agentic turn.
+/// Beyond this the loop terminates with an error summarising what happened.
+pub(crate) const MAX_TOTAL_TOOL_CALLS: u32 = 60;
+
+/// Steps with no file mutations (write/edit/bash) before we nudge the model
+/// to either make progress or provide a final answer.
+pub(crate) const MAX_STEPS_WITHOUT_PROGRESS: u32 = 15;
+
 /// Nudge sent when the model keeps trying punctuation/casing variants of the
 /// same identifier via codesearch.
 pub(crate) const CODESEARCH_THRASH_NUDGE: &str = "Stop brute-force codesearch variant retries. \
@@ -48,3 +56,8 @@ call or promise a next step. Emit the actual tool call now. If native tool calli
 /// Message sent when the loop-detection guard is forcing a final answer.
 pub(crate) const FORCE_FINAL_ANSWER_NUDGE: &str = "STOP using tools. Provide your final answer NOW \
 in plain text based on the tool results you already received. Do NOT output any <tool_call> blocks.";
+
+/// Nudge when the model is making many tool calls but not writing any files.
+pub(crate) const NO_PROGRESS_NUDGE: &str = "You have made many tool calls without writing or editing \
+any files. If you are still investigating, that is fine — but if you have gathered enough information, \
+stop reading/searching and start implementing. Provide a final answer if you cannot complete the task.";

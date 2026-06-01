@@ -2,7 +2,9 @@ use anyhow::Result;
 
 use crate::session::Session;
 
-use super::super::{TaskContext, configure_repo_git_auth, install_commit_msg_hook};
+use super::super::{
+    TaskContext, configure_repo_git_auth, ensure_provenance_trailers, install_commit_msg_hook,
+};
 
 pub(super) async fn prepare_git(
     task_id: &str,
@@ -17,10 +19,15 @@ pub(super) async fn prepare_git(
     {
         tracing::warn!(task_id, error = %error, "Failed to configure Git credential helper");
     }
-    if let Some(directory) = session.metadata.directory.as_deref()
-        && let Err(error) = install_commit_msg_hook(directory)
-    {
-        tracing::warn!(task_id, error = %error, "Failed to install commit-msg hook");
+    if let Some(directory) = session.metadata.directory.as_deref() {
+        if let Err(error) = install_commit_msg_hook(directory) {
+            tracing::warn!(task_id, error = %error, "Failed to install commit-msg hook");
+        }
+        if let Some(provenance) = session.metadata.provenance.as_ref()
+            && let Err(error) = ensure_provenance_trailers(directory, provenance)
+        {
+            tracing::warn!(task_id, error = %error, "Failed to pre-seed provenance trailers");
+        }
     }
     super::super::git_branch::ensure_metadata_checked_out(
         session.metadata.directory.as_deref(),
