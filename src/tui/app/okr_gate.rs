@@ -327,15 +327,9 @@ fn is_glm5_model(model: &str) -> bool {
     )
 }
 
-fn is_minimax_m25_model(model: &str) -> bool {
+fn is_minimax_model(model: &str) -> bool {
     let normalized = model.trim().to_ascii_lowercase();
-    matches!(
-        normalized.as_str(),
-        "minimax/minimax-m2.5"
-            | "minimax-m2.5"
-            | "minimax-credits/minimax-m2.5-highspeed"
-            | "minimax-m2.5-highspeed"
-    )
+    normalized.contains("minimax")
 }
 
 /// Rotate between available models for the /go command.
@@ -343,7 +337,7 @@ fn is_minimax_m25_model(model: &str) -> bool {
 pub fn next_go_model(current_model: Option<&str>) -> String {
     match current_model {
         Some(model) if is_glm5_model(model) => GO_SWAP_MODEL_MINIMAX.to_string(),
-        Some(model) if is_minimax_m25_model(model) => GO_SWAP_MODEL_GLM.to_string(),
+        Some(model) if is_minimax_model(model) => GO_SWAP_MODEL_GLM.to_string(),
         _ => GO_SWAP_MODEL_MINIMAX.to_string(),
     }
 }

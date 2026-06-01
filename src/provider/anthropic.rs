@@ -365,6 +365,18 @@ impl Provider for AnthropicProvider {
             // Coding plan key: regular (non-highspeed) models
             return Ok(vec![
                 ModelInfo {
+                    id: "MiniMax-M3".to_string(),
+                    name: "MiniMax M3".to_string(),
+                    provider: self.provider_name.clone(),
+                    context_window: 1_000_000,
+                    max_output_tokens: Some(128_000),
+                    supports_vision: true,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    input_cost_per_million: Some(0.3),
+                    output_cost_per_million: Some(1.2),
+                },
+                ModelInfo {
                     id: "MiniMax-M2.5".to_string(),
                     name: "MiniMax M2.5".to_string(),
                     provider: self.provider_name.clone(),

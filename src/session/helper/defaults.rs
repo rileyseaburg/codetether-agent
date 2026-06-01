@@ -9,7 +9,7 @@ pub(crate) fn default_model_for_provider(provider: &str) -> String {
     match provider {
         "moonshotai" => "kimi-k2.5".to_string(),
         "anthropic" => "claude-sonnet-4-20250514".to_string(),
-        "minimax" => "MiniMax-M2.5".to_string(),
+        "minimax" => "MiniMax-M3".to_string(),
         "openai" => "gpt-4o".to_string(),
         "openai-codex" => "gpt-5.5".to_string(),
         "google" => "gemini-2.5-pro".to_string(),
