@@ -29,9 +29,8 @@ const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK
 const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
 const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
 const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
-// Easy-go defaults should be fast and cheap. We use the dedicated
-// minimax-credits provider and the highspeed variant by default.
-const GO_DEFAULT_MODEL: &str = "minimax-credits/MiniMax-M2.5-highspeed";
+// Easy-go defaults align with the TUI /go rotation model.
+const GO_DEFAULT_MODEL: &str = "minimax/MiniMax-M3";
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
@@ -1621,7 +1620,7 @@ mod tests {
     fn easy_go_defaults_to_minimax_when_model_not_set() {
         assert_eq!(
             resolve_autochat_model(None, None, Some("zai/glm-5"), true),
-            "minimax-credits/MiniMax-M2.5-highspeed"
+            "minimax/MiniMax-M3"
         );
     }
 
