@@ -2,13 +2,18 @@
 
 use futures::StreamExt;
 
+#[path = "dirty.rs"]
+mod dirty;
+
 pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Result<bool> {
+    let before = dirty::Snapshot::capture(args.app);
     let app = &mut *args.app;
     let session = &mut *args.session;
     let bridge = &mut *args.worker_bridge;
     tokio::select! {
         maybe = args.reader.next() => {
             let quit = super::terminal::handle_terminal_event(app, args.cwd, session, args.registry, bridge, args.event_tx, args.result_tx, maybe).await?;
+            app.state.needs_redraw = true;
             if quit { return Ok(true); }
         }
         Some(evt) = args.io.event_rx.recv() => {
@@ -44,7 +49,6 @@ pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Res
         args.result_tx,
     )
     .await;
-    // Any select branch that fires may have mutated visible state.
-    app.state.needs_redraw = true;
+    app.state.needs_redraw |= before.changed_since(app);
     Ok(false)
 }

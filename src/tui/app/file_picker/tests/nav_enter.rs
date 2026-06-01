@@ -1,5 +1,7 @@
 use crate::tui::app::file_picker::types::FilePickerMode;
-use crate::tui::app::file_picker::{file_picker_enter, open_file_picker};
+use crate::tui::app::file_picker::{
+    file_picker_enter, file_picker_select_first, file_picker_select_last, open_file_picker,
+};
 use crate::tui::app::state::App;
 
 #[test]
@@ -27,6 +29,23 @@ fn enter_navigates_directories() {
     file_picker_enter(&mut app, dir.path());
 
     assert_eq!(app.state.file_picker.dir, dir.path().join("src"));
+}
+
+#[test]
+fn home_end_jump_to_visible_extremes() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(dir.path().join("a.txt"), "a").expect("file");
+    std::fs::write(dir.path().join("z.txt"), "z").expect("file");
+    let mut app = App::default();
+    open_file_picker(&mut app, dir.path());
+
+    file_picker_select_last(&mut app);
+    assert_eq!(
+        app.state.file_picker.entries[app.state.file_picker.selected].name,
+        "z.txt"
+    );
+    file_picker_select_first(&mut app);
+    assert_eq!(app.state.file_picker.selected, 0);
 }
 
 fn select_name(app: &mut App, name: &str) {

@@ -6,8 +6,13 @@ use crate::tui::app::state::App;
 use crate::tui::app::symbols::symbol_search_active;
 use crate::tui::models::{InputMode, ViewMode};
 
+#[path = "navigation/jump.rs"]
+mod jump;
+
 #[cfg(test)]
 mod tests;
+
+pub use jump::{handle_end, handle_home};
 
 pub fn handle_escape(app: &mut App) {
     if symbol_search_active(app) {
@@ -218,18 +223,6 @@ pub fn handle_page_down(app: &mut App) {
         }
         ViewMode::Chat => app.state.scroll_down(10),
         _ => {}
-    }
-}
-
-pub fn handle_home(app: &mut App) {
-    if app.state.view_mode == ViewMode::Chat {
-        app.state.move_cursor_home();
-    }
-}
-
-pub fn handle_end(app: &mut App) {
-    if app.state.view_mode == ViewMode::Chat {
-        app.state.move_cursor_end();
     }
 }
 

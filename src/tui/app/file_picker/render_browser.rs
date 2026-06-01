@@ -15,11 +15,23 @@ pub fn render_browser(f: &mut ratatui::Frame, area: Rect, state: &FilePickerStat
 }
 
 fn render_list(f: &mut ratatui::Frame, area: Rect, state: &FilePickerState) {
-    let items = state.entries.iter().enumerate().map(|(i, e)| {
-        let style = entry_style(state, i, e.is_dir, is_image_file(&e.path));
-        ListItem::new(Line::from(Span::styled(&e.name, style)))
-    });
-    let title = format!(" {} [{}] ", state.dir.display(), state.filter);
+    let rows = area.height.saturating_sub(2) as usize;
+    let (start, end) = super::render_window::bounds(state.selected, state.entries.len(), rows);
+    let items = state.entries[start..end]
+        .iter()
+        .enumerate()
+        .map(|(offset, e)| {
+            let i = start + offset;
+            let style = entry_style(state, i, e.is_dir, is_image_file(&e.path));
+            ListItem::new(Line::from(Span::styled(&e.name, style)))
+        });
+    let title = format!(
+        " {} [{}] {}/{} ",
+        state.dir.display(),
+        state.filter,
+        state.selected.saturating_add(1).min(state.entries.len()),
+        state.entries.len()
+    );
     f.render_widget(List::new(items).block(block(title)), area);
 }
 
