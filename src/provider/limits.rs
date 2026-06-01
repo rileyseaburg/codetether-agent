@@ -47,7 +47,7 @@ pub fn context_window_for_model(model: &str) -> usize {
     } else if m.contains("gemini") {
         1_000_000
     // ── MiniMax: most specific patterns first ────────────────────────
-    } else if m.contains("minimax") && m.contains("m3") {
+    } else if m.contains("minimax-m3") || m.contains("minimaxm3") || m.contains("minimax/m3") {
         1_000_000
     } else if m.contains("minimax") || m.contains("m2.5") {
         256_000
