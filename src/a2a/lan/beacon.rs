@@ -38,8 +38,8 @@ const MAGIC: &str = "codetether-a2a-v1";
 ///
 /// # Examples
 ///
-/// ```rust
-/// use codetether_agent::a2a::beacon::Beacon;
+/// ```ignore
+/// use codetether_agent::a2a::lan::beacon::Beacon;
 ///
 /// let beacon = Beacon::new(
 ///     "desktop-worker".to_string(),

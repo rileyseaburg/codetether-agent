@@ -5,6 +5,7 @@
 pub mod advanced_edit;
 pub mod agent;
 pub mod alias;
+pub mod auto_apply;
 pub mod avatar;
 pub mod bash;
 #[path = "bash_github/mod.rs"]
@@ -14,6 +15,7 @@ mod bash_noninteractive;
 mod bash_shell;
 pub mod batch;
 pub mod browserctl;
+pub mod budget;
 pub mod codesearch;
 pub mod computer_use;
 pub mod confirm_edit;
@@ -42,6 +44,7 @@ pub mod patch;
 pub mod plan;
 pub mod podcast;
 pub mod prd;
+pub mod profile;
 pub mod question;
 pub mod ralph;
 pub mod readonly;
@@ -78,6 +81,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::provider::Provider;
+pub use budget::{DEFAULT_TOOL_OUTPUT_MAX_BYTES, tool_output_budget};
 pub use mcp_tools::{McpToolManager, McpToolWrapper};
 pub use sandbox::{PluginManifest, PluginRegistry, SigningKey, hash_bytes, hash_file};
 
@@ -205,21 +209,6 @@ impl ToolResult {
     }
 }
 
-/// Default per-tool-output byte budget. Tunable at runtime via the
-/// `CODETETHER_TOOL_OUTPUT_MAX_BYTES` environment variable. Chosen to keep a
-/// single tool result well under typical provider context windows even after
-/// JSON re-encoding overhead.
-pub const DEFAULT_TOOL_OUTPUT_MAX_BYTES: usize = 64 * 1024;
-
-/// Resolve the current tool-output byte budget from env, falling back to
-/// [`DEFAULT_TOOL_OUTPUT_MAX_BYTES`]. Invalid values fall back to the default.
-pub fn tool_output_budget() -> usize {
-    std::env::var("CODETETHER_TOOL_OUTPUT_MAX_BYTES")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(DEFAULT_TOOL_OUTPUT_MAX_BYTES)
-}
-
 /// Registry of available tools
 pub struct ToolRegistry {
     tools: HashMap<String, Arc<dyn Tool>>,
@@ -279,14 +268,16 @@ impl ToolRegistry {
 
     /// Get tool definitions for LLM
     pub fn definitions(&self) -> Vec<crate::provider::ToolDefinition> {
-        self.tools
+        let defs: Vec<_> = self
+            .tools
             .values()
             .map(|t| crate::provider::ToolDefinition {
                 name: t.id().to_string(),
                 description: t.description().to_string(),
                 parameters: t.parameters(),
             })
-            .collect()
+            .collect();
+        profile::apply(defs)
     }
 
     /// Register multiple tools at once

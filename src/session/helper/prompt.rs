@@ -696,7 +696,7 @@ pub(crate) async fn run_prompt(session: &mut Session, message: &str) -> Result<S
 
             let requires_confirmation = tool_result_requires_confirmation(tool_metadata.as_ref());
             let (content, success, tool_metadata, requires_confirmation) = if requires_confirmation
-                && session.metadata.auto_apply_edits
+                && crate::tool::auto_apply::auto_apply_enabled(&session.metadata)
             {
                 let preview_content = content.clone();
                 match auto_apply_pending_confirmation(

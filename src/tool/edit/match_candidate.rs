@@ -18,13 +18,14 @@ pub fn nearest(content: &str, old: &str) -> Option<String> {
 
 fn block_at(content: &str, start: usize, lines: usize) -> Option<&str> {
     let mut end = start;
-    let bytes = content.as_bytes();
-    for _ in 0..lines {
-        end = content[end..]
-            .find('\n')
-            .map_or(content.len(), |i| end + i + 1);
+    for i in 0..lines {
+        match content[end..].find('\n') {
+            Some(j) if i + 1 < lines => end += j + 1,
+            Some(j) => end += j,
+            None => end = content.len(),
+        }
     }
-    std::str::from_utf8(&bytes[start..end]).ok()
+    content.get(start..end)
 }
 
 fn normalize(s: &str) -> String {
