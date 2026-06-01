@@ -3,7 +3,9 @@ use crate::tui::app::state::App;
 use super::attach::attach_path;
 
 pub fn file_picker_attach(app: &mut App) {
-    let path = preview_path(app).or_else(|| selected_path(app));
+    let path = preview_path(app)
+        .filter(|p| p.is_file())
+        .or_else(|| selected_path(app));
     if let Some(path) = path.filter(|path| path.is_file()) {
         attach_path(app, &path);
     }
